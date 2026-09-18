@@ -8,12 +8,14 @@ extends RefCounted
 var _characters: CharacterRules
 var _arithmetic: RealmzArithmetic
 var _monsters: MonsterRules
+var _equipment: EquipmentRules
 
 
-func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null) -> void:
+func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null, equipment_rules: EquipmentRules = null) -> void:
 	_characters = character_rules if character_rules != null else CharacterRules.new()
 	_arithmetic = realmz_arithmetic if realmz_arithmetic != null else RealmzArithmetic.new()
 	_monsters = monster_rules if monster_rules != null else MonsterRules.new()
+	_equipment = equipment_rules
 
 
 func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, polymorph_context: MonsterPolymorphContext = null, extra_to_hit_bonus: int = 0, use_projectile_defense: bool = false, ignore_magic_resistance: bool = false) -> SpellResolution:
@@ -49,6 +51,8 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
 	if ClassicSpellSpecialEffectRules.is_combat_destroy_turn_undead_spell(spell):
 		return _destroy_or_turn_undead(caster, target, target_definition, spell_cost, duration, power_level, rng)
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	if absi(spell.special) == 28:
 		damage = duration
 	if absi(spell.special) in [27, 49]:
@@ -85,6 +89,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		return _destroy_magic_character(target, 0, duration)
 	if ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell):
 		return _remove_curse_character(target, 0, duration, item_definitions)
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return _identify_character(target, duration, 0)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type < 8:
@@ -179,6 +185,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 			damage /= 2
 	if absi(spell.special) == 28:
 		damage = duration
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return _identify_character(target, duration, spell_cost)
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -233,6 +241,8 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 		return _polymorph_monster(target, target_definition, spell_cost, duration, polymorph_context, rng)
 	if absi(spell.special) == 28:
 		damage = duration
+	if ClassicSpellSpecialEffectRules.is_combat_identify_spell(spell):
+		return SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	if absi(spell.special) in [27, 49]:
 		damage = _combat_death_damage(target.conditions, absi(spell.special), target.current_health)
 	if absi(spell.special) == 59:
@@ -334,6 +344,12 @@ static func _drain_monster_spell_points(target: MonsterState, amount: int, durat
 	return result
 
 
+static func _identify_character(target: CharacterState, duration: int, spell_cost: int) -> SpellResolution:
+	for item: ItemInstance in target.inventory():
+		item.identified = true
+	return SpellResolution.new(true, false, false, spell_cost, 0, duration)
+
+
 static func _combat_death_damage(conditions: ConditionSet, special: int, current_health: int) -> int:
 	if special == 27:
 		conditions.set_value(ConditionRules.TURNED_TO_STONE, -1)
@@ -368,7 +384,7 @@ static func _destroy_magic_character(target: CharacterState, spell_cost: int, du
 	return result
 
 
-static func _remove_curse_character(target: CharacterState, spell_cost: int, duration: int, item_definitions: Array[ItemDefinition]) -> SpellResolution:
+func _remove_curse_character(target: CharacterState, spell_cost: int, duration: int, item_definitions: Array[ItemDefinition], race: RaceDefinition = null, party_conditions: ConditionSet = null) -> SpellResolution:
 	target.conditions.set_value(ConditionRules.CURSED, 0)
 	var definitions: Dictionary = {}
 	for definition: ItemDefinition in item_definitions:
@@ -376,8 +392,9 @@ static func _remove_curse_character(target: CharacterState, spell_cost: int, dur
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	for instance: ItemInstance in target.inventory():
 		var definition: ItemDefinition = definitions.get(instance.definition_id)
-		if instance.equipped and definition != null and not definition.cursed_item_id.is_empty():
-			instance.equipped = false
+		if instance.equipped and definition != null and not definition.cursed_item_id.is_empty() and (_equipment == null or _equipment.force_unequip(target, instance, definition, item_definitions, race, party_conditions)):
+			if _equipment == null:
+				target.equipment_order.record_unequipped(instance, target.inventory())
 			result.unequipped_item_ids.append(instance.id)
 	return result
 

@@ -161,7 +161,7 @@ func run() -> void:
 	var disabled_ap_session := GameSession.new()
 	assert_equal(disabled_ap_session.restore(disabled_ap_content, disabled_ap_save).state, SessionStep.State.COMPLETED, "a disabled first-record fixture restores transactionally")
 	var disabled_ap_step := disabled_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
-	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record"); assert_false(disabled_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched")
+	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record"); assert_false(disabled_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched"); var direct_ap_session := GameSession.new(); direct_ap_session.start(content, 31); _begin_fixture_adventure(direct_ap_session, content); var direct_ap_entry := direct_ap_session.apply_debug_command(SessionDebugCommand.start_action_point("ap.fixture.message")); assert_equal([direct_ap_entry.state, direct_ap_entry.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "a direct Action Point preview enters the authored interaction"); var direct_ap_completed := direct_ap_session.respond(InteractionResponse.acknowledge(direct_ap_entry.interaction)); assert_true(direct_ap_completed.state == SessionStep.State.COMPLETED and direct_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.fixture.message"), "a completed direct Action Point preview persists its one-shot disablement"); var direct_ap_repeated := direct_ap_session.apply_debug_command(SessionDebugCommand.start_action_point("ap.fixture.message")); assert_equal([direct_ap_repeated.state, direct_ap_repeated.error_code], [SessionStep.State.FAILED, &"debug_action_point_disabled"], "a direct Action Point preview cannot replay a completed one-shot trigger")
 
 	var dungeon_envelope := session.snapshot()
 	dungeon_envelope.game_state.party.map_id = "dungeon:0"
@@ -254,10 +254,10 @@ func run() -> void:
 	assert_equal(_event_count(relocated, &"party_moved") + _event_count(destination_text, &"party_moved") + _event_count(destination_completed, &"party_moved"), 2, "the initial move and one AP relocation occur without recursive movement")
 
 	var current_save_data := save_data(session.snapshot())
-	for legacy_version in [1, 2, 3]:
+	for legacy_version in [1, 2, 3, 4]:
 		var legacy_data: Dictionary = current_save_data.duplicate(true)
 		legacy_data["formatVersion"] = legacy_version
-		assert_equal(SaveEnvelope.from_data(legacy_data), null, "save v%d is explicitly incompatible with save v4" % legacy_version)
+		assert_equal(SaveEnvelope.from_data(legacy_data), null, "save v%d is explicitly incompatible with save v5" % legacy_version)
 
 
 func _has_event(step: SessionStep, event_kind: StringName) -> bool:
@@ -518,7 +518,7 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 		assert_equal([session.view().party_coordinate, session.snapshot().game_state.clock.total_minutes() - start_minutes], [Vector2i(1, 0) if allowed else Vector2i.ZERO, 1 if allowed else 0], "%s preserves Castle movement and time semantics" % dungeon_case["id"])
 		var expected_event: StringName = dungeon_case.get("event", &"")
 		if not expected_event.is_empty():
-			assert_true(_has_event(moved, expected_event) and (dungeon_case["id"] != "matching-secret" or session.view().map_view.cell_at(Vector2i(1, 0)).has_feature(&"secret") and session.view().map_view.cell_at(Vector2i(1, 0)).edge_kind(&"east") == &"secret" and session.view().map_view.cell_at(Vector2i(1, 0)).edge_is_passable(&"east")), "%s publishes its topology-owned discovery event and only then exposes a traversable secret" % dungeon_case["id"])
+			assert_true(_has_event(moved, expected_event) and (dungeon_case["id"] != "matching-secret" or session.view().map_view.cell_at(Vector2i(1, 0)).has_feature(&"secret") and session.view().map_view.cell_at(Vector2i(1, 0)).edge_kind(&"east") == &"archway" and session.view().map_view.cell_at(Vector2i(1, 0)).edge_is_passable(&"east")), "%s publishes its topology-owned discovery event and only then exposes a traversable secret archway" % dungeon_case["id"])
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1) -> void:

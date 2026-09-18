@@ -53,6 +53,8 @@ func handle_input(event: InputEvent) -> void:
 
 
 func handle_controller_action(action_id: StringName, pressed: bool, repeated: bool = false) -> void:
+	if not pressed and action_id == &"realmz_controller_confirm":
+		_application._shell_presenter.controller.release_controller_hold()
 	var direction_action := _controller_direction(action_id)
 	if _update_controller_direction(action_id, direction_action, pressed):
 		return

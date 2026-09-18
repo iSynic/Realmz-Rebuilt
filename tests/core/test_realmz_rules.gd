@@ -15,6 +15,7 @@ func run() -> void:
 	_test_monster_permanent_afflictions()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
+	_test_item_eligibility_and_restriction_masks()
 	_test_temple_services_and_wealth()
 	_test_projectile_resolution()
 	_test_combat_magic_and_monsters()
@@ -68,12 +69,13 @@ func _test_temple_services_and_wealth() -> void:
 	rules.temple.apply_service(character, TempleRules.HEAL_DISEASE, ScriptedRng.new([]), no_items)
 	assert_equal(character.conditions.value(TempleRules.CONDITION_DISEASED), 0, "Heal Disease clears the exact source condition")
 	var cursed_definition := ItemDefinition.new("item.temple-cursed", 880, "Cursed Blade")
-	cursed_definition.cursed_item_id = cursed_definition.id
+	cursed_definition.cursed_item_id = cursed_definition.id; cursed_definition.strength_bonus = 2; cursed_definition.special_1 = 122; cursed_definition.special_2 = 3; cursed_definition.movement_bonus = 2
 	var cursed_instance := ItemInstance.new("instance.temple-cursed", cursed_definition.id, 0, true, true)
-	character.set_inventory([cursed_instance])
+	character.set_inventory([cursed_instance]); character.equipment_order.set_exact([cursed_instance.id], character.inventory()); var base_brawn := character.brawn; var base_attack_bonus := character.attack_bonus; character.brawn += 2; character.attack_bonus += 3; character.maximum_movement += 2
 	character.conditions.set_value(TempleRules.CONDITION_CURSED, -1)
 	var curse := rules.temple.apply_service(character, TempleRules.REMOVE_CURSE, ScriptedRng.new([]), [cursed_definition])
 	assert_equal([character.conditions.value(TempleRules.CONDITION_CURSED), cursed_instance.equipped, curse.unequipped_item_ids], [0, false, [cursed_instance.id]], "Remove Cursed Items clears the condition and force-unequips cursed gear")
+	assert_equal([character.brawn, character.attack_bonus, character.maximum_movement, character.equipment_order.ids()], [base_brawn, base_attack_bonus, 10, []], "forced curse removal reverses passive effects and removes the item from authoritative equipment order")
 	character.current_health = -10
 	character.set_ability_value(2, 40)
 	var revive := rules.temple.apply_service(character, TempleRules.REVIVE_DEAD, ScriptedRng.new([]), no_items)
@@ -761,6 +763,113 @@ func _test_inventory_economy_and_treasure() -> void:
 	assert_equal(treasure_roll.wealth.gold, 10, "signed random treasure can reach its inclusive maximum")
 
 
+func _test_item_eligibility_and_restriction_masks() -> void:
+	var rules := RealmzRules.new()
+	assert_equal([InventoryRules.normalize_race_mask(1), InventoryRules.normalize_caste_mask(1), InventoryRules.normalize_caste_mask(129), InventoryRules.normalize_race_mask(129)], [0, 0, 0, 128], "low padding bits outside Castle race 0xFF80 and caste 0xFE00 masks are stripped")
+	assert_equal([InventoryRules.normalize_race_mask(513), InventoryRules.normalize_caste_mask(513), InventoryRules.normalize_race_mask(4097), InventoryRules.normalize_caste_mask(4097), InventoryRules.normalize_caste_mask(24577)], [512, 512, 4096, 4096, 24576], "valid race/caste bits are preserved while padding bit 1 is stripped across shield and quiver masks")
+
+	var race := _race()
+	race.item_category_mask_low = 2048
+	var sorcerer_caste := _caste()
+	sorcerer_caste.item_category_mask_low = 2048
+	sorcerer_caste.caste_class = 4
+	var fighter_caste := _caste()
+	fighter_caste.item_category_mask_low = 2048
+	fighter_caste.caste_class = 1
+	var class_two_caste := _caste()
+	class_two_caste.item_category_mask_low = 2048
+	class_two_caste.caste_class = 2
+
+	var necklace := ItemDefinition.new("classic.item.645", 645, "Necklace of Spells +2")
+	necklace.item_type = 12
+	necklace.item_category_mask_low = 2048
+	necklace.caste_class_only = 7680
+	necklace.armor_bonus = 2
+	necklace.spell_point_bonus = 45
+
+	var magus := CharacterState.new("character.magus", "Magus", 20, 20)
+	magus.maximum_spell_points = 50
+	magus.spell_points = 50
+	magus.maximum_load = 500
+
+	var fighter_char := CharacterState.new("character.fighter", "Fighter", 20, 20)
+	fighter_char.maximum_load = 500
+
+	var sorcerer_use_probe := rules.inventory.classic_use_probe(magus, necklace, race, sorcerer_caste)
+	assert_true(sorcerer_use_probe.allowed, "Sorcerer (casteClass 4) is permitted by big-endian casteClassOnly 7680")
+
+	var fighter_use_probe := rules.inventory.classic_use_probe(fighter_char, necklace, race, fighter_caste)
+	assert_false(fighter_use_probe.allowed, "Fighter (casteClass 1) is blocked by casteClassOnly 7680")
+	assert_equal(fighter_use_probe.reason, "This item requires another Classic class group.", "rejection reason names class group requirement")
+
+	var necklace_instance := rules.inventory.add_item(magus, necklace, "instance.necklace", true)
+	assert_not_null(necklace_instance, "necklace added to Magus inventory")
+
+	var equip_probe := rules.equipment.equip_classic(magus, necklace_instance, necklace, race, sorcerer_caste, [magus], [necklace])
+	assert_true(equip_probe.allowed, "Magus equips Necklace of Spells +2")
+	assert_equal([magus.spell_points, magus.maximum_spell_points], [95, 95], "equipping necklace adds +45 to current and maximum SP")
+	var combat_eq := rules.equipment.combat_equipment(magus, [necklace])
+	assert_equal(combat_eq.effective_armor, 2, "equipping necklace contributes +2 to effective armor")
+
+	var unequip_probe := rules.equipment.unequip_classic(magus, necklace_instance, necklace, [necklace], race)
+	assert_true(unequip_probe.allowed, "Magus unequips Necklace of Spells +2")
+	assert_equal([magus.spell_points, magus.maximum_spell_points], [50, 50], "unequipping necklace reverses +45 SP without double application")
+	combat_eq = rules.equipment.combat_equipment(magus, [necklace])
+	assert_equal(combat_eq.effective_armor, 0, "unequipping necklace removes +2 effective armor")
+
+	var restricted_item := ItemDefinition.new("item.caste-restricted", 999, "Restricted Item")
+	restricted_item.item_category_mask_low = 2048
+	restricted_item.caste_restrictions = 1 << (15 - 3)
+	var sorcerer_restricted_probe := rules.inventory.classic_use_probe(magus, restricted_item, race, sorcerer_caste)
+	assert_false(sorcerer_restricted_probe.allowed, "Sorcerer is blocked by big-endian caste_restrictions")
+	assert_equal(sorcerer_restricted_probe.reason, "This item's class restrictions exclude the character.", "rejection reason names class restrictions")
+	var fighter_restricted_probe := rules.inventory.classic_use_probe(fighter_char, restricted_item, race, fighter_caste)
+	assert_true(fighter_restricted_probe.allowed, "Fighter is not excluded by Sorcerer's restriction bit")
+
+	var padding_item := ItemDefinition.new("item.padding-only", 920, "Padding Only Item")
+	padding_item.item_category_mask_low = 2048
+	padding_item.race_class_only = 1
+	padding_item.caste_class_only = 129
+	padding_item.race_restrictions = 1
+	padding_item.caste_restrictions = 1
+	var padding_instance := ItemInstance.new("inst.padding-only", padding_item.id, 0, false, true)
+	var pad_probe := rules.inventory.classic_use_probe(magus, padding_item, race, sorcerer_caste)
+	assert_true(pad_probe.allowed, "padding-only race/caste restriction fields evaluate to zero and block no character")
+	var pad_view := ItemView.new(padding_instance, padding_item)
+	assert_true(pad_view.restrictions.is_empty(), "padding-only masks emit no generic restrictions when content is null")
+
+	var race_trait_item := ItemDefinition.new("item.race-trait", 921, "Race Trait Item")
+	race_trait_item.item_category_mask_low = 2048
+	race_trait_item.race_class_only = 513
+	var race_matching := _race()
+	race_matching.item_category_mask_low = 2048
+	race_matching.descriptor_flags = 512
+	assert_true(rules.inventory.classic_use_probe(magus, race_trait_item, race_matching, sorcerer_caste).allowed, "race with matching trait bit 512 is admitted despite padding bit 1")
+	var race_blocked_probe := rules.inventory.classic_use_probe(magus, race_trait_item, race, sorcerer_caste)
+	assert_false(race_blocked_probe.allowed, "race lacking trait bit 512 is blocked")
+	assert_equal(race_blocked_probe.reason, "This item requires race traits the character does not have.", "race traits rejection reason")
+
+	var caste_trait_item := ItemDefinition.new("item.caste-trait", 922, "Caste Trait Item")
+	caste_trait_item.item_category_mask_low = 2048
+	caste_trait_item.caste_class_only = 4097
+	assert_true(rules.inventory.classic_use_probe(magus, caste_trait_item, race, sorcerer_caste).allowed, "casteClass 4 is admitted by 4097 despite padding bit 1")
+	assert_false(rules.inventory.classic_use_probe(fighter_char, caste_trait_item, race, fighter_caste).allowed, "casteClass 1 is blocked by 4097")
+
+	var sentinel_quiver := ItemDefinition.new("classic.item.923", 923, "Sentinel's Quiver")
+	sentinel_quiver.item_category_mask_low = 2048
+	sentinel_quiver.race_class_only = 1
+	sentinel_quiver.caste_class_only = 24577
+	assert_true(rules.inventory.classic_use_probe(magus, sentinel_quiver, race, class_two_caste).allowed, "Sentinel's Quiver admits class group 2 despite raceClassOnly 1 and casteClassOnly padding")
+	assert_false(rules.inventory.classic_use_probe(magus, sentinel_quiver, race, sorcerer_caste).allowed, "Sentinel's Quiver blocks casteClass 4 via normalized 0x6000")
+	assert_false(rules.inventory.classic_use_probe(fighter_char, sentinel_quiver, race, fighter_caste).allowed, "Sentinel's Quiver blocks casteClass 1 via normalized 0x6000")
+
+	var dummy_content := RealmzContent.new("test", "0".repeat(64), "test", "realmz-classic-1", "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [race], [sorcerer_caste, fighter_caste, class_two_caste], [sentinel_quiver, padding_item])
+	var dummy_view := ItemView.new(padding_instance, padding_item, null, dummy_content)
+	assert_true(dummy_view.restrictions.is_empty(), "padding-only masks produce no restriction strings with content")
+	var quiver_view := ItemView.new(ItemInstance.new("inst.quiver", sentinel_quiver.id, 0, false, true), sentinel_quiver, null, dummy_content)
+	assert_true(quiver_view.restrictions.any(func(text: String) -> bool: return text.begins_with("Usable only by") and text.contains(class_two_caste.name)), "quiver view reflects authorized caste classes without phantom race restrictions")
+
+
 func _test_projectile_resolution() -> void:
 	var rules := RealmzRules.new()
 	var caster := CharacterState.new("character.projectile-rules", "Archer", 20, 20)
@@ -790,6 +899,33 @@ func _test_projectile_resolution() -> void:
 	var shield_result := rules.magic.resolve_character_projectile(caster, caste, item, shielded, spell, 1, shield_rng)
 	assert_equal([shield_result.hit_count, shield_result.miss_count, shielded.current_health], [0, 1, 30], "projectile shield terminates the repeated volley before damage")
 	assert_equal(shield_rng.snapshot().draw_count, 3, "an automatic projectile-shield miss consumes no dodge roll")
+	var blind_spell := SpellDefinition.new("spell.projectile-blind", 4102, "Blind Dart")
+	blind_spell.spell_class = 9
+	blind_spell.damage_type = 9
+	blind_spell.target_type = 1
+	blind_spell.special = 28
+	blind_spell.duration_min = 5
+	blind_spell.duration_max = 5
+	blind_spell.fixed_target_count = 1
+	var blind_target := MonsterState.new("monster.projectile-blind-target", "monster.projectile-rules", "BlindTarget", 30, 30, 1, 1)
+	var blind_result := rules.magic.resolve_character_projectile(caster, caste, item, blind_target, blind_spell, 1, ScriptedRng.new([0, 0, 0, 0]))
+	assert_equal([blind_result.hit_count, blind_result.damage_per_hit, blind_target.current_health, blind_target.conditions.value(ConditionRules.BLIND)], [1, 5, 25, 5], "projectile special 28 inflicts duration as damage and adds blind condition on hit")
+	blind_target.conditions.set_value(ConditionRules.BLIND, -1); rules.magic.resolve_character_projectile(caster, caste, item, blind_target, blind_spell, 1, ScriptedRng.new([0, 0, 0, 0])); var perm_mon := blind_target.conditions.value(ConditionRules.BLIND); blind_target.conditions.set_value(ConditionRules.BLIND, 122); rules.magic.resolve_character_projectile(caster, caste, item, blind_target, blind_spell, 1, ScriptedRng.new([0, 0, 0, 0])); assert_equal([perm_mon, blind_target.conditions.value(ConditionRules.BLIND)], [-1, 122], "projectile special 28 preserves monster permanent condition and accumulation limit")
+	var monster_caster := MonsterState.new("monster.projectile-caster", "monster.projectile-rules", "MonsterArcher", 20, 20, 1, 1)
+	var char_target := CharacterState.new("character.projectile-char-target", "CharTarget", 20, 20)
+	char_target.dodge = -50
+	var monster_proj_result := rules.magic.resolve_monster_projectile(monster_caster, item, char_target, blind_spell, 1, ScriptedRng.new([0, 0, 0]))
+	assert_equal([monster_proj_result.hit_count, monster_proj_result.damage_per_hit, char_target.current_health, char_target.conditions.value(ConditionRules.BLIND)], [1, 5, 15, 5], "monster projectile special 28 inflicts duration as damage and adds blind condition to character")
+	char_target.conditions.set_value(ConditionRules.BLIND, -1); rules.magic.resolve_monster_projectile(monster_caster, item, char_target, blind_spell, 1, ScriptedRng.new([0, 0, 0])); var perm_char := char_target.conditions.value(ConditionRules.BLIND); char_target.conditions.set_value(ConditionRules.BLIND, 98); rules.magic.resolve_monster_projectile(monster_caster, item, char_target, blind_spell, 1, ScriptedRng.new([0, 0, 0])); assert_equal([perm_char, char_target.conditions.value(ConditionRules.BLIND)], [-1, 98], "monster projectile special 28 preserves character permanent condition and accumulation limit")
+	var death_spell := SpellDefinition.new("spell.projectile-death", 4103, "Death Arrow")
+	death_spell.spell_class = 9
+	death_spell.damage_type = 9
+	death_spell.target_type = 1
+	death_spell.special = 49
+	death_spell.fixed_target_count = 1
+	var death_target := MonsterState.new("monster.projectile-death-target", "monster.projectile-rules", "DeathTarget", 30, 30, 1, 1)
+	var death_result := rules.magic.resolve_character_projectile(caster, caste, item, death_target, death_spell, 1, ScriptedRng.new([0, 0, 0, 0]))
+	assert_equal([death_result.hit_count, death_result.damage_per_hit, death_target.current_health, death_result.target_defeated], [1, 40, -10, true], "projectile special 49 lethal replacement inflicts target health plus ten")
 
 
 func _test_combat_magic_and_monsters() -> void:
@@ -999,6 +1135,34 @@ func _test_combat_magic_and_monsters() -> void:
 	assert_true(scenario_target.conditions.is_active(ConditionRules.TURNED_TO_STONE), "Flesh to Stone owns the direct Realmz condition")
 	assert_equal(scenario_target.current_health, -10, "Flesh to Stone follows Castle death-damage behavior")
 	assert_true(stoned.target_defeated, "scenario spell result reports Castle death state")
+	scenario_target.current_health = 20
+	var death_camp := SpellDefinition.new("spell.death-camp", 5102, "Camp Death"); death_camp.in_camp = true; death_camp.target_type = 5; death_camp.special = 49
+	assert_equal(ClassicSpellDispositionRules.field_character_disposition(death_camp), ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE, "field death magic is executable in camp")
+	var death_camp_res := rules.magic.resolve_scenario_spell(scenario_target, death_camp, 1, 0, true, ScriptedRng.new([0, 0]))
+	assert_true(death_camp_res.target_defeated and scenario_target.current_health == -10, "field death magic resolves lethal damage in camp")
+	var unident_item := ItemInstance.new("inst.unident", "item.sword", 0, false, false)
+	scenario_target.set_inventory([unident_item])
+	var identify_combat := SpellDefinition.new("spell.combat-identify", 5110, "Combat Identify"); identify_combat.in_combat = true; identify_combat.target_type = 1; identify_combat.special = 48; identify_combat.spell_class = 8; identify_combat.damage_type = 8; identify_combat.cannot = 3; identify_combat.cost = 25
+	assert_equal(ClassicSpellDispositionRules.combat_character_disposition(identify_combat), ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE, "combat identify is executable for characters")
+	attacker.spell_points = 30
+	var identify_res := rules.magic.resolve_character_targeted_spell(attacker, SpellTargetSelection.for_character(scenario_target), identify_combat, 1, 1, ScriptedRng.new(_ints_size(16, 0)))
+	assert_true(identify_res.resolutions[0].cast and unident_item.identified, "combat identify identifies target inventory items")
+	var phys_touch := SpellDefinition.new("spell.phys-touch", 5202, "Physical Touch"); phys_touch.in_combat = true; phys_touch.target_type = 5; phys_touch.damage_type = 9; phys_touch.spell_class = 9; phys_touch.damage_min = 1; phys_touch.damage_max = 6; phys_touch.cost = 2
+	assert_equal(ClassicSpellDispositionRules.combat_character_disposition(phys_touch), ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE, "physical touch spell is executable")
+	attacker.dodge = 0
+	var phys_res := rules.magic.resolve_character_targeted_spell(attacker, SpellTargetSelection.for_character(attacker), phys_touch, 1, 1, ScriptedRng.new(_ints_size(16, 0)))
+	assert_true(phys_res.resolutions[0].damage >= 1, "physical touch spell resolves physical damage without missile profile")
+	var phys_area := SpellDefinition.new("spell.phys-area", 5102, "Physical Area"); phys_area.in_combat = true; phys_area.target_type = 3; phys_area.damage_type = 9; phys_area.spell_class = 9; phys_area.damage_min = 12; phys_area.damage_max = 24; phys_area.cost = 10
+	attacker.spell_points = 20; defender.current_health = 40
+	var phys_area_res := rules.magic.resolve_character_group_spell(attacker, [], [defender], [definition], phys_area, 1, 1, ScriptedRng.new(_ints_size(16, 0)))
+	assert_true(phys_area_res.cast and attacker.spell_points == 10 and phys_area_res.resolutions[0].damage >= 12, "physical area spell spends SP and deals physical damage to area target")
+	var group_drain := SpellDefinition.new("spell.group-drain", 5209, "Group Drain"); group_drain.in_combat = true; group_drain.target_type = 10; group_drain.special = 60; group_drain.spell_class = 7; group_drain.damage_type = 7; group_drain.cost = 25; group_drain.power_damage_min = 12; group_drain.power_damage_max = 24
+	attacker.spell_points = 50; defender.spell_points = 30
+	var drain_res := rules.magic.resolve_character_group_spell(attacker, [], [defender], [definition], group_drain, 1, 1, ScriptedRng.new(_ints_size(16, 0)))
+	assert_true(drain_res.cast and attacker.spell_points == 25 and defender.spell_points == 18, "opposed group SP drain spends caster SP and drains enemy SP")
+	var reserved_89 := SpellDefinition.new("spell.reserved-89", 5108, "Reserved 89"); reserved_89.in_combat = true; reserved_89.target_type = 5; reserved_89.special = 89; reserved_89.power_duration_min = -1; reserved_89.power_duration_max = -1
+	assert_equal(ClassicSpellDispositionRules.combat_character_disposition(reserved_89), ClassicSpellDispositionRules.DISPOSITION_NOT_APPLICABLE, "special 89 is not applicable in combat character context")
+	assert_true(ClassicSpellDispositionRules.is_unassigned_reserved_special_spell(reserved_89) and ClassicSpellDispositionRules.unsupported_reason(reserved_89, &"combat-character").contains("Special 89 is an unassigned reserved opcode"), "special 89 is safely rejected with typed diagnostic")
 
 	var built := rules.monsters.build_monster(definition, "monster.built", -1, 1, 0, ScriptedRng.new([0, 0, 0, 0, 0]))
 	assert_equal(built.maximum_health, 3, "monster stamina applies HD dice and difficulty scaling")

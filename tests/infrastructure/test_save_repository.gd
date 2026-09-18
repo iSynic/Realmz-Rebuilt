@@ -25,10 +25,10 @@ func run() -> void:
 	missing_field.erase("rulesVersion")
 	malformed_roots.append({"name": "missing required field", "data": missing_field})
 	var unsupported_version := valid_root.duplicate(true)
-	unsupported_version["formatVersion"] = 3
+	unsupported_version["formatVersion"] = 4
 	malformed_roots.append({"name": "unsupported version", "data": unsupported_version})
 	for malformed: Dictionary in malformed_roots:
-		assert_equal(SaveEnvelope.from_data(malformed["data"]), null, "save v4 root rejects %s" % malformed["name"])
+		assert_equal(SaveEnvelope.from_data(malformed["data"]), null, "save v5 root rejects %s" % malformed["name"])
 	first.game_state.party.add_character(CharacterState.new("preview.hero", "Mira", 10, 10))
 	first.game_state.experience_multiplier = 1.0 / 3.0
 	var repository := SaveRepository.new(TEST_ROOT)
@@ -43,7 +43,7 @@ func run() -> void:
 	assert_true(repository.save(campaign_id, "mismatch", mismatch), "package mismatch remains a valid untrusted save record")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(campaign_path))
 	var legacy_data: Dictionary = save_data(first)
-	legacy_data["formatVersion"] = 3
+	legacy_data["formatVersion"] = 4
 	var legacy := FileAccess.open(campaign_path.path_join("legacy.r2save"), FileAccess.WRITE)
 	legacy.store_string(JSON.stringify(legacy_data))
 	legacy.close()
@@ -71,7 +71,7 @@ func run() -> void:
 	if wrong_package != null:
 		assert_equal([wrong_package.status, wrong_package.can_load], [SaveSlotPreviewScript.PACKAGE_MISMATCH, false], "package mismatch is visible but cannot be loaded")
 	if incompatible != null:
-		assert_equal([incompatible.status, incompatible.can_load, incompatible.error_message], [SaveSlotPreviewScript.INCOMPATIBLE, false, "Save format v3 is incompatible with Realmz Rebuilt save v4."], "legacy saves receive an explicit compatibility-cut message")
+		assert_equal([incompatible.status, incompatible.can_load, incompatible.error_message], [SaveSlotPreviewScript.INCOMPATIBLE, false, "Save format v4 is incompatible with Realmz Rebuilt save v5."], "legacy saves receive an explicit compatibility-cut message")
 	if broken != null:
 		assert_equal([broken.status, broken.can_load], [SaveSlotPreviewScript.CORRUPT, false], "corrupt saves are visible but cannot be loaded")
 	var loaded_backup := repository.load_backup(campaign_id, "quick", loaded.content.package_hash)
@@ -79,7 +79,7 @@ func run() -> void:
 	if loaded_backup != null:
 		assert_equal([loaded_backup.game_state.clock.total_minutes(), var_to_bytes(loaded_backup.game_state.experience_multiplier), PartySetupRules.scale_experience_by_multiplier(600, loaded_backup.game_state.experience_multiplier)], [0, var_to_bytes(first.game_state.experience_multiplier), 200], "backup loading preserves the previous boundary and exact fractional reward multiplier")
 	assert_true(repository.load(campaign_id, "mismatch", loaded.content.package_hash) == null and repository.last_error.contains("identity"), "ordinary load continues to reject mismatched immutable content")
-	assert_true(repository.load(campaign_id, "legacy", loaded.content.package_hash) == null and repository.last_error == "Save format v3 is incompatible with Realmz Rebuilt save v4.", "ordinary load reports the intentional save compatibility cut")
+	assert_true(repository.load(campaign_id, "legacy", loaded.content.package_hash) == null and repository.last_error == "Save format v4 is incompatible with Realmz Rebuilt save v5.", "ordinary load reports the intentional save compatibility cut")
 
 
 func _preview(previews: Array, slot_id: String, source: StringName) -> RefCounted:

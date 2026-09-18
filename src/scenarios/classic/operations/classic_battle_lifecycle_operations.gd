@@ -77,6 +77,9 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 			battle_id = _rng.draw_between(absi(low), absi(high), StringName("classic.opcode-%d.battle" % action.opcode))
 		var sound_id := action.extra_code[3] if action.opcode == 56 else action.extra_code[2]
 		var message_id := action.extra_code[4] if action.opcode == 56 else action.extra_code[3]
+		if action.opcode == 2 and action.extra_code.size() == 5 and action.extra_code[1] == 0 and action.extra_code[2] == -1 and action.extra_code[3] >= 30000 and action.extra_code[3] <= 30005:
+			sound_id = action.extra_code[3]
+			message_id = 0
 		if sound_id != 0:
 			prelude.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-battle"}))
 		if message_id != 0:
@@ -85,7 +88,12 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable battle message %d." % [action.opcode, message_id])
 			prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
 	var caller_mode := action.extra_code[4] if action.opcode in [2, 48] and action.extra_code.size() > 4 else 0
-	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, caller_mode, action.extra_code[4] if action.opcode == 107 and action.extra_code.size() > 4 else action.extra_code[2] if action.opcode == 56 and action.extra_code.size() > 2 else 0)
+	# Opcode-2 mode 10 uses the same authored Extra Code word for its prelude
+	# sound and for the XAP to run after a total-party loss. Retain that target
+	# in the typed caller so a suspended battle can resume through the exact
+	# post-loss program instead of losing the continuation at the battle edge.
+	var caller_target := action.extra_code[4] if action.opcode == 107 and action.extra_code.size() > 4 else action.extra_code[2] if action.opcode == 56 and action.extra_code.size() > 2 else action.extra_code[2] if action.opcode == 2 and caller_mode == 10 and action.extra_code.size() > 2 else 0
+	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, caller_mode, caller_target)
 	var battle := _content.combat.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Classic opcode %d references unavailable battle %d." % [action.opcode, battle_id])
@@ -126,7 +134,38 @@ func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioR
 		return ScenarioRuntimeOperationResult.failed(&"invalid_party_defeat_handoff", "The suspended total-party defeat no longer matches its battle caller.")
 	var caller := handoff.caller
 	if caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 56 and caller.branch_target == -1:
-		return ScenarioRuntimeOperationResult.failed(&"classic_battle_loss_return_unresolved", "Classic opcode 56 uses a distinct experience-loss and party-backup return that is not yet available.")
+		var current_map := _content.world.map_by_id(_game_state.party.map_id)
+		if current_map == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 56 requires the party's current map for its defeat return.")
+		var source_coordinate := _game_state.party.coordinate
+		var target_coordinate := source_coordinate
+		if current_map.level_type == &"land":
+			if _game_state.last_move_direction == Vector2i.ZERO:
+				return ScenarioRuntimeOperationResult.failed(&"missing_move_direction", "Classic opcode 56 requires a prior party movement direction for its defeat return.")
+			target_coordinate -= _game_state.last_move_direction
+			if current_map.topology.cell_at(target_coordinate) == null:
+				return ScenarioRuntimeOperationResult.failed(&"backup_out_of_bounds", "Classic opcode 56 backs the party outside the current map.")
+		for character: CharacterState in _game_state.party.characters():
+			character.experience -= 2_000 * character.level
+		_game_state.party.coordinate = target_coordinate
+		if target_coordinate != source_coordinate:
+			_game_state.world.exploration.mark_visited(current_map.id, target_coordinate)
+		var battle_id := _game_state.combat.battle_id
+		_game_state.combat.outcome = &"retreated"
+		_game_state.last_battle_outcome = &"retreated"
+		var return_events: Array[DomainEvent] = [
+			DomainEvent.new(&"party_defeat_revived", {"battleId": battle_id, "source": "classic-party-death-hook", "callerOpcode": 56}),
+			DomainEvent.new(&"classic_notification_requested", {"text": "Having fled the battle, the enemy remains to challange you another time.", "soundId": 6000, "source": "classic-opcode-56"}),
+			DomainEvent.new(&"sound_requested", {"soundId": 26260, "source": "classic-opcode-56"}),
+			DomainEvent.new(&"classic_notification_requested", {"text": "You all loose victory points for this cowardly display.", "soundId": 6000, "source": "classic-opcode-56"}),
+		]
+		if target_coordinate != source_coordinate:
+			return_events.append(DomainEvent.new(&"party_backed_up", {"mapId": current_map.id, "sourceX": source_coordinate.x, "sourceY": source_coordinate.y, "x": target_coordinate.x, "y": target_coordinate.y, "directionX": _game_state.last_move_direction.x, "directionY": _game_state.last_move_direction.y, "source": "classic-opcode-56"}))
+		else:
+			return_events.append(DomainEvent.new(&"party_backup_ignored", {"reason": "dungeon", "source": "classic-opcode-56"}))
+		return_events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": "retreated"}))
+		_game_state.combat = null
+		return ScenarioRuntimeOperationResult.completed(battle_id, return_events, ScenarioVmDirective.finish_timeline())
 	var combat := _game_state.combat
 	var battle_id := combat.battle_id
 	var directive: ScenarioVmDirective

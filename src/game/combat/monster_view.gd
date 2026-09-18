@@ -17,6 +17,7 @@ var maximum_spell_points: int
 var movement_maximum: int = 0
 var attack_count: int = 0
 var traitor: bool
+var summoned: bool = false
 var helpless: bool = false
 var icon_id: int
 var icon_resource_type: String = "cicn"
@@ -38,6 +39,7 @@ func _init(monster: MonsterState, definition: MonsterDefinition = null, content:
 	spell_points = monster.spell_points
 	maximum_spell_points = monster.maximum_spell_points
 	traitor = monster.traitor
+	summoned = monster.summoned
 	helpless = monster.conditions.is_active(ConditionRules.HELPLESS)
 	icon_id = monster.icon_id
 	for index: int in monster.conditions.values().size():

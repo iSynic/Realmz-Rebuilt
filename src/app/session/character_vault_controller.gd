@@ -135,5 +135,9 @@ func last_error() -> String:
 	return _operation_error if not _operation_error.is_empty() else _repository.last_error
 
 
+func unavailable_notice() -> String:
+	return _repository.diagnostics().unavailable_notice()
+
+
 static func _cache_key(character_id: String, revision_hash: String) -> String:
 	return "%s:%s" % [character_id, revision_hash]

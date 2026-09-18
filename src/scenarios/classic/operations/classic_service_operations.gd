@@ -158,14 +158,12 @@ func _shop_inventory_row(instance: ItemInstance, definition: ItemDefinition, sho
 		identify_reason = "This item is already identified."
 	elif party_gold < 20:
 		identify_reason = "Identification costs 20 gold."
-	var presentation_definition: ItemDefinition = definition
-	if not instance.equipped and not definition.cursed_item_id.is_empty():
-		presentation_definition = _content.items.item_by_id(definition.cursed_item_id)
+	var presentation_definition := InventoryRules.presentation_definition(instance, definition, _content.items)
 	var public_view := ItemView.new(instance, definition, presentation_definition, _content)
 	var item_view := {
 		"instanceId": instance.id,
 		"itemId": definition.id,
-		"name": definition.name if instance.identified else definition.unidentified_name,
+		"name": public_view.name,
 		"identified": instance.identified,
 		"equipped": instance.equipped,
 		"charges": instance.charges,
@@ -467,7 +465,7 @@ func _apply_temple_service(continuation: ScenarioRuntimeContinuation, body: Inte
 		return ScenarioRuntimeOperationResult.waiting(temple_request(service.cost_percent, request_id, character.id), next_continuation, events)
 	if not _rules.economy.take_from_pool_and_character(_game_state.party, character, cost, WealthState.Kind.GOLD):
 		return ScenarioRuntimeOperationResult.failed(&"temple_payment_failed", "Temple payment could not be committed after affordability validation.")
-	var result := _rules.temple.apply_service(character, service_id, _rng, _content.items.definitions())
+	var result := _rules.temple.apply_service(character, service_id, _rng, _content.items.definitions(), _content.characters.race_by_id(character.race_id), _game_state.party.conditions)
 	if result == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_temple_service", "Temple service '%s' is unavailable." % service_id)
 	events.append(DomainEvent.new(&"temple_service_completed", result.to_event_data(character.id, cost)))
@@ -570,9 +568,11 @@ static func shop_accepts_item(item: ItemDefinition, accept_ranges: Array[int]) -
 		return accept_ranges.is_empty()
 	if accept_ranges.size() != 4:
 		return false
-	var failures := 0
-	if accept_ranges[0] != 0 and not (accept_ranges[0] <= item.classic_id and item.classic_id <= accept_ranges[1]):
-		failures += 1
-	if accept_ranges[2] != 0 and not (accept_ranges[2] <= item.classic_id and item.classic_id <= accept_ranges[3]):
-		failures += 1
-	return failures < 2
+	var has_active_range := false
+	for low_index: int in [0, 2]:
+		if accept_ranges[low_index] == 0:
+			continue
+		has_active_range = true
+		if accept_ranges[low_index] <= item.classic_id and item.classic_id <= accept_ranges[low_index + 1]:
+			return true
+	return not has_active_range

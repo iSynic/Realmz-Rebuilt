@@ -57,59 +57,65 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 		var actor_id := turns.active_actor_id()
 		var monster := roster.monster_by_id(actor_id)
 		if monster == null:
-			var charmed_actor := state.party.character_by_id(actor_id)
-			if charmed_actor != null and (combat.battlefield == null or not combat.battlefield.actors.has_actor(charmed_actor.id)):
-				_context.rounds().advance_turn(state, content, rng, events)
+			var character := state.party.character_by_id(actor_id)
+			if character == null or character.current_health <= 0 or combat.battlefield == null or not combat.battlefield.actors.has_actor(character.id):
+				if _context.rounds().skip_incapacitated_actor(state, content, actor_id, rng, events):
+					break
 				guard -= 1
 				continue
-			if charmed_actor == null or not charmed_actor.traitor:
-				if charmed_actor != null and charmed_actor.current_health > 0:
-					_context.actions().prepare_character_turn(combat, charmed_actor)
+			if not character.traitor:
+				_context.actions().prepare_character_turn(combat, character)
 				break
-			if charmed_actor.current_health > 0 and process_charmed_character_turn(state, content, charmed_actor, rng, events):
+			if process_charmed_character_turn(state, content, character, rng, events):
 				_context.rounds().advance_turn(state, content, rng, events)
 				return
-			_context.rounds().advance_turn(state, content, rng, events)
-			if _context.rounds().finish_if_resolved(state, content, events):
+			if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events):
 				break
 			guard -= 1
 			continue
-		if monster.current_health <= 0:
-			_context.rounds().advance_turn(state, content, rng, events)
+		if monster.current_health <= 0 or combat.battlefield == null or not combat.battlefield.actors.has_actor(monster.id):
+			if _context.rounds().skip_incapacitated_actor(state, content, monster.id, rng, events):
+				break
 			guard -= 1
 			continue
 		if turns.active_turn == null:
 			actor_statuses.set_guarding(monster.id, true)
 		if monster.conditions.is_active(ConditionRules.HELPLESS):
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "incapacitated"}))
-			_context.rounds().advance_turn(state, content, rng, events)
+			if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events):
+				break
 			guard -= 1
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "unavailable_definition"}))
-			_context.rounds().advance_turn(state, content, rng, events)
+			if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events):
+				break
 			guard -= 1
 			continue
-		var active_turn := turns.begin_active_turn()
-		if active_turn.movement_remaining < 0:
-			active_turn.movement_remaining = _monster_actions.movement_allowance(monster, definition)
-		if active_turn.target_id.is_empty() and active_turn.attack_index == 0:
-			active_turn.target_id = monster.target_id
-		if active_turn.action.is_empty():
-			active_turn.action = _ai_scoring.choose_monster_action(state, content, monster, definition, rng)
+		var active_turn := _prepare_active_monster_turn(turns, monster, definition, state, content, rng)
 		if _process_selected_monster_action(state, content, monster, definition, active_turn, rng, events) != MONSTER_ATTACK_COMPLETED:
 			return
-		_context.rounds().advance_turn(state, content, rng, events)
-		if _context.rounds().finish_if_resolved(state, content, events):
+		if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events):
 			break
 		guard -= 1
+
+
+func _prepare_active_monster_turn(turns: CombatTurnSequenceState, monster: MonsterState, definition: MonsterDefinition, state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatTurnState:
+	var active_turn := turns.begin_active_turn()
+	if active_turn.movement_remaining < 0:
+		active_turn.movement_remaining = _monster_actions.movement_allowance(monster, definition)
+	if active_turn.target_id.is_empty() and active_turn.attack_index == 0:
+		active_turn.target_id = monster.target_id
+	if active_turn.action.is_empty():
+		active_turn.action = _ai_scoring.choose_monster_action(state, content, monster, definition, rng)
+	return active_turn
 
 
 func _process_selected_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	match active_turn.action:
 		&"advance":
-			return _process_advance_action(state, content, monster, definition, active_turn, rng, events)
+			return _advance_then_retry_cast(state, content, monster, definition, active_turn, rng, events)
 		&"missile":
 			return _process_missile_action(state, content, monster, definition, active_turn, rng, events)
 		&"cast":
@@ -119,16 +125,6 @@ func _process_selected_monster_action(state: GameState, content: RealmzContent, 
 		_:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": String(active_turn.action)}))
 			return MONSTER_ATTACK_COMPLETED
-
-
-func _process_advance_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	if monster.conditions.is_active(ConditionRules.SPEEDY):
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "monster-speedy-cadence-unresolved"}))
-		return MONSTER_ATTACK_COMPLETED
-	if monster.conditions.value(ConditionRules.TANGLED) < 0:
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "permanent-tangle-movement-unresolved"}))
-		return MONSTER_ATTACK_COMPLETED
-	return _advance_then_retry_cast(state, content, monster, definition, active_turn, rng, events)
 
 
 func _process_missile_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
@@ -179,6 +175,9 @@ func process_monster_cast(state: GameState, content: RealmzContent, monster: Mon
 		var spell := content.magic.spell_by_id(String(ai_plan["spellId"]))
 		var range_power := int(ai_plan["power"])
 		var cost_power := range_power
+		if ClassicSpellSourceRules.is_zero_cost_monster_projectile_spell(spell):
+			range_power = rng.draw(7, StringName("combat.monster-spell-projectile.%s.range-power" % monster.id))
+			cost_power = 1
 		var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
 		if summon_spell:
 			var target_coordinates: Array[Vector2i] = []
@@ -266,7 +265,7 @@ func _execute_monster_spell(state: GameState, content: RealmzContent, monster: M
 
 func _resolve_monster_spell(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, power: int, cast_level: int, target_plan: MonsterSpellTargetPlan, rng: RealmzRng, created_fields: Array[RefCounted]) -> GroupSpellResolution:
 	if spell.target_type in [3, 4]:
-		return _context.magic.resolve_monster_group_spell(monster, definition, target_plan.selections, spell, power, cast_level, rng, true, true, _monster_polymorph_context(state, content))
+		return _context.magic.resolve_monster_group_spell(monster, definition, target_plan.selections, spell, power, cast_level, rng, true, true, _monster_polymorph_context(state, content), true)
 	if spell.target_type in [9, 10, 12]:
 		return _context.magic.resolve_monster_group_spell(monster, definition, target_plan.selections, spell, power, cast_level, rng, false, true, _monster_polymorph_context(state, content))
 	if spell.target_type == 0:
@@ -352,7 +351,7 @@ func _monster_area_spell_selections(state: GameState, content: RealmzContent, ce
 		if selected_ids.has(character.id) and character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
 			result.append(SpellTargetSelection.for_character(character))
 	for monster: MonsterState in state.combat.roster.monsters():
-		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or monster.magic_resistance > 100:
+		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id):
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition != null:
@@ -376,14 +375,6 @@ static func monster_can_retry_cast(state: GameState, monster: MonsterState, defi
 static func monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
 	if ClassicSpellDispositionRules.combat_monster_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-monster")
-	var healing_spell := ClassicSpellConditionRules.is_combat_healing_spell(spell)
-	var condition_cure := ClassicSpellConditionRules.is_combat_condition_cure_spell(spell)
-	var condition_effect := ClassicSpellConditionRules.is_combat_condition_effect_spell(spell)
-	var spell_point_restore := ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell)
-	var destroy_magic := ClassicSpellSpecialEffectRules.is_combat_destroy_magic_spell(spell)
-	var charm_spell := ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell)
-	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect and not spell_point_restore and not destroy_magic and not charm_spell:
-		return "monster-spell-friendly-target-unresolved"
 	return ""
 
 
@@ -407,13 +398,13 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 		return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
 	var visited_anchors: Array[Vector2i] = [combat.battlefield.actors.actor_position(monster.id)]
-	while operation_guard > 0 and active_turn.attack_index < _monster_actions.attack_limit(definition):
+	while operation_guard > 0 and active_turn.attack_index < _monster_actions.attack_limit(monster, definition):
 		var adjacent_ids := hostile_adjacent_ids(state, monster.id)
 		if not adjacent_ids.is_empty():
 			if (active_turn.attack_index == 0 and not active_turn.physical_action_committed) or not adjacent_ids.has(active_turn.target_id):
 				active_turn.target_id = _monster_actions.select_adjacent_target(state, monster, rng)
 				monster.target_id = active_turn.target_id
-			while active_turn.attack_index < _monster_actions.attack_limit(definition):
+			while active_turn.attack_index < _monster_actions.attack_limit(monster, definition):
 				var attack_result := resolve_monster_attack_row(state, content, monster, definition, active_turn.attack_index, active_turn, rng, events)
 				if attack_result != MONSTER_ATTACK_COMPLETED:
 					return attack_result
@@ -496,11 +487,12 @@ func process_monster_retreat(state: GameState, content: RealmzContent, monster: 
 		active_turn.movement_remaining = 0
 		return MONSTER_ATTACK_COMPLETED
 	if not _monster_actions.target_is_available(state, monster, active_turn.target_id):
-		# movemonster.c reads pos[-1] when a routed monster has no retained target.
-		# Keep that unsafe source path explicit instead of inventing a threat target.
-		active_turn.movement_remaining = 0
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "retreat-target-unresolved"}))
-		return MONSTER_ATTACK_COMPLETED
+		active_turn.target_id = _monster_actions.select_visible_target(state, monster, terrain_set, rng)
+		monster.target_id = active_turn.target_id
+		if active_turn.target_id.is_empty():
+			active_turn.movement_remaining = 0
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "no-visible-opponent"}))
+			return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
 	while operation_guard > 0 and active_turn.movement_remaining > 0 and monster.current_health > 0:
 		var origin := combat.battlefield.actors.actor_position(monster.id)
@@ -538,19 +530,19 @@ func resolve_monster_attack_row(state: GameState, content: RealmzContent, monste
 		active_turn.target_id = _monster_actions.select_adjacent_target(state, monster, rng)
 		monster.target_id = active_turn.target_id
 	if active_turn.target_id.is_empty():
-		active_turn.attack_index = _monster_actions.attack_limit(definition)
+		active_turn.attack_index = _monster_actions.attack_limit(monster, definition)
 		return MONSTER_ATTACK_COMPLETED
 	active_turn.attack_index += 1
 	active_turn.physical_action_committed = true
 	combat.actor_statuses.set_guarding(monster.id, false)
 	var character_target := state.party.character_by_id(active_turn.target_id)
 	if character_target != null:
-		return _resolve_attack_against_character(state, content, monster, definition, attack_index, active_turn, character_target, rng, events)
+		return _resolve_attack_against_character(state, content, monster, definition, attack_index if attack_index < definition.attack_count else 0, active_turn, character_target, rng, events)
 	var monster_target := combat.roster.monster_by_id(active_turn.target_id)
 	if monster_target == null:
 		active_turn.target_id = ""
 		return MONSTER_ATTACK_COMPLETED
-	return _resolve_attack_against_monster(state, content, monster, definition, attack_index, active_turn, monster_target, rng, events)
+	return _resolve_attack_against_monster(state, content, monster, definition, attack_index if attack_index < definition.attack_count else 0, active_turn, monster_target, rng, events)
 
 
 func _resolve_attack_against_character(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, target: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
@@ -607,7 +599,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 		var death_macro_requested = _context.actions().events().request_monster_death_macro(target, target_definition, events)
 		remove_defeated_position(state.combat, target.id, not death_macro_requested)
 		if death_macro_requested:
-			if active_turn.attack_index >= _monster_actions.attack_limit(definition):
+			if active_turn.attack_index >= _monster_actions.attack_limit(monster, definition):
 				_context.rounds().advance_turn(state, content, rng, events)
 			return MONSTER_ATTACK_DEATH_MACRO
 	return MONSTER_ATTACK_COMPLETED
@@ -636,41 +628,49 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 	if active_turn == null:
 		return false
 	if target_index < character_targets.size():
-		var character_target := character_targets[target_index]
-		var target_equipment := _context.equipment.combat_equipment(character_target, content.items.definitions())
-		if not target_equipment.valid:
-			events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "targetId": character_target.id, "reason": String(target_equipment.error_code), "message": target_equipment.error_message}))
-			return false
-		active_turn.physical_action_committed = true
-		var character_resolution := _context.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, state.combat.dropped_items.can_queue())
-		if character_resolution.total_damage() > 0:
-			state.combat.actor_statuses.mark_attacked(character_target.id)
-		if character_resolution.fumbled and not _context.actions().events().commit_character_fumble(state, actor, equipment, events):
-			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
-			return false
-		var character_event = _context.actions().events().character_attack_event(actor.id, character_target.id, &"character", character_resolution, equipment.melee_weapon != null)
-		_context.actions().events().append_character_attack_audio(events, actor, equipment, character_resolution, &"character")
-		character_event.payload["automatic"] = true
-		events.append(character_event)
-		_context.actions().mark_character_bleeding(state, character_target, character_resolution.killed)
-		remove_defeated_position(state.combat, character_target.id, character_resolution.killed)
-		return false
+		return _resolve_charmed_attack_character(state, content, actor, equipment, character_targets[target_index], active_turn, rng, events)
 	var monster_target := monster_targets[target_index - character_targets.size()]
 	var target_definition := content.combat.monster_by_id(monster_target.definition_id)
 	active_turn.physical_action_committed = true
 	var resolution := _context.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day(), false, true, state.combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(monster_target.id)
-	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, actor, equipment, events):
+	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, actor, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 		return false
 	var event = _context.actions().events().character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null)
 	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"monster")
 	event.payload["automatic"] = true
 	events.append(event)
+	if resolution.reflected:
+		_context.actions().mark_character_bleeding(state, actor, resolution.killed)
+		remove_defeated_position(state.combat, actor.id, resolution.killed)
+		return false
 	var death_macro_requested = resolution.killed and _context.actions().events().request_monster_death_macro(monster_target, target_definition, events)
 	remove_defeated_position(state.combat, monster_target.id, resolution.killed and not death_macro_requested)
 	return death_macro_requested
+
+
+func _resolve_charmed_attack_character(state: GameState, content: RealmzContent, actor: CharacterState, equipment: CharacterCombatEquipment, target: CharacterState, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
+	var target_equipment := _context.equipment.combat_equipment(target, content.items.definitions())
+	if not target_equipment.valid:
+		events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "targetId": target.id, "reason": String(target_equipment.error_code), "message": target_equipment.error_message}))
+		return false
+	active_turn.physical_action_committed = true
+	var resolution := _context.combat.resolve_character_attack_character(actor, equipment, target, target_equipment, rng, false, true, state.combat.dropped_items.can_queue())
+	if resolution.total_damage() > 0:
+		state.combat.actor_statuses.mark_attacked(target.id)
+	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, actor, equipment, events):
+		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
+		return false
+	var character_event = _context.actions().events().character_attack_event(actor.id, target.id, &"character", resolution, equipment.melee_weapon != null)
+	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"character")
+	character_event.payload["automatic"] = true
+	events.append(character_event)
+	var victim: CharacterState = actor if resolution.reflected else target
+	_context.actions().mark_character_bleeding(state, victim, resolution.killed)
+	remove_defeated_position(state.combat, victim.id, resolution.killed)
+	return false
 
 
 func hostile_adjacent_ids(state: GameState, actor_id: String, anchor_override: Vector2i = Vector2i(-1, -1)) -> Array[String]:

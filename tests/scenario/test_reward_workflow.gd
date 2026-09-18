@@ -24,6 +24,7 @@ func run() -> void:
 	_test_battle_mode_five_and_incidental_rewards(loaded.content)
 	_test_opcode_48_bonus_reward_chain(loaded.content)
 	_test_corrupt_reward_boundaries(loaded.content)
+	_test_cursed_item_treasure_disclosure(loaded.content)
 
 
 func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
@@ -204,10 +205,10 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	assert_equal([defeat.state, defeat_state.combat, defeat_state.last_battle_outcome, defeat_rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, null, &"defeat", 0], "defeat closes and releases the terminal chain without inventing loot or reward draws")
 	assert_equal(defeat.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "defeat publishes one terminal battle-return event")
 	var mode_ten_item := content.items.item_by_id(content.economy.treasure_by_classic_id(0).item_ids()[0]); var mode_ten_character := _character(content, "reward.mode-ten", "Mode Ten", 500, 0); mode_ten_character.set_inventory([ItemInstance.new("mode-ten.stored", mode_ten_item.id, mode_ten_item.initial_charges)]); var mode_ten_party := PartyState.new(content.start_map_id, content.start_coordinate, [mode_ten_character]); mode_ten_party.pooled_wealth.gold = 40; assert_true(mode_ten_party.capture_equipment(), "mode 10 fixture captures the source-owned party equipment and wealth")
-	var mode_ten_state := GameState.new(mode_ten_party, RealmzClock.new()); var mode_ten_rules := RealmzRules.new(); var mode_ten_saved := GameState.from_data(JSON.parse_string(JSON.stringify(mode_ten_state.to_data()))); assert_true(mode_ten_rules.combat_flow.start_battle(mode_ten_saved, content, battle, RealmzRng.new(29)).ok, "mode 10 escrow restores before its battle starts through the public combat boundary"); var defeated_character := mode_ten_saved.party.character_by_id(mode_ten_character.id); defeated_character.current_health = 0; defeated_character.conditions.set_value(ConditionRules.ANIMATED, -1); mode_ten_saved.combat.turns.active_turn = null; mode_ten_saved.combat.pending_monster_attack = null; mode_ten_saved.combat.pending_reaction = null; mode_ten_saved.combat.turns.invalidate_undo(); mode_ten_saved.combat.completed = true; mode_ten_saved.combat.outcome = &"defeat"; mode_ten_saved.last_battle_outcome = &"defeat"; var mode_ten_rng := RealmzRng.new(31); var mode_ten_api := RealmzRuntimeApi.new(content, mode_ten_saved, mode_ten_rng, ScenarioActionState.new(), mode_ten_rules); var mode_ten_caller := ScenarioBattleCaller.classic(2, false, 10, 0)
-	var mode_ten_handoff := ScenarioRuntimeHandoff.party_defeat(battle.id, ScenarioRuntimeHandoff.CLASSIC_COMBAT, mode_ten_caller); assert_false(RealmzRuntimeApi.party_defeat_handoff_is_valid(content, mode_ten_saved, mode_ten_handoff), "mode 10 never enters the ordinary Party Death handoff"); var restarted := mode_ten_api.begin_completed_battle_reward("battle.mode-ten.defeat", mode_ten_caller); var restarted_character := mode_ten_saved.party.character_by_id(mode_ten_character.id); assert_equal([restarted.state, restarted.directive.kind, restarted_character.current_health, restarted_character.conditions.value(ConditionRules.ANIMATED), mode_ten_saved.party.equipment_storage_active, mode_ten_saved.combat, mode_ten_rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, ScenarioVmDirective.RESTART_CURRENT_PROGRAM, 1, 0, true, null, 0], "mode 10 total defeat bypasses Party Death, revives the party, retains escrow, consumes no RNG, and requests the exact caller restart")
-	assert_equal([restarted.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"classic_battle_restart_requested").size(), restarted.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size()], [1, 0], "the restarted defeat publishes one restart and no false terminal return")
-	assert_equal(ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(restarted.directive.to_data()))).kind, ScenarioVmDirective.RESTART_CURRENT_PROGRAM, "the mode 10 restart directive survives its strict wire boundary")
+	var mode_ten_state := GameState.new(mode_ten_party, RealmzClock.new()); var mode_ten_rules := RealmzRules.new(); var mode_ten_saved := GameState.from_data(JSON.parse_string(JSON.stringify(mode_ten_state.to_data()))); assert_true(mode_ten_rules.combat_flow.start_battle(mode_ten_saved, content, battle, RealmzRng.new(29)).ok, "mode 10 escrow restores before its battle starts through the public combat boundary"); var defeated_character := mode_ten_saved.party.character_by_id(mode_ten_character.id); defeated_character.current_health = 0; defeated_character.conditions.set_value(ConditionRules.ANIMATED, -1); mode_ten_saved.combat.turns.active_turn = null; mode_ten_saved.combat.pending_monster_attack = null; mode_ten_saved.combat.pending_reaction = null; mode_ten_saved.combat.turns.invalidate_undo(); mode_ten_saved.combat.completed = true; mode_ten_saved.combat.outcome = &"defeat"; mode_ten_saved.last_battle_outcome = &"defeat"; var mode_ten_rng := RealmzRng.new(31); var mode_ten_api := RealmzRuntimeApi.new(content, mode_ten_saved, mode_ten_rng, ScenarioActionState.new(), mode_ten_rules); var mode_ten_caller := ScenarioBattleCaller.classic(2, false, 10, 100)
+	var mode_ten_handoff := ScenarioRuntimeHandoff.party_defeat(battle.id, ScenarioRuntimeHandoff.CLASSIC_COMBAT, mode_ten_caller); assert_false(RealmzRuntimeApi.party_defeat_handoff_is_valid(content, mode_ten_saved, mode_ten_handoff), "mode 10 never enters the ordinary Party Death handoff"); var restarted := mode_ten_api.begin_completed_battle_reward("battle.mode-ten.defeat", mode_ten_caller); var restarted_character := mode_ten_saved.party.character_by_id(mode_ten_character.id); assert_equal([restarted.state, restarted.directive.kind, restarted.directive.target_id, restarted.directive.gosub, restarted_character.current_health, restarted_character.conditions.value(ConditionRules.ANIMATED), mode_ten_saved.party.equipment_storage_active, mode_ten_saved.combat, mode_ten_rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, ScenarioVmDirective.BRANCH_XAP, 100, true, 1, 0, true, null, 0], "mode 10 total defeat bypasses Party Death, revives the party, retains escrow, consumes no RNG, and requests the authored post-loss XAP as a nested continuation")
+	assert_equal([restarted.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"classic_battle_post_loss_xap_requested").size(), restarted.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"classic_battle_restart_requested").size(), restarted.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size()], [1, 0, 0], "the revived defeat publishes one post-loss branch and no false terminal return or program restart")
+	var restored_mode_ten_directive := ScenarioVmDirective.from_data(restarted.directive.to_data()); assert_equal([restored_mode_ten_directive.kind, restored_mode_ten_directive.target_id, restored_mode_ten_directive.gosub], [ScenarioVmDirective.BRANCH_XAP, 100, true], "the mode 10 post-loss branch survives its strict typed boundary")
 	var restore_character := _character(content, "reward.mode-ten-victory", "Mode Ten Victory", 500, 0); restore_character.set_inventory([ItemInstance.new("mode-ten.original", mode_ten_item.id, mode_ten_item.initial_charges)]); var restore_party := PartyState.new(content.start_map_id, content.start_coordinate, [restore_character]); restore_party.pooled_wealth.gold = 40; assert_true(restore_party.capture_equipment(), "mode 10 victory fixture captures the original equipment"); restore_character.set_inventory([ItemInstance.new("mode-ten.scenario", mode_ten_item.id, mode_ten_item.initial_charges)]); restore_party.pooled_wealth.gold = 5; var restore_state := GameState.new(restore_party, RealmzClock.new()); restore_state.combat = CombatState.new(battle.id); restore_state.combat.completed = true; restore_state.combat.outcome = &"victory"; restore_state.last_battle_outcome = &"victory"; var restore_rng := RealmzRng.new(31)
 	var restored_mode_ten := RealmzRuntimeApi.new(content, restore_state, restore_rng, ScenarioActionState.new(), RealmzRules.new()).begin_completed_battle_reward("battle.mode-ten.victory", mode_ten_caller); assert_equal([restored_mode_ten.state, restore_character.inventory()[0].id, restore_party.storage()[0].id, restore_party.pooled_wealth.gold, restore_party.equipment_storage_active, restore_state.combat, restore_rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, "mode-ten.original", "mode-ten.scenario", 40, false, null, 0], "mode 10 victory restores only escrowed equipment and wealth, retains scenario gear as recovered storage, and returns without reward RNG"); assert_equal(restored_mode_ten.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "mode 10 victory publishes one terminal return")
 	assert_true(restored_mode_ten.events.any(func(event: DomainEvent) -> bool: return event.kind == &"equipment_restored" and event.payload.get("changed") == true), "the victory return exposes its source-owned equipment restoration")
@@ -257,7 +258,7 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 
 
 func _test_battle_mode_five_and_incidental_rewards(content: RealmzContent) -> void:
-	var source_battle := content.combat.battle_by_id("classic.battle.0"); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.mode-five-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); var opening := RealmzRuntimeApi.new(content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new()).execute_classic(ClassicActionDefinition.new(0, 2, 2, source_battle.classic_id, false, [source_battle.classic_id, 0, 0, 0, 5]), "battle.mode-five.open"); var opening_body := opening.continuation.body as ScenarioCombatContinuationBody if opening.continuation != null else null; assert_equal(opening_body.caller.mode if opening_body != null else -1, 5, "opcode 2 preserves AOGM's fifth Extra Code word as the public battle caller mode")
+	var source_battle := content.combat.battle_by_id("classic.battle.0"); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.mode-five-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); var opening := RealmzRuntimeApi.new(content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new()).execute_classic(ClassicActionDefinition.new(0, 2, 2, source_battle.classic_id, false, [source_battle.classic_id, 0, 0, 0, 5]), "battle.mode-five.open"); var opening_body := opening.continuation.body as ScenarioCombatContinuationBody if opening.continuation != null else null; assert_equal(opening_body.caller.mode if opening_body != null else -1, 5, "opcode 2 preserves AOGM's fifth Extra Code word as the public battle caller mode"); var mode_ten_opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.mode-ten-opening", "Mode Ten Opening", 5_000, -100_000)]), RealmzClock.new()); var mode_ten_opening := RealmzRuntimeApi.new(content, mode_ten_opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new()).execute_classic(ClassicActionDefinition.new(0, 2, 2, source_battle.classic_id, false, [source_battle.classic_id, 0, 100, 0, 10]), "battle.mode-ten.open"); var mode_ten_opening_body := mode_ten_opening.continuation.body as ScenarioCombatContinuationBody if mode_ten_opening.continuation != null else null; assert_equal([mode_ten_opening_body.caller.mode if mode_ten_opening_body != null else -1, mode_ten_opening_body.caller.branch_target if mode_ten_opening_body != null else -1], [10, 100], "opcode 2 mode 10 preserves Extra Code slot two as its post-loss XAP caller target")
 	var loot := content.economy.treasure_by_classic_id(0).item_ids()[0]; var flags: Array[int] = [1, 0, 0, 0, 0, 0, 0, 0]; var definition := MonsterDefinition.new("reward.incidental.monster", 9_001, "Incidental", 2, 0, 10, 0, 0, flags, [], [], [9, 8, 7], [], [loot], [], []); definition.can_summon = 0; definition.experience = 25; definition.traitor = true; definition.size = 0
 	var battle := BattleDefinition.new("reward.incidental.battle", 9_001, [], 0, 0, 0, 0); var reward_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.characters.race_definitions(), content.characters.caste_definitions(), content.items.definitions(), content.magic.definitions(), [definition], [battle], [content.economy.treasure_by_classic_id(0)], [], [], [], [], [], content.campaign); var results: Dictionary = {}
 	for mode: int in [0, 5]:
@@ -447,3 +448,142 @@ func _reward_response(request: InteractionRequest) -> InteractionResponse:
 	if items is Array and not items.is_empty():
 		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "discard", "instanceId": items[0]["instanceId"]})
 	return InteractionResponse.from_data(request.request_id, request.kind, {"action": "done"})
+
+
+func _test_cursed_item_treasure_disclosure(content: RealmzContent) -> void:
+	var character := _character(content, "reward.cursed-recipient", "Recipient", 500, -100_000)
+	var caster := _character(content, "reward.cursed-caster", "Caster", 500, -100_000, 6)
+	var race := content.characters.race_by_id(character.race_id)
+	var caste := content.characters.caste_by_id(character.caste_id)
+	var original_race_mask := race.item_category_mask_low
+	var original_caste_mask := caste.item_category_mask_low
+	var original_caste_class := caste.caste_class
+	race.item_category_mask_low = 2048
+	caste.item_category_mask_low = 2048
+	caste.caste_class = 1
+
+	var decoy_item := ItemDefinition.new("item.decoy-shackles", 644, "Necklace of Protection +5")
+	decoy_item.item_type = 12
+	decoy_item.item_category_mask_low = 2048
+	decoy_item.unidentified_name = "Necklace"
+	decoy_item.description = "As useful as it is beautiful."
+	decoy_item.armor_bonus = 5
+	decoy_item.weight = 12
+	decoy_item.magical = true
+	decoy_item.icon_id = 538
+
+	var cursed_item := ItemDefinition.new("item.cursed-shackles", 650, "Necklace of Shackles -5")
+	cursed_item.item_type = 12
+	cursed_item.item_category_mask_low = 2048
+	cursed_item.unidentified_name = "Necklace"
+	cursed_item.description = "At first this necklace appears to be valuable, Hmmmmmph!!!"
+	cursed_item.armor_bonus = -5
+	cursed_item.weight = 5
+	cursed_item.cursed_item_id = decoy_item.id
+	cursed_item.icon_id = 539
+	cursed_item.magical = true
+
+	var ordinary_item := ItemDefinition.new("item.ordinary-necklace", 640, "Ordinary Necklace")
+	ordinary_item.unidentified_name = "Necklace"
+	ordinary_item.description = "A plain necklace."
+	ordinary_item.armor_bonus = 1
+	ordinary_item.weight = 8
+	ordinary_item.icon_id = 530
+
+	var original_items: Array[ItemDefinition] = content.items.definitions()
+	var new_items: Array[ItemDefinition] = []
+	new_items.assign(original_items)
+	new_items.append(decoy_item)
+	new_items.append(cursed_item)
+	new_items.append(ordinary_item)
+	content.items = ItemCatalog.new(new_items)
+
+	var identify_spell := SpellDefinition.new("spell.identify-test", 1100, "Identify")
+	identify_spell.special = 48
+	identify_spell.cost = 25
+
+	var original_spells: Array[SpellDefinition] = content.magic.definitions()
+	var new_spells: Array[SpellDefinition] = []
+	new_spells.assign(original_spells)
+	new_spells.append(identify_spell)
+	content.magic = SpellCatalog.new(new_spells)
+
+	caster.spell_points = 30
+	caster.maximum_spell_points = 30
+	caster.set_known_spells([identify_spell.id])
+
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character, caster])
+	var state := GameState.new(party, RealmzClock.new())
+	var rng := RealmzRng.new(42)
+	var rules := RealmzRules.new()
+	var workflow := ClassicRewardWorkflow.new(content, state, rng, rules)
+
+	var opened := workflow.begin_reward(&"scenario", "cursed-test", 0, WealthState.new(), [cursed_item.id, ordinary_item.id], "req.cursed.open")
+	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "treasure opens with cursed and ordinary items")
+	var items_data: Array = opened.interaction.body.to_data()["items"]
+	assert_equal(items_data.size(), 2, "two items present in reward payload")
+
+	var cursed_payload: Dictionary = items_data[0]
+	assert_equal(cursed_payload["definitionId"], decoy_item.id, "unidentified cursed item exposes decoy definition ID, not true cursed ID")
+	assert_equal(cursed_payload["name"], "Necklace", "unidentified cursed item displays decoy unidentified name")
+	assert_equal(cursed_payload["iconId"], cursed_item.visible_icon_id(false), "unidentified cursed item preserves its own original icon ID")
+	assert_equal(cursed_payload["description"], "Specials are unknown.", "unidentified cursed item hides description")
+	var cursed_facts: Array = cursed_payload["facts"]
+	var armor_fact: Dictionary = {}
+	for fact: Dictionary in cursed_facts:
+		if fact["label"] == "Armor":
+			armor_fact = fact
+			break
+	assert_false(armor_fact.is_empty(), "decoy armor bonus produces Armor fact row")
+	assert_equal(armor_fact["value"], "?", "unidentified cursed item conceals armor stat as '?'")
+
+	var ordinary_payload: Dictionary = items_data[1]
+	assert_equal(ordinary_payload["definitionId"], ordinary_item.id, "ordinary item exposes its own definition ID")
+	assert_equal(ordinary_payload["name"], "Necklace", "ordinary item displays its unidentified name")
+	assert_equal(ordinary_payload["iconId"], ordinary_item.visible_icon_id(false), "ordinary item displays its own icon")
+
+	var identified_res := workflow.resume_reward(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "identify", "characterId": caster.id}), "req.cursed.identify")
+	assert_equal(identified_res.state, ScenarioRuntimeOperationResult.State.WAITING, "reward continues after identification")
+	var id_items: Array = identified_res.interaction.body.to_data()["items"]
+	var id_cursed: Dictionary = id_items[0]
+
+	assert_equal(id_cursed["definitionId"], decoy_item.id, "identified cursed item still presents decoy definition ID")
+	assert_equal(id_cursed["name"], decoy_item.name, "identified cursed item presents decoy name")
+	assert_equal(id_cursed["description"], decoy_item.description, "identified cursed item presents decoy description")
+	assert_equal(id_cursed["iconId"], cursed_item.visible_icon_id(true), "identified cursed item retains its own original icon ID")
+	var id_armor_fact: Dictionary = {}
+	for fact: Dictionary in id_cursed["facts"]:
+		if fact["label"] == "Armor":
+			id_armor_fact = fact
+			break
+	assert_equal(id_armor_fact["value"], "+5", "identified cursed item presents decoy positive bonus (+5 instead of -5)")
+
+	var assign_res := workflow.resume_reward(identified_res.continuation, InteractionResponse.from_data(identified_res.interaction.request_id, identified_res.interaction.kind, {"action": "assign", "instanceId": id_cursed["instanceId"], "characterId": character.id}), "req.cursed.assign")
+	assert_equal(assign_res.state, ScenarioRuntimeOperationResult.State.WAITING, "reward continues after assignment")
+	assert_equal(character.inventory().size(), 1, "character receives the assigned item")
+	var carried_instance: ItemInstance = character.inventory()[0]
+	assert_equal(carried_instance.definition_id, cursed_item.id, "character's carried item is the TRUE cursed definition, not the decoy")
+	assert_true(carried_instance.identified, "assigned item retains identified status from reward")
+
+	var char_view_unworn := CharacterView.new(character, content)
+	var item_view_unworn := char_view_unworn.items[0]
+	assert_false(item_view_unworn.curse_revealed, "curse is NOT revealed while unworn in inventory")
+	assert_equal(item_view_unworn.name, decoy_item.name, "unworn inventory item presents decoy name")
+	assert_equal(item_view_unworn.description, decoy_item.description, "unworn inventory item presents decoy description")
+
+	var equip_probe := rules.equipment.equip_classic(character, carried_instance, cursed_item, race, caste, [character], [cursed_item, decoy_item])
+	assert_true(equip_probe.allowed, "cursed item can be equipped: %s" % equip_probe.reason)
+	var char_view_equipped := CharacterView.new(character, content)
+	var item_view_equipped := char_view_equipped.items[0]
+	assert_true(item_view_equipped.curse_revealed, "curse IS revealed once equipped")
+	assert_equal(item_view_equipped.name, cursed_item.name, "equipped cursed item displays true cursed name")
+	assert_equal(item_view_equipped.description, cursed_item.description, "equipped cursed item displays true cursed description")
+	var unequip_probe := rules.equipment.unequip_classic(character, carried_instance, cursed_item, [cursed_item], race)
+	assert_false(unequip_probe.allowed, "equipped cursed item cannot be removed")
+	assert_equal(unequip_probe.reason, "This cursed item cannot be removed.", "unequip probe reason confirms curse")
+
+	race.item_category_mask_low = original_race_mask
+	caste.item_category_mask_low = original_caste_mask
+	caste.caste_class = original_caste_class
+	content.items = ItemCatalog.new(original_items)
+	content.magic = SpellCatalog.new(original_spells)

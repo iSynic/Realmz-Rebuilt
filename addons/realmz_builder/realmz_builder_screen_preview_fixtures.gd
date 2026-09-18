@@ -25,6 +25,10 @@ static func supports(surface_id: String) -> bool:
 	return surface_id in SUPPORTED_SURFACES
 
 
+static func game_view(profile: String) -> GameView:
+	return _game_view(profile)
+
+
 static func bind(surface: Node, surface_id: String, profile: String) -> bool:
 	if surface == null or not supports(surface_id):
 		return false

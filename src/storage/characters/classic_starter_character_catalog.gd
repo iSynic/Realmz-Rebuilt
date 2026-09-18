@@ -4,7 +4,7 @@ class_name ClassicStarterCharacterCatalog
 extends RefCounted
 
 const FORMAT := "realmz2.classic-starter-characters"
-const FORMAT_VERSION := 1
+const FORMAT_VERSION := 2
 const SOURCE_VERSION := "Realmz 7.1.2"
 const CASTLE_SOURCE_REVISION := "491816ad60037394f92c428e99c004494d3c28b3"
 const EXPECTED_SOURCE_HASHES := {

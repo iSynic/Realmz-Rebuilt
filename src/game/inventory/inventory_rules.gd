@@ -4,6 +4,16 @@ class_name InventoryRules
 extends RefCounted
 
 const MAX_ITEMS: int = 30
+const CLASSIC_RACE_MASK: int = 0xFF80
+const CLASSIC_CASTE_MASK: int = 0xFE00
+
+
+static func normalize_race_mask(raw_mask: int) -> int:
+	return (raw_mask & 0xFFFF) & CLASSIC_RACE_MASK
+
+
+static func normalize_caste_mask(raw_mask: int) -> int:
+	return (raw_mask & 0xFFFF) & CLASSIC_CASTE_MASK
 
 
 func classic_use_probe(character: CharacterState, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition) -> InventoryActionProbe:
@@ -20,18 +30,35 @@ func classic_use_probe(character: CharacterState, item: ItemDefinition, race: Ra
 		return InventoryActionProbe.block("This race cannot use this item category.")
 	if not _mask_has(caste.item_category_mask_low, caste.item_category_mask_high, category):
 		return InventoryActionProbe.block("This class cannot use this item category.")
-	if (item.race_restrictions & race.descriptor_flags) != 0:
+	var race_restrictions := normalize_race_mask(item.race_restrictions)
+	if race_restrictions != 0 and (race_restrictions & race.descriptor_flags) != 0:
 		return InventoryActionProbe.block("This item's race restrictions exclude the character.")
-	if item.race_class_only != 0 and (item.race_class_only & race.descriptor_flags) != item.race_class_only:
+	var race_class_only := normalize_race_mask(item.race_class_only)
+	if race_class_only != 0 and (race_class_only & race.descriptor_flags) != race_class_only:
 		return InventoryActionProbe.block("This item requires race traits the character does not have.")
 	var caste_class_index := caste.caste_class - 1
-	if caste_class_index < 0 or caste_class_index > 15:
+	if caste_class_index < 0 or caste_class_index > 6:
 		return InventoryActionProbe.block("The character's Classic class group is invalid.")
-	if (item.caste_restrictions & (1 << caste_class_index)) != 0:
+	var caste_class_bit := 1 << (15 - caste_class_index)
+	var caste_restrictions := normalize_caste_mask(item.caste_restrictions)
+	if caste_restrictions != 0 and (caste_restrictions & caste_class_bit) != 0:
 		return InventoryActionProbe.block("This item's class restrictions exclude the character.")
-	if item.caste_class_only != 0 and (item.caste_class_only & (1 << caste_class_index)) == 0:
+	var caste_class_only := normalize_caste_mask(item.caste_class_only)
+	if caste_class_only != 0 and (caste_class_only & caste_class_bit) == 0:
 		return InventoryActionProbe.block("This item requires another Classic class group.")
 	return InventoryActionProbe.permit()
+
+
+static func presentation_definition(instance: ItemInstance, definition: ItemDefinition, items: ItemCatalog) -> ItemDefinition:
+	if definition == null or items == null:
+		return definition
+	if instance != null and instance.equipped:
+		return definition
+	if not definition.cursed_item_id.is_empty():
+		var decoy := items.item_by_id(definition.cursed_item_id)
+		if decoy != null:
+			return decoy
+	return definition
 
 
 func classic_spell_item_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, race: RaceDefinition, caste: CasteDefinition, in_combat: bool) -> InventoryActionProbe:
@@ -193,6 +220,8 @@ func join_classic(character: CharacterState, instance: ItemInstance, item: ItemD
 	instance.equipped = merged_equipped
 	instance.identified = merged_identified
 	character.set_inventory(items)
+	if merged_equipped:
+		character.equipment_order.record_equipped(instance, character.inventory())
 	character.carried_load = maxi(0, character.carried_load + item.instance_weight(total_charges) - previous_weight)
 	return probe
 
@@ -248,6 +277,8 @@ func remove_item(character: CharacterState, instance_id: String, definition: Ite
 		var instance := items[index]
 		if instance.id != instance_id or instance.definition_id != definition.id:
 			continue
+		if instance.equipped:
+			return null
 		items.remove_at(index)
 		character.set_inventory(items)
 		character.carried_load = maxi(0, character.carried_load - definition.instance_weight(instance.charges))
@@ -289,7 +320,7 @@ func _matching_instances(character: CharacterState, definition_id: String) -> Ar
 
 
 static func _first_category(low: int, high: int) -> int:
-	for index: int in 58:
+	for index: int in 64:
 		if _mask_has(low, high, index):
 			return index
 	return -1

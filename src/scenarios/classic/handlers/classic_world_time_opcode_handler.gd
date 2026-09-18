@@ -373,9 +373,17 @@ func _adjust_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOper
 	var event := DomainEvent.new(&"quest_value_changed", {"questId": quest_id, "value": value, "delta": action.extra_code[1], "source": "classic"})
 	if action.extra_code[3] == 0 or value < action.extra_code[3]:
 		return ScenarioRuntimeOperationResult.completed(value, [event])
-	if action.extra_code[2] != 1:
-		return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic opcode 76 auto-branch target type %d is unavailable." % action.extra_code[2])
-	var branch := ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(action.extra_code[4], action.gosub))
+	var directive: ScenarioVmDirective = null
+	match action.extra_code[2]:
+		1:
+			directive = ScenarioVmDirective.branch_xap(action.extra_code[4], action.gosub)
+		2:
+			directive = ScenarioVmDirective.enter_encounter(&"simple", action.extra_code[4], action.gosub)
+		3:
+			directive = ScenarioVmDirective.enter_encounter(&"complex", action.extra_code[4], action.gosub)
+		_:
+			return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic opcode 76 auto-branch target type %d is unavailable." % action.extra_code[2])
+	var branch := ScenarioRuntimeOperationResult.completed(true, [], directive)
 	branch.events.append(event)
 	return branch
 

@@ -23,9 +23,9 @@
     ]
   },
   "currentBatch": {
-    "id": "ap-contextual-and-owner-bound-encounters",
-    "name": "AOGM contextual encounters and Wrath owner-bound chest outcomes",
-    "baselineCommit": "aad7f6773c36ec5f43c01aad56db7eeb187c6fd8",
+    "id": "aogm-main-route-certification",
+    "name": "Assault on Giant Mountain main-route certification",
+    "baselineCommit": "a57e0bd9a601ad76eb070db9c6e31ae71ac5a601",
     "baselineCounts": {
       "classic": {
         "missing": 0,
@@ -40,29 +40,45 @@
         "certified": 2
       }
     },
-    "selectionRationale": "Batch complete: AOGM's zero-slot contextual RNG defect is repaired, with entry, wrong-set repetition and exact reward/region-disable/default reentry verified. Wrath AP 44 has equal detection/disarm, armed-trap failure, unarmed lock failure and eight-item lock-reward repeats. Detected-trap and trap-warning restores reproduce exact final game/RNG state; pending Treasure reproduces every suffix state. Done alone sets chance zero and prevents duplicate rewards. The recipes retain 49 passes and two historical failures across all thirteen bundled scenarios under their recorded package/library identities, without certification upgrades. Clean-reference Tier 2 passes 91 focused assertions. The full aggregate passes 4212 assertions across 28 suites plus package, media, architecture, export, schema and inventory gates in an isolated copy with hash-matched product content and committed project settings. Development autoloads remain untouched in the working checkout. The forced five-frame startup smoke retains its known one-object teardown warning; strict tests and the closed gameplay fixture have no teardown errors. Protocol build and 37 tests pass, with two opt-in engine tests skipped. Wrath preparation/source/replay work took approximately 29 minutes before batch gates; full lock replays took 19.22/18.86 seconds and the saved suffix 9.51 seconds, with no new tooling implementation. Next coverage favors the retained pending-tumbler save boundary, then War pooled-payment edges using existing baselines. Native performance, complete combat replay, full campaign certification and broader bridge capabilities remain separate; reported failures take priority.",
+    "selectionRationale": "This five-workflow batch begins ordinary start-to-ending certification of Assault on Giant Mountain through the current pinned package. It reuses existing player checkpoints and ordinary controls, records save/resume at meaningful progression boundaries, and repairs only defects reproduced on the route. The separate Providence vNext checkout already owns the fresh-package blocker: current import restores XAP 165 and 169 but still rejects Extra Action Point 147's target 30002. Rebuilt will not duplicate that compiler work or treat the uncommitted vNext tree as release evidence. Focused checks protect each demonstrated repair; the aggregate gate runs once at batch closeout.",
     "targets": [
       {
-        "workflowId": "classic.scenario.choose-response",
-        "mode": "verification",
+        "workflowId": "classic.startup.begin-adventure",
+        "mode": "certification",
+        "priority": "broader-representative",
+        "expectedEvidence": "aogm-ordinary",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.exploration.travel",
+        "mode": "certification",
+        "priority": "broader-representative",
+        "expectedEvidence": "aogm-ordinary",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.scenario.complex-interaction",
+        "mode": "certification",
+        "priority": "untested-high-risk",
+        "expectedEvidence": "aogm-ordinary",
+        "gapIds": [],
+        "archaeologyTriggers": []
+      },
+      {
+        "workflowId": "classic.combat.resolve-outcome",
+        "mode": "certification",
         "priority": "known-failure",
-        "expectedEvidence": "live-route",
+        "expectedEvidence": "aogm-ordinary",
         "gapIds": [],
         "archaeologyTriggers": []
       },
       {
         "workflowId": "classic.system.save-game",
-        "mode": "verification",
-        "priority": "meaningful-variant",
-        "expectedEvidence": "live-route",
-        "gapIds": [],
-        "archaeologyTriggers": []
-      },
-      {
-        "workflowId": "classic.scenario.trigger-action-point",
-        "mode": "verification",
-        "priority": "known-failure",
-        "expectedEvidence": "runtime-integration",
+        "mode": "certification",
+        "priority": "broader-representative",
+        "expectedEvidence": "aogm-ordinary",
         "gapIds": [],
         "archaeologyTriggers": []
       }
@@ -4047,7 +4063,8 @@
       },
       "liveEvidence": [
         "synthetic",
-        "route-harness"
+        "route-harness",
+        "aogm-ordinary"
       ],
       "related": {
         "routeIds": [
@@ -4077,7 +4094,7 @@
         "scenario.thief-pick-lock"
       ],
       "reachability": {
-        "aogm": "known-reachable",
+        "aogm": "observed",
         "war": "unknown",
         "classic": "observed"
       },
@@ -5028,6 +5045,26 @@
           "status": "implemented"
         },
         {
+          "id": "ordered-floor-and-cap-effects",
+          "status": "implemented"
+        },
+        {
+          "id": "passive-character-and-party-effects",
+          "status": "implemented"
+        },
+        {
+          "id": "forced-removal-effect-reversal",
+          "status": "implemented"
+        },
+        {
+          "id": "type-one-default-slot",
+          "status": "implemented"
+        },
+        {
+          "id": "high-bank-item-category",
+          "status": "implemented"
+        },
+        {
           "id": "restricted",
           "status": "implemented"
         },
@@ -5069,6 +5106,10 @@
           {
             "path": "src/game/inventory/inventory_rules.gd",
             "symbol": "class_name InventoryRules"
+          },
+          {
+            "path": "src/game/inventory/equipment_rules.gd",
+            "symbol": "class_name EquipmentRules"
           }
         ]
       },

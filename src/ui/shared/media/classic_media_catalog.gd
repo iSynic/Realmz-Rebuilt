@@ -136,10 +136,25 @@ func resolution_diagnostic(resource_type: String, resource_id: int, presentation
 		"status": "missing",
 		"sourceOwner": "",
 		"packageAssetId": "",
+		"characterAssetId": "",
 		"applicationAssetId": "",
 		"resolvedAssetId": "",
 		"sha256": "",
 	}
+	if character_media != null:
+		var character_status := character_media.resource_status(resource_type, resource_id)
+		if character_status == &"ambiguous":
+			diagnostic["status"] = "ambiguous"
+			diagnostic["sourceOwner"] = "application-package"
+			return diagnostic
+		var character_asset := character_media.asset_by_resource(resource_type, resource_id)
+		if character_asset != null:
+			diagnostic["status"] = "resolved"
+			diagnostic["sourceOwner"] = "application-package"
+			diagnostic["characterAssetId"] = character_asset.id
+			diagnostic["resolvedAssetId"] = character_asset.id
+			diagnostic["sha256"] = character_asset.sha256
+			return diagnostic
 	if application_media == null:
 		return diagnostic
 	var application_status := application_media.resource_status(resource_type, resource_id)

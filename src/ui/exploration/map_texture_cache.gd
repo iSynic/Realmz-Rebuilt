@@ -141,7 +141,7 @@ static func movement_cursor_asset_id(direction: Vector2i) -> StringName:
 		_: return &"map.cursor.center"
 
 
-static func dungeon_tile_ids(cell: MapCellView) -> Array[int]:
+static func dungeon_tile_ids(cell: MapCellView, include_unmapped: bool = true) -> Array[int]:
 	var result: Array[int] = [16]
 	if cell.terrain_id == "classic.dungeon.wall":
 		result.append(1)
@@ -150,9 +150,12 @@ static func dungeon_tile_ids(cell: MapCellView) -> Array[int]:
 	for feature_kind: StringName in [&"stairs", &"column", &"note"]:
 		if cell.has_feature(feature_kind):
 			result.append({&"stairs": 4, &"column": 5, &"note": 6}[feature_kind])
+	# PICT 302 uses one red S marker after Castle discovers any directional
+	# secret. The directional triangles are editor/authoring indicators, not
+	# the normal 2D exploration result.
 	if cell.has_feature(&"secret"):
-		result.append({&"north": 9, &"east": 10, &"south": 11, &"west": 12}.get(cell.feature_orientation(&"secret"), 7))
-	if cell.has_feature(&"unmapped"):
+		result.append(7)
+	if include_unmapped and cell.has_feature(&"unmapped"):
 		result.append(8)
 	result.sort()
 	result.erase(16)

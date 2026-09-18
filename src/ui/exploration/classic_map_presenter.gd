@@ -257,12 +257,15 @@ func _draw() -> void:
 		var was_seen := _seen_coordinate_cache.has(cell.coordinate)
 		if MapPresentationGeometry.los_cell_requires_blackout(los_blackout, was_seen):
 			continue
+		if map_view.level_type == &"dungeon" and not dungeon_discovery.has(cell.coordinate):
+			_draw_unvisited_cell(rect)
+			continue
 		var outside_classic_view := not los_blackout and classic_exploration_visibility and not classic_rect.has_point(cell.coordinate)
 		if outside_classic_view and not revealed_coordinates.has(cell.coordinate):
 			_draw_unvisited_cell(rect)
 			continue
 		var recalled := outside_classic_view or MapPresentationGeometry.los_cell_uses_recalled_rendering(los_blackout, cell.visible, was_seen)
-		_draw_cell(cell, rect, map_view.level_type, false, not cell.has_feature(&"unmapped") or dungeon_discovery.has(cell.coordinate), recalled, map_view.darkness_level)
+		_draw_cell(cell, rect, map_view.level_type, false, true, recalled, map_view.darkness_level)
 		if map_view.level_type == &"land":
 			_draw_land_markers(cell, rect)
 		if show_cell_topology_details:
@@ -402,7 +405,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 
 
 func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: ClassicMapAtlas, atlas_texture: Texture2D) -> void:
-	for tile_id: int in MapTextureCache.dungeon_tile_ids(cell):
+	for tile_id: int in MapTextureCache.dungeon_tile_ids(cell, false):
 		_draw_atlas_region(rect, atlas_asset, atlas_texture, tile_id)
 
 

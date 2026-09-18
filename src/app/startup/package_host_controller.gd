@@ -224,7 +224,7 @@ func _advance_task() -> void:
 	_task_is_foreground = false
 	if completed_in_foreground:
 		_foreground_prepared = prepared
-		_foreground_operation = PackageOperationView.from_status(status)
+		_foreground_operation = PackageOperationView.from_status(status, completed_source_path, &"install_scenario", prepared.error_code if prepared != null else &"package_operation_failed")
 	elif prepared != null and prepared.is_ok():
 		_prepared_candidate = prepared
 		_prepared_candidate_source_path = completed_source_path

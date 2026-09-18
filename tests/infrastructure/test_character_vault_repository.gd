@@ -18,6 +18,8 @@ func run() -> void:
 	record.publication_metadata = {"label": "Fixture vault character"}
 	assert_true(repository.publish_revision(record), "vault publication uses a temporary typed write and readback")
 	assert_equal(record.revision_hash.length(), 64, "published character revisions receive a stable SHA-256 identity"); var loaded := repository.load_revision(record.character_id, record.revision_hash)
+	var legacy_record := record.to_data(); legacy_record["formatVersion"] = 1
+	assert_equal(CharacterVaultRecord.from_data(legacy_record), null, "Character Files v1 is explicitly incompatible with the ordered-equipment v2 contract")
 	assert_not_null(loaded, "published character revisions can be loaded by stable identity")
 	if loaded != null:
 		assert_equal(loaded.state.name, "Vault Fixture", "vault state round-trips through the detached character record")
@@ -84,7 +86,7 @@ func _test_classic_starter_seeding() -> void:
 	var catalog := ClassicStarterCharacterCatalogScript.new()
 	var records: Array[CharacterVaultRecord] = catalog.load_records(STARTER_CATALOG_PATH, CHARACTER_LIBRARY_HASH)
 	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.character_id), ["classic.starter.kevlar", "classic.starter.lothlorian", "classic.starter.silver-leaf", "classic.starter.traskelion", "classic.starter.trevor", "classic.starter.vormale"], "the trusted catalog exposes exactly the six pinned Realmz 7.1.2 starter identities")
-	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["bd3aa4fde58fb775518173937fe7b914df72a08f9597ee6764e472411c761b65", "9065eb6ec06a59ca7406db6060b4172c27b64e8e4e7bf3881ef5ab312e831d9e", "9ec0cd3a1046dca37241d0f3624bb26b94c11487749af88f12d436cef974be85", "7f4b9a3d00f27b4160956b249e0478d082ea787d6a5a23eff6f20806c4abfd62", "56823708dd79156c24ea742229dc5e445c5f0ece5b4603df567114949e86739d", "d058de22d0b4dd7f21b99d8b4e1e36039c01f27098064dfcc0cabcd78bf63d45"], "the offline conversion produces deterministic canonical revision hashes")
+	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["7859725d73fb3ef46328f40f6cf31725894d1539103b1ca2aedf019f5e63bd60", "ec89f73fc3e0d685823d51e38377b61c99bc3f0272972f2f6d4393ee55547e4f", "e44480503b748a0b91851e45ec0079c41023f492bf35c8fc7104ac5280fee73a", "36f97466aed5ff5110c83cd30ae35c2faa7b6316782aedc95f51ede044c3d345", "7ad580175b08afb61a6663fb33a664168e49a93004a477d2ac50f4c8a7fa1f24", "d8b2cb6fb97f89b1aa54d8026a940e5426d460937a0fea242d28310c23ca7482"], "the format-v2 offline conversion produces deterministic canonical revision hashes")
 	var seeded_root := "user://realmz2-tests/classic-starter-seed"
 	_remove_test_tree(seeded_root); _remove_test_tree(seeded_root + ".starter-seed")
 	var repository := CharacterVaultRepository.new(seeded_root)
@@ -95,13 +97,15 @@ func _test_classic_starter_seeding() -> void:
 	_remove_test_tree(occupied_root); DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(occupied_root)); var sentinel := FileAccess.open(occupied_root + "/unknown.tmp", FileAccess.WRITE); sentinel.store_string("preserve"); sentinel.close()
 	var occupied := CharacterVaultRepository.new(occupied_root)
 	assert_true(occupied.seed_if_empty(records) and occupied.list_current_records().is_empty() and FileAccess.file_exists(occupied_root + "/unknown.tmp"), "any unknown, invalid, temporary, or archived vault entry suppresses seeding without mutation")
+	var legacy_root := "user://realmz2-tests/classic-starter-legacy"; _remove_test_tree(legacy_root); var legacy_id := records[0].character_id; var legacy_hash := records[0].revision_hash; DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("%s/%s" % [legacy_root, legacy_id])); var legacy_data := records[0].to_data(); legacy_data["formatVersion"] = 1; legacy_data["state"].erase("equipmentOrder"); var legacy_file := FileAccess.open("%s/%s/%s.r2char" % [legacy_root, legacy_id, legacy_hash], FileAccess.WRITE); legacy_file.store_string(CanonicalJson.encode(legacy_data)); legacy_file.close(); var legacy_index := FileAccess.open("%s/%s/current.json" % [legacy_root, legacy_id], FileAccess.WRITE); legacy_index.store_string(CanonicalJson.encode({"characterId": legacy_id, "revisionHash": legacy_hash})); legacy_index.close()
+	var legacy_repository := CharacterVaultRepository.new(legacy_root); var diagnostics: Variant = legacy_repository.diagnostics(); assert_equal([diagnostics.valid_current_count, diagnostics.incompatible_current_count, diagnostics.invalid_current_count, diagnostics.stored_identity_count], [0, 1, 0, 1], "an incompatible current revision remains preserved and is reported separately from an empty vault"); assert_true(legacy_repository.seed_if_empty(records) and FileAccess.file_exists("%s/%s/%s.r2char" % [legacy_root, legacy_id, legacy_hash]) and diagnostics.unavailable_notice().contains("incompatible older format"), "starter seeding does not overwrite the incompatible vault and supplies an actionable detached notice")
 	var failed_root := "user://realmz2-tests/classic-starter-failure"
 	_remove_test_tree(failed_root); _remove_test_tree(failed_root + ".starter-seed")
 	var invalid_records: Array[CharacterVaultRecord] = records.duplicate(); var invalid := CharacterVaultRecord.from_data(records[0].to_data()); invalid.state.traitor = true; invalid_records[0] = invalid
 	var failing := CharacterVaultRepository.new(failed_root)
 	assert_false(failing.seed_if_empty(invalid_records), "one invalid catalog record rejects the complete seed transaction")
 	assert_false(DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(failed_root)) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(failed_root + ".starter-seed")), "failed seeding leaves neither a partial vault nor a staging directory")
-	_remove_test_tree(seeded_root); _remove_test_tree(occupied_root); _remove_test_tree(failed_root)
+	_remove_test_tree(seeded_root); _remove_test_tree(occupied_root); _remove_test_tree(legacy_root); _remove_test_tree(failed_root)
 
 
 func _remove_test_tree(path: String) -> void:

@@ -55,6 +55,14 @@ func monster_by_classic_id_for_set(classic_id: int, set_id: int) -> MonsterDefin
 	return monster_by_id_for_set("classic.monster.%d" % classic_id, set_id)
 
 
+func definitions() -> Array[MonsterDefinition]:
+	var result: Array[MonsterDefinition] = []
+	for value: Variant in _monsters.values():
+		result.append(value as MonsterDefinition)
+	result.sort_custom(func(left: MonsterDefinition, right: MonsterDefinition) -> bool: return left.id < right.id)
+	return result
+
+
 func available_monster_sets() -> Array[int]:
 	var result: Array[int] = [0]
 	for classic_set_id: int in [-1, 1]:

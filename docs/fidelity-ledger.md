@@ -50,6 +50,75 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_scenario_vm.gd::_test_corrected_fatigue_opcode` covers 1, 20, 25, 50, 100, zero, negative, and above-100 values, fractional truncation, slot-three independence, both bounds, and save-owned restoration. `_test_public_application_transitions` retains exhausted/rested and event projection coverage.
 - Legacy quirk: none. The slot mismatch and divide-before-multiply order defeat the editor's exposed operation.
 
+## FD-SCENARIO-006 — Restricted shops honor one active range
+
+- Affected rule: opcode 73 item-sale eligibility when only one of its two authored inclusive ranges is active.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, `newland`, lines 2938–2953, and `src/realmz_orig/moveicon.c`, `moveicon`, lines 82–91 and 107–116. Castle increments a failure counter for each active range the item misses but rejects only when the counter reaches two.
+- Observable source behavior: a single active range can never reject an item, while two active ranges behave as a union. City of Bywater contains an opcode-73 row with shop 1, range 1 through 100, and its second range disabled. The bounded evidence record is `tests/fixtures/oracle/classic-restricted-shop-correction.json`, SHA-256 `e928e6c5e6a0eb39e73daab974e0baef106031e48ff197a3fe408732632957cb`. This is source/control-flow and scenario-fixture evidence, not a Castle-runtime or ordinary-route claim.
+- Player-facing problem: a shop authored with one range appears restricted in Providence but buys every carried item in shipped Castle and the prior Rebuilt implementation.
+- Chosen 2.0 behavior: each pair with a nonzero low endpoint is an active inclusive range, and an item is accepted when it belongs to any active range. A zero low endpoint disables only that pair and leaves its retained high word inert. An all-zero restriction remains unrestricted.
+- Tests: `test_scenario_vm.gd::_test_public_application_transitions` executes opcode 73 through the public Runtime API, opens the contextual Shop, and proves one-range rejection, the two-range union, retained raw words, and rules-owned unavailable text.
+- Legacy quirk: none. Requiring authors to duplicate one range into both pairs is an undocumented counter defect, not useful campaign behavior.
+
+## FD-SCENARIO-007 — Opcode 90 picked experience targets
+
+- Affected rule: opcode 90 mode 1 selection for subtracting victory points.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, case 90. The source iterates party index `tt` but reads `track[t]`, where `t` is the current action-slot index. The bounded record is `tests/fixtures/oracle/classic-opcode-90-picked-correction.json`, SHA-256 `7f694a7b328ab0c34501286d98a42b50ab9ee681036081eb79d30823c6985339`.
+- Player-facing problem: every party member can lose points or nobody can lose points according to an unrelated script-slot selection cell, instead of the characters the scenario picked.
+- Chosen 2.0 behavior: mode 1 subtracts the authored amount from each stable picked character identity. Modes 0 and 2 retain their documented each-character and divided-across-party meanings. Rounding and negative-amount authoring are separate questions.
+- Tests: `test_scenario_vm.gd::_test_corrected_take_experience_opcode` runs mixed picked identities through the public VM with opcode 90 in source action slots 0 and 7 and proves only those identities change.
+- Legacy quirk: none. The action-slot alias is a source typo and no bug-compatibility mode is provided.
+
+## FD-SCENARIO-008 — Legacy battle opcode-2 record projection
+
+- Affected rule: Classic opcode 2 battle record extra-code projection for legacy authored rows.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, opcode 2, lines 1451–1473. Castle literally called `sound(extraCode[2])` and `textbox(-1, extraCode[3])`. With `extraCode[2] == -1` and `extraCode[3]` in `30000..30005`, Castle played sound 1 synchronously and performed an unchecked `textbox` seek past EOF in `Data SD2`.
+- Player-facing problem: Historic campaigns (including AOGM, City of Bywater, and Destroy the Necronomicon) authored battle rows using `[battle, 0, -1, 30000..30005, outcome]` where `30000..30005` specified an application sound. Rebuilt's strict scenario message lookup failed with `unknown_message`, blocking progression such as AOGM land 6:42.
+- Chosen 2.0 behavior: When opcode 2 has a 5-word extra-code row with word 2 equal to 0, word 3 equal to -1, and word 4 between 30000 and 30005 inclusive, project word 4 as application sound `sound_id` and omit pre-battle message lookup, while preserving raw authored package words and the fifth outcome word. Unrelated opcode-2 rows remain on the normal path.
+- Tests: `test_scenario_vm.gd::_test_classic_opcode_2_legacy_battle_record` covers the AOGM positive case, preserved outcome mode, and nearby negatives (negative word 4, non-zero word 2, word 3 != -1, out-of-range word 4, wrong shape, wrong opcode).
+- Legacy quirk: Preserves raw authored package words while reproducing the intended application sound cue without failing on nonexistent scenario messages.
+
+## FD-SCENARIO-009 — Monster macro repeated-target spells and typed other-target partitioning
+
+- Affected rule: Classic opcode 17 in battle/death macros for repeated-target spells (targetType 0) and unsupported target types (1 single-target and 6 ray).
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, `newland`, lines 1966–1984, `src/realmz_orig/spelltargets.c`, `spelltargets`, lines 54–65, and `src/realmz_orig/combat.c`, lines 215–240, 308–351. In `newland.c`, opcode 17 places macro source battlefield coordinates into `target[0]` and calls `spelltargets(0, -1, FALSE, 0)`. In `spelltargets.c`, for targetType <= 1, it checks `if (target[0][1] == 2)`. When Y != 2, it reads `pos[target[0][0]]`, which indexes `pos[7][2]` with the macro source's X battlefield coordinate (e.g. 45-50), an out-of-bounds read into unallocated memory. For targetType 6 (ray), `spelltargets.c` checks only `field[target[0][0]][target[0][1]]`, completely bypassing ray traversal and leaving the ray direction undefined. In normal monster turns (`combat.c`), targetType 0 selects living actors within the authored range up to `power`, applying LOS only to positive-range signatures and opposing unless `cannot == 4`.
+- Observable source inconsistency: In macros, single-target (type 1) spells cause memory corruption via coordinate-slot aliasing in `pos`, and ray spells (type 6) collapse to a 1x1 point check on the dying monster's coordinate without a valid ray path. Castle's ordinary monster-turn path supplies the usable repeated-target constraints—up to `power` distinct living targets within authored range, with LOS required only for positive-range signatures, friendly if `cannot == 4`, opposed otherwise—but samples candidate slots with `Rand(10 + nummon)` rather than defining a stable order. The macro path never reaches a valid equivalent selection because its coordinate alias is already corrupt.
+- Player-facing problem: Authoring opcode 17 in a monster death macro with Magic Darts or Destroy Magic failed unconditionally in Rebuilt as unsupported, even though the targeting rules are deterministic and well-defined. Attempting to execute single-target or ray spells under Castle's defective code would lead to arbitrary memory corruption or undefined ray directions.
+- Chosen 2.0 behavior:
+  1. Support repeated-target spells (targetType 0) in `CombatMacroSpells`: collect up to `power` living targets within the authored spell range, requiring LOS only for a positive range signature, friendly if `cannot == 4` and opposed otherwise. Because Castle's macro path has no valid target-selection outcome, use Rebuilt's documented deterministic AI correction: take the first legal targets in party-then-monster order without consuming target-choice RNG. Resolve each target in order via `resolve_character_repeated_spell` / `resolve_monster_repeated_spell`, spending no spell points, applying `extra_save_adjust` and `force_affect`, maintaining the dead source as an anchor, and continuing the issuing program.
+  2. Partition single-target (targetType 1) and ray (targetType 6) spells to fail explicitly with typed error codes: `&"unsupported_macro_single_target"` and `&"unsupported_macro_ray"`.
+- Tests: `test_scenario_vm.gd::_test_package_backed_macro_spells` executes the exact packaged Castle in the Clouds `xap:273` (Spell 3208, power 1), Trouble in the Sword Lands `xap:1605` (Spell 1108, power 5, extraSaveAdjust -50), and Mithril Vault `xap:9` (Spell 1304 Destroy Magic, power 5, cannot 4) programs through the public VM, plus packaged Mithril Vault single-target and ray rejection rows. These use controlled battle preparation rather than ordinary campaign routes.
+- Deliberate correction: Stable legal-target ordering replaces Castle's ordinary-turn random candidate sampling because the macro caller never supplies a valid actor target list. Types 1 and 6 fail safely instead of reproducing memory corruption or undefined ray traversal.
+
+## FD-SCENARIO-010 — Registration opcode preservation without commercial gating
+
+- Affected rule: Classic opcodes 84 and 98 for commercial scenario registration and gating.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, lines 1246–1256 (opcode 84) and lines 1673–1682 (opcode 98). Castle checks registration codes and serial numbers against player registration records, halting execution or prompting the user if unverified.
+- Observable source inconsistency: Commercial shareware registration checks are obsolete and irrelevant for Realmz Rebuilt runtime packages. Halting execution on unregistered scenarios would break legitimate play of bundled and user-authored scenarios.
+- Player-facing problem: Enforcing registration checks would prevent players from completing scenarios or accessing registered-only sections.
+- Chosen 2.0 behavior: Preserve opcodes 84 and 98 as harmless control markers (`classic_control_marker`) that emit the domain event and continue execution smoothly without gating or prompting. Commercial registration is intentionally excluded.
+- Tests: `test_scenario_vm.gd` covers opcodes 84 and 98 emitting `classic_control_marker` without halting or mutating simulation state.
+- Deliberate correction: Registration gating is intentionally omitted; control markers are preserved for diagnostics and timeline continuity.
+
+## FD-SCENARIO-011 — State and progression control-flow branch family parity and safe execution
+
+- Affected rule: Classic Scenario VM opcodes 46 (branch on quest), 72 (branch on quest range), 77 (branch on quest value), 86 (branch on misc), and opcode 30 (character filter row length).
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, lines 183–218 (opcode 77), 1213–1340 (opcode 86), 2739–2771 (`forcebranch`), 2908–2926 (opcode 46), 2928–2964 (opcode 72); and `src/realmz_orig/characteroperations.c` / `encounters.c` for character selection.
+- Observable source inconsistency:
+  1. In Castle `newland.c:2911`, opcode 46 reads `quest[extracode[0]]` without bounds checks; authored out-of-bounds indices (e.g. *Wrath of the Mind Lords* `xap:489` storing `[274, 274, 304, 30003, 420]`) perform out-of-bounds reads into unallocated memory in C.
+  2. In Castle `newland.c:2933`, opcode 72 evaluates `for (tt = extracode[0]; tt <= extracode[1]; tt++) if (!quest[tt]) smallreply = FALSE;`. An inverted range (`extracode[0] > extracode[1]`) never executes the loop and results in vacuous truth (`smallreply = TRUE`), branching unconditionally.
+  3. In Castle `newland.c:191,1310`, opcodes 77 and 86 use target routing where true target is `extracode[4]` (opcode 77) / `extracode[3]` (opcode 86) and false target is `extracode[3]` (opcode 77) / `extracode[4]` (opcode 86). If the selected target is 0, execution continues to the next instruction without branching.
+  4. In Castle character filter routines, opcode 30 requires a complete five-value Extra Code row; accessing a four-value row would cause an out-of-bounds array access on the fifth word.
+- Player-facing problem: Unbounded quest access in C can crash or read garbage memory; Rebuilt runtime could panic or reject valid bundled scenarios if malformed rows like Wrath `xap:489` are not handled safely. Truncated Extra Code rows in opcode 30 could lead to out-of-bounds index errors in GDScript.
+- Chosen 2.0 behavior:
+  1. Opcode 46 safely evaluates condition selectors `0` (unset), `1` (set), and `2` (force branch). Out-of-bounds quest rows safely return `completed(false)` when condition does not match 0, 1, or 2, allowing scenarios like *Wrath of the Mind Lords* `xap:489` to complete without crash. Destination modes `0` (XAP), `-1` (dropout to slot 7), `1` (Simple result), `2` (Complex result), `3` (Keep Codes), and signed GOSUB are fully supported.
+  2. Opcode 72 evaluates inclusive quest ranges `[first, last]`, preserves Castle's inverted-range (`first > last`) vacuous truth branch behavior, and rejects quest IDs outside `0..99` with typed `invalid_quest_range`.
+  3. Opcode 77 evaluates quest thresholds `quest_value(id) >= min`, supports dual-target routing with zero-target fallthrough, destination modes `0..2`, signed GOSUB, and rejects quest IDs outside `0..99` with typed `invalid_quest`.
+  4. Opcode 86 evaluates test kinds `0..8` (caste, race, gender, boat, camp, caste class, race descriptors 1..32, total party level, selected PC level), supports negative expectations selecting picked-only PCs for kinds 0, 1, 2, 5, 6, target routing with zero-target fallthrough, destination modes `0..2`, signed GOSUB, and types invalid kinds/descriptors.
+  5. Opcode 30 validates that Extra Code has at least 5 words, failing with typed `missing_extra_code` otherwise.
+- Tests: `tests/scenario/test_scenario_vm.gd::_test_state_and_progression_branch_opcodes` covers all distinct variant signatures, condition selectors, destination modes, signed GOSUB, inverted-range vacuous truth, dual/zero target routing, out-of-bounds safe completion, and opcode 30 validation.
+- Deliberate correction: Out-of-bounds quest reads safely return false rather than causing memory faults; strict typed validation replaces C undefined behavior.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.
@@ -99,6 +168,26 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Chosen Rebuilt behavior: preserve Castle's ceiling/floor split, copied identification, unequipped sibling, all-match Join, and OR-style identification/equipment. The selected stable instance survives Join. Recompute the exact record-derived load as part of each committed mutation. Reject negative/infinite-charge Join and totals above 32,767 transactionally. A lone stack exposes Join as unavailable rather than committing Castle's redraw-only no-op.
 - Tests: `test_inventory_session.gd::_test_split_join` proves the public typed intents, exact identities, charge distribution, equipment/identification state, immediate load invariant, integrated sounds, save restoration, detached availability, and overflow rejection. The differential case is `inventory.split-join`.
 - Legacy quirk: none. Stale derived load and signed overflow are contradictory bookkeeping defects, not useful authored behavior.
+
+## FD-INVENTORY-003 — Classic item race and caste eligibility mask normalization
+
+- Affected rule: Classic item race and caste eligibility masks (`raceClassOnly`, `casteClassOnly`, and restriction masks).
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/variables.h:15` (`#define MyrBitTstShort(x, b) (((x) & (1 << (15 - (b)))) != 0)`), and `src/realmz_orig/showitems-showspecial.c:288-319,577-655`. Race groups iterate `b = 0..8` testing bits 15..7 (`0xFF80`), and caste groups iterate `b = 0..6` testing bits 15..9 (`0xFE00`).
+- Observable source behavior: Castle tests only bits 15..7 for race groups and bits 15..9 for caste groups, completely ignoring lower bits outside those semantic ranges. In 13 bundled scenario packages and the application catalog, 1,229 item definition instances (188 unique definitions) carry legacy padding or reserved values in those lower bits (e.g. `raceClassOnly = 1` in items 742, 743, 744, 800, 801, 923, and caste values `4097` (0x1001), `24577` (0x6001), `129` (0x0081)). In Rebuilt, evaluating raw `race_class_only` against `race.descriptor_flags` caused padding bits like `1` to reject all valid races, and displayed phantom generic or empty restriction lines in `ItemView`.
+- Player-facing problem: Characters of eligible races or castes could not equip or use valid items (for example, Sorcerer/Priest Scroll Cases 800/801 or Sentinel's Quiver 923 rejected all characters), and Item inspection displayed misleading phantom restrictions.
+- Chosen 2.0 behavior: Normalize race masks with `CLASSIC_RACE_MASK` (`0xFF80`) and caste masks with `CLASSIC_CASTE_MASK` (`0xFE00`), stripping legacy padding and reserved bits outside the semantic range. If a normalized mask is zero, the field is unconstrained. `ItemView` normalizes masks before testing, suppressing phantom restriction lines when only padding is present.
+- Tests: `test_realmz_rules.gd::_test_item_eligibility_and_restriction_masks` verifies mask normalization, padding-only pass-through (`raceClassOnly = 1` permitting unconstrained races), semantic trait matching (`513` matching `512` and rejecting `0`), caste matching (`4097` admitting class 4 and rejecting class 1), Sentinel's Quiver (`24577` admitting class 2 and rejecting classes 1 and 4 without race rejection), and `ItemView` restriction strings (null content and live content).
+- Legacy quirk: none. Low padding bits in item definition records are legacy artifact data ignored by Castle's bit tests; treating them as semantic mask constraints was an implementation defect.
+
+## FD-INVENTORY-004 — Classic weapon-condition item fields classification and admission
+
+- Affected rule: Classic weapon condition fields (`special_1 == -10`).
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/showitems-showspecial.c:392-400` (`special_1 == -10` displays "This item inflicts the condition: " with condition index `item.sp3 - 19`), `attack.c:87-104, 398-421, 493-508, 1196-1213` (on melee hit, `special_2 == 1` tests `savevs(item.sp4, mon)`, `special_2 == 2` rolls `Rand(100) <= item.sp4`, default is automatic, and on success adds `item.sp5` to `condition[whichcond - 20]`), `wear.c:200-218` and `removeitem.c:84-100` (blindly evaluated fallback `sp3`/`sp4` branches as ability or party condition modifiers).
+- Observable source behavior: 11 item records across the application library (Cobra Strike +4, Snake Bite +3) and scenarios (Fang of the Serpent, Sword of Dust +2, Fang, Scrambler, Dread Holder, Serpent's Kiss) have `special_1 == -10`. They are weapons (`item_type` ±2) that inflict a condition on hit. In Rebuilt, `EquipmentRules` treated them as unsupported passive effects because `special_3` was out of range for passive abilities, blocking characters from equipping them, and `ItemView` displayed condition save indices as ability bonuses. In addition, wear/remove paths could erroneously attempt to apply condition values as party condition offsets.
+- Player-facing problem: Characters could not equip valid Classic magic weapons (e.g. Cobra Strike +4 or Fang), receiving an "unsupported passive equipment effects" error, and item inspection showed phantom ability bonuses (e.g. `+0 to Disarm Trap`).
+- Chosen 2.0 behavior: Recognize `special_1 == -10` as active on-hit weapon conditions owned by combat resolution (`CombatAttackPolicy.invalid_weapon_reason`), not passive wearable bonuses. `EquipmentRules._passive_effects_supported` verifies the weapon condition fields through `CombatAttackPolicy.invalid_weapon_reason`. `EquipmentRules._apply_wear_effects` and `_apply_remove_effects` do not apply weapon condition indices to characters or party conditions upon equipping or unequipping. `ItemView` does not display weapon condition fields as passive ability modifiers. Combat melee attacks resolve the condition on hit according to `special_2` (save check, chance roll, or automatic) and apply `special_5` (rounds or negative permanent potency).
+- Tests: `test_combat_flow.gd` (`_test_weapon_condition_equipment_admission_and_neutrality`, `_test_weapon_condition_combat_resolution`) verifies admission of all weapon condition signatures, invalid signature rejection, equip/unequip condition neutrality, ItemView presentation neutrality, and melee combat resolution (automatic, save check, chance roll, permanent vs rounds duration).
+- Legacy quirk: none. Weapon condition fields are combat on-hit mechanics; treating them as passive wearable effects or displaying condition indices as ability bonuses was an implementation defect.
 
 ## FD-CHARACTER-002 — Human appearance-set zero alias
 
@@ -279,6 +368,84 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Chosen 2.0 behavior: retain special 253 in package content and mechanical signatures, but normalize that otherwise impossible condition reference to special 3 at the combat-condition boundary. Learned spells, fixed-power scrolls, charged items, Party Auto, and monster AI then share the ordinary target-type-three area, queue, defense, duration, movement, and save contracts.
 - Tests: `_test_public_tangle_weed_correction_matrix` loads the bundled application record, proves all four combat-source dispositions, resolves the exact Tangle condition and persistent field through every source, and restores the result and queue from public save data.
 - Legacy quirk: none. An out-of-bounds condition write is not a portable authored dependency; any different intended effect would require contradictory application data or controlled runtime evidence.
+
+## FD-COMBAT-016 — Projectile special effects, shared condition semantics, and group spell recipients
+
+- Affected rule: Projectile special effect resolution (specials 0, 7, 28, 49), charged missile weapons with physical damage spells (damage type 9), shared condition accumulation/permanence semantics, authored group spell recipient ownership (target types 9, 10, 12), and tactical monster group-spell evaluation.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`:
+  - `src/realmz_orig/resolvespell.c`, lines 346–357 (`special == 28` disease damage and condition bounds), lines 254–257 (group target types 9 and 10 descriptions).
+  - `src/realmz_orig/spelllist.c`, lines 105–113 (`special == 49` lethal damage = 10 + stamina), lines 420–427 (`special == 7 || special == 3` movement halving).
+  - `src/realmz_orig/combat.c`, lines 147–154 (random monster spell picking), lines 162–205 (group spell targeting for types 9, 10, 12 based strictly on `traiter`).
+  - `src/realmz_orig/attack.c`, lines 480–486 (`item.sp2 > 1100 && spellinfo.damagetype == 9` missile weapon check), lines 880–885 (`COND_DISEASED` condition).
+  - `src/realmz_orig/combatinfo-combatchoice.c`, lines 320–335 (`spellinfo.damagetype == 9` missile weapon item activation).
+  - `src/realmz_orig/tomissle-weap.c`, lines 68–82 (`tomissle`: item spell targeting verification).
+- Observable source behavior: Projectile special 28 treats duration as direct damage while setting conditions. In Castle `resolvespell.c:346-357`, the code writes `condition[special - 1] += duration;`, setting condition 27 (`COND_BLIND`), with duration dealt as damage (`damage = adjdam = duration; /*** disease ***/`). Special 49 inflicts target health plus 10 as lethal damage (`spelllist.c:105-113`). Special 7 halves movement (`spelllist.c:420-427`). Charged missile weapons with physical damage spells (`damagetype == 9`) are guarded in melee attack paths (`attack.c:480-486`, `combatinfo-combatchoice.c:320-335`). Authored group spells target all friendly actors (`traiter == caster.traiter` for type 9), all opposed actors (`traiter != caster.traiter` for type 10), or everybody (`inbattle` actors for type 12) strictly by `targettype` (`combat.c:162-205`, `resolvespell.c:254-257`).
+- Player-facing problem: Without special 28 and 49 support, blinding/duration-damaging and slaying projectiles are rejected; raw condition additions bypass permanent-condition guards and accumulation caps; charged missile weapons with physical damage spells fail to execute; and altering group recipients based on spell flags corrupts authored targeting ownership.
+- Chosen 2.0 behavior:
+  1. Expand the supported projectile special allowlist to [0, 7, 28, 49]. Special 28 deals duration roll as damage and routes condition application through `_apply_combat_condition` to `ConditionRules.BLIND` (condition 27, preserving Castle's shared condition index from `special - 1`), while preserving permanent conditions (`current < 0`) and accumulation limits (100 for characters, 125 for monsters). Special 49 deals target current health plus 10. Special 7 halves movement.
+  2. Admit physical damage spells (damage type 9) in charged missile weapons as ordinary combat spells for item use.
+  3. Strictly preserve authored group recipient ownership: type 9 targets friendly actors, type 10 targets opposed actors, and type 12 targets everybody. Healing, condition curing, and `cannot` flags govern tactical desirability (scoring and pruning), never recipient ownership.
+- Tests: `test_combat_flow.gd` proves monster AI group spell evaluation, authored recipient preservation, and charged missile weapon combat flow with physical damage spells. `test_realmz_rules.gd` proves character and monster projectile resolution with blindness (special 28), death (special 49), permanent condition preservation, and accumulation bounds.
+- Legacy quirk: none. Preserving Castle's condition 27 for special 28 aligns with stock Blind and Salt spells, and tactical group evaluation follows Rebuilt's documented deterministic AI improvements under the documented deterministic AI rules.
+
+## FD-COMBAT-017 — Adjudicated Classic spell capability gaps
+
+- Affected rule: Combat item/spell Identify (special 48), group SP Drain (special 60), camp touch death magic (special 49), physical touch and area damage spells (damage type 9), and unassigned reserved special 89.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`:
+  - `src/realmz_orig/resolvespell.c`, lines 72–80: special 48 loops over party character inventory items (`c[t].items[tt].ident = TRUE`) and plays sound 647. Castle defines no monster inventory or monster item identification.
+  - `src/realmz_orig/buttonchoice.c`, line 617, and `src/realmz_orig/spelllist.c`, lines 30–49: special 60 (`spdrain`) drains spell points across targeted combatants. For opposed group target type 10, it drains spell points from living hostile targets.
+  - `src/realmz_orig/spelllist.c`, lines 105–113, and `src/realmz_orig/buttonchoice.c`, line 617: special 49 resolves lethal damage (`stamina + 10`). In field/camp casting, specials 27 and 49 are executable on touch/self (target type 5).
+  - `src/realmz_orig/resist.c`, lines 75–76, and `src/realmz_orig/spelllist.c`, lines 105–113: damage type 9 represents physical damage. Physical damage spells with touch (target type 5) or area (target type 3) targeting execute as ordinary combat spells; Castle restricts only class-9 damage-9 missile weapons to projectile firing, while ordinary spells resolve through standard damage routines.
+  - `src/realmz_orig/resolvespell.c` and `src/realmz_orig/spelllist.c`: specials are bounded to standard opcodes 0..72 and 90..91. Special 89 is an unassigned reserved opcode in Classic Realmz with no engine implementation.
+- Observable source behavior:
+  - Castle executes special 48 exclusively against party characters, making monster casting not applicable.
+  - Group SP drain (special 60, target type 10) drains spell points from all living opposed targets.
+  - Camp casting of death magic (special 49, target type 5) lethally damages the chosen character.
+  - Physical damage touch (target type 5) and area (target type 3) spells resolve damage through standard combat rules against physical resistance.
+  - Special 89 is an unassigned reserved opcode in Classic Realmz with no engine implementation.
+- Player-facing problem: Rejecting these signatures as unsupported runtime gaps blocks valid scenario spells in Hax, Dagger of Shine, and Spires of Steel, while special 89 has no defined behavior in the Classic engine.
+- Chosen 2.0 behavior:
+  1. Admit combat Identify (special 48) for characters, identifying carried items on the selected party member and playing sound 647. Mark monster casting of special 48 as not applicable (`DISPOSITION_NOT_APPLICABLE`).
+  2. Expand combat SP drain (special 60) targeting to admit opposed groups (target type 10), draining spell points from living opposing combatants.
+  3. Admit camp/field casting of death magic (special 49) on touch/self (target type 5).
+  4. Admit non-projectile physical damage spells (damage type 9, target types 3 and 5) as ordinary combat spells.
+  5. Safely reject unassigned reserved special 89 with an explicit typed diagnostic (`DISPOSITION_NOT_APPLICABLE` under reserved special rules).
+- Tests: `test_realmz_rules.gd` covers combat Identify, group SP drain, camp touch death magic, physical touch damage, physical area damage, and special 89 diagnostic rejection. `test_combat_flow.gd` covers combat casting and execution flows.
+- Legacy quirk: none. Source-authentic behaviors are implemented across their proper owners, and the unassigned opcode is safely classified as not applicable without mutation or crashes.
+
+## FD-COMBAT-018 — Incapacitated combat actor skipping and battlefield removal parity
+
+- Affected rule: Skipping defeated or unconscious actors during turn selection, and cleaning up battlefield occupancy upon defeat.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`:
+  - `src/realmz_orig/getup.c`, lines 206–218: when advancing turn index `q[up]`, actors are evaluated. If a party character is not in battle (`!c[q[up]].inbattle`), is helpless (`c[q[up]].condition[COND_HELPLESS]`), or has non-positive stamina (`c[q[up]].stamina < 1`), Castle skips directly to `getnew` without yielding control to the player or consuming RNG. For monsters, non-positive stamina or helplessness likewise skips to `getnew`. This repair closes the non-positive-stamina and missing-battlefield paths; Rebuilt's existing zero-resource HELPLESS handling remains a separate condition path.
+  - `src/realmz_orig/killbody.c`: when an actor is defeated, `c[mon].inbattle = 0; c[mon].position = -1; bodyfield(mon); bodyground(mon, 0); for (t = 1; t < maxloop; t++) if (q[t] == mon) q[t] = -1;`. The actor's battlefield occupancy is immediately cleared.
+- Observable Castle behavior:
+  - A defeated or unconscious character (`current_health <= 0`) never receives an active command turn or prompts for player input.
+  - When all characters are incapacitated, the battle immediately resolves to defeat via standard battle completion.
+  - When an actor is defeated by a projectile or reflected melee attack, their battlefield footprint is cleared.
+- Player-facing problem: In Realmz Rebuilt, `process_monster_turns` fell through on non-traitor characters whose health was `<= 0` and broke out of the automated turn loop, leaving the incapacitated character as the active command owner. Because `submit_action` rejects dead or unconscious actors, the turn could never be submitted, causing the battle to hang permanently (as observed in Battle 52 Round 5 with David at HP -5/107). Additionally, monster projectile kills failed to call `remove_defeated_position`, and reflected melee kills removed the defender's position instead of the attacker's.
+- Chosen 2.0 behavior:
+  1. In `process_monster_turns`, if an active actor is a character with `current_health <= 0` or is missing from `combat.battlefield.actors`, remove any lingering battlefield position, advance the turn once without consuming RNG or fabricating an action, and check `finish_if_resolved`.
+  2. If the active actor is a monster with `current_health <= 0` or missing from battlefield, remove any lingering position, advance the turn, and check `finish_if_resolved`.
+  3. Correct `combat_monster_actions.gd` to call `_context.automation().remove_defeated_position` rather than the non-existent `combat.battlefield.remove_actor`.
+  4. Correct reflected melee attacks in `combat_flow_actions.gd` and `combat_monster_automation.gd` to apply bleeding and remove battlefield position for the attacker rather than the defender.
+  5. In friendly collision reactions where the mover is defeated (`REACTION_MOVER_DEFEATED`), invoke `process_monster_turns` if the battle is unresolved.
+- Tests: `test_combat_flow.gd::_test_incapacitated_actor_turn_skipping_and_removal` verifies:
+  - Incapacitated party character (David at HP -5/107) in turn queue is skipped without consuming RNG or fabricating an action, cleanly transferring control to the next living character.
+  - Total party incapacitation ends the battle via `finish_if_resolved` with defeat.
+  - Incapacitated characters with lingering battlefield tokens have their occupancy pruned.
+  - Monster projectile defeat removes the character from the battlefield.
+  - Reflected melee attack knocking out the attacker marks the attacker bleeding and removes their battlefield position.
+- Legacy boundary: the source also skips HELPLESS actors in this turn-selection branch; Rebuilt's existing HELPLESS condition path remains outside this repair. The corrected non-positive-stamina and missing-battlefield paths no longer stall player input and restore the corresponding Castle `getup.c` / `killbody.c` behavior.
+
+## FD-COMBAT-019 — Scenario-owned monster facing state at playback boundaries
+
+- Affected rule: selecting the left/right CICN for a combat monster while preserving Castle's neutral orientation after vertical movement and updating it before a horizontal melee attack.
+- Castle evidence: pinned commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combatsetup.c:447` initializes `lr` from the monster/party horizontal relation, `movemonster.c` stores the horizontal movement delta, `attack.c` adjusts `lr` immediately before melee, and `drawbody.c` adds 308 to the base icon only when `lr == 1`.
+- Player-facing problem: the previous Rebuilt presenter collapsed Castle's `-1` (left) and `0` (neutral/vertical) into a Boolean and only changed it for horizontal movement frames. A monster could therefore retain the wrong scenario-facing art after vertical movement or a melee target change. The prior package repair proved exact resource ownership but only rendered a base-facing Wrecker; it did not exercise this live state boundary.
+- Chosen 2.0 behavior: retain detached presentation-only `lr` state per monster (`-1`, `0`, `1`), initialize non-summons from the committed monster/party positions, keep summons neutral until they move, update it from move start/end deltas, and apply Castle's attack-time horizontal adjustment before drawing the melee frame. Synchronize active monster identities on every committed view refresh so a new battle cannot inherit stale orientation. Exact scenario-first media lookup remains unchanged.
+- Evidence: the current Half Truth archive (`F9884317800F5A897A4A5F007898B6D8E81207572A5BB0994353559EA47B5001`) contains the Runic Cheiroballista base/right pair `cicn` 513 (`ab671b66e450a4c8ee34cdc074ca8e9a670a8ceb343a97fc6bcc2fb997aeccbc`) and 821 (`e2708f7163e32d00226f98a2854dee431c1f8baf970d7e80ba4d611e08ada42f`). `tests/presentation/test_classic_ui_system.gd` loads that package and verifies the exact scenario-owned 821 selection after neutral movement followed by a rightward melee target; the focused suite passes 650 assertions. `tests/core/test_combat_flow.gd` passes 369 assertions.
+- Legacy quirk: none. Facing is nonserialized presentation state; package bytes, simulation, saves, and RNG remain unchanged.
 
 ## FD-REWARD-001 — Drain every level earned by one reward
 

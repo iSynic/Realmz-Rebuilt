@@ -25,7 +25,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		22:
 			return _mutate_items(action)
 		33:
-			return _take_wealth(action)
+			return _take_wealth(action, context)
 		36:
 			return toggle_equipment_storage(action.operand_id != 0)
 		38:
@@ -43,7 +43,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 	return super.execute(action, request_id, context)
 
 
-func _take_wealth(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+func _take_wealth(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var values := action.extra_code
 	var signed_amount := action.operand_id if values.is_empty() else values[0]
 	var amount := absi(signed_amount)
@@ -52,10 +52,17 @@ func _take_wealth(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	var events: Array[DomainEvent] = [DomainEvent.new(&"wealth_taken", {"amount": amount, "kind": kind, "paid": paid, "source": "classic"})]
 	if not paid:
 		events.append(DomainEvent.new(&"classic_notification_requested", {"text": "The party does not have enough gold.", "soundId": 6000, "source": "classic-opcode-33"}))
-	if values.size() >= 5 and values[2] == 0:
+	if values.size() >= 5:
 		var test_mode := values[1]
+		if test_mode == -1 and not paid:
+			return ScenarioRuntimeOperationResult.completed(paid, events, ScenarioVmDirective.dropout())
 		if test_mode == 2 or test_mode == 0 and not paid or test_mode == 1 and paid:
-			return ScenarioRuntimeOperationResult.completed(paid, events, ScenarioVmDirective.branch_xap(values[3], false))
+			var branch := _branch_from_values(values, false, context)
+			if branch.state == ScenarioRuntimeOperationResult.State.FAILED:
+				return branch
+			branch.value = paid
+			branch.events = events + branch.events
+			return branch
 	return ScenarioRuntimeOperationResult.completed(paid, events)
 
 
@@ -65,10 +72,10 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	var values := action.extra_code
 	var possessed := _party_has_classic_item(absi(values[0]))
 	if possessed:
-		return _branch_target_mode(values[1], values[3], action.gosub)
+		return _branch_to_destination(values[1], values[3], action.gosub)
 	match int(values[2]):
 		0:
-			return _branch_target_mode(values[1], values[4], action.gosub)
+			return _branch_to_destination(values[1], values[4], action.gosub)
 		1:
 			return ScenarioRuntimeOperationResult.completed(false)
 		2:
@@ -133,19 +140,27 @@ func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationR
 				continue
 			match operation:
 				1:
-					_rules.inventory.remove_item(character, instance.id, source)
+					if instance.equipped and not _rules.equipment.force_unequip(character, instance, source, _content.items.definitions(), _content.characters.race_by_id(character.race_id), _game_state.party.conditions):
+						return ScenarioRuntimeOperationResult.failed(&"equipment_state_invalid", "The equipped item could not be removed safely.")
+					if _rules.inventory.remove_item(character, instance.id, source) == null:
+						return ScenarioRuntimeOperationResult.failed(&"item_removal_failed", "The selected item could not be removed.")
 				2:
 					var previous_weight := source.instance_weight(instance.charges)
 					instance.charges = clampi(instance.charges + action.extra_code[3], -1, 32_767)
 					character.carried_load = maxi(0, character.carried_load - previous_weight + source.instance_weight(instance.charges))
 				3:
 					var was_equipped := instance.equipped
-					_rules.inventory.remove_item(character, instance.id, source)
+					if was_equipped and not _rules.equipment.force_unequip(character, instance, source, _content.items.definitions(), _content.characters.race_by_id(character.race_id), _game_state.party.conditions):
+						return ScenarioRuntimeOperationResult.failed(&"equipment_state_invalid", "The equipped item could not be replaced safely.")
+					if _rules.inventory.remove_item(character, instance.id, source) == null:
+						return ScenarioRuntimeOperationResult.failed(&"item_removal_failed", "The selected item could not be replaced.")
 					var replacement_instance := _rules.inventory.add_item(character, replacement, _game_state.next_instance_id("classic.replacement"), false)
 					if replacement_instance == null:
 						return ScenarioRuntimeOperationResult.failed(&"inventory_full", "Classic replacement item no longer fits the character inventory.")
-					if was_equipped and _rules.equipment.can_equip(character, replacement):
-						replacement_instance.equipped = true
+					if was_equipped:
+						var equip_probe := _rules.equipment.equip_classic(character, replacement_instance, replacement, _content.characters.race_by_id(character.race_id), _content.characters.caste_by_id(character.caste_id), _game_state.party.characters(), _content.items.definitions(), _game_state.party.conditions)
+						if not equip_probe.allowed:
+							return ScenarioRuntimeOperationResult.failed(&"replacement_cannot_equip", equip_probe.reason)
 			changed += 1
 		if maximum > 0 and changed >= maximum:
 			break
@@ -165,12 +180,14 @@ func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, eq
 
 func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match values[2]:
+		-1:
+			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.dropout())
 		0:
 			return _branch_xap(values[3], gosub)
 		1, 2:
 			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
-			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
 
 
@@ -182,12 +199,6 @@ func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, g
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_branch", "Classic encounter-result branches require result 0 through 3 and code cursor 0 through 7.")
 	var program_id := "%s:%d:result:%d" % [String(kind), context.encounter_id, result_index]
 	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_program_at(program_id, gosub, context, entry_cursor))
-
-
-func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
-	if mode == 0:
-		return _branch_xap(target_id, gosub)
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
 
 
 func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

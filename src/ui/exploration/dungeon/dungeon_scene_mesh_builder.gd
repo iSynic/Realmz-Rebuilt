@@ -84,7 +84,7 @@ static func _append_cell_surfaces(surface: MeshBuffers, cell: MapCellView, cente
 		_add_floor_and_ceiling(surface, center, cell.coordinate, Color.WHITE)
 	if features.has(&"door") and offset != Vector2i.ZERO:
 		var vertical_door := cell.feature_orientation(&"door") == &"vertical"
-		_add_doorway(surface, cell_door_center(offset, vertical_door), vertical_door, false, Color.WHITE, false)
+		_add_doorway(surface, _door_center(center, offset, vertical_door), vertical_door, false, Color.WHITE, false)
 
 
 static func _append_cell_boundaries(surface: MeshBuffers, projection: DungeonGeometryProjection, coordinate: Vector2i, center: Vector3, offset: Vector2i, includes_cell: bool, coordinates: Dictionary, world_space: bool, built_doorways: Dictionary) -> void:
@@ -143,7 +143,10 @@ static func boundary_allows_movement(projection: DungeonGeometryProjection, sour
 
 
 static func cell_door_center(offset: Vector2i, vertical: bool) -> Vector3:
-	var center := Vector3(float(offset.x), 0.0, float(offset.y))
+	return _door_center(Vector3(float(offset.x), 0.0, float(offset.y)), offset, vertical)
+
+
+static func _door_center(center: Vector3, offset: Vector2i, vertical: bool) -> Vector3:
 	if vertical and offset.x != 0:
 		center.x -= float(signi(offset.x)) * 0.5
 	elif not vertical and offset.y != 0:

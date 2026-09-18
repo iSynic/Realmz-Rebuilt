@@ -61,6 +61,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 	events.append(DomainEvent.new(&"combat_projectile_resolved", {
 		"actorId": monster.id, "targetId": target.id, "targetKind": "character",
 		"itemId": projectile_item.id, "spellId": projectile_spell.id,
+		"special": absi(projectile_spell.special),
 		"rangePower": range_power, "costPower": cost_power, "resolutionPower": 1,
 		"range": _context.battlefield.classic_range(combat.battlefield, monster.id, target.id),
 		"hitCount": resolution.hit_count, "missCount": resolution.miss_count,
@@ -68,7 +69,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 		"source": "classic-monster",
 	}))
 	_context.actions().mark_character_bleeding(state, target, resolution.target_defeated)
-	if resolution.target_defeated: combat.battlefield.remove_actor(target.id)
+	_context.automation().remove_defeated_position(combat, target.id, resolution.target_defeated)
 	return MONSTER_ATTACK_COMPLETED
 
 
@@ -157,14 +158,15 @@ static func battle_terrain_set(content: RealmzContent, battlefield: BattlefieldS
 static func movement_allowance(monster: MonsterState, definition: MonsterDefinition) -> int:
 	var movement := definition.movement_max
 	var tangled := monster.conditions.value(ConditionRules.TANGLED)
-	if tangled > 0: movement -= tangled
+	if tangled != 0: movement -= tangled
 	if monster.conditions.is_active(ConditionRules.SLOW): movement = int(float(movement) / 2.0)
 	if monster.conditions.is_active(ConditionRules.SPEEDY): movement *= 2
 	return maxi(0, movement)
 
 
-static func attack_limit(definition: MonsterDefinition) -> int:
-	return mini(maxi(0, definition.attack_count), definition.attacks().size())
+static func attack_limit(monster: MonsterState, definition: MonsterDefinition) -> int:
+	var authored := mini(maxi(0, definition.attack_count), definition.attacks().size())
+	return authored + 2 if authored > 0 and monster.conditions.is_active(ConditionRules.SPEEDY) else authored
 
 
 static func retreat_reached_edge(state: GameState, content: RealmzContent, monster_id: String, destination: Vector2i, events: Array[DomainEvent]) -> bool:
@@ -175,7 +177,7 @@ static func retreat_reached_edge(state: GameState, content: RealmzContent, monst
 	state.combat.actor_statuses.set_guarding(monster.id, false)
 	state.combat.turns.active_turn.movement_remaining = 0
 	if definition.can_summon < 0:
-		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "mandatory-ally-edge-retreat-unresolved"}))
+		events.append(DomainEvent.new(&"combat_monster_retreat_blocked", {"actorId": monster.id, "reason": "scenario-mandatory-ally", "destination": [destination.x, destination.y], "source": "classic-monster"}))
 		return false
 	monster.current_health = 0
 	state.combat.battlefield.actors.remove_monster(monster.id)

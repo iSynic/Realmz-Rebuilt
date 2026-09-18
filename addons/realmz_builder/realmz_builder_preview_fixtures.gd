@@ -42,7 +42,7 @@ static func _configure(surface: Node, surface_id: String, profile: String) -> vo
 		"pick-lock", "scrolling-text": surface.call("configure", null)
 		"level-up": surface.call("configure", null, null)
 		"encounter": surface.call("configure", null, null, compact)
-		"shop": surface.call("configure", null, compact)
+		"shop": surface.call("configure", null, SCREEN_FIXTURES.game_view(profile), compact)
 		"treasure": surface.call("configure", null, null, compact)
 		"combat-command-deck": surface.call("configure", {}, 1.0)
 

@@ -202,6 +202,7 @@ func _reward_item_payload(reward: ClassicRewardState, item: ItemInstance) -> Dic
 	var definition := _content.items.item_by_id(item.definition_id)
 	if definition == null:
 		return {}
+	var presentation_definition := InventoryRules.presentation_definition(item, definition, _content.items)
 	var assignments: Array[Dictionary] = []
 	for character: CharacterState in _game_state.party.characters():
 		var enabled := _rules.inventory.can_restore_item(character, item, definition)
@@ -215,15 +216,15 @@ func _reward_item_payload(reward: ClassicRewardState, item: ItemInstance) -> Dic
 		assignments.append({"characterId": character.id, "enabled": enabled, "reason": reason})
 	return {
 		"instanceId": item.id,
-		"definitionId": item.definition_id,
-		"name": definition.name if item.identified else definition.unidentified_name,
+		"definitionId": presentation_definition.id,
+		"name": presentation_definition.name if item.identified else presentation_definition.unidentified_name,
 		"charges": item.charges,
 		"identified": item.identified,
-		"magical": (reward.magic_detected or reward.is_magic_detected(item.id)) and definition.magical,
+		"magical": (reward.magic_detected or reward.is_magic_detected(item.id)) and presentation_definition.magical,
 		"iconResourceType": "cicn",
 		"iconId": definition.visible_icon_id(item.identified),
-		"description": definition.description if item.identified else "Specials are unknown.",
-		"facts": _reward_item_facts(item, definition),
+		"description": presentation_definition.description if item.identified else "Specials are unknown.",
+		"facts": _reward_item_facts(item, presentation_definition),
 		"assignments": assignments,
 	}
 

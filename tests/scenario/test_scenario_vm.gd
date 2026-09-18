@@ -15,12 +15,10 @@ func run() -> void:
 	var content: RealmzContent = loaded.content
 	_test_scenario_wire_contracts()
 	_test_public_interaction_matrix(content)
-	_test_public_classic_choice_control_flow(content)
-	_test_public_classic_difficulty_branch(content)
-	_test_public_classic_encounter_iterations(content)
-	_test_public_thief_encounter(content)
-	_test_public_session_resume(content)
-	_test_public_vm_combat_auto(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content)
+	_test_public_classic_choice_control_flow(content); _test_half_truth_complex_spell_class()
+	_test_public_classic_difficulty_branch(content); _test_public_classic_encounter_iterations(content)
+	_test_public_thief_encounter(content); _test_public_session_resume(content)
+	_test_public_vm_combat_auto(content); _test_opcode_56_defeat_return(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content)
 	_test_public_vm_repeated_combat_item(content)
 	_test_public_continuation_matrix(content)
 	_test_public_limits_and_errors(content)
@@ -28,8 +26,10 @@ func run() -> void:
 	_test_public_character_checks(content)
 	_test_corrected_character_selection_opcodes(content)
 	_test_corrected_fatigue_opcode(content)
-	_test_public_action_state(content)
-	_test_aogm_dispatch_has_no_fallback(content)
+	_test_corrected_take_experience_opcode(content)
+	_test_opcode_7_program_replacement_modes(content)
+	_test_opcode_13_trigger_mutation_modes(content)
+	_test_public_action_state(content); _test_aogm_dispatch_has_no_fallback(content); _test_classic_opcode_2_legacy_battle_record(content); _test_package_backed_macro_spells(); _test_repaired_branch_and_opcode_variants(content); _test_state_and_progression_branch_opcodes(content)
 
 
 func _test_scenario_wire_contracts() -> void:
@@ -37,7 +37,7 @@ func _test_scenario_wire_contracts() -> void:
 	_test_session_continuation_contracts()
 	var branch := ScenarioVmDirective.branch_program_at("xap:7", true, ScenarioExecutionContext.trigger(&"", "ap.fixture"), 3); var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
 	assert_not_null(restored, "VM directive round-trips through its typed wire contract"); assert_equal([restored.kind, restored.program_id, restored.gosub, restored.entry_cursor, ScenarioExecutionContextCodec.encode(restored.context)], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, 3, {"triggerId": "ap.fixture"}], "VM directive preserves branch cursor and trigger state")
-	var encounter_context := ScenarioExecutionContext.encounter(&"complex", 2, "", -1, &"choice", 0).set_encounter_attempt(3); var encounter_branch := ScenarioVmDirective.branch_encounter_result("complex:2:result:0", false, encounter_context, true); var restored_encounter_branch := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(encounter_branch.to_data()))); var enter_encounter := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(ScenarioVmDirective.enter_encounter(&"simple", 7, true).to_data()))); assert_equal([restored_encounter_branch.kind, restored_encounter_branch.repeat_encounter, restored_encounter_branch.context.value("encounterAttempt"), ScenarioVmDirective.from_data(ScenarioVmDirective.finish_timeline().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.resume_after_encounter().to_data()).kind, enter_encounter.kind, enter_encounter.encounter_kind, enter_encounter.target_id, enter_encounter.gosub], [ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT, true, 3, ScenarioVmDirective.FINISH_TIMELINE, ScenarioVmDirective.RESUME_AFTER_ENCOUNTER, ScenarioVmDirective.ENTER_ENCOUNTER, &"simple", 7, true], "VM directives preserve encounter repetition, selected encounter entry, signed GOSUB, and both source-backed exits")
+	var encounter_context := ScenarioExecutionContext.encounter(&"complex", 2, "", -1, &"choice", 0).set_encounter_attempt(3); var encounter_branch := ScenarioVmDirective.branch_encounter_result("complex:2:result:0", false, encounter_context, true); var restored_encounter_branch := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(encounter_branch.to_data()))); var enter_encounter := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(ScenarioVmDirective.enter_encounter(&"simple", 7, true).to_data()))); assert_equal([restored_encounter_branch.kind, restored_encounter_branch.repeat_encounter, restored_encounter_branch.context.value("encounterAttempt"), ScenarioVmDirective.from_data(ScenarioVmDirective.finish_timeline().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.resume_after_encounter().to_data()).kind, ScenarioVmDirective.from_data(ScenarioVmDirective.dropout().to_data()).kind, enter_encounter.kind, enter_encounter.encounter_kind, enter_encounter.target_id, enter_encounter.gosub], [ScenarioVmDirective.BRANCH_ENCOUNTER_RESULT, true, 3, ScenarioVmDirective.FINISH_TIMELINE, ScenarioVmDirective.RESUME_AFTER_ENCOUNTER, ScenarioVmDirective.DROPOUT, ScenarioVmDirective.ENTER_ENCOUNTER, &"simple", 7, true], "VM directives preserve encounter repetition, selected encounter entry, signed GOSUB, dropout, and both source-backed exits")
 	for malformed: Dictionary in [
 		{"kind": "finish", "extra": true}, {"kind": "branch-xap", "targetId": "7", "gosub": false}, {"kind": "branch-program", "programId": "", "gosub": false, "context": {}}, {"kind": "branch-program", "programId": "xap:7", "gosub": false, "context": {}, "unexpected": true},
 	]:
@@ -57,7 +57,8 @@ func _test_scenario_wire_contracts() -> void:
 		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
 		{"name": "runtime handoff", "value": handoff, "decode": ScenarioRuntimeHandoff.from_data},
 		{"name": "VM handoff", "value": ScenarioVmHandoff.classic(handoff), "decode": ScenarioVmHandoff.from_data},
-		{"name": "session retreat", "value": CombatContinuations.retreat_confirmation(body), "decode": SessionContinuation.from_data}, {"name": "session friendly collision", "value": CombatContinuations.friendly_collision(collision_body), "decode": SessionContinuation.from_data},
+		{"name": "session retreat", "value": CombatContinuations.retreat_confirmation(body), "decode": SessionContinuation.from_data},
+		{"name": "session friendly collision", "value": CombatContinuations.friendly_collision(collision_body), "decode": SessionContinuation.from_data},
 	]
 	for contract: Dictionary in contracts:
 		var wire: Dictionary = JSON.parse_string(JSON.stringify(contract.value.to_data())); var decoded: Variant = contract.decode.call(wire)
@@ -215,8 +216,7 @@ func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	var click_boundary := api.execute_classic(ClassicActionDefinition.new(0, 26, 26, 0, false, []), "click.modal")
 	assert_equal([click_boundary.state, click_boundary.interaction.kind, click_boundary.interaction.body.to_data(), click_boundary.events[0].kind, click_boundary.events[0].payload.get("soundId")], [ScenarioRuntimeOperationResult.State.WAITING, InteractionRequest.ACKNOWLEDGE, {"prompt": "Continue", "presentation": "classic-click-modal"}, &"sound_requested", 30005], "opcode 26 stages Castle's compact blocking click window and requests its stock cue exactly once")
 	assert_equal(api.resume_classic(click_boundary.continuation, InteractionResponse.acknowledge(click_boundary.interaction), "click.modal.resume").state, ScenarioRuntimeOperationResult.State.COMPLETED, "the compact click acknowledgement releases opcode 26")
-	var text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, 1, false, []), "text.positive")
-	assert_equal([text.state, text.interaction.kind, text.interaction.body.to_data().get("presentation")], [ScenarioRuntimeOperationResult.State.WAITING, &"acknowledge", "classic-textbox"], "positive message stages the dedicated Classic textbox")
+	var text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, 1, false, []), "text.positive"); assert_equal([text.state, text.interaction.kind, text.interaction.body.to_data().get("presentation")], [ScenarioRuntimeOperationResult.State.WAITING, &"acknowledge", "classic-textbox"], "positive message stages the dedicated Classic textbox")
 	var wrong := api.resume_classic(text.continuation, InteractionResponse.from_data(text.interaction.request_id, &"yes_no", {"accepted": true}), "text.wrong")
 	assert_equal(wrong.error_code, &"invalid_interaction_response", "text continuation rejects an unrelated response shape")
 	var acknowledged := api.resume_classic(text.continuation, InteractionResponse.acknowledge(text.interaction), "text.resume")
@@ -231,6 +231,14 @@ func _test_public_classic_choice_control_flow(content: RealmzContent) -> void:
 		var api := _runtime_api(content, ScenarioActionState.new()); var waiting := vm.run(api); assert_equal([waiting.state, waiting.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.YES_NO], "%s Choice yields the typed response boundary" % choice_case.id); var selected := vm.resume(InteractionResponse.yes_no(waiting.interaction, true), api)
 		assert_equal(selected.state, ScenarioVmResult.State.COMPLETED, "%s Choice selection ends the issuing timeline" % choice_case.id); assert_true(_event_has(selected.events, choice_case.event), "%s Choice publishes its explicit session operation" % choice_case.id); assert_false(_event_has(selected.events, &"action_point_kept") or _event_has(selected.events, &"encounter_option_elimination_requested"), "%s Choice cannot execute the following slot or invent an encounter mutation" % choice_case.id)
 		var continued_vm := ScenarioVm.new(); continued_vm.configure(ScenarioDefinition.new([program], [])); continued_vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.%s" % choice_case.id)); var continued_wait := continued_vm.run(api); var continued := continued_vm.resume(InteractionResponse.yes_no(continued_wait.interaction, false), api); assert_true(_event_has(continued.events, &"action_point_kept"), "%s Choice leaves the unselected branch on the following authored slot" % choice_case.id)
+
+
+func _test_half_truth_complex_spell_class() -> void:
+	var loaded := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-half-truth.realmz2"); var content: RealmzContent = loaded.content; var encounter := content.scenario_records.complex_encounter_by_id(10); assert_true(encounter != null and encounter.spell_ids()[0] == 3 and encounter.spell_results()[0] == 1, "Half Truth Complex Encounter 10 preserves its Electrical class-to-result-one response"); var cases: Array[Array] = [_half_truth_complex_spell_case(content, 3205), _half_truth_complex_spell_case(content, 3105), _half_truth_complex_spell_case(content, 3103), _half_truth_complex_spell_case(content, 1109)]; assert_equal(cases.map(func(entry: Array) -> Array: return entry.slice(0, 2)), [["Electric Pulse", 3], ["Lightning Strike", 3], ["Electrical Protection", 8], ["Open Lock", 8]], "Half Truth resolves the live submitted spell IDs through their stock spell-class records"); assert_equal(cases.map(func(entry: Array) -> int: return entry[2]), [1, 1, 4, 4], "Half Truth routes class-three electrical attacks to result one while non-class-three spells take fallback result four")
+
+
+func _half_truth_complex_spell_case(content: RealmzContent, classic_spell_id: int) -> Array:
+	var spell := content.magic.spell_by_classic_id(classic_spell_id); var character := CharacterState.new("half-truth.caster.%d" % classic_spell_id, "Caster", 10, 10); character.set_known_spells([spell.id]); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var rng := RealmzRng.for_oracle(10); var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new()); var opened := api.execute_classic(ClassicActionDefinition.new(0, 5, 5, 10, false, []), "half-truth.complex-10"); var resolved := api.resume_classic(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "spell", "classicSpellId": classic_spell_id, "characterId": character.id}), "half-truth.complex-10.spell"); assert_equal(rng.snapshot().draw_count, 0, "Complex Encounter spell-class routing consumes no gameplay RNG"); return [spell.name, spell.spell_class, int(resolved.value)]
 
 
 func _test_public_classic_difficulty_branch(content: RealmzContent) -> void:
@@ -438,6 +446,36 @@ func _test_public_vm_combat_auto(content: RealmzContent) -> void:
 	content.scenario = original_scenario
 
 
+func _test_opcode_56_defeat_return(content: RealmzContent) -> void:
+	var battle := content.combat.battle_by_id("classic.battle.0")
+	var land: MapDefinition = null
+	var origin := Vector2i.ZERO
+	var direction := Vector2i.ZERO
+	for map_id: String in content.world.map_ids():
+		var candidate := content.world.map_by_id(map_id)
+		if candidate.level_type != &"land":
+			continue
+		for y: int in range(candidate.topology.height):
+			for x: int in range(1, candidate.topology.width):
+				if candidate.topology.cell_at(Vector2i(x, y)) != null and candidate.topology.cell_at(Vector2i(x - 1, y)) != null:
+					land = candidate; origin = Vector2i(x, y); direction = Vector2i.RIGHT; break
+			if land != null: break
+		if land != null: break
+	assert_true(battle != null and land != null, "opcode 56 defeat-return fixture has a battle and adjacent land cells")
+	if battle == null or land == null: return
+	var first := CharacterState.new("opcode56.first", "First", 1, 10); first.level = 3; first.experience = 12_345
+	var second := CharacterState.new("opcode56.second", "Second", 1, 10); second.level = 7; second.experience = -500
+	var state := GameState.new(PartyState.new(land.id, origin, [first, second]), RealmzClock.new()); state.combat = CombatState.new(battle.id); state.combat.completed = true; state.combat.outcome = &"defeat"
+	var rng := RealmzRng.new(56); var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), RealmzRules.new()); var caller := ScenarioBattleCaller.classic(56, true, 0, -1); var handoff := ScenarioRuntimeHandoff.party_defeat(battle.id, ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller)
+	var before := state.to_data(); var rejected := api.complete_party_defeat_handoff(handoff)
+	assert_equal([rejected.error_code, state.to_data(), rng.snapshot().draw_count], [&"missing_move_direction", before, 0], "opcode 56 rejects a missing land backup direction without state or RNG mutation")
+	state.last_move_direction = direction
+	var completed := api.complete_party_defeat_handoff(handoff); var kinds := completed.events.map(func(event: DomainEvent) -> StringName: return event.kind); var notices := completed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"classic_notification_requested").map(func(event: DomainEvent) -> String: return event.payload.get("text", "")); var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_equal([completed.state, completed.directive.kind, first.experience, second.experience, state.party.coordinate, state.last_battle_outcome, state.combat, rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, ScenarioVmDirective.FINISH_TIMELINE, 6_345, -14_500, origin - direction, &"retreated", null, 0], "opcode 56 target -1 applies each level-scaled loss, backs one land step, returns from the timeline, and consumes no RNG")
+	assert_equal([notices, kinds, completed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested")[0].payload.get("soundId")], [["Having fled the battle, the enemy remains to challange you another time.", "You all loose victory points for this cowardly display."], [&"party_defeat_revived", &"classic_notification_requested", &"sound_requested", &"classic_notification_requested", &"party_backed_up", &"battle_returned"], 26260], "opcode 56 preserves Castle's stock warning wording and ordered defeat-return events")
+	assert_true(restored != null and restored.party.coordinate == origin - direction and restored.party.character_by_id(second.id).experience == -14_500 and restored.last_battle_outcome == &"retreated", "opcode 56's completed defeat return survives the save-owned game-state boundary")
+
+
 func _test_public_classic_forced_victory(content: RealmzContent) -> void:
 	var battle := content.combat.battle_by_id("classic.battle.0"); var slots := battle.monster_slots() if battle != null else []; var definition := content.combat.monster_by_id(slots[0].monster_id) if not slots.is_empty() else null; assert_true(battle != null and definition != null, "opcode 100 fixture has source-backed battle content"); if battle == null or definition == null: return; var character := CharacterState.new("opcode100.hero", "Hero", 20, 20); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var tiles: Array[int] = []; tiles.resize(BattlefieldGrid.CELL_COUNT); tiles.fill(0); var field := BattlefieldState.new(content.start_map_id, tiles); field.actors.place_character(character.id, Vector2i(45, 45)); var monster := MonsterState.new("opcode100.monster", definition.id, definition.name, 20, 20, definition.hit_dice, definition.agility, definition.armor, definition.magic_resistance, 0, true); field.actors.place_monster(monster.id, Vector2i(47, 45), 0); state.combat = CombatState.new(battle.id, [monster], -1, field); state.combat.set_turn_order([character.id, monster.id]); var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(100), ScenarioActionState.new(), RealmzRules.new()); var program := ScenarioProgramDefinition.new("xap:100", &"xap", "100", [ClassicActionDefinition.new(0, 100, 100, 0, false, []), ClassicActionDefinition.new(1, 1, 1, 1, false, [])]); var vm := ScenarioVm.new(); vm.configure(ScenarioDefinition.new([program], [])); vm.start_program(program.id, ScenarioExecutionContext.calling(&"battle-macro").set_battle(battle.id)); var result := vm.run(api); var restored := CombatState.from_data(JSON.parse_string(JSON.stringify(state.combat.to_data()))); var reward := api.begin_completed_battle_reward("opcode100.reward", ScenarioBattleCaller.classic(2, false, 0, 0)); var reward_event: DomainEvent = reward.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_reward_constructed")[0] if reward.events.any(func(event: DomainEvent) -> bool: return event.kind == &"battle_reward_constructed") else null; assert_equal([result.state, result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"message_shown"), state.combat.outcome, monster.current_health, restored.classic_post_battle_sentinel if restored != null else -1, reward_event.payload.get("experienceOnly") if reward_event != null else false, reward_event.payload.get("wealth") if reward_event != null else {}], [ScenarioVmResult.State.COMPLETED, false, &"victory", 0, 8, true, {"gold": 0, "gems": 0, "jewelry": 0}], "opcode 100 ends its macro, forces victory, preserves Castle's slot-eight sentinel through save state, and enters ordinary experience-only rewards without running later macro code")
 
@@ -472,9 +510,16 @@ func _test_public_classic_combat_spawn(content: RealmzContent) -> void:
 	var spawn_event: DomainEvent = result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_monsters_spawned")[0] if result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monsters_spawned") else null
 	assert_equal([result.state, spawned != null, spawned.traitor if spawned != null else false, field.actors.has_actor(spawned_id), field.actors.actor_position(spawned_id), state.combat.turns.turn_order().back(), spawn_event.payload.get("coordinates") if spawn_event != null else [], result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 605)], [ScenarioRuntimeOperationResult.State.COMPLETED, true, true, true, Vector2i(48, 48), spawned_id, [Vector2i(48, 48)], true], "opcode 124 places a battle-macro summon through Castle's expanding complete-footprint scan, appends its turn, and publishes its authored cue")
 	assert_true(BattlefieldGrid.footprint_cells(field.actors.actor_position(spawned_id), summoned_definition.size).all(func(coordinate: Vector2i) -> bool: return field.actors.actor_at(coordinate) == spawned_id), "the summoned 2x2 monster owns every authoritative battlefield cell and therefore appears in combat presentation")
-	var macro_spell := SpellDefinition.new("classic.spell.2301", 2301, "Confuse"); macro_spell.in_combat = true; macro_spell.target_type = 3; macro_spell.size = 7; macro_spell.special = 30; macro_spell.spell_class = 5; macro_spell.damage_type = 5; macro_spell.cost = 15; macro_spell.power_duration_min = 1; macro_spell.power_duration_max = 1; spawn_content.magic = SpellCatalog.new([macro_spell]); source.current_health = 0
+	var macro_spell := SpellDefinition.new("classic.spell.2301", 2301, "Confuse"); macro_spell.in_combat = true; macro_spell.target_type = 3; macro_spell.size = 7; macro_spell.special = 30; macro_spell.spell_class = 5; macro_spell.damage_type = 5; macro_spell.cost = 15; macro_spell.power_duration_min = 1; macro_spell.power_duration_max = 1
+	var damage_spell := SpellDefinition.new("classic.spell.4606", 4606, "Macro Blast"); damage_spell.in_combat = true; damage_spell.target_type = 3; damage_spell.size = 7; damage_spell.spell_class = 8; damage_spell.damage_type = 8; damage_spell.damage_min = 40; damage_spell.damage_max = 40
+	var field_spell := SpellDefinition.new("classic.spell.3209", 3209, "Noxious Cloud"); field_spell.in_combat = true; field_spell.target_type = 3; field_spell.size = 18; field_spell.queue_icon = 7; field_spell.special = 2; field_spell.spell_class = 4; field_spell.damage_type = 4; field_spell.power_duration_min = 1; field_spell.power_duration_max = 1
+	spawn_content.magic = SpellCatalog.new([macro_spell, damage_spell, field_spell]); source.current_health = 0
 	var macro_program := ScenarioProgramDefinition.new("xap:108", &"extra-action-point", "108", [ClassicActionDefinition.new(0, 17, 17, 388, false, [2301, 1, 0, 1]), ClassicActionDefinition.new(1, 84, 84, 0, false, [])]); var macro_vm := ScenarioVm.new(); macro_vm.configure(ScenarioDefinition.new([macro_program], [])); macro_vm.start_program(macro_program.id, ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(battle.id).set_combatant(source.id)); var macro_result := macro_vm.run(api)
 	assert_equal([macro_result.state, source.current_health, spawned.conditions.value(ConditionRules.CONFUSED), hero.conditions.value(ConditionRules.CONFUSED), state.combat.turns.active_actor_id(), hero.spell_points, macro_spell.cannot, _event_has(macro_result.events, &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, 0, 1, 0, hero.id, 0, 0, true], "opcode 17 in a death macro targets living footprints around the retained dead source without selected characters, resource cost, turn advance, catalog mutation, or lost following code")
+	var field_program := ScenarioProgramDefinition.new("xap:110", &"extra-action-point", "110", [ClassicActionDefinition.new(0, 17, 17, 390, false, [3209, 1, 0, 1]), ClassicActionDefinition.new(1, 84, 84, 0, false, [])]); var field_vm := ScenarioVm.new(); field_vm.configure(ScenarioDefinition.new([field_program], [])); field_vm.start_program(field_program.id, ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(battle.id).set_combatant(source.id)); var field_result := field_vm.run(api); var created_fields := field_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_persistent_field_created"); var retained_fields := state.combat.spell_runtime.persistent_fields()
+	assert_equal([field_result.state, created_fields.size(), created_fields[0].payload.get("center") if not created_fields.is_empty() else [], created_fields[0].payload.get("shape") if not created_fields.is_empty() else -1, retained_fields.size(), retained_fields[0].caster_id if not retained_fields.is_empty() else "", retained_fields[0].center if not retained_fields.is_empty() else Vector2i.ZERO, _event_has(field_result.events, &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, 1, [50, 50], 18, 1, source.id, Vector2i(50, 50), true], "a source-authored queued opcode-17 area creates its persistent field at the retained macro source before continuing the issuing program")
+	var damage_program := ScenarioProgramDefinition.new("xap:109", &"extra-action-point", "109", [ClassicActionDefinition.new(0, 17, 17, 389, false, [4606, 1, 0, 1]), ClassicActionDefinition.new(1, 84, 84, 0, false, [])]); var damage_vm := ScenarioVm.new(); damage_vm.configure(ScenarioDefinition.new([damage_program], [])); damage_vm.start_program(damage_program.id, ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(battle.id).set_combatant(source.id)); var damage_result := damage_vm.run(api); var damage_events := damage_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal([damage_result.state, spawned.current_health, field.actors.has_actor(spawned.id), damage_events.size(), damage_events[0].payload.get("damage") if not damage_events.is_empty() else 0, state.combat.turns.active_actor_id(), hero.spell_points, _event_has(damage_result.events, &"classic_control_marker")], [ScenarioVmResult.State.COMPLETED, -32, false, 1, 40, hero.id, 0, true], "a damaging opcode-17 death-macro area uses the retained source geometry, removes its defeated target, spends no active-character resources, and continues the issuing program")
 
 
 func _test_public_classic_combat_mutation(content: RealmzContent) -> void:
@@ -624,6 +669,9 @@ func _test_public_application_transitions(content: RealmzContent) -> void:
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
 	var map := content.world.player_map_by_classic_id(1); var shop := content.economy.shop_by_id("classic.shop.0"); var shop_offer := api.execute_classic(ClassicActionDefinition.new(0, 6, 6, 0, false, []), "shop.offer"); var shop_result := api.request_available_shop("shop.open"); var shop_data := shop_result.interaction.body.to_data(); var unpaid := api.execute_classic(ClassicActionDefinition.new(0, 33, 33, 0, true, [5000, 0, 0, 7, 0]), "wealth.unpaid"); assert_equal([shop_offer.state, state.location_services.active_shop_id, shop_offer.events[0].kind, shop_offer.events[1].kind, shop_offer.events[1].payload.get("soundId"), shop_offer.events[1].payload.get("stopExisting"), shop_result.state, shop_data["stock"][0]["stockKey"], shop_data["stock"][0]["index"], shop_data["stock"][0]["category"], shop_data["stock"][0].has("description"), shop_data["characters"][0]["portraitId"], shop_data["characters"][0]["load"], unpaid.value, unpaid.events[1].payload, unpaid.directive.kind, unpaid.directive.target_id, unpaid.directive.gosub], [ScenarioRuntimeOperationResult.State.COMPLETED, shop.id, &"shop_available", &"sound_requested", 30005, true, ScenarioRuntimeOperationResult.State.WAITING, "base:817", 817, "supplies", true, shopper.portrait_id, 0, false, {"text": "The party does not have enough gold.", "soundId": 6000, "source": "classic-opcode-33"}, ScenarioVmDirective.BRANCH_XAP, 7, false], "Shop exposes its contextual source cue after silencing competing movement audio and sparse stock facts while failed opcode 33 requests Castle warning 50 with sound 6000 before its authored non-GOSUB XAP branch"); var first_stock := content.items.item_by_id(shop.item_ids()[0]); var saved_icon_id := first_stock.icon_id; first_stock.icon_id = 0; var iconless_shop := api.request_available_shop("shop.iconless"); first_stock.icon_id = saved_icon_id; assert_true(iconless_shop.state == ScenarioRuntimeOperationResult.State.WAITING and not iconless_shop.interaction.body.to_data()["stock"][0].has("iconId"), "a source-valid shop item without a CICN remains an actionable typed row instead of collapsing the interaction")
 	var sold_item := content.items.item_by_classic_id(1); shopper.set_inventory([ItemInstance.new("shop.sold", sold_item.id, sold_item.initial_charges, false, true)]); var sold := api.resume_classic(shop_result.continuation, InteractionResponse.new(shop_result.interaction.request_id, InteractionRequest.SHOP, InteractionResponse.ShopBody.new(&"sell", shopper.id, "shop.sold")), "shop.sell"); var sold_data := sold.interaction.body.to_data(); var restored_shop_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); restored_shop_state.party.character_by_id(shopper.id).portrait_id = ""; var valid_shop_snapshot := SessionSnapshot.new(content.campaign_id, content.package_hash, content.rules_version, 1, restored_shop_state, RealmzRng.new(2).snapshot()); var forged_shop_data := state.to_data(); forged_shop_data["shopBuybackSlots"][shop.id][sold_item.id] = 817; var forged_shop_state := GameState.from_data(forged_shop_data); forged_shop_state.party.character_by_id(shopper.id).portrait_id = ""; var forged_shop_snapshot := SessionSnapshot.new(content.campaign_id, content.package_hash, content.rules_version, 1, forged_shop_state, RealmzRng.new(2).snapshot()); assert_equal([sold.state, sold_data["stock"][0]["stockKey"], sold_data["stock"][0]["index"], sold_data["stock"][1]["stockKey"], state.location_services.shop_buyback_slot(shop.id, sold_item.id), restored_shop_state.location_services.shop_buyback_slot(shop.id, sold_item.id), shop.stock_slot(0), SessionRestoreValidator.validate(content, valid_shop_snapshot).ok, SessionRestoreValidator.validate(content, forged_shop_snapshot).ok], [ScenarioRuntimeOperationResult.State.WAITING, "buyback:%s" % sold_item.id, 0, "base:817", 0, 0, 817, true, false], "selling uses Castle's first empty slot in the item's native 200-slot band, projects in slot order, persists the assignment, rejects a colliding restored slot, and leaves package stock immutable")
+	var outside_item := content.items.item_by_classic_id(206); shopper.set_inventory([ItemInstance.new("shop.inside", sold_item.id, sold_item.initial_charges, false, true), ItemInstance.new("shop.outside", outside_item.id, outside_item.initial_charges, false, true)]); var restricted_offer := api.execute_classic(ClassicActionDefinition.new(0, 73, 73, 0, false, [0, 1, 100, 0, 999]), "shop.restricted"); var restricted := api.request_available_shop("shop.restricted.open"); var restricted_inventory: Array = restricted.interaction.body.to_data()["characters"][0]["inventory"]
+	assert_equal([restricted_offer.state, state.location_services.shop_accept_ranges(), restricted_inventory[0]["canSell"], restricted_inventory[0]["sellReason"], restricted_inventory[1]["canSell"], restricted_inventory[1]["sellReason"]], [ScenarioRuntimeOperationResult.State.COMPLETED, [1, 100, 0, 999], true, "", false, "This shop does not accept this item."], "opcode 73 treats one active authored acceptance range as a real restriction while retaining the disabled pair's unused high word")
+	var union_offer := api.execute_classic(ClassicActionDefinition.new(0, 73, 73, 0, false, [0, 1, 1, 206, 206]), "shop.restricted.union"); var union_shop := api.request_available_shop("shop.restricted.union.open"); var union_inventory: Array = union_shop.interaction.body.to_data()["characters"][0]["inventory"]; assert_equal([union_offer.state, union_inventory[0]["canSell"], union_inventory[1]["canSell"]], [ScenarioRuntimeOperationResult.State.COMPLETED, true, true], "opcode 73 accepts the union of both active inclusive ranges through the public Shop request")
 	assert_not_null(map, "fixture exposes a source-backed player map")
 	if map == null: return
 	var acquired := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 1, false, []), "map.acquire")
@@ -686,8 +734,6 @@ func _test_public_character_checks(content: RealmzContent) -> void:
 	state.scenario_progress.set_selected_character_ids([first.id, second.id]); first.maximum_spell_points = 10; first.spell_points = 9; second.maximum_spell_points = 8; second.spell_points = 2; var spell_point_rng := ScriptedRng.new([0, 32_767, 16_384, 0, 0, 0]); var spell_point_api := RealmzRuntimeApi.new(content, state, spell_point_rng, ScenarioActionState.new()); var granted := spell_point_api.execute_classic(ClassicActionDefinition.new(0, 74, 74, 0, false, [2, 2, 4, 1, 0]), "spell-points.give"); var taken := spell_point_api.execute_classic(ClassicActionDefinition.new(0, 74, 74, 0, false, [-1, 1, 1, 0, 0]), "spell-points.take"); assert_equal([granted.state, first.spell_points, second.spell_points, taken.state, spell_point_rng.snapshot().draw_count, granted.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 2)], [ScenarioRuntimeOperationResult.State.COMPLETED, 9, 3, ScenarioRuntimeOperationResult.State.COMPLETED, 6, true], "opcode 74 rerolls per selected caster, applies only the final roll, clamps both bounds, preserves Castle's lower-bound sound identity, and consumes source-ordered RNG")
 	var castes := content.characters.caste_definitions(); var fighter := castes.filter(func(caste: CasteDefinition) -> bool: return caste.classic_id == 1)[0] as CasteDefinition; var mage := castes.filter(func(caste: CasteDefinition) -> bool: return caste.classic_id == 6)[0] as CasteDefinition; first.caste_id = fighter.id; second.caste_id = mage.id; third.caste_id = mage.id; first.gender = 1; second.gender = 2; third.gender = 2; third.current_health = 0; var males := api.execute_classic(ClassicActionDefinition.new(0, 50, 50, 0, false, [1, 1, 0, 0, 1]), "identity.male"); var magical := api.execute_classic(ClassicActionDefinition.new(0, 53, 53, 0, false, [0, 2, 1, 0, 0]), "caste.magical"); var scenario_spell := content.magic.spell_by_classic_id(1404); var cast := api.execute_classic(ClassicActionDefinition.new(0, 17, 17, 0, false, [scenario_spell.classic_id, 1, 0, 1]), "spell.selected"); state.scenario_progress.set_selected_character_ids([first.id]); var second_slot_reject := api.execute_classic(ClassicActionDefinition.new(0, 55, 55, 0, true, [2, 1, 0, 12, 13]), "picked.wrong-slot"); state.scenario_progress.set_selected_character_ids([second.id]); var second_slot_accept := api.execute_classic(ClassicActionDefinition.new(0, 55, 55, 0, true, [2, 1, 0, 12, 13]), "picked.second-slot"); state.scenario_progress.set_selected_character_ids([first.id, second.id]); var conditioned := api.execute_classic(ClassicActionDefinition.new(0, 43, 43, 0, false, [1, 2, 3, 610, 0]), "condition.feedback"); var turning_off := api.execute_classic(ClassicActionDefinition.new(0, 82, 82, 0, false, []), "turning.off"); var turning_on := api.execute_classic(ClassicActionDefinition.new(0, 83, 83, 0, false, []), "turning.on"); state.scenario_progress.set_selected_character_ids([first.id]); var cleared := api.execute_classic(ClassicActionDefinition.new(0, 53, 53, 0, false, [1, 0, 2, 0, 0]), "caste.preselected"); assert_equal([males.value, magical.value, cast.events.slice(0, 3).map(func(event: DomainEvent) -> StringName: return event.kind), cast.events[0].payload.get("soundId"), cast.events[1].payload.get("firstResourceId"), second_slot_reject.directive.target_id, second_slot_accept.directive.target_id, second_slot_accept.directive.gosub, conditioned.events.map(func(event: DomainEvent) -> StringName: return event.kind), turning_off.events[1].payload.get("soundId"), turning_on.events[1].payload.get("soundId"), cleared.value, state.scenario_progress.selected_character_ids()], [[first.id], [second.id], [&"sound_requested", &"character_effect_requested", &"scenario_spell_applied"], 690, 12096, 13, 12, true, [&"sound_requested", &"character_effect_requested", &"sound_requested", &"character_effect_requested", &"condition_applied"], 10105, 20004, [], []], "opcodes 17, 43, 50, 53, 55, 82, and 83 preserve exact identity and living-caste selection, correct Castle's specific-pick slot alias, and retain source-ordered roster spell feedback and notification sounds")
 	first.conditions.set_value(24, 2); state.scenario_progress.set_selected_character_ids([first.id]); var selected_condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, true, [24, -1, 999, 12, 13]), "condition.selected"); var whole_condition := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 0, 999, 12, 13]), "condition.whole"); var first_position := api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 1, 999, 12, 13]), "condition.first-position"); assert_equal([selected_condition.directive.target_id, selected_condition.directive.gosub, whole_condition.directive.target_id, first_position.directive.target_id], [12, true, 13, 12], "opcode 81 requires every candidate to hold the condition, preserves GOSUB, maps authored position one to the top character, and ignores its unused message slot")
-
-
 func _test_corrected_character_selection_opcodes(content: RealmzContent) -> void:
 	var characters: Array[CharacterState] = []
 	for index: int in 6:
@@ -730,8 +776,6 @@ func _test_corrected_character_selection_opcodes(content: RealmzContent) -> void
 	var short_api := RealmzRuntimeApi.new(content, short_state, RealmzRng.new(1), ScenarioActionState.new())
 	var missing_position := short_api.execute_classic(ClassicActionDefinition.new(0, 81, 81, 0, false, [24, 6, 0, 12, 13]), "condition.unoccupied-position")
 	assert_equal(missing_position.directive.target_id, 13, "opcode 81 safely fails an unoccupied valid party position")
-
-
 func _test_corrected_fatigue_opcode(content: RealmzContent) -> void:
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("fatigue.hero", "Fatigue Hero", 10, 10)]), RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
@@ -743,8 +787,52 @@ func _test_corrected_fatigue_opcode(content: RealmzContent) -> void:
 	api.execute_classic(ClassicActionDefinition.new(0, 68, 68, 0, false, [3, 25, -999, 0, 0]), "fatigue.save-round-trip")
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_equal(restored.party.fatigue, 33, "corrected opcode 68 fatigue crosses the save-owned GameState boundary")
-
-
+func _test_corrected_take_experience_opcode(content: RealmzContent) -> void:
+	for action_slot: int in [0, 7]:
+		var characters: Array[CharacterState] = [CharacterState.new("experience.first.%d" % action_slot, "First", 10, 10), CharacterState.new("experience.second.%d" % action_slot, "Second", 10, 10), CharacterState.new("experience.third.%d" % action_slot, "Third", 10, 10)]
+		for character: CharacterState in characters:
+			character.experience = 100
+		var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, characters), RealmzClock.new())
+		state.scenario_progress.set_selected_character_ids([characters[0].id, characters[2].id])
+		var actions: Array[ClassicActionDefinition] = []
+		for filler: int in action_slot:
+			actions.append(ClassicActionDefinition.new(filler, 84, 84, filler, false, []))
+		actions.append(ClassicActionDefinition.new(action_slot, 90, 90, 0, false, [10, 1, 0, 0, 0]))
+		var program := ScenarioProgramDefinition.new("opcode90.slot.%d" % action_slot, &"trigger", "opcode90", actions); var vm := ScenarioVm.new(); vm.configure(ScenarioDefinition.new([program], [])); vm.start_program(program.id, ScenarioExecutionContext.trigger(&"action", "ap.opcode90.%d" % action_slot)); var result := vm.run(RealmzRuntimeApi.new(content, state, RealmzRng.new(90), ScenarioActionState.new()))
+		assert_equal([result.state, characters.map(func(character: CharacterState) -> int: return character.experience), state.scenario_progress.selected_character_ids(), result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"experience_taken").map(func(event: DomainEvent) -> Variant: return event.payload.get("targetIds"))], [ScenarioVmResult.State.COMPLETED, [90, 100, 90], [characters[0].id, characters[2].id], [[characters[0].id, characters[2].id]]], "opcode 90 mode 1 uses each picked identity rather than the action-slot selection cell at source slot %d" % action_slot)
+func _test_opcode_7_program_replacement_modes(content: RealmzContent) -> void:
+	var map := content.world.map_by_id(content.start_map_id); var source := ScenarioProgramDefinition.new("xap:325", &"extra-action-point", "325", []); var simple := ScenarioProgramDefinition.new("simple:0:result:1", &"simple-encounter-result", "1", []); var complex := ScenarioProgramDefinition.new("complex:0:result:2", &"complex-encounter-result", "2", []); var ap_target := ScenarioProgramDefinition.new("trigger:replacement-target", &"trigger", "replacement-target", []); var root := ScenarioProgramDefinition.new("trigger:replacement-root", &"trigger", "replacement-root", [ClassicActionDefinition.new(0, 7, 7, 0, false, [-1, 0, 325, 0, 1]), ClassicActionDefinition.new(1, 7, 7, 0, false, [-2, 0, 325, 0, 2]), ClassicActionDefinition.new(2, 7, 7, 0, false, [map.level_index, 4, 325, 0, 0])]); var definition := ScenarioDefinition.new([root, source, simple, complex, ap_target], [])
+	var trigger := TriggerDefinition.new("replacement-target", ap_target.id, map.id, Vector2i.ZERO, true, 100, null, 4); var replacement_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, definition, [], [trigger]); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("replacement.hero", "Hero", 10, 10)]), RealmzClock.new()); var rng := RealmzRng.new(7); var api := RealmzRuntimeApi.new(replacement_content, state, rng, ScenarioActionState.new()); var vm := ScenarioVm.new(); vm.configure(definition); vm.start_program(root.id, ScenarioExecutionContext.trigger(&"action", root.id)); var result := vm.run(api)
+	assert_equal([result.state, state.scenario_progress.encounters.program_id(simple.id), state.scenario_progress.encounters.program_id(complex.id), state.scenario_progress.encounters.program_id(ap_target.id), rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, source.id, source.id, source.id, 0], "opcode 7 maps -1 to Simple result, -2 to Complex result, and nonnegative map indexes to Action Point replacement")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); var before_invalid := restored.to_data(); var invalid := RealmzRuntimeApi.new(replacement_content, restored, RealmzRng.new(7), ScenarioActionState.new()).execute_classic(ClassicActionDefinition.new(0, 7, 7, 0, false, [-3, 0, 325, 0, 0]), "replacement.invalid")
+	assert_equal([invalid.error_code, restored.to_data()], [&"unknown_map", before_invalid], "opcode 7 preserves unknown negative imports as typed atomic failures rather than reinterpreting them")
+func _test_opcode_13_trigger_mutation_modes(content: RealmzContent) -> void:
+	var land := content.world.map_by_type_and_index(&"land", 0)
+	var dungeon := content.world.map_by_type_and_index(&"dungeon", 0)
+	assert_true(land != null and dungeon != null, "opcode 13 fixture has land and dungeon index zero")
+	if land == null or dungeon == null:
+		return
+	var triggers: Array[TriggerDefinition] = [
+		TriggerDefinition.new("opcode13.land.1", "", land.id, Vector2i.ZERO, true, 100, null, 1),
+		TriggerDefinition.new("opcode13.land.2", "", land.id, Vector2i.ZERO, true, 100, null, 2),
+		TriggerDefinition.new("opcode13.land.4", "", land.id, Vector2i.ZERO, true, 100, null, 4),
+		TriggerDefinition.new("opcode13.dungeon.1", "", dungeon.id, Vector2i.ZERO, true, 100, null, 1),
+		TriggerDefinition.new("opcode13.dungeon.2", "", dungeon.id, Vector2i.ZERO, true, 100, null, 2),
+	]
+	var fixture := RealmzContent.new("opcode13", "1".repeat(64), "opcode13", content.rules_version, land.id, Vector2i.ZERO, content.world, ScenarioDefinition.new([], []), [], triggers)
+	var state := GameState.new(PartyState.new(land.id, Vector2i.ZERO, [CharacterState.new("opcode13.hero", "Hero", 10, 10)]), RealmzClock.new())
+	var rng := RealmzRng.for_oracle(13)
+	var api := RealmzRuntimeApi.new(fixture, state, rng, ScenarioActionState.new())
+	var land_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, 25, 2, 4]), "opcode13.land")
+	var dungeon_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 0, -1, -1, -2]), "opcode13.dungeon")
+	var single_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, 75, 0, 99]), "opcode13.single")
+	var saved := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_equal([land_result.value, dungeon_result.value, single_result.value], [["opcode13.land.1", "opcode13.land.2", "opcode13.land.4"], ["opcode13.dungeon.1", "opcode13.dungeon.2"], ["opcode13.land.1"]], "opcode 13 combines its optional single record with an inclusive land range, uses a negative range for dungeon records, and silently skips unplaced native rows")
+	assert_equal([state.world.triggers.trigger_chance("opcode13.land.1", 100), state.world.triggers.trigger_chance("opcode13.land.2", 100), state.world.triggers.trigger_chance("opcode13.land.4", 100), state.world.triggers.trigger_chance("opcode13.dungeon.1", 100), state.world.triggers.trigger_is_disabled("opcode13.dungeon.2"), rng.snapshot().draw_count], [75, 25, 25, -1, true, 0], "opcode 13 stores clamped runtime chance overrides and canonical disablement without consuming RNG")
+	assert_true(saved != null and saved.world.triggers.trigger_chance("opcode13.land.2", 100) == 25 and saved.world.triggers.trigger_is_disabled("opcode13.dungeon.1"), "opcode 13's land and dungeon overrides survive the public save-owned state codec")
+	var before_invalid := state.to_data()
+	var invalid := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [99, 1, 50, 0, 0]), "opcode13.invalid")
+	assert_equal([invalid.error_code, state.to_data(), rng.snapshot().draw_count], [&"unknown_map", before_invalid, 0], "an unavailable opcode 13 map rejects atomically without state or RNG mutation")
 func _test_public_action_state(content: RealmzContent) -> void:
 	var store := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.SET_VALUE)
 	store.scope = &"persistent"
@@ -766,8 +854,6 @@ func _test_public_action_state(content: RealmzContent) -> void:
 	assert_equal([state.read("campaign", action.id, "visits"), state.read("campaign", action.id, "mirror")], [42, 42], "persistent variables remain namespaced to the Scenario Action")
 	var restored := ScenarioActionState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_equal(restored.read("campaign", action.id, "visits"), 42, "persistent action state preserves integer values through JSON")
-
-
 func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
 	for opcode: int in ClassicOpcodeCatalog.AOGM_ACTIVE_OPCODES:
 		if opcode == 39:
@@ -777,8 +863,59 @@ func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
 		var action := ClassicActionDefinition.new(0, opcode, opcode, 0, false, [0, 0, 0, 0, 0])
 		var operation := api.execute_classic(action, "request.dispatch", ScenarioExecutionContext.calling(&"action"))
 		assert_true(operation != null and operation.error_code != &"unsupported_classic_opcode", "AOGM opcode %d has an explicit runtime owner" % opcode)
-
-
+func _test_classic_opcode_2_legacy_battle_record(content: RealmzContent) -> void:
+	var battle := content.combat.battle_by_id("classic.battle.0")
+	assert_not_null(battle, "fixture provides battle 0")
+	if battle == null:
+		return
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("opcode2.hero", "Hero", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(2), ScenarioActionState.new(), RealmzRules.new())
+	var positive := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, [battle.classic_id, 0, -1, 30002, 0]), "battle.legacy-aogm")
+	assert_equal(positive.state, ScenarioRuntimeOperationResult.State.WAITING, "legacy opcode 2 battle record starts battle without unknown_message failure")
+	var sound_events := positive.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 30002 and event.payload.get("source") == "classic-battle")
+	var message_events := positive.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"message_shown" and event.payload.get("source") == "classic-battle")
+	assert_true(sound_events.size() == 1 and message_events.is_empty(), "legacy opcode 2 battle emits application sound word4 directly and no pre-battle message")
+	assert_true(state.combat != null and state.combat.battle_id == battle.id, "legacy opcode 2 battle initializes active combat state")
+	state.combat = null
+	var positive_mode := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, [battle.classic_id, 0, -1, 30001, 599]), "battle.legacy-mode")
+	assert_equal(positive_mode.state, ScenarioRuntimeOperationResult.State.WAITING, "legacy opcode 2 battle with positive sound in 30000..30005 starts battle")
+	assert_true(positive_mode.continuation != null and positive_mode.continuation.combat().caller.mode == 599, "legacy opcode 2 preserves outcome mode 599 in battle caller")
+	var sound_mode_events := positive_mode.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 30001 and event.payload.get("source") == "classic-battle")
+	assert_true(sound_mode_events.size() == 1, "word 4 sound projects directly")
+	state.combat = null
+	var negative_codes: Array = [
+		[battle.classic_id, 0, -1, -30001, 0],
+		[battle.classic_id, 1, -1, 30002, 0],
+		[battle.classic_id, 0, 0, 30002, 0],
+		[battle.classic_id, 0, -1, 29999, 0],
+		[battle.classic_id, 0, -1, 30006, 0],
+		[battle.classic_id, 0, -1, 30002],
+	]
+	for code: Array in negative_codes:
+		var extra: Array[int] = []
+		extra.assign(code)
+		var result := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, extra), "battle.neg-table")
+		assert_equal(result.error_code, &"unknown_message", "opcode 2 nearby negative %s does not match legacy discriminator" % [code])
+	state.scenario_progress.set_selected_character_ids([party.characters()[0].id])
+	var wrong_opcode := api.execute_classic(ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, -1, 30002, 0]), "battle.neg-opcode")
+	assert_equal(wrong_opcode.error_code, &"unknown_message", "opcode 48 does not match legacy opcode 2 discriminator")
+func _test_package_backed_macro_spells() -> void:
+	var clouds := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-castle-in-the-clouds.realmz2"); var c := _package_macro_battle(clouds.content, 29); var c_rng := RealmzRng.for_oracle(273); var c_vm := ScenarioVm.new(); c_vm.configure(clouds.content.scenario); c_vm.start_program("xap:273", ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(c.state.combat.battle_id).set_combatant(c.source.id)); var c_result := c_vm.run(RealmzRuntimeApi.new(clouds.content, c.state, c_rng, ScenarioActionState.new(), RealmzRules.new())); var c1: CharacterState = c.hero1; var c2: CharacterState = c.hero2; var c_los: CharacterState = c.hero_los; var c_range: CharacterState = c.hero_range; var c_ally: MonsterState = c.ally; var c_state: GameState = c.state
+	assert_equal([c_result.state, c1.current_health < 30, c2.current_health, c_los.current_health, c_range.current_health, c_ally.current_health, c1.spell_points, c_state.combat.turns.active_actor_id(), _event_has(c_result.events, &"sound_requested"), _event_has(c_result.events, &"action_point_kept"), c_rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, true, 30, 30, 30, 20, 50, c1.id, true, true, 3], "Castle in the Clouds packaged xap:273 resolves Spell 3208 against the first legal hero with exact range, LOS, allegiance, resource, turn, continuation, and RNG outcomes")
+	var trouble := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-trouble-in-the-sword-lands.realmz2"); var t := _package_macro_battle(trouble.content, 222); var t_rng := RealmzRng.for_oracle(1605); var t_vm := ScenarioVm.new(); t_vm.configure(trouble.content.scenario); t_vm.start_program("xap:1605", ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(t.state.combat.battle_id).set_combatant(t.source.id)); var t_result := t_vm.run(RealmzRuntimeApi.new(trouble.content, t.state, t_rng, ScenarioActionState.new(), RealmzRules.new())); var t1: CharacterState = t.hero1; var t2: CharacterState = t.hero2; var t_los: CharacterState = t.hero_los; var t_range: CharacterState = t.hero_range; var t_ally: MonsterState = t.ally; var t_resolutions := t_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal([t_result.state, t1.current_health < 30, t2.current_health < 30, t_los.current_health, t_range.current_health, t_ally.current_health, t_resolutions.map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), _event_has(t_result.events, &"combat_fumble_skipped"), _event_has(t_result.events, &"action_point_kept"), t_rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, true, true, 30, 30, 20, [t1.id, t2.id], true, true, 6], "Trouble packaged xap:1605 resolves Spell 1108 in deterministic order, applies range and LOS, uses the active actor for opcode 122, continues, and retains its exact RNG position")
+	var mithril := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-mithril-vault.realmz2"); var m := _package_macro_battle(mithril.content, 14); var m_state: GameState = m.state; var m1: CharacterState = m.hero1; var m2: CharacterState = m.hero2; var ma1: MonsterState = m.ally; var podling: MonsterDefinition = m.monster_def; m1.conditions.set_value(ConditionRules.MAGIC_AURA, 5); m2.conditions.set_value(ConditionRules.MAGIC_AURA, 5); ma1.conditions.set_value(ConditionRules.MAGIC_AURA, 5); var ma2 := MonsterState.new("macro.ally2", podling.id, "Ally Two", 20, 20, 1, 1, 0, 0, 0, true); ma2.conditions.set_value(ConditionRules.MAGIC_AURA, 5); m_state.combat.roster.add_monster(ma2); m_state.combat.battlefield.actors.place_monster(ma2.id, Vector2i(52, 48), podling.size); var ma_los := MonsterState.new("macro.ally_los", podling.id, "Ally LOS", 20, 20, 1, 1, 0, 0, 0, true); ma_los.conditions.set_value(ConditionRules.MAGIC_AURA, 5); m_state.combat.roster.add_monster(ma_los); m_state.combat.battlefield.actors.place_monster(ma_los.id, Vector2i(50, 46), podling.size); var ma_range := MonsterState.new("macro.ally_range", podling.id, "Ally Range", 20, 20, 1, 1, 0, 0, 0, true); ma_range.conditions.set_value(ConditionRules.MAGIC_AURA, 5); m_state.combat.roster.add_monster(ma_range); m_state.combat.battlefield.actors.place_monster(ma_range.id, Vector2i(35, 36), podling.size); var m_rng := RealmzRng.for_oracle(9); var m_vm := ScenarioVm.new(); m_vm.configure(mithril.content.scenario); m_vm.start_program("xap:9", ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(m.state.combat.battle_id).set_combatant(m.source.id)); var m_result := m_vm.run(RealmzRuntimeApi.new(mithril.content, m.state, m_rng, ScenarioActionState.new(), RealmzRules.new()))
+	assert_equal([m_result.state, ma1.conditions.value(ConditionRules.MAGIC_AURA), ma2.conditions.value(ConditionRules.MAGIC_AURA), m1.conditions.value(ConditionRules.MAGIC_AURA), m2.conditions.value(ConditionRules.MAGIC_AURA), ma_los.conditions.value(ConditionRules.MAGIC_AURA), ma_range.conditions.value(ConditionRules.MAGIC_AURA), m_rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, 0, 0, 5, 5, 0, 5, 6], "Mithril packaged xap:9 resolves Spell 1304 against in-range allies, correctly ignores LOS for its negative range, skips heroes and out-of-range allies, and retains exact RNG position")
+	var y := _package_macro_battle(mithril.content, 136); var y_rng := RealmzRng.for_oracle(393); var y_vm := ScenarioVm.new(); y_vm.configure(mithril.content.scenario); y_vm.start_program("xap:393", ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(y.state.combat.battle_id).set_combatant(y.source.id)); var y_api := RealmzRuntimeApi.new(mithril.content, y.state, y_rng, ScenarioActionState.new(), RealmzRules.new()); var y_waiting := y_vm.run(y_api); var y_before := JSON.stringify(y.state.to_data()); var y_failed := y_vm.resume(InteractionResponse.acknowledge(y_waiting.interaction), y_api)
+	assert_equal([y_waiting.state, y_waiting.interaction.kind, y_failed.state, y_failed.error_code, JSON.stringify(y.state.to_data()) == y_before, y_rng.snapshot().draw_count], [ScenarioVmResult.State.WAITING, InteractionRequest.ACKNOWLEDGE, ScenarioVmResult.State.FAILED, &"unsupported_macro_single_target", true, 0], "Mithril packaged xap:393 crosses its acknowledgement then rejects the unsafe single-target macro without state or RNG mutation")
+	var g := _package_macro_battle(mithril.content, 92); var g_rng := RealmzRng.for_oracle(337); var g_vm := ScenarioVm.new(); g_vm.configure(mithril.content.scenario); g_vm.start_program("xap:337", ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(g.state.combat.battle_id).set_combatant(g.source.id)); var g_api := RealmzRuntimeApi.new(mithril.content, g.state, g_rng, ScenarioActionState.new(), RealmzRules.new()); var g_waiting := g_vm.run(g_api); var g_before := JSON.stringify(g.state.to_data()); var g_failed := g_vm.resume(InteractionResponse.acknowledge(g_waiting.interaction), g_api)
+	assert_equal([g_waiting.state, g_waiting.interaction.kind, g_failed.state, g_failed.error_code, JSON.stringify(g.state.to_data()) == g_before, g_rng.snapshot().draw_count], [ScenarioVmResult.State.WAITING, InteractionRequest.ACKNOWLEDGE, ScenarioVmResult.State.FAILED, &"unsupported_macro_ray", true, 0], "Mithril packaged xap:337 crosses its acknowledgement then rejects the unsafe ray macro without state or RNG mutation")
+func _package_macro_battle(content: RealmzContent, monster_classic_id: int) -> Dictionary:
+	var map := content.world.map_by_id(content.start_map_id); var terrain_set := content.world.battle_terrain_set_for_map(map, null); if terrain_set == null: terrain_set = content.world.battle_terrain_sets()[0]
+	var blocking_tiles := range(0, 401).filter(func(tile_id: int) -> bool: return terrain_set.tile_by_id(tile_id) != null and terrain_set.tile_by_id(tile_id).blocks_los); var blocking_tile_id: int = blocking_tiles[0] if not blocking_tiles.is_empty() else -1; var tiles: Array[int] = []; tiles.resize(BattlefieldGrid.CELL_COUNT); tiles.fill(terrain_set.base_tile); var field := BattlefieldState.new(content.start_map_id, tiles); var hero1 := CharacterState.new("macro.hero1", "Hero One", 30, 30); hero1.spell_points = 50; var hero2 := CharacterState.new("macro.hero2", "Hero Two", 30, 30); hero2.spell_points = 50; var hero_los := CharacterState.new("macro.hero_los", "Hero LOS", 30, 30); var hero_range := CharacterState.new("macro.hero_range", "Hero Range", 30, 30); field.actors.place_character(hero1.id, Vector2i(48, 50)); field.actors.place_character(hero2.id, Vector2i(46, 50)); field.actors.place_character(hero_los.id, Vector2i(50, 45)); field.actors.place_character(hero_range.id, Vector2i(35, 35))
+	if blocking_tile_id >= 0: field.terrain.set_tile(Vector2i(50, 48), blocking_tile_id)
+	var monster_def := content.combat.monster_by_classic_id(monster_classic_id); var source := MonsterState.new("macro.source", monster_def.id, monster_def.name, 20, 20, 1, 1, 0, 0, 0, true); source.current_health = 0; field.actors.place_monster(source.id, Vector2i(50, 50), monster_def.size); var ally := MonsterState.new("macro.ally", monster_def.id, "Ally", 20, 20, 1, 1, 0, 0, 0, true); field.actors.place_monster(ally.id, Vector2i(52, 50), monster_def.size); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [hero1, hero2, hero_los, hero_range]), RealmzClock.new()); state.combat = CombatState.new("battle.macro", [source, ally], -1, field); state.combat.set_turn_order([hero1.id, hero2.id, source.id, ally.id]); return {"state": state, "source": source, "ally": ally, "hero1": hero1, "hero2": hero2, "hero_los": hero_los, "hero_range": hero_range, "monster_def": monster_def}
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
 	var races := content.characters.race_definitions()
 	var castes := content.characters.caste_definitions()
@@ -796,8 +933,6 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	else:
 		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "fixture reaches the Start Game interaction")
 		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "fixture completes its Start Game interaction")
-
-
 func _vm_combat_auto_session(content: RealmzContent, seed: int) -> GameSession:
 	var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty(): return null
@@ -812,8 +947,6 @@ func _vm_combat_auto_session(content: RealmzContent, seed: int) -> GameSession:
 	if session.view().party_members.size() != 6 or session.view().combat_view == null:
 		return null
 	return session
-
-
 func _assert_vm_combat_auto_round_trip(content: RealmzContent, session: GameSession, character_id: String, phase: String) -> void:
 	var enabled := session.submit_intent(CombatIntents.set_auto(character_id, true))
 	assert_equal([enabled.state, enabled.error_code, enabled.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, &"", InteractionRequest.COMBAT], "the %s sixth member enables persistent Auto through VM combat" % phase)
@@ -830,8 +963,6 @@ func _assert_vm_combat_auto_round_trip(content: RealmzContent, session: GameSess
 	var disabled_id := restored.view().combat_view.active_actor_id if phase == "active" else character_id
 	var disabled := restored.submit_intent(CombatIntents.set_auto(disabled_id, false))
 	assert_equal([disabled.state, disabled.error_code, disabled.interaction.kind, restored.view().combat_view.auto_character_ids.has(disabled_id)], [SessionStep.State.WAITING_FOR_INTERACTION, &"", InteractionRequest.COMBAT, false], "restored %s VM combat disables Auto at the next activation boundary" % phase)
-
-
 func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:
 	var envelope := session.snapshot()
 	envelope.game_state.party.map_id = map_id
@@ -839,15 +970,190 @@ func _restore_fixture_position(session: GameSession, content: RealmzContent, map
 	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "fixture position changes through validated restore")
 
 
+func _test_repaired_branch_and_opcode_variants(content: RealmzContent) -> void:
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("variant.hero", "Variant Hero", 10, 10)]), RealmzClock.new())
+	state.difficulty = 1
+	var rng := RealmzRng.for_oracle(42); var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
+	var op84 := api.execute_classic(ClassicActionDefinition.new(0, 84, 84, 840, false, []), "op84")
+	var op98 := api.execute_classic(ClassicActionDefinition.new(0, 98, 98, 980, false, []), "op98")
+	assert_true(op84.state == ScenarioRuntimeOperationResult.State.COMPLETED and op84.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("opcode") == 84 and e.payload.get("operandId") == 840), "opcode 84 emits control marker without mutating simulation")
+	assert_true(op98.state == ScenarioRuntimeOperationResult.State.COMPLETED and op98.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("opcode") == 98 and e.payload.get("operandId") == 980), "opcode 98 emits control marker without mutating simulation")
+	var op42_gosub := api.execute_classic(ClassicActionDefinition.new(0, -42, 42, 0, true, [100, 1, 0, 55, 0]), "op42.gosub")
+	var op42_keep := api.execute_classic(ClassicActionDefinition.new(0, 42, 42, 0, false, [100, 2, 0, 0, 0]), "op42.keep")
+	var op42_erase := api.execute_classic(ClassicActionDefinition.new(0, 42, 42, 0, false, [100, -2, 0, 0, 0]), "op42.erase", ScenarioExecutionContext.trigger(&"action", "ap.erase_op42"))
+	assert_true(op42_gosub.directive.kind == ScenarioVmDirective.BRANCH_XAP and op42_gosub.directive.target_id == 55 and op42_gosub.directive.gosub == true and op42_keep.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and _event_has(op42_keep.events, &"action_point_kept") and op42_erase.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and state.world.triggers.trigger_is_disabled("ap.erase_op42"), "opcode 42 preserves signed GOSUB, keep-codes, and erase-trigger modes")
+	state.scenario_progress.set_quest_value(3, 5); state.party_in_boat = true
+	var op77_simple := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [3, 5, 1, 0, 10]), "op77.simple"); var op77_complex := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [3, 5, 2, 0, 20]), "op77.complex")
+	var op86_simple := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 1, 11, 0]), "op86.simple"); var op86_complex := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 2, 21, 0]), "op86.complex")
+	assert_true(op77_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op77_simple.directive.encounter_kind == &"simple" and op77_simple.directive.target_id == 10 and op77_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op77_complex.directive.encounter_kind == &"complex" and op77_complex.directive.target_id == 20, "opcode 77 branches to Simple and Complex encounters")
+	assert_true(op86_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op86_simple.directive.encounter_kind == &"simple" and op86_simple.directive.target_id == 11 and op86_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op86_complex.directive.encounter_kind == &"complex" and op86_complex.directive.target_id == 21, "opcode 86 branches to Simple and Complex encounters")
+	var op76_simple := api.execute_classic(ClassicActionDefinition.new(0, 76, 76, 0, false, [4, 1, 2, 1, 12]), "op76.simple"); var op76_complex := api.execute_classic(ClassicActionDefinition.new(0, 76, 76, 0, false, [4, 1, 3, 1, 22]), "op76.complex")
+	assert_true(op76_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op76_simple.directive.encounter_kind == &"simple" and op76_simple.directive.target_id == 12 and op76_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op76_complex.directive.encounter_kind == &"complex" and op76_complex.directive.target_id == 22, "opcode 76 auto-branches to Simple and Complex encounters")
+	var item_def := content.items.item_by_classic_id(1)
+	if item_def != null:
+		state.party.characters()[0].set_inventory([ItemInstance.new("item.test", item_def.id, 1)])
+		var op21_simple := api.execute_classic(ClassicActionDefinition.new(0, 21, 21, 0, false, [1, 1, 0, 13, 0]), "op21.simple"); var op21_complex := api.execute_classic(ClassicActionDefinition.new(0, 21, 21, 0, false, [1, 2, 0, 23, 0]), "op21.complex")
+		assert_true(op21_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op21_simple.directive.encounter_kind == &"simple" and op21_simple.directive.target_id == 13 and op21_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op21_complex.directive.encounter_kind == &"complex" and op21_complex.directive.target_id == 23, "opcode 21 branches to Simple and Complex encounters")
+	var op87_simple := api.execute_classic(ClassicActionDefinition.new(0, 87, 87, 0, false, [999, 1, 0, 0, 15]), "op87.simple"); var op87_complex := api.execute_classic(ClassicActionDefinition.new(0, 87, 87, 0, false, [999, 2, 0, 0, 25]), "op87.complex")
+	assert_true(op87_simple.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op87_simple.directive.encounter_kind == &"simple" and op87_simple.directive.target_id == 15 and op87_complex.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op87_complex.directive.encounter_kind == &"complex" and op87_complex.directive.target_id == 25, "opcode 87 branches to Simple and Complex encounters")
+	state.party.conditions.set_value(0, 10)
+	var op40_m0 := api.execute_classic(ClassicActionDefinition.new(0, 40, 40, 0, false, [1, 0, 0, 0, 0]), "op40.m0")
+	var op40_m0_inactive := api.execute_classic(ClassicActionDefinition.new(0, 40, 40, 0, false, [2, 0, 0, 1, 0]), "op40.m0.inactive")
+	var op40_m1 := api.execute_classic(ClassicActionDefinition.new(0, -40, 40, 0, true, [1, 1, 41, 0, 0]), "op40.m1")
+	var op40_m2 := api.execute_classic(ClassicActionDefinition.new(0, -40, 40, 0, true, [1, 2, 42, 0, 0]), "op40.m2")
+	var op40_m3 := api.execute_classic(ClassicActionDefinition.new(0, -40, 40, 0, true, [1, 3, 43, 0, 0]), "op40.m3")
+	assert_true(op40_m0.state == ScenarioRuntimeOperationResult.State.COMPLETED and op40_m0.value == true and op40_m0.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and op40_m0.events.is_empty(), "opcode 40 mode 0 finishes timeline without Keep Codes")
+	assert_true(op40_m0_inactive.state == ScenarioRuntimeOperationResult.State.COMPLETED and op40_m0_inactive.value == true and op40_m0_inactive.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and op40_m0_inactive.events.is_empty(), "opcode 40 mode 0 with required-state 2 and inactive condition finishes timeline with true result")
+	assert_true(op40_m1.directive.kind == ScenarioVmDirective.BRANCH_XAP and op40_m1.directive.target_id == 41 and op40_m1.directive.gosub == true, "opcode 40 mode 1 branches to XAP with signed GOSUB")
+	assert_true(op40_m2.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op40_m2.directive.encounter_kind == &"simple" and op40_m2.directive.target_id == 42 and op40_m2.directive.gosub == true, "opcode 40 mode 2 branches to Simple encounter with signed GOSUB")
+	assert_true(op40_m3.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op40_m3.directive.encounter_kind == &"complex" and op40_m3.directive.target_id == 43 and op40_m3.directive.gosub == true, "opcode 40 mode 3 branches to Complex encounter with signed GOSUB")
+	var op40_program := ScenarioProgramDefinition.new("prog.op40_m0", &"trigger", "op40", [
+		ClassicActionDefinition.new(0, 40, 40, 0, false, [1, 0, 0, 0, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 401, false, []),
+	])
+	var vm_op40 := ScenarioVm.new(); vm_op40.configure(ScenarioDefinition.new([op40_program], []))
+	vm_op40.start_program(op40_program.id, ScenarioExecutionContext.trigger(&"action", "ap.op40_m0"))
+	var res_op40 := vm_op40.run(api)
+	assert_true(res_op40.state == ScenarioVmResult.State.COMPLETED and not res_op40.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 401) and not _event_has(res_op40.events, &"action_point_kept") and vm_op40.snapshot().halted, "opcode 40 mode 0 finishes timeline without executing following slot or emitting action_point_kept")
+	var slot7_program := ScenarioProgramDefinition.new("prog.dropout_slot7", &"trigger", "slot7", [
+		ClassicActionDefinition.new(0, 58, 58, 0, false, [1, 1, -1, 0, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 991, false, []),
+		ClassicActionDefinition.new(2, 84, 84, 992, false, []),
+		ClassicActionDefinition.new(3, 84, 84, 993, false, []),
+		ClassicActionDefinition.new(4, 84, 84, 994, false, []),
+		ClassicActionDefinition.new(5, 84, 84, 995, false, []),
+		ClassicActionDefinition.new(6, 84, 84, 996, false, []),
+		ClassicActionDefinition.new(7, 84, 84, 777, false, []),
+	])
+	var vm_slot7 := ScenarioVm.new(); vm_slot7.configure(ScenarioDefinition.new([slot7_program], []))
+	vm_slot7.start_program(slot7_program.id, ScenarioExecutionContext.trigger(&"action", "ap.dropout_slot7"))
+	var res_slot7 := vm_slot7.run(api)
+	assert_true(res_slot7.state == ScenarioVmResult.State.COMPLETED and res_slot7.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 777) and not res_slot7.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 991), "destination mode -1 executes slot 7 and skips intermediate slots")
+	var op33_program := ScenarioProgramDefinition.new("prog.op33_unpaid", &"trigger", "op33", [
+		ClassicActionDefinition.new(0, 33, 33, 0, false, [50000, -1, 0, 0, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 991, false, []),
+		ClassicActionDefinition.new(2, 84, 84, 992, false, []),
+		ClassicActionDefinition.new(3, 84, 84, 993, false, []),
+		ClassicActionDefinition.new(4, 84, 84, 994, false, []),
+		ClassicActionDefinition.new(5, 84, 84, 995, false, []),
+		ClassicActionDefinition.new(6, 84, 84, 996, false, []),
+		ClassicActionDefinition.new(7, 84, 84, 337, false, []),
+	])
+	var vm_op33 := ScenarioVm.new(); vm_op33.configure(ScenarioDefinition.new([op33_program], []))
+	vm_op33.start_program(op33_program.id, ScenarioExecutionContext.trigger(&"action", "ap.op33_unpaid"))
+	var res_op33 := vm_op33.run(api)
+	assert_true(res_op33.state == ScenarioVmResult.State.COMPLETED and res_op33.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 337) and not res_op33.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 991), "opcode 33 unpaid test mode -1 executes slot 7 and skips intermediate slots")
+	var caller_prog := ScenarioProgramDefinition.new("prog.caller", &"trigger", "caller", [
+		ClassicActionDefinition.new(0, -42, 42, 0, true, [100, 1, 0, 50, 0]),
+		ClassicActionDefinition.new(1, 84, 84, 888, false, []),
+	])
+	var callee_prog := ScenarioProgramDefinition.new("xap:50", &"extra-action-point", "50", [
+		ClassicActionDefinition.new(0, 58, 58, 0, false, [1, 1, 3, 0, 0]),
+	])
+	var vm_nested := ScenarioVm.new(); vm_nested.configure(ScenarioDefinition.new([caller_prog, callee_prog], []))
+	vm_nested.start_program(caller_prog.id, ScenarioExecutionContext.trigger(&"action", "ap.nested_keep"))
+	var res_nested := vm_nested.run(api)
+	assert_true(res_nested.state == ScenarioVmResult.State.COMPLETED and _event_has(res_nested.events, &"action_point_kept") and not res_nested.events.any(func(e: DomainEvent) -> bool: return e.kind == &"classic_control_marker" and e.payload.get("operandId") == 888) and vm_nested.snapshot().halted, "destination mode 3 Keep Codes finishes the entire timeline from a nested GOSUB call without returning to the caller frame")
+
+
+func _test_state_and_progression_branch_opcodes(content: RealmzContent) -> void:
+	var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
+	var hero1 := CharacterState.new("c.b1", "Hero One", 20, 20); hero1.race_id = races[0].id; hero1.caste_id = castes[0].id; hero1.gender = 1; hero1.level = 5
+	var hero2 := CharacterState.new("c.b2", "Hero Two", 20, 20); hero2.race_id = races[min(1, races.size() - 1)].id; hero2.caste_id = castes[min(1, castes.size() - 1)].id; hero2.gender = 2; hero2.level = 7
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [hero1, hero2]), RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.for_oracle(1), ScenarioActionState.new())
+	var op30_short := api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [1, 0, 0, 1]), "op30.short")
+	assert_true(op30_short.state == ScenarioRuntimeOperationResult.State.FAILED and op30_short.error_code == &"missing_extra_code", "opcode 30 rejects row with fewer than five extra codes")
+	state.scenario_progress.set_quest_value(10, 0)
+	var op46_u_branch := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 0, 0, 375, 0]), "op46.u.b")
+	state.scenario_progress.set_quest_value(10, 1)
+	var op46_u_fall := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 0, 0, 375, 0]), "op46.u.f")
+	var op46_s_branch := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 1, 0, 375, 0]), "op46.s.b")
+	var op46_force := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 0, 375, 0]), "op46.force")
+	state.scenario_progress.set_quest_value(4, 1)
+	var op46_gosub := api.execute_classic(ClassicActionDefinition.new(0, -46, 46, 0, true, [4, 1, 0, 206, 0]), "op46.gosub")
+	var op46_drop := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, -1, 0, 0]), "op46.drop")
+	var op46_keep := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 3, 0, 0]), "op46.keep")
+	var simp_ctx := ScenarioExecutionContext.encounter(&"simple", 5, "", -1, &"choice", 0)
+	var comp_ctx := ScenarioExecutionContext.encounter(&"complex", 6, "", -1, &"choice", 0)
+	var op46_simp := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 1, 2, 3]), "op46.simp", simp_ctx)
+	var op46_comp := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 2, 1, 4]), "op46.comp", comp_ctx)
+	var op46_wrath := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [274, 274, 304, 30003, 420]), "op46.wrath489")
+	var op46_bad_mode := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2, 9, 0, 0]), "op46.bad_mode")
+	var op46_short := api.execute_classic(ClassicActionDefinition.new(0, 46, 46, 0, false, [10, 2]), "op46.short")
+	assert_true(op46_u_branch.directive.kind == ScenarioVmDirective.BRANCH_XAP and op46_u_branch.directive.target_id == 375 and op46_u_fall.directive == null and op46_u_fall.value == false and op46_s_branch.directive.kind == ScenarioVmDirective.BRANCH_XAP and op46_force.directive.kind == ScenarioVmDirective.BRANCH_XAP and op46_gosub.directive.gosub == true and op46_gosub.directive.target_id == 206, "opcode 46 evaluates condition selectors 0, 1, 2 and signed GOSUB")
+	assert_true(op46_drop.directive.kind == ScenarioVmDirective.DROPOUT and op46_keep.directive.kind == ScenarioVmDirective.FINISH_TIMELINE and _event_has(op46_keep.events, &"action_point_kept") and op46_simp.directive.kind == ScenarioVmDirective.BRANCH_PROGRAM and op46_simp.directive.program_id == "simple:5:result:2" and op46_comp.directive.kind == ScenarioVmDirective.BRANCH_PROGRAM and op46_comp.directive.program_id == "complex:6:result:1", "opcode 46 handles dropout, keep-codes, and simple/complex encounter result branch modes")
+	assert_true(op46_wrath.state == ScenarioRuntimeOperationResult.State.COMPLETED and op46_wrath.value == false and op46_bad_mode.error_code == &"unsupported_branch_mode" and op46_short.error_code == &"missing_extra_code", "opcode 46 safely completes out-of-bounds rows and types invalid modes/lengths")
+	state.scenario_progress.set_quest_value(16, 1); state.scenario_progress.set_quest_value(17, 1)
+	var op72_all_set := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 17, 0, 0, 899]), "op72.all")
+	state.scenario_progress.set_quest_value(17, 0)
+	var op72_part_set := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 17, 0, 0, 899]), "op72.part")
+	var op72_inverted := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [20, 10, 0, 0, 899]), "op72.inv")
+	var op72_simp := api.execute_classic(ClassicActionDefinition.new(0, -72, 72, 0, true, [16, 16, 0, 1, 15]), "op72.simp")
+	var op72_comp := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 16, 0, 2, 25]), "op72.comp")
+	var op72_bad_rng := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [-1, 10, 0, 0, 899]), "op72.bad")
+	var op72_short := api.execute_classic(ClassicActionDefinition.new(0, 72, 72, 0, false, [16, 17]), "op72.short")
+	assert_true(op72_all_set.directive.kind == ScenarioVmDirective.BRANCH_XAP and op72_all_set.directive.target_id == 899 and op72_part_set.directive == null and op72_part_set.value == false and op72_inverted.directive.kind == ScenarioVmDirective.BRANCH_XAP and op72_simp.directive.kind == ScenarioVmDirective.ENTER_ENCOUNTER and op72_simp.directive.encounter_kind == &"simple" and op72_simp.directive.gosub == true and op72_comp.directive.encounter_kind == &"complex", "opcode 72 evaluates all-set, fallthrough, inverted-range vacuous truth, and destination modes")
+	assert_true(op72_bad_rng.error_code == &"invalid_quest_range" and op72_short.error_code == &"missing_extra_code", "opcode 72 types invalid quest range and short extra code")
+	state.scenario_progress.set_quest_value(8, 5)
+	var op77_true := api.execute_classic(ClassicActionDefinition.new(0, -77, 77, 0, true, [8, 3, 0, 0, 383]), "op77.t")
+	var op77_dual_f := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 10, 0, 100, 200]), "op77.df")
+	var op77_dual_t := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 0, 100, 200]), "op77.dt")
+	var op77_zero_t := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 0, 100, 0]), "op77.zt")
+	var op77_zero_f := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 10, 0, 0, 200]), "op77.zf")
+	var op77_simp := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 1, 0, 50]), "op77.simp")
+	var op77_comp := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5, 2, 0, 60]), "op77.comp")
+	var op77_bad_q := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [100, 5, 0, 0, 1]), "op77.bad")
+	var op77_short := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [8, 5]), "op77.short")
+	assert_true(op77_true.directive.kind == ScenarioVmDirective.BRANCH_XAP and op77_true.directive.target_id == 383 and op77_true.directive.gosub == true and op77_dual_f.directive.target_id == 100 and op77_dual_t.directive.target_id == 200 and op77_zero_t.directive == null and op77_zero_t.value == true and op77_zero_f.directive == null and op77_zero_f.value == false and op77_simp.directive.target_id == 50 and op77_comp.directive.target_id == 60, "opcode 77 evaluates threshold, signed GOSUB, dual targets, encounter targets, and zero-target fallthrough")
+	assert_true(op77_bad_q.error_code == &"invalid_quest" and op77_short.error_code == &"missing_extra_code", "opcode 77 types invalid quest index and short extra code")
+	state.scenario_progress.set_selected_character_ids([hero1.id])
+	var c1_classic: int = castes[0].classic_id; var c2_classic: int = castes[min(1, castes.size() - 1)].classic_id
+	var op86_caste_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [0, c1_classic, 0, 796, 0]), "op86.c.t")
+	var op86_caste_sel_t := api.execute_classic(ClassicActionDefinition.new(0, -86, 86, 0, true, [0, -c1_classic, 0, 796, 0]), "op86.c.st")
+	var op86_caste_sel_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [0, -c2_classic, 0, 796, 0]), "op86.c.sf")
+	var op86_race_war := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [1, 12, 0, 2816, 0]), "op86.war2815")
+	var op86_gen_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [2, 1, 0, 10, 20]), "op86.g.t")
+	var op86_gen_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [2, 99, 0, 10, 20]), "op86.g.f")
+	state.party_in_boat = true; var op86_boat := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 1998, 0]), "op86.boat")
+	state.party_camping = true; var op86_camp := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [4, 0, 0, 1999, 0]), "op86.camp")
+	var c_class: int = castes[0].caste_class
+	var op86_cclass_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [5, c_class, 0, 50, 0]), "op86.cc.t")
+	var op86_cclass_sel_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [5, -999, 0, 50, 0]), "op86.cc.sf")
+	var desc_race: RaceDefinition = null; var desc_bit := 1; var absent_bit := 1
+	for r: RaceDefinition in races:
+		if r.descriptor_flags != 0:
+			desc_race = r
+			for b: int in range(1, 33):
+				if (r.descriptor_flags & (1 << (b - 1))) != 0 and desc_bit == 1:
+					desc_bit = b
+				elif (r.descriptor_flags & (1 << (b - 1))) == 0 and absent_bit == 1:
+					absent_bit = b
+			break
+	if desc_race != null:
+		hero1.race_id = desc_race.id
+	var op86_desc_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [6, desc_bit, 0, 60, 0]), "op86.d.t")
+	var op86_desc_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [6, absent_bit, 0, 60, 0]), "op86.d.f")
+	var op86_tot_lvl_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [7, 10, 0, 70, 0]), "op86.tl.t")
+	var op86_tot_lvl_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [7, 15, 0, 70, 0]), "op86.tl.f")
+	var op86_sel_lvl_t := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [8, 4, 0, 80, 0]), "op86.sl.t")
+	var op86_sel_lvl_f := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [8, 6, 0, 80, 0]), "op86.sl.f")
+	var op86_simp := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 1, 11, 0]), "op86.s")
+	var op86_comp := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 2, 21, 0]), "op86.c")
+	var op86_bad_kind := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [9, 0, 0, 0, 0]), "op86.bad_kind")
+	var op86_bad_desc := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [6, 33, 0, 0, 0]), "op86.bad_desc")
+	var op86_short := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [0, 1]), "op86.short")
+	assert_true(op86_caste_t.directive.target_id == 796 and op86_caste_sel_t.directive.target_id == 796 and op86_caste_sel_t.directive.gosub == true and op86_caste_sel_f.directive == null and op86_race_war.directive == null and op86_gen_t.directive.target_id == 10 and op86_gen_f.directive.target_id == 20, "opcode 86 matches caste, race, gender, negative selected expectations, and target routing")
+	assert_true(op86_boat.directive.target_id == 1998 and op86_camp.directive.target_id == 1999 and op86_cclass_t.directive.target_id == 50 and op86_cclass_sel_f.directive == null and (desc_race == null or (op86_desc_t.directive.target_id == 60 and op86_desc_f.directive == null)), "opcode 86 evaluates boat, camp, caste class, and race descriptor bits")
+	assert_true(op86_tot_lvl_t.directive.target_id == 70 and op86_tot_lvl_f.directive == null and op86_sel_lvl_t.directive.target_id == 80 and op86_sel_lvl_f.directive == null and op86_simp.directive.target_id == 11 and op86_comp.directive.target_id == 21, "opcode 86 evaluates party/selected level sums and simple/complex encounter destinations")
+	assert_true(op86_bad_kind.error_code == &"invalid_misc_branch" and op86_bad_desc.error_code == &"invalid_race_descriptor" and op86_short.error_code == &"missing_extra_code", "opcode 86 types invalid test kinds, out-of-range descriptors, and short rows")
+
+
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("test", "Test", 1, 1)])
 	return RealmzRuntimeApi.new(content, GameState.new(party, RealmzClock.new()), RealmzRng.new(1), action_state)
-
-
 func _action(id: String, return_type: StringName, instructions: Array[SafeInstructionDefinition], capabilities: Array[String] = []) -> ScenarioActionDefinition:
 	return ScenarioActionDefinition.new(id, id, "test", &"public", &"test", 1, 1, 1, [], return_type, [&"action"], capabilities, &"safe", SafeProgramDefinition.new(instructions))
-
-
 func _literal(value: Variant) -> SafeExpressionDefinition:
 	var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.LITERAL)
 	expression.value = value

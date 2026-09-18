@@ -126,7 +126,7 @@ func vault_error() -> String:
 
 
 func refresh_vault_views(active_content: RealmzContent) -> void:
-	_shell.navigator.set_vault_revisions(_vault.revisions(active_content, _library_content))
+	_shell.navigator.set_vault_revisions(_vault.revisions(active_content, _library_content), _vault.unavailable_notice())
 
 
 func archive_character(active_content: RealmzContent, character_id: String) -> void:

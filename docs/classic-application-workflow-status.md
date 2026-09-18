@@ -13,17 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM contextual encounters and Wrath owner-bound chest outcomes** (`ap-contextual-and-owner-bound-encounters`)
+**Assault on Giant Mountain main-route certification** (`aogm-main-route-certification`)
 
-Batch complete: AOGM's zero-slot contextual RNG defect is repaired, with entry, wrong-set repetition and exact reward/region-disable/default reentry verified. Wrath AP 44 has equal detection/disarm, armed-trap failure, unarmed lock failure and eight-item lock-reward repeats. Detected-trap and trap-warning restores reproduce exact final game/RNG state; pending Treasure reproduces every suffix state. Done alone sets chance zero and prevents duplicate rewards. The recipes retain 49 passes and two historical failures across all thirteen bundled scenarios under their recorded package/library identities, without certification upgrades. Clean-reference Tier 2 passes 91 focused assertions. The full aggregate passes 4212 assertions across 28 suites plus package, media, architecture, export, schema and inventory gates in an isolated copy with hash-matched product content and committed project settings. Development autoloads remain untouched in the working checkout. The forced five-frame startup smoke retains its known one-object teardown warning; strict tests and the closed gameplay fixture have no teardown errors. Protocol build and 37 tests pass, with two opt-in engine tests skipped. Wrath preparation/source/replay work took approximately 29 minutes before batch gates; full lock replays took 19.22/18.86 seconds and the saved suffix 9.51 seconds, with no new tooling implementation. Next coverage favors the retained pending-tumbler save boundary, then War pooled-payment edges using existing baselines. Native performance, complete combat replay, full campaign certification and broader bridge capabilities remain separate; reported failures take priority.
+This five-workflow batch begins ordinary start-to-ending certification of Assault on Giant Mountain through the current pinned package. It reuses existing player checkpoints and ordinary controls, records save/resume at meaningful progression boundaries, and repairs only defects reproduced on the route. The separate Providence vNext checkout already owns the fresh-package blocker: current import restores XAP 165 and 169 but still rejects Extra Action Point 147's target 30002. Rebuilt will not duplicate that compiler work or treat the uncommitted vNext tree as release evidence. Focused checks protect each demonstrated repair; the aggregate gate runs once at batch closeout.
 
 AP batches use failure-first priorities: known failures, untested high-risk behavior, meaningful variants, and broader representatives. Verification mode records existing functional behavior without claiming full campaign certification; implementation, verification, and certification remain distinct modes.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.scenario.choose-response` | verification | known-failure | live-route |  |
-| `classic.system.save-game` | verification | meaningful-variant | live-route |  |
-| `classic.scenario.trigger-action-point` | verification | known-failure | runtime-integration |  |
+| `classic.startup.begin-adventure` | certification | broader-representative | aogm-ordinary |  |
+| `classic.exploration.travel` | certification | broader-representative | aogm-ordinary |  |
+| `classic.scenario.complex-interaction` | certification | untested-high-risk | aogm-ordinary |  |
+| `classic.combat.resolve-outcome` | certification | known-failure | aogm-ordinary |  |
+| `classic.system.save-game` | certification | broader-representative | aogm-ordinary |  |
 
 ### Batch count delta
 
@@ -136,7 +138,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | --- | ---: | ---: |
 | synthetic | 69 | 8 |
 | route-harness | 40 | 2 |
-| aogm-ordinary | 44 | 3 |
+| aogm-ordinary | 45 | 3 |
 | other-ordinary | 12 | 3 |
 | cross-platform | 0 | 0 |
 

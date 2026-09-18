@@ -13,7 +13,11 @@ static func retreat_confirmation(request_id: String) -> InteractionRequest:
 
 
 static func friendly_collision(request_id: String) -> InteractionRequest:
-	return InteractionRequest.yes_no(request_id, "An ally occupies that battlefield position.", "Swap Positions", "Attack Friend")
+	var request := InteractionRequest.indexed_choice(request_id, "An ally occupies that battlefield position.", [{"label": "Swap Positions"}, {"label": "Attack Friend"}])
+	var body := request.body as ChoiceRequestBody
+	body.can_back_out = true
+	body.has_can_back_out = true
+	return request
 
 
 static func character_spell_confirmation(request_id: String, remaining: int) -> InteractionRequest:

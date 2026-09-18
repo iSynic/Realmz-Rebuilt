@@ -95,12 +95,13 @@ func _populate_properties(definition: ItemDefinition, content: RealmzContent) ->
 	if definition.special_2 > 1100:
 		var spell := content.magic.spell_by_classic_id(definition.special_2) if content != null else null
 		properties.append("Stores the spell %s." % (spell.name if spell != null else "Classic spell %d" % definition.special_2))
-	if definition.special_3 < 0:
-		properties.append("%+d to hit Classic monster type %d." % [definition.special_5, absi(definition.special_3)])
-	elif definition.special_3 > 0 and definition.special_3 < 16:
-		properties.append("%+d to %s." % [definition.special_5, _ability_name(definition.special_3)])
-	if definition.special_4 > 0 and definition.special_4 < 16:
-		properties.append("%+d to %s." % [definition.special_5, _ability_name(definition.special_4)])
+	if definition.special_1 != -10:
+		if definition.special_3 < 0:
+			properties.append("%+d to hit Classic monster type %d." % [definition.special_5, absi(definition.special_3)])
+		elif definition.special_3 > 0 and definition.special_3 < 16:
+			properties.append("%+d to %s." % [definition.special_5, _ability_name(definition.special_3)])
+		if definition.special_4 > 0 and definition.special_4 < 16:
+			properties.append("%+d to %s." % [definition.special_5, _ability_name(definition.special_4)])
 
 
 func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) -> void:
@@ -110,32 +111,37 @@ func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) 
 	if not definition.specific_race_id.is_empty():
 		var race := content.characters.race_by_id(definition.specific_race_id) if content != null else null
 		restrictions.append("Usable only by %s." % (race.name if race != null else _display_id(definition.specific_race_id)))
+	var caste_restrictions := InventoryRules.normalize_caste_mask(definition.caste_restrictions)
+	var race_restrictions := InventoryRules.normalize_race_mask(definition.race_restrictions)
+	var caste_class_only := InventoryRules.normalize_caste_mask(definition.caste_class_only)
+	var race_class_only := InventoryRules.normalize_race_mask(definition.race_class_only)
 	if content == null:
-		if definition.caste_restrictions != 0:
+		if caste_restrictions != 0:
 			restrictions.append("Classic class restrictions apply.")
-		if definition.race_restrictions != 0:
+		if race_restrictions != 0:
 			restrictions.append("Classic race restrictions apply.")
-		if definition.caste_class_only != 0:
+		if caste_class_only != 0:
 			restrictions.append("Only selected Classic class groups may use this item.")
-		if definition.race_class_only != 0:
+		if race_class_only != 0:
 			restrictions.append("Only selected Classic race groups may use this item.")
 		return
 	var excluded_castes: Array[String] = []
 	var allowed_castes: Array[String] = []
 	for caste: CasteDefinition in content.characters.caste_definitions():
-		var bit := 1 << (caste.caste_class - 1) if caste.caste_class > 0 else 0
-		if bit != 0 and (definition.caste_restrictions & bit) != 0:
+		var caste_class_index := caste.caste_class - 1
+		var bit := (1 << (15 - caste_class_index)) if caste_class_index >= 0 and caste_class_index <= 6 else 0
+		if bit != 0 and (caste_restrictions & bit) != 0:
 			excluded_castes.append(caste.name)
-		if bit != 0 and (definition.caste_class_only & bit) != 0:
+		if bit != 0 and (caste_class_only & bit) != 0:
 			allowed_castes.append(caste.name)
 	_add_name_restriction("Not usable by", excluded_castes)
 	_add_name_restriction("Usable only by", allowed_castes)
 	var excluded_races: Array[String] = []
 	var allowed_races: Array[String] = []
 	for race: RaceDefinition in content.characters.race_definitions():
-		if (definition.race_restrictions & race.descriptor_flags) != 0:
+		if race_restrictions != 0 and (race_restrictions & race.descriptor_flags) != 0:
 			excluded_races.append(race.name)
-		if definition.race_class_only != 0 and (definition.race_class_only & race.descriptor_flags) == definition.race_class_only:
+		if race_class_only != 0 and (race_class_only & race.descriptor_flags) == race_class_only:
 			allowed_races.append(race.name)
 	_add_name_restriction("Not usable by", excluded_races)
 	_add_name_restriction("Usable only by", allowed_races)

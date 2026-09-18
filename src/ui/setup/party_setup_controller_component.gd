@@ -206,6 +206,9 @@ var view: GameView:
 var vault_revisions: Array[CharacterVaultRevisionView]:
 	get: return _state.vault_revisions
 	set(value): _state.vault_revisions = value
+var vault_notice: String:
+	get: return _state.vault_notice
+	set(value): _state.vault_notice = value
 var media: ClassicMediaCatalog:
 	get: return _state.media
 	set(value): _state.media = value

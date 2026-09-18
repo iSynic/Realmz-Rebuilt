@@ -28,6 +28,7 @@ class RouterMovementHost extends Control:
 
 
 func run() -> void:
+	_test_fixture_controller_release_survives_revision_advance()
 	_test_controller_preferences_round_trip_and_migration()
 	_test_controller_bindings_and_conflicts()
 	_test_controller_owner_edges_hysteresis_and_takeover()
@@ -38,6 +39,22 @@ func run() -> void:
 	await _test_persistent_auto_continuation()
 	await _test_qwerty_draft_commit_cancel_and_layout()
 	await _test_controller_settings_draft_and_embedded_file_dialog()
+
+
+func _test_fixture_controller_release_survives_revision_advance() -> void:
+	var protocol := RuntimeTestingProtocol.new("fixture-session", "fixture-token", "fixture")
+	var dispatched: Array[Dictionary] = []
+	var dispatch := func(command: String, params: Dictionary) -> Dictionary:
+		dispatched.append({"command": command, "params": params.duplicate(true)})
+		return {"revision": 13, "result": {"released": true}, "error": null}
+	var stale_press := protocol.execute(_testing_request("press", 10, {"action": "controller-button", "button": JOY_BUTTON_DPAD_RIGHT, "pressed": true}), 12, dispatch)
+	var stale_release := protocol.execute(_testing_request("release", 10, {"action": "controller-button", "button": float(JOY_BUTTON_DPAD_RIGHT), "pressed": false}), 12, dispatch)
+	var stale_neutral := protocol.execute(_testing_request("neutral", 10, {"action": "controller-axis", "axis": float(JOY_AXIS_LEFT_X), "value": 0.0}), 12, dispatch)
+	assert_equal([stale_press["ok"], stale_press["error"]["code"], stale_release["ok"], stale_neutral["ok"], dispatched.size()], [false, "stale_revision", true, true, 2], "fixture controller releases and exact axis neutral survive gameplay revision advance while presses retain optimistic concurrency")
+
+
+func _testing_request(request_id: String, revision: int, params: Dictionary) -> Dictionary:
+	return {"protocol": RuntimeTestingProtocol.VERSION, "sessionId": "fixture-session", "token": "fixture-token", "requestId": request_id, "expectedRevision": revision, "command": "ui", "params": params}
 
 
 func _test_controller_preferences_round_trip_and_migration() -> void:
@@ -263,7 +280,11 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	assert_equal(shell.controller.selected_top_menu_label(), "Quit", "held entry navigation clamps at the final command instead of wrapping")
 	shell.controller.confirm_top_menu(); assert_equal([quit_count[0], shell.controller.top_menu_is_open()], [1, false], "South dispatches the selected controller menu command exactly once and releases menu ownership"); assert_true(shell.controller.open_top_menu() and shell.controller.move_top_menu(Vector2i.DOWN) and shell.controller.back_top_menu() and shell.controller.back_top_menu(), "East cancels the entry and heading levels independently")
 	var activated: Array[StringName] = []; assert_true(shell.controller.open_interaction_radial([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.confirm_radial(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
-	host.free()
+	var hold_view := GameView.new(1, true, null); hold_view.campaign_id = "controller-hold"; hold_view.campaign_summary = CampaignSummaryView.new(); hold_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 10, 10))]; hold_view.set_action_availability(&"rest", true); hold_view.set_action_availability(&"heal", true)
+	var intents: Array[PlayerIntent] = []; shell.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent)); shell.present(hold_view); await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_true(shell.commands.activate_controller(&"rest") and intents.size() == 1 and intents[0].kind == PlayerIntent.Kind.REST, "confirming Rest through the radial begins its ordinary held-command owner with one immediate pulse"); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "a held radial Rest repeats through the same presentation cadence as its footer button"); shell.controller.release_controller_hold(); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "releasing controller Confirm ends the radial-held command without another pulse")
+	assert_true(shell.commands.activate_controller(&"heal") and intents.size() == 3 and intents[-1].kind == PlayerIntent.Kind.HEAL, "confirming Heal through the radial begins its ordinary held-command owner"); shell.commands.call("_on_timeout"); shell.controller.release_controller_hold(); shell.commands.call("_on_timeout"); assert_equal([intents.size(), intents[-1].kind], [4, PlayerIntent.Kind.HEAL], "held radial Heal repeats only until controller Confirm releases")
+	host.free(); await (Engine.get_main_loop() as SceneTree).process_frame
 
 
 func _test_persistent_auto_continuation() -> void:
@@ -284,6 +305,8 @@ func _test_persistent_auto_continuation() -> void:
 	assert_true(failures.is_empty(), "successful persistent Auto never enters the failure latch")
 	current[0] = _auto_view(40, 6, "hero"); fail_submit[0] = true; coordinator.request(); coordinator.request(); assert_equal([submissions.size(), failures, coordinator.observation()["failedRevision"]], [5, ["Auto activation failed visibly."], 40], "a failed Auto response reports once and suppresses retries for the failed revision")
 	current[0] = _auto_view(41, 6, "hero"); fail_submit[0] = false; coordinator.request(); assert_equal(submissions.size(), 6, "a later committed revision can explicitly re-arm Auto after the failed revision")
+	var completed := _auto_view(42, 7, "hero"); completed.combat_view.outcome = &"victory"; current[0] = completed
+	var terminal_observation: Dictionary = coordinator.observation(); assert_equal([terminal_observation["active"], terminal_observation["outcome"], terminal_observation["actor"], terminal_observation["round"]], [false, "victory", "", -1], "terminal combat observations expose the outcome without misreporting the final actor and round as a pending Auto activation")
 	coordinator.invalidate(); current.clear(); coordinator = null
 	await (Engine.get_main_loop() as SceneTree).process_frame
 

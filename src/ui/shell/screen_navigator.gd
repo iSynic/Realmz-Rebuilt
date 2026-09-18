@@ -175,9 +175,9 @@ func _finish_party_setup_navigation() -> void:
 	screen_changed.emit(_screen_id)
 
 
-func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
-	content_presenter.set_vault_revisions(revisions)
-	setup_controller.set_vault_revisions(revisions)
+func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: String = "") -> void:
+	content_presenter.set_vault_revisions(revisions, notice)
+	setup_controller.set_vault_revisions(revisions, notice)
 	if _screen_id == &"vault":
 		refresh_current_workspace()
 	elif setup_controller.setup_overlay != null and setup_controller.setup_overlay.visible:

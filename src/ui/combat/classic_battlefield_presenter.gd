@@ -16,7 +16,9 @@ var _render_camera_top_left := Vector2i(-1, -1)
 var _render_camera_focus_id: String = ""
 var _render_camera_visible_cells := Vector2i.ZERO
 var _playback_frame: CombatPlaybackFrame
-var _monster_facing_right: Dictionary = {}
+## Castle stores monster lr as -1 (left), 0 (neutral/vertical), or 1 (right).
+## Keep that detached presentation state instead of collapsing -1 and 0 into one bool.
+var _monster_facing_lr: Dictionary = {}
 var last_playback_media_diagnostic: Dictionary = {}
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 
@@ -47,8 +49,7 @@ func present(game_view: GameView) -> void:
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
 	if interaction.playback_changed(_playback_frame, frame):
 		_render_camera_focus_id = ""
-	if frame != null and frame.kind == &"move_start" and not frame.actor_id.is_empty() and frame.from_coordinate.x >= 0 and frame.to_coordinate.x >= 0:
-		_monster_facing_right[frame.actor_id] = frame.to_coordinate.x > frame.from_coordinate.x
+	_update_monster_facing(frame)
 	_playback_frame = frame
 	queue_redraw()
 
@@ -67,6 +68,30 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_textures.set_media_catalog(media)
 	queue_redraw()
+
+
+func monster_media_diagnostics() -> Array[Dictionary]:
+	var diagnostics: Array[Dictionary] = []
+	if _view == null or _view.combat_view == null or _media == null:
+		return diagnostics
+	for monster: MonsterView in _view.combat_view.monsters:
+		var facing_right := _monster_facing_right(monster.id)
+		var requested_icon_id := BattlefieldPresentationGeometry.classic_monster_icon_id(monster.icon_id, facing_right)
+		var resolved_icon_id := requested_icon_id
+		var asset := _media.asset_by_resource(monster.icon_resource_type, requested_icon_id)
+		if asset == null and requested_icon_id != monster.icon_id:
+			resolved_icon_id = monster.icon_id
+			asset = _media.asset_by_resource(monster.icon_resource_type, resolved_icon_id)
+		var diagnostic := _media.resolution_diagnostic(monster.icon_resource_type, resolved_icon_id, "classic-combat-monster", "decoded" if _textures.actor_texture(asset) != null else "decode-failed")
+		diagnostic["actorId"] = monster.id
+		diagnostic["monsterName"] = monster.name
+		diagnostic["baseResourceId"] = monster.icon_id
+		diagnostic["requestedResourceId"] = requested_icon_id
+		diagnostic["facingRight"] = facing_right
+		diagnostic["facingState"] = int(_monster_facing_lr.get(monster.id, 0))
+		diagnostic["usedBaseFallback"] = resolved_icon_id != requested_icon_id
+		diagnostics.append(diagnostic)
+	return diagnostics
 
 
 func has_battle_artwork() -> bool:
@@ -272,7 +297,7 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 		if visible_footprint.is_empty():
 			continue
 		var rect := BattlefieldPresentationGeometry.moving_footprint_rect(visible_footprint, effective_anchor, _playback_frame if _playback_frame != null and _playback_frame.actor_id == monster.id else null, camera, draw_origin)
-		var icon_id := BattlefieldPresentationGeometry.classic_monster_icon_id(monster.icon_id, bool(_monster_facing_right.get(monster.id, false)))
+		var icon_id := BattlefieldPresentationGeometry.classic_monster_icon_id(monster.icon_id, _monster_facing_right(monster.id))
 		var asset := _media.asset_by_resource(monster.icon_resource_type, icon_id) if _media != null else null
 		if _media != null and asset == null and icon_id != monster.icon_id:
 			asset = _media.asset_by_resource(monster.icon_resource_type, monster.icon_id)
@@ -342,6 +367,11 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 				draw_rect(actor_rect.grow(3.0), Color(1.0, 0.90, 0.58, 0.95), false, 3.0)
 			if target_rect.has_area():
 				draw_rect(target_rect.grow(2.0), Color(1.0, 0.96, 0.82, 0.95), false, 3.0)
+		&"swap":
+			if actor_rect.has_area():
+				draw_rect(actor_rect.grow(3.0), Color(1.0, 0.86, 0.28, 0.95), false, 3.0)
+			if target_rect.has_area():
+				draw_rect(target_rect.grow(3.0), Color(0.60, 0.86, 1.0, 0.95), false, 3.0)
 		&"projectile":
 			_draw_projectile(actor_rect, target_rect)
 		&"spell_projectile":
@@ -445,7 +475,7 @@ func _playback_actor_rect(actor_id: String, coordinate: Vector2i, camera: Vector
 
 func _sync_monster_facings() -> void:
 	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
-		_monster_facing_right.clear()
+		_monster_facing_lr.clear()
 		return
 	var combat := _view.combat_view
 	var party_reference := combat.battlefield.party_anchor
@@ -457,11 +487,44 @@ func _sync_monster_facings() -> void:
 	var active_ids: Dictionary = {}
 	for monster: MonsterView in combat.monsters:
 		active_ids[monster.id] = true
-		if not _monster_facing_right.has(monster.id):
-			_monster_facing_right[monster.id] = combat.battlefield.monster_position(monster.id).x < party_reference.x
-	for actor_id: Variant in _monster_facing_right.keys():
+		if not _monster_facing_lr.has(monster.id):
+			_monster_facing_lr[monster.id] = 0 if monster.summoned else _initial_monster_facing_lr(combat.battlefield.monster_position(monster.id), party_reference)
+	for actor_id: Variant in _monster_facing_lr.keys():
 		if not active_ids.has(actor_id):
-			_monster_facing_right.erase(actor_id)
+			_monster_facing_lr.erase(actor_id)
+
+
+func _initial_monster_facing_lr(monster_coordinate: Vector2i, party_reference: Vector2i) -> int:
+	if monster_coordinate.x < 0 or party_reference.x < 0 or monster_coordinate.x == party_reference.x:
+		return 0
+	return 1 if monster_coordinate.x < party_reference.x else -1
+
+
+func _monster_facing_right(actor_id: String) -> bool:
+	return int(_monster_facing_lr.get(actor_id, 0)) == 1
+
+
+func _update_monster_facing(frame: CombatPlaybackFrame) -> void:
+	if frame == null or frame.actor_id.is_empty() or _view == null or _view.combat_view == null:
+		return
+	var monster: MonsterView = null
+	for candidate: MonsterView in _view.combat_view.monsters:
+		if candidate.id == frame.actor_id:
+			monster = candidate
+			break
+	if monster == null:
+		return
+	if frame.kind in [&"move_start", &"move_end"] and frame.from_coordinate.x >= 0 and frame.to_coordinate.x >= 0:
+		_monster_facing_lr[frame.actor_id] = clampi(frame.to_coordinate.x - frame.from_coordinate.x, -1, 1)
+		return
+	if frame.kind != &"melee_attack" or frame.from_coordinate.x < 0 or frame.to_coordinate.x < 0:
+		return
+	var current := int(_monster_facing_lr.get(frame.actor_id, 0))
+	if frame.to_coordinate.x > frame.from_coordinate.x and current == 0:
+		current = 1
+	elif frame.to_coordinate.x < frame.from_coordinate.x and current == 1:
+		current = 0
+	_monster_facing_lr[frame.actor_id] = current
 
 
 func _combatant_rect(combat: CombatView, actor_id: String, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> Rect2:

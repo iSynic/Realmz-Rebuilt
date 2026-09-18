@@ -6,6 +6,7 @@ extends InteractionComponent
 var _autojournal_enabled: bool = false
 var _manual_journal_available: bool = false
 var _acknowledgement_body: InteractionResponse.AcknowledgeBody
+var _backout_body: InteractionResponse.ChoiceBody
 
 
 func configure(autojournal_enabled: bool) -> void:
@@ -15,6 +16,7 @@ func configure(autojournal_enabled: bool) -> void:
 func build(request: InteractionRequest) -> void:
 	_manual_journal_available = false
 	_acknowledgement_body = null
+	_backout_body = null
 	match request.kind:
 		&"encounter_choice", &"scenario_choice":
 			var body := request.body as ChoiceRequestBody
@@ -24,8 +26,9 @@ func build(request: InteractionRequest) -> void:
 				var option := body.options[index]
 				var label := option.label if not option.label.is_empty() else "Option %d" % (index + 1)
 				_add_choice(grid, "%d · %s" % [index + 1, label], InteractionResponse.ChoiceBody.new(index), "Choice%d" % (index + 1))
-			if request.kind == &"encounter_choice" and body.can_back_out:
-				_add_choice(grid, "Back out", InteractionResponse.ChoiceBody.new(-1, true), "ChoiceBackOut")
+			if body.can_back_out:
+				_backout_body = InteractionResponse.ChoiceBody.new(-1, true)
+				_add_choice(grid, "Back out", _backout_body, "ChoiceBackOut")
 		&"yes_no":
 			var body := request.body as YesNoRequestBody
 			if body == null: return
@@ -55,6 +58,15 @@ func submit_acknowledgement() -> bool:
 		return false
 	var body := _acknowledgement_body
 	_acknowledgement_body = null
+	response_body_submitted.emit(body)
+	return true
+
+
+func handle_back() -> bool:
+	if _backout_body == null:
+		return false
+	var body := _backout_body
+	_backout_body = null
 	response_body_submitted.emit(body)
 	return true
 

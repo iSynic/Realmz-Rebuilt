@@ -208,9 +208,7 @@ func _populate_items_and_magic(character: CharacterState, content: RealmzContent
 	else:
 		for item: ItemInstance in character.inventory():
 			var definition := null if content == null else content.items.item_by_id(item.definition_id)
-			var presentation_definition: ItemDefinition = definition
-			if definition != null and not item.equipped and not definition.cursed_item_id.is_empty():
-				presentation_definition = content.items.item_by_id(definition.cursed_item_id)
+			var presentation_definition := InventoryRules.presentation_definition(item, definition, content.items if content != null else null)
 			items.append(ItemView.new(item, definition, presentation_definition, content))
 	if can_reuse_static and not rebuild_magic:
 		spells.assign(reusable.spells)

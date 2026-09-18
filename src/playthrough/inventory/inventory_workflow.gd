@@ -10,7 +10,7 @@ static func equip_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
-	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions())
+	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_equip", probe.reason)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_equipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id, "identified": instance.identified})])
@@ -22,7 +22,7 @@ static func unequip_item(context: SessionWorkflowContext, payload: InventoryInte
 	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
-	var probe := context.rules.equipment.unequip_classic(character, instance, definition, context.content.items.definitions())
+	var probe := context.rules.equipment.unequip_classic(character, instance, definition, context.content.items.definitions(), context.content.characters.race_by_id(character.race_id), context.state.party.conditions)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_unequip", probe.reason)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_unequipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
@@ -41,6 +41,10 @@ static func trade_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var transferred_scrolls: Array[SpellScrollState] = []
 	var destination_scrolls: Array[SpellScrollState] = []
 	var source_equipped := instance.equipped
+	if source_equipped:
+		var unequip_probe := context.rules.equipment.unequip_classic(source, instance, definition, context.content.items.definitions(), context.content.characters.race_by_id(source.race_id), context.state.party.conditions)
+		if not unequip_probe.allowed:
+			return SessionWorkflowResult.failed(&"item_cannot_trade", unequip_probe.reason)
 	if absi(definition.item_type) == 13:
 		for scroll: SpellScrollState in source.scroll_case():
 			transferred_scrolls.append(SpellScrollState.from_data(scroll.to_data()))
@@ -56,7 +60,8 @@ static func trade_item(context: SessionWorkflowContext, payload: InventoryIntent
 		if not destination.set_scroll_case(transferred_scrolls) or not source.set_scroll_case(empty_scrolls):
 			var returned := context.rules.inventory.remove_item(destination, instance.id, definition)
 			if returned != null and context.rules.inventory.restore_item(source, returned, definition):
-				returned.equipped = source_equipped
+				if source_equipped:
+					context.rules.equipment.equip_classic(source, returned, definition, context.content.characters.race_by_id(source.race_id), context.content.characters.caste_by_id(source.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
 			source.set_scroll_case(transferred_scrolls)
 			destination.set_scroll_case(destination_scrolls)
 			return SessionWorkflowResult.failed(&"scroll_case_transfer_failed", "The scroll case records could not be transferred.")
@@ -110,12 +115,23 @@ static func join_item(context: SessionWorkflowContext, payload: InventoryIntentP
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_join", probe.reason)
 	var removed_instance_ids: Array[String] = []
+	var had_equipped_stack := false
 	for carried: ItemInstance in character.inventory():
-		if carried != instance and carried.definition_id == instance.definition_id:
+		if carried.definition_id != instance.definition_id:
+			continue
+		if carried != instance:
 			removed_instance_ids.append(carried.id)
+		if carried.equipped:
+			had_equipped_stack = true
+			if not context.rules.equipment.force_unequip(character, carried, definition, context.content.items.definitions(), context.content.characters.race_by_id(character.race_id), context.state.party.conditions):
+				return SessionWorkflowResult.failed(&"item_join_failed", "The equipped stack could not be joined safely.")
 	probe = context.rules.inventory.join_classic(character, instance, definition)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_join_failed", probe.reason)
+	if had_equipped_stack:
+		probe = context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
+		if not probe.allowed:
+			return SessionWorkflowResult.failed(&"item_join_failed", probe.reason)
 	return SessionWorkflowResult.completed([
 		DomainEvent.new(&"item_joined", {"characterId": character.id, "instanceId": instance.id, "removedInstanceIds": removed_instance_ids, "itemId": definition.id, "charges": instance.charges}),
 		DomainEvent.new(&"sound_requested", {"soundId": 663, "waitForCompletion": false, "source": "classic-item"}),

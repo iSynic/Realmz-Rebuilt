@@ -9,11 +9,11 @@ var _projectiles: SpellProjectileResolver
 var _field_scenario_spells: FieldScenarioSpellResolver
 
 
-func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null) -> void:
-	_character_spells = CharacterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules)
-	_monster_spells = MonsterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules)
-	_projectiles = SpellProjectileResolver.new(character_rules, realmz_arithmetic, monster_rules)
-	_field_scenario_spells = FieldScenarioSpellResolver.new(character_rules, realmz_arithmetic, monster_rules)
+func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null, monster_rules: MonsterRules = null, equipment_rules: EquipmentRules = null) -> void:
+	_character_spells = CharacterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
+	_monster_spells = MonsterSpellResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
+	_projectiles = SpellProjectileResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
+	_field_scenario_spells = FieldScenarioSpellResolver.new(character_rules, realmz_arithmetic, monster_rules, equipment_rules)
 
 
 func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null) -> GroupSpellResolution:
@@ -24,16 +24,16 @@ func roll_persistent_field_duration(spell: SpellDefinition, power_level: int, rn
 	return _character_spells.roll_persistent_field_duration(spell, power_level, rng, tag)
 
 
-func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null) -> GroupSpellResolution:
-	return _character_spells.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, allow_empty, spend_spell_points, polymorph_context)
+func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null, allow_area_reflection: bool = false) -> GroupSpellResolution:
+	return _character_spells.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, allow_empty, spend_spell_points, polymorph_context, allow_area_reflection)
 
 
 func resolve_character_area_projectile_item(caster: CharacterState, caste: CasteDefinition, projectile_item: ItemDefinition, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
 	return _character_spells.resolve_character_area_projectile_item(caster, caste, projectile_item, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng)
 
 
-func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable(), item_definitions: Array[ItemDefinition] = []) -> RepeatedSpellResolution:
-	return _character_spells.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, before_selection, item_definitions)
+func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable(), item_definitions: Array[ItemDefinition] = [], allow_empty: bool = false) -> RepeatedSpellResolution:
+	return _character_spells.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, before_selection, item_definitions, allow_empty)
 
 
 func resolve_character_ray_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true) -> RepeatedSpellResolution:
@@ -56,12 +56,12 @@ func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: Mon
 	return _monster_spells.resolve_monster_targeted_spell(caster, caster_definition, selection, spell, power_level, cast_level, rng, polymorph_context)
 
 
-func resolve_monster_group_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null) -> GroupSpellResolution:
-	return _monster_spells.resolve_monster_group_spell(caster, caster_definition, selections, spell, power_level, cast_level, rng, allow_empty, spend_spell_points, polymorph_context)
+func resolve_monster_group_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null, allow_area_reflection: bool = false) -> GroupSpellResolution:
+	return _monster_spells.resolve_monster_group_spell(caster, caster_definition, selections, spell, power_level, cast_level, rng, allow_empty, spend_spell_points, polymorph_context, allow_area_reflection)
 
 
-func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, before_selection: Callable = Callable()) -> RepeatedSpellResolution:
-	return _monster_spells.resolve_monster_repeated_spell(caster, caster_definition, selections, spell, power_level, cast_level, rng, before_selection)
+func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, before_selection: Callable = Callable(), spend_spell_points: bool = true, allow_empty: bool = false) -> RepeatedSpellResolution:
+	return _monster_spells.resolve_monster_repeated_spell(caster, caster_definition, selections, spell, power_level, cast_level, rng, before_selection, spend_spell_points, allow_empty)
 
 
 func resolve_monster_ray_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:

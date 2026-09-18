@@ -24,6 +24,8 @@ func start_debug(trigger_id: String) -> SessionCoordinatorResult:
 		return SessionCoordinatorResult.failed(&"debug_action_point_unknown", "Action Point '%s' is unavailable." % trigger_id)
 	if map == null or map.topology.cell_at(trigger.coordinate) == null:
 		return SessionCoordinatorResult.failed(&"debug_action_point_unplaced", "Action Point '%s' has no playable map location." % trigger_id)
+	if _context.state.world.triggers.trigger_is_disabled(trigger.id):
+		return SessionCoordinatorResult.failed(&"debug_action_point_disabled", "Action Point '%s' has already been completed." % trigger.id)
 	if _context.state.combat != null:
 		return SessionCoordinatorResult.failed(&"debug_exploration_required", "An Action Point preview requires exploration.")
 	var source_map := _context.state.party.map_id

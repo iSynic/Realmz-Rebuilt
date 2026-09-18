@@ -226,7 +226,7 @@ func _resolve_area_spell_item(state: GameState, content: RealmzContent, caster: 
 	var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
 	if not bool(area_targets.get("ok", false)):
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", String(area_targets.get("error", "An item target is unavailable.")))
-	var area := _context.magic.resolve_character_area_projectile_item(caster, content.characters.caste_by_id(caster.caste_id), item, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng) if ClassicSpellSourceRules.is_application_area_projectile_item_profile(spell) else _context.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
+	var area := _context.magic.resolve_character_area_projectile_item(caster, content.characters.caste_by_id(caster.caste_id), item, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng) if ClassicSpellSourceRules.is_application_area_projectile_item_profile(spell) else _context.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()), true)
 	if area == null or not area.cast:
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
 	return _resolution.commit(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance.id, false, [persistent_field])
@@ -623,7 +623,7 @@ func _resolve_area_scroll(state: GameState, content: RealmzContent, caster: Char
 	var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
 	if not bool(area_targets.get("ok", false)):
 		return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_target_unavailable", String(area_targets.get("error", "A scroll target is unavailable.")))
-	var area := _context.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
+	var area := _context.magic.resolve_character_group_spell(caster, area_targets.get("characters", []), area_targets.get("monsters", []), area_targets.get("definitions", []), spell, power_level, cast_level, rng, true, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()), true)
 	if area == null or not area.cast:
 		return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The area scroll could not be resolved.")
 	return _resolution.commit(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-scroll", "", false, [persistent_field])

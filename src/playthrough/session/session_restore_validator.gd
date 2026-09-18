@@ -318,7 +318,7 @@ static func _valid_friendly_collision(continuation: SessionContinuation, state: 
 		return false
 	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.turns.active_actor_id() != combat.actor_id:
 		return false
-	return not RealmzRules.new().combat_flow.reactions.friendly_collision_target_id(state, combat.actor_id, combat.destination).is_empty()
+	return state.combat.pending_reaction != null and state.combat.pending_reaction.awaits_friendly_collision_choice() and state.combat.pending_reaction.mover_id == combat.actor_id and state.combat.pending_reaction.destination == combat.destination and not RealmzRules.new().combat_flow.reactions.friendly_collision_target_id(state, combat.actor_id, combat.destination).is_empty()
 
 
 static func _valid_combat_retreat(continuation: SessionContinuation, state: GameState, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:

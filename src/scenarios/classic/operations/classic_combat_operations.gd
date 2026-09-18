@@ -160,7 +160,7 @@ func cause_fumble(action: ClassicActionDefinition, context: ScenarioExecutionCon
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 122 requires message and sound fields.")
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"combat_fumble_skipped", {"reason": "no-active-battle", "source": "classic"})])
-	var actor_id := context.combatant_id if not context.combatant_id.is_empty() else _game_state.combat.turns.active_actor_id()
+	var actor_id := _game_state.combat.turns.active_actor_id()
 	var result := _rules.combat_flow.cause_active_fumble(_game_state, _content, actor_id)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)

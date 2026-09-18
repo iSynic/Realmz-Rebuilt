@@ -80,7 +80,7 @@ func resolve_scenario_group_spell(targets: Array[CharacterState], spell: SpellDe
 func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition, race: RaceDefinition, duration: int, damage: int, tag_prefix: String, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
 	var special := absi(spell.special)
 	if special == 62:
-		return _remove_curse_character(target, 0, duration, item_definitions)
+		return _remove_curse_character(target, 0, duration, item_definitions, race)
 	var roll := _apply_noncombat_save_and_protection(target, spell, power_level, extra_save_adjust, force_affect, rng, duration, damage, tag_prefix)
 	if roll.terminal_resolution != null:
 		return roll.terminal_resolution

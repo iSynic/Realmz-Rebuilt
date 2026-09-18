@@ -7,6 +7,7 @@ extends Control
 
 const DEVELOPMENT_PREVIEW_HOST_PATH := "res://tools/development_preview_application_host.gd"
 const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_auto_coordinator.gd")
+const RUNTIME_TESTING_READINESS := preload("res://src/app/platform/runtime_testing_readiness.gd")
 
 @onready var _status_label: Label = $GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $GameShell/SmokeAction
@@ -27,6 +28,7 @@ var _dungeon_presenter: DungeonMap3DPresenter
 var _package_host: PackageHostController
 var _save_host: SaveHostController
 var _pending_package_seed: int = 1
+var _pending_package_path: String = ""
 var _last_package_operation_key: String = ""
 var _pending_prepared_package: PreparedPackage
 var _held_movement: HeldMovementController
@@ -64,12 +66,10 @@ func _ready() -> void:
 		_runtime_testing_host = RuntimeTestingHost.new()
 		add_child(_runtime_testing_host)
 		var fixture_request := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
-		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return {"explorationInput": accepts_exploration_input(), "routeInput": accepts_route_input(), "combatPlayback": presentation_coordinator.is_combat_playback_active(), "hostInteraction": lifecycle_host.has_active_interaction(), "autoContinuation": _persistent_auto.observation()}, self, fixture_request)
+		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return RUNTIME_TESTING_READINESS.fields(self, session_controller, presentation_coordinator, lifecycle_host, _persistent_auto, _battlefield_presenter), self, fixture_request)
 		if status != OK:
 			printerr("Runtime testing endpoint unavailable: %s" % error_string(status))
 	_finish_startup()
-
-
 func _build_dependencies() -> void:
 	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
 	var preview_state_root := preview_request.result_path.get_basename() + "-session" if preview_request != null else ""
@@ -267,7 +267,8 @@ func _process(_delta: float) -> void:
 	if library_completed and _pending_prepared_package != null:
 		var pending := _pending_prepared_package
 		_pending_prepared_package = null
-		_complete_package_install(pending, _pending_package_seed)
+		_complete_package_install(pending, _pending_package_seed, _pending_package_path)
+		_pending_package_path = ""
 	_try_prewarm_last_campaign()
 	if _held_movement != null and _held_movement.is_active():
 		if not accepts_exploration_input():
@@ -293,8 +294,12 @@ func _process(_delta: float) -> void:
 	if operation.state == PackageOperationView.CANCELLED:
 		_shell_presenter.status.set_status("Campaign preparation cancelled.")
 		return
+	if prepared == null or not prepared.is_ok():
+		_complete_package_install(prepared, _pending_package_seed, operation.package_path)
+		return
 	if not character_files.library_ready():
 		_pending_prepared_package = prepared
+		_pending_package_path = operation.package_path
 		_shell_presenter.status.set_status("Campaign ready • finishing the built-in Classic definitions…")
 		return
 	_complete_package_install(prepared, _pending_package_seed)
@@ -336,7 +341,7 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 	var current_view := session_controller.view()
 	if current_view.session_started and not current_view.party_setup_available:
 		return SessionStep.failed(session_controller.view().revision, &"session_already_started", "End the active adventure before starting another campaign.")
-	return _complete_package_install(_package_host.install_sync(package_path), initial_seed)
+	return _complete_package_install(_package_host.install_sync(package_path), initial_seed, package_path)
 
 
 func _begin_package_start(package_path: String, initial_seed: int) -> void:
@@ -348,6 +353,7 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	if _package_host.operation_view().is_running():
 		return
 	_pending_package_seed = initial_seed
+	_pending_package_path = package_path
 	if not _package_host.start_install(package_path):
 		_shell_presenter.status.set_status(_package_host.operation_view().message, true)
 		return
@@ -355,21 +361,21 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	_shell_presenter.status.set_status("Preparing campaign…")
 
 
-func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> SessionStep:
+func _complete_package_install(prepared: PreparedPackage, initial_seed: int, source_path: String = "") -> SessionStep:
 	if prepared == null:
 		_status_label.text = "Package rejected • package operation returned no result"
-		_present_package_failure(_status_label.text)
+		_present_package_failure(_status_label.text, &"package_operation_failed", source_path)
 		return SessionStep.failed(0, &"package_operation_failed", "Package operation returned no result.")
 	if not prepared.is_ok():
 		_status_label.text = "Package rejected • %s" % prepared.error_message
-		_present_package_failure(_status_label.text)
+		_present_package_failure(_status_label.text, prepared.error_code, source_path)
 		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
 	_persistent_auto.invalidate()
 	prepared.content.characters.install_application_catalog(character_files.library_content().characters)
 	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
-		_present_package_failure(_status_label.text)
+		_present_package_failure(_status_label.text, step.error_code, source_path)
 		return step
 	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
@@ -388,9 +394,9 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 	return step
 
 
-func _present_package_failure(message: String) -> void:
+func _present_package_failure(message: String, error_code: StringName = &"", package_path: String = "") -> void:
 	_shell_presenter.status.set_status(message, true)
-	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new(PackageOperationView.FAILED, &"", 0, 0, message))
+	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new(PackageOperationView.FAILED, &"", 0, 0, message, error_code, package_path, &"install_scenario"))
 
 
 func _input(event: InputEvent) -> void:

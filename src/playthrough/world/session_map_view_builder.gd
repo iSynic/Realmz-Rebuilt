@@ -62,6 +62,16 @@ static func _patch_map_window(context: SessionWorkflowContext, map: MapDefinitio
 	for coordinate: Vector2i in presentation_delta.entered + presentation_delta.changed:
 		if bounds.has_point(coordinate):
 			changed_membership[coordinate] = true
+	if map.level_type == &"dungeon":
+		# Castle clears the dungeon's unmapped bit around every newly reached
+		# party cell. Rebuild keeps that discovery state in the presenter, so all
+		# nine cells must be rebuilt when the retained window advances.
+		for center: Vector2i in presentation_delta.newly_visited + [presentation_delta.to_coordinate]:
+			for y: int in range(center.y - 1, center.y + 2):
+				for x: int in range(center.x - 1, center.x + 2):
+					var coordinate := Vector2i(x, y)
+					if bounds.has_point(coordinate):
+						changed_membership[coordinate] = true
 	var replacements: Dictionary = {}
 	for coordinate: Vector2i in changed_membership:
 		var cell := map.topology.cell_at(coordinate)
@@ -70,7 +80,12 @@ static func _patch_map_window(context: SessionWorkflowContext, map: MapDefinitio
 		var reusable := previous_map_view.map_window.retained_cell_at(coordinate) as MapCellView
 		var is_visible := not map.uses_los or visible.has(coordinate)
 		var was_visited := exploration.was_visited(map.id, coordinate)
-		if reusable != null and cell.is_path and reusable.visited != was_visited:
+		if map.level_type == &"dungeon" and changed_membership.has(coordinate):
+			# Dungeon discovery and secret/door state are topology-owned facts on
+			# the cached cell, so a retained dungeon replacement must decode them
+			# again instead of only changing its visibility wrapper.
+			reusable = null
+		elif reusable != null and cell.is_path and reusable.visited != was_visited:
 			reusable = null
 		replacements[coordinate] = reusable.detached_with_visibility(is_visible, was_visited) if reusable != null else _cached_cell_view(context, map, cell, is_visible, cell_cache)
 	return previous_map_view.map_window.patched(bounds, replacements)
@@ -139,7 +154,11 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 	for direction: StringName in [&"north", &"east", &"south", &"west"]:
 		var edge := cell.edge(direction)
 		var concealed_secret := not edge.secret_id.is_empty() and not context.state.world.topology.secret_is_discovered(edge.secret_id, edge.initially_discovered)
-		edge_kinds[direction] = &"wall" if concealed_secret else edge.kind
+		var discovered_secret := not edge.secret_id.is_empty() and not concealed_secret
+		# Castle's directional secret becomes the bit-2 arch after discovery.
+		# Keep the authored edge passability, but expose the presentation as an
+		# open archway so first-person geometry does not build a door panel.
+		edge_kinds[direction] = &"wall" if concealed_secret else &"archway" if discovered_secret else edge.kind
 		edge_passability[direction] = false if concealed_secret else edge.passable
 	for feature: MapFeature in cell.features():
 		if feature.kind == &"secret" and not context.state.world.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):

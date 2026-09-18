@@ -40,7 +40,7 @@ func execute(value: Variant, revision: int, dispatch: Callable) -> Dictionary:
 	var reply: Dictionary
 	if access != "fixture" and request["command"] not in READ_COMMANDS:
 		reply = failure(request_id, revision, "live_read_only", "Live adventures permit observation and checkpoint export only.")
-	elif request["expectedRevision"] != null and int(request["expectedRevision"]) != revision:
+	elif request["expectedRevision"] != null and int(request["expectedRevision"]) != revision and not _is_fixture_controller_release(request):
 		reply = failure(request_id, revision, "stale_revision", "Observe the session again before submitting a new command.")
 	else:
 		var result: Variant = dispatch.call(request["command"], request["params"])
@@ -54,6 +54,17 @@ func execute(value: Variant, revision: int, dispatch: Callable) -> Dictionary:
 	_record_bytes += JSON.stringify(reply, "", true, true).to_utf8_buffer().size()
 	_records[request_id] = {"fingerprint": fingerprint, "reply": reply.duplicate(true)}
 	return reply
+
+
+func _is_fixture_controller_release(request: Dictionary) -> bool:
+	if access != "fixture" or request.get("command") != "ui":
+		return false
+	var params: Variant = request.get("params")
+	if not params is Dictionary or params.get("action") not in ["controller-button", "controller-axis"]:
+		return false
+	if params["action"] == "controller-button":
+		return params.size() == 3 and RuntimeTestingFixtureRequest.integer(params.get("button"), 0, 127) and params.get("pressed") is bool and not params["pressed"]
+	return params.size() == 3 and RuntimeTestingFixtureRequest.integer(params.get("axis"), 0, 7) and (params.get("value") is int or params.get("value") is float) and is_finite(float(params["value"])) and float(params["value"]) == 0.0
 
 
 func failure(request_id: String, revision: int, code: String, message: String) -> Dictionary:

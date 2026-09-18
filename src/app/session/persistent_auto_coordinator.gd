@@ -71,7 +71,8 @@ func invalidate() -> void:
 func observation() -> Dictionary:
 	var current := _view.call() as GameView if _view.is_valid() else null
 	var combat := current.combat_view if current != null else null
-	return {"requested": _requested, "running": _running, "generation": _generation, "revision": current.revision if current != null else -1, "actor": combat.active_actor_id if combat != null else "", "round": combat.round_number if combat != null else -1, "failedRevision": _failed_revision, "blocker": String(_last_blocker)}
+	var active := combat != null and combat.outcome == &"active"
+	return {"requested": _requested, "running": _running, "generation": _generation, "revision": current.revision if current != null else -1, "active": active, "outcome": String(combat.outcome) if combat != null else "", "actor": combat.active_actor_id if active else "", "round": combat.round_number if active else -1, "failedRevision": _failed_revision, "blocker": String(_last_blocker)}
 
 
 func _configured() -> bool:

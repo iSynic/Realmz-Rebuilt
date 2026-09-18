@@ -206,8 +206,8 @@ func reset_campaign() -> void:
 	_creature_library_controller.reset()
 
 
-func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
-	_character_controller.set_vault_revisions(revisions)
+func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: String = "") -> void:
+	_character_controller.set_vault_revisions(revisions, notice)
 
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:

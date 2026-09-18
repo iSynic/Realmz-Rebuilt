@@ -26,8 +26,12 @@ static func is_combat_spell_point_restore_spell(spell: SpellDefinition) -> bool:
 	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type in [1, 5] and absi(spell.special) == 59 and maxi(spell.damage_max, spell.power_damage_max) > 0
 
 
+static func is_combat_identify_spell(spell: SpellDefinition) -> bool:
+	return spell != null and spell.in_combat and spell.queue_icon == 0 and absi(spell.special) == 48
+
+
 static func is_combat_spell_point_drain_spell(spell: SpellDefinition) -> bool:
-	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type in [0, 1, 6] and spell.cannot == 0 and spell.cost > 0 and absi(spell.spell_class) == 7 and absi(spell.damage_type) == 7 and absi(spell.special) == 60
+	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12] and spell.cannot == 0 and spell.cost > 0 and absi(spell.spell_class) == 7 and absi(spell.damage_type) == 7 and absi(spell.special) == 60
 
 
 static func is_combat_destroy_magic_spell(spell: SpellDefinition) -> bool:

@@ -30,7 +30,7 @@ func roll_persistent_field_duration(spell: SpellDefinition, power_level: int, rn
 	return _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, tag)
 
 
-func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null) -> GroupSpellResolution:
+func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true, polymorph_context: MonsterPolymorphContext = null, allow_area_reflection: bool = false) -> GroupSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not allow_empty and character_targets.is_empty() and monster_targets.is_empty():
 		return null
 	for target: CharacterState in character_targets:
@@ -46,15 +46,35 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 		caster.spell_points -= spell_cost
 	else:
 		spell_cost = 0
+	var selections: Array[SpellTargetSelection] = []
+	for target: CharacterState in character_targets:
+		selections.append(SpellTargetSelection.for_character(target))
+	for index: int in monster_targets.size():
+		selections.append(SpellTargetSelection.for_monster(monster_targets[index], monster_definitions[index]))
+	if allow_area_reflection and absi(spell.spell_class) != 9:
+		selections = _reflect_character_area_targets(caster, selections, rng)
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
 	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
-	for target: CharacterState in character_targets:
-		result.append_target(target.id, &"character", _resolve_character_spell_character_target(caster, target, spell, power_level, cast_level, damage, duration, rng))
-	for index: int in monster_targets.size():
-		var target := monster_targets[index]
-		var definition := monster_definitions[index]
-		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, definition, spell, power_level, cast_level, damage, duration, 0, rng, polymorph_context))
+	for selection: SpellTargetSelection in selections:
+		if not selection.reflected and selection.kind == &"monster" and selection.monster.magic_resistance > 100:
+			continue
+		var resolution := _resolve_character_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, [], polymorph_context)
+		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
+	return result
+
+
+func _reflect_character_area_targets(caster: CharacterState, selections: Array[SpellTargetSelection], rng: RealmzRng) -> Array[SpellTargetSelection]:
+	var effective_by_id: Dictionary = {}
+	for index: int in selections.size():
+		var effective := _reflect_to_character_caster(caster, selections[index], rng, StringName("magic.area.reflect.%d" % index))
+		if not effective_by_id.has(effective.id):
+			effective_by_id[effective.id] = effective
+	var result: Array[SpellTargetSelection] = []
+	for kind: StringName in [&"character", &"monster"]:
+		for selection: SpellTargetSelection in effective_by_id.values():
+			if selection.kind == kind:
+				result.append(selection)
 	return result
 
 
@@ -77,12 +97,14 @@ func resolve_character_area_projectile_item(caster: CharacterState, caste: Caste
 		result.append_target(target.id, &"character", _resolve_character_spell_character_target(caster, target, spell, power_level, cast_level, damage, duration, rng, [], extra_to_hit_bonus))
 	for index: int in monster_targets.size():
 		var target := monster_targets[index]
+		if target.magic_resistance > 100:
+			continue
 		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, monster_definitions[index], spell, power_level, cast_level, damage, duration, 0, rng, null, extra_to_hit_bonus, true))
 	return result
 
 
-func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable(), item_definitions: Array[ItemDefinition] = []) -> RepeatedSpellResolution:
-	if caster == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
+func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true, before_selection: Callable = Callable(), item_definitions: Array[ItemDefinition] = [], allow_empty: bool = false) -> RepeatedSpellResolution:
+	if caster == null or spell == null or rng == null or power_level < 1 or (not allow_empty and selections.is_empty()) or selections.size() > power_level:
 		return null
 	return _resolve_character_selection_sequence(caster, selections, spell, power_level, cast_level, rng, spend_spell_points, true, &"magic.repeated", before_selection, item_definitions)
 
