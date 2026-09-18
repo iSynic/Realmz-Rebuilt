@@ -163,6 +163,17 @@ func present(game_view: GameView, party_texture: Texture2D, control_size: Vector
 		var changed: Dictionary = {}
 		for coordinate: Vector2i in _map_view.presentation_delta.entered + _map_view.presentation_delta.changed:
 			changed[coordinate] = true
+		if _map_view.level_type == &"dungeon":
+			# Discovery clears the unmapped bit around the current party cell in
+			# Castle. Refresh that bounded 3x3 whenever the retained view moves,
+			# including a revisit that adds no new visited coordinate.
+			var discovery_centers: Array[Vector2i] = []
+			discovery_centers.assign(_map_view.presentation_delta.newly_visited)
+			discovery_centers.append(_map_view.presentation_delta.to_coordinate)
+			for center: Vector2i in discovery_centers:
+				for y: int in range(center.y - 1, center.y + 2):
+					for x: int in range(center.x - 1, center.x + 2):
+						changed[Vector2i(x, y)] = true
 		for coordinate: Vector2i in _rect_changed_coordinates(_classic_rect, next_classic_rect):
 			changed[coordinate] = true
 		for coordinate: Vector2i in changed:
@@ -200,11 +211,13 @@ func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 		_set_fog(cell.coordinate)
 		return
 	if _map_view.level_type == &"dungeon":
-		if not cell.has_feature(&"unmapped") or _dungeon_discovery.has(cell.coordinate):
-			var tiles := _dungeon_tile_ids(cell)
-			_set_atlas_cell(_base_layer, cell.coordinate, cell.tileset_id, tiles[0])
-			for index: int in mini(_feature_layers.size(), tiles.size() - 1):
-				_set_atlas_cell(_feature_layers[index], cell.coordinate, cell.tileset_id, tiles[index + 1])
+		if not _dungeon_discovery.has(cell.coordinate):
+			_set_fog(cell.coordinate)
+			return
+		var tiles := _dungeon_tile_ids(cell, false)
+		_set_atlas_cell(_base_layer, cell.coordinate, cell.tileset_id, tiles[0])
+		for index: int in mini(_feature_layers.size(), tiles.size() - 1):
+			_set_atlas_cell(_feature_layers[index], cell.coordinate, cell.tileset_id, tiles[index + 1])
 	else:
 		_set_atlas_cell(_base_layer, cell.coordinate, cell.tileset_id, cell.render_tile)
 		if not cell.overlay_asset_id.is_empty(): _set_overlay(cell.coordinate, cell.overlay_asset_id)
@@ -470,18 +483,8 @@ func _draw_minimap() -> void:
 	draw_circle(center, maxf(2.0, scale * 1.5), Color(0.94, 0.78, 0.28))
 
 
-static func _dungeon_tile_ids(cell: MapCellView) -> Array[int]:
-	var result: Array[int] = [16]
-	if cell.terrain_id == "classic.dungeon.wall": result.append(1)
-	if cell.has_feature(&"door"): result.append(3 if cell.feature_orientation(&"door") == &"vertical" else 2)
-	for feature_kind: StringName in [&"stairs", &"column", &"note"]:
-		if cell.has_feature(feature_kind): result.append({&"stairs": 4, &"column": 5, &"note": 6}[feature_kind])
-	if cell.has_feature(&"secret"): result.append({&"north": 9, &"east": 10, &"south": 11, &"west": 12}.get(cell.feature_orientation(&"secret"), 7))
-	if cell.has_feature(&"unmapped"): result.append(8)
-	result.sort()
-	result.erase(16)
-	result.push_front(16)
-	return result
+static func _dungeon_tile_ids(cell: MapCellView, include_unmapped: bool = true) -> Array[int]:
+	return MapTextureCache.dungeon_tile_ids(cell, include_unmapped)
 
 
 static func _rect_changed_coordinates(previous: Rect2i, current: Rect2i) -> Array[Vector2i]:

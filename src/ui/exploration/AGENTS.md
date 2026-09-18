@@ -18,6 +18,7 @@ Own the retained 2D map and optional first-person dungeon presentation for detac
 - Every projected cell withheld by exploration visibility uses the default-on byte-exact project-owner fog tile or, when that host preference is off, exact opaque Castle black: never-seen cells on authored LOS maps and non-LOS cells outside both the current Classic window and remembered discovery. Seen or revealed terrain draws at normal fidelity, and leaving a cell's current LOS never conceals it again. Decorative stage surround art remains only outside projected map cells and is never the fog-off replacement.
 - Ordinary movement updates retained layers and entering geometry incrementally. Map, topology, LOS, restore, and projection-boundary changes may rebuild from detached authority.
 - The 2D and 3D views consume one save-owned heading and one topology; no renderer-owned collision or discovery state is allowed.
+- Hidden dungeon secrets remain solid or withheld until world discovery commits them; discovered secret edges project as open archways in 3D and the source-backed red `S` marker in 2D. Unmapped cells do not leak authored doors, columns, or stale fog patterns before their bounded discovery window is revealed.
 - Godot nodes, textures, meshes, shaders, and camera state remain disposable presentation caches and never enter saves or deterministic simulation.
 
 ## Work Guidance

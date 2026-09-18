@@ -13,6 +13,7 @@ func run() -> void:
 	assert_equal(ClassicUiAssetCatalog.native_size(MapTextureCache.DUNGEON_PARTY_ARROWS_ASSET_ID), Vector2i(64, 16), "the exact four-frame dungeon arrow strip remains available at its authored size")
 	var dungeon_arrow := MapTextureCache.dungeon_party_marker_texture(ClassicUiAssetCatalog.texture(MapTextureCache.DUNGEON_PARTY_ARROWS_ASSET_ID), 1).get_image()
 	assert_true(dungeon_arrow.get_pixel(0, 0).a == 0.0 and dungeon_arrow.get_pixel(8, 1).is_equal_approx(Color(85.0 / 255.0, 85.0 / 255.0, 85.0 / 255.0, 1.0)), "Castle's transparent CopyBits matte is removed while the authored grayscale arrow remains opaque")
+	var discovered_secret_cell := _cell(Vector2i(2, 2), true, true, [&"secret", &"unmapped"], {}, {}); assert_equal([MapTextureCache.dungeon_tile_ids(discovered_secret_cell), MapTextureCache.dungeon_tile_ids(discovered_secret_cell, false)], [[16, 7, 8], [16, 7]], "PICT 302 uses Castle's red S for every discovered directional secret and drops the stale unmapped pattern after discovery")
 	var maximized_cells := MapPresentationGeometry.viewport_cells_for(Vector2(1780, 610), 24.0, 32.0)
 	assert_equal(maximized_cells, Vector2i(55, 18), "maximized layouts use every complete native cell available to the revealed map window")
 	var maximized_origin := MapPresentationGeometry.map_draw_origin_for(Vector2(1780, 610), Vector2(0, 24), 32.0, maximized_cells)

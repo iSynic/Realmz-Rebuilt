@@ -518,7 +518,7 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 		assert_equal([session.view().party_coordinate, session.snapshot().game_state.clock.total_minutes() - start_minutes], [Vector2i(1, 0) if allowed else Vector2i.ZERO, 1 if allowed else 0], "%s preserves Castle movement and time semantics" % dungeon_case["id"])
 		var expected_event: StringName = dungeon_case.get("event", &"")
 		if not expected_event.is_empty():
-			assert_true(_has_event(moved, expected_event) and (dungeon_case["id"] != "matching-secret" or session.view().map_view.cell_at(Vector2i(1, 0)).has_feature(&"secret") and session.view().map_view.cell_at(Vector2i(1, 0)).edge_kind(&"east") == &"secret" and session.view().map_view.cell_at(Vector2i(1, 0)).edge_is_passable(&"east")), "%s publishes its topology-owned discovery event and only then exposes a traversable secret" % dungeon_case["id"])
+			assert_true(_has_event(moved, expected_event) and (dungeon_case["id"] != "matching-secret" or session.view().map_view.cell_at(Vector2i(1, 0)).has_feature(&"secret") and session.view().map_view.cell_at(Vector2i(1, 0)).edge_kind(&"east") == &"archway" and session.view().map_view.cell_at(Vector2i(1, 0)).edge_is_passable(&"east")), "%s publishes its topology-owned discovery event and only then exposes a traversable secret archway" % dungeon_case["id"])
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1) -> void:
