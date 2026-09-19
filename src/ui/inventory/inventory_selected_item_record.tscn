@@ -21,7 +21,7 @@ autowrap_mode = 2
 
 [node name="Narrative" type="VBoxContainer" parent="."]
 visible = false
-custom_minimum_size = Vector2(470, 0)
+custom_minimum_size = Vector2(420, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.1
@@ -84,9 +84,12 @@ theme_override_font_sizes/font_size = 12
 text = "Value unknown"
 horizontal_alignment = 2
 
-[node name="FactRows" type="VBoxContainer" parent="Facts"]
+[node name="FactRows" type="GridContainer" parent="Facts"]
 layout_mode = 2
-theme_override_constants/separation = 3
+custom_minimum_size = Vector2(300, 0)
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 3
+columns = 3
 
 [node name="Properties" type="VBoxContainer" parent="Facts"]
 layout_mode = 2

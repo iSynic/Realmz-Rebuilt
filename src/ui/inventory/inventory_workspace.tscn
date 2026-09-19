@@ -18,7 +18,7 @@ trade_workspace_scene = ExtResource("6_trade")
 
 [node name="InventoryMainSplit" type="BoxContainer" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 410)
+custom_minimum_size = Vector2(0, 395)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -30,7 +30,7 @@ custom_minimum_size = Vector2(620, 330)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.45
+size_flags_stretch_ratio = 1.25
 theme_type_variation = &"ClassicItemLedger"
 
 [node name="InventoryItemBrowserContent" parent="InventoryMainSplit/InventoryItemBrowser" instance=ExtResource("2_browser")]
@@ -38,11 +38,11 @@ layout_mode = 2
 
 [node name="InventoryCharacterCommandRail" type="PanelContainer" parent="InventoryMainSplit"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(285, 330)
+custom_minimum_size = Vector2(400, 370)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.75
+size_flags_stretch_ratio = 0.95
 theme_type_variation = &"ClassicInset"
 
 [node name="InventoryCommandRailContent" parent="InventoryMainSplit/InventoryCharacterCommandRail" instance=ExtResource("3_rail")]
@@ -50,7 +50,7 @@ layout_mode = 2
 
 [node name="InventoryItemInspector" type="PanelContainer" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 150)
+custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"

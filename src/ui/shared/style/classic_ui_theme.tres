@@ -352,6 +352,18 @@ content_margin_top = 2.0
 content_margin_right = 4.0
 content_margin_bottom = 2.0
 
+[sub_resource type="StyleBoxFlat" id="InventoryFactCell"]
+bg_color = Color(0.055, 0.075, 0.086, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.29, 0.31, 1)
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+
 [resource]
 default_font = ExtResource("3_ui")
 default_font_size = 15
@@ -468,6 +480,8 @@ ClassicItemLedgerButton/styles/hover = SubResource("ItemLedgerButtonHover")
 ClassicItemLedgerButton/styles/pressed = SubResource("ItemLedgerButtonNormal")
 ClassicItemLedgerButton/styles/disabled = SubResource("ItemLedgerButtonNormal")
 ClassicItemLedgerButton/styles/focus = SubResource("Focus")
+ClassicInventoryFactCell/base_type = &"PanelContainer"
+ClassicInventoryFactCell/styles/panel = SubResource("InventoryFactCell")
 ClassicMoneyLedgerButton/base_type = &"Button"
 ClassicMoneyLedgerButton/colors/font_color = Color(0.88, 0.89, 0.9, 1)
 ClassicMoneyLedgerButton/colors/font_hover_color = Color(0.97, 0.98, 0.98, 1)

@@ -6,6 +6,10 @@ extends VBoxContainer
 @export var trade_workspace_scene: PackedScene
 
 
+func _ready() -> void:
+	command_rail_content().set_item_actions(item_inspector_content().item_actions())
+
+
 func prepare_normal_layout(compact: bool) -> void:
 	clear_rendered_content()
 	var split := main_split()
@@ -13,11 +17,12 @@ func prepare_normal_layout(compact: bool) -> void:
 	item_inspector_panel().visible = true
 	alternate_content().visible = false
 	split.vertical = false
-	split.custom_minimum_size.y = 300.0 if compact else 410.0
+	split.custom_minimum_size.y = 282.0 if compact else 395.0
 	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	item_browser_panel().custom_minimum_size = Vector2(390.0 if compact else 620.0, 300.0 if compact else 330.0)
-	command_rail_panel().custom_minimum_size = Vector2(285.0, 300.0 if compact else 330.0)
-	item_inspector_panel().custom_minimum_size.y = 130.0 if compact else 150.0
+	item_browser_panel().custom_minimum_size = Vector2(390.0 if compact else 620.0, 282.0 if compact else 370.0)
+	command_rail_panel().custom_minimum_size = Vector2(285.0 if compact else 400.0, 282.0 if compact else 370.0)
+	item_inspector_panel().custom_minimum_size.y = 130.0 if compact else 180.0
+	command_rail_content().set_item_actions(item_inspector_content().item_actions())
 
 
 func prepare_alternate_layout() -> VBoxContainer:

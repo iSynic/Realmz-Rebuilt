@@ -28,6 +28,21 @@ static func unequip_item(context: SessionWorkflowContext, payload: InventoryInte
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_unequipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
 
 
+static func drop_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
+	var character := context.state.party.character_by_id(payload.actor_id)
+	var instance := item_instance(character, payload.item_id)
+	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
+	if character == null or instance == null or definition == null:
+		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
+	var probe := context.rules.inventory.classic_drop_probe(character, instance)
+	if not probe.allowed:
+		return SessionWorkflowResult.failed(&"item_cannot_drop", probe.reason)
+	var removed := context.rules.inventory.remove_item(character, instance.id, definition)
+	if removed == null:
+		return SessionWorkflowResult.failed(&"item_drop_failed", "The item could not be removed from inventory.")
+	return SessionWorkflowResult.completed([DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
+
+
 static func trade_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:
 	var source := context.state.party.character_by_id(payload.actor_id)
 	var destination := context.state.party.character_by_id(payload.destination_character_id)

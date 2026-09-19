@@ -38,6 +38,7 @@
 
 # Work Guidance
 
+- `test_inventory_drop_ui.gd` owns the ordinary Drop control's one-intent submission, absence of the operation-stage confirmation, and same-character next-item selection after the committed row disappears.
 - Cover canonical 1280x720 and optional Classic 800x600, including supported text/interface settings and exact integer-sampled original art. Representative 1920×1080, 2560×1440, 3440×1440, and 3840×2160 checks prove only the shared bounded-Fit policy; they are not separate authored compositions.
 
 # Verification
