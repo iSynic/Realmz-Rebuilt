@@ -316,6 +316,8 @@ func _bind_character_command_rail(content: InventoryCommandRail, view: GameView,
 
 
 func _render_character_record(parent: VBoxContainer, character: CharacterView, media: ClassicMediaCatalog) -> void:
+	var facts := parent.get_node("InventoryCharacterFacts") as GridContainer
+	facts.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 3
 	(parent.get_node("InventoryCharacterIdentity/Portrait") as TextureRect).texture = _scene_binding.appearance_texture(character.portrait_id, media)
 	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Name") as Label, character.name, GOLD, 20)
 	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Role") as Label, "%s / %s • Level %d" % [character.race_name, character.caste_name, character.level], TEXT, 13)
@@ -325,7 +327,7 @@ func _render_character_record(parent: VBoxContainer, character: CharacterView, m
 		"SpellPoints": "SP %d/%d" % [character.spell_points, character.maximum_spell_points],
 		"Experience": "XP %d" % character.experience,
 		"Armor": "AR %d" % character.armor,
-	"Attacks": "ATK %s" % character.attacks_per_round,
+		"Attacks": "ATK %s" % character.attacks_per_round,
 		"Movement": "MOVE %d/%d" % [character.movement, character.maximum_movement],
 		"Load": "LOAD %d/%d" % [character.carried_load, character.maximum_load],
 		"Brawn": "Brawn %d" % character.brawn,

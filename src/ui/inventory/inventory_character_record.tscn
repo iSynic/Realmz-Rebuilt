@@ -44,7 +44,7 @@ text_overrun_behavior = 3
 layout_mode = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 2
-columns = 2
+columns = 3
 
 [node name="Health" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)

@@ -23,7 +23,7 @@
 - Ordinary Drop submits its typed intent directly, keeps the Inventory route open after commit, and selects the next carried item or the previous item when the final row was dropped.
 - Controller focus and selected-item identity are unified: moving focus onto an item refreshes its selected row, actions, and inspector by stable item identity, while the dark ledger focus text remains readable. Every portrait in the integrated character selector accepts directional controller focus.
 - Ordinary Done remains inside the lower item inspector. Trade retains fixed Money, Items, Transfer, and Done actions; Transfer commits only the currently explicit exact-item and opposite-pack destination selection.
-- At the canonical 1280x720 composition, ordinary Inventory keeps the full browser/command split, selected-item record, action deck, and Done control in the initial viewport; at 800x600 it retains the horizontal browser/command split and item record while stacking the lower action deck to keep the supported width bounded.
+- At the canonical 1280x720 composition, the character facts use three columns so the themed six-member rail, selected-item record, action deck, and Done control fit without outer-page scrolling. At 800x600, facts use two columns and the horizontal browser/command split retains the item record while stacking the lower action deck to keep the supported width bounded.
 - Encounter item selection reuses the complete workspace, admits only request-owned character and item identities, and returns the supplied Classic identity without revealing it. A live 1280x720-to-800x600 resize reflows the retained browser, command rail, inspector, and persistent Back action without reconstructing the task.
 - A Shop-owned browse presentation reuses the same complete workspace with a visible Back to shop action. It keeps inspection and character selection active but disables ordinary item mutations with the exact Shop-ownership reason.
 - Trade uses two independently selected ledgers and exact-instance cross-ledger drops plus controller-accessible exact item selection followed by an explicit opposite-pack Transfer. Presentation does not preselect or infer a destination.
@@ -36,7 +36,7 @@
 
 ## Verification
 
-- Exercise ordinary inspection, item selection with retained scroll, direct Drop, operation confirmation for the remaining staged actions, Trade, Encounter selection, Back/Done, and Wide/Compact Realmz Builder previews.
+- Exercise ordinary inspection, item selection with retained ledger scroll but no outer-page overflow in the themed canonical frame, direct Drop, operation confirmation for the remaining staged actions, Trade, Encounter selection, Back/Done, and Wide/Compact Realmz Builder previews.
 - Run `tools/verify.ps1` before committing a workflow.
 
 ## Child DOX Index
