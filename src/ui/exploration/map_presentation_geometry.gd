@@ -5,7 +5,8 @@ extends RefCounted
 
 const CLASSIC_VIEW_CELLS := Vector2i(15, 13)
 const RETAINED_PROJECTION_MARGIN_CELLS := Vector2i.ONE
-const DARKNESS_MASK_SIZE := Vector2(320.0, 320.0)
+const DARKNESS_MASK_NATIVE_SIZE := Vector2(320.0, 320.0)
+const DARKNESS_MASK_NATIVE_CELL_SIZE := 32.0
 
 
 static func random_region_outline_segments(region_bounds: Rect2i, viewport_bounds: Rect2i) -> Array[PackedVector2Array]:
@@ -36,8 +37,22 @@ static func los_cell_uses_recalled_rendering(uses_los: bool, currently_visible: 
 	return uses_los and was_seen and not currently_visible
 
 
-static func darkness_mask_rect(party_rect: Rect2) -> Rect2:
-	return Rect2(party_rect.position - DARKNESS_MASK_SIZE * 0.5, DARKNESS_MASK_SIZE)
+static func darkness_mask_scale(cell_size: float = DARKNESS_MASK_NATIVE_CELL_SIZE) -> float:
+	return maxf(cell_size, 1.0) / DARKNESS_MASK_NATIVE_CELL_SIZE
+
+
+static func darkness_mask_size(cell_size: float = DARKNESS_MASK_NATIVE_CELL_SIZE) -> Vector2:
+	return DARKNESS_MASK_NATIVE_SIZE * darkness_mask_scale(cell_size)
+
+
+static func darkness_mask_rect(party_rect: Rect2, cell_size: float = DARKNESS_MASK_NATIVE_CELL_SIZE) -> Rect2:
+	var mask_size := darkness_mask_size(cell_size)
+	return Rect2(party_rect.position - mask_size * 0.5, mask_size)
+
+
+static func darkness_mask_source_rect(destination_rect: Rect2, mask_rect: Rect2, cell_size: float = DARKNESS_MASK_NATIVE_CELL_SIZE) -> Rect2:
+	var scale := darkness_mask_scale(cell_size)
+	return Rect2((destination_rect.position - mask_rect.position) / scale, destination_rect.size / scale)
 
 
 static func facing_label(direction: Vector2i) -> String:
