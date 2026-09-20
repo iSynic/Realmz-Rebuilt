@@ -19,6 +19,7 @@ Own carried-item transactions and field item use above pure item definitions, in
 - Inventory and field-item mutations use `InventoryRules`, `EquipmentRules`, and shared magic resolution; they do not duplicate item legality.
 - A failed, cancelled, or rejected operation leaves inventory, charges, equipment, load, clock, RNG, and session revision according to the existing transaction result.
 - Item-XAP and target continuations preserve stable instance, definition, actor, program, power, and source-battle identities across save/restore.
+- A newly submitted Drop validates and removes the exact unequipped instance in one transaction; the legacy Drop confirmation continuation remains readable and respondable only for saves that already contain it.
 - `GameSession` alone commits, rolls back, changes revision, and constructs steps.
 
 ## Work Guidance

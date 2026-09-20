@@ -179,3 +179,19 @@ Realmz intro GIF supplied by the project owner. The source GIF SHA-256 is
 It is used under this project's non-commercial Realmz artwork license.
 Per-frame hashes and preserved timing are recorded in
 src/ui/shared/assets/ui/intro/intro-animation.json.
+
+Optional display shaders
+
+CRT-Pi by davej is copyright 2015-2016 and licensed under GPL version 2 or
+later. Its source is libretro/glsl-shaders crt/shaders/crt-pi.glsl at revision
+f8e23ff880668f0f0e837a05a316534d82a7f31b. CRT-Lottes by Timothy Lottes
+is public domain; its source is libretro/slang-shaders
+crt/shaders/crt-lottes.slang at revision
+afb1416b6b85d3e53c6e586a9209cb9097c7b4a4. Both are adapted as Godot
+CanvasItem shaders with curvature disabled. Their original notices remain in
+the shader files; src/ui/shared/style/crt_provenance.md records the changes.
+
+The optional xBRZ freescale shader is adapted from libretro/glsl-shaders at
+revision f8e23ff880668f0f0e837a05a316534d82a7f31b. Its upstream Hyllian
+MIT notice and DeSmuME/HqMAME GPL notice remain in the shader header;
+src/ui/shared/style/xbrz_freescale_provenance.md records the adaptation.

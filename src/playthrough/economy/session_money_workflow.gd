@@ -42,10 +42,25 @@ static func perform(context: SessionWorkflowContext, payload: EconomyIntentPaylo
 				return SessionWorkflowResult.failed(&"money_action_unavailable", "The selected wealth transfer is no longer available.")
 			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-money", "characterId": character.id, "direction": String(payload.action), "kind": payload.denomination, "amount": payload.amount}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-money-swap"}))
+		MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
+			var rate := MoneyChangingRules.rate(payload.action)
+			if not payload.character_id.is_empty() or payload.denomination != String(rate.source) or payload.amount != rate.source_amount:
+				return SessionWorkflowResult.failed(&"invalid_money_increment", "The money-changing amount does not match the Castle rate.")
+			var probe := MoneyChangingRules.probe(context.state.party, changing_available(context), payload.action)
+			if not probe.allowed:
+				return SessionWorkflowResult.failed(&"money_action_unavailable", probe.reason)
+			MoneyChangingRules.convert(context.state.party, true, payload.action)
+			events.append(DomainEvent.new(&"wealth_changed", {"source": "classic-money", "action": String(payload.action), "from": String(rate.source), "spent": rate.source_amount, "to": String(rate.result), "received": rate.result_amount}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10129, "waitForCompletion": payload.action == MoneyChangingRules.JEWELRY_TO_GEMS, "source": "classic-money-change"}))
 		_:
 			return SessionWorkflowResult.failed(&"unknown_money_action", "Money action '%s' is unavailable." % payload.action)
 	_recalculate_party_movement(context)
 	return SessionWorkflowResult.completed(events)
+
+
+static func changing_available(context: SessionWorkflowContext) -> bool:
+	var shop_id: String = context.state.location_services.active_shop_id
+	return context.state.location_services.temple_available or not shop_id.is_empty() and context.content.economy.shop_by_id(shop_id) != null
 
 
 static func _movement_context_error(context: SessionWorkflowContext) -> String:

@@ -15,6 +15,7 @@ const CURSOR_REVERSE_PATH := "res://src/ui/shared/assets/classic-dungeon/cursor-
 const CURSOR_LEFT_PATH := "res://src/ui/shared/assets/classic-dungeon/cursor-left.png"
 const CURSOR_RIGHT_PATH := "res://src/ui/shared/assets/classic-dungeon/cursor-right.png"
 const INTERNAL_SIZE := Vector2i(400, 225)
+const SCALER_SHADER_PATH := "res://src/ui/shared/style/xbrz_freescale.gdshader"
 const MOVE_TWEEN_SECONDS := 0.045
 const TURN_TWEEN_SECONDS := 0.0
 const MESH_CACHE_CAPACITY := 24
@@ -24,6 +25,8 @@ var _projection: DungeonGeometryProjection
 var _previous_projection: DungeonGeometryProjection
 var _viewport: SubViewport
 var _display: TextureRect
+var _canvas_smoothing_enabled: bool = false
+var _canvas_smoothing_material: ShaderMaterial
 var _world: Node3D
 var _geometry: MeshInstance3D
 var _camera: Camera3D
@@ -105,6 +108,27 @@ func _exit_tree() -> void:
 func set_enabled(enabled: bool) -> void:
 	_enabled = enabled
 	_update_visibility()
+
+
+func set_canvas_smoothing(enabled: bool) -> void:
+	_canvas_smoothing_enabled = enabled
+	_update_canvas_smoothing()
+
+
+func _update_canvas_smoothing() -> void:
+	if _display == null:
+		return
+	if not _canvas_smoothing_enabled or _display.size.x <= INTERNAL_SIZE.x or _display.size.y <= INTERNAL_SIZE.y:
+		_display.material = null
+		return
+	if _canvas_smoothing_material == null:
+		_canvas_smoothing_material = ShaderMaterial.new()
+		_canvas_smoothing_material.shader = load(SCALER_SHADER_PATH) as Shader
+	_canvas_smoothing_material.set_shader_parameter("source_texture", _viewport.get_texture())
+	_canvas_smoothing_material.set_shader_parameter("source_size", Vector2(INTERNAL_SIZE))
+	_canvas_smoothing_material.set_shader_parameter("output_size", _display.size)
+	_canvas_smoothing_material.set_shader_parameter("world_rect", Vector4(0.0, 0.0, 1.0, 1.0))
+	_display.material = _canvas_smoothing_material
 
 
 func set_speed_percent(percent: int) -> void:
@@ -386,6 +410,7 @@ func _layout_internal_view() -> void:
 	var display_size := Vector2(INTERNAL_SIZE) * display_scale
 	_display.size = display_size
 	_display.position = (size - display_size) * 0.5
+	_update_canvas_smoothing()
 
 
 func _action_at_position(local_position: Vector2) -> StringName:

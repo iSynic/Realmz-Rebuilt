@@ -5,6 +5,7 @@ extends RefCounted
 
 var character_id: String
 var name: String
+var portrait_id: String
 var gold: int
 var gems: int
 var jewelry: int
@@ -16,6 +17,7 @@ var transfers: Array[MoneyTransferView] = []
 func _init(character: CharacterState) -> void:
 	character_id = character.id
 	name = character.name
+	portrait_id = character.portrait_id
 	gold = character.money.gold
 	gems = character.money.gems
 	jewelry = character.money.jewelry

@@ -66,6 +66,29 @@ func load_backup(campaign_id: String, slot_id: String, expected_package_hash: St
 	return _load_path(campaign_id, slot_id, expected_package_hash, true)
 
 
+func read_for_explicit_update(campaign_id: String, slot_id: String, old_package_hash: String, backup: bool) -> SaveEnvelope:
+	return _load_path(campaign_id, slot_id, old_package_hash, backup)
+
+
+func save_new_copy(campaign_id: String, slot_id: String, envelope: SaveEnvelope) -> bool:
+	last_error = ""
+	if envelope == null or envelope.campaign_id != campaign_id or not _safe_component(campaign_id) or not _safe_component(slot_id):
+		return _fail("The updated save has an invalid campaign or slot identity.")
+	var path := "%s/%s/%s.r2save" % [_root_path, campaign_id, slot_id]
+	if FileAccess.file_exists(path) or FileAccess.file_exists(path + ".bak"):
+		var existing := _read_envelope(path)
+		if existing != null and existing.to_data() == envelope.to_data():
+			return true
+		return _fail("The updated save slot already contains different data; no save was replaced.")
+	if not save(campaign_id, slot_id, envelope):
+		return false
+	var verified := self.load(campaign_id, slot_id, envelope.package_hash)
+	if verified == null or verified.to_data() != envelope.to_data():
+		_delete_file(path)
+		return _fail("Updated save readback failed; no copied save was kept.")
+	return true
+
+
 func list_previews(campaign_id: String, expected_package_hash: String) -> Array:
 	last_error = ""
 	var previews: Array = []

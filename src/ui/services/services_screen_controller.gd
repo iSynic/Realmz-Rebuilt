@@ -11,6 +11,8 @@ const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("9aa0a8")
 const WORKSPACE_SCENE_PATH := "res://src/ui/services/services_workspace.tscn"
+const MONEY_REPEAT_DELAY := 0.35
+const MONEY_REPEAT_INTERVAL := 0.09
 
 var _money_character_id: String = ""
 var _text_scale: float = 1.0
@@ -18,6 +20,8 @@ var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _media: ClassicMediaCatalog
 var _workspace: ServicesWorkspace
 var _browse_only_reason: String = ""
+var _held_button: Button
+var _held_intent: PlayerIntent
 
 
 func set_text_scale(scale: float) -> void:
@@ -41,6 +45,8 @@ func present_browse(target: Control, view: GameView, media: ClassicMediaCatalog,
 func _present(target: Control, view: GameView, media: ClassicMediaCatalog, include_location_services: bool) -> void:
 	if target == null or view == null:
 		return
+	if _held_button != null and (target as ServicesScreen == null or (target as ServicesScreen).workspace() != _workspace):
+		_stop_repeat()
 	_media = media
 	var screen := target as ServicesScreen
 	if screen != null:
@@ -71,6 +77,7 @@ func _bind_money_workspace(view: GameView) -> bool:
 	_bind_pool(view, money)
 	_bind_party(money)
 	_bind_exchange(view, money)
+	_bind_changing(view, money)
 	return true
 
 
@@ -79,7 +86,7 @@ func _bind_pool(view: GameView, money: MoneyWorkspaceView) -> void:
 	_bind_label(root.get_node("Identity/Heading") as Label, "Party Pool", GOLD, 18)
 	_bind_label(
 		root.get_node("Identity/Banked") as Label,
-		"Banked  %d gold  •  %d gems  •  %d jewelry" % [money.banked_gold, money.banked_gems, money.banked_jewelry],
+		"Banked separately: %d gold  •  %d gems  •  %d jewelry" % [money.banked_gold, money.banked_gems, money.banked_jewelry],
 		MUTED,
 		12
 	)
@@ -108,19 +115,28 @@ func _bind_party(money: MoneyWorkspaceView) -> void:
 	_bind_label(pane.get_node("Content/Header/Heading") as Label, "Adventurers", GOLD, 18)
 	_bind_label(pane.get_node("Content/Header/Count") as Label, str(money.characters.size()), MUTED, 13)
 	var group := ButtonGroup.new()
-	for character: MoneyCharacterView in money.characters:
-		var row := _workspace.money_character_row_scene.instantiate() as MoneyCharacterRow
-		row.bind(character, character.character_id == _money_character_id, group)
+	for index in money.characters.size():
+		var character := money.characters[index]
+		var row := _workspace.character_rows().get_child(index) as MoneyCharacterRow if index < _workspace.character_rows().get_child_count() else null
+		if row == null:
+			row = _workspace.money_character_row_scene.instantiate() as MoneyCharacterRow
+			_workspace.character_rows().add_child(row)
+		row.bind(character, character.character_id == _money_character_id, group, _media)
+		_clear_pressed_connections(row)
 		row.pressed.connect(_select_money_character.bind(character.character_id))
-		_workspace.character_rows().add_child(row)
+	while _workspace.character_rows().get_child_count() > money.characters.size():
+		var extra := _workspace.character_rows().get_child(_workspace.character_rows().get_child_count() - 1)
+		_workspace.character_rows().remove_child(extra)
+		extra.queue_free()
 
 
 func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 	var selected := money.character(_money_character_id)
 	var pane := _workspace.swap_pane()
 	var exchange_body := pane.get_node("Content/MoneyExchangeScroll/MoneyExchangeBody")
-	_bind_label(exchange_body.get_node("Header/Heading") as Label, "Exchange", GOLD, 18)
+	_bind_label(exchange_body.get_node("Header/Heading") as Label, "Give or take wealth", GOLD, 18)
 	_bind_label(exchange_body.get_node("Header/SelectedName") as Label, selected.name, MUTED, 13)
+	(exchange_body.get_node("Header/SelectedPortrait") as TextureRect).texture = _media.image_texture(_media.asset_by_id(selected.portrait_id)) if _media != null else null
 	_bind_character_picker(money)
 	_bind_wealth_chips(
 		_workspace.selected_summary(),
@@ -134,9 +150,9 @@ func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 		MUTED,
 		12
 	)
-	for transfer: MoneyTransferView in selected.transfers:
-		_bind_transfer(view, selected, transfer)
-	var done := pane.get_node("Content/MoneyDone") as Button
+	for index in selected.transfers.size():
+		_bind_transfer(view, money, selected, selected.transfers[index], index)
+	var done := _workspace.done_button()
 	done.text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
 	_bind_button(done, func() -> void:
 		if not _browse_only_reason.is_empty():
@@ -165,22 +181,45 @@ func _bind_wealth_chips(root: Node, gold: int, gems: int, jewelry: int) -> void:
 		chip.bind(denomination, int(values[denomination]), _media)
 
 
-func _bind_transfer(view: GameView, selected: MoneyCharacterView, transfer: MoneyTransferView) -> void:
-	var row := _workspace.money_transfer_row_scene.instantiate() as MoneyTransferRow
-	row.bind(transfer, selected.name, _media)
+func _bind_transfer(view: GameView, money: MoneyWorkspaceView, selected: MoneyCharacterView, transfer: MoneyTransferView, index: int) -> void:
+	var row := _workspace.transfer_rows().get_child(index) as MoneyTransferRow if index < _workspace.transfer_rows().get_child_count() else null
+	if row == null:
+		row = _workspace.money_transfer_row_scene.instantiate() as MoneyTransferRow
+		_workspace.transfer_rows().add_child(row)
+	var carried: int = selected.gold if transfer.denomination == &"gold" else selected.gems if transfer.denomination == &"gems" else selected.jewelry
+	row.bind(transfer, money.pooled_amount(transfer.denomination), carried, _media)
 	_bind_money_action(
 		row.to_pool_button(),
 		view,
 		transfer.to_pool,
-		EconomyIntents.money(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount)
+		EconomyIntents.money(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount),
+		true
 	)
 	_bind_money_action(
 		row.to_character_button(),
 		view,
 		transfer.to_character,
-		EconomyIntents.money(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount)
+		EconomyIntents.money(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount),
+		true
 	)
-	_workspace.transfer_rows().add_child(row)
+
+
+func _bind_changing(view: GameView, money: MoneyWorkspaceView) -> void:
+	var status := _workspace.changing_pane().get_node("Content/Header/Status") as Label
+	var available := money.changing_available and _browse_only_reason.is_empty()
+	_bind_label(status, "Available here · converts pooled wealth · hold to repeat" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
+	var buttons := _workspace.changing_buttons()
+	for index in mini(buttons.size(), money.changes.size()):
+		var rate := money.changes[index]
+		var button := buttons[index]
+		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change · hold to repeat" if available and rate.availability.enabled else "Unavailable here"]
+		_bind_money_action(button, view, rate.availability, EconomyIntents.money(rate.action, "", String(rate.source), rate.source_amount), true)
+
+
+static func _unit(denomination: StringName, amount: int) -> String:
+	if denomination == &"gems" and amount == 1:
+		return "gem"
+	return String(denomination)
 
 
 func _bind_location_services(view: GameView) -> void:
@@ -203,8 +242,9 @@ func _bind_location_services(view: GameView) -> void:
 		_workspace.location_service_rows().add_child(row)
 
 
-func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilityView, intent: PlayerIntent) -> void:
+func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilityView, intent: PlayerIntent, repeat_while_held: bool = false) -> void:
 	_clear_pressed_connections(button)
+	_clear_repeat_connections(button)
 	if not _browse_only_reason.is_empty():
 		button.disabled = true
 		button.tooltip_text = _browse_only_reason
@@ -218,8 +258,14 @@ func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilit
 	elif not local.enabled:
 		button.tooltip_text = local.reason
 	else:
-		button.tooltip_text = button.text
-		button.pressed.connect(func() -> void: intent_submitted.emit(intent))
+		button.tooltip_text = "%s · Hold to repeat" % button.text if repeat_while_held else button.text
+		if repeat_while_held:
+			button.button_down.connect(_start_repeat.bind(button, intent))
+			button.button_up.connect(_stop_repeat)
+		else:
+			button.pressed.connect(func() -> void: intent_submitted.emit(intent))
+	if button == _held_button and button.disabled:
+		_stop_repeat()
 
 
 func _bind_button(button: Button, action: Callable) -> void:
@@ -228,8 +274,37 @@ func _bind_button(button: Button, action: Callable) -> void:
 
 
 func _select_money_character(character_id: String) -> void:
+	_stop_repeat()
 	_money_character_id = character_id
 	refresh_requested.emit()
+
+
+func _start_repeat(button: Button, intent: PlayerIntent) -> void:
+	_stop_repeat()
+	_held_button = button
+	_held_intent = intent
+	var timer := _workspace.repeat_timer()
+	if not timer.timeout.is_connected(_repeat_step):
+		timer.timeout.connect(_repeat_step)
+	intent_submitted.emit(intent)
+	if _held_button == button and not button.disabled and timer.is_inside_tree():
+		timer.start(MONEY_REPEAT_DELAY)
+
+
+func _repeat_step() -> void:
+	if not is_instance_valid(_held_button) or _held_button.disabled or not _held_button.is_visible_in_tree():
+		_stop_repeat()
+		return
+	intent_submitted.emit(_held_intent)
+	if is_instance_valid(_held_button) and not _held_button.disabled and _workspace.repeat_timer().is_inside_tree():
+		_workspace.repeat_timer().start(MONEY_REPEAT_INTERVAL)
+
+
+func _stop_repeat() -> void:
+	if _workspace != null and is_instance_valid(_workspace):
+		_workspace.repeat_timer().stop()
+	_held_button = null
+	_held_intent = null
 
 
 func _submit_service_action(service_id: String, action: StringName) -> void:
@@ -262,6 +337,13 @@ func _clear(parent: Node) -> void:
 func _clear_pressed_connections(button: BaseButton) -> void:
 	for connection: Dictionary in button.pressed.get_connections():
 		button.pressed.disconnect(connection.callable)
+
+
+func _clear_repeat_connections(button: BaseButton) -> void:
+	for connection: Dictionary in button.button_down.get_connections():
+		button.button_down.disconnect(connection.callable)
+	for connection: Dictionary in button.button_up.get_connections():
+		button.button_up.disconnect(connection.callable)
 
 
 func _clear_item_selected_connections(picker: OptionButton) -> void:

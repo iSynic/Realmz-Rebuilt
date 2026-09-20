@@ -14,6 +14,8 @@ var _presentation: PresentationCoordinator
 var _dungeon: DungeonMap3DPresenter
 var _held_movement: HeldMovementController
 var _debug_tools: DebugToolsHost
+var _spatial_layout: ApplicationSpatialLayout
+var _display: DisplayCompositor
 
 
 func _init(
@@ -27,7 +29,9 @@ func _init(
 	presentation: PresentationCoordinator,
 	dungeon: DungeonMap3DPresenter,
 	held_movement: HeldMovementController,
-	debug_tools: DebugToolsHost
+	debug_tools: DebugToolsHost,
+	spatial_layout: ApplicationSpatialLayout,
+	display: DisplayCompositor
 ) -> void:
 	_application = application
 	_settings = settings
@@ -40,6 +44,10 @@ func _init(
 	_dungeon = dungeon
 	_held_movement = held_movement
 	_debug_tools = debug_tools
+	_spatial_layout = spatial_layout
+	_display = display
+	if _display != null:
+		_display.geometry_changed.connect(_update_dungeon_smoothing)
 
 
 func bind() -> void:
@@ -53,6 +61,12 @@ func bind() -> void:
 	_shell.text_scale_changed.connect(_on_text_scale_changed)
 	_shell.typography_mode_changed.connect(_on_typography_mode_changed)
 	_shell.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
+	_shell.display_scaling_mode_changed.connect(_on_display_scaling_mode_changed)
+	_shell.world_zoom_changed.connect(_on_world_zoom_changed)
+	_shell.pixel_art_smoothing_changed.connect(_on_pixel_art_smoothing_changed)
+	_shell.crt_enabled_changed.connect(_on_crt_enabled_changed)
+	_shell.crt_shader_changed.connect(_on_crt_shader_changed)
+	_shell.crt_area_changed.connect(_on_crt_area_changed)
 	_shell.window_mode_changed.connect(_on_window_mode_changed)
 	_shell.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	_shell.reduced_sound_changed.connect(_on_reduced_sound_changed)
@@ -69,6 +83,7 @@ func bind() -> void:
 
 
 func apply_initial_settings() -> void:
+	_apply_scaling()
 	_shell.apply_settings(_settings)
 	_presentation.set_reduced_motion(_settings.reduced_motion)
 	_presentation.set_combat_playback_speed_percent(_settings.combat_playback_speed_percent)
@@ -152,6 +167,70 @@ func _on_ui_scale_mode_changed(value: String) -> void:
 	_settings.ui_scale_mode = value
 	_shell.apply_settings(_settings)
 	_save()
+
+
+func _on_display_scaling_mode_changed(value: String) -> void:
+	if value not in [PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.DISPLAY_INTEGER_WINDOW, PresentationSettings.DISPLAY_INTEGER_CANVAS, PresentationSettings.DISPLAY_FILL_WINDOW]:
+		return
+	_settings.display_scaling_mode = value
+	_apply_scaling()
+	_shell.apply_settings(_settings)
+	_save()
+
+
+func _on_world_zoom_changed(value: int) -> void:
+	if value not in [1, 2, 3, 4]:
+		return
+	_settings.world_zoom = value
+	_apply_scaling()
+	_shell.apply_settings(_settings)
+	_save()
+
+
+func _on_pixel_art_smoothing_changed(value: String) -> void:
+	if value not in [PresentationSettings.SMOOTHING_OFF, PresentationSettings.SMOOTHING_WORLD, PresentationSettings.SMOOTHING_WINDOW]:
+		return
+	_settings.pixel_art_smoothing = value
+	_apply_scaling()
+	_shell.apply_settings(_settings)
+	_save()
+
+
+func _on_crt_enabled_changed(enabled: bool) -> void:
+	_settings.crt_enabled = enabled
+	_apply_scaling()
+	_shell.apply_settings(_settings)
+	_save()
+
+
+func _on_crt_shader_changed(value: String) -> void:
+	if value not in [PresentationSettings.CRT_PI, PresentationSettings.CRT_LOTTES]:
+		return
+	_settings.crt_shader = value
+	_apply_scaling()
+	_shell.apply_settings(_settings)
+	_save()
+
+
+func _on_crt_area_changed(value: String) -> void:
+	if value not in [PresentationSettings.CRT_WORLD, PresentationSettings.CRT_WINDOW]:
+		return
+	_settings.crt_area = value
+	_apply_scaling()
+	_shell.apply_settings(_settings)
+	_save()
+
+
+func _apply_scaling() -> void:
+	_spatial_layout.set_world_zoom(_settings.world_zoom if _settings.display_scaling_mode == PresentationSettings.DISPLAY_INTEGER_CANVAS else 1)
+	if _display != null:
+		_display.configure(_settings.display_scaling_mode, _settings.pixel_art_smoothing, _settings.crt_enabled, _settings.crt_shader, _settings.crt_area)
+	_update_dungeon_smoothing()
+
+
+func _update_dungeon_smoothing() -> void:
+	var whole_window_enlarged := _display != null and float(_display.geometry().get("scale", 1.0)) > 1.0
+	_dungeon.set_canvas_smoothing(_settings.pixel_art_smoothing != PresentationSettings.SMOOTHING_OFF and not whole_window_enlarged)
 
 
 func _on_window_mode_changed(value: String) -> void:

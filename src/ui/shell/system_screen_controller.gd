@@ -76,10 +76,17 @@ func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
 
 
-func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
+func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: String = "") -> void:
 	_save_previews = previews.duplicate()
+	if not selected_slot_id.is_empty():
+		for preview: SaveSlotPreview in _save_previews:
+			if preview.slot_id == selected_slot_id and preview.source == SaveSlotPreview.PRIMARY:
+				_selected_save_key = _key(preview)
+				break
 	if not _save_previews.any(func(preview: SaveSlotPreview) -> bool: return _key(preview) == _selected_save_key):
 		_selected_save_key = _key(_save_previews[0]) if not _save_previews.is_empty() else ""
+	if not selected_slot_id.is_empty():
+		_refresh_save_detail()
 
 
 func set_save_and_quit_mode(enabled: bool) -> void:
@@ -146,6 +153,7 @@ func _bind_save_footer(view: GameView) -> void:
 	var quick_two := actions.get_node("QuickSave2") as Button
 	var save_selected := actions.get_node("SaveSelectedSlot") as Button
 	var load_selected := actions.get_node("LoadSelectedSave") as Button
+	var update_save := actions.get_node("UpdateSave") as Button
 	var refresh := actions.get_node("RefreshSaves") as Button
 	var main_menu := actions.get_node("MainMenu") as Button
 	var new_row := root.get_node("NewSaveSlotRow") as BoxContainer
@@ -160,6 +168,11 @@ func _bind_save_footer(view: GameView) -> void:
 	_bind_action(quick_two, func() -> void: action_requested.emit(&"save", "quick-2"))
 	_bind_action(save_selected, func() -> void: _save_selected_preview())
 	_bind_action(load_selected, func() -> void: _load_selected_preview())
+	_bind_action(update_save, func() -> void:
+		var preview := _selected_preview()
+		if preview != null and preview.can_update:
+			action_requested.emit(&"update_save", {"slotId": preview.slot_id, "backup": preview.source == SaveSlotPreview.BACKUP})
+	)
 	_bind_action(refresh, func() -> void: action_requested.emit(&"refresh_saves", null))
 	_bind_action(main_menu, func() -> void: action_requested.emit(&"end_adventure", null))
 	save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
@@ -188,8 +201,11 @@ func _refresh_save_detail() -> void:
 		return
 	var preview := _selected_preview()
 	var load_selected := _workspace.get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions/LoadSelectedSave") as Button
+	var update_save := _workspace.get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions/UpdateSave") as Button
 	load_selected.disabled = preview == null or not preview.can_load
 	load_selected.tooltip_text = "Select a validated save record." if preview == null else preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
+	update_save.visible = preview != null and preview.can_update
+	update_save.tooltip_text = "Create and verify a corrected Half Truth copy. The original save and backup remain untouched."
 	var record := _workspace.save_detail_record()
 	var empty := _workspace.save_detail_empty()
 	record.visible = preview != null
@@ -200,7 +216,7 @@ func _refresh_save_detail() -> void:
 	_bind_label(record.get_node("Status") as Label, preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14)
 	var error := record.get_node("Error") as Label
 	error.visible = preview.status != SaveSlotPreview.VALID
-	_bind_label(error, preview.error_message, MUTED, 14)
+	_bind_label(error, "%s\nUpdate Save creates a separate verified copy; this original remains untouched." % preview.error_message if preview.can_update else preview.error_message, MUTED, 14)
 	var valid := preview.status == SaveSlotPreview.VALID
 	for path: String in ["Location", "Party", "Divider", "Package", "Rules", "Saved"]:
 		record.get_node(path).visible = valid
@@ -265,6 +281,34 @@ static func slot_label(slot_id: String) -> String:
 
 func _bind_display(settings: PresentationSettings) -> void:
 	var root := _workspace.get_node("SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content")
+	_bind_option(root.get_node("DisplayScalingRow/DisplayScalingPicker") as OptionButton, [
+		{"label": "Responsive (current)", "id": PresentationSettings.DISPLAY_RESPONSIVE},
+		{"label": "Integer: whole window", "id": PresentationSettings.DISPLAY_INTEGER_WINDOW},
+		{"label": "Integer: world canvas", "id": PresentationSettings.DISPLAY_INTEGER_CANVAS},
+		{"label": "Fill window", "id": PresentationSettings.DISPLAY_FILL_WINDOW},
+	], settings.display_scaling_mode, &"display_scaling_mode")
+	var zoom_picker := root.get_node("WorldZoomRow/WorldZoomPicker") as OptionButton
+	_bind_option(zoom_picker, [
+		{"label": "1× · 32-pixel tiles", "id": "1"},
+		{"label": "2× · 64-pixel tiles", "id": "2"},
+		{"label": "3× · 96-pixel tiles", "id": "3"},
+		{"label": "4× · 128-pixel tiles", "id": "4"},
+	], str(settings.world_zoom), &"world_zoom")
+	zoom_picker.disabled = settings.display_scaling_mode != PresentationSettings.DISPLAY_INTEGER_CANVAS
+	_bind_option(root.get_node("PixelSmoothingRow/PixelSmoothingPicker") as OptionButton, [
+		{"label": "Off · crisp pixels", "id": PresentationSettings.SMOOTHING_OFF},
+		{"label": "World canvas only", "id": PresentationSettings.SMOOTHING_WORLD},
+		{"label": "Whole window", "id": PresentationSettings.SMOOTHING_WINDOW},
+	], settings.pixel_art_smoothing, &"pixel_art_smoothing")
+	_bind_toggle(root.get_node("CrtEnabled") as CheckButton, settings.crt_enabled, &"crt_enabled")
+	_bind_option(root.get_node("CrtShaderRow/CrtShaderPicker") as OptionButton, [
+		{"label": "CRT-Pi", "id": PresentationSettings.CRT_PI},
+		{"label": "CRT-Lottes", "id": PresentationSettings.CRT_LOTTES},
+	], settings.crt_shader, &"crt_shader")
+	_bind_option(root.get_node("CrtAreaRow/CrtAreaPicker") as OptionButton, [
+		{"label": "World canvas", "id": PresentationSettings.CRT_WORLD},
+		{"label": "Whole window", "id": PresentationSettings.CRT_WINDOW},
+	], settings.crt_area, &"crt_area")
 	_bind_option(root.get_node("InterfaceScaleRow/InterfaceScalePicker") as OptionButton, [
 		{"label": "Fit to window", "id": PresentationSettings.UI_SCALE_AUTO},
 		{"label": "Interface density: 100%", "id": PresentationSettings.UI_SCALE_100},

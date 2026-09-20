@@ -210,8 +210,8 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: S
 	_character_controller.set_vault_revisions(revisions, notice)
 
 
-func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
-	_system_controller.set_save_previews(previews)
+func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: String = "") -> void:
+	_system_controller.set_save_previews(previews, selected_slot_id)
 
 
 func set_save_and_quit_mode(enabled: bool) -> void:

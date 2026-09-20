@@ -48,6 +48,7 @@ func completed_character() -> CharacterState:
 		return null
 	var character := CharacterStateCodec.copy(boundary.game_state.party.characters()[0])
 	if character != null:
+		_rebind_published_inventory(character)
 		character.id = _published_character_id
 	return character
 
@@ -78,3 +79,22 @@ func _accept_implicit_publication(step: SessionStep) -> SessionStep:
 
 func _revision() -> int:
 	return _session.view().revision if _session != null else 0
+
+
+func _rebind_published_inventory(character: CharacterState) -> void:
+	if character == null or _published_character_id.is_empty():
+		return
+	var inventory := character.inventory()
+	var previous_equipment_order := character.equipment_order.resolved(inventory)
+	var item_ids: Dictionary = {}
+	for index: int in inventory.size():
+		var item := inventory[index]
+		var next_id := "%s.item.%d" % [_published_character_id, index]
+		item_ids[item.id] = next_id
+		item.id = next_id
+	character.set_inventory(inventory)
+	var equipment_order: Array[String] = []
+	for previous_id: String in previous_equipment_order:
+		if item_ids.has(previous_id):
+			equipment_order.append(item_ids[previous_id])
+	character.equipment_order.set_exact(equipment_order, inventory)

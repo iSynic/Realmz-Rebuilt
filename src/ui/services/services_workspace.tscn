@@ -23,171 +23,160 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="MoneyPoolPane" type="PanelContainer" parent="MoneyColumn"]
+[node name="MoneyMain" type="BoxContainer" parent="MoneyColumn"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+vertical = false
+
+[node name="MoneyActionArea" type="VBoxContainer" parent="MoneyColumn/MoneyMain"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.3
+theme_override_constants/separation = 8
+
+[node name="MoneyExchangeWorkspace" type="BoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="MoneyPoolPane" type="PanelContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.9
 theme_type_variation = &"ClassicInset"
 
-[node name="Content" type="MarginContainer" parent="MoneyColumn/MoneyPoolPane"]
+[node name="Content" type="MarginContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane"]
 layout_mode = 2
 theme_override_constants/margin_left = 8
 theme_override_constants/margin_top = 8
 theme_override_constants/margin_right = 8
 theme_override_constants/margin_bottom = 8
 
-[node name="MoneyPoolSummary" type="BoxContainer" parent="MoneyColumn/MoneyPoolPane/Content"]
+[node name="MoneyPoolSummary" type="BoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
+vertical = true
 
-[node name="Identity" type="VBoxContainer" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary"]
+[node name="Identity" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary"]
 custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Heading" type="Label" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/Identity"]
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/Identity"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
 theme_override_font_sizes/font_size = 18
 text = "Party Pool"
 
-[node name="Banked" type="Label" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/Identity"]
+[node name="Banked" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/Identity"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
 theme_override_font_sizes/font_size = 12
 text = "Banked  0 gold  •  0 gems  •  0 jewelry"
 autowrap_mode = 2
 
-[node name="MoneyPoolValues" type="HBoxContainer" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary"]
+[node name="MoneyPoolValues" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Gold" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
+[node name="Gold" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Gems" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
+[node name="Gems" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Jewelry" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
+[node name="Jewelry" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="MoneyPoolActions" type="HBoxContainer" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary"]
+[node name="MoneyPoolActions" type="HBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary"]
 layout_mode = 2
 size_flags_horizontal = 8
 alignment = 2
 theme_override_constants/separation = 5
 
-[node name="Pool" type="Button" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolActions"]
+[node name="Pool" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolActions"]
 custom_minimum_size = Vector2(88, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Pool"
+text = "Pool all"
 
-[node name="Share" type="Button" parent="MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolActions"]
+[node name="Share" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolActions"]
 custom_minimum_size = Vector2(88, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Share"
+text = "Share fairly"
 
-[node name="MoneyExchangeWorkspace" type="BoxContainer" parent="MoneyColumn"]
+[node name="MoneySwapPane" type="PanelContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8
-
-[node name="MoneyPartyPane" type="PanelContainer" parent="MoneyColumn/MoneyExchangeWorkspace"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-size_flags_stretch_ratio = 1.12
-theme_type_variation = &"ClassicInset"
-
-[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content"]
-layout_mode = 2
-
-[node name="Heading" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content/Header"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
-theme_override_font_sizes/font_size = 18
-text = "Adventurers"
-
-[node name="Count" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content/Header"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
-theme_override_font_sizes/font_size = 13
-text = "0"
-horizontal_alignment = 2
-
-[node name="MoneyCharacterScroll" type="ScrollContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content"]
-layout_mode = 2
-size_flags_vertical = 3
-
-[node name="MoneyCharacterRows" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content/MoneyCharacterScroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-
-[node name="MoneySwapPane" type="PanelContainer" parent="MoneyColumn/MoneyExchangeWorkspace"]
-layout_mode = 2
-size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.25
 size_flags_vertical = 3
 theme_type_variation = &"ClassicInset"
 
-[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane"]
+[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="MoneyExchangeScroll" type="ScrollContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+[node name="MoneyExchangeScroll" type="ScrollContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="MoneyExchangeBody" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll"]
+[node name="MoneyExchangeBody" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 layout_mode = 2
 
-[node name="Heading" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
+[node name="SelectedPortrait" type="TextureRect" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
 theme_override_font_sizes/font_size = 18
 text = "Exchange"
 
-[node name="SelectedName" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
+[node name="SelectedName" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/Header"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
 theme_override_font_sizes/font_size = 13
 text = "Adventurer"
 horizontal_alignment = 2
 
-[node name="MoneyCharacterPicker" type="OptionButton" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+[node name="MoneyCharacterPicker" type="OptionButton" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 visible = false
 layout_mode = 2
 tooltip_text = "Choose the adventurer whose carried wealth will be exchanged with the party pool."
 
-[node name="MoneySelectedSummary" type="BoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+[node name="MoneySelectedSummary" type="BoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Gold" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
+[node name="Gold" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Gems" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
+[node name="Gems" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Jewelry" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
+[node name="Jewelry" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary" instance=ExtResource("2_chip")]
 layout_mode = 2
 
-[node name="Load" type="Label" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary"]
+[node name="Load" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
@@ -195,15 +184,135 @@ theme_override_font_sizes/font_size = 12
 text = "Carried load\n0 / 0"
 horizontal_alignment = 2
 
-[node name="MoneyTransferGrid" type="VBoxContainer" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+[node name="TransferHeadings" type="HBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
+layout_mode = 2
+
+[node name="Pool" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/TransferHeadings"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Pool"
+horizontal_alignment = 1
+
+[node name="Denomination" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/TransferHeadings"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Denomination"
+horizontal_alignment = 1
+
+[node name="Carries" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/TransferHeadings"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 12
+text = "Carries"
+horizontal_alignment = 1
+
+[node name="MoneyTransferGrid" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="MoneyDone" type="Button" parent="MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content"]
+[node name="MoneyPartyArea" type="VBoxContainer" parent="MoneyColumn/MoneyMain"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+theme_override_constants/separation = 8
+
+[node name="MoneyPartyPane" type="PanelContainer" parent="MoneyColumn/MoneyMain/MoneyPartyArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane/Content"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Adventurers"
+
+[node name="Count" type="Label" parent="MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane/Content/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+theme_override_font_sizes/font_size = 13
+text = "0"
+horizontal_alignment = 2
+
+[node name="MoneyCharacterScroll" type="ScrollContainer" parent="MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MoneyCharacterRows" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane/Content/MoneyCharacterScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="MoneyDone" type="Button" parent="MoneyColumn/MoneyMain/MoneyPartyArea"]
 custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 tooltip_text = "Return to exploration without another money mutation."
 text = "Done"
+
+[node name="MoneyChangingPane" type="PanelContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Header" type="HBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content"]
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
+theme_override_font_sizes/font_size = 18
+text = "Money Changing"
+
+[node name="Status" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+theme_override_font_sizes/font_size = 13
+text = "Available at shops and temples"
+horizontal_alignment = 2
+
+[node name="Actions" type="HBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="JewelryToGems" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions"]
+custom_minimum_size = Vector2(0, 78)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Jewelry → Gems\n1 jewelry → +5 gems"
+
+[node name="GemsToGold" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions"]
+custom_minimum_size = Vector2(0, 78)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Gems → Gold\n1 gem → +100 gold"
+
+[node name="GoldToGems" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions"]
+custom_minimum_size = Vector2(0, 78)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Gold → Gems\n115 gold → +1 gem"
 
 [node name="LocationServicePane" type="PanelContainer" parent="MoneyColumn"]
 visible = false
@@ -250,3 +359,7 @@ theme_override_font_sizes/font_size = 13
 text = "Begin the adventure before pooling or transferring wealth."
 horizontal_alignment = 1
 autowrap_mode = 2
+
+[node name="MoneyRepeatTimer" type="Timer" parent="."]
+wait_time = 0.35
+one_shot = true

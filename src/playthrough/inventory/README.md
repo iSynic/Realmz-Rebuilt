@@ -2,7 +2,7 @@
 
 Use `inventory_workflow.gd` for equipment, custody, Drop, Split, Join, and Trade. Use `field_item_workflow.gd` when a carried item performs Identify, Torch, a door operation, or a charged spell effect. Item definitions and portable instances remain in `src/game/inventory`; this folder coordinates their transaction through the active session.
 
-`inventory_continuations.gd` creates typed saved continuations for item targeting and confirmation using the shared `TargetingContinuationBody` in the sibling `magic` feature. `item_xap_continuation_body.gd` retains a charged item's exact scenario-program handoff so save/restore cannot spend the charge twice or resume a different item.
+`inventory_continuations.gd` creates typed saved continuations for item targeting and legacy confirmation using the shared `TargetingContinuationBody` in the sibling `magic` feature. New Drop commands remove their exact unequipped item directly; an existing saved Drop confirmation remains readable and respondable. `item_xap_continuation_body.gd` retains a charged item's exact scenario-program handoff so save/restore cannot spend the charge twice or resume a different item.
 
 Player commands enter through `intents/inventory_intents.gd`; `InventoryIntentPayloads` names the character, slot, quantity, target, and confirmation values passed to the workflow.
 

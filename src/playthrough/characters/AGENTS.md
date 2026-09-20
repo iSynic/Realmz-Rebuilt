@@ -19,6 +19,7 @@ Own character creation, party admission, finalization, and lifecycle transaction
 
 - Character truth and calculations remain in `src/game/characters`; these workflows coordinate them through `SessionWorkflowContext`.
 - Character Files import validates active-campaign race, caste, item, load, spell, scroll, Fast Spell, portrait, and combat-icon identities before one insertion.
+- Standalone Character Files publication rebases workshop party-owned item IDs and equipped order to the stable Character File identity before storage.
 - Every failed admission leaves the party and reusable Character Files revision unchanged.
 - Creation and aging preserve Castle RNG order, stable identities, continuation fields, and save representation.
 - Character continuation kinds remain distinct typed payloads even though their saved field names are unchanged.

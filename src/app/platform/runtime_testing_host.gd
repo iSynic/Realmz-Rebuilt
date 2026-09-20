@@ -123,7 +123,9 @@ func _capture(params: Dictionary) -> Dictionary:
 		return _observer.rejected("capture_unavailable", "A rendered fixture viewport is required for screenshots.")
 	if not _readiness_fields()["visualReady"]:
 		return _observer.rejected("presentation_not_ready", "Wait for a rendered frame of the committed revision.")
-	var screenshot := get_viewport().get_texture().get_image()
+	var display := get_viewport().get_parent() as DisplayCompositor
+	var captured_viewport := display.get_viewport() if display != null else get_viewport()
+	var screenshot := captured_viewport.get_texture().get_image()
 	var png := screenshot.save_png_to_buffer()
 	if _capture_bytes + png.size() > RuntimeTestingProtocol.MAX_RECORD_BYTES:
 		return _observer.rejected("recording_limit", "The fixture screenshot bound was reached; existing evidence is retained.")

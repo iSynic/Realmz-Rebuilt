@@ -1,6 +1,6 @@
 # Playthrough economy
 
-Use `session_money_workflow.gd` for Party Wealth Pool, Share, and denomination-transfer commands. It delegates value, capacity, and custody calculations to `src/game/economy` and recalculates movement only after a successful transaction.
+Use `session_money_workflow.gd` for Party Wealth Pool, Share, denomination transfers, and Castle-rate pooled money changing at an available shop or temple. It delegates value, capacity, and custody calculations to `src/game/economy` and recalculates movement only after a successful transaction.
 
 `service_continuations.gd` creates the saved handoffs for an active scenario service and for leaving a location while wealth remains pooled. `service_continuation_body.gd` carries only the service identity/runtime continuation or the exact warning/distribution departure stage and direction; the central continuation codec remains a wire boundary rather than an economy owner.
 

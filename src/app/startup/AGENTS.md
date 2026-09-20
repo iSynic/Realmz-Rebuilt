@@ -7,6 +7,8 @@ Own the first visible frame and prepare immutable application and campaign conte
 ## Ownership
 
 - `StartupFrontDoor` owns the launch card, retained intro media, background construction handoff, and input forwarding to the loaded application's temporarily hosted F12 Diagnostics surface.
+- The scene-authored display compositor owns the persistent SubViewport around both front door and application; handoff mounts the application into that viewport without recreating the intro or adventure.
+- The compositor remains `SceneTree.current_scene` during startup handoff. The front door relinquishes its prepared application before teardown; it frees that application only when ownership was never transferred.
 - `PackageHostController` owns discovery, validation, preparation, cancellation, and prepared-package retention.
 - `StartupRouteBridge` connects the lightweight front door to the loaded application routes.
 - Campaign, package-operation, and prepared-package views are detached app values consumed by UI.
@@ -19,6 +21,7 @@ Own the first visible frame and prepare immutable application and campaign conte
 - A failed, cancelled, or superseded preparation leaves the active session and media catalog unchanged.
 - Synchronous and worker package installation both honor the host's configured installation root, including isolated fixture storage.
 - Startup views may expose `MediaSource`, but never storage repository or archive objects.
+- Discovery keeps the ready current revision for each of the 13 shipped campaign IDs authoritative over installed revisions with the same ID; unrelated campaign IDs retain the ordinary user-install override behavior.
 
 ## Work Guidance
 

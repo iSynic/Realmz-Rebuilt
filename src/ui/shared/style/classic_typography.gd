@@ -34,6 +34,8 @@ static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Th
 	var ornament := _with_fallback(BLACK_CHANCERY_PATH, readable_bold)
 	var utility := _with_fallback(CLASSIC_UTILITY_PATH, readable_ui)
 	result.default_font = body
+	result.set_font(&"font", &"ClassicRosterText", body)
+	result.set_font(&"font", &"ClassicRosterAuto", body)
 	for type_name: StringName in [&"Label", &"CheckButton"]:
 		result.set_font(&"font", type_name, body)
 	for type_name: StringName in [&"LineEdit", &"OptionButton", &"ItemList"]:

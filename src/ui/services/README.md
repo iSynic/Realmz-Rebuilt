@@ -5,8 +5,8 @@ This folder is the Godot-facing home of every place where the party exchanges we
 ## Where to start
 
 - `services_screen.tscn`: route frame for ordinary Party Wealth.
-- `services_workspace.tscn`: pool, adventurer ledger, exchange, location-service panel, and persistent Done action.
-- `services_screen_controller.gd`: detached wealth binding and typed route commands.
+- `services_workspace.tscn`: pool, adventurer ledger, selected transfer rows, location-gated changing rates, location-service panel, and persistent Done action.
+- `services_screen_controller.gd`: detached wealth binding, typed route commands, and held-arrow repeat; a completed transaction rebinds the same scene-owned controls.
 - `shop_interaction.tscn`: Shop stock/pack exchange and compact alternative.
 - `temple_interaction.tscn`: character and service selection with purchase actions.
 - `bank_interaction.tscn`: bank account, party pool, and personal denomination transfers.

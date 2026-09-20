@@ -31,7 +31,7 @@ func run() -> void:
 	assert_not_null(completed, "the host can detach the completed character for transactional publication")
 	if completed != null:
 		assert_equal(completed.id, "realmz.character.1", "the host-owned stable Character File identity replaces the workshop party identity")
-		assert_true(not completed.inventory().is_empty(), "standalone publication retains the ordinary Classic starting inventory transaction")
+		assert_true(not completed.inventory().is_empty(), "standalone publication retains the ordinary Classic starting inventory transaction"); assert_true(completed.inventory().all(func(item: ItemInstance) -> bool: return item.id.begins_with("realmz.character.1.item.")) and completed.equipment_order.resolved(completed.inventory()).all(func(item_id: String) -> bool: return item_id.begins_with("realmz.character.1.item.")), "standalone publication rebinds every exact item and equipped-order identity to the stable Character File")
 	assert_equal(creator.publication_committed().state, SessionStep.State.COMPLETED, "the host can acknowledge a successful vault write")
 	var unsupported: RefCounted = CharacterCreationSessionScript.new()
 	assert_equal(unsupported.start(loaded.content, 15839, "realmz.character.2").state, SessionStep.State.COMPLETED, "a second workshop starts independently")

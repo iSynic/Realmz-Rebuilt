@@ -218,11 +218,13 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.save_and_quit_requested.connect(lifecycle_host.save_and_quit)
 	_shell_presenter.load_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id))
 	_shell_presenter.load_backup_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id, true))
+	_shell_presenter.update_save_requested.connect(func(slot_id: String, backup: bool) -> void: adventure_storage.update_save(_active_content, slot_id, backup))
 	_shell_presenter.refresh_saves_requested.connect(func() -> void: adventure_storage.refresh(_active_content))
 	_shell_presenter.end_adventure_requested.connect(lifecycle_host.request_end_adventure)
 	_shell_presenter.quit_requested.connect(lifecycle_host.request_quit)
 	_shell_presenter.route_changed.connect(lifecycle_host.route_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
+	presentation_coordinator.spatial_visibility_changed.connect(_sync_display_world_region)
 	_shell_presenter.route_changed.connect(_on_route_changed)
 	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
 	_shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: character_files.restore_character(_active_content, character_id, revision_hash))
@@ -231,7 +233,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_shell_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: _controller_input.begin_binding_capture(action_id))
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
-	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, debug_tools)
+	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, debug_tools, _spatial_layout, get_viewport().get_parent() as DisplayCompositor)
 	if not has_meta(&"development_preview_request"):
 		_settings_controller.bind()
 	_settings_controller.apply_initial_settings()
@@ -641,6 +643,15 @@ func _try_prewarm_last_campaign() -> void:
 
 func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) -> void:
 	_spatial_layout.apply(workspace_rect, _profile)
+	_sync_display_world_region()
+
+
+func _sync_display_world_region() -> void:
+	var display := get_viewport().get_parent() as DisplayCompositor
+	if display != null:
+		var world_visible := _map_presenter.visible or _battlefield_presenter.visible or _dungeon_presenter.visible
+		var zoom := _presentation_settings.world_zoom if _presentation_settings.display_scaling_mode == PresentationSettings.DISPLAY_INTEGER_CANVAS and not _dungeon_presenter.visible else 1
+		display.set_world_region(_spatial_layout.world_rect if world_visible else Rect2(), zoom)
 
 
 func _on_route_changed(route_id: StringName) -> void:

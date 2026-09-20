@@ -16,6 +16,8 @@ Own persistence for host presentation preferences outside gameplay saves.
 - Save commits only after the temporary file decodes successfully.
 - Persist stable campaign identity only; never persist an absolute package path.
 - Schema 14 adds typed controller bindings, prompt-family selection, independent stick dead zones with release hysteresis, and UI repeat timing. Schemas 1–13 migrate to controller defaults without changing their established values.
+- Schema 17 persists display scaling mode, world zoom, and smoothing scope. Schemas 1–16 retain responsive display, 1x world zoom, and smoothing off even if future-only keys are present.
+- Schema 17 persists display scaling mode, world zoom, and smoothing scope. Schemas 1–16 retain responsive display, 1x world zoom, and smoothing off even if future-only keys are present. Schema 18 persists CRT enablement, preset, and area; earlier schemas default to off, CRT-Pi, and World canvas.
 
 ## Work Guidance
 

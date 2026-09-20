@@ -196,6 +196,10 @@ text = "Save Selected"
 [node name="LoadSelectedSave" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Load Selected"
+[node name="UpdateSave" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+layout_mode = 2
+visible = false
+text = "Update Save"
 [node name="RefreshSaves" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Refresh"
@@ -241,10 +245,63 @@ theme_type_variation = &"ClassicHeading"
 text = "Display"
 [node name="Description" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
-text = "Fit keeps the Classic application centered. Interface density and text size remain independent."
+text = "Choose how the application fills the window. World zoom enlarges map and battle tiles while the interface stays put."
 autowrap_mode = 2
 [node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
+[node name="DisplayScalingRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayScalingRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Display scaling"
+[node name="DisplayScalingPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayScalingRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+[node name="WorldZoomRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldZoomRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "World zoom"
+[node name="WorldZoomPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldZoomRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+[node name="PixelSmoothingRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/PixelSmoothingRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Pixel-art smoothing"
+[node name="PixelSmoothingPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/PixelSmoothingRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+[node name="CrtEnabled" type="CheckButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+layout_mode = 2
+text = "CRT effect"
+[node name="CrtShaderRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtShaderRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "CRT shader"
+[node name="CrtShaderPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtShaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+[node name="CrtAreaRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtAreaRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "CRT area"
+[node name="CrtAreaPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtAreaRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
 [node name="InterfaceScaleRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
 [node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/InterfaceScaleRow"]

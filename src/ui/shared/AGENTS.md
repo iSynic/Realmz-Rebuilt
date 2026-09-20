@@ -13,6 +13,7 @@ Own reusable scene components, presentation policies, and interaction hosting us
 - `assets/` owns application-wide presentation media and exact provenance shared by shell, workspace, and renderer features.
 - `media/` owns application and effective Classic catalogs, presentation audio, and route-aware music context.
 - `style/` owns reusable Classic controls, typography, theme resources, scroll-arrow binding, content icons, and responsive layout profiles.
+- `display_compositor.tscn` retains the application viewport and an on-demand GPU filter viewport; `DisplayScalingPolicy`, `DisplayInputForwarder`, and `DisplayFilterPresenter` own its window geometry, one input transform, and composed-surface xBRZ/CRT ordering respectively.
 
 ## Local Contracts
 
@@ -21,6 +22,8 @@ Own reusable scene components, presentation policies, and interaction hosting us
 - Shared policies may calculate geometry or bind detached values but do not reconstruct major screen hierarchies.
 - Generic workspace components contain no route-specific facts or commands; their feature owner supplies detached text and navigation remains shell-owned.
 - Shared controller overlays receive typed presentation entries and explicit input operations; they never listen to raw joypad events or dispatch gameplay themselves.
+- Display geometry transforms pointer events and testing coordinates once; keyboard and controller events enter the same retained application viewport without scaling.
+- CRT filtering never changes input coordinates. The intermediate viewport updates only while both xBRZ and CRT are active.
 
 ## Work Guidance
 

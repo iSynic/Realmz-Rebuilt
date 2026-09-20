@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=43 format=3]
+[gd_resource type="Theme" load_steps=45 format=3]
 
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-inset-frame.png" id="2_inset"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-down.svg" id="8_scroll_down"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-left.svg" id="9_scroll_left"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-right.svg" id="10_scroll_right"]
+[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/InterVariable-Castle.ttf" id="11_roster_font"]
 
 [sub_resource type="StyleBoxTexture" id="RaisedPanel"]
 texture = ExtResource("1_raised")
@@ -440,6 +441,10 @@ ItemList/fonts/font = ExtResource("3_ui")
 ItemList/styles/panel = SubResource("ContentWell")
 ItemList/styles/selected = SubResource("Selection")
 ClassicHeading/base_type = &"Label"
+ClassicRosterText/base_type = &"Label"
+ClassicRosterText/fonts/font = ExtResource("11_roster_font")
+ClassicRosterAuto/base_type = &"Button"
+ClassicRosterAuto/fonts/font = ExtResource("11_roster_font")
 ClassicHeading/colors/font_color = Color(0.98, 0.87, 0.32, 1)
 ClassicHeading/fonts/font = ExtResource("4_ui_bold")
 ClassicHeading/font_sizes/font_size = 18

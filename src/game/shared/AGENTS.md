@@ -17,6 +17,8 @@ Own the small pure values that genuinely cross several game features or form a s
 - `RealmzRules` is the narrow composition object that constructs and exposes the feature rule collaborators used by one session; behavior remains with those collaborators.
 - `media/` owns immutable media descriptors and the read-only media-source port; adapters still own bytes and I/O.
 - `presentation/` owns host presentation settings that never enter an adventure save.
+- Presentation-settings schema 17 adds default-responsive display scaling, 1x–4x world zoom, and default-off pixel-art smoothing; older schemas inherit those defaults.
+- Presentation-settings schema 17 adds default-responsive display scaling, 1x–4x world zoom, and default-off pixel-art smoothing; schema 18 adds default-off CRT with CRT-Pi and World canvas defaults. Older schemas inherit these defaults.
 - `view/` owns only the general detached `ActionAvailabilityView`, `DefinitionOptionView`, and `ViewChangeSet` atoms.
 - `interactions/` owns the stable pure request/response envelopes, neutral bodies, and strict decoder registry consumed across runtime boundaries.
 

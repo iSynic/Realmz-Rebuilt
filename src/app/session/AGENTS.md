@@ -18,6 +18,7 @@ Own host workflows around one replaceable pure `GameSession` without duplicating
 
 - Controllers may depend on storage repositories; presentation may not.
 - Restore validates a replacement completely before swapping the active session.
+- Explicit Half Truth save updating validates the exact old and current package identities, pinned media-only archive transition, and detached replacement restore before writing a separate copy. It never changes the active session or original save.
 - A failed or cancelled operation leaves the active session and media catalog unchanged.
 - Character Files revisions are cached by stable identity and revision hash and invalidated after mutation.
 - Character Files refresh also publishes a detached notice when preserved current revisions are incompatible or invalid; the host never treats those files as an empty vault or requests their migration.

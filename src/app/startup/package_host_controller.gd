@@ -5,6 +5,21 @@ extends RefCounted
 
 const BUNDLED_CAMPAIGN_ROOT: String = "res://src/storage/packages/bundled_campaigns"
 const USER_CAMPAIGN_ROOT: String = "user://packages"
+const SHIPPED_BUNDLED_CAMPAIGN_IDS: Array[String] = [
+	"scenario-assault-on-giant-mountain",
+	"scenario-castle-in-the-clouds",
+	"scenario-city-of-bywater",
+	"scenario-destroy-the-necronomicon",
+	"scenario-grilochs-revenge",
+	"scenario-half-truth",
+	"scenario-mithril-vault",
+	"scenario-prelude-to-pestilence",
+	"scenario-trouble-in-the-sword-lands",
+	"scenario-twin-sands-of-time",
+	"scenario-war-in-the-sword-lands",
+	"scenario-white-dragon",
+	"scenario-wrath-of-the-mind-lords",
+]
 
 var _repository: PackageRepository
 var _task: PackageInstallTask
@@ -138,13 +153,18 @@ func discover_campaigns(search_roots: Array[String]) -> Array[CampaignPackageVie
 
 func discover_available_campaigns(bundled_root: String = BUNDLED_CAMPAIGN_ROOT, user_root: String = USER_CAMPAIGN_ROOT) -> Array[CampaignPackageView]:
 	var selected_by_campaign: Dictionary = {}
+	var bundled_campaign_ids: Dictionary = {}
 	var rejected: Array[PackageDiscoveryResult] = []
 	for record: PackageDiscoveryResult in _repository.discover_campaigns([bundled_root]):
 		if record.ready:
 			selected_by_campaign[record.campaign_id] = record
+			if SHIPPED_BUNDLED_CAMPAIGN_IDS.has(record.campaign_id):
+				bundled_campaign_ids[record.campaign_id] = true
 		else:
 			rejected.append(record)
 	for record: PackageDiscoveryResult in _repository.discover_campaigns([user_root]):
+		if bundled_campaign_ids.has(record.campaign_id):
+			continue
 		if record.ready:
 			selected_by_campaign[record.campaign_id] = record
 		else:

@@ -66,6 +66,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 
 ## Work Guidance
 
+- Inventory Drop coverage now proves direct exact-instance removal, no fresh interaction or continuation, repeated submission, and equipped-item rejection; legacy saved Drop confirmations remain covered by continuation wire/response tests.
 - Split large suites by public workflow ownership, not by individual bugs or implementation helpers.
 - Every suite supports named focused cases through the shared test-case contract. The runner awaits complete suite runs as well as selected cases, including scene-backed application and workspace lifecycles, so deferred readiness and teardown finish before assertions are counted.
 - Use fixture builders for repeated setup, but keep expected player-visible outcomes explicit at the owning public boundary.

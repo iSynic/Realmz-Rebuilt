@@ -38,12 +38,9 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("canonical-package-install-progress-1280x720")
 	_router.setup_controller.campaign_library.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
-	await _resize(Vector2i(800, 600))
 	var package_step := _application.start_package(FIXTURE_PATH, 1); assert(package_step.state != SessionStep.State.FAILED, "Unable to start the UI gallery fixture: %s" % package_step.error_message)
 	await _settle()
-	await _capture("compact-party-setup-800x600")
-	await _resize(Vector2i(1280, 720))
-	await _capture("canonical-party-setup-1280x720")
+	await _capture_compact_canonical("compact-party-setup-800x600", "canonical-party-setup-1280x720")
 	await _resize(Vector2i(800, 600))
 	var setup_view := _application.session_controller.view()
 	var setup := _router.setup_controller
@@ -56,30 +53,23 @@ func _capture_gallery() -> void:
 	_shell.present(setup_view)
 	var setup_inspect := _button_named(setup.party_list, "View")
 	if setup_inspect != null:
-		setup_inspect.pressed.emit(); await _settle(); await _capture("compact-party-setup-inspection-800x600")
-		await _resize(Vector2i(1280, 720)); await _capture("canonical-party-setup-inspection-1280x720")
+		setup_inspect.pressed.emit(); await _settle(); await _capture_compact_canonical("compact-party-setup-inspection-800x600", "canonical-party-setup-inspection-1280x720")
 		var setup_back := _button_named(setup.setup_inspection_overlay, "Back to party setup")
 		if setup_back != null:
 			setup_back.pressed.emit()
-	setup_view.party_members.clear(); _shell.present(setup_view); await _resize(Vector2i(800, 600))
+	setup_view.party_members.clear(); _shell.present(setup_view)
 	setup.create_character_button.pressed.emit()
 	await _settle()
-	await _capture("compact-character-creator-identity-800x600")
-	await _resize(Vector2i(1280, 720))
-	await _capture("canonical-character-creator-identity-1280x720")
+	await _capture_compact_canonical("compact-character-creator-identity-800x600", "canonical-character-creator-identity-1280x720")
 	setup.selected_race_id = setup_view.race_options[0].id
 	setup.selected_caste_id = setup_view.caste_options[0].id
 	setup.creator_step = 1
 	setup.character_creation.render_creator_step()
-	await _capture("canonical-character-creator-race-class-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("compact-character-creator-race-class-800x600")
-	await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("canonical-character-creator-race-class-1280x720", "compact-character-creator-race-class-800x600")
 	setup.creator_step = 2
 	setup.character_creation.render_creator_step()
 	await _settle()
-	await _capture("canonical-character-creator-appearance-1280x720")
-	await _resize(Vector2i(800, 600)); await _capture("compact-character-creator-appearance-800x600"); await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("canonical-character-creator-appearance-1280x720", "compact-character-creator-appearance-800x600")
 	var review_state := CharacterState.new("gallery.creator", "Ari", 18, 18)
 	review_state.race_id = setup_view.race_options[0].id
 	review_state.caste_id = setup_view.caste_options[0].id
@@ -88,9 +78,7 @@ func _capture_gallery() -> void:
 	setup_view.character_draft = CharacterView.new(review_state)
 	setup.creator_step = 3
 	setup.character_creation.render_creator_step()
-	await _capture("canonical-character-creator-review-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("compact-character-creator-review-800x600")
+	await _capture_canonical_compact("canonical-character-creator-review-1280x720", "compact-character-creator-review-800x600")
 	review_state.spellcaster_type = 1
 	setup_view.character_draft = CharacterView.new(review_state)
 	setup_view.character_draft_spell_points_total = 4
@@ -98,10 +86,7 @@ func _capture_gallery() -> void:
 	setup_view.character_draft_spell_options = [CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1101", 1101, "Discover Magic", "Reveals magical influences affecting the caster."), 1, true), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1107", 1107, "Magic Darts", "A compact bolt of magical force."), 1, false), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1201", 1201, "Flame Hands", "Calls a brief fan of flame."), 2, false)]
 	setup.creator_step = 4
 	setup.character_creation.render_creator_step()
-	await _resize(Vector2i(1280, 720))
-	await _capture("canonical-character-creator-spells-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("compact-character-creator-spells-800x600")
+	await _capture_canonical_compact("canonical-character-creator-spells-1280x720", "compact-character-creator-spells-800x600")
 	setup.character_creation.reset_creator(true)
 	await _settle()
 	var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
@@ -112,27 +97,20 @@ func _capture_gallery() -> void:
 	_shell.controller.open_workspace_radial(); await _settle(); await _capture("canonical-controller-workspaces-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_action_radial(); await _settle(); await _capture("canonical-controller-actions-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_top_menu(); _shell.controller.move_top_menu(Vector2i.RIGHT); _shell.controller.move_top_menu(Vector2i.DOWN); await _settle(); await _capture("canonical-controller-top-menu-1280x720"); _shell.controller.back_top_menu(); _shell.controller.back_top_menu(); await _resize(Vector2i(800, 600)); _shell.controller.open_workspace_radial(); await _settle(); await _capture("classic-controller-workspaces-wheel-800x600"); _shell.controller.cancel_radial(); _shell.controller.open_top_menu(); _shell.controller.move_top_menu(Vector2i.DOWN); await _settle(); await _capture("classic-controller-top-menu-800x600"); _shell.controller.back_top_menu(); _shell.controller.back_top_menu(); await _resize(Vector2i(1280, 720))
 	var explore_view := _application.session_controller.view() as GameView
 	explore_view.party_summary.condition_values[ConditionRules.PARTY_SEARCHING] = -1
-	_shell.present(explore_view); await _settle(); await _capture("canonical-search-effect-1280x720")
-	await _resize(Vector2i(800, 600)); await _capture("compact-search-effect-800x600"); await _resize(Vector2i(1280, 720))
+	_shell.present(explore_view); await _settle(); await _capture_canonical_compact("canonical-search-effect-1280x720", "compact-search-effect-800x600")
 	explore_view.party_summary.condition_values[ConditionRules.PARTY_SEARCHING] = 0
 	explore_view.party_summary.camping = true; _shell.present(GameView.new(0, false, null)); _shell.present(explore_view); await _settle(); await _capture("canonical-camp-mode-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-camp-mode-800x600"); await _resize(Vector2i(1280, 720))
 	explore_view.party_summary.camping = false; _shell.present(GameView.new(0, false, null)); _shell.present(explore_view); await _settle()
 	_interaction.present(InteractionRequest.acknowledge("gallery-edge-to-edge", "The party follows the old road toward Northgate."))
 	await _settle()
-	await _capture("canonical-acknowledge-edge-to-edge-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-acknowledge-800x600")
-	await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("canonical-acknowledge-edge-to-edge-1280x720", "classic-acknowledge-800x600")
 	_interaction.present(null)
 	var gallery_view: Variant = _application.session_controller.view()
 	var gallery_media := _application.presentation_media.catalog()
 	var scrolling_gallery_text := "<<< Click & Drag Mouse To Move About >>>\n<<< Double Click To End This Message >>>\n\nYou can edit this text via a Resource editor.\n\nInside the scenario is an authored TEXT resource. Opcode 62 displays that exact text as a scrolling message instead of a normal map.\n\nThis passage continues so the stage visibly advances over Castle's tiled background. ".repeat(5)
 	_interaction.present(InteractionRequest.from_payload("gallery-scrolling-text", InteractionRequest.ACKNOWLEDGE, {"prompt": scrolling_gallery_text, "messageId": 1, "presentation": "classic-scrolling-text"}), "", gallery_view, gallery_media)
 	await _settle()
-	await _capture("canonical-scrolling-text-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-scrolling-text-800x600")
-	await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("canonical-scrolling-text-1280x720", "classic-scrolling-text-800x600")
 	_interaction.present(null)
 	if not gallery_view.party_members.is_empty():
 		var active_content: Variant = _application.get("_active_content")
@@ -191,8 +169,7 @@ func _capture_gallery() -> void:
 	var trade_button := _base_button_with_tooltip(_router, "Open the two-pack Trade workspace")
 	if trade_button is ClassicBitmapButton and not trade_button.disabled:
 		(trade_button as ClassicBitmapButton).command_requested.emit(&"inventory.action.trade"); await _settle(); await _capture("wide-inventory-trade-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-inventory-trade-800x600")
+	await _resize(Vector2i(800, 600)); await _capture("classic-inventory-trade-800x600")
 	var cancel_trade := _button_named(_router, "Items")
 	if cancel_trade != null:
 		cancel_trade.pressed.emit(); await _settle()
@@ -223,10 +200,7 @@ func _capture_gallery() -> void:
 	_shell.present(gallery_view)
 	_router.open_screen(&"journal")
 	await _settle()
-	await _capture("wide-journal-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-journal-800x600")
-	await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("wide-journal-1280x720", "classic-journal-800x600")
 	var maps_notes_tabs := _router.find_child("MapsNotesTabs", true, false) as TabContainer
 	maps_notes_tabs.current_tab = 1; await _settle(); await _capture("canonical-player-maps-1280x720"); await _resize(Vector2i(800, 600))
 	maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
@@ -238,8 +212,7 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"exploration"); await _settle()
 	_interaction.present(InteractionRequest.from_payload("gallery-classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"}), "Will you enter the ruined keep?")
 	await _settle()
-	await _capture("wide-classic-choice-context-1280x720")
-	await _resize(Vector2i(800, 600)); await _capture("classic-choice-context-800x600"); await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("wide-classic-choice-context-1280x720", "classic-choice-context-800x600")
 	var encounter_request := ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION); var encounter_body := encounter_request.body as ComplexEncounterRequestBody; var gallery_encounter_item: ItemView = gallery_view.party_members[0].items[0]; encounter_body.items[0].character_id = gallery_view.party_members[0].id; encounter_body.items[0].instance_id = gallery_encounter_item.instance_id; encounter_body.items[0].classic_id = gallery_encounter_item.classic_id; encounter_body.items[0].name = gallery_encounter_item.name; encounter_body.items[0].icon_resource_type = gallery_encounter_item.icon_resource_type; encounter_body.items[0].icon_id = gallery_encounter_item.icon_id; encounter_body.items[0].charges = gallery_encounter_item.charges; encounter_body.items[0].equipped = gallery_encounter_item.equipped; _interaction.present(encounter_request, "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("wide-encounter-1280x720")
@@ -248,9 +221,7 @@ func _capture_gallery() -> void:
 	var item_command := _application.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
 	item_command.command_requested.emit(&"item"); await _settle(); await _capture("wide-encounter-item-picker-1280x720")
 	var spell_command := _application.find_child("EncounterCommandSpell", true, false) as ClassicBitmapButton
-	spell_command.command_requested.emit(&"spell"); await _settle(); await _capture("wide-encounter-spell-picker-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-encounter-spell-picker-800x600")
+	spell_command.command_requested.emit(&"spell"); await _settle(); await _capture_canonical_compact_leave("wide-encounter-spell-picker-1280x720", "classic-encounter-spell-picker-800x600")
 	word_command = _application.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton
 	word_command.command_requested.emit(&"word"); await _settle(); await _capture("classic-encounter-word-entry-800x600")
 	item_command = _application.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
@@ -288,8 +259,7 @@ func _capture_gallery() -> void:
 		if interaction_kind == InteractionRequest.THIEF_ENCOUNTER:
 			await _resize(Vector2i(800, 600)); await _capture("classic-interaction-thief-encounter-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind == InteractionRequest.CHARACTER_SELECTION:
-			await _capture("wide-field-spell-target-1280x720")
-			await _resize(Vector2i(800, 600)); await _capture("classic-field-spell-target-800x600"); await _resize(Vector2i(1280, 720))
+			await _capture_canonical_compact("wide-field-spell-target-1280x720", "classic-field-spell-target-800x600")
 			_shell.roster.present_character_selection(null)
 		if interaction_kind == InteractionRequest.ALLY_SELECTION:
 			await _resize(Vector2i(800, 600)); await _capture("classic-surviving-allies-800x600"); await _resize(Vector2i(1280, 720))
@@ -297,7 +267,6 @@ func _capture_gallery() -> void:
 			await _resize(Vector2i(800, 600)); await _capture("classic-pick-lock-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind in [InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]:
 			await _resize(Vector2i(800, 600)); _interaction.present(interaction_request, "", gallery_view, gallery_media); await _settle(); await _capture("classic-interaction-%s-800x600" % String(interaction_kind).replace("_", "-")); await _resize(Vector2i(1280, 720))
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
 	await _resize(Vector2i(800, 600))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
 	await _settle()
@@ -308,90 +277,30 @@ func _capture_gallery() -> void:
 	await _capture("wide-treasure-distribution-1280x720"); _interaction.set_block_signals(true); (_interaction.find_child("TreasureDone", true, false) as Button).pressed.emit(); _interaction.set_block_signals(false); var treasure_completion := InteractionRequest.from_payload("gallery.treasure.completion", InteractionRequest.TREASURE_DISTRIBUTION, {"mode": "completion-confirmation", "summary": "One item remains unclaimed. Leave it behind?"}); _interaction.present(treasure_completion, "", gallery_view, gallery_media); await _settle(); await _capture("wide-treasure-completion-modal-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-treasure-completion-modal-800x600"); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified"), "", gallery_view, gallery_media)
 	await _settle()
-	await _capture("wide-treasure-unidentified-1280x720")
-	await _resize(Vector2i(800, 600)); _interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified"), "", gallery_view, gallery_media); await _settle(); await _capture("classic-treasure-unidentified-800x600"); await _resize(Vector2i(1280, 720))
+	await _capture("wide-treasure-unidentified-1280x720"); await _resize(Vector2i(800, 600)); _interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified"), "", gallery_view, gallery_media); await _settle(); await _capture("classic-treasure-unidentified-800x600"); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"), "", gallery_view, gallery_media)
 	await _settle()
-	await _capture("wide-fumble-recovery-1280x720")
-	await _resize(Vector2i(800, 600)); _interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"), "", gallery_view, gallery_media); await _settle(); await _capture("classic-fumble-recovery-800x600"); await _resize(Vector2i(1280, 720))
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP))
-	await _settle()
-	await _capture("wide-level-result-1280x720")
-	await _resize(Vector2i(800, 600)); await _capture("classic-level-result-800x600"); await _resize(Vector2i(1280, 720))
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP, &"unidentified"))
-	await _settle()
-	await _capture("wide-level-spells-1280x720")
-	await _resize(Vector2i(800, 600)); await _capture("classic-level-spells-800x600"); await _resize(Vector2i(1280, 720))
+	await _capture("wide-fumble-recovery-1280x720"); await _resize(Vector2i(800, 600)); _interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"), "", gallery_view, gallery_media); await _settle(); await _capture("classic-fumble-recovery-800x600"); await _resize(Vector2i(1280, 720))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP)); await _settle(); await _capture_canonical_compact("wide-level-result-1280x720", "classic-level-result-800x600")
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP, &"unidentified")); await _settle(); await _capture_canonical_compact("wide-level-spells-1280x720", "classic-level-spells-800x600")
 	_interaction.present(null)
 	_shell.present(gallery_view)
 	_router.open_screen(&"character")
 	await _settle()
-	await _capture("canonical-character-overview-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-overview-800x600")
-	await _resize(Vector2i(1280, 720))
-	var conditions_button := _button_named(_router, "Conditions & Saves")
-	if conditions_button != null:
-		conditions_button.pressed.emit()
-		await _settle()
-		await _capture("canonical-character-conditions-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-conditions-800x600")
-	await _resize(Vector2i(1280, 720))
-	var abilities_button := _button_named(_router, "Abilities")
-	if abilities_button != null:
-		abilities_button.pressed.emit()
-		await _settle()
-		await _capture("canonical-character-abilities-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-abilities-800x600")
-	await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("canonical-character-overview-1280x720", "classic-character-overview-800x600")
+	await _capture_character_section("Conditions & Saves", "conditions")
+	await _capture_character_section("Abilities", "abilities")
 	var spell_character_button := _button_named(_router, "Elian")
 	if spell_character_button != null:
 		spell_character_button.pressed.emit()
-	var character_spells_button := _button_named(_router, "Spells")
-	if character_spells_button != null:
-		character_spells_button.pressed.emit()
-		await _settle()
-		await _capture("canonical-character-spells-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-spells-800x600")
-	await _resize(Vector2i(1280, 720))
+	await _capture_character_section("Spells", "spells")
 	var first_character_button := _button_named(_router, "Ari")
 	if first_character_button != null:
 		first_character_button.pressed.emit()
-	var appearance_button := _button_named(_router, "Appearance")
-	if appearance_button != null:
-		appearance_button.pressed.emit()
-		await _settle()
-		await _capture("canonical-character-appearance-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-appearance-800x600")
-	await _resize(Vector2i(1280, 720))
-	var record_button := _button_named(_router, "Lifetime Record")
-	if record_button != null:
-		record_button.pressed.emit()
-		await _settle()
-		await _capture("canonical-character-lifetime-record-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-lifetime-record-800x600")
-	await _resize(Vector2i(1280, 720))
-	var background_button := _button_named(_router, "Race, Class & Aging")
-	if background_button != null:
-		background_button.pressed.emit()
-		await _settle()
-		await _capture("canonical-character-background-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-background-800x600")
-	await _resize(Vector2i(1280, 720))
-	var equipment_button := _button_named(_router, "Equipment")
-	if equipment_button != null:
-		equipment_button.pressed.emit()
-		await _settle()
-		await _capture("canonical-character-equipment-1280x720")
-	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-equipment-800x600")
-	await _resize(Vector2i(1280, 720))
+	await _capture_character_section("Appearance", "appearance")
+	await _capture_character_section("Lifetime Record", "lifetime-record")
+	await _capture_character_section("Race, Class & Aging", "background")
+	await _capture_character_section("Equipment", "equipment")
 	_router.open_screen(&"allies")
 	await _settle()
 	await _capture("canonical-allies-empty-1280x720")
@@ -403,8 +312,7 @@ func _capture_gallery() -> void:
 		gallery_view.party_allies = gallery_allies
 		_shell.present(gallery_view)
 		await _settle()
-		await _capture("canonical-allies-populated-1280x720")
-		await _resize(Vector2i(800, 600)); await _capture("classic-allies-populated-800x600"); await _resize(Vector2i(1280, 720))
+		await _capture_canonical_compact("canonical-allies-populated-1280x720", "classic-allies-populated-800x600")
 	if not gallery_view.party_members.is_empty():
 		var vault_revision := CharacterVaultRevisionView.new()
 		vault_revision.character_id = gallery_view.party_members[0].id
@@ -423,13 +331,11 @@ func _capture_gallery() -> void:
 		await _capture("canonical-character-files-1280x720")
 		var vault_inspect := _button_named(_router, "Inspect")
 		if vault_inspect != null:
-			vault_inspect.pressed.emit(); await _settle(); await _capture("canonical-character-file-inspection-1280x720")
-			await _resize(Vector2i(800, 600)); await _capture("classic-character-file-inspection-800x600"); await _resize(Vector2i(1280, 720))
+			vault_inspect.pressed.emit(); await _settle(); await _capture_canonical_compact("canonical-character-file-inspection-1280x720", "classic-character-file-inspection-800x600")
 	await _resize(Vector2i(800, 600)); await _capture("classic-character-files-800x600")
 	_router.open_screen(&"exploration")
 	await _settle()
 	await _capture("classic-six-member-roster-800x600")
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP), "", gallery_view, gallery_media)
 	await _resize(Vector2i(800, 600))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP), "", gallery_view, gallery_media)
 	await _settle()
@@ -446,8 +352,7 @@ func _capture_gallery() -> void:
 	_shell.present(gallery_view)
 	_router.open_screen(&"services")
 	await _settle()
-	await _capture("wide-party-wealth-1280x720")
-	await _resize(Vector2i(800, 600)); await _capture("classic-party-wealth-800x600"); await _resize(Vector2i(1280, 720))
+	await _capture_canonical_compact("wide-party-wealth-1280x720", "classic-party-wealth-800x600")
 	var service := ServiceView.new()
 	service.service_id = "gallery-shop"
 	service.service_kind = &"shop"
@@ -533,13 +438,37 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("compact-system-ui150-text150-800x600")
 	_shell.apply_settings(PresentationSettings.new()); await _resize(Vector2i(1280, 720)); _router.open_screen(&"exploration")
-	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-end-adventure-1280x720")
-	await _resize(Vector2i(800, 600)); await _capture("classic-end-adventure-800x600")
+	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture_canonical_compact("canonical-end-adventure-1280x720", "classic-end-adventure-800x600")
 	await _resize(Vector2i(1280, 720)); _interaction.present(APPLICATION_LIFECYCLE_SCRIPT.quit_application_request(true, false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-quit-800x600")
 	_interaction.present(null); _router.content_presenter.set_save_and_quit_mode(true); await _resize(Vector2i(1280, 720)); _router.open_screen(&"system"); await _settle(); await _capture("canonical-save-and-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-save-and-quit-800x600"); _router.content_presenter.set_save_and_quit_mode(false); _router.open_screen(&"exploration"); _shell.present(gallery_view); await _resize(Vector2i(1920, 1080)); await _capture("fit-explore-1920x1080"); await _resize(Vector2i(3440, 1440)); await _capture("fit-explore-ultrawide-3440x1440"); await _resize(Vector2i(3840, 2160)); await _capture("fit-explore-4k-3840x2160")
 	_application.queue_free()
 	await process_frame
 	quit(0)
+
+
+func _capture_compact_canonical(compact_label: String, canonical_label: String) -> void:
+	await _resize(Vector2i(800, 600)); await _capture(compact_label); await _resize(Vector2i(1280, 720)); await _capture(canonical_label)
+
+
+func _capture_canonical_compact(canonical_label: String, compact_label: String) -> void:
+	await _capture(canonical_label); await _resize(Vector2i(800, 600)); await _capture(compact_label); await _resize(Vector2i(1280, 720))
+
+
+func _capture_optional_canonical_compact(canonical_label: String, compact_label: String, capture_canonical: bool) -> void:
+	if capture_canonical: await _capture(canonical_label)
+	await _resize(Vector2i(800, 600)); await _capture(compact_label); await _resize(Vector2i(1280, 720))
+
+
+func _capture_character_section(button_label: String, capture_name: String) -> void:
+	var button := _button_named(_router, button_label)
+	if button != null:
+		button.pressed.emit()
+		await _settle()
+	await _capture_optional_canonical_compact("canonical-character-%s-1280x720" % capture_name, "classic-character-%s-800x600" % capture_name, button != null)
+
+
+func _capture_canonical_compact_leave(canonical_label: String, compact_label: String) -> void:
+	await _capture(canonical_label); await _resize(Vector2i(800, 600)); await _capture(compact_label)
 
 
 func _resize(size: Vector2i) -> void:
