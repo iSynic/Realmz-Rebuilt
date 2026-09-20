@@ -332,7 +332,7 @@ func _draw_exploration_stage(map_rect: Rect2, los_blackout: bool) -> void:
 
 
 func _draw_darkness_mask(map_rect: Rect2, party_rect: Rect2, level: int) -> void:
-	var mask_rect := MapPresentationGeometry.darkness_mask_rect(party_rect)
+	var mask_rect := MapPresentationGeometry.darkness_mask_rect(party_rect, cell_size)
 	var clipped := map_rect.intersection(mask_rect)
 	if clipped.position.y > map_rect.position.y:
 		draw_rect(Rect2(map_rect.position, Vector2(map_rect.size.x, clipped.position.y - map_rect.position.y)), Color.BLACK, true)
@@ -346,7 +346,7 @@ func _draw_darkness_mask(map_rect: Rect2, party_rect: Rect2, level: int) -> void
 	if texture == null:
 		draw_rect(clipped, Color.BLACK, true)
 		return
-	draw_texture_rect_region(texture, clipped, Rect2(clipped.position - mask_rect.position, clipped.size))
+	draw_texture_rect_region(texture, clipped, MapPresentationGeometry.darkness_mask_source_rect(clipped, mask_rect, cell_size))
 
 
 func _draw_land_markers(cell: MapCellView, rect: Rect2) -> void:
