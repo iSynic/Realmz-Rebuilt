@@ -78,6 +78,7 @@ Default section order:
 
 When the user requests a durable behavior change, record it here or in the relevant child AGENTS.md.
 
+- Write public player-facing project copy in the owner's direct, approachable voice, leading with what players can do. In that copy, refer to Castle as "the Realmz Castle codebase."
 - Build a greenfield Realmz runtime. Do not reproduce Samuel's host architecture or add compatibility paths for its saves and campaigns.
 - Model Castle Realmz concepts and behavior directly. Keep Classic behavior as the fixed ruleset and document deliberate fidelity corrections.
 - Player Auto and NPC combat decision-making may deliberately improve on Castle, including movement routing, action and weapon selection, spell choice, and ally-safe targeting. Keep every improvement deterministic from the serialized session RNG, rules-legal, presentation-independent, and explicitly documented rather than treating Castle's weak AI as a fixed fidelity requirement. Treat positive tactical scores as relative likelihood weights between viable action categories rather than always selecting the maximum; keep the exact legal target, spell/power/placement, and route deterministic inside the selected category. Forced and single-option actions consume no choice draw. Persistent Auto must yield after each character activation so the player can return any roster member to manual control during an ongoing battle; Escape is the host safety hatch that disables every party Auto toggle and resumes manual control at the next activation boundary.

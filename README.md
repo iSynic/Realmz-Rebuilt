@@ -1,68 +1,33 @@
 # Realmz Rebuilt
 
-Realmz Rebuilt is a greenfield, cross-platform Realmz runtime built with Godot 4.7.1. It models Castle Realmz behavior directly while keeping gameplay deterministic and independent of presentation timing. Providence compiles authored scenarios into immutable `.realmz2` packages; Rebuilt validates and runs those packages.
+Rebuilt is a new way to play the Classic scenarios on modern computers while keeping their maps, encounters, rules, art, and quirks recognizable. A greenfield, cross-platform Realmz runtime built with Godot 4.7.1.
 
-This is beta software. Keep backups of saves and character files, and expect compatibility fixes before the first stable release. Rebuilt intentionally retains the existing `RealmzRemake2` Godot user-data directory so current Rebuilt saves, settings, installed packages, and characters continue to be found. It does not import saves or campaign projects from the earlier host architecture.
+The old scenarios are more than maps and dialogue. They depend on a whole game's worth of behavior. Rewriting each one for a different engine would be a huge job, and it would be easy to lose things along the way. With Rebuilt, we're building that shared foundation once and checking differences against the Realmz Castle codebase as we go.
 
-## Get the source
+## Play the beta
 
-Git LFS is required because the application library and bundled scenarios are LFS-backed packages.
+[Download the current beta for Windows, Linux, or macOS](https://github.com/iSynic/Realmz-Rebuilt/releases/tag/v0.1.0-beta.8). Download the archive for your platform, extract it, and launch Realmz Rebuilt. The release includes the content needed for its bundled scenarios.
 
-```bash
-git lfs install
-git clone https://github.com/iSynic/Realmz-Rebuilt.git
-cd Realmz-Rebuilt
-git lfs pull
-git lfs fsck
-```
+You can assemble a party and head into overland maps, 2D and first-person dungeons, authored encounters, and tactical battles. Inventory, spells, treasure, services, and saving and loading are part of the game. You can use a keyboard and mouse or play entirely with a controller. If you're starting with an empty character vault, you'll also get editable copies of six Classic starter characters.
 
-GitHub's Download ZIP is also supported. If a `.realmz2` file begins with `version https://git-lfs.github.com/spec/v1`, it is an LFS pointer rather than game data; use the Git/LFS clone method instead and report the archive problem.
+The beta includes the thirteen scenarios that ship with the Realmz Castle codebase:
 
-## Run from Godot
+Assault on Giant Mountain · Castle in the Clouds · City of Bywater · Destroy the Necronomicon · Grilochs Revenge · Half Truth · Mithril Vault · Prelude to Pestilence · Trouble in the Sword Lands · Twin Sands of Time · War in the Sword Lands · White Dragon · Wrath of the Mind Lords
 
-1. Install the standard, non-.NET Godot 4.7.1 editor.
-2. Import `project.godot` from the repository root.
-3. Allow the initial asset import to finish.
-4. Run the project with F6/F5 from the editor.
+We've kept the Classic look and sound while adding choices that make it easier to play today, including a readable-font option, display scaling, and optional pixel-art and CRT effects.
 
-Native builds default to Godot's Mobile renderer, using the RenderingDevice path on supported Windows, Linux, and macOS systems. For older or problematic graphics hardware, run with the explicit OpenGL fallback:
+## What “beta” means here
 
-```text
---rendering-method gl_compatibility --rendering-driver opengl3
-```
+Rebuilt is playable, but we're still finding and fixing differences through real play. Including a scenario does **not** mean we've completed and verified every route through it. If something behaves differently from the original game, I want to know about it.
 
-The canonical interface target is 1280×720. Keyboard, mouse, and platform-standard window/fullscreen controls are supported; relevant gameplay commands are shown in the active workspace.
+Please back up saves and character files you care about before testing a new beta. Rebuilt continues to use its existing local data folder, but it does not import saves or campaign projects from the earlier Realmz Remake.
 
-## Included content and licensing
+## Help us improve it
 
-Original Realmz Rebuilt source code is licensed under GPL-3.0-or-later. Realmz-derived scenarios, application assets, and the six Classic starter characters are separately licensed under CC BY-NC-SA 4.0 and are not relicensed by the GPL. Exact provenance, modifications, hashes, and third-party licenses are recorded in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+The best bug reports tell us **which scenario**, **where you were** (coordinates or battle number), **what you did**, and **what happened instead of what you expected**. Please use the [beta bug report form](https://github.com/iSynic/Realmz-Rebuilt/issues/new?template=beta_bug.yml). A save can help, but check it for private information before sharing it.
 
-The public repository includes the thirteen Castle-distributed scenarios authorized for Rebuilt: Assault on Giant Mountain, Castle in the Clouds, City of Bywater, Destroy the Necronomicon, Grilochs Revenge, Half Truth, Mithril Vault, Prelude to Pestilence, Trouble in the Sword Lands, Twin Sands of Time, War in the Sword Lands, White Dragon, and Wrath of the Mind Lords. The synthetic package is test-only.
+## For people who want to build it
 
-On first start with no character-vault directory or a completely empty vault, Rebuilt installs deterministic editable copies of Kevlar, Lothlorian, Silver Leaf, Traskelion, Trevor, and Vormale. Any existing entry—valid or otherwise—suppresses starter installation so the application never overwrites a user's vault.
+The source is here too. You'll need Godot 4.7.1 and Git LFS to open the project with its bundled packages. Start with the [Builder's Manual](docs/builders-manual.md) if you want to explore or contribute to the code.
 
-## Saves and local data
-
-Godot stores Rebuilt data under its `RealmzRemake2` application directory:
-
-- Windows: `%APPDATA%\Godot\app_userdata\RealmzRemake2`
-- Linux: `~/.local/share/godot/app_userdata/RealmzRemake2`
-- macOS: `~/Library/Application Support/Godot/app_userdata/RealmzRemake2`
-
-The `saves`, `characters`, and `packages` subdirectories are user-owned. Copy the entire application directory before testing a beta on valuable playthroughs.
-
-## Development and verification
-
-Run the complete local verification lane from PowerShell 7:
-
-```powershell
-./tools/verify.ps1
-```
-
-Begin with [The Realmz Rebuilt Builder's Manual](docs/builders-manual.md). A newcomer can validate that map with [The New Builder's Trial](docs/maintainer-acceptance.md). Package/save contracts, Classic fidelity decisions, and architectural records continue in [docs/package-and-save-contracts.md](docs/package-and-save-contracts.md), [docs/fidelity-ledger.md](docs/fidelity-ledger.md), and `docs/adr`. Contribution requirements are in [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Beta feedback
-
-Use the [Beta bug report](https://github.com/iSynic/Realmz-Rebuilt/issues/new?template=beta_bug.yml). Include the platform, renderer, scenario, map coordinates or battle number, exact reproduction steps, relevant log, and save/package identity. Do not attach copyrighted scenarios that are not part of this repository or personal character/save data without reviewing it first.
-
-Known Beta 1 limitations and release validation requirements are maintained in [docs/beta-1.md](docs/beta-1.md).
+Rebuilt's original code is GPL-3.0-or-later. Realmz-derived scenarios, characters, and assets have separate CC BY-NC-SA 4.0 terms. The [third-party notices](THIRD_PARTY_NOTICES.txt) record the details and provenance.
