@@ -22,21 +22,23 @@ func controls() -> Dictionary:
 		var node := pending.pop_back() as Node
 		visited += 1
 		if visited > 10000 or records.size() >= CONTROL_LIMIT:
-			return {"controls": records, "controlsTruncated": true}
+			return {"controls": records, "controlsTruncated": true, "coordinateSpace": "window"}
 		if node is Control and not node.is_visible_in_tree():
 			continue
 		if node is BaseButton:
 			var rect: Rect2 = node.get_global_rect()
 			if rect.has_area() and rect.intersects(_root.get_viewport_rect()):
+				var display := _root.get_viewport().get_parent() as DisplayCompositor
+				var window_rect := display.logical_to_window_rect(rect) if display != null else rect
 				var path := String(_root.get_path_to(node))
 				var identity := path.sha256_text().left(24)
 				_controls[identity] = weakref(node)
 				var label: String = node.caption_text() if node is ClassicBitmapButton else node.text if node is Button else String(node.name)
-				records.append({"controlId": identity, "label": label, "path": path, "enabled": not node.disabled, "focused": node.has_focus(), "tooltip": node.tooltip_text, "rect": {"x": rect.position.x, "y": rect.position.y, "width": rect.size.x, "height": rect.size.y}})
+				records.append({"controlId": identity, "label": label, "path": path, "enabled": not node.disabled, "focused": node.has_focus(), "tooltip": node.tooltip_text, "rect": {"x": window_rect.position.x, "y": window_rect.position.y, "width": window_rect.size.x, "height": window_rect.size.y}})
 		pending.append_array(node.get_children())
 	var focus := _root.get_viewport().gui_get_focus_owner()
 	var focus_path := String(_root.get_path_to(focus)) if focus != null and _root.is_ancestor_of(focus) else ""
-	return {"controls": records, "controlsTruncated": false, "focusControlId": focus_path.sha256_text().left(24) if not focus_path.is_empty() else null, "focusPath": focus_path if not focus_path.is_empty() else null}
+	return {"controls": records, "controlsTruncated": false, "coordinateSpace": "window", "focusControlId": focus_path.sha256_text().left(24) if not focus_path.is_empty() else null, "focusPath": focus_path if not focus_path.is_empty() else null}
 
 
 func execute(params: Dictionary) -> Dictionary:

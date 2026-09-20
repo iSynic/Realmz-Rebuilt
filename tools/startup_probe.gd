@@ -1,6 +1,6 @@
 extends SceneTree
 
-const MAIN_SCENE := "res://src/ui/setup/startup_front_door.tscn"
+const MAIN_SCENE := "res://src/ui/shared/display_compositor.tscn"
 
 var _started_at: int
 var _loaded_at: int
@@ -11,7 +11,8 @@ var _menu_visible_on_first_frame: bool
 var _splash_visible_on_first_frame: bool
 var _application_ready_at: int
 var _background_load_ms: float
-var _root: Node
+var _root: DisplayCompositor
+var _front_door: StartupFrontDoor
 
 
 func _initialize() -> void:
@@ -23,17 +24,21 @@ func _initialize() -> void:
 		printerr("Could not load the main scene.")
 		quit(1)
 		return
-	_root = packed.instantiate()
+	_root = packed.instantiate() as DisplayCompositor
+	_front_door = _root.get_node("Content/StartupFrontDoor") as StartupFrontDoor
 	_instantiated_at = Time.get_ticks_usec()
 	_root.ready.connect(func() -> void: _readied_at = Time.get_ticks_usec(), CONNECT_ONE_SHOT)
-	_root.application_loaded.connect(_report_application_ready, CONNECT_ONE_SHOT)
+	_front_door.application_loaded.connect(_report_application_ready, CONNECT_ONE_SHOT)
 	get_root().add_child(_root)
+	current_scene = _root
+	_root.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_root.size = Vector2(1280, 720)
 	process_frame.connect(_capture_first_frame, CONNECT_ONE_SHOT)
 
 
 func _capture_first_frame() -> void:
 	_first_frame_at = Time.get_ticks_usec()
-	_menu_visible_on_first_frame = _root.menu_visible()
+	_menu_visible_on_first_frame = _front_door.menu_visible()
 	var splash := _root.find_child("StartupSplash", true, false) as Control
 	_splash_visible_on_first_frame = splash != null and splash.visible
 
@@ -45,7 +50,7 @@ func _report_application_ready(background_load_ms: float) -> void:
 
 
 func _report_transition() -> void:
-	while not _root.menu_visible():
+	while not _front_door.menu_visible():
 		await process_frame
 	var intro := _root.find_child("RealmzIntroAnimation", true, false) as ClassicIntroAnimation
 	var prepared_decoder_count: int = 0
@@ -62,22 +67,41 @@ func _report_transition() -> void:
 	for candidate: Node in get_root().find_children("RealmzIntroAnimation", "ClassicIntroAnimation", true, false):
 		if (candidate as ClassicIntroAnimation).resources_prepared():
 			prepared_decoder_count_after_five_seconds += 1
-	var scenario_action := _root.find_child("ChooseScenario", true, false) as Button
+	var scenario_action := _front_door.find_child("ChooseScenario", true, false) as Button
 	var scenario_action_enabled := scenario_action != null and not scenario_action.disabled
 	var scenario_action_focused := scenario_action != null and scenario_action.has_focus()
-	var confirm := InputEventJoypadButton.new()
-	confirm.button_index = JOY_BUTTON_A
-	confirm.pressed = true
+	var controller_input := OS.get_cmdline_user_args().has("controller")
 	if scenario_action_enabled:
-		get_root().push_input(confirm)
+		if controller_input:
+			var confirm := InputEventJoypadButton.new()
+			confirm.button_index = JOY_BUTTON_A
+			confirm.pressed = true
+			get_root().push_input(confirm)
+			confirm.pressed = false
+			get_root().push_input(confirm)
+		else:
+			var logical_position := scenario_action.get_global_rect().get_center()
+			var window_position := _root.logical_to_window_rect(Rect2(logical_position, Vector2.ZERO)).position
+			var motion := InputEventMouseMotion.new()
+			motion.position = window_position
+			motion.global_position = window_position
+			get_root().push_input(motion)
+			await process_frame
+			var click := InputEventMouseButton.new()
+			click.position = window_position
+			click.global_position = window_position
+			click.button_index = MOUSE_BUTTON_LEFT
+			click.pressed = true
+			get_root().push_input(click)
+			var release := click.duplicate() as InputEventMouseButton
+			release.pressed = false
+			get_root().push_input(release)
 	await process_frame
-	confirm.pressed = false
-	get_root().push_input(confirm)
 	await process_frame
-	var current := current_scene
-	var transitioned := current != null and current.name == "RealmzApplication"
-	var campaign_setup := current.find_child("PartySetup", true, false) as Control if transitioned else null
-	var transition_succeeded := transitioned and campaign_setup != null and campaign_setup.visible
+	await process_frame
+	var application := _root.source_viewport().get_node_or_null("RealmzApplication") as RealmzApplication
+	var campaign_setup := application.find_child("PartySetup", true, false) as Control if application != null else null
+	var transition_succeeded := current_scene == _root and application != null and application.visible and campaign_setup != null and campaign_setup.visible and not is_instance_valid(_front_door)
 	print(CanonicalJson.encode({
 		"applicationReadyMs": _milliseconds(_started_at, _application_ready_at),
 		"backgroundApplicationLoadMs": snappedf(_background_load_ms, 0.001),
@@ -92,7 +116,7 @@ func _report_transition() -> void:
 		"preparedDecoderCountAfterFiveSeconds": prepared_decoder_count_after_five_seconds,
 		"scenarioActionEnabledAtTransition": scenario_action_enabled,
 		"scenarioActionFocusedBeforeControllerInput": scenario_action_focused,
-		"transitionInput": "viewport-joypad-south",
+		"transitionInput": "viewport-joypad-south" if controller_input else "window-pointer-click",
 		"queuedScenarioTransitionSucceeded": transition_succeeded,
 		"readyMs": _milliseconds(_instantiated_at, _readied_at),
 		"readyToFrameMs": _milliseconds(_readied_at, _first_frame_at),

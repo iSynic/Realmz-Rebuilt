@@ -113,7 +113,7 @@ func _input(event: InputEvent) -> void:
 func _exit_tree() -> void:
 	if _menu_controller != null:
 		_menu_controller.release_intro_resources()
-	if is_instance_valid(_application) and get_tree() != null and get_tree().current_scene != _application:
+	if is_instance_valid(_application):
 		if _startup_diagnostics != null:
 			_startup_diagnostics.call("restore_overlay")
 		_application.queue_free()
@@ -158,6 +158,9 @@ func _initialize_after_first_draw() -> void:
 	var base_theme := load(BASE_THEME_PATH) as Theme
 	_stone_texture.texture = load(STONE_TEXTURE_PATH) as Texture2D
 	_presentation_settings = settings_repository_script.new().load_settings()
+	var display := get_viewport().get_parent() as DisplayCompositor
+	if display != null:
+		display.configure(_presentation_settings.display_scaling_mode, _presentation_settings.pixel_art_smoothing, _presentation_settings.crt_enabled, _presentation_settings.crt_shader, _presentation_settings.crt_area)
 	theme = typography_script.themed_copy(base_theme, _presentation_settings)
 	_apply_launch_volume(_presentation_settings)
 	_menu_controller = controller_script.new()
@@ -193,7 +196,7 @@ func _finish_application_load(packed: PackedScene) -> void:
 	_application.visible = false
 	_application.set_meta(&"startup_splash_suppressed", true)
 	_application.ready.connect(_on_application_ready, CONNECT_ONE_SHOT)
-	get_tree().root.add_child.call_deferred(_application)
+	get_viewport().add_child.call_deferred(_application)
 
 
 func _on_application_ready() -> void:
@@ -240,7 +243,7 @@ func _enter_application(action: StringName) -> void:
 	_application.set_process_input(true)
 	_application.set_process_unhandled_input(true)
 	_application.set_meta(&"startup_route_request", action)
-	get_tree().current_scene = _application
+	_application = null
 	queue_free()
 
 
@@ -321,5 +324,5 @@ func _apply_launch_volume(settings: RefCounted) -> void:
 func _apply_layout() -> void:
 	if _menu_controller == null or _layout_profile_script == null or _presentation_settings_script == null:
 		return
-	var profile: RefCounted = _layout_profile_script.for_viewport(size, _presentation_settings_script.UI_SCALE_AUTO)
+	var profile: RefCounted = _layout_profile_script.for_viewport(size, _presentation_settings_script.UI_SCALE_AUTO, _presentation_settings.display_scaling_mode)
 	_menu_controller.apply_layout(profile, profile.application_rect, profile.application_rect)

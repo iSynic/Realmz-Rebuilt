@@ -48,6 +48,19 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false) -> Sess
 	return step
 
 
+func update_save(content: RealmzContent, slot_id: String, backup: bool = false) -> bool:
+	var updated_slot := _repository_host.update_half_truth_save(content, slot_id, backup)
+	if updated_slot.is_empty():
+		_shell.status.set_status("Save update failed • %s" % _repository_host.last_error(), true)
+		return false
+	_shell.navigator.content_presenter.set_save_previews(_repository_host.previews(content), updated_slot)
+	if _shell.navigator.current_screen() == &"system":
+		_shell.navigator.refresh_current_workspace()
+	_shell.status.set_status("Updated copy %s verified • original unchanged" % updated_slot)
+	_shell.status.show_activity_indicator(&"save")
+	return true
+
+
 func refresh(content: RealmzContent) -> void:
 	_shell.navigator.content_presenter.set_save_previews(_repository_host.previews(content))
 	if _shell.navigator.current_screen() == &"system" and _session.view().session_started:

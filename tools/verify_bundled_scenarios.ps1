@@ -6,6 +6,17 @@ $citySourcePath = Join-Path $campaignRoot "city-of-bywater.source.json"
 $applicationRoot = Join-Path $repoRoot "src\storage\packages\application"
 $applicationLock = Get-Content -Raw -LiteralPath (Join-Path $applicationRoot "application-library.lock.json") | ConvertFrom-Json
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
+$nativeOwnership = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "fixtures/classic-monster-cicn-ownership.json") | ConvertFrom-Json
+$nativeByCampaign = @{}
+if ($nativeOwnership.formatVersion -ne 1 -or @($nativeOwnership.entries).Count -ne 13) {
+    throw "Native scenario CICN ownership inventory must cover the exact bundled corpus."
+}
+foreach ($entry in @($nativeOwnership.entries)) {
+    if ($nativeByCampaign.ContainsKey([string]$entry.campaignId) -or [string]$entry.scenarioResourceForkSha256 -notmatch '^[0-9a-f]{64}$') {
+        throw "Native scenario CICN ownership inventory has a duplicate or unpinned resource fork."
+    }
+    $nativeByCampaign[[string]$entry.campaignId] = $entry
+}
 
 if ($catalog.formatVersion -ne 3 -or $catalog.source.license -ne "CC-BY-NC-SA-4.0" -or $catalog.source.defaultForScenariosWithoutOverride -ne $true) {
     throw "Bundled scenario provenance header is invalid."
@@ -85,6 +96,7 @@ if (($expectedFiles -join "|") -ne ($actualFiles -join "|")) {
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 $applicationAssetIds = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+$applicationAssetsByResourceKey = @{}
 $applicationArchive = [System.IO.Compression.ZipFile]::OpenRead((Join-Path $applicationRoot "realmz-classic-application-library.realmz2"))
 try {
     $applicationAssetEntry = $applicationArchive.GetEntry("assets/index.json")
@@ -98,6 +110,10 @@ try {
     }
     foreach ($asset in @($applicationAssetIndex.assets)) {
         if (-not [string]::IsNullOrWhiteSpace([string]$asset.id)) { [void]$applicationAssetIds.Add([string]$asset.id) }
+        if (-not [string]::IsNullOrWhiteSpace([string]$asset.resourceType) -and $null -ne $asset.resourceId) {
+            $resourceKey = "$($asset.resourceType.ToLowerInvariant()):$([int]$asset.resourceId)"
+            $applicationAssetsByResourceKey[$resourceKey] = $asset
+        }
     }
 } finally {
     $applicationArchive.Dispose()
@@ -184,6 +200,71 @@ foreach ($scenario in $catalog.scenarios) {
         $contentReader = [System.IO.StreamReader]::new($contentEntry.Open())
         try { $contentDocument = $contentReader.ReadToEnd() | ConvertFrom-Json }
         finally { $contentReader.Dispose() }
+        if (-not $nativeByCampaign.ContainsKey([string]$scenario.campaignId)) {
+            throw "$($scenario.file) has no pinned native CICN ownership inventory."
+        }
+        $nativeEntry = $nativeByCampaign[[string]$scenario.campaignId]
+        if ($nativeEntry.classicScenarioResourcesSha256 -ne $scenario.classicScenarioResourcesSha256) {
+            throw "$($scenario.file) native CICN inventory does not name the accepted source resources."
+        }
+        $nativeCicnIds = [System.Collections.Generic.HashSet[int]]::new()
+        foreach ($nativeId in @($nativeEntry.nativeScenarioCicnIds)) {
+            if ([int]$nativeId -lt -32768 -or [int]$nativeId -gt 32767 -or -not $nativeCicnIds.Add([int]$nativeId)) {
+                throw "$($scenario.file) native CICN inventory has a duplicate or invalid resource ID."
+            }
+        }
+        foreach ($asset in @($assetIndex.assets | Where-Object { $_.resourceType -ceq "cicn" })) {
+            if (-not $nativeCicnIds.Contains([int]$asset.resourceId)) {
+                throw "$($scenario.file) scenario CICN $($asset.resourceId) has no pinned native owner."
+            }
+        }
+
+        # Every emitted monster icon uses Castle's paired-facing identity: the
+        # right-facing CICN is base + 308. Resolve scenario-owned media first,
+        # then the pinned application inventory, and reject an incomplete pair
+        # before a package can enter the bundled corpus.
+        foreach ($monster in @($contentDocument.monsters)) {
+            if ($null -eq $monster.iconId -or [int]$monster.iconId -le 0) { continue }
+            $baseId = [int]$monster.iconId
+            $rightId = $baseId + 308
+            foreach ($resourceId in @($baseId, $rightId)) {
+                $nativeScenarioOwner = $nativeCicnIds.Contains($resourceId)
+                $compiledScenarioOwner = $assetsByResourceKey.ContainsKey("cicn:$resourceId")
+                if ($nativeScenarioOwner -ne $compiledScenarioOwner) {
+                    throw "$($scenario.file) monster $($monster.id) CICN $resourceId resolves from the wrong owner."
+                }
+            }
+            $baseKey = "cicn:$baseId"
+            $rightKey = "cicn:$rightId"
+            $baseAsset = if ($assetsByResourceKey.ContainsKey($baseKey)) { $assetsByResourceKey[$baseKey] } else { $applicationAssetsByResourceKey[$baseKey] }
+            $rightAsset = if ($assetsByResourceKey.ContainsKey($rightKey)) { $assetsByResourceKey[$rightKey] } else { $applicationAssetsByResourceKey[$rightKey] }
+            if ($null -eq $baseAsset -or $null -eq $rightAsset) {
+                throw "$($scenario.file) monster $($monster.id) is missing its effective CICN pair $baseId/$rightId."
+            }
+            foreach ($pairedAsset in @($baseAsset, $rightAsset)) {
+                if ([string]$pairedAsset.resourceType -cne "cicn" -or [string]$pairedAsset.sha256 -notmatch '^[0-9a-f]{64}$') {
+                    throw "$($scenario.file) monster CICN $($pairedAsset.resourceId) has invalid native inventory metadata."
+                }
+            }
+        }
+        if ($scenario.campaignId -eq "scenario-half-truth") {
+            $battle103 = @($contentDocument.battles | Where-Object { [int]$_.classicId -eq 103 })
+            if ($battle103.Count -ne 1 -or @($battle103[0].monsterSlots).Count -ne 6 -or @($battle103[0].monsterSlots | Where-Object { $_.monsterId -notin @("classic.monster.104", "classic.monster.105") }).Count -ne 0) {
+                throw "$($scenario.file) Battle 103 no longer uses its six Runic Heavy Horse/Slaine slots."
+            }
+            $battle103Monsters = @($contentDocument.monsters | Where-Object { $_.id -in @("classic.monster.104", "classic.monster.105") })
+            if ($battle103Monsters.Count -ne 2 -or @($battle103Monsters | Where-Object { [int]$_.iconId -ne 442 }).Count -ne 0) {
+                throw "$($scenario.file) Battle 103 monster definitions no longer share CICN 442."
+            }
+            $battleBase = $assetsByResourceKey["cicn:442"]
+            $battleRight = $assetsByResourceKey["cicn:750"]
+            if ($null -eq $battleBase -or $battleBase.id -ne "scenario-cicn-442" -or $battleBase.sha256 -cne "d94bc5719e06d3440540e0eb32bb83733e3b0ae6933a3b1867b293e40c74e3d8") {
+                throw "$($scenario.file) Battle 103 CICN 442 is not the pinned scenario-owned blue rider."
+            }
+            if ($null -eq $battleRight -or $battleRight.id -ne "realmz-monster-icon-750" -or $battleRight.sha256 -cne "e30f83389294988df0347da79c9c66b9fe1953b02947cdfd3b777936345e51c4") {
+                throw "$($scenario.file) Battle 103 CICN 750 is not the pinned scenario-owned blue rider."
+            }
+        }
         if (@($assetIndex.assets | Where-Object { $_.kind -eq "battle-tileset" -or $_.id -eq "classic-battle-tiles-302" -or ($_.resourceType -ceq "PICT" -and $_.resourceId -eq 302) }).Count -ne 0) {
             throw "$($scenario.file) duplicates the application-owned PICT:302 resource."
         }

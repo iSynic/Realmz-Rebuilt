@@ -9,7 +9,7 @@ script = ExtResource("1_done")
 
 [node name="Spacer" type="Control" parent="."]
 layout_mode = 2
-size_flags_vertical = 3
+size_flags_vertical = 0
 mouse_filter = 2
 
 [node name="InventoryDone" type="Button" parent="."]

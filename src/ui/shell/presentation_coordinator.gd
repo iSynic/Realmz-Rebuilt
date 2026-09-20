@@ -4,6 +4,7 @@ class_name PresentationCoordinator
 extends Node
 
 signal playback_step_settled(step: SessionStep)
+signal spatial_visibility_changed
 
 
 var _session_controller: GameSessionController
@@ -325,9 +326,14 @@ func _acknowledge_after_draw(revision: int, generation: int) -> void:
 func _update_spatial_visibility(game_view: GameView) -> void:
 	var exploration_visible := should_show_exploration_stage(_active_route, game_view, _play_stage_visible)
 	var battle_visible := should_show_battle_stage(_active_route, game_view, _play_stage_visible)
+	var was_map_visible := _map_presenter.visible
+	var was_dungeon_visible := _dungeon_presenter.visible
+	var was_battle_visible := _battlefield_presenter.visible
 	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
 	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
 	_battlefield_presenter.visible = battle_visible
+	if was_map_visible != _map_presenter.visible or was_dungeon_visible != _dungeon_presenter.visible or was_battle_visible != _battlefield_presenter.visible:
+		spatial_visibility_changed.emit()
 
 
 func _sync_dungeon_view(game_view: GameView) -> void:

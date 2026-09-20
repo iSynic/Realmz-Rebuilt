@@ -23,6 +23,23 @@ This supports Mobile as the default but does not reclassify CPU-side simulation 
 
 The user-provided diagnostic baseline was approximately 9.1 seconds to application readiness, 0.45 seconds for warm Tutorial preparation, 4.1 seconds cold and 1.95 seconds warm for the 52.8 MiB Wrath package, and 3.2 ms p95 for ordinary movement transaction plus projection. Those figures predate this checkout's final instrumentation and are retained as the comparison baseline rather than rewritten as current measurements.
 
+## Optional display scaling and xBRZ
+
+The 2026-09-19 display check used Godot 4.7.1 on this Windows RTX 3080 with VSync disabled. One synthetic-package character remained in the same retained application viewport at 2560x1440, using the 1280x720 whole-window 2x mode. Each value below is the mean GPU time across 48 rendered frames after twelve warm frames, summed across the application and outer display viewports. Off samples bracket the filter-on sample to expose warmup and driver variability. Movement alternated 48 debug-isolated adjacent steps between the same two cells with no failed steps; combat used an isolated Battle 1 after a one-second setup delay. These are rendering-cost probes, not normal-route campaign certification or full combat-action throughput.
+
+| Renderer and scene | Nearest off | Whole-window xBRZ |
+| --- | ---: | ---: |
+| Mobile/Vulkan movement | 0.34–0.43 ms | 1.35 ms |
+| Mobile/Vulkan combat stage | 0.20–0.28 ms | 0.79 ms |
+| Compatibility/OpenGL movement | 0.79–1.23 ms | 1.81 ms |
+| Compatibility/OpenGL combat stage | 0.39 ms | 0.81 ms |
+
+The same retained-viewport probe measured 1280x720 world-canvas 4x zoom at 0.06/0.08 ms for Mobile and 0.20/0.21 ms for Compatibility with world smoothing off/on; those static samples exclude movement. The display host keeps one `SubViewport` and its texture resource while modes change; the filter is a GPU material on that composed texture, with no per-frame image readback. The optional pass adds visible GPU cost, especially at full-window 2x; it remains off by default. Separate rendered captures verified all six requested window sizes, exact 2x2 source blocks with smoothing off, and the one-pass 3D dungeon scope. Four 5x5 reference patterns rendered with the Godot port matched the pinned upstream freescale shader to within one 8-bit color value per channel.
+
+The optional CRT pass reuses the same composed surface and allocates one retained output-sized GPU viewport only while xBRZ and CRT are both active. On the same Windows RTX 3080 at 2560x1440, 48-frame synthetic movement playback measured Mobile GPU means of 0.48 ms for CRT-Pi, 2.07 ms for CRT-Lottes, 1.50 ms for xBRZ then Pi, and 2.39 ms for xBRZ then Lottes. Compatibility measured 1.33, 2.85, 1.74, and 3.34 ms respectively. Static battle-stage playback measured Mobile 1.21, 1.93, 0.64, and 1.43 ms, and Compatibility 1.53, 2.45, 0.85, and 1.65 ms in the same order. Off samples varied markedly between brackets (0.41–1.36 ms movement on Mobile; 1.34–2.25 ms on Compatibility), so these are workload observations rather than precise incremental-cost estimates. CRT is opt-in; the GPU viewport is disabled when either effect is off.
+
+Independent CPU evaluations of the pinned CRT-Pi and CRT-Lottes fragment equations, with curvature disabled and the source defaults retained, were compared against Godot GPU output from a deterministic 5x5 RGB pattern enlarged to 10x10. Both ports differed by less than one 8-bit color value in every channel (Pi maximum 0.55; Lottes maximum 0.55). A separate real-renderer world-scope capture changed 200,000 pixels inside its selected 500x400 region and zero pixels outside it on both Mobile and Compatibility. Representative captures at 800x600, 1280x720, 1920x1080, 2560x1440, 3440x1440, and 3840x2160 were inspected for text, portraits, cropping, and stage seams.
+
 ## Completed architecture certification
 
 The completed architecture tree was compared with the archived pre-migration production tree on the same Windows host. The baseline tree was run through the final probe contract without changing its production source. Each value below is the median of three warmed samples; lower is better.

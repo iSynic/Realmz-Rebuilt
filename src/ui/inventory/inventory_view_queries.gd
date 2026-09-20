@@ -62,14 +62,22 @@ static func selected_character(view: GameView, selected_id: String, encounter_mo
 
 
 static func eligible_items(character: CharacterView, encounter_mode: bool, encounter_items: Dictionary) -> Array[ItemView]:
-	if not encounter_mode:
-		return character.items
 	var result: Array[ItemView] = []
-	var instances := encounter_items.get(character.id, {}) as Dictionary
-	for item: ItemView in character.items:
-		if instances.has(item.instance_id):
-			result.append(item)
-	return result
+	if not encounter_mode:
+		result.assign(character.items)
+	else:
+		var instances := encounter_items.get(character.id, {}) as Dictionary
+		for item: ItemView in character.items:
+			if instances.has(item.instance_id):
+				result.append(item)
+	# Castle keeps equipped records at the head of the character's pack. Preserve
+	# authored order inside each group so selecting an exact instance remains stable.
+	var equipped: Array[ItemView] = []
+	var carried: Array[ItemView] = []
+	for item: ItemView in result:
+		(equipped if item.equipped else carried).append(item)
+	equipped.append_array(carried)
+	return equipped
 
 
 static func selected_item(items: Array[ItemView], selected_instance_id: String) -> ItemView:

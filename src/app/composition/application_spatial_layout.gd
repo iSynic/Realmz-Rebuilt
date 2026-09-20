@@ -9,6 +9,8 @@ var _interaction: InteractionPresenter
 var _shell: GameShell
 var _session: GameSessionController
 var _presentation: PresentationCoordinator
+var _world_zoom: int = 1
+var world_rect: Rect2
 
 
 func _init(
@@ -31,8 +33,9 @@ func _init(
 
 func apply(workspace_rect: Rect2, profile: UiLayoutProfile) -> void:
 	var content_rect := workspace_rect.grow(-8.0)
-	_place_presenter(_map, content_rect)
-	_place_presenter(_battlefield, content_rect)
+	world_rect = content_rect
+	_place_presenter(_map, content_rect, _world_zoom)
+	_place_presenter(_battlefield, content_rect, _world_zoom)
 	if _dungeon != null:
 		_dungeon.position = content_rect.position
 		_dungeon.size = content_rect.size
@@ -57,10 +60,15 @@ static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) ->
 	return Rect2(0.0, maxf(0.0, viewport_size.y - bottom_height), viewport_size.x, minf(bottom_height, viewport_size.y))
 
 
-static func _place_presenter(presenter: Control, content_rect: Rect2) -> void:
+func set_world_zoom(zoom: int) -> void:
+	_world_zoom = clampi(zoom, 1, 4)
+
+
+static func _place_presenter(presenter: Control, content_rect: Rect2, zoom: int = 1) -> void:
 	presenter.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	presenter.position = content_rect.position
-	presenter.size = content_rect.size
+	presenter.scale = Vector2.ONE * float(zoom)
+	presenter.size = (content_rect.size / float(zoom)).floor()
 
 
 func _sync_narrative_after_layout(content_rect: Rect2, combat_rect: Rect2) -> void:

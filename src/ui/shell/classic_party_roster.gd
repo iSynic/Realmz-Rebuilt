@@ -33,6 +33,7 @@ var _selection_count: int = 0
 var _selection_eligible_ids: Array[String] = []
 var _selection_order: Array[String] = []
 var _combat_spellbook_active: bool = false
+var _compact_layout: bool = false
 var _controls_ready: bool = false
 
 
@@ -57,7 +58,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 
 func present(view: GameView, selected_character_id: String = "") -> void:
 	_ensure_controls()
-	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_combat_spellbook_active = false
 	_current_view = view
 	_selected_character_id = selected_character_id
@@ -98,6 +99,7 @@ func present_ordinary_exploration(view: GameView, selected_character_id: String 
 
 func present_combat_spellbook(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 	_ensure_controls()
+	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_combat_spellbook_active = true
 	_clear_party()
 	var actor_name := actor_id
@@ -132,14 +134,25 @@ func combat_spellbook_active() -> bool:
 	return _combat_spellbook_active
 
 
+func set_compact_layout(compact: bool) -> void:
+	_compact_layout = compact
+	_ensure_controls()
+	for child: Node in _party_list.get_children():
+		var record := child as PartyRosterMemberRow
+		if record != null:
+			record.set_compact_layout(compact)
+
+
 func _add_character(character: CharacterView, combat_active: bool, auto_character_ids: Array[String]) -> void:
 	var record := member_row_scene.instantiate() as PartyRosterMemberRow
+	record.set_compact_layout(_compact_layout)
 	var row := record.character_button()
 	row.set_meta("character_id", character.id)
-	var base_tooltip := "Level %d • %s / %s • Movement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
+	row.set_meta("roster_record", record)
+	var base_tooltip := "Level %d • %s / %s\nMovement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
 	var condition_text := _condition_summary(character.condition_values)
 	if not condition_text.is_empty():
-		base_tooltip += " • %s" % condition_text
+		base_tooltip += "\n\nEffects\n%s" % condition_text
 	row.set_meta("base_tooltip", base_tooltip)
 	row.set_meta("condition_values", character.condition_values.duplicate())
 	_bind_character_text(row, character)
@@ -149,14 +162,16 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	var selecting := character_selection_active()
 	record.current_marker().visible = not selecting
 	record.current_marker().set_meta("character_id", character.id)
+	record.current_marker().set_meta("roster_record", record)
 	record.current_marker().color = Color("e0bc53") if character.id == _selected_character_id else Color.TRANSPARENT
+	record.set_selected(not selecting and character.id == _selected_character_id)
 	record.selection_number().visible = selecting
 	var selected_index := _selection_order.find(character.id)
 	record.selection_number().text = str(_selection_count - selected_index) if selected_index >= 0 else ""
 	row.disabled = selecting and not _selection_eligible_ids.has(character.id)
 	row.tooltip_text = "This character is not eligible for the current selection." if row.disabled else base_tooltip
 	if not selecting:
-		row.tooltip_text += " • Current character; click to open its record." if character.id == _selected_character_id else " • Click to make this the current character."
+		row.tooltip_text += "\n\nCurrent character; click to open its record." if character.id == _selected_character_id else "\n\nClick to make this the current character."
 	row.pressed.connect(_activate_character.bind(character.id))
 	_bind_auto_toggle(record.auto_toggle(), character, combat_active and not selecting, auto_character_ids.has(character.id))
 	_party_list.add_child(record)
@@ -165,16 +180,12 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 func _bind_character_text(row: Button, character: CharacterView, current_health: int = -100_000) -> void:
 	if current_health == -100_000:
 		current_health = character.current_health
-	var action_fact := "SP %d/%d" % [character.spell_points, character.maximum_spell_points] if character.maximum_spell_points > 0 else "Attacks %d" % character.normal_attacks
-	row.text = "%s\nHP %d/%d  •  %s  •  AR %d\n%s / %s" % [
-		character.name,
-		current_health,
-		character.maximum_health,
-		action_fact,
-		character.armor,
-		character.race_name,
-		character.caste_name,
-	]
+	var state_text := _condition_summary(character.condition_values)
+	if state_text.is_empty():
+		state_text = "READY" if character.current_health > 0 else "DOWN"
+	var record := row.get_meta("roster_record") as PartyRosterMemberRow
+	if record != null:
+		record.bind_character(character, current_health, state_text)
 
 
 func _bind_auto_toggle(toggle: Button, character: CharacterView, visible: bool, enabled: bool) -> void:
@@ -232,21 +243,25 @@ func _update_exploration_character_row(row: Button, character: CharacterView) ->
 	var previous_condition_values: Array = row.get_meta("condition_values", []) as Array
 	if previous_condition_values == character.condition_values:
 		return
-	var base_tooltip := "Level %d • %s / %s • Movement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
+	var base_tooltip := "Level %d • %s / %s\nMovement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
 	var condition_text := _condition_summary(character.condition_values)
 	if not condition_text.is_empty():
-		base_tooltip += " • %s" % condition_text
+		base_tooltip += "\n\nEffects\n%s" % condition_text
 	row.set_meta("base_tooltip", base_tooltip)
 	row.set_meta("condition_values", character.condition_values.duplicate())
-	row.tooltip_text = base_tooltip + (" • Current character; click to open its record." if character.id == _selected_character_id else " • Click to make this the current character.")
+	row.tooltip_text = base_tooltip + ("\n\nCurrent character; click to open its record." if character.id == _selected_character_id else "\n\nClick to make this the current character.")
 
 
 func _update_current_character_markers() -> void:
 	for marker: Node in _party_list.find_children("CurrentCharacterMarker", "ColorRect", true, false):
-		(marker as ColorRect).color = Color("e0bc53") if String(marker.get_meta("character_id")) == _selected_character_id else Color.TRANSPARENT
+		var current := String(marker.get_meta("character_id")) == _selected_character_id
+		(marker as ColorRect).color = Color("e0bc53") if current else Color.TRANSPARENT
+		var record := marker.get_meta("roster_record") as PartyRosterMemberRow
+		if record != null:
+			record.set_selected(current and not character_selection_active())
 	for row: Node in _party_list.find_children("*", "Button", true, false):
 		if row.has_meta("character_id"):
-			(row as Button).tooltip_text = String(row.get_meta("base_tooltip")) + (" • Current character; click to open its record." if String(row.get_meta("character_id")) == _selected_character_id else " • Click to make this the current character.")
+			(row as Button).tooltip_text = String(row.get_meta("base_tooltip")) + ("\n\nCurrent character; click to open its record." if String(row.get_meta("character_id")) == _selected_character_id else "\n\nClick to make this the current character.")
 
 
 static func _combat_auto_tooltip(enabled: bool, available: bool) -> String:
@@ -437,10 +452,8 @@ func _condition_summary(values: Array[int]) -> String:
 	var active: Array[String] = []
 	for index: int in values.size():
 		if values[index] != 0:
-			active.append("Condition %d" % (index + 1))
-			if active.size() == 2:
-				break
-	return ", ".join(active)
+			active.append(CharacterView.CONDITION_NAMES[index] if index < CharacterView.CONDITION_NAMES.size() else "Condition %d" % (index + 1))
+	return "\n".join(active)
 
 
 func _clear_party() -> void:

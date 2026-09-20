@@ -29,7 +29,7 @@ static func operation_description(action: StringName, item: ItemView, character:
 		&"identify": return "Cast Identify Objects on every carried item owned by %s." % character.name
 		&"join": return "Join this charged record with the first compatible carried stack."
 		&"split": return "Split this charged record into two stable carried instances."
-		&"drop": return "Continue to the required source-backed drop confirmation for this exact item."
+		&"drop": return "Drop this exact carried item immediately."
 	return "Apply %s to this exact item." % String(action)
 
 

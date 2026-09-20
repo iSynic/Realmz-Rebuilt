@@ -27,6 +27,7 @@ var coordinate: Vector2i = Vector2i.ZERO
 var character_names: Array[String] = []
 var error_message: String = ""
 var can_load: bool = false
+var can_update: bool = false
 
 
 func _init(save_slot_id: String, save_source: StringName, save_status: StringName) -> void:

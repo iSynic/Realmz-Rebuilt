@@ -106,12 +106,8 @@ func _branch_on_faced_tile_source_defect(action: ClassicActionDefinition, contex
 	var map := _content.world.map_by_id(_game_state.party.map_id)
 	if map == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 59 requires the party's current map.")
-	var direction := _game_state.last_move_direction
-	if map.level_type == &"dungeon":
-		direction = _dungeon_heading_vector(_game_state.dungeon_heading)
-	elif direction == Vector2i.ZERO:
-		direction = Vector2i.UP
-	var faced_coordinate := _game_state.party.coordinate + direction
+	# Castle's party map lookup is the cell occupied after movement; it does not add last_move_direction.
+	var faced_coordinate := _game_state.party.coordinate
 	var cell := map.topology.effective_cell_at(faced_coordinate, _game_state.world)
 	if cell == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_faced_tile", "Classic opcode 59 faces outside the current map.")
@@ -134,14 +130,6 @@ func _branch_on_faced_tile_source_defect(action: ClassicActionDefinition, contex
 		2:
 			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-59"})], ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.completed(true, [event])
-
-
-static func _dungeon_heading_vector(heading: int) -> Vector2i:
-	match heading:
-		2: return Vector2i.RIGHT
-		3: return Vector2i.DOWN
-		4: return Vector2i.LEFT
-	return Vector2i.UP
 
 
 func _branch_on_quest(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -231,12 +219,8 @@ func _branch_on_faced_tile_semantic(action: ClassicActionDefinition) -> Scenario
 	var map := _content.world.map_by_id(_game_state.party.map_id)
 	if map == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 78 requires the party's current map.")
-	var direction := _game_state.last_move_direction
-	if map.level_type == &"dungeon":
-		direction = _dungeon_heading_vector(_game_state.dungeon_heading)
-	elif direction == Vector2i.ZERO:
-		direction = Vector2i.UP
-	var faced_coordinate := _game_state.party.coordinate + direction
+	# Castle's party map lookup is the cell occupied after movement; it does not add last_move_direction.
+	var faced_coordinate := _game_state.party.coordinate
 	var cell := map.topology.effective_cell_at(faced_coordinate, _game_state.world)
 	if cell == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_faced_tile", "Classic opcode 78 faces outside the current map.")

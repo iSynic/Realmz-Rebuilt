@@ -10,12 +10,11 @@ extends VBoxContainer
 
 func prepare(compact: bool) -> void:
 	visible = true
-	_clear(character_rows())
-	_clear(transfer_rows())
 	_clear(location_service_rows())
 	money_column().visible = true
 	alternate_state().visible = false
-	pool_summary().vertical = compact
+	money_main().vertical = compact
+	pool_summary().vertical = true
 	exchange_workspace().vertical = compact
 	party_pane().visible = not compact
 	character_picker().visible = compact
@@ -34,40 +33,60 @@ func money_column() -> VBoxContainer:
 	return get_node("MoneyColumn") as VBoxContainer
 
 
+func money_main() -> BoxContainer:
+	return get_node("MoneyColumn/MoneyMain") as BoxContainer
+
+
 func pool_pane() -> PanelContainer:
-	return get_node("MoneyColumn/MoneyPoolPane") as PanelContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane") as PanelContainer
 
 
 func pool_summary() -> BoxContainer:
-	return get_node("MoneyColumn/MoneyPoolPane/Content/MoneyPoolSummary") as BoxContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary") as BoxContainer
 
 
 func exchange_workspace() -> BoxContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace") as BoxContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace") as BoxContainer
 
 
 func party_pane() -> PanelContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane") as PanelContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane") as PanelContainer
 
 
 func character_rows() -> VBoxContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneyPartyPane/Content/MoneyCharacterScroll/MoneyCharacterRows") as VBoxContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyPartyArea/MoneyPartyPane/Content/MoneyCharacterScroll/MoneyCharacterRows") as VBoxContainer
 
 
 func swap_pane() -> PanelContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane") as PanelContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane") as PanelContainer
 
 
 func character_picker() -> OptionButton:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneyCharacterPicker") as OptionButton
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneyCharacterPicker") as OptionButton
 
 
 func selected_summary() -> BoxContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary") as BoxContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneySelectedSummary") as BoxContainer
 
 
 func transfer_rows() -> VBoxContainer:
-	return get_node("MoneyColumn/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneyTransferGrid") as VBoxContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneySwapPane/Content/MoneyExchangeScroll/MoneyExchangeBody/MoneyTransferGrid") as VBoxContainer
+
+
+func changing_pane() -> PanelContainer:
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane") as PanelContainer
+
+
+func changing_buttons() -> Array[Button]:
+	return [get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions/JewelryToGems") as Button, get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions/GemsToGold") as Button, get_node("MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions/GoldToGems") as Button]
+
+
+func done_button() -> Button:
+	return get_node("MoneyColumn/MoneyMain/MoneyPartyArea/MoneyDone") as Button
+
+
+func repeat_timer() -> Timer:
+	return get_node("MoneyRepeatTimer") as Timer
 
 
 func location_services_pane() -> PanelContainer:

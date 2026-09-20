@@ -34,22 +34,24 @@ func _init(profile_id: StringName, scale: float, party: float, bottom: float, co
 	bitmap_scale = art_scale
 
 
-static func for_viewport(size: Vector2, scale_mode: String) -> UiLayoutProfile:
-	var canvas_rect := UiLayoutProfile.application_rect_for(size)
+static func for_viewport(size: Vector2, scale_mode: String, display_mode: String = PresentationSettings.DISPLAY_RESPONSIVE) -> UiLayoutProfile:
+	var canvas_rect := UiLayoutProfile.application_rect_for(size, display_mode)
 	var canvas_size := canvas_rect.size
 	var scale := UiLayoutProfile.scale_for(canvas_size, scale_mode)
 	var effective_width := canvas_size.x / scale
 	var art_scale := 2 if canvas_size.x >= 1600.0 and canvas_size.y >= 900.0 and scale_mode in [PresentationSettings.UI_SCALE_AUTO, PresentationSettings.UI_SCALE_150] else 1
 	var profile: UiLayoutProfile
 	if effective_width < 1280.0:
-		profile = UiLayoutProfile.new(COMPACT, scale, 208.0 * scale, 156.0 * scale, 208.0 * scale, 1)
+		profile = UiLayoutProfile.new(COMPACT, scale, 208.0 * scale, 270.0, 416.0, 1)
 	else:
 		profile = UiLayoutProfile.new(WIDE, scale, 352.0 * scale, 190.0 * scale, 288.0 * scale, art_scale)
 	profile.application_rect = canvas_rect
 	return profile
 
 
-static func application_rect_for(size: Vector2) -> Rect2:
+static func application_rect_for(size: Vector2, display_mode: String = PresentationSettings.DISPLAY_RESPONSIVE) -> Rect2:
+	if display_mode == PresentationSettings.DISPLAY_FILL_WINDOW:
+		return Rect2(Vector2.ZERO, size)
 	if size.x < WIDE_MINIMUM.x or size.y < WIDE_MINIMUM.y or size.y <= 0.0 or size.x / size.y <= WIDE_ASPECT:
 		return Rect2(Vector2.ZERO, size)
 	var bounded_width := floorf(size.y * WIDE_ASPECT)

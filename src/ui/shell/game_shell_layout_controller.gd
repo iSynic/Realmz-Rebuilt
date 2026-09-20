@@ -54,7 +54,8 @@ func set_effect_slots(effect_slots: Array[TextureRect]) -> void:
 
 
 func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameView) -> UiLayoutProfile:
-	var profile := UiLayoutProfile.for_viewport(shell_size, settings.ui_scale_mode)
+	var density := settings.ui_scale_mode if settings.display_scaling_mode in [PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.DISPLAY_INTEGER_CANVAS] else PresentationSettings.UI_SCALE_100
+	var profile := UiLayoutProfile.for_viewport(shell_size, density, settings.display_scaling_mode)
 	var canvas_rect := profile.application_rect
 	var viewport_size := canvas_rect.size
 	var origin := canvas_rect.position
@@ -89,13 +90,14 @@ func _apply_stage(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vect
 func _apply_roster(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, stage_height: float, roster_width: float) -> void:
 	_party_roster.position = origin + Vector2(viewport_size.x - roster_width, profile.menu_height)
 	_party_roster.size = Vector2(roster_width, GameShellLayoutPolicy.party_roster_height(viewport_size.y, profile.menu_height, stage_height, _party_roster.combat_spellbook_active()))
+	_party_roster.set_compact_layout(profile.id == UiLayoutProfile.COMPACT)
 	_party_roster.z_index = GameShellLayoutPolicy.party_roster_z_index(_party_roster.combat_spellbook_active())
 
 
 func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, stage_rect: Rect2, game_view: GameView) -> void:
 	_bottom_row.vertical = false
 	_facts.columns = 3 if profile.id == UiLayoutProfile.COMPACT else 6
-	var command_width := minf(profile.command_width, viewport_size.x * 0.26)
+	var command_width := minf(profile.command_width, viewport_size.x * (0.52 if profile.id == UiLayoutProfile.COMPACT else 0.26))
 	_world_command_panel.visible = profile.id != UiLayoutProfile.COMPACT
 	_world_command_panel.theme_type_variation = &"ClassicSharedStone"
 	_command_panel.theme_type_variation = &"ClassicSharedStone"
@@ -110,7 +112,7 @@ func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vec
 	_command_panel.size_flags_stretch_ratio = 1.0
 	_command_panel.custom_minimum_size.y = 0.0
 	var footer_width := GameShellLayoutPolicy.exploration_footer_width(viewport_size, profile, _navigator.current_screen())
-	_narrative_well.custom_minimum_size.x = minf(620.0 * profile.ui_scale, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - _command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(360.0, footer_width - (command_width if _command_panel.visible else 0.0) - 12.0)
+	_narrative_well.custom_minimum_size.x = minf(620.0 * profile.ui_scale, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - _command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(320.0, footer_width - (command_width if _command_panel.visible else 0.0) - 40.0)
 	_narrative_well.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_narrative_well.size_flags_stretch_ratio = 1.45 if _world_command_panel.visible else 1.0
 	_apply_footer_alignment(profile, command_width)
@@ -128,7 +130,7 @@ func _apply_footer_alignment(profile: UiLayoutProfile, command_width: float) -> 
 	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.columns = 4
-	_command_grid.columns = 2 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
+	_command_grid.columns = 2 if _world_command_panel.visible else 6 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
 	var icon_size := GameShellLayoutPolicy.party_effect_icon_size(profile.bitmap_scale)
 	var slot_size := GameShellLayoutPolicy.party_effect_slot_size(profile.bitmap_scale)
 	for icon: TextureRect in _effect_slots:

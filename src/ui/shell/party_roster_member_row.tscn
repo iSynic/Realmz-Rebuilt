@@ -1,42 +1,376 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=15 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/party_roster_member_row.gd" id="1_script"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-raised-frame.png" id="2_raised"]
+[ext_resource type="Script" path="res://src/ui/shell/party_roster_character_button.gd" id="3_button"]
 
-[node name="PartyRosterMemberRow" type="HBoxContainer"]
-custom_minimum_size = Vector2(0, 54)
+
+[sub_resource type="StyleBoxTexture" id="RowFrame"]
+texture = ExtResource("2_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 2.0
+texture_margin_top = 1.0
+texture_margin_right = 2.0
+texture_margin_bottom = 1.0
+content_margin_left = 3.0
+content_margin_top = 0.0
+content_margin_right = 3.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxEmpty" id="ButtonNormal"]
+
+[sub_resource type="StyleBoxFlat" id="ButtonHover"]
+bg_color = Color(0.3, 0.35, 0.4, 0.18)
+
+[sub_resource type="StyleBoxFlat" id="Outline"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.878431, 0.737255, 0.32549, 1)
+
+[sub_resource type="StyleBoxFlat" id="AutoEnabled"]
+bg_color = Color(0.45, 0.36, 0.12, 0.8)
+border_width_bottom = 1
+border_color = Color(0.94, 0.81, 0.48, 1)
+
+[sub_resource type="StyleBoxFlat" id="FieldBorder"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.34, 0.34, 1)
+content_margin_left = 3.0
+content_margin_right = 2.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxFlat" id="FieldRule"]
+bg_color = Color(0, 0, 0, 0)
+border_width_bottom = 1
+border_color = Color(0.32, 0.34, 0.34, 1)
+content_margin_left = 3.0
+content_margin_right = 0.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxFlat" id="HealthField"]
+bg_color = Color(0.16, 0.065, 0.07, 0.32)
+border_width_bottom = 1
+border_color = Color(0.64, 0.28, 0.29, 1)
+content_margin_left = 3.0
+content_margin_right = 0.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxFlat" id="SpellField"]
+bg_color = Color(0.08, 0.07, 0.18, 0.34)
+border_width_bottom = 1
+border_color = Color(0.42, 0.37, 0.72, 1)
+content_margin_left = 3.0
+content_margin_right = 0.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxFlat" id="AttackField"]
+bg_color = Color(0.17, 0.11, 0.045, 0.32)
+border_width_bottom = 1
+border_color = Color(0.72, 0.49, 0.2, 1)
+content_margin_left = 3.0
+content_margin_right = 0.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[sub_resource type="StyleBoxFlat" id="MovementField"]
+bg_color = Color(0.045, 0.15, 0.14, 0.32)
+border_width_bottom = 1
+border_color = Color(0.25, 0.66, 0.59, 1)
+content_margin_left = 3.0
+content_margin_right = 0.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[node name="PartyRosterMemberRow" type="PanelContainer"]
+custom_minimum_size = Vector2(0, 76)
 size_flags_horizontal = 3
-theme_override_constants/separation = 3
+theme_override_styles/panel = SubResource("RowFrame")
 script = ExtResource("1_script")
 
-[node name="CurrentCharacterMarker" type="ColorRect" parent="."]
-custom_minimum_size = Vector2(6, 0)
-layout_mode = 2
-mouse_filter = 2
-color = Color(0.878431, 0.737255, 0.32549, 1)
-
 [node name="Character" type="Button" parent="."]
+script = ExtResource("3_button")
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/icon_max_width = 50
-text = "Adventurer\nHP 0/0  •  Attacks 0  •  AR 0\nRace / Class"
-alignment = 0
-text_overrun_behavior = 3
+theme_override_colors/font_color = Color(0, 0, 0, 0)
+theme_override_colors/font_hover_color = Color(0, 0, 0, 0)
+theme_override_colors/font_pressed_color = Color(0, 0, 0, 0)
+theme_override_colors/font_focus_color = Color(0, 0, 0, 0)
+theme_override_colors/font_disabled_color = Color(0, 0, 0, 0)
+theme_override_constants/icon_max_width = 0
+theme_override_font_sizes/font_size = 1
+theme_override_styles/normal = SubResource("ButtonNormal")
+theme_override_styles/hover = SubResource("ButtonHover")
+theme_override_styles/pressed = SubResource("ButtonHover")
+theme_override_styles/focus = SubResource("Outline")
+theme_override_styles/disabled = SubResource("ButtonNormal")
+icon_alignment = 0
+expand_icon = false
+clip_text = true
 
-[node name="SelectionNumber" type="Label" parent="."]
-visible = false
-custom_minimum_size = Vector2(30, 30)
-layout_mode = 2
-theme_override_colors/font_color = Color(0.878431, 0.737255, 0.32549, 1)
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="PortraitDivider" type="ColorRect" parent="Character"]
+layout_mode = 1
+anchor_bottom = 1.0
+offset_left = 52.0
+offset_right = 53.0
+mouse_filter = 2
+color = Color(0.32, 0.34, 0.34, 1)
 
-[node name="CombatAuto" type="Button" parent="."]
-visible = false
-custom_minimum_size = Vector2(28, 0)
+[node name="Details" type="MarginContainer" parent="Character"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 56.0
+offset_top = 1.0
+offset_right = -1.0
+offset_bottom = -1.0
+mouse_filter = 2
+
+[node name="Record" type="VBoxContainer" parent="Character/Details"]
 layout_mode = 2
-size_flags_horizontal = 8
+mouse_filter = 2
+theme_override_constants/separation = -2
+
+[node name="IdentityCell" type="PanelContainer" parent="Character/Details/Record"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("FieldRule")
+
+[node name="Identity" type="BoxContainer" parent="Character/Details/Record/IdentityCell"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="CharacterName" type="Label" parent="Character/Details/Record/IdentityCell/Identity"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.94, 0.81, 0.48, 1)
+theme_override_font_sizes/font_size = 17
+text = "Adventurer"
+autowrap_mode = 2
+
+[node name="ArmorCell" type="PanelContainer" parent="Character/Details/Record/IdentityCell/Identity"]
+layout_mode = 2
+size_flags_horizontal = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("FieldBorder")
+
+[node name="Armor" type="HBoxContainer" parent="Character/Details/Record/IdentityCell/Identity/ArmorCell"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="Character/Details/Record/IdentityCell/Identity/ArmorCell/Armor"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.86, 0.74, 0.42, 1)
+theme_override_font_sizes/font_size = 12
+text = "AR"
+
+[node name="Value" type="Label" parent="Character/Details/Record/IdentityCell/Identity/ArmorCell/Armor"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.98, 0.88, 0.57, 1)
 theme_override_font_sizes/font_size = 16
+text = "0"
+size_flags_horizontal = 3
+horizontal_alignment = 2
+
+[node name="CharacterRoleCell" type="PanelContainer" parent="Character/Details/Record"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("FieldRule")
+
+[node name="CharacterRole" type="Label" parent="Character/Details/Record/CharacterRoleCell"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.72, 0.82, 0.88, 1)
+theme_override_font_sizes/font_size = 14
+text = "Race / Caste"
+autowrap_mode = 2
+
+[node name="Vitals" type="GridContainer" parent="Character/Details/Record"]
+layout_mode = 2
+mouse_filter = 2
+columns = 2
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+
+[node name="HealthCell" type="PanelContainer" parent="Character/Details/Record/Vitals"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("HealthField")
+
+[node name="Health" type="HBoxContainer" parent="Character/Details/Record/Vitals/HealthCell"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="Character/Details/Record/Vitals/HealthCell/Health"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.91, 0.57, 0.57, 1)
+theme_override_font_sizes/font_size = 12
+text = "HP"
+
+[node name="Value" type="Label" parent="Character/Details/Record/Vitals/HealthCell/Health"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.98, 0.79, 0.75, 1)
+theme_override_font_sizes/font_size = 16
+text = "0/0"
+size_flags_horizontal = 3
+horizontal_alignment = 2
+
+[node name="SpellPointsCell" type="PanelContainer" parent="Character/Details/Record/Vitals"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("SpellField")
+
+[node name="SpellPoints" type="HBoxContainer" parent="Character/Details/Record/Vitals/SpellPointsCell"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="Character/Details/Record/Vitals/SpellPointsCell/SpellPoints"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.72, 0.65, 0.96, 1)
+theme_override_font_sizes/font_size = 12
+text = "SP"
+
+[node name="Value" type="Label" parent="Character/Details/Record/Vitals/SpellPointsCell/SpellPoints"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.83, 0.79, 1, 1)
+theme_override_font_sizes/font_size = 16
+text = "0/0"
+size_flags_horizontal = 3
+horizontal_alignment = 2
+
+[node name="Actions" type="GridContainer" parent="Character/Details/Record"]
+layout_mode = 2
+mouse_filter = 2
+columns = 2
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+
+[node name="AttacksCell" type="PanelContainer" parent="Character/Details/Record/Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("AttackField")
+
+[node name="Attacks" type="HBoxContainer" parent="Character/Details/Record/Actions/AttacksCell"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="Character/Details/Record/Actions/AttacksCell/Attacks"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.94, 0.72, 0.34, 1)
+theme_override_font_sizes/font_size = 12
+text = "ATK"
+
+[node name="Value" type="Label" parent="Character/Details/Record/Actions/AttacksCell/Attacks"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.98, 0.84, 0.59, 1)
+theme_override_font_sizes/font_size = 16
+text = "3/2"
+size_flags_horizontal = 3
+horizontal_alignment = 2
+
+[node name="MovementCell" type="PanelContainer" parent="Character/Details/Record/Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_styles/panel = SubResource("MovementField")
+
+[node name="Movement" type="HBoxContainer" parent="Character/Details/Record/Actions/MovementCell"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="Character/Details/Record/Actions/MovementCell/Movement"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.45, 0.84, 0.77, 1)
+theme_override_font_sizes/font_size = 12
+text = "MV"
+
+[node name="Value" type="Label" parent="Character/Details/Record/Actions/MovementCell/Movement"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_colors/font_color = Color(0.72, 0.94, 0.88, 1)
+theme_override_font_sizes/font_size = 16
+text = "0/0"
+size_flags_horizontal = 3
+horizontal_alignment = 2
+
+[node name="CombatAuto" type="Button" parent="Character"]
+visible = false
+offset_top = 60.0
+offset_right = 50.0
+offset_bottom = 76.0
+theme_type_variation = &"ClassicRosterAuto"
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_pressed_color = Color(1, 0.9, 0.6, 1)
+theme_override_styles/normal = SubResource("ButtonNormal")
+theme_override_styles/hover = SubResource("ButtonHover")
+theme_override_styles/pressed = SubResource("AutoEnabled")
+theme_override_styles/focus = SubResource("Outline")
 toggle_mode = true
-text = "A"
+text = "Auto"
 accessibility_name = "Persistent Auto"
+
+[node name="SelectionNumber" type="Label" parent="Character"]
+visible = false
+mouse_filter = 2
+theme_type_variation = &"ClassicRosterText"
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.94, 0.81, 0.48, 1)
+theme_override_constants/outline_size = 3
+
+[node name="CurrentCharacterMarker" type="ColorRect" parent="Character"]
+visible = false
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="SelectionOutline" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Outline")

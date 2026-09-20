@@ -50,6 +50,7 @@ var _encounter_mode: bool = false
 var _encounter_items: Dictionary = {}
 var _rendered_character_id: String = ""
 var _item_scroll_position: int = 0
+var _pending_drop_selection_id: String = ""
 var _trade_scroll_positions: Dictionary[String, int] = {}
 var _trade_item_owner_id: String = ""
 var _trade_item_instance_id: String = ""
@@ -76,6 +77,7 @@ func reset() -> void:
 	_encounter_items.clear()
 	_rendered_character_id = ""
 	_item_scroll_position = 0
+	_pending_drop_selection_id = ""
 	_trade_scroll_positions.clear()
 	_trade_item_owner_id = ""
 	_trade_item_instance_id = ""
@@ -157,10 +159,10 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		_clear_pending_action()
 	_rendered_character_id = selected_character.id
 	var visible_items := InventoryViewQueries.eligible_items(selected_character, _encounter_mode, _encounter_items)
+	_selected_item_instance_id = _pending_drop_selection_id if not _pending_drop_selection_id.is_empty() and InventoryViewQueries.selected_item(visible_items, _selected_item_instance_id) == null else _selected_item_instance_id
+	_pending_drop_selection_id = ""
+	_selected_item_instance_id = visible_items[0].instance_id if InventoryViewQueries.selected_item(visible_items, _selected_item_instance_id) == null and not visible_items.is_empty() else _selected_item_instance_id
 	var selected_item := InventoryViewQueries.selected_item(visible_items, _selected_item_instance_id)
-	if selected_item == null and not visible_items.is_empty():
-		selected_item = visible_items[0]
-		_selected_item_instance_id = selected_item.instance_id
 	if _trade_mode:
 		var target := InventoryViewQueries.character_by_id(view, _selected_trade_target_id)
 		if target == null:
@@ -314,13 +316,38 @@ func _bind_character_command_rail(content: InventoryCommandRail, view: GameView,
 
 
 func _render_character_record(parent: VBoxContainer, character: CharacterView, media: ClassicMediaCatalog) -> void:
-	(parent.get_node("InventoryCharacterIdentity/Portrait") as TextureRect).texture = _scene_binding.appearance_texture(character.portrait_id, media)
-	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Name") as Label, character.name, GOLD, 19)
-	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Role") as Label, "%s / %s • Level %d" % [character.race_name, character.caste_name, character.level], TEXT, 12)
 	var facts := parent.get_node("InventoryCharacterFacts") as GridContainer
-	var values: Array[String] = ["ST %d/%d" % [character.current_health, character.maximum_health], "SP %d/%d" % [character.spell_points, character.maximum_spell_points], "AR %d" % character.armor, "Attacks %s" % character.attacks_per_round, "Movement %d/%d" % [character.movement, character.maximum_movement], "Load %d/%d" % [character.carried_load, character.maximum_load]]
-	for index: int in values.size():
-		_scene_binding.bind_label(facts.get_child(index) as Label, values[index], TEXT, 12)
+	facts.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 3
+	(parent.get_node("InventoryCharacterIdentity/Portrait") as TextureRect).texture = _scene_binding.appearance_texture(character.portrait_id, media)
+	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Name") as Label, character.name, GOLD, 20)
+	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Role") as Label, "%s / %s • Level %d" % [character.race_name, character.caste_name, character.level], TEXT, 13)
+	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Progression") as Label, "Victory %d • Load %d/%d" % [character.experience, character.carried_load, character.maximum_load], MUTED, 12)
+	var values := {
+		"Health": "HP %d/%d" % [character.current_health, character.maximum_health],
+		"SpellPoints": "SP %d/%d" % [character.spell_points, character.maximum_spell_points],
+		"Experience": "XP %d" % character.experience,
+		"Armor": "AR %d" % character.armor,
+		"Attacks": "ATK %s" % character.attacks_per_round,
+		"Movement": "MOVE %d/%d" % [character.movement, character.maximum_movement],
+		"Load": "LOAD %d/%d" % [character.carried_load, character.maximum_load],
+		"Brawn": "Brawn %d" % character.brawn,
+		"Knowledge": "Knowledge %d" % character.knowledge,
+		"Judgment": "Judgment %d" % character.judgment,
+		"Agility": "Agility %d" % character.agility,
+		"Vitality": "Vitality %d" % character.vitality,
+		"Luck": "Luck %d" % character.luck,
+		"AttackBonus": "ATK %+d" % character.attack_bonus,
+		"DefenseBonus": "DEF %+d" % character.defense_bonus,
+		"Damage": "DMG %+d" % character.damage_bonus,
+		"MagicResistance": "MR %d" % character.magic_resistance,
+		"Gender": "Gender %s" % (character.gender_name if not character.gender_name.is_empty() else "Unknown"),
+		"HitChance": "TO HIT %+d" % character.to_hit,
+	}
+	var compact_only := ["Health", "SpellPoints", "Experience", "Armor", "Attacks", "Movement", "Load", "Gender", "HitChance"]
+	for key: String in values:
+		var cell := parent.get_node("InventoryCharacterFacts/%s" % key) as PanelContainer
+		cell.visible = _layout_profile != UiLayoutProfile.COMPACT or key in compact_only
+		_scene_binding.bind_label(cell.get_node("Value") as Label, values[key], TEXT, 13)
 	var condition_text := "Conditions: None"
 	if not character.conditions.is_empty():
 		var names: Array[String] = []
@@ -333,7 +360,7 @@ func _render_character_record(parent: VBoxContainer, character: CharacterView, m
 func _bind_item_record(content: InventoryItemInspector, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> void:
 	content.clear_dynamic_content()
 	var record := content.record()
-	record.set_compact(_layout_profile == UiLayoutProfile.COMPACT)
+	content.set_compact(_layout_profile == UiLayoutProfile.COMPACT)
 	content.done_column().visible = not _encounter_mode
 	var done := content.done_column().done_button()
 	_scene_binding.clear_pressed_connections(done)
@@ -388,7 +415,7 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 		return
 	if not _browse_only_reason.is_empty():
 		panel.show_actions(false)
-		var browse_actions: Array[Array] = [[panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip" if item.equipped else "Equip"], [panel.action_button("UseAction"), &"inventory.action.use", "Use"], [panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify"], [panel.action_button("TradeAction"), &"inventory.action.trade", "Trade"], [panel.action_button("JoinAction"), &"inventory.action.join", "Join"], [panel.action_button("SplitAction"), &"inventory.action.split", "Split"], [panel.action_button("DropAction"), &"inventory.action.drop", "Drop"]]
+		var browse_actions: Array[Array] = [[panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip" if item.equipped else "Equip"], [panel.action_button("UseAction"), &"inventory.action.use", "Use"], [panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify All"], [panel.action_button("TradeAction"), &"inventory.action.trade", "Trade"], [panel.action_button("JoinAction"), &"inventory.action.join", "Join"], [panel.action_button("SplitAction"), &"inventory.action.split", "Split"], [panel.action_button("DropAction"), &"inventory.action.drop", "Drop"]]
 		for spec: Array in browse_actions:
 			var browse_button := spec[0] as ClassicBitmapButton
 			_bind_bitmap_button(browse_button, spec[1], spec[2])
@@ -404,11 +431,11 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 	else:
 		_bind_item_intent_action(panel.action_button("EquippedAction"), &"inventory.action.equipped", "Equip", item.actions.equip, InventoryIntents.equip(item.instance_id, character.id), item, character)
 	_bind_item_intent_action(panel.action_button("UseAction"), &"inventory.action.use", "Use", item.actions.use, InventoryIntents.use(item.instance_id, character.id), item, character)
-	_bind_item_intent_action(panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify", item.actions.identify, MagicIntents.identify_carried_items(item.actions.identify_spell_id, item.actions.identify_caster_id, character.id), item, character)
+	_bind_item_intent_action(panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify All", item.actions.identify, MagicIntents.identify_carried_items(item.actions.identify_spell_id, item.actions.identify_caster_id, character.id), item, character)
 	_bind_trade_action(panel.action_button("TradeAction"), item)
 	_bind_item_intent_action(panel.action_button("JoinAction"), &"inventory.action.join", "Join", item.actions.join, InventoryIntents.join(item.instance_id, character.id), item, character)
 	_bind_item_intent_action(panel.action_button("SplitAction"), &"inventory.action.split", "Split", item.actions.split, InventoryIntents.split(item.instance_id, character.id), item, character)
-	_bind_item_intent_action(panel.action_button("DropAction"), &"inventory.action.drop", "Drop", item.actions.drop, InventoryIntents.drop(item.instance_id, character.id), item, character)
+	_bind_item_intent_action(panel.action_button("DropAction"), &"inventory.action.drop", "Drop", item.actions.drop, InventoryIntents.drop(item.instance_id, character.id), item, character, true)
 	panel.trade_status().visible = not _trade_status.is_empty()
 	_scene_binding.bind_label(panel.trade_status(), _trade_status, WARNING, 13)
 
@@ -581,6 +608,7 @@ func _submit_encounter_item(character_id: String, instance_id: String) -> void:
 func _select_character(character_id: String) -> void:
 	_selected_character_id = character_id
 	_selected_item_instance_id = ""
+	_pending_drop_selection_id = ""
 	_trade_mode = false
 	_selected_trade_target_id = ""
 	_trade_destination_confirmed = false
@@ -592,6 +620,7 @@ func _select_character(character_id: String) -> void:
 
 func _select_item(instance_id: String) -> void:
 	_selected_item_instance_id = instance_id
+	_pending_drop_selection_id = ""
 	_trade_mode = false
 	_selected_trade_target_id = ""
 	_trade_destination_confirmed = false
@@ -628,12 +657,25 @@ func _bind_trade_action(button: ClassicBitmapButton, item: ItemView) -> void:
 		button.command_requested.connect(func(_command_id: StringName) -> void: _begin_trade(item))
 
 
-func _bind_item_intent_action(button: ClassicBitmapButton, asset_id: StringName, label: String, availability: ActionAvailabilityView, intent: PlayerIntent, item: ItemView, character: CharacterView) -> void:
+func _bind_item_intent_action(button: ClassicBitmapButton, asset_id: StringName, label: String, availability: ActionAvailabilityView, intent: PlayerIntent, item: ItemView, character: CharacterView, direct: bool = false) -> void:
 	_bind_bitmap_button(button, asset_id, label)
 	button.disabled = availability == null or not availability.enabled
 	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else label
 	if not button.disabled:
-		button.command_requested.connect(func(_command_id: StringName) -> void: _begin_item_action(StringName(label.to_snake_case()), label, intent, item, character))
+		if direct:
+			button.command_requested.connect(func(_command_id: StringName) -> void:
+				var visible_items := InventoryViewQueries.eligible_items(character, _encounter_mode, _encounter_items)
+				for index: int in visible_items.size():
+					if visible_items[index].instance_id == item.instance_id:
+						if index + 1 < visible_items.size():
+							_pending_drop_selection_id = visible_items[index + 1].instance_id
+						elif index > 0:
+							_pending_drop_selection_id = visible_items[index - 1].instance_id
+						break
+				intent_submitted.emit(intent)
+			)
+		else:
+			button.command_requested.connect(func(_command_id: StringName) -> void: _begin_item_action(StringName(label.to_snake_case()), label, intent, item, character))
 
 
 func _bind_bitmap_button(button: ClassicBitmapButton, asset_id: StringName, label: String) -> void:

@@ -1,16 +1,25 @@
 ## Exposes the stable selected-item record and Done action of Inventory.
 
 class_name InventoryItemInspector
-extends HBoxContainer
+extends BoxContainer
 
 
 func record() -> InventorySelectedItemRecord:
 	return get_node("InventorySelectedItemRecord") as InventorySelectedItemRecord
 
 
-func record_host(compact: bool = false) -> BoxContainer:
+func set_compact(compact: bool) -> void:
+	vertical = compact
 	record().set_compact(compact)
+
+
+func record_host(compact: bool = false) -> BoxContainer:
+	set_compact(compact)
 	return record()
+
+
+func item_actions() -> InventoryActionPanel:
+	return get_node("InventoryActionPanel") as InventoryActionPanel
 
 
 func done_column() -> InventoryDoneColumn:

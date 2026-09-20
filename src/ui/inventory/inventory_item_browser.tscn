@@ -16,7 +16,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicHeading"
 theme_override_colors/font_color = Color(0.0823529, 0.0823529, 0.0705882, 1)
-theme_override_font_sizes/font_size = 17
+theme_override_font_sizes/font_size = 19
 text = "Character's items"
 
 [node name="Count" type="Label" parent="Heading"]
@@ -25,6 +25,10 @@ theme_override_colors/font_color = Color(0.313726, 0.341176, 0.356863, 1)
 theme_override_font_sizes/font_size = 12
 text = "0 carried"
 horizontal_alignment = 2
+
+[node name="HeaderRule" type="HSeparator" parent="."]
+layout_mode = 2
+theme_override_colors/separator = Color(0.38, 0.4, 0.39, 1)
 
 [node name="Empty" type="Label" parent="."]
 visible = false

@@ -386,7 +386,7 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
   2. Admit physical damage spells (damage type 9) in charged missile weapons as ordinary combat spells for item use.
   3. Strictly preserve authored group recipient ownership: type 9 targets friendly actors, type 10 targets opposed actors, and type 12 targets everybody. Healing, condition curing, and `cannot` flags govern tactical desirability (scoring and pruning), never recipient ownership.
 - Tests: `test_combat_flow.gd` proves monster AI group spell evaluation, authored recipient preservation, and charged missile weapon combat flow with physical damage spells. `test_realmz_rules.gd` proves character and monster projectile resolution with blindness (special 28), death (special 49), permanent condition preservation, and accumulation bounds.
-- Legacy quirk: none. Preserving Castle's condition 27 for special 28 aligns with stock Blind and Salt spells, and tactical group evaluation follows Rebuilt's documented deterministic AI improvements under the documented deterministic AI rules.
+- Legacy quirk: none. Preserving Castle's condition 27 for special 28 aligns with stock Blind and Salt spells, and tactical group evaluation follows Rebuilt's documented deterministic AI rules.
 
 ## FD-COMBAT-017 — Adjudicated Classic spell capability gaps
 

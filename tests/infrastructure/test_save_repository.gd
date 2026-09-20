@@ -11,7 +11,7 @@ func run() -> void:
 		return
 	var campaign_id: String = loaded.content.campaign_id
 	var campaign_path := TEST_ROOT.path_join(campaign_id)
-	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save"])
+	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save", "updated.r2save", "updated.r2save.tmp", "updated.r2save.bak"])
 	var session := GameSession.new()
 	assert_equal(session.start(loaded.content, 7).state, SessionStep.State.COMPLETED, "save-preview session starts")
 	var first := session.snapshot()
@@ -80,6 +80,14 @@ func run() -> void:
 		assert_equal([loaded_backup.game_state.clock.total_minutes(), var_to_bytes(loaded_backup.game_state.experience_multiplier), PartySetupRules.scale_experience_by_multiplier(600, loaded_backup.game_state.experience_multiplier)], [0, var_to_bytes(first.game_state.experience_multiplier), 200], "backup loading preserves the previous boundary and exact fractional reward multiplier")
 	assert_true(repository.load(campaign_id, "mismatch", loaded.content.package_hash) == null and repository.last_error.contains("identity"), "ordinary load continues to reject mismatched immutable content")
 	assert_true(repository.load(campaign_id, "legacy", loaded.content.package_hash) == null and repository.last_error == "Save format v4 is incompatible with Realmz Rebuilt save v5.", "ordinary load reports the intentional save compatibility cut")
+	var original_before := FileAccess.get_sha256(campaign_path.path_join("quick.r2save"))
+	var backup_before := FileAccess.get_sha256(campaign_path.path_join("quick.r2save.bak"))
+	var update_copy := SaveEnvelope.from_data(save_data(first))
+	assert_true(repository.save_new_copy(campaign_id, "updated", update_copy), "an explicit copy installs into a separate empty slot")
+	assert_equal(repository.load(campaign_id, "updated", loaded.content.package_hash).to_data(), update_copy.to_data(), "the copied save round-trips every state and RNG field")
+	assert_true(repository.save_new_copy(campaign_id, "updated", update_copy), "retrying the same completed copy is idempotent")
+	assert_false(repository.save_new_copy(campaign_id, "updated", SaveEnvelope.from_data(save_data(second))), "a different copy cannot overwrite the first completed copy")
+	assert_equal([FileAccess.get_sha256(campaign_path.path_join("quick.r2save")), FileAccess.get_sha256(campaign_path.path_join("quick.r2save.bak")), FileAccess.file_exists(campaign_path.path_join("updated.r2save.bak"))], [original_before, backup_before, false], "copy retries and collisions preserve the original, backup, and copied-slot backup boundary")
 
 
 func _preview(previews: Array, slot_id: String, source: StringName) -> RefCounted:

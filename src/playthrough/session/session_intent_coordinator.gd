@@ -107,7 +107,7 @@ func _submit_inventory_or_service_intent(intent: PlayerIntent) -> SessionCoordin
 		PlayerIntent.Kind.JOIN_ITEM:
 			return _workflow(InventoryWorkflow.join_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.DROP_ITEM:
-			return _request_drop_item(intent.payload as InventoryIntentPayloads.Action)
+			return _workflow(InventoryWorkflow.drop_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.TRADE_ITEM:
 			return _workflow(InventoryWorkflow.trade_item(_context.workflow_context(), intent.payload as InventoryIntentPayloads.Action))
 		PlayerIntent.Kind.MONEY_ACTION:
@@ -213,24 +213,6 @@ func _use_item(intent: PlayerIntent) -> SessionCoordinatorResult:
 	if _active_combat():
 		return _combat_result(_context.rules.combat_flow.use_spell_item(_context.state, _context.content, character.id, target_id, instance.id, _context.rng, coordinate, rotation, target_ids, target_coordinates))
 	return _magic_transition(FieldItemWorkflow.begin_field_spell_item(_context.workflow_context(), actor_id, item_id, target_id, target_ids, _context.next_revision()))
-
-
-func _request_drop_item(payload: InventoryIntentPayloads.Action) -> SessionCoordinatorResult:
-	var character := _context.state.party.character_by_id(payload.actor_id)
-	var instance := _context.item_instance(character, payload.item_id)
-	var definition: ItemDefinition = null if instance == null else _context.content.items.item_by_id(instance.definition_id)
-	if character == null or instance == null or definition == null:
-		return SessionCoordinatorResult.rejected(&"unknown_item_instance", "The selected character does not carry that item instance.")
-	var probe := _context.rules.inventory.classic_drop_probe(character, instance)
-	if not probe.allowed:
-		return SessionCoordinatorResult.rejected(&"item_cannot_drop", probe.reason)
-	var targeting := TargetingContinuationBody.new()
-	targeting.character_id = character.id
-	targeting.instance_id = instance.id
-	_context.set_continuation(InventoryContinuations.drop_confirmation(targeting))
-	var display_name := definition.name if instance.identified else definition.unidentified_name
-	_context.session_interaction = SessionInteractionFactory.drop_item_confirmation("session.drop-item:%s:%d" % [instance.id, _context.next_revision()], display_name)
-	return SessionCoordinatorResult.waiting(_context.session_interaction, [DomainEvent.new(&"item_drop_requested", {"characterId": character.id, "instanceId": instance.id})])
 
 
 func _cast_spell(payload: SpellIntentPayload) -> SessionCoordinatorResult:

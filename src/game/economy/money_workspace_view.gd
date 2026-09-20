@@ -11,6 +11,9 @@ var banked_gems: int
 var banked_jewelry: int
 var pool: ActionAvailabilityView
 var share: ActionAvailabilityView
+var changing_available: bool = false
+var changing_reason: String = ""
+var changes: Array[MoneyChangeView] = []
 var characters: Array[MoneyCharacterView] = []
 
 
@@ -19,3 +22,11 @@ func character(character_id: String) -> MoneyCharacterView:
 		if option.character_id == character_id:
 			return option
 	return null
+
+
+func pooled_amount(denomination: StringName) -> int:
+	match denomination:
+		&"gold": return pooled_gold
+		&"gems": return pooled_gems
+		&"jewelry": return pooled_jewelry
+	return 0

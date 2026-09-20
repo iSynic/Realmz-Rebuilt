@@ -8,7 +8,7 @@ extends BoxContainer
 
 func set_compact(compact: bool) -> void:
 	vertical = false
-	(get_node("Narrative") as VBoxContainer).custom_minimum_size.x = 350.0 if compact else 470.0
+	(get_node("Narrative") as VBoxContainer).custom_minimum_size.x = 350.0
 
 
 func empty_label() -> Label:
@@ -23,8 +23,8 @@ func item_icon() -> ClassicContentIcon:
 	return get_node("Narrative/TitleRow/ContentIcon") as ClassicContentIcon
 
 
-func fact_rows() -> VBoxContainer:
-	return get_node("Facts/FactRows") as VBoxContainer
+func fact_rows() -> GridContainer:
+	return get_node("Facts/FactRows") as GridContainer
 
 
 func properties() -> VBoxContainer:

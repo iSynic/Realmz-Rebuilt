@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 16
+const SCHEMA_VERSION: int = 18
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -13,6 +13,17 @@ const UI_SCALE_AUTO: String = "auto"
 const UI_SCALE_100: String = "100"
 const UI_SCALE_125: String = "125"
 const UI_SCALE_150: String = "150"
+const DISPLAY_RESPONSIVE: String = "responsive"
+const DISPLAY_INTEGER_WINDOW: String = "integer-window"
+const DISPLAY_INTEGER_CANVAS: String = "integer-canvas"
+const DISPLAY_FILL_WINDOW: String = "fill-window"
+const SMOOTHING_OFF: String = "off"
+const SMOOTHING_WORLD: String = "world"
+const SMOOTHING_WINDOW: String = "window"
+const CRT_PI: String = "crt-pi"
+const CRT_LOTTES: String = "crt-lottes"
+const CRT_WORLD: String = "world"
+const CRT_WINDOW: String = "window"
 const WINDOWED: String = "windowed"
 const BORDERLESS_FULLSCREEN: String = "borderless-fullscreen"
 const TYPOGRAPHY_CLASSIC: String = "classic"
@@ -30,6 +41,12 @@ var reduced_sound: bool = false
 var auto_switch_to_melee: bool = true
 var dungeon_3d: bool = false
 var ui_scale_mode: String = UI_SCALE_AUTO
+var display_scaling_mode: String = DISPLAY_RESPONSIVE
+var world_zoom: int = 1
+var pixel_art_smoothing: String = SMOOTHING_OFF
+var crt_enabled: bool = false
+var crt_shader: String = CRT_PI
+var crt_area: String = CRT_WORLD
 var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var combat_playback_speed_percent: int = 100
@@ -59,6 +76,12 @@ func to_data() -> Dictionary:
 		"autoSwitchToMelee": auto_switch_to_melee,
 		"dungeon3d": dungeon_3d,
 		"uiScaleMode": ui_scale_mode,
+		"displayScalingMode": display_scaling_mode,
+		"worldZoom": world_zoom,
+		"pixelArtSmoothing": pixel_art_smoothing,
+		"crtEnabled": crt_enabled,
+		"crtShader": crt_shader,
+		"crtArea": crt_area,
 		"windowMode": window_mode,
 		"explorationSpeedPercent": exploration_speed_percent,
 		"combatPlaybackSpeedPercent": combat_playback_speed_percent,
@@ -127,6 +150,10 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 16 and not data.get("hurrySpellResolution") is bool:
 		return false
+	if schema_version >= 17 and not _scaling_fields_are_valid(data):
+		return false
+	if schema_version >= 18 and (not data.get("crtEnabled") is bool or data.get("crtShader") not in [CRT_PI, CRT_LOTTES] or data.get("crtArea") not in [CRT_WORLD, CRT_WINDOW]):
+		return false
 	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
 
 
@@ -134,6 +161,11 @@ static func _window_fields_are_valid(data: Dictionary) -> bool:
 	if not data.get("uiScaleMode") is String or not data.get("windowMode") is String:
 		return false
 	return data["uiScaleMode"] in [UI_SCALE_AUTO, UI_SCALE_100, UI_SCALE_125, UI_SCALE_150] and data["windowMode"] in [WINDOWED, BORDERLESS_FULLSCREEN]
+
+
+static func _scaling_fields_are_valid(data: Dictionary) -> bool:
+	var zoom: Variant = data.get("worldZoom")
+	return data.get("displayScalingMode") in [DISPLAY_RESPONSIVE, DISPLAY_INTEGER_WINDOW, DISPLAY_INTEGER_CANVAS, DISPLAY_FILL_WINDOW] and (zoom is int or zoom is float) and float(int(zoom)) == float(zoom) and int(zoom) in [1, 2, 3, 4] and data.get("pixelArtSmoothing") in [SMOOTHING_OFF, SMOOTHING_WORLD, SMOOTHING_WINDOW]
 
 
 static func _music_fields_are_valid(data: Dictionary) -> bool:
@@ -173,6 +205,14 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.auto_switch_to_melee = bool(data.get("autoSwitchToMelee", true))
 	settings.dungeon_3d = bool(data.get("dungeon3d", false))
 	settings.ui_scale_mode = String(data.get("uiScaleMode", UI_SCALE_AUTO))
+	if int(data["schemaVersion"]) >= 17:
+		settings.display_scaling_mode = String(data["displayScalingMode"])
+		settings.world_zoom = int(data["worldZoom"])
+		settings.pixel_art_smoothing = String(data["pixelArtSmoothing"])
+	if int(data["schemaVersion"]) >= 18:
+		settings.crt_enabled = data["crtEnabled"]
+		settings.crt_shader = String(data["crtShader"])
+		settings.crt_area = String(data["crtArea"])
 	settings.window_mode = String(data.get("windowMode", WINDOWED))
 	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
 	settings.combat_playback_speed_percent = int(data.get("combatPlaybackSpeedPercent", 100))

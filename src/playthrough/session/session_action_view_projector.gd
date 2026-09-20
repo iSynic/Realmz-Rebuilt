@@ -45,6 +45,13 @@ static func populate_money_screen(context: SessionWorkflowContext, result: GameV
 	workspace.pool = ActionAvailabilityView.new(&"money_action", pool_probe.allowed, pool_probe.reason)
 	var share_probe := context.rules.economy.share_probe(state.party)
 	workspace.share = ActionAvailabilityView.new(&"money_action", share_probe.allowed, share_probe.reason)
+	workspace.changing_available = SessionMoneyWorkflow.changing_available(context)
+	workspace.changing_reason = "" if workspace.changing_available else "Money changing is available only at a shop or temple."
+	for action: StringName in MoneyChangingRules.ACTIONS:
+		var rate := MoneyChangingRules.rate(action)
+		var probe := MoneyChangingRules.probe(state.party, workspace.changing_available, action)
+		rate.availability = ActionAvailabilityView.new(&"money_action", probe.allowed, probe.reason)
+		workspace.changes.append(rate)
 	for character: CharacterState in state.party.characters():
 		var character_view := MoneyCharacterView.new(character)
 		for denomination: StringName in [&"gold", &"gems", &"jewelry"]:

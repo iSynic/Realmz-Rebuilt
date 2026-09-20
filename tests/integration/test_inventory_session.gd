@@ -37,27 +37,20 @@ func run() -> void:
 
 	var before_use_charges := carried_destination.inventory()[0].charges; var rejected_use := session.submit_intent(InventoryIntents.use(instance.id, destination.id)); assert_equal(rejected_use.error_code, &"item_has_no_spell_effect", "ordinary equipment does not masquerade as a charged spell item"); assert_equal(carried_destination.inventory()[0].charges, before_use_charges, "rejected ordinary item use preserves charges")
 
-	var drop_wait := session.submit_intent(InventoryIntents.drop(instance.id, destination.id)); assert_equal(drop_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "Drop opens a typed irreversible-action confirmation"); assert_equal(drop_wait.interaction.kind, InteractionRequest.YES_NO, "Drop uses the ordinary serializable yes/no interaction"); assert_false(session._context.scenario_vm.is_active(), "a session-owned Drop does not create a VM continuation"); assert_equal(session._context.scenario_vm.pending_request(), null, "a session-owned Drop does not create a VM request"); var pending_snapshot := session.snapshot()
-	assert_not_null(pending_snapshot, "Drop confirmation is a saveable committed boundary")
-	if pending_snapshot == null:
-		return
-	var restored_envelope := SaveEnvelope.from_data(save_data(pending_snapshot)); assert_not_null(restored_envelope, "Drop confirmation save data validates before restore")
-	if restored_envelope == null:
-		return
-	var restored := GameSession.new(); assert_equal(restored.restore(content, restored_envelope).state, SessionStep.State.COMPLETED, "pending Drop confirmation restores transactionally"); assert_equal(restored.view().pending_interaction.to_data(), drop_wait.interaction.to_data(), "restored Drop retains its exact request and labels"); var declined := restored.respond(InteractionResponse.yes_no(restored.view().pending_interaction, false)); assert_equal(declined.state, SessionStep.State.COMPLETED, "declining Drop resumes at a committed boundary")
-	assert_equal(restored._context.state.party.character_by_id(destination.id).inventory().size(), 1, "declining Drop preserves the item")
-	var second_wait := restored.submit_intent(InventoryIntents.drop(instance.id, destination.id)); var accepted := restored.respond(InteractionResponse.yes_no(second_wait.interaction, true)); assert_equal(accepted.state, SessionStep.State.COMPLETED, "accepting Drop commits the irreversible action")
-	assert_equal(restored._context.state.party.character_by_id(destination.id).inventory().size(), 0, "accepted Drop removes the exact item")
-	assert_equal(accepted.events[0].kind, &"item_dropped", "accepted Drop publishes its committed result")
+	var second_instance := RealmzRules.new().inventory.add_item(carried_destination, item, "inventory.instance.sword.second", true); assert_not_null(second_instance, "a second exact item enters the recipient inventory for repeated Drop coverage")
+	var dropped := session.submit_intent(InventoryIntents.drop(instance.id, destination.id)); assert_equal(dropped.state, SessionStep.State.COMPLETED, "Drop commits in one typed transaction"); assert_equal(dropped.interaction, null, "direct Drop does not create an interaction"); assert_true(session._context.session_continuation.is_empty(), "direct Drop does not create a saved continuation"); assert_equal(session.view().pending_interaction, null, "direct Drop leaves no pending interaction"); assert_equal(carried_destination.inventory().map(func(carried: ItemInstance) -> String: return carried.id), [second_instance.id], "Drop removes the exact requested item instance"); assert_true(dropped.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_dropped" and event.payload.get("instanceId") == instance.id), "Drop publishes one item_dropped event for the exact instance")
+	var dropped_again := session.submit_intent(InventoryIntents.drop(second_instance.id, destination.id)); assert_equal(dropped_again.state, SessionStep.State.COMPLETED, "a second Drop can be submitted immediately"); assert_equal(carried_destination.inventory().size(), 0, "the immediate second Drop removes the remaining item")
+	var equipped_drop_instance := RealmzRules.new().inventory.add_item(carried_destination, item, "inventory.instance.sword.equipped", true); assert_equal(session.submit_intent(InventoryIntents.equip(equipped_drop_instance.id, destination.id)).state, SessionStep.State.COMPLETED, "the equipped Drop rejection fixture equips the exact item"); var rejected_drop := session.submit_intent(InventoryIntents.drop(equipped_drop_instance.id, destination.id)); assert_equal(rejected_drop.error_code, &"item_cannot_drop", "equipped items remain protected from Drop"); assert_equal(carried_destination.inventory().size(), 1, "rejected equipped Drop preserves the item")
+	var legacy_instance := RealmzRules.new().inventory.add_item(session._context.state.party.character_by_id(source.id), item, "inventory.instance.legacy-drop", true); var legacy_targeting := TargetingContinuationBody.new(); legacy_targeting.character_id = source.id; legacy_targeting.instance_id = legacy_instance.id; session._context.set_continuation(InventoryContinuations.drop_confirmation(legacy_targeting)); var legacy_interaction := SessionInteractionFactory.drop_item_confirmation("legacy-drop", item.name); session._context.session_interaction = legacy_interaction; var legacy_accepted := session.respond(InteractionResponse.yes_no(legacy_interaction, true)); assert_equal([legacy_accepted.state, session._context.state.party.character_by_id(source.id).inventory().any(func(carried: ItemInstance) -> bool: return carried.id == legacy_instance.id), legacy_accepted.events[0].kind], [SessionStep.State.COMPLETED, false, &"item_dropped"], "an already-saved Drop confirmation remains respondable without restoring it as a fresh gameplay path")
 
 	var cursed := content.items.item_by_id("classic.item.inventory-curse")
-	var cursed_instance := RealmzRules.new().inventory.add_item(restored._context.state.party.character_by_id(source.id), cursed, "inventory.instance.curse", false)
-	var cursed_equip := restored.submit_intent(InventoryIntents.equip(cursed_instance.id, source.id))
+	var cursed_instance := RealmzRules.new().inventory.add_item(session._context.state.party.character_by_id(source.id), cursed, "inventory.instance.curse", false)
+	var cursed_equip := session.submit_intent(InventoryIntents.equip(cursed_instance.id, source.id))
 	assert_equal(cursed_equip.state, SessionStep.State.COMPLETED, "a source-backed cursed item can be equipped")
 	assert_true(cursed_instance.identified, "equipping a curse reveals it as Castle wear.c does")
-	var cursed_remove := restored.submit_intent(InventoryIntents.unequip(cursed_instance.id, source.id))
+	var cursed_remove := session.submit_intent(InventoryIntents.unequip(cursed_instance.id, source.id))
 	assert_equal(cursed_remove.error_code, &"item_cannot_unequip", "a cursed item cannot be removed through ordinary Unequip")
-	var cursed_trade := restored.submit_intent(InventoryIntents.trade(cursed_instance.id, source.id, destination.id))
+	var cursed_trade := session.submit_intent(InventoryIntents.trade(cursed_instance.id, source.id, destination.id))
 	assert_equal(cursed_trade.error_code, &"item_cannot_trade", "FD-INVENTORY-001 prevents Castle's trade path from bypassing an equipped curse")
 	_test_equipment_probes(content)
 

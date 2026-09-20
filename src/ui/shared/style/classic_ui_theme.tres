@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=43 format=3]
+[gd_resource type="Theme" load_steps=45 format=3]
 
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-inset-frame.png" id="2_inset"]
@@ -10,6 +10,7 @@
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-down.svg" id="8_scroll_down"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-left.svg" id="9_scroll_left"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-right.svg" id="10_scroll_right"]
+[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/InterVariable-Castle.ttf" id="11_roster_font"]
 
 [sub_resource type="StyleBoxTexture" id="RaisedPanel"]
 texture = ExtResource("1_raised")
@@ -352,6 +353,18 @@ content_margin_top = 2.0
 content_margin_right = 4.0
 content_margin_bottom = 2.0
 
+[sub_resource type="StyleBoxFlat" id="InventoryFactCell"]
+bg_color = Color(0.055, 0.075, 0.086, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.29, 0.31, 1)
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+
 [resource]
 default_font = ExtResource("3_ui")
 default_font_size = 15
@@ -428,6 +441,10 @@ ItemList/fonts/font = ExtResource("3_ui")
 ItemList/styles/panel = SubResource("ContentWell")
 ItemList/styles/selected = SubResource("Selection")
 ClassicHeading/base_type = &"Label"
+ClassicRosterText/base_type = &"Label"
+ClassicRosterText/fonts/font = ExtResource("11_roster_font")
+ClassicRosterAuto/base_type = &"Button"
+ClassicRosterAuto/fonts/font = ExtResource("11_roster_font")
 ClassicHeading/colors/font_color = Color(0.98, 0.87, 0.32, 1)
 ClassicHeading/fonts/font = ExtResource("4_ui_bold")
 ClassicHeading/font_sizes/font_size = 18
@@ -468,6 +485,8 @@ ClassicItemLedgerButton/styles/hover = SubResource("ItemLedgerButtonHover")
 ClassicItemLedgerButton/styles/pressed = SubResource("ItemLedgerButtonNormal")
 ClassicItemLedgerButton/styles/disabled = SubResource("ItemLedgerButtonNormal")
 ClassicItemLedgerButton/styles/focus = SubResource("Focus")
+ClassicInventoryFactCell/base_type = &"PanelContainer"
+ClassicInventoryFactCell/styles/panel = SubResource("InventoryFactCell")
 ClassicMoneyLedgerButton/base_type = &"Button"
 ClassicMoneyLedgerButton/colors/font_color = Color(0.88, 0.89, 0.9, 1)
 ClassicMoneyLedgerButton/colors/font_hover_color = Color(0.97, 0.98, 0.98, 1)
