@@ -10,11 +10,15 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	if not arguments.is_empty() and (arguments.size() != 1 or arguments[0] != "--funded"):
-		printerr("USAGE: --script res://tools/prelude_riter_probe.gd [-- --funded]")
+	var invalid_arguments := arguments.size() > 2
+	for argument in arguments:
+		invalid_arguments = invalid_arguments or argument not in ["--funded", "--ordinary"]
+	if invalid_arguments:
+		printerr("USAGE: --script res://tools/prelude_riter_probe.gd [-- --funded] [--ordinary]")
 		quit(2)
 		return
-	var funded := not arguments.is_empty()
+	var funded := arguments.has("--funded")
+	var ordinary := arguments.has("--ordinary")
 	var repository := PackageRepository.new()
 	var application := repository.load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
 	if not application.is_ok():
@@ -140,7 +144,35 @@ func _run() -> void:
 		printerr("WRONG_BATTLE")
 		quit(1)
 		return
-	var victory := session.apply_debug_command(SessionDebugCommand.win_battle())
+	var victory: SessionStep
+	if ordinary:
+		var ordinary_victory := false
+		var ordinary_battle_completed := false
+		for turn in 250:
+			var combat_request := session.view().pending_interaction
+			if combat_request == null or combat_request.kind != InteractionRequest.COMBAT:
+				if combat_request != null and combat_request.kind == InteractionRequest.TREASURE_DISTRIBUTION and session.view().combat_view != null and session.view().combat_view.outcome == &"victory" and ordinary_battle_completed:
+					ordinary_victory = true
+					print("ORDINARY_COMBAT_COMPLETED ", turn)
+					break
+				printerr("ORDINARY_COMBAT_REQUEST_MISSING ", turn, " pending=", String(combat_request.kind) if combat_request != null else "none", " outcome=", String(session.view().combat_view.outcome) if session.view().combat_view != null else "none")
+				quit(1)
+				return
+			var body := combat_request.body as CombatRequestBody
+			victory = session.respond(InteractionResponse.from_data(combat_request.request_id, combat_request.kind, {"actorId": body.actor_id, "action": "auto", "targetId": ""}))
+			if victory.state == SessionStep.State.FAILED:
+				printerr("ORDINARY_COMBAT_FAILED ", turn, " ", victory.error_code)
+				quit(1)
+				return
+			ordinary_battle_completed = ordinary_battle_completed or victory.events.any(func(event: DomainEvent) -> bool: return event.kind == &"battle_completed" and event.payload.get("outcome") == "victory")
+			if turn % 20 == 0:
+				print("ORDINARY_COMBAT_PROGRESS ", turn, " round=", body.round_number, " enemies=", body.enemies_remaining)
+		if not ordinary_victory:
+			printerr("ORDINARY_COMBAT_LIMIT")
+			quit(1)
+			return
+	else:
+		victory = session.apply_debug_command(SessionDebugCommand.win_battle())
 	var treasure_shared := false
 	var victory_messages: Array[int] = []
 	var payment_amount := -1
@@ -194,10 +226,12 @@ func _run() -> void:
 	var gold := final_save.game_state.party.characters().map(func(character: CharacterState) -> int: return character.money.gold)
 	var disabled := final_save.game_state.world.triggers.trigger_is_disabled("Data DD:0:6")
 	print("VICTORY_FINAL ", JSON.stringify({"funded": funded, "gold": gold, "messages": victory_messages, "treasureGold": treasure_gold, "treasureGems": treasure_gems, "treasureItems": treasure_items, "paymentAmount": payment_amount, "paid": paid, "noFundsNotices": no_funds_notices, "ap6Disabled": disabled, "rngDraws": final_save.rng_state.draw_count}))
-	var expected_gold := [0, 83, 133, 0, 182, 283] if funded else [4, 4, 4, 3, 3, 3]
+	var expected_gold := ([0, 80, 130, 0, 180, 280] if ordinary else [0, 83, 133, 0, 182, 283]) if funded else ([2, 2, 2, 2, 1, 1] if ordinary else [4, 4, 4, 3, 3, 3])
 	var expected_messages := [247] if funded else [247, 248]
 	var expected_continuation := ["battle_returned", "message_shown", "wealth_taken", "trigger_disabled"] if funded else ["battle_returned", "message_shown", "wealth_taken", "message_shown", "action_point_kept"]
-	if gold != expected_gold or victory_messages != expected_messages or continuation_events != expected_continuation or treasure_gold != 21 or treasure_gems != 4 or treasure_items != 18 or payment_amount != 100 or paid != funded or no_funds_notices != (0 if funded else 1) or disabled != funded:
+	var expected_treasure := [10, 1, 19] if ordinary else [21, 4, 18]
+	var expected_rng_draws := 3559 if ordinary else 3134
+	if gold != expected_gold or victory_messages != expected_messages or continuation_events != expected_continuation or [treasure_gold, treasure_gems, treasure_items] != expected_treasure or payment_amount != 100 or paid != funded or no_funds_notices != (0 if funded else 1) or disabled != funded or final_save.rng_state.draw_count != expected_rng_draws:
 		printerr("VICTORY_LEDGER_MISMATCH")
 		quit(1)
 		return

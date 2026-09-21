@@ -7565,12 +7565,12 @@
         "battle": 75,
         "failedPayment": "xap:97"
       },
-      "preparation": "tools/prelude_riter_probe.gd starts the pinned six-character party with seed 853 and original or explicitly zeroed wealth. It enters Mayor AP 10 from (13,7), restores the pending challenge choice before accepting Battle 75, shares 21 gold and four gems from forced-victory treasure, confirms leaving 18 items, restores the post-battle save, and re-enters AP 6 from (16,18).",
-      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "forced-victory-continuation", "restored-continuation"],
+      "preparation": "tools/prelude_riter_probe.gd starts the pinned six-character party with seed 853 and original or explicitly zeroed wealth. It enters Mayor AP 10 from (13,7), restores the pending challenge choice before accepting Battle 75, and restores the post-battle save before AP 6 re-entry. Default mode forces victory and shares 21 gold/four gems; --ordinary wins through 42 ordinary Auto activations and shares 10 gold/one gem. Both modes leave the remaining items behind and run funded and zero-wealth baselines independently.",
+      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "forced-victory-continuation", "ordinary-combat-session", "restored-continuation"],
       "expected": [
         "Mayor messages 3,4,5,6 replace AP 6 with XAP 12. Riter messages 56,57,58,219,221,246 and the selected warning/challenge answers start Classic Battle 75; Battle 103 has no opcode-2 caller in the pinned source.",
-        "The scripted narration promises Riter's 100 gold, but the executable chain has no 100-gold grant. Battle 75 reward distribution offers 21 gold and four gems; after battle return, message 247 precedes opcode 33's attempt to take 100 gold.",
-        "With original starter wealth, the payment succeeds, party gold becomes [0,83,133,0,182,283], AP 6 is disabled, and re-entry is quiet. With zero starting wealth, the payment fails after shared battle gold [4,4,4,3,3,3], message 248 appears, AP 6 is kept, and re-entry shows message 56."
+        "The scripted narration promises Riter's 100 gold, but the executable chain has no 100-gold grant. Forced victory yields 21 gold/four gems/18 items; ordinary combat yields 10 gold/one gem/19 items at seed 853. After battle return, message 247 precedes opcode 33's attempt to take 100 gold.",
+        "With original starter wealth, the payment succeeds, AP 6 is disabled, and re-entry is quiet. Party gold becomes [0,83,133,0,182,283] after forced victory or [0,80,130,0,180,280] after ordinary combat. With zero starting wealth, payment fails; party gold becomes [4,4,4,3,3,3] after forced victory or [2,2,2,2,1,1] after ordinary combat, message 248 appears, AP 6 is kept, and re-entry shows message 56."
       ],
       "sourceEvidence": [
         "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:2569-2580 dispatches opcode 33 to takegold",
@@ -7578,10 +7578,10 @@
         "Pinned Prelude XAP 90 slots 3/4/5: Battle 75, message -247, Take Gold [100,0,0,97,0]; XAP 97: message -248 and Keep Codes"
       ],
       "result": "partial",
-      "disposition": "forced-victory-continuation-verified-ordinary-combat-and-castle-runtime-open",
+      "disposition": "forced-victory-and-ordinary-combat-session-verified-castle-runtime-open",
       "evidence": "tools/prelude_riter_probe.gd",
       "remaining": [
-        "Complete the battle through ordinary combat and compare exact reward/payment/AP behavior from a retained baseline.",
+        "Replay the same route through visible combat controls in an isolated fixture; the headless Auto route proves the session transaction, not UI routing.",
         "Obtain a controlled Castle trace or other direct runtime evidence for the source snapshot and resolve the player's Battle 103 report against that exact scenario identity."
       ]
     }
