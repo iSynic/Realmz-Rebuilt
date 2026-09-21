@@ -7584,6 +7584,46 @@
         "Replay the same route through visible combat controls in an isolated fixture; the headless Auto route proves the session transaction, not UI routing.",
         "Obtain a controlled Castle trace or other direct runtime evidence for the source snapshot and resolve the player's Battle 103 report against that exact scenario identity."
       ]
+    },
+    {
+      "id": "half-truth-land6-bond-payment-opcode33",
+      "workflowIds": ["classic.scenario.trigger-action-point"],
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad"
+      },
+      "package": {
+        "campaignId": "scenario-half-truth",
+        "auditArtifact": "scenario-audit-catalog-parity-full-r1/final-packages/scenario-half-truth/scenario-half-truth.realmz2",
+        "packageHash": "a38948d427a2aeaa49eb9cececd90dd553ed7c0ff35fa141e540aabdb8fa1488",
+        "archiveSha256": "b4f1694d69b64227240fa8f769b70c2f2dfae9dfab220df94921a1b663135d05"
+      },
+      "target": {
+        "actionPoint": "Data DD:6:98",
+        "coordinate": [8, 30],
+        "program": "trigger:Data DD:6:98",
+        "failureProgram": "xap:380",
+        "opcode33Slot": 4,
+        "extraCode": [500, 0, 0, 380, 0]
+      },
+      "preparation": "Pass the exact regenerated audit archive to tools/half_truth_opcode33_probe.gd with funded or empty. The probe installs the pinned application catalog, prepares the six Classic starters with original or zeroed wealth at seed 853, warps to (7,30), enters AP 98 by ordinary adjacent movement, restores the pending bond choice, and tests AP re-entry after the outcome.",
+      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "restored-continuation"],
+      "expected": [
+        "The funded branch displays 412,1765,1766,1768, takes 500 gold in party order, leaves character gold [0,0,20,0,70,170], disables AP 98, and re-enters quietly after departure.",
+        "The zero-wealth branch displays 412,1765,1766,1767, takes no gold, retains AP 98, executes XAP 380's opcode 101 Back Up Party to (7,30), and repeats message 412 on the next ordinary step right.",
+        "This package has nine opcode-33 sites, all XAP mode 0. This route covers placed AP slot 4 and both payment outcomes; it does not prove Simple-result callers, XAP 303's caller, encounter-result destination modes, visible controls, or Castle runtime parity."
+      ],
+      "sourceEvidence": [
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:778-784 identifies opcode 101 as Back Up Party",
+        "Pinned Half Truth Data DD Land 6 AP 98 slot 4 uses Extra Code [500,0,0,380,0]; XAP 380 displays message 1767 before opcode 101"
+      ],
+      "result": "partial",
+      "disposition": "placed-opcode33-payment-branches-verified-other-callers-open",
+      "evidence": "tools/half_truth_opcode33_probe.gd",
+      "remaining": [
+        "Exercise XAP 303 through its placed Land 6 AP 2 caller and representative Simple Encounter result callers from a reusable checkpoint.",
+        "Replay the bond choice through visible controls and obtain Castle runtime comparison before claiming player-facing parity."
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [
