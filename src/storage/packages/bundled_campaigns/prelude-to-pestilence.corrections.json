@@ -1,0 +1,51 @@
+{
+  "formatVersion": 1,
+  "campaignId": "scenario-prelude-to-pestilence",
+  "authority": "source-backed-package-correction",
+  "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sourceFiles": [
+    {
+      "file": "Data ED3",
+      "sha256": "d519b69ee4dee10b4a44f14a25e57076cc1c7d7e5f172de76c9575a320ca7892"
+    }
+  ],
+  "packageBefore": {
+    "packageHash": "0ad8b90c4fdd057cb5ea802b17e5e0faf1d91b6c6d4f57342ff5c7c65601d52e",
+    "archiveSha256": "adbe131e7a7e181348da9667e5840a403701294160d4dbf1f38acbc4bf1bc898",
+    "bytes": 701667
+  },
+  "corrections": [
+    {
+      "id": "prelude-river-riter-unpaid-branch",
+      "source": "extra-action-point:97",
+      "method": "program.insert",
+      "params": {
+        "programId": "xap:97",
+        "ownerId": "Data ED3:macro:97",
+        "sourceRecordIndex": 97,
+        "sourceRecordSha256": "33a6763d2aabe0cd88a2b1f63ade5fbba5781819ba7d36054d98d3379851bae7",
+        "instructions": [
+          {
+            "slot": 0,
+            "opcode": 1,
+            "id": -248,
+            "gosub": false
+          },
+          {
+            "slot": 7,
+            "opcode": 24,
+            "id": 0,
+            "extraCode": [1, 0, 0, 0, 0],
+            "gosub": false
+          }
+        ]
+      },
+      "evidence": "Castle Data ED3 record 97 is the unpaid-gold branch from XAP 90. It displays message -248 and ends with Keep Codes (opcode 24), so the Action Point remains available when the party cannot pay. The compiled package omitted this authored XAP, causing a runtime unknown_scenario_program failure before the Keep Codes result could run."
+    }
+  ],
+  "packageAfter": {
+    "packageHash": "85f4e9b8eaa4732d8542f0c35873aa2303adcae624ebd041c7e9eccc9c82b197",
+    "archiveSha256": "84d2b22de37b9406ce2b0f3a414e8f671494d0ed4ec6ba43052477e1e161c8e4",
+    "bytes": 701681
+  }
+}
