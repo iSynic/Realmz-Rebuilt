@@ -7482,7 +7482,7 @@
         "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
         "provenance": "src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json"
       },
-      "preparation": "The paid route uses an isolated Debug fixture, the named starter baseline, and ordinary movement to Land 0 AP 9 at (23,12) with sufficient party wealth. The current bridge has no gold-edit operation, so the insufficient-funds route is retained as an explicit preparation blocker rather than inferred from source or direct invocation. Do not direct-invoke AP 9 for the caller claim.",
+      "preparation": "For the current package, tools/prelude_payment_probe.gd validates the application and package, restores the six pinned starters with their original or explicitly zeroed wealth, sets the fixture quest-zero sentinel, warps to (22,12), and enters AP 9 by ordinary session movement. It restores the pending payer-selection snapshot before selecting Kevlar. An earlier visible-control paid fixture used package c196cc0adf7f37a08621dbe8d15bb8e6fdfab2ecb8ae067be17d0dbb15b7ed4d; retain that evidence under its historical identity. Do not direct-invoke AP 9 for the caller claim.",
       "target": {
         "actionPoint": "Data DD:0:9",
         "paidProgram": "xap:31",
@@ -7493,11 +7493,13 @@
         "isolated-fixture",
         "ordinary-movement",
         "actual-ui-control",
-        "typed-response"
+        "typed-response",
+        "runtime-integration",
+        "restored-continuation"
       ],
       "expected": [
-        "The verified paid route shows messages 65, 66, 67, 69, 100, 101, 102 and 103, consumes exactly five gold in party order, replaces AP 9 with XAP 31, and re-entry executes XAP 31 rather than AP 9.",
-        "The insufficient-funds route must still be replayed through the actual meal and payer controls. Its authored expectation is the no-funds notification followed by XAP 149's messages 368 and 369, the XAP 31 replacement, no wealth debit, and retained continuation; this remains unverified until a supported zero-gold fixture baseline exists.",
+        "The current-package paid session route shows messages 65, 66, 67, 69, 100, 101, 102 and 103, consumes exactly five gold in party order, replaces AP 9 with XAP 31, and re-entry executes XAP 31 rather than AP 9.",
+        "The current-package zero-wealth session route shows messages 65, 66, 67, 69, 100, 101, 102, 368 and 369 after a no-funds notification, leaves every character at zero gold, replaces AP 9 with XAP 31, and preserves re-entry. Visible meal and payer controls for zero wealth remain unverified.",
         "The regenerated package contains XAP 97's message -248 and Keep Codes and XAP 149's message/replacement/Keep Codes sequence; neither result is supplied by runtime inference."
       ],
       "sourceEvidence": [
@@ -7505,18 +7507,19 @@
         "Castle Data ED3 record 97: message -248 followed by Keep Codes",
         "Castle Data ED3 record 149: messages 368/369, opcode 7 replacement to XAP 31, followed by Keep Codes"
       ],
-      "result": "failed",
-      "disposition": "partial-paid-route-verified-insufficient-funds-blocked",
-      "evidence": "F:/Realmz/local-fixtures/audit-batch-20260921-console/fixtures/91f6c96c0591fbd4ab9f39e64b4f43ee/checkpoints/63063588-12f8-4011-9b3e-5bbcc5f61ae3.r2save",
+      "result": "partial",
+      "disposition": "current-package-paid-and-zero-wealth-session-routes-verified-visible-zero-wealth-open",
+      "evidence": "tools/prelude_payment_probe.gd",
       "otherEvidence": [
-        "F:/Realmz/local-fixtures/audit-batch-20260921-console: paid route session 531aabbcf954b5a85290a1f85efd516a, ordered messages and wealth/AP continuation",
+        "Historical paid UI fixture: F:/Realmz/local-fixtures/audit-batch-20260921-console/fixtures/91f6c96c0591fbd4ab9f39e64b4f43ee/checkpoints/63063588-12f8-4011-9b3e-5bbcc5f61ae3.r2save; SHA256 8289283c4e1a8edaa237e8c02202406a058ac874a017c849f59515cc5bdebe5d; package c196cc0adf7f37a08621dbe8d15bb8e6fdfab2ecb8ae067be17d0dbb15b7ed4d, not the current 7f18df4e package",
+        "Current package 7f18df4e: headless probe default and --paid both passed ordered messages, payer save/restore, gold, AP override, and re-entry",
         "F:/Providence-vNext-build/scenario-audit-e777690-batch1-r5/intake-report.json: regenerated package and all-13 intake identity",
         "F:/Providence-vNext-build/scenario-audit-a122766-summary.md: source/package route boundary"
       ],
       "remaining": [
         "The fixture bridge route is not physical campaign-start certification.",
-        "Insufficient-funds replay is blocked because the bridge exposes no scoped gold mutation and the current starter party cannot be reduced to zero gold through an existing preparation route.",
-        "The Riter/Battle 75 reward continuation is a separate route and remains blocked at post-battle victory control."
+        "The zero-wealth branch still requires visible meal and payer controls in a labelled isolated fixture; the headless direct-session probe does not establish UI routing or ordinary campaign start.",
+        "The Riter/Battle 75 reward continuation is a separate route and still requires forced and ordinary victory replay."
       ],
       "steps": [
         {
