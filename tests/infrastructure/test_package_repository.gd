@@ -22,6 +22,11 @@ func run() -> void:
 	var wrong_library_identity := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, "0".repeat(64)); assert_false(wrong_library_identity.is_ok(), "a bundled library whose pinned package identity drifts is rejected")
 	var production_scenario := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-assault-on-giant-mountain.realmz2")
 	assert_true(production_scenario.is_ok(), "a production scenario composes against the pinned application definition catalog: %s" % production_scenario.error_message)
+	var prelude_scenario := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2")
+	assert_true(prelude_scenario.is_ok(), "Prelude's corrected payment branch passes strict package validation: %s" % prelude_scenario.error_message)
+	if prelude_scenario.is_ok():
+		var unpaid_branch := prelude_scenario.content.scenario.program_by_id("xap:97")
+		assert_true(unpaid_branch != null and unpaid_branch.owner_id == "Data ED3:macro:97" and unpaid_branch.instruction_count() == 2 and unpaid_branch.instruction_at(0).opcode == 1 and unpaid_branch.instruction_at(0).operand_id == -248 and unpaid_branch.instruction_at(1).opcode == 24, "Prelude restores Castle's XAP 97 unpaid-gold message and Keep Codes result")
 	if production_scenario.is_ok():
 		var portable_torch := ItemInstance.new("portable.item.torch", "classic.item.805")
 		assert_equal([character_library.content.items.item_by_id(portable_torch.definition_id).name, production_scenario.content.items.item_by_id(portable_torch.definition_id).name], ["Unknown item", "Torch"], "a portable character item retains only its stable identity and resolves through the active scenario-over-application catalog")

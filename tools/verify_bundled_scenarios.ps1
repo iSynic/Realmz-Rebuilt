@@ -377,6 +377,21 @@ foreach ($scenario in $catalog.scenarios) {
                 throw "City of Bywater Land 5 cell 61,10 must retain solid terrain 39, hidden-secret state, and Action Point Data DD:5:51."
             }
         }
+        if ($scenario.campaignId -eq "scenario-prelude-to-pestilence") {
+            $correctionPath = Join-Path $campaignRoot "prelude-to-pestilence.corrections.json"
+            if (-not (Test-Path -LiteralPath $correctionPath)) {
+                throw "$($scenario.file) is missing its source-backed correction catalog."
+            }
+            $correction = Get-Content -Raw -LiteralPath $correctionPath | ConvertFrom-Json
+            $expectedCorrection = @($correction.corrections | Where-Object { $_.id -ceq "prelude-river-riter-unpaid-branch" })
+            $xap97 = @($scenarioDocument.programs | Where-Object { $_.id -ceq "xap:97" })
+            if ($scenario.correctionsCatalog -cne "prelude-to-pestilence.corrections.json" -or $correction.formatVersion -ne 1 -or $correction.campaignId -cne $scenario.campaignId -or $correction.sourceRevision -cne "491816ad60037394f92c428e99c004494d3c28b3" -or $correction.sourceFiles[0].file -cne "Data ED3" -or $correction.sourceFiles[0].sha256 -cne "d519b69ee4dee10b4a44f14a25e57076cc1c7d7e5f172de76c9575a320ca7892" -or $expectedCorrection.Count -ne 1 -or $xap97.Count -ne 1 -or $xap97[0].ownerId -cne "Data ED3:macro:97" -or @($xap97[0].instructions).Count -ne 2 -or [int]$xap97[0].instructions[0].opcode -ne 1 -or [int]$xap97[0].instructions[0].id -ne -248 -or [int]$xap97[0].instructions[1].opcode -ne 24) {
+                throw "$($scenario.file) does not retain the source-backed XAP 97 payment-refusal correction."
+            }
+            if ($correction.packageAfter.packageHash -cne $scenario.packageHash -or $correction.packageAfter.archiveSha256 -cne $scenario.archiveSha256 -or [long]$correction.packageAfter.bytes -ne [long]$scenario.bytes) {
+                throw "$($scenario.file) correction catalog does not match the current package identity."
+            }
+        }
     } finally {
         $archive.Dispose()
     }

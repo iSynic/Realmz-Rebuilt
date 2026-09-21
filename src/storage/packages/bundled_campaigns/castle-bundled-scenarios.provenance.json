@@ -473,10 +473,10 @@
       "campaignId": "scenario-prelude-to-pestilence",
       "file": "scenario-prelude-to-pestilence.realmz2",
       "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "0ad8b90c4fdd057cb5ea802b17e5e0faf1d91b6c6d4f57342ff5c7c65601d52e",
+      "packageHash": "85f4e9b8eaa4732d8542f0c35873aa2303adcae624ebd041c7e9eccc9c82b197",
       "contentId": "b1548dd5c2dbdd2f021edf1c1b3bb7e8481cd9395c9ec1e9343b8cea018789e6",
-      "archiveSha256": "adbe131e7a7e181348da9667e5840a403701294160d4dbf1f38acbc4bf1bc898",
-      "bytes": 701667,
+      "archiveSha256": "84d2b22de37b9406ce2b0f3a414e8f671494d0ed4ec6ba43052477e1e161c8e4",
+      "bytes": 701681,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "9d3f680f6faabed08504bd0585037e18f482fcfd6f767306cd10aa178534956c",
@@ -529,7 +529,8 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
-      }
+      },
+      "correctionsCatalog": "prelude-to-pestilence.corrections.json"
     },
     {
       "name": "Trouble in the Sword Lands",
