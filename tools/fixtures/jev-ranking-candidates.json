@@ -1,0 +1,24 @@
+{
+  "candidates": [
+    {
+      "candidateId": "open-a",
+      "stableIdentity": "1/open-a",
+      "tier": 1,
+      "scenario": "Prelude",
+      "coverageLevel": "uncovered caller/continuation",
+      "behaviorFamily": "battle-continuation",
+      "evidence": ["source inspection"],
+      "control": false
+    },
+    {
+      "candidateId": "control-b",
+      "stableIdentity": "1/control-b",
+      "tier": 1,
+      "scenario": "Half Truth",
+      "coverageLevel": "adjudicated control",
+      "disposition": "adjudicated-control",
+      "control": true,
+      "expectedOutcome": "withheld from Jev"
+    }
+  ]
+}

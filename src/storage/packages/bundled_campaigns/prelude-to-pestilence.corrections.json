@@ -48,16 +48,16 @@
     "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
     "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
     "sourcePackage": {
-      "packageHash": "c8d1905c93735eaeed5ffbe623b60fb8edbf7e27b55e8310a7d4eb70e61f6c07",
+      "packageHash": "994c9b652604a30c2e36bbcab4102af51a279ce3bfce3cf9d1e3e38bb842cbe5",
       "contentId": "d2f161995d8afb7d6b8bbcd07ccee85645121e8680dc59c7ad34ac3b61fa19f6",
-      "archiveSha256": "cd86cad6579ed7702685a201e9cf45a9ecfd48bcfd3a091ca1191943e7da33d1",
-      "bytes": 946437
+      "archiveSha256": "2bbfe84b06ebce409146aa2fb01ff88f9e8aec6035750675dae9e6119b19aba9",
+      "bytes": 946440
     },
-    "compilerRevision": "a1227667af18dcee2cb0f14e6361c66b6b3b68ec",
+    "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
     "compilerBinaries": {
-      "providenceCliSha256": "8c09f958f7e25c631080f182da047eebd9a956884e64ffeab56df8c5616f95d6",
-      "providenceNativeAdapterSha256": "ba87b5b9f5a8854795094b08c1e693edff2392c87d4ec4d2546b331d2e5e8a08",
-      "providenceApplicationLibrarySha256": "8927c7f011e4a20e292bb20243a03709ac85b4ee6212b0c9dac161f5303476cf"
+      "providenceCliSha256": "e4cf48e0c9dc4e256a1cd30ac7442df83c216ef8b05075e083028615819f9e10",
+      "providenceNativeAdapterSha256": "01fac7fd0a4c10990c500f7eb957d01e937a0b9b0eac01f3a25c37ee0f0d21c3",
+      "providenceApplicationLibrarySha256": "39df0f2e0793b3052208d4237114ee6c0fbd227739efd7afcda4e080b12eac4d"
     },
     "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
     "applicationPackageArchiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
@@ -67,10 +67,16 @@
       "archiveSha256": "84d2b22de37b9406ce2b0f3a414e8f671494d0ed4ec6ba43052477e1e161c8e4",
       "bytes": 701681
     },
-    "generatedPackage": {
-      "packageHash": "293b3e4e2d41e1991a529a2941c9f345f9079953dd83ead7fdfce46549dc601c",
+    "previousGeneratedPackage": {
+      "packageHash": "c196cc0adf7f37a08621dbe8d15bb8e6fdfab2ecb8ae067be17d0dbb15b7ed4d",
       "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
-      "archiveSha256": "43f40ec9906750e7d036f28bc4a290340d30f75908684d0eabca20ac5dede864",
+      "archiveSha256": "2d4c730058dfa0a9835bed41765e818dc972b9cf190d9274473f75f38efbb290",
+      "bytes": 883939
+    },
+    "generatedPackage": {
+      "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+      "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
+      "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
       "bytes": 883939
     },
     "preservedAuthoredPrograms": ["xap:97", "xap:149", "simple:7:result:3"],
@@ -84,8 +90,8 @@
     "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 remains the authored Riter route target; retained Battle 103 has no opcode-2 caller in this source snapshot."
   },
   "packageAfter": {
-    "packageHash": "293b3e4e2d41e1991a529a2941c9f345f9079953dd83ead7fdfce46549dc601c",
-    "archiveSha256": "43f40ec9906750e7d036f28bc4a290340d30f75908684d0eabca20ac5dede864",
+    "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+    "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
     "bytes": 883939
   }
 }

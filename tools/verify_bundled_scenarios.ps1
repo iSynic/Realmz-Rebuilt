@@ -391,14 +391,53 @@ foreach ($scenario in $catalog.scenarios) {
             if ($scenario.correctionsCatalog -cne "prelude-to-pestilence.corrections.json" -or $correction.formatVersion -ne 1 -or $correction.campaignId -cne $scenario.campaignId -or $correction.sourceRevision -cne "491816ad60037394f92c428e99c004494d3c28b3" -or $correction.sourceFiles[0].file -cne "Data ED3" -or $correction.sourceFiles[0].sha256 -cne "d519b69ee4dee10b4a44f14a25e57076cc1c7d7e5f172de76c9575a320ca7892" -or $expectedCorrection.Count -ne 1 -or $xap97.Count -ne 1 -or $xap97[0].ownerId -cne "Data ED3:macro:97" -or @($xap97[0].instructions).Count -ne 2 -or [int]$xap97[0].instructions[0].opcode -ne 1 -or [int]$xap97[0].instructions[0].id -ne -248 -or [int]$xap97[0].instructions[1].opcode -ne 24) {
                 throw "$($scenario.file) does not retain the source-backed XAP 97 payment-refusal correction."
             }
-            if ($scenario.compilerRevision -cne "a1227667af18dcee2cb0f14e6361c66b6b3b68ec" -or $xap149.Count -ne 1 -or $xap149[0].ownerId -cne "Data ED3:macro:149" -or @($xap149[0].instructions).Count -ne 4 -or [int]$xap149[0].instructions[0].opcode -ne 1 -or [int]$xap149[0].instructions[0].id -ne 368 -or [int]$xap149[0].instructions[1].opcode -ne 1 -or [int]$xap149[0].instructions[1].id -ne 369 -or [int]$xap149[0].instructions[2].opcode -ne 7 -or [int]$xap149[0].instructions[2].id -ne 64 -or (@($xap149[0].instructions[2].extraCode) -join ",") -ne "0,9,31,0,0" -or [int]$xap149[0].instructions[3].opcode -ne 24 -or $encounterSevenResult.Count -ne 1 -or @($encounterSevenResult[0].instructions).Count -ne 3 -or [int]$encounterSevenResult[0].instructions[1].opcode -ne 44 -or [int]$encounterSevenResult[0].instructions[1].id -ne 4 -or (@($encounterSevenResult[0].instructions[1].extraCode) -join ",") -ne "4,0,0,0,5") {
+            if ($scenario.compilerRevision -cne "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1" -or $xap149.Count -ne 1 -or $xap149[0].ownerId -cne "Data ED3:macro:149" -or @($xap149[0].instructions).Count -ne 4 -or [int]$xap149[0].instructions[0].opcode -ne 1 -or [int]$xap149[0].instructions[0].id -ne 368 -or [int]$xap149[0].instructions[1].opcode -ne 1 -or [int]$xap149[0].instructions[1].id -ne 369 -or [int]$xap149[0].instructions[2].opcode -ne 7 -or [int]$xap149[0].instructions[2].id -ne 64 -or (@($xap149[0].instructions[2].extraCode) -join ",") -ne "0,9,31,0,0" -or [int]$xap149[0].instructions[3].opcode -ne 24 -or $encounterSevenResult.Count -ne 1 -or @($encounterSevenResult[0].instructions).Count -ne 3 -or [int]$encounterSevenResult[0].instructions[1].opcode -ne 44 -or [int]$encounterSevenResult[0].instructions[1].id -ne 4 -or (@($encounterSevenResult[0].instructions[1].extraCode) -join ",") -ne "4,0,0,0,5") {
                 throw "$($scenario.file) does not retain the regenerated XAP 149 branch or Simple Encounter 7 opcode 44 context."
             }
-            if ($null -eq $regeneration -or $regeneration.operation -cne "regenerate-from-pinned-source" -or $regeneration.compilerRevision -cne "a1227667af18dcee2cb0f14e6361c66b6b3b68ec" -or $regeneration.sourceTreeSha256 -cne "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2" -or $regeneration.applicationPackageHash -cne $applicationLock.packageHash -or $regeneration.applicationPackageArchiveSha256 -cne $applicationLock.archiveSha256 -or $regeneration.applicationMediaCatalogSha256 -cne $catalog.compiler.applicationMediaCatalogSha256 -or $regeneration.generatedPackage.packageHash -cne $scenario.packageHash -or $regeneration.generatedPackage.archiveSha256 -cne $scenario.archiveSha256 -or [long]$regeneration.generatedPackage.bytes -ne [long]$scenario.bytes) {
+            if ($null -eq $regeneration -or $regeneration.operation -cne "regenerate-from-pinned-source" -or $regeneration.compilerRevision -cne "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1" -or $regeneration.sourceTreeSha256 -cne "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2" -or $regeneration.applicationPackageHash -cne $applicationLock.packageHash -or $regeneration.applicationPackageArchiveSha256 -cne $applicationLock.archiveSha256 -or $regeneration.applicationMediaCatalogSha256 -cne $catalog.compiler.applicationMediaCatalogSha256 -or $regeneration.generatedPackage.packageHash -cne $scenario.packageHash -or $regeneration.generatedPackage.archiveSha256 -cne $scenario.archiveSha256 -or [long]$regeneration.generatedPackage.bytes -ne [long]$scenario.bytes) {
                 throw "$($scenario.file) compiler regeneration provenance is incomplete or does not match the emitted package."
             }
             if ($correction.packageAfter.packageHash -cne $scenario.packageHash -or $correction.packageAfter.archiveSha256 -cne $scenario.archiveSha256 -or [long]$correction.packageAfter.bytes -ne [long]$scenario.bytes) {
                 throw "$($scenario.file) correction catalog does not match the current package identity."
+            }
+        }
+        if ($scenario.campaignId -eq "scenario-wrath-of-the-mind-lords") {
+            $correctionPath = Join-Path $campaignRoot "wrath-of-the-mind-lords.corrections.json"
+            if (-not (Test-Path -LiteralPath $correctionPath)) {
+                throw "$($scenario.file) is missing its source-backed correction catalog."
+            }
+            $correction = Get-Content -Raw -LiteralPath $correctionPath | ConvertFrom-Json
+            $expectedCorrection = @($correction.corrections | Where-Object { $_.id -ceq "wrath-player-map-application-marker-identities" })
+            $expectedMarkers = @{
+                257 = "realmz-portrait-257"
+                336 = "realmz-portrait-336"
+                269 = "realmz-portrait-269"
+                374 = "realmz-portrait-374"
+                325 = "realmz-portrait-325"
+                262 = "realmz-portrait-262"
+                -15 = "realmz-special-land-neg-15"
+                -99 = "realmz-special-land-neg-99"
+                -17 = "realmz-special-land-neg-17"
+                -18 = "realmz-special-land-neg-18"
+            }
+            $actualMarkers = @($world.playerMaps | ForEach-Object { $_.markers } | Where-Object { $expectedMarkers.ContainsKey([int]$_.classicIconId) })
+            $invalidMarkers = @($actualMarkers | Where-Object { [string]$_.iconAssetId -cne [string]$expectedMarkers[[int]$_.classicIconId] })
+            $regeneration = $correction.compilerRegeneration
+            if ($scenario.correctionsCatalog -cne "wrath-of-the-mind-lords.corrections.json" -or $correction.formatVersion -ne 1 -or $correction.campaignId -cne $scenario.campaignId -or $correction.sourceTreeSha256 -notmatch '^[0-9a-f]{64}$' -or $correction.sourceFiles[0].file -cne "Scenario.rsrc" -or $correction.sourceFiles[0].sha256 -cne $scenario.classicScenarioResourcesSha256 -or $expectedCorrection.Count -ne 1 -or $actualMarkers.Count -ne 13 -or $invalidMarkers.Count -ne 0) {
+                throw "$($scenario.file) does not retain the source-backed application marker identity correction."
+            }
+            $regenerationValid = $null -ne $regeneration
+            $regenerationValid = $regenerationValid -and $regeneration.operation -ceq "regenerate-from-pinned-source"
+            $regenerationValid = $regenerationValid -and $regeneration.compilerRevision -ceq $scenario.compilerRevision
+            $regenerationValid = $regenerationValid -and $regeneration.applicationPackageHash -ceq $applicationLock.packageHash
+            $regenerationValid = $regenerationValid -and $regeneration.applicationMediaCatalogSha256 -ceq $catalog.compiler.applicationMediaCatalogSha256
+            $regenerationValid = $regenerationValid -and $regeneration.generatedPackage.packageHash -ceq $scenario.packageHash
+            $regenerationValid = $regenerationValid -and $regeneration.generatedPackage.archiveSha256 -ceq $scenario.archiveSha256
+            $regenerationValid = $regenerationValid -and ([long]$regeneration.generatedPackage.bytes -eq [long]$scenario.bytes)
+            $regenerationValid = $regenerationValid -and ([int]$expectedCorrection[0].params.changedPlayerMapRecords -eq 4)
+            $regenerationValid = $regenerationValid -and ([int]$expectedCorrection[0].params.changedPlayerMapMarkerReferences -eq 13)
+            if (-not $regenerationValid) {
+                throw "$($scenario.file) compiler regeneration provenance is incomplete or does not match the emitted package."
             }
         }
     } finally {

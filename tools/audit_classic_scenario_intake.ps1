@@ -73,6 +73,141 @@ function Request-Adapter($Process, [ref]$RequestId, [string]$Method, [hashtable]
     return $response.result
 }
 
+function Request-CompleteValidation($Process, [ref]$RequestId) {
+    $pages = @()
+    $offset = 0
+    $total = 0
+    do {
+        $page = Request-Adapter $Process $RequestId 'validation.list' @{
+            offset = $offset
+            limit = 128
+        }
+        $pages += $page
+        $total = [int]$page.total
+        $count = @($page.items).Count
+        $next = $offset + $count
+        if ($next -ge $total) { break }
+        if (-not [bool]$page.truncated -or $count -eq 0) {
+            throw "Providence validation.list returned an incomplete diagnostic page at offset $offset."
+        }
+        $offset = $next
+    } while ($true)
+
+    $items = @($pages | ForEach-Object { @($_.items) })
+    $first = $pages[0]
+    $groups = @($first.groups)
+    $group_total = [int]$first.groupTotal
+    $group_offset = $groups.Count
+    while ($group_offset -lt $group_total) {
+        $page = Request-Adapter $Process $RequestId 'validation.list' @{
+            offset = 0
+            limit = 1
+            groupOffset = $group_offset
+            groupLimit = 64
+        }
+        $page_groups = @($page.groups)
+        if ($page_groups.Count -eq 0) {
+            throw "Providence validation.list returned an incomplete diagnostic group page at offset $group_offset."
+        }
+        $groups += $page_groups
+        $group_offset += $page_groups.Count
+    }
+
+    return [ordered]@{
+        revision = $first.revision
+        items = $items
+        offset = 0
+        limit = 128
+        total = $total
+        truncated = $false
+        pages = $pages.Count
+        groups = $groups
+        groupOffset = 0
+        groupLimit = 64
+        groupTotal = $group_total
+        groupsTruncated = $false
+        unfilteredTotal = $first.unfilteredTotal
+        matchedBeforeGroup = $first.matchedBeforeGroup
+        unfilteredCounts = $first.unfilteredCounts
+        categories = $first.categories
+        complete = $items.Count -eq $total -and $groups.Count -eq $group_total
+    }
+}
+
+function Request-CompleteReadiness($Process, [ref]$RequestId) {
+    $pages = @()
+    $offset = 0
+    $total = 0
+    do {
+        $page = Request-Adapter $Process $RequestId 'project.inspect-rebuilt-readiness' @{
+            offset = $offset
+            limit = 200
+        }
+        $pages += $page
+        $total = [int]$page.blockerCount
+        $count = @($page.blockers).Count
+        $next = $offset + $count
+        if ($next -ge $total) { break }
+        if (-not [bool]$page.truncated -or $count -eq 0) {
+            throw "Providence readiness returned an incomplete blocker page at offset $offset."
+        }
+        $offset = $next
+    } while ($true)
+
+    $first = $pages[0]
+    $blockers = @($pages | ForEach-Object { @($_.blockers) })
+    $problems = @($first.problems)
+    $problemCount = [int]$first.problemCount
+    $problemPage = $first
+    $problemPages = 1
+    if ([int]$problemPage.problemOffset -ne 0) {
+        throw "Providence readiness did not start its problem projection at offset zero."
+    }
+    while ([bool]$problemPage.problemsTruncated) {
+        $nextProblemOffset = $problems.Count
+        $problemPage = Request-Adapter $Process $RequestId 'project.inspect-rebuilt-readiness' @{
+            offset = 0
+            limit = 1
+            problemOffset = $nextProblemOffset
+            problemLimit = 200
+        }
+        if ([int]$problemPage.problemOffset -ne $nextProblemOffset) {
+            throw "Providence readiness changed problem-page identity while paging."
+        }
+        $problemItems = @($problemPage.problems)
+        if ($problemItems.Count -eq 0) {
+            throw "Providence readiness returned an incomplete problem page."
+        }
+        $problems += $problemItems
+        $problemPages++
+        if ($problems.Count -gt $problemCount) {
+            throw "Providence readiness returned more runtime problems than its denominator."
+        }
+    }
+    $problems_complete = $problems.Count -eq $problemCount
+    return [ordered]@{
+        revision = $first.revision
+        target = $first.target
+        status = $first.status
+        blockerCount = $total
+        groupCount = $first.groupCount
+        groups = @($first.groups)
+        blockers = $blockers
+        problemCount = $problemCount
+        problems = $problems
+        problemOffset = 0
+        problemLimit = 200
+        problemPages = $problemPages
+        problemsTruncated = -not $problems_complete
+        offset = 0
+        limit = 200
+        truncated = $false
+        pages = $pages.Count
+        complete = $blockers.Count -eq $total -and $problems_complete
+        incompleteReason = if ($problems_complete) { $null } else { "Providence readiness returned an incomplete runtime problem projection." }
+    }
+}
+
 function Stop-Adapter($Process) {
     if ($null -eq $Process) { return "" }
     $Process.StandardInput.Close()
@@ -93,6 +228,21 @@ if ([string]::IsNullOrWhiteSpace($GodotPath)) {
 }
 $runtimeCommit = (& git -C $repoRoot rev-parse HEAD).Trim()
 $adapterHash = (Get-FileHash -LiteralPath $ProvidenceAdapterPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$compilerIdentity = [ordered]@{
+    cli = [ordered]@{
+        path=[IO.Path]::GetFullPath($ProvidenceCliPath)
+        bytes=(Get-Item -LiteralPath $ProvidenceCliPath).Length
+        sha256=(Get-FileHash -LiteralPath $ProvidenceCliPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    adapter = [ordered]@{
+        path=[IO.Path]::GetFullPath($ProvidenceAdapterPath)
+        bytes=(Get-Item -LiteralPath $ProvidenceAdapterPath).Length
+        sha256=$adapterHash
+    }
+}
+$applicationDataIdentity = Get-TreeIdentity $ApplicationDataDirectory
+$applicationLibraryIdentity = Get-TreeIdentity $ApplicationLibraryRoot
+$referenceCatalogIdentity = Get-TreeIdentity $ReferenceCatalogRoot
 $results = @()
 
 foreach ($name in @($ScenarioName | Select-Object -Unique)) {
@@ -102,15 +252,28 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
     $package = Join-Path $OutputRoot "packages\$slug.realmz2"
     $entry = [ordered]@{
         name=$name
+        sourcePath=[IO.Path]::GetFullPath($source)
         sourceIdentity=$null
-        status="conversion-blocked"
+        status="pending"
+        stages=[ordered]@{
+            import="not-run"
+            diagnostics="not-run"
+            readiness="not-run"
+            compilation="not-run"
+            packageValidation="not-run"
+            startup="not-run"
+        }
         import=$null
+        diagnostics=$null
         readiness=$null
         package=$null
+        projectPath=[IO.Path]::GetFullPath($project)
+        packagePath=[IO.Path]::GetFullPath($package)
         runtimeProbe=$null
         failure=$null
     }
     if (-not (Test-Path -LiteralPath $source -PathType Container)) {
+        $entry.status = "source-missing"
         $entry.failure = "Scenario directory is missing."
         $results += $entry
         continue
@@ -130,35 +293,67 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
             applicationDataDirectory=$ApplicationDataDirectory
         }
         $entry.import = $import
-        $readiness = Request-Adapter $adapter ([ref]$requestId) 'project.inspect-rebuilt-readiness' @{limit=200}
+        $entry.stages.import = "passed"
+        $entry.diagnostics = Request-CompleteValidation $adapter ([ref]$requestId)
+        if ($entry.diagnostics.complete) { $entry.stages.diagnostics = "passed" } else { $entry.stages.diagnostics = "incomplete" }
+        $readiness = Request-CompleteReadiness $adapter ([ref]$requestId)
         $entry.readiness = $readiness
+        if ($readiness.complete) { $entry.stages.readiness = "passed" } else { $entry.stages.readiness = "incomplete" }
         if ($readiness.status -ne 'ready') {
+            $entry.status = "readiness-blocked"
             $entry.failure = "Providence Rebuilt readiness is incomplete."
         } else {
             [IO.Directory]::CreateDirectory((Split-Path -Parent $package)) | Out-Null
             $inspection = Request-Adapter $adapter ([ref]$requestId) 'project.inspect-rebuilt-package' @{compilerCommit=$ProvidenceCommit; minimumEngineVersion='0.1.0'; limit=200}
             $compiled = Request-Adapter $adapter ([ref]$requestId) 'project.compile-rebuilt-package' @{path=$package; compilerCommit=$ProvidenceCommit; minimumEngineVersion='0.1.0'; expectedRevision=$import.revision}
+            $entry.stages.compilation = "passed"
             $entry.package = [ordered]@{
                 archiveBytes=(Get-Item -LiteralPath $package).Length
                 archiveSha256=(Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
                 inspection=$inspection
                 compilation=$compiled
             }
-            $entry.status = "loadable"
+            $entry.stages.packageValidation = "pending"
+            $entry.status = "compiled"
         }
     } catch {
+        if ($entry.stages.import -eq "not-run") {
+            $entry.stages.import = "failed"
+        } elseif ($entry.stages.diagnostics -eq "not-run") {
+            $entry.stages.diagnostics = "failed"
+        } elseif ($entry.stages.readiness -eq "not-run") {
+            $entry.stages.readiness = "failed"
+        } elseif ($entry.stages.compilation -eq "not-run") {
+            $entry.stages.compilation = "failed"
+        } else {
+            $entry.stages.packageValidation = "failed"
+        }
+        if ($entry.status -eq "pending") { $entry.status = "intake-failed" }
         $entry.failure = $_.Exception.Message
     } finally {
         $adapterError = Stop-Adapter $adapter
         if ($adapterError -and -not $entry.failure) { $entry.failure = $adapterError.Trim() }
     }
-    if ($entry.status -eq 'loadable' -and $GodotPath) {
+    if ($entry.status -eq 'compiled' -and $GodotPath) {
         $probeOutput = (& $GodotPath --headless --path $repoRoot --script res://tools/package_probe.gd -- $package 2>&1 | Out-String).Trim()
         $entry.runtimeProbe = [ordered]@{ exitCode=$LASTEXITCODE; output=$probeOutput }
-        if ($LASTEXITCODE -ne 0) {
-            $entry.status = "conversion-blocked"
-            $entry.failure = "Rebuilt package probe rejected the compiled archive."
+        $packageAccepted = $probeOutput -match '(?m)^PACKAGE_VALIDATED\b'
+        if ($packageAccepted) { $entry.stages.packageValidation = "passed" } else { $entry.stages.packageValidation = "failed" }
+        if ($LASTEXITCODE -eq 0) { $entry.stages.startup = "passed" } else { $entry.stages.startup = "failed" }
+        if ($LASTEXITCODE -eq 0) {
+            $entry.status = "loadable"
+        } elseif ($packageAccepted) {
+            $entry.status = "startup-blocked"
+            $entry.failure = "Rebuilt package was accepted but session startup or view construction failed."
+        } else {
+            $entry.status = "package-validation-blocked"
+            $entry.failure = "Rebuilt package probe rejected the compiled archive before startup."
         }
+    } elseif ($entry.status -eq 'compiled') {
+        $entry.stages.packageValidation = "unsupported"
+        $entry.stages.startup = "unsupported"
+        $entry.status = "compiled"
+        $entry.failure = "Godot package startup probe was not configured."
     }
     $results += $entry
     Write-Host "$name`: $($entry.status)"
@@ -170,7 +365,10 @@ $report = [ordered]@{
     generatedAt=(Get-Date).ToUniversalTime().ToString('o')
     runtimeCommit=$runtimeCommit
     providenceCommit=$ProvidenceCommit
-    providenceAdapterSha256=$adapterHash
+    compiler=$compilerIdentity
+    applicationDataIdentity=[ordered]@{ root=[IO.Path]::GetFullPath($ApplicationDataDirectory); fileCount=$applicationDataIdentity.fileCount; byteCount=$applicationDataIdentity.byteCount; treeSha256=$applicationDataIdentity.treeSha256 }
+    applicationLibraryIdentity=[ordered]@{ root=[IO.Path]::GetFullPath($ApplicationLibraryRoot); fileCount=$applicationLibraryIdentity.fileCount; byteCount=$applicationLibraryIdentity.byteCount; treeSha256=$applicationLibraryIdentity.treeSha256 }
+    referenceCatalogIdentity=[ordered]@{ root=[IO.Path]::GetFullPath($ReferenceCatalogRoot); fileCount=$referenceCatalogIdentity.fileCount; byteCount=$referenceCatalogIdentity.byteCount; treeSha256=$referenceCatalogIdentity.treeSha256 }
     scenarioCount=$results.Count
     results=$results
 }

@@ -1,0 +1,60 @@
+{
+  "formatVersion": 1,
+  "campaignId": "scenario-wrath-of-the-mind-lords",
+  "authority": "source-backed-package-correction",
+  "sourceTreeSha256": "2f534111ee7e9274eaec7ab7160b7d754dce643e0a374a6cf45a79db9317556d",
+  "sourceFiles": [
+    {
+      "file": "Scenario.rsrc",
+      "sha256": "2d674f9244d2aeb19ee1ac4c83c55cb54be122d1b978d38bae206beec9fde595"
+    }
+  ],
+  "packageBefore": {
+    "packageHash": "18a361a06e8b8e9c93d46107d15a80225cc0ca3085594aa44effd71313d1f63a",
+    "archiveSha256": "4b6eef1630f94d995881125b42a9f9507e3f826f35daf7aeb93dce80baac9b67",
+    "bytes": 10948404
+  },
+  "corrections": [
+    {
+      "id": "wrath-player-map-application-marker-identities",
+      "source": "player-map marker CICN references",
+      "method": "compiler.application-media-identity",
+      "params": {
+        "changedPlayerMapRecords": 4,
+        "changedPlayerMapMarkerReferences": 13,
+        "portraitReferences": [257, 336, 269, 374, 325, 262],
+        "negativeSpecialLandReferences": [-15, -99, -17, -18]
+      },
+      "evidence": "The pinned application media catalog owns the player-map portrait CICNs under realmz-portrait-* and negative special-land CICNs under realmz-special-land-neg-*. The prior export emitted those exact application resources as realmz-application-cicn-* identities, so Rebuilt could not resolve the marker even though the native resource key and bytes were present. Providence now derives the product-stable application identity from the exact catalog kind and resource key."
+    }
+  ],
+  "compilerRegeneration": {
+    "operation": "regenerate-from-pinned-source",
+    "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+    "compilerBinaries": {
+      "providenceCliSha256": "e4cf48e0c9dc4e256a1cd30ac7442df83c216ef8b05075e083028615819f9e10",
+      "providenceNativeAdapterSha256": "01fac7fd0a4c10990c500f7eb957d01e937a0b9b0eac01f3a25c37ee0f0d21c3",
+      "providenceApplicationLibrarySha256": "39df0f2e0793b3052208d4237114ee6c0fbd227739efd7afcda4e080b12eac4d"
+    },
+    "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+    "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5",
+    "priorProvidencePackage": {
+      "compilerRevision": "a1227667af18dcee2cb0f14e6361c66b6b3b68ec",
+      "packageHash": "383d0b43528a419ff74cd7a1b76302efabd38be944d2af718bb692d38a07f6de",
+      "archiveSha256": "6b466847e8b0c54509f76cc5c06936e9065094cbd4890e0fbd46c87b017cbf73",
+      "bytes": 16390051
+    },
+    "generatedPackage": {
+      "packageHash": "b2019c2b6cec90ff2c0dfd780828e3ed303b1f34db7f2e3ba369363509a22bd4",
+      "contentId": "909d2c857a7b1984a76769409ad81f624d3fc3cff7191c40797de07f193f55f5",
+      "archiveSha256": "ff198638b6c8b6a474d4c1be9b62067a02d7b05149d8cf785712e854554da5c7",
+      "bytes": 16327919
+    },
+    "comparison": {
+      "contentJson": "equal to the prior Providence export",
+      "scenarioJson": "equal to the prior Providence export",
+      "assetsIndexJson": "equal to the prior Providence export",
+      "worldJson": "maps and triggers equal; four player-map records differ only in thirteen corrected marker identities"
+    }
+  }
+}

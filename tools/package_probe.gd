@@ -54,6 +54,7 @@ func _initialize() -> void:
 		return
 	var content: RealmzContent = package_result.content
 	var media: PackageMediaCatalog = package_result.media
+	printerr("PACKAGE_VALIDATED %s" % content.package_hash)
 	var session := GAME_SESSION_SCRIPT.new()
 	var session_started_at := Time.get_ticks_msec()
 	var step: Variant = session.call("start", content, 1)
