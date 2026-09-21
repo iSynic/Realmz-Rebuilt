@@ -9,6 +9,9 @@ param(
     [Parameter(Mandatory)][string]$ReferenceCatalogRoot,
     [Parameter(Mandatory)][string]$OutputRoot,
     [hashtable]$ScenarioSourceOverrides = @{},
+    [string]$ProvidenceSlimmerPath = "",
+    [string]$ApplicationPackagePath = "",
+    [string]$ApplicationMediaCatalogPath = "",
     [string]$GodotPath = ""
 )
 
@@ -18,6 +21,12 @@ $ScenarioRoot = [IO.Path]::GetFullPath($ScenarioRoot)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $requiredFiles = @($ProvidenceCliPath, $ProvidenceAdapterPath)
 $requiredDirectories = @($ScenarioRoot, $ApplicationDataDirectory, $ApplicationLibraryRoot, $ReferenceCatalogRoot)
+$slimEnabled = -not [string]::IsNullOrWhiteSpace($ProvidenceSlimmerPath)
+if ($slimEnabled) {
+    $requiredFiles += @($ProvidenceSlimmerPath, $ApplicationPackagePath, $ApplicationMediaCatalogPath)
+} elseif (-not [string]::IsNullOrWhiteSpace($ApplicationPackagePath) -or -not [string]::IsNullOrWhiteSpace($ApplicationMediaCatalogPath)) {
+    throw "Application package and media catalog require ProvidenceSlimmerPath."
+}
 foreach ($path in $requiredFiles) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing required file: $path" }
 }
@@ -241,6 +250,15 @@ $compilerIdentity = [ordered]@{
         sha256=$adapterHash
     }
 }
+if ($slimEnabled) {
+    $compilerIdentity.slimmer = [ordered]@{
+        path=[IO.Path]::GetFullPath($ProvidenceSlimmerPath)
+        bytes=(Get-Item -LiteralPath $ProvidenceSlimmerPath).Length
+        sha256=(Get-FileHash -LiteralPath $ProvidenceSlimmerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    }
+    $compilerIdentity.applicationPackageSha256 = (Get-FileHash -LiteralPath $ApplicationPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $compilerIdentity.applicationMediaCatalogSha256 = (Get-FileHash -LiteralPath $ApplicationMediaCatalogPath -Algorithm SHA256).Hash.ToLowerInvariant()
+}
 $applicationDataIdentity = Get-TreeIdentity $ApplicationDataDirectory
 $applicationLibraryIdentity = Get-TreeIdentity $ApplicationLibraryRoot
 $referenceCatalogIdentity = Get-TreeIdentity $ReferenceCatalogRoot
@@ -269,6 +287,7 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
             diagnostics="not-run"
             readiness="not-run"
             compilation="not-run"
+            finalization="not-run"
             packageValidation="not-run"
             startup="not-run"
         }
@@ -276,6 +295,7 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
         diagnostics=$null
         readiness=$null
         package=$null
+        finalPackage=$null
         projectPath=[IO.Path]::GetFullPath($project)
         packagePath=[IO.Path]::GetFullPath($package)
         runtimeProbe=$null
@@ -374,14 +394,59 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
         $adapterError = Stop-Adapter $adapter
         if ($adapterError -and -not $entry.failure) { $entry.failure = $adapterError.Trim() }
     }
-    if ($entry.status -eq 'compiled' -and $GodotPath) {
-        $probeOutput = (& $GodotPath --headless --path $repoRoot --script res://tools/package_probe.gd -- $package 2>&1 | Out-String).Trim()
+    $probePackage = $package
+    if ($entry.status -eq 'compiled' -and $slimEnabled) {
+        try {
+            $slimInput = Join-Path $OutputRoot "slim-input\$slug"
+            $slimOutput = Join-Path $OutputRoot "final-packages\$slug"
+            [IO.Directory]::CreateDirectory($slimInput) | Out-Null
+            [IO.Directory]::CreateDirectory($slimOutput) | Out-Null
+            Copy-Item -LiteralPath $package -Destination $slimInput
+            $ownershipRoot = $ScenarioRoot
+            if ([IO.Path]::GetFullPath($source) -ne [IO.Path]::GetFullPath((Join-Path $ScenarioRoot $name))) {
+                $ownershipRoot = Join-Path $OutputRoot "ownership-sources\$slug"
+                $ownershipScenario = Join-Path $ownershipRoot $name
+                [IO.Directory]::CreateDirectory($ownershipScenario) | Out-Null
+                foreach ($sourceFile in Get-ChildItem -LiteralPath $source -Force) {
+                    Copy-Item -LiteralPath $sourceFile.FullName -Destination $ownershipScenario -Recurse
+                }
+            }
+            $slimLock = Join-Path $slimOutput 'scenario-library.lock.json'
+            $slimOutputText = (& $ProvidenceSlimmerPath slim-scenarios --application-package $ApplicationPackagePath --application-media-catalog $ApplicationMediaCatalogPath --classic-application-data $ApplicationDataDirectory --classic-scenarios-root $ownershipRoot --input-dir $slimInput --output-dir $slimOutput --lock $slimLock --commit $ProvidenceCommit 2>&1 | Out-String).Trim()
+            if ($LASTEXITCODE -ne 0) { throw "Providence scenario finalization failed: $slimOutputText" }
+            $lock = Get-Content -LiteralPath $slimLock -Raw | ConvertFrom-Json
+            if ($lock.scenarios.Count -ne 1 -or $lock.scenarios[0].campaignId -ne $slug) {
+                throw "Providence scenario finalization returned a different campaign identity."
+            }
+            $probePackage = Join-Path $slimOutput "$slug.realmz2"
+            $entry.finalPackage = [ordered]@{
+                path=[IO.Path]::GetFullPath($probePackage)
+                archiveBytes=(Get-Item -LiteralPath $probePackage).Length
+                archiveSha256=(Get-FileHash -LiteralPath $probePackage -Algorithm SHA256).Hash.ToLowerInvariant()
+                packageHash=$lock.scenarios[0].packageHash
+                contentId=$lock.scenarios[0].contentId
+                ownershipSource=$lock.scenarios[0].ownershipSource
+                removed=$lock.scenarios[0].removed
+                retained=$lock.scenarios[0].retained
+            }
+            $entry.stages.finalization = "passed"
+            $entry.status = "finalized"
+        } catch {
+            $entry.stages.finalization = "failed"
+            $entry.status = "finalization-blocked"
+            $entry.failure = $_.Exception.Message
+        }
+    } elseif ($entry.status -eq 'compiled') {
+        $entry.stages.finalization = "unsupported"
+    }
+    if ($entry.status -in @('compiled', 'finalized') -and $GodotPath) {
+        $probeOutput = (& $GodotPath --headless --path $repoRoot --script res://tools/package_probe.gd -- $probePackage 2>&1 | Out-String).Trim()
         $entry.runtimeProbe = [ordered]@{ exitCode=$LASTEXITCODE; output=$probeOutput }
         $packageAccepted = $probeOutput -match '(?m)^PACKAGE_VALIDATED\b'
         if ($packageAccepted) { $entry.stages.packageValidation = "passed" } else { $entry.stages.packageValidation = "failed" }
         if ($LASTEXITCODE -eq 0) { $entry.stages.startup = "passed" } else { $entry.stages.startup = "failed" }
         if ($LASTEXITCODE -eq 0) {
-            $entry.status = "loadable"
+            $entry.status = if ($slimEnabled) { "loadable" } else { "intermediate-loadable" }
         } elseif ($packageAccepted) {
             $entry.status = "startup-blocked"
             $entry.failure = "Rebuilt package was accepted but session startup or view construction failed."
@@ -389,10 +454,10 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
             $entry.status = "package-validation-blocked"
             $entry.failure = "Rebuilt package probe rejected the compiled archive before startup."
         }
-    } elseif ($entry.status -eq 'compiled') {
+    } elseif ($entry.status -in @('compiled', 'finalized')) {
         $entry.stages.packageValidation = "unsupported"
         $entry.stages.startup = "unsupported"
-        $entry.status = "compiled"
+        $entry.status = if ($slimEnabled) { "finalized" } else { "compiled" }
         $entry.failure = "Godot package startup probe was not configured."
     }
     $results += $entry
