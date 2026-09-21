@@ -7621,7 +7621,7 @@
       "disposition": "placed-opcode33-payment-branches-verified-other-callers-open",
       "evidence": "tools/half_truth_opcode33_probe.gd",
       "remaining": [
-        "Exercise XAP 303 through its placed Land 6 AP 2 caller; Simple 17 is covered by the separate vintage-payment recipe, while Simple 14 and Simple 2 remain caller candidates.",
+        "Determine whether XAP 303 has a source-backed caller before replaying it. Land 6 AP 2 uses Extra Code row 303 for opcode-45 teleport, not an XAP call; Simple 17 is covered separately, while Simple 14 and Simple 2 remain caller candidates.",
         "Replay the bond choice through visible controls and obtain Castle runtime comparison before claiming player-facing parity."
       ]
     },
@@ -7663,7 +7663,7 @@
       "evidence": "tools/half_truth_opcode33_probe.gd",
       "remaining": [
         "Replay the encounter selection through visible controls and obtain Castle runtime comparison.",
-        "Exercise XAP 303 after its placed caller and retain Simple 14 and Simple 2 as separate caller candidates."
+        "Inspect native and imported references for an actual XAP 303 caller; Land 6 AP 2's opcode 45 is teleport-only and its ID 303 names an Extra Code row. Retain Simple 14 and Simple 2 as separate caller candidates."
       ]
     }
   ],
