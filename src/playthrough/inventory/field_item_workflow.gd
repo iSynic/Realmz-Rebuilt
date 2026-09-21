@@ -37,8 +37,6 @@ static func inventory_identify_probe(context: SessionWorkflowContext, target_id:
 	var target := context.state.party.character_by_id(target_id)
 	var caster := context.state.party.character_by_id(caster_id)
 	var spell := context.content.magic.spell_by_id(spell_id)
-	if context.state.combat != null and not context.state.combat.completed:
-		return InventoryActionProbe.block("Cast Identify is unavailable during battle.")
 	if target == null or target.inventory().is_empty():
 		return InventoryActionProbe.block("The selected character carries no items.")
 	if caster == null or spell == null or absi(spell.special) != 48 or not caster.known_spells().has(spell.id) or caster.spellcaster_type < 1:

@@ -13,6 +13,8 @@ signal combatant_focus_requested(combatant_id: String, play_sound: bool)
 signal reveal_friends_requested
 signal spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
 signal spellbook_closed
+signal items_requested
+signal inventory_targeting_started
 signal layout_changed
 
 
@@ -42,6 +44,8 @@ func bind(component: BattleInteraction, body: CombatRequestBody, game_view: Game
 	_component.reveal_friends_requested.connect(func() -> void: reveal_friends_requested.emit())
 	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: spellbook_requested.emit(actor_id, options))
 	_component.combat_spellbook_closed.connect(func() -> void: spellbook_closed.emit())
+	_component.combat_items_requested.connect(func() -> void: items_requested.emit())
+	_component.combat_inventory_targeting_started.connect(func() -> void: inventory_targeting_started.emit())
 	_mount_fast_spell_dock(body, InteractionComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells) if body != null else {})
 
 
@@ -119,6 +123,10 @@ func targeting_cancelled() -> void:
 func cast_spell(option: InteractionRequestValue.CastOption) -> void:
 	if _component != null:
 		_component.cast_spell_option(option)
+
+
+func open_item_from_inventory(instance_id: String, open_scrolls: bool = false) -> bool:
+	return _component != null and _component.open_item_from_inventory(instance_id, open_scrolls)
 
 
 func close_spellbook() -> void:

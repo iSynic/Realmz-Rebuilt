@@ -28,6 +28,8 @@
 - A Shop-owned browse presentation reuses the same complete workspace with a visible Back to shop action. It keeps inspection and character selection active but disables ordinary item mutations with the exact Shop-ownership reason.
 - Trade uses two independently selected ledgers and exact-instance cross-ledger drops plus controller-accessible exact item selection followed by an explicit opposite-pack Transfer. Presentation does not preselect or infer a destination.
 - Trade inspection never swaps the selected packs. Each character's Trade ledger retains its own scroll offset across inspection and transfer refreshes; occupied rows, icons, and unused ledger space all accept the same rules-checked drop.
+- During an active battle, Inventory is the complete combat workspace: it owns the frame and input while the sibling battle command deck is hidden, and Done, Back, or Escape returns to the same battle without spending a turn resource.
+- Combat Inventory enables Equip, Unequip, Drop, and Use only for the active combatant; Split, Join, and inspection remain available for the browsed party member. Trade stays visibly disabled with its combat restriction, and all actions submit through the existing typed combat response boundary.
 
 ## Work Guidance
 

@@ -30,11 +30,32 @@ static func direct_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:
 		&"use_item":
 			if body.item_instance_id.is_empty(): return null
 			return InventoryIntents.use_on_target(body.item_instance_id, body.actor_id, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation, body.target_coordinates)
+		&"use_scenario_item":
+			if body.item_instance_id.is_empty(): return null
+			return InventoryIntents.use(body.item_instance_id, body.actor_id)
 		&"use_scroll":
 			if body.scroll_slot < 0: return null
 			if not body.target_coordinates.is_empty():
 				return MagicIntents.use_scroll_at_coordinates(body.actor_id, body.scroll_slot, body.target_coordinates)
 			return MagicIntents.use_scroll_on_target(body.actor_id, body.scroll_slot, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
+		&"equip_item":
+			if body.item_instance_id.is_empty(): return null
+			return InventoryIntents.equip(body.item_instance_id, body.actor_id)
+		&"unequip_item":
+			if body.item_instance_id.is_empty(): return null
+			return InventoryIntents.unequip(body.item_instance_id, body.actor_id)
+		&"drop_item":
+			if body.item_instance_id.is_empty(): return null
+			return InventoryIntents.drop(body.item_instance_id, body.actor_id)
+		&"split_item":
+			if body.item_instance_id.is_empty(): return null
+			return InventoryIntents.split(body.item_instance_id, body.actor_id)
+		&"join_item":
+			if body.item_instance_id.is_empty(): return null
+			return InventoryIntents.join(body.item_instance_id, body.actor_id)
+		&"identify_item":
+			if body.spell_id.is_empty() or body.target_id.is_empty(): return null
+			return MagicIntents.identify_carried_items(body.spell_id, body.actor_id, body.target_id)
 	return CombatIntents.choose_action(body.action, body.actor_id, body.target_id)
 
 

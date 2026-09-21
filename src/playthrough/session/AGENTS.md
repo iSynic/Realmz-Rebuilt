@@ -29,6 +29,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - A friendly-collision interaction is created only from the exact pending post-Guard combat reaction. Its continuation retains that actor and destination across intervening age or death-macro work, restore rejects any choice whose pending reaction or adjacent ally no longer matches, and its declared Back out response cancels only that movement attempt.
 - Continuation kinds, fields, versions, RNG order, event order, save shape, and stable identities remain unchanged.
 - Detached projections are read-only, cached only by committed revision, and disposable across replacement or close.
+- Combat Inventory responses are accepted at the active battle boundary for both scenario-owned pending combat requests and direct combat requests translated by the application policy. The coordinator revalidates the active request and exact character/item identities, then rebuilds the request after a committed inventory mutation without advancing the turn.
 
 ## Work Guidance
 

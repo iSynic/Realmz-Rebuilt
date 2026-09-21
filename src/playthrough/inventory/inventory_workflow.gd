@@ -10,9 +10,13 @@ static func equip_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
+	var combat_guard := combat_edit_guard(context, character, "equip")
+	if not combat_guard.is_empty():
+		return SessionWorkflowResult.failed(&"item_cannot_equip", combat_guard)
 	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_equip", probe.reason)
+	invalidate_combat_undo(context)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_equipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id, "identified": instance.identified})])
 
 
@@ -22,9 +26,13 @@ static func unequip_item(context: SessionWorkflowContext, payload: InventoryInte
 	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
+	var combat_guard := combat_edit_guard(context, character, "unequip")
+	if not combat_guard.is_empty():
+		return SessionWorkflowResult.failed(&"item_cannot_unequip", combat_guard)
 	var probe := context.rules.equipment.unequip_classic(character, instance, definition, context.content.items.definitions(), context.content.characters.race_by_id(character.race_id), context.state.party.conditions)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_unequip", probe.reason)
+	invalidate_combat_undo(context)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_unequipped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
 
 
@@ -34,12 +42,16 @@ static func drop_item(context: SessionWorkflowContext, payload: InventoryIntentP
 	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
+	var combat_guard := combat_edit_guard(context, character, "drop")
+	if not combat_guard.is_empty():
+		return SessionWorkflowResult.failed(&"item_cannot_drop", combat_guard)
 	var probe := context.rules.inventory.classic_drop_probe(character, instance)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_drop", probe.reason)
 	var removed := context.rules.inventory.remove_item(character, instance.id, definition)
 	if removed == null:
 		return SessionWorkflowResult.failed(&"item_drop_failed", "The item could not be removed from inventory.")
+	invalidate_combat_undo(context)
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
 
 
@@ -50,6 +62,8 @@ static func trade_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 	if source == null or destination == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"invalid_item_trade", "Trade requires a carried item and two current party members.")
+	if active_combat(context):
+		return SessionWorkflowResult.failed(&"item_trade_unavailable", "Trade is unavailable during battle.")
 	var probe := trade_item_probe(context, source, destination, instance, definition)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_trade", probe.reason)
@@ -114,6 +128,7 @@ static func split_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var split_instance := item_instance(character, new_instance_id)
 	if split_instance == null:
 		return SessionWorkflowResult.failed(&"item_split_failed", "The split item was not created.")
+	invalidate_combat_undo(context)
 	return SessionWorkflowResult.completed([
 		DomainEvent.new(&"item_split", {"characterId": character.id, "instanceId": instance.id, "newInstanceId": split_instance.id, "itemId": definition.id, "previousCharges": previous_charges, "remainingCharges": instance.charges, "splitCharges": split_instance.charges}),
 		DomainEvent.new(&"sound_requested", {"soundId": 678, "waitForCompletion": false, "source": "classic-item"}),
@@ -147,6 +162,7 @@ static func join_item(context: SessionWorkflowContext, payload: InventoryIntentP
 		probe = context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
 		if not probe.allowed:
 			return SessionWorkflowResult.failed(&"item_join_failed", probe.reason)
+	invalidate_combat_undo(context)
 	return SessionWorkflowResult.completed([
 		DomainEvent.new(&"item_joined", {"characterId": character.id, "instanceId": instance.id, "removedInstanceIds": removed_instance_ids, "itemId": definition.id, "charges": instance.charges}),
 		DomainEvent.new(&"sound_requested", {"soundId": 663, "waitForCompletion": false, "source": "classic-item"}),
@@ -160,3 +176,21 @@ static func item_instance(character: CharacterState, instance_id: String) -> Ite
 		if item.id == instance_id:
 			return item
 	return null
+
+
+static func active_combat(context: SessionWorkflowContext) -> bool:
+	return context != null and context.state != null and context.state.combat != null and not context.state.combat.completed
+
+
+static func combat_edit_guard(context: SessionWorkflowContext, character: CharacterState, operation: String) -> String:
+	if not active_combat(context):
+		return ""
+	var active_id := context.state.combat.turns.active_actor_id()
+	if character == null or character.id != active_id:
+		return "Only the active character may %s items during battle." % operation
+	return ""
+
+
+static func invalidate_combat_undo(context: SessionWorkflowContext) -> void:
+	if active_combat(context):
+		context.state.combat.turns.invalidate_undo()

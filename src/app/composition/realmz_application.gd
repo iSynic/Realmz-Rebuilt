@@ -214,6 +214,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.cancel_package_requested.connect(_package_host.cancel)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
 	_shell_presenter.intent_submitted.connect(submit_intent)
+	_shell_presenter.combat_inventory_response_submitted.connect(_on_battlefield_action_requested)
 	_shell_presenter.save_requested.connect(func(slot_id: String) -> void: adventure_storage.save(_active_content, slot_id))
 	_shell_presenter.save_and_quit_requested.connect(lifecycle_host.save_and_quit)
 	_shell_presenter.load_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id))
@@ -451,9 +452,22 @@ func _on_held_movement_requested(direction: Vector2i) -> void:
 
 
 func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
-	var pending := session_controller.view().active_interaction_request()
+	if body == null:
+		return
+	var view := session_controller.view()
+	if view == null:
+		return
+	var pending := view.pending_interaction
 	if pending != null and pending.kind == InteractionRequest.COMBAT:
 		_interaction_presenter.combat.submit_body(ApplicationCombatPolicy.body_with_preferences(body, _presentation_settings))
+		return
+	if view.combat_view == null or view.combat_view.outcome != &"active":
+		return
+	var request_id := view.combat_action_request.request_id if view.combat_action_request != null else ""
+	if request_id.is_empty():
+		_shell_presenter.status.set_status("The battle inventory request is no longer available.", true)
+		return
+	submit_response(InteractionResponse.new(request_id, InteractionRequest.COMBAT, ApplicationCombatPolicy.body_with_preferences(body, _presentation_settings)))
 
 
 func _on_battlefield_combatant_inspected(combatant_id: String) -> void:

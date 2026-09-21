@@ -3,25 +3,13 @@ class_name InventoryScreenController
 extends RefCounted
 
 
-class TradeAccess:
-	extends RefCounted
-	var _owner: Variant
-	func _init(owner: Variant) -> void: _owner = owner
-	func bind_explicit(button: Button, view: GameView, source: CharacterView, target: CharacterView) -> void:
-		_owner._scene_binding.clear_pressed_connections(button)
-		var item_owner := InventoryViewQueries.character_by_id(view, _owner._trade_item_owner_id)
-		var item := InventoryViewQueries.item_by_id(item_owner, _owner._trade_item_instance_id)
-		var destination_id := target.id if item_owner != null and item_owner.id == source.id else source.id if item_owner != null and item_owner.id == target.id else ""
-		var availability := InventoryViewQueries.trade_target(item, destination_id)
-		button.disabled = not _owner._trade_destination_confirmed or item == null or destination_id.is_empty() or availability == null or not availability.enabled
-		button.tooltip_text = "Select an exact item and destination first." if not _owner._trade_destination_confirmed or item == null or destination_id.is_empty() else "This item cannot be transferred there." if availability == null else availability.reason if not availability.enabled else "Transfer %s to %s." % [item.name, InventoryViewQueries.character_by_id(view, destination_id).name]
-		if not button.disabled: button.pressed.connect(_owner._submit_trade.bind(item.instance_id, item_owner.id, destination_id))
-
 signal intent_submitted(intent: PlayerIntent)
 signal refresh_requested
 signal route_requested(screen_id: StringName)
 signal back_requested
 signal encounter_item_selected(character_id: String, instance_id: String, classic_item_id: int)
+signal combat_response_submitted(body: InteractionResponse.CombatBody)
+signal combat_item_use_requested(character_id: String, instance_id: String)
 
 const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
@@ -35,6 +23,7 @@ const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/inventory/classic_item_det
 const WORKSPACE_SCENE_PATH := "res://src/ui/inventory/inventory_workspace.tscn"
 
 var _scene_binding := InventorySceneBinding.new()
+var _combat_action_binder := InventoryCombatActionBinder.new()
 var _selected_character_id: String = ""
 var _selected_item_instance_id: String = ""
 var _trade_mode: bool = false
@@ -88,6 +77,14 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_s
 	if target == null:
 		return
 	_browse_only_reason = ""
+	if view != null and view.combat_view != null and view.combat_view.outcome == &"active":
+		# A battle always opens the ordinary carried-item browser. Do not retain a
+		# previously open Trade sub-workspace when the route is reused by combat.
+		_trade_mode = false
+		_selected_trade_target_id = ""
+		_trade_destination_confirmed = false
+		_trade_status = ""
+		_clear_pending_action()
 	_encounter_mode = false
 	_encounter_items.clear()
 	if target is InventoryScreen:
@@ -407,6 +404,9 @@ func _render_item_facts(record: InventorySelectedItemRecord, item: ItemView) -> 
 
 
 func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: ItemView, character: CharacterView, _media: ClassicMediaCatalog) -> void:
+	if view != null and view.combat_view != null and view.combat_view.outcome == &"active":
+		_combat_action_binder.bind(panel, item, character, combat_response_submitted.emit, combat_item_use_requested.emit)
+		return
 	if _encounter_mode:
 		panel.show_actions(true)
 		var choose := panel.encounter_button()
@@ -438,8 +438,6 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 	_bind_item_intent_action(panel.action_button("DropAction"), &"inventory.action.drop", "Drop", item.actions.drop, InventoryIntents.drop(item.instance_id, character.id), item, character, true)
 	panel.trade_status().visible = not _trade_status.is_empty()
 	_scene_binding.bind_label(panel.trade_status(), _trade_status, WARNING, 13)
-
-
 func _render_operation_stage(panel: InventoryActionPanel, item: ItemView, character: CharacterView) -> void:
 	panel.show_operation()
 	var column := panel.operation_stage().get_node("Content") as VBoxContainer
@@ -535,7 +533,7 @@ func _bind_trade_control_spine(divider: InventoryTradeDivider, view: GameView, s
 	divider.money_button().pressed.connect(func() -> void: route_requested.emit(&"services"))
 	_scene_binding.clear_pressed_connections(divider.items_button())
 	divider.items_button().pressed.connect(_cancel_trade)
-	TradeAccess.new(self).bind_explicit(divider.transfer_button(), view, source, target)
+	InventoryTradeAccess.bind_explicit(divider.transfer_button(), view, source, target, _trade_item_owner_id, _trade_item_instance_id, _trade_destination_confirmed, Callable(_scene_binding, "clear_pressed_connections"), Callable(self, "_submit_trade"))
 	_scene_binding.clear_pressed_connections(divider.done_button())
 	divider.done_button().pressed.connect(func() -> void: back_requested.emit())
 

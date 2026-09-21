@@ -25,6 +25,8 @@ Own the retained tactical battlefield, combat command deck, roster spellbook, Fa
 - Retain battlefield nodes and media caches across updates; do not rebuild the tactical scene for each event or frame.
 - Command availability, target sets, costs, masks, spell powers, Auto decisions, and inspection facts are supplied by the session. Presentation cannot infer or repair them.
 - Secondary command, spell, item, inspection, and targeting modes preserve a visible Back or Cancel path and suppress spatial input until resolved.
+- The combat Items command opens the full Inventory route through one typed presentation signal. The application clears the sibling command deck before mounting Inventory, and route return re-presents the same battle request; controller and pointer activation share this path.
+- Item or scroll targeting opened from combat Inventory returns to Inventory on cancellation and returns to the battle only after a committed use; Inventory owns input while it is mounted.
 - A request-provided `prepare_projectile` action binds Fire directly to the typed Roll Power response. Presentation does not open an empty target picker or compute projectile power; the rerendered request supplies the targets derived from the saved roll.
 - The action radial enumerates the active battle component's existing command owners and Fast Spell bindings. It invokes their typed presentation operations; it does not synthesize pointer input or infer availability.
 - `CombatInteractionController.release()` is teardown-only: it releases the Fast Spell dock without emitting spellbook or layout changes. Ordinary `clear()` still restores the active application workspace.

@@ -55,6 +55,8 @@ signal standalone_character_creation_cancelled
 signal character_selection_completed(character_ids: Array[String])
 signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
 signal combat_spellbook_back_requested
+signal combat_inventory_response_submitted(body: InteractionResponse.CombatBody)
+signal combat_inventory_item_use_requested(character_id: String, instance_id: String)
 
 const SCROLL_ARROW_STEP := 32.0
 const SCROLL_ARROW_INITIAL_DELAY := 0.34
@@ -278,6 +280,8 @@ func _ready() -> void:
 	_navigator.screen_changed.connect(_on_screen_changed)
 	_navigator.system_action_requested.connect(handle_system_action_requested)
 	_navigator.presentation_setting_changed.connect(_on_presentation_setting_changed)
+	_navigator.combat_inventory_response_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: combat_inventory_response_submitted.emit(body))
+	_navigator.combat_inventory_item_use_requested.connect(func(character_id: String, instance_id: String) -> void: combat_inventory_item_use_requested.emit(character_id, instance_id))
 	_navigator.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
 	_party_roster.character_selected.connect(_on_character_selected)
 	_party_roster.character_activated.connect(_on_character_activated)

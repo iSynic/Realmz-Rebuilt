@@ -20,6 +20,8 @@ Own carried-item transactions and field item use above pure item definitions, in
 - A failed, cancelled, or rejected operation leaves inventory, charges, equipment, load, clock, RNG, and session revision according to the existing transaction result.
 - Item-XAP and target continuations preserve stable instance, definition, actor, program, power, and source-battle identities across save/restore.
 - A newly submitted Drop validates and removes the exact unequipped instance in one transaction; the legacy Drop confirmation continuation remains readable and respondable only for saves that already contain it.
+- During active combat, Equip, Unequip, Drop, and Use require the active actor; Split and Join retain Castle's browse-any-party-member permission; Trade is rejected. Combat Identify may inspect any party member's inventory through the eligible caster path and spends the existing 25-SP cast cost.
+- Combat Inventory mutations revalidate exact identities, invalidate movement Undo after a committed edit, and rebuild the active combat request without replenishing current movement or attack budgets. Scenario-owned item XAP starts from the originating battle and returns exactly once through its typed continuation.
 - `GameSession` alone commits, rolls back, changes revision, and constructs steps.
 
 ## Work Guidance
