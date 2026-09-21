@@ -84,7 +84,7 @@ function Stop-Adapter($Process) {
 
 function Get-Slug([string]$Name) {
     $slug = $Name.ToLowerInvariant() -replace '[^a-z0-9]+', '-'
-    return $slug.Trim('-')
+    return "scenario-$($slug.Trim('-'))"
 }
 
 if ([string]::IsNullOrWhiteSpace($GodotPath)) {

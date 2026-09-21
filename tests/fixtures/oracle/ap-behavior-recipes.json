@@ -7462,6 +7462,81 @@
           "capture": true
         }
       ]
+    },
+    {
+      "id": "prelude-ap9-payment-branches-generated",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "workflowIds": [
+        "classic.scenario.trigger-action-point",
+        "classic.scenario.choose-response"
+      ],
+      "package": {
+        "campaignId": "scenario-prelude-to-pestilence",
+        "path": "src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2",
+        "packageHash": "293b3e4e2d41e1991a529a2941c9f345f9079953dd83ead7fdfce46549dc601c",
+        "archiveSha256": "43f40ec9906750e7d036f28bc4a290340d30f75908684d0eabca20ac5dede864",
+        "provenance": "src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json"
+      },
+      "preparation": "Create two isolated Debug fixtures from the generated package. For the paid run, use the named starter baseline and ordinary movement to Land 0 AP 9 at (23,12) with sufficient party wealth. For the no-funds run, restore the same prepared state and set every party member's gold to zero through the fixture-only state preparation before ordinary movement. Do not direct-invoke AP 9 for the caller claim.",
+      "target": {
+        "actionPoint": "Data DD:0:9",
+        "paidProgram": "xap:31",
+        "noFundsProgram": "xap:149",
+        "noFundsSourceProgram": "xap:97"
+      },
+      "proofModes": [
+        "isolated-fixture",
+        "ordinary-movement",
+        "actual-ui-control",
+        "typed-response"
+      ],
+      "expected": [
+        "The paid route shows messages 65, 66, 67 and 69, consumes exactly five gold through Castle's party-order takegold behavior, shows message 103, replaces AP 9 with XAP 31 and does not run the no-funds XAP 149 branch.",
+        "The no-funds route reports the authored insufficient-gold notification, shows messages 368 and 369, transfers through authored XAP 149, replaces AP 9 with XAP 31, and consumes no gold.",
+        "The generated package contains XAP 97's message -248 and Keep Codes and XAP 149's message/replacement/Keep Codes sequence; neither result is supplied by runtime inference. Repeat each fixture from its retained baseline and compare wealth, AP program, continuation and RNG state."
+      ],
+      "sourceEvidence": [
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/takegold.c:1-75: party-order wealth deduction for a fixed payment",
+        "Castle Data ED3 record 97: message -248 followed by Keep Codes",
+        "Castle Data ED3 record 149: messages 368/369, opcode 7 replacement to XAP 31, followed by Keep Codes"
+      ],
+      "result": "passed",
+      "evidence": "fixtures/2fbe67db3576001360dbc4f7a031036d/stdout.log",
+      "otherEvidence": [
+        "fixtures/8744362deeaf27a0045f34234388e154/stdout.log: zero-funds route and XAP 149 trace",
+        "F:/Providence-vNext-build/scenario-audit-a122766-summary.md: compiler/package identities and route boundary"
+      ],
+      "remaining": [
+        "The fixture bridge route is not physical campaign-start certification.",
+        "The Riter/Battle 75 reward continuation is a separate route and remains blocked at post-battle victory control."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {"dx": 1, "dy": 0}
+          },
+          "expect": {"interactionKind": "acknowledge"},
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "capture": true
+        }
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [
