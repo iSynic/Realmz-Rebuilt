@@ -283,6 +283,7 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
         sourceCatalogVerified=if ($sourceOverride) { $false } else { $null }
         status="pending"
         stages=[ordered]@{
+            monsterCatalog="not-run"
             import="not-run"
             diagnostics="not-run"
             readiness="not-run"
@@ -292,6 +293,7 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
             startup="not-run"
         }
         import=$null
+        monsterCatalog=$null
         diagnostics=$null
         readiness=$null
         package=$null
@@ -338,6 +340,23 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
             continue
         }
         $entry.sourceCatalogVerified = $true
+    }
+    $monsterInputs = @('Data MD', 'Data MD1', 'Data MD-1', 'Data DES', 'Data ED3') |
+        ForEach-Object { Join-Path $source $_ }
+    $missingMonsterInputs = @($monsterInputs | Where-Object { -not (Test-Path -LiteralPath $_ -PathType Leaf) })
+    if ($missingMonsterInputs.Count -gt 0) {
+        $entry.stages.monsterCatalog = "unsupported"
+        $entry.monsterCatalog = [ordered]@{ complete=$false; reason="Missing native Monster catalog input(s): $($missingMonsterInputs -join ', ')" }
+    } else {
+        $monsterOutput = (& $ProvidenceCliPath inspect-monster-catalog @monsterInputs 2>&1 | Out-String).Trim()
+        try {
+            $monsterReport = $monsterOutput | ConvertFrom-Json -ErrorAction Stop
+            $entry.monsterCatalog = $monsterReport
+            $entry.stages.monsterCatalog = if ($monsterReport.projectionComplete -eq $true) { "passed" } else { "incomplete" }
+        } catch {
+            $entry.stages.monsterCatalog = "incomplete"
+            $entry.monsterCatalog = [ordered]@{ complete=$false; reason=$monsterOutput }
+        }
     }
     $adapter = $null
     try {
