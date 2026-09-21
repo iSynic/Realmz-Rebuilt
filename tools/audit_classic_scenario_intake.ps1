@@ -8,6 +8,7 @@ param(
     [Parameter(Mandatory)][string]$ApplicationLibraryRoot,
     [Parameter(Mandatory)][string]$ReferenceCatalogRoot,
     [Parameter(Mandatory)][string]$OutputRoot,
+    [hashtable]$ScenarioSourceOverrides = @{},
     [string]$GodotPath = ""
 )
 
@@ -243,10 +244,16 @@ $compilerIdentity = [ordered]@{
 $applicationDataIdentity = Get-TreeIdentity $ApplicationDataDirectory
 $applicationLibraryIdentity = Get-TreeIdentity $ApplicationLibraryRoot
 $referenceCatalogIdentity = Get-TreeIdentity $ReferenceCatalogRoot
+$bundledCatalog = Get-Content -LiteralPath (Join-Path $repoRoot 'src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json') -Raw | ConvertFrom-Json
 $results = @()
 
 foreach ($name in @($ScenarioName | Select-Object -Unique)) {
     $source = Join-Path $ScenarioRoot $name
+    $bundledEntry = @($bundledCatalog.scenarios | Where-Object name -EQ $name)
+    $sourceOverride = if ($bundledEntry.Count -eq 1) { $bundledEntry[0].sourceOverride } else { $null }
+    if ($ScenarioSourceOverrides.ContainsKey($name)) {
+        $source = $ScenarioSourceOverrides[$name]
+    }
     $slug = Get-Slug $name
     $project = Join-Path $OutputRoot "projects\$slug"
     $package = Join-Path $OutputRoot "packages\$slug.realmz2"
@@ -254,6 +261,8 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
         name=$name
         sourcePath=[IO.Path]::GetFullPath($source)
         sourceIdentity=$null
+        designatedSnapshotSha256=if ($sourceOverride) { $sourceOverride.snapshotSha256 } else { $null }
+        sourceCatalogVerified=if ($sourceOverride) { $false } else { $null }
         status="pending"
         stages=[ordered]@{
             import="not-run"
@@ -279,6 +288,37 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
         continue
     }
     $entry.sourceIdentity = Get-TreeIdentity $source
+    if ($sourceOverride) {
+        $sourceCatalogPath = Join-Path $repoRoot "src/storage/packages/bundled_campaigns/$($sourceOverride.catalog)"
+        $sourceCatalog = Get-Content -LiteralPath $sourceCatalogPath -Raw | ConvertFrom-Json
+        $expectedFiles = @($sourceCatalog.files)
+        $actualFiles = @($entry.sourceIdentity.files)
+        $actualByPath = @{}
+        foreach ($actualFile in $actualFiles) { $actualByPath[[string]$actualFile['path']] = $actualFile }
+        $matchingFiles = $actualFiles.Count -eq $expectedFiles.Count
+        $mismatchDetail = "count $($actualFiles.Count)/$($expectedFiles.Count)"
+        if ($matchingFiles) {
+            foreach ($expectedFile in $expectedFiles) {
+                $actualFile = $actualByPath[[string]$expectedFile.file]
+                if ($null -eq $actualFile -or
+                    [long]$expectedFile.bytes -ne [long]$actualFile['bytes'] -or
+                    $expectedFile.sha256 -ne $actualFile['sha256']) {
+                    $matchingFiles = $false
+                    $mismatchDetail = "file $($expectedFile.file)"
+                    break
+                }
+            }
+        }
+        if (-not $matchingFiles -or $sourceCatalog.snapshot.fileCount -ne $entry.sourceIdentity.fileCount -or
+            $sourceCatalog.snapshot.bytes -ne $entry.sourceIdentity.byteCount -or
+            $sourceCatalog.snapshot.sha256 -ne $sourceOverride.snapshotSha256) {
+            $entry.status = "source-identity-mismatch"
+            $entry.failure = "Designated source files do not match the bundled provenance catalog: $mismatchDetail."
+            $results += $entry
+            continue
+        }
+        $entry.sourceCatalogVerified = $true
+    }
     $adapter = $null
     try {
         [IO.Directory]::CreateDirectory((Split-Path -Parent $project)) | Out-Null
