@@ -18,7 +18,7 @@ func run() -> void:
 	_test_public_classic_choice_control_flow(content); _test_half_truth_complex_spell_class()
 	_test_public_classic_difficulty_branch(content); _test_opcode_59_current_cell(content); _test_public_classic_encounter_iterations(content)
 	_test_public_thief_encounter(content); _test_public_session_resume(content)
-	_test_public_vm_combat_auto(content); _test_opcode_56_defeat_return(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content)
+	_test_public_vm_combat_auto(content); _test_opcode_56_defeat_return(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content); _test_opcode_127_roster_presence(content)
 	_test_public_vm_repeated_combat_item(content)
 	_test_public_continuation_matrix(content)
 	_test_public_limits_and_errors(content)
@@ -527,6 +527,15 @@ func _test_public_classic_combat_mutation(content: RealmzContent) -> void:
 	var restored_api := RealmzRuntimeApi.new(mutation_content, saved_state, rng, ScenarioActionState.new()); var completed := restored_vm.resume(InteractionResponse.acknowledge(waiting.interaction), restored_api); var draws_before_reward := rng.snapshot().draw_count; var reward := restored_api.begin_completed_battle_reward("opcode125.reward", ScenarioBattleCaller.classic(2, false, 0, 0)); assert_equal([completed.state, saved_state.combat.completed, saved_state.combat.outcome, saved_state.combat.roster.monster_by_id(first.id).current_health, saved_state.combat.roster.monster_by_id(first.id).traitor, saved_state.combat.roster.monster_by_id(second.id).current_health, saved_state.combat.roster.monster_by_id(third.id).current_health, saved_state.combat.roster.monster_by_id(loyal.id).current_health, saved_state.combat.roster.monster_by_id(other.id).current_health, _event_has(completed.events, &"monster_death_macro_completed"), _event_has(completed.events, &"battle_completed"), _event_has(completed.events, &"classic_control_marker"), reward.state != ScenarioRuntimeOperationResult.State.FAILED, draws_before_reward], [ScenarioVmResult.State.COMPLETED, true, &"victory", 1, false, 0, 0, 10, 0, true, true, true, true, 0], "opcode 125 resumes the macro, preserves loyal filtering and zero-to-100 limits, uses Classic name identity, reaches ordinary terminal victory and rewards, and adds no opcode randomness")
 
 
+func _test_opcode_127_roster_presence(content: RealmzContent) -> void:
+	var definition := content.combat.monster_by_id(content.combat.battle_by_id("classic.battle.0").monster_slots()[0].monster_id)
+	var prepared := _package_macro_battle(content, definition.classic_id)
+	var api := RealmzRuntimeApi.new(content, prepared.state, RealmzRng.for_oracle(127), ScenarioActionState.new())
+	var present := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, definition.classic_id, false, []), "battle.presence")
+	var absent := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, 441, false, []), "battle.presence")
+	assert_equal([present.state, present.value, absent.state, absent.value, absent.directive.kind, absent.events[0].payload.get("classicMonsterId"), absent.events[0].payload.get("present")], [ScenarioRuntimeOperationResult.State.COMPLETED, true, ScenarioRuntimeOperationResult.State.COMPLETED, false, ScenarioVmDirective.FINISH, 441, false], "opcode 127 checks the active roster by Classic identity; an absent source definition is a false test, not a VM failure")
+
+
 func _test_public_vm_repeated_combat_item(content: RealmzContent) -> void:
 	var base_battle := content.combat.battle_by_id("classic.battle.0"); var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
 	assert_true(base_battle != null and not races.is_empty() and not castes.is_empty(), "VM repeated-item fixture has battle and character definitions"); if base_battle == null or races.is_empty() or castes.is_empty(): return
@@ -884,14 +893,7 @@ func _test_classic_opcode_2_legacy_battle_record(content: RealmzContent) -> void
 	var sound_mode_events := positive_mode.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 30001 and event.payload.get("source") == "classic-battle")
 	assert_true(sound_mode_events.size() == 1, "word 4 sound projects directly")
 	state.combat = null
-	var negative_codes: Array = [
-		[battle.classic_id, 0, -1, -30001, 0],
-		[battle.classic_id, 1, -1, 30002, 0],
-		[battle.classic_id, 0, 0, 30002, 0],
-		[battle.classic_id, 0, -1, 29999, 0],
-		[battle.classic_id, 0, -1, 30006, 0],
-		[battle.classic_id, 0, -1, 30002],
-	]
+	var negative_codes: Array = [[battle.classic_id, 0, -1, -30001, 0], [battle.classic_id, 1, -1, 30002, 0], [battle.classic_id, 0, 0, 30002, 0], [battle.classic_id, 0, -1, 29999, 0], [battle.classic_id, 0, -1, 30006, 0], [battle.classic_id, 0, -1, 30002]]
 	for code: Array in negative_codes:
 		var extra: Array[int] = []
 		extra.assign(code)

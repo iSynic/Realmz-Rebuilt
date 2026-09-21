@@ -371,14 +371,11 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"monster_test_outside_combat", "Classic opcode 127 requires an active battle macro.")
-	var definition := _content.combat.monster_by_classic_id_for_set(absi(action.operand_id), _game_state.monster_set)
-	if definition == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 127 references unavailable monster %d." % action.operand_id)
 	var present := false
 	for monster: MonsterState in _game_state.combat.roster.monsters():
 		var present_definition := _content.combat.monster_by_id(monster.definition_id)
-		if present_definition != null and present_definition.classic_id == definition.classic_id and monster.current_health > 0:
+		if present_definition != null and present_definition.classic_id == action.operand_id and monster.current_health > 0:
 			present = true
 			break
 	var directive: ScenarioVmDirective = null if present else ScenarioVmDirective.finish()
-	return ScenarioRuntimeOperationResult.completed(present, [DomainEvent.new(&"battle_monster_presence_checked", {"classicMonsterId": definition.classic_id, "present": present, "source": "classic"})], directive)
+	return ScenarioRuntimeOperationResult.completed(present, [DomainEvent.new(&"battle_monster_presence_checked", {"classicMonsterId": action.operand_id, "present": present, "source": "classic"})], directive)
