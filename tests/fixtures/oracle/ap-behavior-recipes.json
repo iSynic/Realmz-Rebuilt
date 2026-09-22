@@ -7462,6 +7462,277 @@
           "capture": true
         }
       ]
+    },
+    {
+      "id": "prelude-ap9-payment-branches-generated",
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "starterCatalog": "src/storage/characters/realmz-classic-starter-characters.json"
+      },
+      "workflowIds": [
+        "classic.scenario.trigger-action-point",
+        "classic.scenario.choose-response"
+      ],
+      "package": {
+        "campaignId": "scenario-prelude-to-pestilence",
+        "path": "src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2",
+        "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+        "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+        "provenance": "src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json"
+      },
+      "preparation": "For the current package, tools/prelude_payment_probe.gd validates the application and package, restores the six pinned starters with their original or explicitly zeroed wealth, sets the fixture quest-zero sentinel, warps to (22,12), and enters AP 9 by ordinary session movement. It restores the pending payer-selection snapshot before selecting Kevlar. An earlier visible-control paid fixture used package c196cc0adf7f37a08621dbe8d15bb8e6fdfab2ecb8ae067be17d0dbb15b7ed4d; retain that evidence under its historical identity. Do not direct-invoke AP 9 for the caller claim.",
+      "target": {
+        "actionPoint": "Data DD:0:9",
+        "paidProgram": "xap:31",
+        "noFundsProgram": "xap:149",
+        "noFundsSourceProgram": "xap:97"
+      },
+      "proofModes": [
+        "isolated-fixture",
+        "ordinary-movement",
+        "typed-response",
+        "runtime-integration",
+        "restored-continuation"
+      ],
+      "expected": [
+        "The current-package paid session route shows messages 65, 66, 67, 69, 100, 101, 102 and 103, consumes exactly five gold in party order, replaces AP 9 with XAP 31, and re-entry executes XAP 31 rather than AP 9.",
+        "The current-package zero-wealth session route shows messages 65, 66, 67, 69, 100, 101, 102, 368 and 369 after a no-funds notification, leaves every character at zero gold, replaces AP 9 with XAP 31, and preserves re-entry. Visible meal and payer controls for zero wealth remain unverified.",
+        "The regenerated package contains XAP 97's message -248 and Keep Codes and XAP 149's message/replacement/Keep Codes sequence; neither result is supplied by runtime inference."
+      ],
+      "sourceEvidence": [
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/takegold.c:1-75: party-order wealth deduction for a fixed payment",
+        "Castle Data ED3 record 97: message -248 followed by Keep Codes",
+        "Castle Data ED3 record 149: messages 368/369, opcode 7 replacement to XAP 31, followed by Keep Codes"
+      ],
+      "result": "partial",
+      "disposition": "current-package-paid-and-zero-wealth-session-routes-verified-visible-zero-wealth-open",
+      "evidence": "tools/prelude_payment_probe.gd",
+      "otherEvidence": [
+        "Historical paid UI fixture: F:/Realmz/local-fixtures/audit-batch-20260921-console/fixtures/91f6c96c0591fbd4ab9f39e64b4f43ee/checkpoints/63063588-12f8-4011-9b3e-5bbcc5f61ae3.r2save; SHA256 8289283c4e1a8edaa237e8c02202406a058ac874a017c849f59515cc5bdebe5d; package c196cc0adf7f37a08621dbe8d15bb8e6fdfab2ecb8ae067be17d0dbb15b7ed4d, not the current 2529f5f0 package",
+        "Previous package 7f18df4e and regenerated package 2529f5f0: headless probe default and --paid both passed ordered messages, payer save/restore, gold, AP override, and re-entry",
+        "F:/Providence-vNext-build/scenario-audit-e777690-batch1-r5/intake-report.json: regenerated package and all-13 intake identity",
+        "F:/Providence-vNext-build/scenario-audit-a122766-summary.md: source/package route boundary"
+      ],
+      "remaining": [
+        "The fixture bridge route is not physical campaign-start certification.",
+        "The zero-wealth branch still requires visible meal and payer controls in a labelled isolated fixture; the headless direct-session probe does not establish UI routing or ordinary campaign start.",
+        "The Riter/Battle 75 reward continuation has separate forced-victory, ordinary Auto combat, and opt-in live observations on the previously bundled archive; full campaign certification remains separate."
+      ],
+      "steps": [
+        {
+          "command": "act",
+          "params": {
+            "action": "move",
+            "arguments": {"dx": 1, "dy": 0}
+          },
+          "expect": {"interactionKind": "acknowledge"},
+          "capture": true
+        },
+        {
+          "command": "respond",
+          "params": {
+            "response": {
+              "requestId": "$pending",
+              "kind": "acknowledge",
+              "body": {}
+            }
+          },
+          "capture": true
+        }
+      ]
+    },
+    {
+      "id": "prelude-riter-battle75-payment-continuation",
+      "workflowIds": ["classic.scenario.trigger-action-point", "classic.rewards.treasure-distribution"],
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad"
+      },
+      "package": {
+        "campaignId": "scenario-prelude-to-pestilence",
+        "path": "src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2",
+        "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+        "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496"
+      },
+      "target": {
+        "mayor": "Data DD:0:10",
+        "riter": "Data DD:0:6",
+        "encounter": "simple:2",
+        "challenge": "xap:90",
+        "battle": 75,
+        "failedPayment": "xap:97"
+      },
+      "preparation": "tools/prelude_riter_probe.gd starts the pinned six-character party with seed 853 and original or explicitly zeroed wealth. It enters Mayor AP 10 from (13,7), restores the pending challenge choice before accepting Battle 75, and restores the post-battle save before AP 6 re-entry. Default mode forces victory and shares 21 gold/four gems; --ordinary wins through 42 ordinary Auto activations and shares 10 gold/one gem. Both modes leave the remaining items behind and run funded and zero-wealth baselines independently.",
+      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "forced-victory-continuation", "ordinary-combat-session", "restored-continuation"],
+      "expected": [
+        "Mayor messages 3,4,5,6 replace AP 6 with XAP 12. Riter messages 56,57,58,219,221,246 and the selected warning/challenge answers start Classic Battle 75; Land 3 AP 5 independently has a Battle 103-capable opcode-2 range.",
+        "The scripted narration promises Riter's 100 gold, but the executable chain has no 100-gold grant. Forced victory yields 21 gold/four gems/18 items; ordinary combat yields 10 gold/one gem/19 items at seed 853. After battle return, message 247 precedes opcode 33's attempt to take 100 gold.",
+        "With original starter wealth, the payment succeeds, AP 6 is disabled, and re-entry is quiet. Party gold becomes [0,83,133,0,182,283] after forced victory or [0,80,130,0,180,280] after ordinary combat. With zero starting wealth, payment fails; party gold becomes [4,4,4,3,3,3] after forced victory or [2,2,2,2,1,1] after ordinary combat, message 248 appears, AP 6 is kept, and re-entry shows message 56."
+      ],
+      "sourceEvidence": [
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:2569-2580 dispatches opcode 33 to takegold",
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/takegold.c:5-42 debits pooled and party wealth or fails",
+        "Pinned Prelude XAP 90 slots 3/4/5: Battle 75, message -247, Take Gold [100,0,0,97,0]; XAP 97: message -248 and Keep Codes"
+      ],
+      "result": "partial",
+      "disposition": "forced-victory-ordinary-combat-and-live-shipped-route-verified-campaign-certification-open",
+      "evidence": "tools/prelude_riter_probe.gd",
+      "remaining": [
+        "Replay the regenerated archive through visible combat controls in an isolated fixture; the headless Auto route proves the session transaction, not UI routing.",
+        "Ordinary campaign certification remains separate; the earlier Battle 103 report was corrected to Battle 75 and is closed."
+      ]
+    },
+    {
+      "id": "prelude-land4-ap10-timed-row-zero",
+      "workflowIds": ["classic.scenario.trigger-action-point", "classic.scenario.timed-encounter"],
+      "package": {
+        "campaignId": "scenario-prelude-to-pestilence",
+        "path": "src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2",
+        "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+        "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496"
+      },
+      "target": {
+        "actionPoint": "Data DD:4:10",
+        "timedEncounterId": 0,
+        "program": "xap:303"
+      },
+      "preparation": "The retained external prelude_timed_row0_probe.gd prepares six pinned starters at Land 4 (87,7), enters AP 10 by adjacent public movement, acknowledges message 684, then prepares one minute before day 3 and crosses midnight with public Search. Run twice from the same seed-853 package-pinned baseline; the previously bundled archive is retained outside Git for the paired omission check.",
+      "proofModes": ["source-control-flow", "ordinary-session-movement", "prepared-time-boundary", "runtime-integration"],
+      "expected": [
+        "AP 10 sets quest 42 and schedules timed row 0 for day 3 at 100 percent. At midnight the regenerated package checks row 0, consumes the recorded roll 93, enters XAP 303, and shows message 687.",
+        "The previously bundled package schedules row 0 but contains neither the timed record nor XAP 303, so it emits no timed trigger at the same prepared boundary."
+      ],
+      "sourceEvidence": [
+        "Castle setupnewgame.c:144-150 copies Data TD3 to CTD3; newland.c:3290-3310 applies opcode 54 to exact row 0; textbox-time.c:203,226-291 scans row 0 at midnight.",
+        "Pinned Prelude Data TD3 record 0 calls Data ED3 XAP 303; Land 4 AP 10 schedules it with Extra Code [0,100,0,1,2]."
+      ],
+      "result": "partial",
+      "disposition": "source-preserved-and-prepared-midnight-route-verified-ordinary-campaign-open",
+      "evidence": "F:/Providence-vNext-build/prelude_timed_row0_probe.gd",
+      "remaining": ["Continuous ordinary campaign travel to this timed event, visible-control presentation, and a controlled Castle runtime observation are not certified."]
+    },
+    {
+      "id": "half-truth-land6-bond-payment-opcode33",
+      "workflowIds": ["classic.scenario.trigger-action-point"],
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad"
+      },
+      "package": {
+        "campaignId": "scenario-half-truth",
+        "auditArtifact": "scenario-audit-catalog-parity-full-r1/final-packages/scenario-half-truth/scenario-half-truth.realmz2",
+        "packageHash": "a38948d427a2aeaa49eb9cececd90dd553ed7c0ff35fa141e540aabdb8fa1488",
+        "archiveSha256": "b4f1694d69b64227240fa8f769b70c2f2dfae9dfab220df94921a1b663135d05"
+      },
+      "target": {
+        "actionPoint": "Data DD:6:98",
+        "coordinate": [8, 30],
+        "program": "trigger:Data DD:6:98",
+        "failureProgram": "xap:380",
+        "opcode33Slot": 4,
+        "extraCode": [500, 0, 0, 380, 0]
+      },
+      "preparation": "Pass the exact regenerated audit archive to tools/half_truth_opcode33_probe.gd with funded or empty. The probe installs the pinned application catalog, prepares the six Classic starters with original or zeroed wealth at seed 853, warps to (7,30), enters AP 98 by ordinary adjacent movement, restores the pending bond choice, and tests AP re-entry after the outcome.",
+      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "restored-continuation"],
+      "expected": [
+        "The funded branch displays 412,1765,1766,1768, takes 500 gold in party order, leaves character gold [0,0,20,0,70,170] and pooled gold 0, adds ally classic.monster.186, disables AP 98, and re-enters quietly after departure.",
+        "The zero-wealth branch displays 412,1765,1766,1767, takes no gold, leaves pooled gold 0 and adds no ally, retains AP 98, executes XAP 380's opcode 101 Back Up Party to (7,30), and repeats message 412 on the next ordinary step right.",
+        "This package has nine opcode-33 sites, all XAP mode 0. This route covers placed AP slot 4 and both payment outcomes; it does not prove Simple-result callers, XAP 303's caller, encounter-result destination modes, visible controls, or Castle runtime parity."
+      ],
+      "sourceEvidence": [
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:778-784 identifies opcode 101 as Back Up Party",
+        "Pinned Half Truth Data DD Land 6 AP 98 slot 4 uses Extra Code [500,0,0,380,0]; XAP 380 displays message 1767 before opcode 101"
+      ],
+      "result": "partial",
+      "disposition": "placed-opcode33-payment-branches-verified-other-callers-open",
+      "evidence": "tools/half_truth_opcode33_probe.gd",
+      "remaining": [
+        "Determine whether XAP 303 has a source-backed caller before replaying it. Land 6 AP 2 uses Extra Code row 303 for opcode-45 teleport, not an XAP call; Simple 17 is covered separately, while Simple 14 and Simple 2 remain caller candidates.",
+        "Replay the bond choice through visible controls and obtain Castle runtime comparison before claiming player-facing parity."
+      ]
+    },
+    {
+      "id": "half-truth-land4-vintage-payment-opcode33",
+      "workflowIds": ["classic.scenario.trigger-action-point"],
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad"
+      },
+      "package": {
+        "campaignId": "scenario-half-truth",
+        "auditArtifact": "scenario-audit-catalog-parity-full-r1/final-packages/scenario-half-truth/scenario-half-truth.realmz2",
+        "packageHash": "a38948d427a2aeaa49eb9cececd90dd553ed7c0ff35fa141e540aabdb8fa1488",
+        "archiveSha256": "b4f1694d69b64227240fa8f769b70c2f2dfae9dfab220df94921a1b663135d05"
+      },
+      "target": {
+        "actionPoint": "Data DD:4:73",
+        "coordinate": [17, 26],
+        "encounter": "simple:17",
+        "nativeActionOffsets": [0, 8, 16],
+        "resultPrograms": ["simple:17:result:0", "simple:17:result:1", "simple:17:result:2"],
+        "paymentAmounts": [7, 15, 24],
+        "failureProgram": "xap:62"
+      },
+      "preparation": "Pass the regenerated audit archive to tools/half_truth_opcode33_probe.gd with funded or empty, then simple and choice index 0, 1, or 2. The probe prepares the six Classic starters at seed 853, warps to (16,26), enters AP 73 by ordinary adjacent movement, restores the pending encounter choice, and tests the saved result and re-entry.",
+      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "restored-continuation"],
+      "expected": [
+        "The imported snapshot owns nine opcode-33 sites and the emitted package owns the same nine. Simple 17's native offsets 0,8,16 become result-program slot 0 without changing the indexed choice targets.",
+        "Each funded choice repeats its 7,15,or 24 gold debit four times under authored maxTimes 4, displays respectively 1779,1780,or 1781 four times, disables AP 73, and re-enters quietly. Final party gold is respectively [2,92,146,0,196,296], [0,87,137,0,188,288], or [0,78,128,0,178,280]; pooled gold stays 0 and no ally is added.",
+        "At zero starting wealth, choosing premium or oak-aged fails the first debit, transfers to XAP 62, displays message 194, backs the party to (16,26), keeps AP 73, and reopens Simple 17 on the next ordinary step. No party gold is removed."
+      ],
+      "sourceEvidence": [
+        "Pinned Half Truth Data DD Land 4 AP 73 slot 1 starts Simple Encounter 17; its result rows issue opcode 33 at native offsets 0,8,16 with XAP-62 failure targets",
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:778-784 identifies opcode 101 in XAP 62 as Back Up Party"
+      ],
+      "result": "partial",
+      "disposition": "simple-result-slot-offsets-and-payment-branches-verified-visible-controls-open",
+      "evidence": "tools/half_truth_opcode33_probe.gd",
+      "remaining": [
+        "Replay the encounter selection through visible controls and obtain Castle runtime comparison.",
+        "Inspect native and imported references for an actual XAP 303 caller; Land 6 AP 2's opcode 45 is teleport-only and its ID 303 names an Extra Code row. Retain Simple 14 as a caller-unknown candidate; Simple 2 is covered by the tavern recipe."
+      ]
+    },
+    {
+      "id": "half-truth-land1-tavern-payment-opcode33",
+      "workflowIds": ["classic.scenario.trigger-action-point"],
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad"
+      },
+      "package": {
+        "campaignId": "scenario-half-truth",
+        "auditArtifact": "scenario-audit-catalog-parity-full-r1/final-packages/scenario-half-truth/scenario-half-truth.realmz2",
+        "packageHash": "a38948d427a2aeaa49eb9cececd90dd553ed7c0ff35fa141e540aabdb8fa1488",
+        "archiveSha256": "b4f1694d69b64227240fa8f769b70c2f2dfae9dfab220df94921a1b663135d05"
+      },
+      "target": {
+        "actionPoint": "Data DD:1:6",
+        "coordinate": [10, 8],
+        "encounter": "simple:2",
+        "resultProgram": "simple:2:result:0",
+        "paymentExtraCode": [2, 0, 0, 62, 0],
+        "failureProgram": "xap:62"
+      },
+      "preparation": "Pass the regenerated Half Truth audit archive to tools/half_truth_opcode33_probe.gd with funded or empty, then tavern. With no ally 186, enter AP 6 from (9,8) by ordinary movement, restore the pending Simple 2 choice, order one round, use authored Back when funded, then restore the post-outcome save and re-enter.",
+      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "restored-continuation"],
+      "expected": [
+        "Castle opcode 87 sends an ally-186 party to XAP 447; absent that ally, AP 6 falls through to Simple 2. The first response uses opcode 33 to take 2 gold and transfers failure to XAP 62.",
+        "With original starter wealth, one paid choice displays message 122, leaves character gold [9,99,150,0,200,300] and pooled gold 0, and Back returns to (9,8) with AP 6 active. Restored re-entry presents Simple 2 again.",
+        "With zero wealth, one failed choice displays XAP 62 message 194, takes no gold, backs to (9,8), and keeps AP 6. Restored re-entry presents Simple 2 again. Both branches have RNG draw count 2 before re-entry."
+      ],
+      "sourceEvidence": [
+        "Pinned Half Truth Data DD Land 1 AP 6 slot 0 opcode 87 Extra Code [186,0,1,447,0], slot 1 Simple Encounter 2; Simple 2 result 0 opcode 33 Extra Code [2,0,0,62,0]",
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:1130-1197 branches on ally presence"
+      ],
+      "result": "partial",
+      "disposition": "simple2-first-payment-and-failure-verified-full-iteration-and-ui-open",
+      "evidence": "tools/half_truth_opcode33_probe.gd",
+      "remaining": [
+        "Exercise the ally-present XAP 447 branch and a full authored maxTimes-99 completion only if its reachability or state effect merits the replay cost.",
+        "Replay visible tavern controls and obtain Castle runtime comparison before player-facing parity."
+      ]
     }
   ],
   "siblingAndContinuationEvidence": [

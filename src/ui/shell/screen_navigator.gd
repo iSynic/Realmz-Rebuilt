@@ -18,6 +18,8 @@ signal vault_restore_requested(character_id: String, revision_hash: String)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
+signal combat_inventory_response_submitted(body: InteractionResponse.CombatBody)
+signal combat_inventory_item_use_requested(character_id: String, instance_id: String)
 
 const SCREEN_CONTENT_PRESENTER := preload("res://src/ui/shell/screen_content_presenter.gd")
 const WORKSPACE_OPEN_SOUND_IDS: Dictionary = {
@@ -85,6 +87,8 @@ func _init() -> void:
 	content_presenter.refresh_requested.connect(func() -> void: refresh_current_workspace())
 	content_presenter.back_requested.connect(func() -> void: handle_back())
 	content_presenter.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
+	content_presenter.combat_inventory_response_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: combat_inventory_response_submitted.emit(body))
+	content_presenter.combat_inventory_item_use_requested.connect(func(character_id: String, instance_id: String) -> void: combat_inventory_item_use_requested.emit(character_id, instance_id))
 
 
 func _ready() -> void:

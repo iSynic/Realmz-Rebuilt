@@ -1,0 +1,49 @@
+{
+  "responses": {
+    "open-a": {
+      "model": "jev-1.13.0",
+      "answers": {
+        "coverageScore": {
+          "type": "score",
+          "score": 2.2,
+          "legend": { "0": "already covered", "1": "variant", "2": "caller", "3": "family" },
+          "probabilities": { "0": 0.0, "1": 0.2, "2": 0.6, "3": 0.2 },
+          "confidence": 0.7
+        },
+        "evidenceChoice": {
+          "type": "choice",
+          "choice": "session-fixture",
+          "probabilities": {
+            "source-inspection": 0.1,
+            "session-fixture": 0.7,
+            "ordinary-movement": 0.1,
+            "visible-ui": 0.0,
+            "castle-trace": 0.05,
+            "insufficient-information": 0.05
+          },
+          "confidence": 0.7
+        }
+      },
+      "usage": { "input_tokens": 100, "output_tokens": 10 }
+    },
+    "control-b": {
+      "model": "jev-1.13.0",
+      "answers": {
+        "coverageScore": {
+          "type": "score",
+          "score": 0.5,
+          "legend": { "0": "already covered", "1": "variant" },
+          "probabilities": { "0": 0.5, "1": 0.5 },
+          "confidence": 0.5
+        },
+        "evidenceChoice": {
+          "type": "choice",
+          "choice": "source-inspection",
+          "probabilities": { "source-inspection": 1.0 },
+          "confidence": 1.0
+        }
+      },
+      "usage": { "input_tokens": 100, "output_tokens": 10 }
+    }
+  }
+}

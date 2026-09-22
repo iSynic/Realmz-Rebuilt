@@ -5,6 +5,7 @@ extends ClassicOpcodeHandler
 
 var _content: RealmzContent
 var _game_state: GameState
+var _classic_loaded_complex_encounter_id: int = -1
 
 
 func _init(content: RealmzContent, game_state: GameState) -> void:
@@ -39,9 +40,17 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 
 func _eliminate_complex_result(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var result_index := action.operand_id - 1
-	if context.encounter_kind != &"complex" or context.encounter_id < 0 or not _game_state.scenario_progress.encounters.eliminate_complex_result(context.encounter_id, result_index):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 requires result 1 through 4 in a Complex Encounter context.")
-	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"complex_encounter_result_eliminated", {"encounterId": context.encounter_id, "resultIndex": result_index, "source": "classic"})])
+	if result_index < 0 or result_index > 3:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 requires result 1 through 4 in an Encounter result.")
+	if context != null and context.encounter_kind == &"complex" and context.encounter_id >= 0:
+		if not _game_state.scenario_progress.encounters.eliminate_complex_result(context.encounter_id, result_index):
+			return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 could not mutate the active Complex Encounter result.")
+		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"complex_encounter_result_eliminated", {"encounterId": context.encounter_id, "resultIndex": result_index, "source": "classic"})])
+	if context != null and context.encounter_kind == &"simple":
+		var loaded_id := _classic_loaded_complex_encounter_id
+		var mutated_loaded_record := loaded_id >= 0 and _game_state.scenario_progress.encounters.eliminate_complex_result(loaded_id, result_index)
+		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_global_complex_result_mutation", {"encounterId": loaded_id, "resultIndex": result_index, "loadedComplexEncounter": loaded_id >= 0, "mutatedLoadedRecord": mutated_loaded_record, "source": "classic-opcode-44"})])
+	return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 requires an active Encounter result.")
 
 
 func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext, reopen_result: bool = false) -> ScenarioRuntimeOperationResult:
@@ -88,6 +97,7 @@ func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: Stri
 	var encounter := _content.scenario_records.complex_encounter_by_id(encounter_id)
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Complex Encounter %d." % encounter_id)
+	_classic_loaded_complex_encounter_id = encounter.id
 	var request := complex_encounter_request(encounter, request_id)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter %d has no available responses." % encounter.id)
@@ -186,6 +196,7 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 54 requires a five-value Extra Code row.")
 	var encounter_id := action.extra_code[0]
+	var definition := _content.scenario_records.timed_encounter_by_id(encounter_id)
 	var current := _game_state.scenario_progress.encounters.timed_override(encounter_id)
 	if action.extra_code[1] > -1:
 		current["percent"] = action.extra_code[1]
@@ -194,7 +205,7 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 	if action.extra_code[3] != 0:
 		current["day"] = _game_state.clock.day()
 	if action.extra_code[4] > -1:
-		current["day"] = int(current.get("day", 0)) + action.extra_code[4]
+		current["day"] = int(current.get("day", definition.day if definition != null else 0)) + action.extra_code[4]
 	_game_state.scenario_progress.encounters.set_timed_override(encounter_id, current)
 	return ScenarioRuntimeOperationResult.completed(current, [DomainEvent.new(&"timed_encounter_changed", {"encounterId": encounter_id, "state": current})])
 

@@ -75,6 +75,8 @@ func invoke(params: Dictionary) -> Dictionary:
 	var target: Dictionary = params["target"]
 	if target.get("kind") == "thief-encounter":
 		return _invoke_thief(target)
+	if target.get("kind") == "battle-victory":
+		return _invoke_battle_victory(target)
 	var command := _direct_command(target)
 	if command == null:
 		return _observer.rejected("unsupported_target", "The exact direct target is unsupported or invalid.")
@@ -152,6 +154,19 @@ func _direct_command(target: Dictionary) -> SessionDebugCommand:
 		"treasure": return SessionDebugCommand.start_treasure(native_id)
 		"shop": return SessionDebugCommand.start_shop(native_id)
 	return null
+
+
+func _invoke_battle_victory(target: Dictionary) -> Dictionary:
+	if not RuntimeTestingFixtureRequest.exact_fields(target, ["kind", "id"]) or not RuntimeTestingFixtureRequest.integer(target["id"], 0, 32767):
+		return _observer.rejected("invalid_target", "Battle victory requires its expected Classic Battle ID.")
+	var view := _session.view()
+	var combat := view.combat_view
+	if combat == null or combat.outcome != &"active":
+		return _observer.rejected("battle_victory_unavailable", "Battle victory requires an active combat fixture.")
+	var battle := (_content.call() as RealmzContent).combat.battle_by_classic_id(int(target["id"]))
+	if battle == null or combat.battle_id != battle.id:
+		return _observer.rejected("battle_victory_wrong_battle", "The active battle does not match the requested Classic Battle ID.")
+	return step_result(_session.apply_debug_command(SessionDebugCommand.win_battle()), "fixture-forced-victory")
 
 
 func _invoke_thief(target: Dictionary) -> Dictionary:

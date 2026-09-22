@@ -114,7 +114,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_context.current_revision(), &"interaction_pending", "Respond to the pending interaction first.")
 	if not _context.state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS]:
 		return SessionStep.failed(_context.current_revision(), &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
-	if _context.state.combat != null and not _context.state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE]:
+	if _context.state.combat != null and not _context.state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE, PlayerIntent.Kind.EQUIP_ITEM, PlayerIntent.Kind.UNEQUIP_ITEM, PlayerIntent.Kind.SPLIT_ITEM, PlayerIntent.Kind.JOIN_ITEM, PlayerIntent.Kind.DROP_ITEM]:
 		return SessionStep.failed(_context.current_revision(), &"battle_in_progress", "Resolve the active battle before returning to exploration.")
 	_ensure_coordinators()
 	return _commit_coordinator_result(_intent_coordinator.submit(intent))
@@ -140,6 +140,10 @@ func respond(response: InteractionResponse) -> SessionStep:
 		return SessionStep.failed(_context.current_revision(), &"interaction_mismatch", "The response does not match the pending request.")
 	if not response.is_supported_kind():
 		return SessionStep.failed(_context.current_revision(), &"invalid_interaction_response", "The response payload does not match its interaction kind.")
+	var combat_body := response.body as InteractionResponse.CombatBody
+	if pending.kind == InteractionRequest.COMBAT and combat_body != null and SessionIntentCoordinator.is_inventory_combat_action(combat_body.action):
+		_ensure_coordinators()
+		return _commit_coordinator_result(_intent_coordinator.submit_combat_inventory_response(combat_body))
 	if _context.session_interaction != null:
 		var session_result := _respond_session_interaction(response)
 		if _debug_operation_active and _context.session_interaction == null:

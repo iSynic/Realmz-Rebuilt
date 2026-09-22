@@ -7,6 +7,10 @@
     {
       "file": "Data ED3",
       "sha256": "d519b69ee4dee10b4a44f14a25e57076cc1c7d7e5f172de76c9575a320ca7892"
+    },
+    {
+      "file": "Data TD3",
+      "sha256": "a5178ee952195fedd45404a6acf261783f5610afaf0120d3481085d2950dfba0"
     }
   ],
   "packageBefore": {
@@ -41,11 +45,98 @@
         ]
       },
       "evidence": "Castle Data ED3 record 97 is the unpaid-gold branch from XAP 90. It displays message -248 and ends with Keep Codes (opcode 24), so the Action Point remains available when the party cannot pay. The compiled package omitted this authored XAP, causing a runtime unknown_scenario_program failure before the Keep Codes result could run."
+    },
+    {
+      "id": "prelude-reschedulable-timed-row-zero",
+      "source": "Data TD3 record 0 and Data ED3 record 303",
+      "method": "compiler-reachability-and-catalog-preservation",
+      "params": {
+        "timedEncounterId": 0,
+        "programId": "xap:303",
+        "schedulingActionPoint": "Data DD:4:10",
+        "schedulingExtraCode": [0, 100, 0, 1, 2]
+      },
+      "evidence": "Castle copies Data TD3 into mutable timed state, opcode 54 reschedules row 0, and the midnight scan starts at row 0. The prior package omitted the source-owned row and XAP 303; the pinned-source regeneration restores both."
     }
   ],
+  "compilerRegeneration": {
+    "operation": "regenerate-from-pinned-source",
+    "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+    "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
+    "sourcePackage": {
+      "packageHash": "994c9b652604a30c2e36bbcab4102af51a279ce3bfce3cf9d1e3e38bb842cbe5",
+      "contentId": "d2f161995d8afb7d6b8bbcd07ccee85645121e8680dc59c7ad34ac3b61fa19f6",
+      "archiveSha256": "2bbfe84b06ebce409146aa2fb01ff88f9e8aec6035750675dae9e6119b19aba9",
+      "bytes": 946440
+    },
+    "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+    "compilerBinaries": {
+      "providenceCliSha256": "e4cf48e0c9dc4e256a1cd30ac7442df83c216ef8b05075e083028615819f9e10",
+      "providenceNativeAdapterSha256": "01fac7fd0a4c10990c500f7eb957d01e937a0b9b0eac01f3a25c37ee0f0d21c3",
+      "providenceApplicationLibrarySha256": "39df0f2e0793b3052208d4237114ee6c0fbd227739efd7afcda4e080b12eac4d"
+    },
+    "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+    "applicationPackageArchiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+    "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5",
+    "supersededPackageAfter": {
+      "packageHash": "85f4e9b8eaa4732d8542f0c35873aa2303adcae624ebd041c7e9eccc9c82b197",
+      "archiveSha256": "84d2b22de37b9406ce2b0f3a414e8f671494d0ed4ec6ba43052477e1e161c8e4",
+      "bytes": 701681
+    },
+    "previousGeneratedPackage": {
+      "packageHash": "c196cc0adf7f37a08621dbe8d15bb8e6fdfab2ecb8ae067be17d0dbb15b7ed4d",
+      "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
+      "archiveSha256": "2d4c730058dfa0a9835bed41765e818dc972b9cf190d9274473f75f38efbb290",
+      "bytes": 883939
+    },
+    "generatedPackage": {
+      "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+      "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
+      "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
+      "bytes": 883939
+    },
+    "preservedAuthoredPrograms": ["xap:97", "xap:149", "simple:7:result:3"],
+    "preservedAuthoredInstruction": {
+      "programId": "simple:7:result:3",
+      "slot": 1,
+      "opcode": 44,
+      "operandId": 4,
+      "extraCode": [4, 0, 0, 0, 5]
+    },
+    "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 is the authored Riter route target; Land 3 AP 5 independently has an opcode-2 range that can select Battle 103."
+  },
+  "currentCompilerRegeneration": {
+    "operation": "regenerate-from-pinned-source",
+    "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+    "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
+    "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
+    "compilerBinaries": {
+      "providenceCliSha256": "50d33784921a7ccfd79c89ba1d75a08d4c11c6fd4b00ba9dedfe3cb6ee00800f",
+      "providenceNativeAdapterSha256": "465f6b77e077c721872b9745ec82e35a4644ee3b11c0fd3e8f1074e01af4c665",
+      "providenceApplicationLibrarySha256": "dc6312915aeaa87a9e5c59c03cf44f79b0987b47cbb76986042e47e5d023e8e9"
+    },
+    "previousPackage": {
+      "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+      "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+      "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
+      "bytes": 883939
+    },
+    "generatedPackage": {
+      "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+      "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+      "bytes": 917225
+    },
+    "preservedAuthoredPrograms": ["xap:97", "xap:149", "simple:7:result:3", "xap:303"],
+    "explanation": "This later pinned-source regeneration restores executable timed row 0 and XAP 303 plus source-owned catalog records and text. The prior compiler-regeneration record remains above under its original identity."
+  },
+  "previousPackageAfter": {
+    "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+    "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
+    "bytes": 883939
+  },
   "packageAfter": {
-    "packageHash": "85f4e9b8eaa4732d8542f0c35873aa2303adcae624ebd041c7e9eccc9c82b197",
-    "archiveSha256": "84d2b22de37b9406ce2b0f3a414e8f671494d0ed4ec6ba43052477e1e161c8e4",
-    "bytes": 701681
+    "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+    "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+    "bytes": 917225
   }
 }

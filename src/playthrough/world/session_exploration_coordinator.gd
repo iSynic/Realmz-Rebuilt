@@ -549,8 +549,9 @@ func start_random_battle(region: RandomEncounterRegion, surprise: int, events: A
 		_context.session_interaction = null
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"unknown_random_battle", "Random rectangle '%s' selected unavailable battle %d." % [region.id, battle_id], events)
-	events.append(DomainEvent.new(&"random_encounter_triggered", {"regionId": region.id, "battleId": battle.id, "classicId": battle_id, "textId": region.text_id, "soundId": region.sound_id, "surprise": surprise}))
-	var battle_result := _context.rules.combat_flow.start_battle(_context.state, _context.content, battle, _context.rng, surprise)
+	var effective_surprise := -1 if battle_id < 0 else surprise
+	events.append(DomainEvent.new(&"random_encounter_triggered", {"regionId": region.id, "battleId": battle.id, "classicId": battle_id, "textId": region.text_id, "soundId": region.sound_id, "surprise": effective_surprise}))
+	var battle_result := _context.rules.combat_flow.start_battle(_context.state, _context.content, battle, _context.rng, effective_surprise)
 	if not battle_result.ok:
 		_context.session_interaction = null
 		_context.session_continuation.clear()

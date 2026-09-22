@@ -14,6 +14,8 @@ signal route_requested(screen_id: StringName)
 signal refresh_requested
 signal back_requested
 signal sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
+signal combat_inventory_response_submitted(body: InteractionResponse.CombatBody)
+signal combat_inventory_item_use_requested(character_id: String, instance_id: String)
 
 const MUTED := Color("9aa0a8")
 const SWAP_OPEN_SOUND_ID: int = 3003
@@ -146,6 +148,16 @@ func _bind_inventory_controller(owner_ref: WeakRef) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
 			owner.back_requested.emit()
+	)
+	_inventory_controller.combat_response_submitted.connect(func(body: InteractionResponse.CombatBody) -> void:
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
+		if owner != null:
+			owner.combat_inventory_response_submitted.emit(body)
+	)
+	_inventory_controller.combat_item_use_requested.connect(func(character_id: String, instance_id: String) -> void:
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
+		if owner != null:
+			owner.combat_inventory_item_use_requested.emit(character_id, instance_id)
 	)
 
 

@@ -26,6 +26,7 @@ var _dungeon_3d_enabled: bool = true
 var drawn_revision: int = -1
 var _draw_ack_generation: int = 0
 var _pending_route: StringName = &""
+var _combat_inventory_targeting_return := false
 var runtime_observation: Dictionary:
 	get:
 		var frame := _combat_playback.current_frame() if is_combat_playback_active() else null
@@ -83,6 +84,10 @@ func bind(
 	)
 	_shell_presenter.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: _interaction_presenter.combat.cast_spell(option))
 	_shell_presenter.combat_spellbook_back_requested.connect(func() -> void: _interaction_presenter.combat.close_spellbook())
+	_interaction_presenter.combat.items_requested.connect(_on_combat_items_requested)
+	_interaction_presenter.combat.inventory_targeting_started.connect(func() -> void: _combat_inventory_targeting_return = true)
+	_shell_presenter.combat_inventory_item_use_requested.connect(_on_combat_inventory_item_use_requested)
+	_battlefield_presenter.interaction.targeting_cancelled.connect(_on_combat_targeting_cancelled)
 	_media_controller.set_package_media(null)
 	_present_current_view()
 	set_process(false)
@@ -174,12 +179,21 @@ func set_active_route(route_id: StringName) -> void:
 	if is_combat_playback_active():
 		_pending_route = route_id
 		return
+	var previous_route := _active_route
 	_active_route = route_id
 	# The router has already mounted and rendered the destination workspace when
 	# it emits the route change. Re-presenting the complete view here caused a
 	# nested second projection/presentation pass, most visibly on combat entry.
 	if _session_controller != null:
-		_update_spatial_visibility(_session_controller.view())
+		var current_view := _session_controller.view()
+		if route_id == &"inventory" and current_view != null and current_view.combat_view != null and current_view.combat_view.outcome == &"active":
+			# The full Inventory workspace owns the window while combat is paused
+			# for inspection. Hide the sibling combat interaction surface so its
+			# command shelf cannot cover the workspace or receive input behind it.
+			_interaction_presenter.present(null)
+		elif previous_route == &"inventory" and route_id != &"inventory":
+			_present_interaction(current_view)
+		_update_spatial_visibility(current_view)
 		refresh_music()
 
 
@@ -187,6 +201,41 @@ func refresh_music() -> void:
 	if _media_controller == null:
 		return
 	_media_controller.present_music_context(_active_route, _presented_view)
+
+
+func _on_combat_items_requested() -> void:
+	var view := _session_controller.view()
+	if view == null or view.combat_view == null or view.combat_view.outcome != &"active":
+		return
+	# Clear the sibling battle command surface before mounting Inventory so its
+	# controls cannot remain over the workspace during the route transition.
+	_interaction_presenter.present(null)
+	_shell_presenter.navigator.open_screen(&"inventory", false)
+
+
+func _on_combat_inventory_item_use_requested(character_id: String, instance_id: String) -> void:
+	var current_view := _session_controller.view()
+	var selected_character: CharacterView = null
+	if current_view != null:
+		for member: CharacterView in current_view.party_members:
+			if member.id == character_id:
+				selected_character = member
+				break
+	var selected_item: ItemView = InventoryViewQueries.item_by_id(selected_character, instance_id) if selected_character != null else null
+	if _shell_presenter.navigator.current_screen() == &"inventory":
+		if not _shell_presenter.navigator.handle_back():
+			_shell_presenter.navigator.open_screen(&"combat", false)
+	var opened := _interaction_presenter.combat.open_item_from_inventory(instance_id, selected_item != null and absi(selected_item.item_type) == 13)
+	if not opened:
+		_shell_presenter.navigator.open_screen(&"inventory", false)
+		_shell_presenter.status.set_status("That item is no longer available for combat use.", true)
+
+
+func _on_combat_targeting_cancelled() -> void:
+	if not _combat_inventory_targeting_return:
+		return
+	_combat_inventory_targeting_return = false
+	_shell_presenter.navigator.open_screen(&"inventory", false)
 
 
 func _set_play_stage_visible(visible: bool) -> void:
@@ -359,9 +408,13 @@ static func should_show_battle_stage(active_route: StringName, game_view: GameVi
 
 
 func _present_interaction(game_view: GameView) -> void:
+	if GameShellRoutePolicy.combat_inventory_owns_interaction(_active_route, game_view):
+		# Inventory owns the application surface while a battle is paused for
+		# browsing. Session updates still re-present the detached view, but must
+		# not remount the sibling BattleInteraction over that workspace.
+		_interaction_presenter.present(null)
+		return
 	_present_request(game_view.active_interaction_request(), game_view, game_view.pending_interaction)
-
-
 func _present_request(request: InteractionRequest, game_view: GameView, character_selection_request: InteractionRequest) -> void:
 	var enables_spatial_cursor := request == null
 	if not enables_spatial_cursor:

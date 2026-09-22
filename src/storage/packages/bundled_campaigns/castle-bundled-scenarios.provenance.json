@@ -472,29 +472,32 @@
       "name": "Prelude to Pestilence",
       "campaignId": "scenario-prelude-to-pestilence",
       "file": "scenario-prelude-to-pestilence.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "85f4e9b8eaa4732d8542f0c35873aa2303adcae624ebd041c7e9eccc9c82b197",
-      "contentId": "b1548dd5c2dbdd2f021edf1c1b3bb7e8481cd9395c9ec1e9343b8cea018789e6",
-      "archiveSha256": "84d2b22de37b9406ce2b0f3a414e8f671494d0ed4ec6ba43052477e1e161c8e4",
-      "bytes": 701681,
+      "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
+      "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+      "contentId": "1539bc1df94967ddd641e8e497b15f008ac891230abf0be02461a1134d4cadf1",
+      "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+      "bytes": 917225,
       "sourceArchive": {
-        "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
-        "archiveSha256": "9d3f680f6faabed08504bd0585037e18f482fcfd6f767306cd10aa178534956c",
-        "bytes": 4477416
+        "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+        "archiveSha256": "2bbfe84b06ebce409146aa2fb01ff88f9e8aec6035750675dae9e6119b19aba9",
+        "bytes": 946440,
+        "packageHash": "994c9b652604a30c2e36bbcab4102af51a279ce3bfce3cf9d1e3e38bb842cbe5",
+        "contentId": "d2f161995d8afb7d6b8bbcd07ccee85645121e8680dc59c7ad34ac3b61fa19f6",
+        "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2"
       },
       "classicScenarioResourcesSha256": "489eaa2b9c61db86616f26215b112596adb659c676ef540ef3564795dda778de",
-      "rewrittenAssetReferences": 40534,
+      "rewrittenAssetReferences": 0,
       "removedApplicationContent": {
-        "items": 0,
-        "spells": 0,
+        "items": 799,
+        "spells": 419,
         "races": 30,
         "castes": 30,
-        "mediaDescriptors": 455,
-        "mediaPayloads": 450
+        "mediaDescriptors": 0,
+        "mediaPayloads": 0
       },
       "retainedScenarioContent": {
         "items": 200,
-        "spells": 0,
+        "spells": 1,
         "races": 0,
         "castes": 0,
         "mediaDescriptors": 40,
@@ -515,7 +518,7 @@
       },
       "scenarioMediaMigration": {
         "operation": "refresh-scenario-media",
-        "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+        "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
         "sourceCompilerRevision": "dc2f9e48442a59385c68122a04f63c97418d8b5b",
         "sourcePackageHash": "14d5f5b25fc20f8bb280b5eebf30f3185d49a99b666b64fce593b95ca3cd107d",
         "sourceArchiveSha256": "18eb0926832dcb4419bcef1eb2c26f2a0a6531e4968e44c7ff87a4b1afbdade3",
@@ -529,6 +532,96 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "compilerRegeneration": {
+        "operation": "regenerate-from-pinned-source",
+        "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+        "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
+        "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+        "compilerBinaries": {
+          "providenceCliSha256": "e4cf48e0c9dc4e256a1cd30ac7442df83c216ef8b05075e083028615819f9e10",
+          "providenceNativeAdapterSha256": "01fac7fd0a4c10990c500f7eb957d01e937a0b9b0eac01f3a25c37ee0f0d21c3",
+          "providenceApplicationLibrarySha256": "39df0f2e0793b3052208d4237114ee6c0fbd227739efd7afcda4e080b12eac4d"
+        },
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationPackageArchiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5",
+        "previousPackage": {
+          "packageHash": "85f4e9b8eaa4732d8542f0c35873aa2303adcae624ebd041c7e9eccc9c82b197",
+          "archiveSha256": "84d2b22de37b9406ce2b0f3a414e8f671494d0ed4ec6ba43052477e1e161c8e4",
+          "bytes": 701681
+        },
+        "previousGeneratedPackage": {
+          "packageHash": "c196cc0adf7f37a08621dbe8d15bb8e6fdfab2ecb8ae067be17d0dbb15b7ed4d",
+          "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
+          "archiveSha256": "2d4c730058dfa0a9835bed41765e818dc972b9cf190d9274473f75f38efbb290",
+          "bytes": 883939
+        },
+        "generatedPackage": {
+          "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+          "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
+          "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
+          "bytes": 883939
+        },
+        "preservedAuthoredPrograms": [
+          "xap:97",
+          "xap:149",
+          "simple:7:result:3"
+        ],
+        "preservedAuthoredInstruction": {
+          "programId": "simple:7:result:3",
+          "slot": 1,
+          "opcode": 44,
+          "operandId": 4,
+          "extraCode": [4, 0, 0, 0, 5]
+        },
+        "packageCountDelta": {
+          "battles": [103, 102],
+          "items": [200, 198],
+          "spells": [0, 1],
+          "monsters": [157, 87],
+          "thiefEncounters": [13, 9],
+          "programs": [690, 687]
+        },
+        "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 is the authored Riter route target; Land 3 AP 5 independently has an opcode-2 range that can select Battle 103."
+      },
+      "currentCompilerRegeneration": {
+        "operation": "regenerate-from-pinned-source",
+        "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+        "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
+        "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
+        "compilerBinaries": {
+          "providenceCliSha256": "50d33784921a7ccfd79c89ba1d75a08d4c11c6fd4b00ba9dedfe3cb6ee00800f",
+          "providenceNativeAdapterSha256": "465f6b77e077c721872b9745ec82e35a4644ee3b11c0fd3e8f1074e01af4c665",
+          "providenceApplicationLibrarySha256": "dc6312915aeaa87a9e5c59c03cf44f79b0987b47cbb76986042e47e5d023e8e9"
+        },
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationPackageArchiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5",
+        "previousPackage": {
+          "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+          "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+          "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
+          "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
+          "bytes": 883939
+        },
+        "generatedPackage": {
+          "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+          "contentId": "1539bc1df94967ddd641e8e497b15f008ac891230abf0be02461a1134d4cadf1",
+          "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+          "bytes": 917225
+        },
+        "sourceOwnedAdditions": {
+          "items": 2,
+          "monsterDescriptions": 213,
+          "monsters": 84,
+          "monsterSets": 2,
+          "thiefEncounters": 4,
+          "timedEncounters": 1,
+          "programs": 1
+        },
+        "sourceCorrectedSharedItemTexts": 21,
+        "explanation": "The pinned native Prelude source retains timed encounter row 0 and its XAP 303 destination. Land 4 AP 10 reschedules row 0; Castle scans it at midnight. The previous package omitted both. The regenerated archive preserves the existing programs, world cells, and media and restores the source-owned catalogs and item text."
       },
       "correctionsCatalog": "prelude-to-pestilence.corrections.json"
     },
@@ -776,15 +869,17 @@
       "name": "Wrath of the Mind Lords",
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "file": "scenario-wrath-of-the-mind-lords.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "18a361a06e8b8e9c93d46107d15a80225cc0ca3085594aa44effd71313d1f63a",
-      "contentId": "e4c2202330d8df1db224c00a7dbe53fba7aa9314193e0e7d63a32a1c8790e0e0",
-      "archiveSha256": "4b6eef1630f94d995881125b42a9f9507e3f826f35daf7aeb93dce80baac9b67",
-      "bytes": 10948404,
+      "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+      "packageHash": "b2019c2b6cec90ff2c0dfd780828e3ed303b1f34db7f2e3ba369363509a22bd4",
+      "contentId": "909d2c857a7b1984a76769409ad81f624d3fc3cff7191c40797de07f193f55f5",
+      "archiveSha256": "ff198638b6c8b6a474d4c1be9b62067a02d7b05149d8cf785712e854554da5c7",
+      "bytes": 16327919,
       "sourceArchive": {
-        "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
-        "archiveSha256": "4f78f01c0088603be1c4083698968761107e0c801a010bbe56b4290f28671897",
-        "bytes": 13355961
+        "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+        "archiveSha256": "9366031c11818d7e80814fe922ea4b8bed867b56915cc34d9e47f851efaa71a9",
+        "bytes": 16390070,
+        "packageHash": "430f5d40c691b29e1488c9803c133e2ffea9f2763b0a33e3a66034699fb5446d",
+        "contentId": "944ef8b231a66bd865cd9a40d52b36b1fb7b141277ec3d7bccc0b24f83e2e572"
       },
       "classicScenarioResourcesSha256": "2d674f9244d2aeb19ee1ac4c83c55cb54be122d1b978d38bae206beec9fde595",
       "rewrittenAssetReferences": 81103,
@@ -797,13 +892,14 @@
         "mediaPayloads": 505
       },
       "retainedScenarioContent": {
-        "items": 200,
-        "spells": 105,
+        "items": 197,
+        "spells": 106,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 589,
-        "mediaPayloads": 580
+        "mediaDescriptors": 583,
+        "mediaPayloads": 575
       },
+      "correctionsCatalog": "wrath-of-the-mind-lords.corrections.json",
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
         "compilerRevision": "b355a0fa28dce5aec8c214ab9cc3ceda8f45f354",
@@ -819,11 +915,11 @@
       },
       "scenarioMediaMigration": {
         "operation": "refresh-scenario-media",
-        "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+        "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
         "sourceCompilerRevision": "dc2f9e48442a59385c68122a04f63c97418d8b5b",
-        "sourcePackageHash": "edece81f91306f50f4219ea946c71b3a90299cf54326d98fa9ee3230644cf44d",
-        "sourceArchiveSha256": "3478107367bc0d5bddde5be9c2730a2e65b01e43b36e2c0fcc99986903fe75fb",
-        "sourceArchiveBytes": 9804237,
+        "sourcePackageHash": "430f5d40c691b29e1488c9803c133e2ffea9f2763b0a33e3a66034699fb5446d",
+        "sourceArchiveSha256": "9366031c11818d7e80814fe922ea4b8bed867b56915cc34d9e47f851efaa71a9",
+        "sourceArchiveBytes": 16390070,
         "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
         "applicationMediaCatalogSha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11",
         "classicScenarioResourcesSha256": "2d674f9244d2aeb19ee1ac4c83c55cb54be122d1b978d38bae206beec9fde595",
@@ -833,6 +929,48 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "compilerRegeneration": {
+        "operation": "regenerate-from-pinned-source",
+        "sourceTreeSha256": "2f534111ee7e9274eaec7ab7160b7d754dce643e0a374a6cf45a79db9317556d",
+        "classicScenarioResourcesSha256": "2d674f9244d2aeb19ee1ac4c83c55cb54be122d1b978d38bae206beec9fde595",
+        "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+        "compilerBinaries": {
+          "providenceCliSha256": "e4cf48e0c9dc4e256a1cd30ac7442df83c216ef8b05075e083028615819f9e10",
+          "providenceNativeAdapterSha256": "01fac7fd0a4c10990c500f7eb957d01e937a0b9b0eac01f3a25c37ee0f0d21c3",
+          "providenceApplicationLibrarySha256": "39df0f2e0793b3052208d4237114ee6c0fbd227739efd7afcda4e080b12eac4d"
+        },
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationPackageArchiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5",
+        "previousProvidencePackage": {
+          "compilerRevision": "a1227667af18dcee2cb0f14e6361c66b6b3b68ec",
+          "packageHash": "383d0b43528a419ff74cd7a1b76302efabd38be944d2af718bb692d38a07f6de",
+          "contentId": "5359716131efa948a7fa1ac074c7f660cda65c9a3ae7bf3afd4d4fdf12d26f65",
+          "archiveSha256": "6b466847e8b0c54509f76cc5c06936e9065094cbd4890e0fbd46c87b017cbf73",
+          "bytes": 16390051
+        },
+        "generatedPackage": {
+          "packageHash": "b2019c2b6cec90ff2c0dfd780828e3ed303b1f34db7f2e3ba369363509a22bd4",
+          "contentId": "909d2c857a7b1984a76769409ad81f624d3fc3cff7191c40797de07f193f55f5",
+          "archiveSha256": "ff198638b6c8b6a474d4c1be9b62067a02d7b05149d8cf785712e854554da5c7",
+          "bytes": 16327919
+        },
+        "changedPlayerMapRecords": 4,
+        "changedPlayerMapMarkerReferences": 13,
+        "changedMarkerIdentities": [
+          {"classicIconId": 257, "from": "realmz-application-cicn-257", "to": "realmz-portrait-257"},
+          {"classicIconId": 336, "from": "realmz-application-cicn-336", "to": "realmz-portrait-336"},
+          {"classicIconId": 269, "from": "realmz-application-cicn-269", "to": "realmz-portrait-269"},
+          {"classicIconId": 374, "from": "realmz-application-cicn-374", "to": "realmz-portrait-374"},
+          {"classicIconId": 325, "from": "realmz-application-cicn-325", "to": "realmz-portrait-325"},
+          {"classicIconId": 262, "from": "realmz-application-cicn-262", "to": "realmz-portrait-262"},
+          {"classicIconId": -15, "from": "realmz-application-cicn--15", "to": "realmz-special-land-neg-15"},
+          {"classicIconId": -99, "from": "realmz-application-cicn--99", "to": "realmz-special-land-neg-99"},
+          {"classicIconId": -17, "from": "realmz-application-cicn--17", "to": "realmz-special-land-neg-17"},
+          {"classicIconId": -18, "from": "realmz-application-cicn--18", "to": "realmz-special-land-neg-18"}
+        ],
+        "documentComparison": "The regenerated content.json, scenario.json, and assets/index.json match the prior Providence export at a122766. world.json matches except for the four player-map records and thirteen marker identities above. The shipped archive was an older 9c1f6f33 postprocessed export; its broader record-count differences are historical package drift, not changes introduced by the marker correction."
       }
     }
   ]

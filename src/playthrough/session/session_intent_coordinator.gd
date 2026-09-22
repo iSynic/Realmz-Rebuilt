@@ -10,6 +10,52 @@ func _init(context: SessionContext) -> void:
 	_context = context
 
 
+static func is_inventory_combat_action(action: StringName) -> bool:
+	return action in [&"equip_item", &"unequip_item", &"drop_item", &"split_item", &"join_item", &"identify_item", &"trade_item", &"use_scenario_item"]
+
+
+func submit_combat_inventory_response(body: InteractionResponse.CombatBody) -> SessionCoordinatorResult:
+	if body == null or not is_inventory_combat_action(body.action):
+		return SessionCoordinatorResult.rejected(&"invalid_inventory_combat_action", "The battle inventory operation is unavailable.")
+	if not _active_combat():
+		return SessionCoordinatorResult.rejected(&"battle_not_active", "The battle inventory operation requires an active battle.")
+	var workflow: SessionWorkflowResult
+	match body.action:
+		&"use_scenario_item":
+			var character := _context.state.party.character_by_id(body.actor_id)
+			var instance := _context.item_instance(character, body.item_instance_id)
+			var definition: ItemDefinition = null if instance == null else _context.content.items.item_by_id(instance.definition_id)
+			if character == null or instance == null or definition == null or not FieldItemWorkflow.is_classic_door_item(definition):
+				return SessionCoordinatorResult.rejected(&"unknown_item_instance", "The selected character does not carry that scenario item.")
+			return _context.scenario().start_item_xap(character, instance, definition)
+		&"equip_item":
+			workflow = InventoryWorkflow.equip_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.item_instance_id, body.actor_id, 1))
+		&"unequip_item":
+			workflow = InventoryWorkflow.unequip_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.item_instance_id, body.actor_id, 1))
+		&"drop_item":
+			workflow = InventoryWorkflow.drop_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.item_instance_id, body.actor_id, 1))
+		&"split_item":
+			workflow = InventoryWorkflow.split_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.item_instance_id, body.actor_id, 1))
+		&"join_item":
+			workflow = InventoryWorkflow.join_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.item_instance_id, body.actor_id, 1))
+		&"trade_item":
+			return SessionCoordinatorResult.rejected(&"item_trade_unavailable", "Trade is unavailable during battle.")
+		&"identify_item":
+			var identify := SpellIntentPayload.new(&"identify-inventory", body.spell_id, body.actor_id, body.target_id)
+			workflow = FieldItemWorkflow.identify_inventory(_context.workflow_context(), identify)
+	if workflow == null:
+		return SessionCoordinatorResult.rejected(&"invalid_workflow_result", "The battle inventory operation returned no result.")
+	if not workflow.ok:
+		return SessionCoordinatorResult.rejected(workflow.error_code, workflow.error_message)
+	var pending := _pending_interaction()
+	if pending != null and pending.kind == InteractionRequest.COMBAT:
+		var refreshed := _context.runtime_api.active_combat_request(pending.request_id)
+		if refreshed == null:
+			return SessionCoordinatorResult.rejected(&"invalid_battle_request", "The active battle request could not be rebuilt after the inventory change.")
+		return SessionCoordinatorResult.waiting(refreshed, workflow.events)
+	return SessionCoordinatorResult.completed(workflow.events)
+
+
 func submit(intent: PlayerIntent) -> SessionCoordinatorResult:
 	var result := _submit_exploration_intent(intent)
 	if result != null:

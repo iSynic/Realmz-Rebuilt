@@ -335,12 +335,12 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 	var content := context.content
 	var rules := context.rules
 	var context_reason := ""
-	if result.pending_interaction != null:
+	var battle_active := result.combat_view != null and result.combat_view.outcome == &"active"
+	var active_actor_id := result.combat_view.active_actor_id if battle_active else ""
+	if result.pending_interaction != null and not (battle_active and result.pending_interaction.kind == InteractionRequest.COMBAT):
 		context_reason = "Resolve the current interaction first."
 	elif result.party_setup_available:
 		context_reason = "Begin the adventure before changing carried equipment."
-	elif result.combat_view != null and result.combat_view.outcome == &"active":
-		context_reason = "Use the battle action flow during combat."
 	var party := state.party.characters()
 	var definitions := content.items.definitions()
 	for member_view: CharacterView in result.party_members:
@@ -350,6 +350,11 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 		var race := content.characters.race_by_id(character.race_id)
 		var caste := content.characters.caste_by_id(character.caste_id)
 		var identify_cast := _inventory_identify_cast(context, character)
+		var combat_item_options: Array[CombatItemOptionView] = []
+		var combat_scroll_options: Array[CombatSpellOptionView] = []
+		if battle_active and character.id == active_actor_id:
+			combat_item_options = context.rules.combat_flow.magic.character_item_spell_options(state, content, active_actor_id)
+			combat_scroll_options = context.rules.combat_flow.magic.selection().character_scroll_options(state, content, active_actor_id)
 		for item_view: ItemView in member_view.items:
 			var instance := ProjectionPolicy.item_instance(character, item_view.instance_id)
 			var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
@@ -364,27 +369,81 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			var split_probe := rules.inventory.classic_split_probe(character, instance, definition)
 			var join_probe := rules.inventory.classic_join_probe(character, instance, definition)
 			var use_probe := FieldItemWorkflow.field_item_use_probe(context, character, instance, definition)
-			actions.equip = ActionAvailabilityView.new(&"equip_item", equip_probe.allowed, equip_probe.reason)
-			actions.unequip = ActionAvailabilityView.new(&"unequip_item", unequip_probe.allowed, unequip_probe.reason)
-			actions.drop = ActionAvailabilityView.new(&"drop_item", drop_probe.allowed, drop_probe.reason)
-			actions.split = ActionAvailabilityView.new(&"split_item", split_probe.allowed, split_probe.reason)
-			actions.join = ActionAvailabilityView.new(&"join_item", join_probe.allowed, join_probe.reason)
-			actions.use = ActionAvailabilityView.new(&"use_item", use_probe.allowed, use_probe.reason)
-			if identify_cast.is_empty():
-				actions.identify = ActionAvailabilityView.new(&"identify_item", false, "No living party member knows Identify Objects with 25 spell points.")
-			else:
-				actions.identify_caster_id = String(identify_cast[0])
-				actions.identify_spell_id = String(identify_cast[1])
-				actions.identify = ActionAvailabilityView.new(&"identify_item", true)
-			for destination: CharacterState in party:
-				if destination == character:
-					continue
-				var trade_probe := InventoryWorkflow.trade_item_probe(context, character, destination, instance, definition)
-				actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, trade_probe.allowed, trade_probe.reason, destination.carried_load, destination.carried_load + item_view.weight, destination.maximum_load))
-			var enabled_targets := actions.trade_targets.filter(func(target: ItemTransferTargetView) -> bool: return target.enabled)
-			var trade_reason := "Choose another party member." if actions.trade_targets.is_empty() else actions.trade_targets[0].reason if enabled_targets.is_empty() else ""
-			actions.trade = ActionAvailabilityView.new(&"trade_item", not enabled_targets.is_empty(), trade_reason)
+			if battle_active:
+				var combat_probes := _inventory_combat_probes(context, character, instance, definition, item_view.instance_id, active_actor_id, combat_item_options, combat_scroll_options, equip_probe, unequip_probe, drop_probe)
+				equip_probe = combat_probes["equip"]
+				unequip_probe = combat_probes["unequip"]
+				drop_probe = combat_probes["drop"]
+				use_probe = combat_probes["use"]
+			_apply_inventory_item_actions(actions, equip_probe, unequip_probe, drop_probe, split_probe, join_probe, use_probe, identify_cast)
+			if battle_active:
+				actions.trade = ActionAvailabilityView.new(&"trade_item", false, "Trade is unavailable during battle.")
+				item_view.actions = actions
+				continue
+			var trade := _inventory_trade_actions(context, character, instance, definition, party, item_view.weight)
+			actions.trade_targets.assign(trade["targets"])
+			actions.trade = trade["availability"]
 			item_view.actions = actions
+
+
+static func _inventory_combat_probes(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, item_instance_id: String, active_actor_id: String, combat_item_options: Array[CombatItemOptionView], combat_scroll_options: Array[CombatSpellOptionView], equip_probe: InventoryActionProbe, unequip_probe: InventoryActionProbe, drop_probe: InventoryActionProbe) -> Dictionary:
+	var state := context.state
+	var content := context.content
+	var result: Dictionary = {}
+	if character.id != active_actor_id:
+		result["equip"] = InventoryActionProbe.block("Only the active character may equip items in combat.")
+		result["unequip"] = InventoryActionProbe.block("Only the active character may unequip items in combat.")
+		result["drop"] = InventoryActionProbe.block("Only the active character may drop items in combat.")
+		result["use"] = InventoryActionProbe.block("Only the active character may use items in combat.")
+		return result
+	var use_reason := context.rules.combat_flow.magic.character_item_spell_unavailable_reason(state, content, active_actor_id)
+	var use_enabled := false
+	for option: CombatItemOptionView in combat_item_options:
+		if option.item_instance_id == item_instance_id:
+			use_enabled = true
+			use_reason = ""
+			break
+	if definition != null and absi(definition.item_type) == 13:
+		use_enabled = instance != null and instance.equipped and not combat_scroll_options.is_empty()
+		use_reason = "Equip a scroll case before using its spells." if instance == null or not instance.equipped else context.rules.combat_flow.magic.selection().character_scroll_unavailable_reason(state, content, active_actor_id)
+		if use_enabled:
+			use_reason = ""
+	elif not use_enabled and FieldItemWorkflow.is_classic_door_item(definition):
+		var door_probe := FieldItemWorkflow.door_item_probe(context, character, instance, definition, true)
+		use_enabled = door_probe.allowed
+		use_reason = door_probe.reason
+	result["equip"] = equip_probe
+	result["unequip"] = unequip_probe
+	result["drop"] = drop_probe
+	result["use"] = InventoryActionProbe.new(use_enabled, use_reason)
+	return result
+
+
+static func _apply_inventory_item_actions(actions: InventoryItemActionsView, equip_probe: InventoryActionProbe, unequip_probe: InventoryActionProbe, drop_probe: InventoryActionProbe, split_probe: InventoryActionProbe, join_probe: InventoryActionProbe, use_probe: InventoryActionProbe, identify_cast: Array[String]) -> void:
+	actions.equip = ActionAvailabilityView.new(&"equip_item", equip_probe.allowed, equip_probe.reason)
+	actions.unequip = ActionAvailabilityView.new(&"unequip_item", unequip_probe.allowed, unequip_probe.reason)
+	actions.drop = ActionAvailabilityView.new(&"drop_item", drop_probe.allowed, drop_probe.reason)
+	actions.split = ActionAvailabilityView.new(&"split_item", split_probe.allowed, split_probe.reason)
+	actions.join = ActionAvailabilityView.new(&"join_item", join_probe.allowed, join_probe.reason)
+	actions.use = ActionAvailabilityView.new(&"use_item", use_probe.allowed, use_probe.reason)
+	if identify_cast.is_empty():
+		actions.identify = ActionAvailabilityView.new(&"identify_item", false, "No living party member knows Identify Objects with 25 spell points.")
+	else:
+		actions.identify_caster_id = String(identify_cast[0])
+		actions.identify_spell_id = String(identify_cast[1])
+		actions.identify = ActionAvailabilityView.new(&"identify_item", true)
+
+
+static func _inventory_trade_actions(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, party: Array[CharacterState], item_weight: int) -> Dictionary:
+	var targets: Array[ItemTransferTargetView] = []
+	for destination: CharacterState in party:
+		if destination == character:
+			continue
+		var trade_probe := InventoryWorkflow.trade_item_probe(context, character, destination, instance, definition)
+		targets.append(ItemTransferTargetView.new(destination.id, destination.name, trade_probe.allowed, trade_probe.reason, destination.carried_load, destination.carried_load + item_weight, destination.maximum_load))
+	var enabled_targets := targets.filter(func(target: ItemTransferTargetView) -> bool: return target.enabled)
+	var trade_reason := "Choose another party member." if targets.is_empty() else targets[0].reason if enabled_targets.is_empty() else ""
+	return {"targets": targets, "availability": ActionAvailabilityView.new(&"trade_item", not enabled_targets.is_empty(), trade_reason)}
 
 
 static func _inventory_identify_cast(context: SessionWorkflowContext, target: CharacterState) -> Array[String]:
