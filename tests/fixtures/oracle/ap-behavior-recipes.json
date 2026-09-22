@@ -7663,7 +7663,47 @@
       "evidence": "tools/half_truth_opcode33_probe.gd",
       "remaining": [
         "Replay the encounter selection through visible controls and obtain Castle runtime comparison.",
-        "Inspect native and imported references for an actual XAP 303 caller; Land 6 AP 2's opcode 45 is teleport-only and its ID 303 names an Extra Code row. Retain Simple 14 and Simple 2 as separate caller candidates."
+        "Inspect native and imported references for an actual XAP 303 caller; Land 6 AP 2's opcode 45 is teleport-only and its ID 303 names an Extra Code row. Retain Simple 14 as a caller-unknown candidate; Simple 2 is covered by the tavern recipe."
+      ]
+    },
+    {
+      "id": "half-truth-land1-tavern-payment-opcode33",
+      "workflowIds": ["classic.scenario.trigger-action-point"],
+      "application": {
+        "packagePath": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+        "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad"
+      },
+      "package": {
+        "campaignId": "scenario-half-truth",
+        "auditArtifact": "scenario-audit-catalog-parity-full-r1/final-packages/scenario-half-truth/scenario-half-truth.realmz2",
+        "packageHash": "a38948d427a2aeaa49eb9cececd90dd553ed7c0ff35fa141e540aabdb8fa1488",
+        "archiveSha256": "b4f1694d69b64227240fa8f769b70c2f2dfae9dfab220df94921a1b663135d05"
+      },
+      "target": {
+        "actionPoint": "Data DD:1:6",
+        "coordinate": [10, 8],
+        "encounter": "simple:2",
+        "resultProgram": "simple:2:result:0",
+        "paymentExtraCode": [2, 0, 0, 62, 0],
+        "failureProgram": "xap:62"
+      },
+      "preparation": "Pass the regenerated Half Truth audit archive to tools/half_truth_opcode33_probe.gd with funded or empty, then tavern. With no ally 186, enter AP 6 from (9,8) by ordinary movement, restore the pending Simple 2 choice, order one round, use authored Back when funded, then restore the post-outcome save and re-enter.",
+      "proofModes": ["source-control-flow", "runtime-integration", "ordinary-session-movement", "restored-continuation"],
+      "expected": [
+        "Castle opcode 87 sends an ally-186 party to XAP 447; absent that ally, AP 6 falls through to Simple 2. The first response uses opcode 33 to take 2 gold and transfers failure to XAP 62.",
+        "With original starter wealth, one paid choice displays message 122, leaves character gold [9,99,150,0,200,300] and pooled gold 0, and Back returns to (9,8) with AP 6 active. Restored re-entry presents Simple 2 again.",
+        "With zero wealth, one failed choice displays XAP 62 message 194, takes no gold, backs to (9,8), and keeps AP 6. Restored re-entry presents Simple 2 again. Both branches have RNG draw count 2 before re-entry."
+      ],
+      "sourceEvidence": [
+        "Pinned Half Truth Data DD Land 1 AP 6 slot 0 opcode 87 Extra Code [186,0,1,447,0], slot 1 Simple Encounter 2; Simple 2 result 0 opcode 33 Extra Code [2,0,0,62,0]",
+        "Castle 491816ad60037394f92c428e99c004494d3c28b3 src/realmz_orig/newland.c:1130-1197 branches on ally presence"
+      ],
+      "result": "partial",
+      "disposition": "simple2-first-payment-and-failure-verified-full-iteration-and-ui-open",
+      "evidence": "tools/half_truth_opcode33_probe.gd",
+      "remaining": [
+        "Exercise the ally-present XAP 447 branch and a full authored maxTimes-99 completion only if its reachability or state effect merits the replay cost.",
+        "Replay visible tavern controls and obtain Castle runtime comparison before player-facing parity."
       ]
     }
   ],

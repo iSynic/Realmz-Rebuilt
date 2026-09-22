@@ -11,8 +11,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	if arguments.size() not in [2, 3, 4] or arguments[1] not in ["funded", "empty"] or (arguments.size() >= 3 and arguments[2] != "simple") or (arguments.size() == 4 and arguments[3] not in ["0", "1", "2"]):
-		printerr("USAGE: --script res://tools/half_truth_opcode33_probe.gd -- <package.realmz2> <funded|empty> [simple [0|1|2]]")
+	if arguments.size() not in [2, 3, 4] or arguments[1] not in ["funded", "empty"] or (arguments.size() >= 3 and arguments[2] not in ["simple", "tavern"]) or (arguments.size() == 4 and (arguments[2] != "simple" or arguments[3] not in ["0", "1", "2"])):
+		printerr("USAGE: --script res://tools/half_truth_opcode33_probe.gd -- <package.realmz2> <funded|empty> [simple [0|1|2]|tavern]")
 		quit(2)
 		return
 	var funded := arguments[1] == "funded"
@@ -53,6 +53,9 @@ func _run() -> void:
 	if prepared.state == SessionStep.State.FAILED:
 		printerr("PREPARE_ERROR ", prepared.error_code)
 		quit(1)
+		return
+	if arguments.size() >= 3 and arguments[2] == "tavern":
+		_run_tavern_payment(session, content, funded)
 		return
 	if arguments.size() >= 3:
 		_run_simple_payment(session, content, funded, int(arguments[3]) if arguments.size() == 4 else 0)
@@ -147,6 +150,88 @@ func _run() -> void:
 	print("REENTRY ", JSON.stringify({"outState": out.state, "outCoordinate": [out_coordinate.x, out_coordinate.y], "backState": back.state, "backCoordinate": [resumed.snapshot().game_state.party.coordinate.x, resumed.snapshot().game_state.party.coordinate.y], "messages": reentry_messages, "pending": String(resumed.view().pending_interaction.kind) if resumed.view().pending_interaction != null else ""}))
 	if out.state == SessionStep.State.FAILED or back.state == SessionStep.State.FAILED or reentry_messages != ([] if funded else [412]):
 		printerr("BOND_REENTRY_MISMATCH")
+		quit(1)
+		return
+	quit(0)
+
+
+func _run_tavern_payment(session: GameSession, content: RealmzContent, funded: bool) -> void:
+	var warp := session.apply_debug_command(SessionDebugCommand.warp("land:1", Vector2i(9, 8)))
+	if warp.state == SessionStep.State.FAILED:
+		printerr("TAVERN_WARP_ERROR ", warp.error_code)
+		quit(1)
+		return
+	var step := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
+	var messages: Array[int] = []
+	var payments: Array[Dictionary] = []
+	var fired := false
+	var choice_restored := false
+	var cancelled := false
+	for index in 12:
+		print("TAVERN_STEP ", index, " state=", step.state, " error=", step.error_code)
+		if step.state == SessionStep.State.FAILED:
+			quit(1)
+			return
+		for event: DomainEvent in step.events:
+			if event.kind == &"trigger_fired" and event.payload.get("triggerId") == "Data DD:1:6":
+				fired = true
+			if event.kind == &"message_shown":
+				messages.append(int(event.payload["messageId"]))
+			if event.kind == &"wealth_taken":
+				payments.append(event.payload)
+		var pending := session.view().pending_interaction
+		if pending == null:
+			break
+		print("TAVERN_PENDING ", String(pending.kind))
+		if pending.kind == InteractionRequest.ACKNOWLEDGE:
+			step = session.respond(InteractionResponse.acknowledge(pending))
+		elif pending.kind == InteractionRequest.ENCOUNTER_CHOICE:
+			if not choice_restored:
+				var saved := session.snapshot()
+				if saved == null:
+					printerr("TAVERN_CHOICE_SAVE_UNAVAILABLE")
+					quit(1)
+					return
+				var resumed := GameSession.new()
+				var restore := resumed.restore(content, saved)
+				if restore.state == SessionStep.State.FAILED:
+					printerr("TAVERN_CHOICE_RESTORE_FAILED ", restore.error_code)
+					quit(1)
+					return
+				session = resumed
+				pending = session.view().pending_interaction
+				choice_restored = true
+				step = session.respond(InteractionResponse.from_data(pending.request_id, pending.kind, {"index": 0}))
+			else:
+				cancelled = true
+				step = session.respond(InteractionResponse.from_data(pending.request_id, pending.kind, {"index": -1, "cancelled": true}))
+		else:
+			printerr("TAVERN_UNEXPECTED_INTERACTION ", String(pending.kind))
+			quit(1)
+			return
+	var saved_final := session.snapshot()
+	if saved_final == null:
+		printerr("TAVERN_FINAL_SAVE_UNAVAILABLE")
+		quit(1)
+		return
+	var gold := saved_final.game_state.party.characters().map(func(character: CharacterState) -> int: return character.money.gold)
+	print("TAVERN_RESULT ", JSON.stringify({"funded": funded, "triggerFired": fired, "messages": messages, "payments": payments, "gold": gold, "pooledGold": saved_final.game_state.party.pooled_wealth.gold, "disabled": saved_final.game_state.world.triggers.trigger_is_disabled("Data DD:1:6"), "coordinate": [saved_final.game_state.party.coordinate.x, saved_final.game_state.party.coordinate.y], "rngDraws": saved_final.rng_state.draw_count, "choiceRestored": choice_restored, "cancelled": cancelled}))
+	var expected_gold := [9, 99, 150, 0, 200, 300] if funded else [0, 0, 0, 0, 0, 0]
+	if step.state != SessionStep.State.COMPLETED or session.view().pending_interaction != null or not fired or not choice_restored or cancelled != funded or messages != ([122] if funded else [194]) or payments.size() != 1 or int(payments[0].get("amount", -1)) != 2 or bool(payments[0].get("paid", not funded)) != funded or gold != expected_gold or saved_final.game_state.party.pooled_wealth.gold != 0 or not saved_final.game_state.party.allies().is_empty() or saved_final.game_state.world.triggers.trigger_is_disabled("Data DD:1:6") or saved_final.game_state.party.coordinate != Vector2i(9, 8) or saved_final.rng_state.draw_count != 2:
+		printerr("TAVERN_BRANCH_MISMATCH")
+		quit(1)
+		return
+	var resumed_final := GameSession.new()
+	var restored_final := resumed_final.restore(content, saved_final)
+	if restored_final.state == SessionStep.State.FAILED:
+		printerr("TAVERN_POST_RESTORE_FAILED ", restored_final.error_code)
+		quit(1)
+		return
+	var reentry := resumed_final.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
+	var reentered := reentry.events.any(func(event: DomainEvent) -> bool: return event.kind == &"trigger_fired" and event.payload.get("triggerId") == "Data DD:1:6")
+	print("TAVERN_REENTRY ", JSON.stringify({"state": reentry.state, "reentered": reentered, "pending": String(resumed_final.view().pending_interaction.kind) if resumed_final.view().pending_interaction != null else ""}))
+	if reentry.state == SessionStep.State.FAILED or not reentered or resumed_final.view().pending_interaction == null or resumed_final.view().pending_interaction.kind != InteractionRequest.ENCOUNTER_CHOICE:
+		printerr("TAVERN_REENTRY_MISMATCH")
 		quit(1)
 		return
 	quit(0)
