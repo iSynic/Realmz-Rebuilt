@@ -55,6 +55,21 @@ func _initialize() -> void:
 	var content: RealmzContent = package_result.content
 	var media: PackageMediaCatalog = package_result.media
 	printerr("PACKAGE_VALIDATED %s" % content.package_hash)
+	var start_map_art := {"status": "not-applicable"}
+	var start_map := content.world.map_by_id(content.start_map_id)
+	if start_map != null and start_map.level_type == &"land" and start_map.landlook >= 0:
+		var landlook_alias := "landlook-%d" % start_map.landlook
+		var effective_media := ClassicMediaCatalog.new(media, ApplicationMediaCatalog.new(), application.media)
+		var atlas := effective_media.map_atlas(landlook_alias)
+		var start_cell := start_map.topology.cell_at(content.start_coordinate)
+		var tile := start_cell.render_tile if start_cell != null else 0
+		start_map_art = {
+			"status": "renderable" if atlas != null and atlas.region_for(tile).has_area() else "missing-tile" if atlas != null else "missing-atlas",
+			"landlook": start_map.landlook,
+			"tile": tile,
+			"resourceId": atlas.source.resource_id if atlas != null else 0,
+			"sha256": atlas.source.sha256 if atlas != null else "",
+		}
 	var session := GAME_SESSION_SCRIPT.new()
 	var session_started_at := Time.get_ticks_msec()
 	var step: Variant = session.call("start", content, 1)
@@ -89,6 +104,7 @@ func _initialize() -> void:
 		"startMapId": view.party_map_id,
 		"startX": view.party_coordinate.x,
 		"startY": view.party_coordinate.y,
+		"startMapArt": start_map_art,
 		"partySetupAvailable": view.party_setup_available,
 		"pendingInteraction": step.interaction != null,
 		"mediaAssets": media.assets().size(),

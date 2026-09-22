@@ -14,6 +14,7 @@ Own application-wide media catalogs, exact Classic resource lookup, presentation
 ## Local Contracts
 
 - Catalogs resolve exact typed resource identities and never reinterpret scenario ownership or gameplay state.
+- Runtime `landlook-N` aliases resolve through exact `PICT:(300+N)` lookup before any application-ID fallback, so scenario-owned custom art and stock-ID overrides keep Castle's scenario-first precedence.
 - Audio and music consume committed presentation requests; they do not emit gameplay intents or advance simulation.
 - Media bytes remain in `../assets`; these classes index and present them without duplicating payloads.
 
