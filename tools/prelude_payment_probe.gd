@@ -2,6 +2,7 @@
 extends SceneTree
 
 const EXPECTED_PACKAGE_HASH := "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c"
+const BUNDLED_PACKAGE_PATH := "res://src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2"
 
 
 func _initialize() -> void:
@@ -10,11 +11,28 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	if not arguments.is_empty() and (arguments.size() != 1 or arguments[0] != "--paid"):
-		printerr("USAGE: --script res://tools/prelude_payment_probe.gd [-- --paid]")
+	var paid := false
+	var package_path := BUNDLED_PACKAGE_PATH
+	var expected_hash := EXPECTED_PACKAGE_HASH
+	var custom_path := false
+	var custom_hash := false
+	var invalid_arguments := false
+	for argument in arguments:
+		if argument == "--paid" and not paid:
+			paid = true
+		elif argument.begins_with("--package-path=") and not custom_path:
+			package_path = argument.substr("--package-path=".length())
+			custom_path = true
+		elif argument.begins_with("--package-hash=") and not custom_hash:
+			expected_hash = argument.substr("--package-hash=".length())
+			custom_hash = true
+		else:
+			invalid_arguments = true
+	if invalid_arguments or custom_path != custom_hash or package_path.is_empty() or expected_hash.length() != 64:
+		printerr("USAGE: --script res://tools/prelude_payment_probe.gd [-- --paid] [--package-path=<archive> --package-hash=<sha256>]")
 		quit(2)
 		return
-	var zero_gold := arguments.is_empty()
+	var zero_gold := not paid
 	var repository := PackageRepository.new()
 	var application := repository.load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
 	if not application.is_ok():
@@ -22,13 +40,13 @@ func _run() -> void:
 		quit(1)
 		return
 	repository.set_application_content(application.content, application.media.assets())
-	var package := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2")
+	var package := repository.load_package(package_path)
 	if not package.is_ok():
 		printerr("PACKAGE_ERROR ", package.error_code, " ", package.error_message)
 		quit(1)
 		return
 	var content: RealmzContent = package.content
-	if content.package_hash != EXPECTED_PACKAGE_HASH:
+	if content.package_hash != expected_hash:
 		printerr("PACKAGE_IDENTITY_CHANGED ", content.package_hash)
 		quit(1)
 		return
