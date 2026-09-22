@@ -196,6 +196,7 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 54 requires a five-value Extra Code row.")
 	var encounter_id := action.extra_code[0]
+	var definition := _content.scenario_records.timed_encounter_by_id(encounter_id)
 	var current := _game_state.scenario_progress.encounters.timed_override(encounter_id)
 	if action.extra_code[1] > -1:
 		current["percent"] = action.extra_code[1]
@@ -204,7 +205,7 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 	if action.extra_code[3] != 0:
 		current["day"] = _game_state.clock.day()
 	if action.extra_code[4] > -1:
-		current["day"] = int(current.get("day", 0)) + action.extra_code[4]
+		current["day"] = int(current.get("day", definition.day if definition != null else 0)) + action.extra_code[4]
 	_game_state.scenario_progress.encounters.set_timed_override(encounter_id, current)
 	return ScenarioRuntimeOperationResult.completed(current, [DomainEvent.new(&"timed_encounter_changed", {"encounterId": encounter_id, "state": current})])
 
