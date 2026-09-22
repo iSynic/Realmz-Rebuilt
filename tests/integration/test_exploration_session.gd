@@ -184,17 +184,12 @@ func run() -> void:
 	assert_equal(restored_dungeon.restore(content, dungeon_session.snapshot()).state, SessionStep.State.COMPLETED, "door-state save restores transactionally")
 	assert_true(restored_dungeon.snapshot().game_state.world.topology.door_is_open(door_id) and restored_dungeon.view().map_view.dungeon_heading == 4, "restored session retains the opened door and Classic dungeon heading")
 
-	var surprise_region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); surprise_region.battle_maximum = -1; var surprise_session := GameSession.new()
-	surprise_session.start(content, 1)
-	_begin_fixture_adventure(surprise_session, content, 6)
-	surprise_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
-	var surprise_wait := surprise_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
+	_test_negative_random_battle_surprise(content); var surprise_region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); surprise_region.battle_maximum = -1; var surprise_session := GameSession.new()
+	surprise_session.start(content, 1); _begin_fixture_adventure(surprise_session, content, 6); surprise_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var surprise_wait := surprise_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
 	assert_equal(surprise_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "a source-backed random rectangle can yield a typed surprise choice")
 	assert_equal(surprise_wait.interaction.kind, &"yes_no", "the random surprise uses the ordinary interaction presenter ABI")
 	assert_equal(surprise_session.rng_trace()[-1]["tag"], "random-region.land:0:randlevel:rect:1.good-surprise", "Castle random-region draw order reaches the surprise roll after three door rolls")
-	var surprise_snapshot := surprise_session.snapshot()
-	assert_not_null(surprise_snapshot, "the random surprise interaction is a committed save boundary")
-	assert_equal(surprise_snapshot.session_interaction.request_id, surprise_wait.interaction.request_id, "the save aggregate owns the non-VM interaction")
+	var surprise_snapshot := surprise_session.snapshot(); assert_not_null(surprise_snapshot, "the random surprise interaction is a committed save boundary"); assert_equal(surprise_snapshot.session_interaction.request_id, surprise_wait.interaction.request_id, "the save aggregate owns the non-VM interaction")
 	assert_equal(continuation_data(surprise_snapshot)["randomBattleStage"], "surprise-choice", "the save aggregate owns random battle continuation state")
 	var restored_surprise := GameSession.new()
 	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(save_data(surprise_snapshot))).state, SessionStep.State.COMPLETED, "random surprise save restores transactionally")
@@ -519,6 +514,13 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 		var expected_event: StringName = dungeon_case.get("event", &"")
 		if not expected_event.is_empty():
 			assert_true(_has_event(moved, expected_event) and (dungeon_case["id"] != "matching-secret" or session.view().map_view.cell_at(Vector2i(1, 0)).has_feature(&"secret") and session.view().map_view.cell_at(Vector2i(1, 0)).edge_kind(&"east") == &"archway" and session.view().map_view.cell_at(Vector2i(1, 0)).edge_is_passable(&"east")), "%s publishes its topology-owned discovery event and only then exposes a traversable secret archway" % dungeon_case["id"])
+
+
+func _test_negative_random_battle_surprise(content: RealmzContent) -> void:
+	var region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); var original_minimum := region.battle_minimum; var original_maximum := region.battle_maximum; var original_option := region.option; region.battle_minimum = -1; region.battle_maximum = -1; region.option = 100
+	var session := GameSession.new(); session.start(content, 1); _begin_fixture_adventure(session, content, 6); session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var choice := session.submit_intent(ExplorationIntents.move(Vector2i.UP)); assert_equal(choice.state, SessionStep.State.WAITING_FOR_INTERACTION, "negative random battle offers the ordinary good-surprise choice before battle selection")
+	var battle_step := session.respond(InteractionResponse.from_data(choice.interaction.request_id, &"yes_no", {"accepted": true})); assert_equal([_event(battle_step, &"random_encounter_triggered").payload["classicId"], _event(battle_step, &"random_encounter_triggered").payload["surprise"], _event(battle_step, &"battle_started").payload["surprise"]], [-1, -1, -1], "a signed negative random-battle ID selects its absolute battle and overrides accepted party initiative"); assert_equal(_event(battle_step, &"random_encounter_triggered").payload["battleId"], session.view().combat_view.battle_id, "the signed Classic selection resolves the corresponding positive Battle record")
+	region.battle_minimum = original_minimum; region.battle_maximum = original_maximum; region.option = original_option
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1) -> void:
