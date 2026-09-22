@@ -472,11 +472,11 @@
       "name": "Prelude to Pestilence",
       "campaignId": "scenario-prelude-to-pestilence",
       "file": "scenario-prelude-to-pestilence.realmz2",
-      "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
-      "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
-      "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
-      "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
-      "bytes": 883939,
+      "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
+      "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+      "contentId": "1539bc1df94967ddd641e8e497b15f008ac891230abf0be02461a1134d4cadf1",
+      "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+      "bytes": 917225,
       "sourceArchive": {
         "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
         "archiveSha256": "2bbfe84b06ebce409146aa2fb01ff88f9e8aec6035750675dae9e6119b19aba9",
@@ -488,7 +488,7 @@
       "classicScenarioResourcesSha256": "489eaa2b9c61db86616f26215b112596adb659c676ef540ef3564795dda778de",
       "rewrittenAssetReferences": 0,
       "removedApplicationContent": {
-        "items": 801,
+        "items": 799,
         "spells": 419,
         "races": 30,
         "castes": 30,
@@ -496,7 +496,7 @@
         "mediaPayloads": 0
       },
       "retainedScenarioContent": {
-        "items": 198,
+        "items": 200,
         "spells": 1,
         "races": 0,
         "castes": 0,
@@ -583,7 +583,45 @@
           "thiefEncounters": [13, 9],
           "programs": [690, 687]
         },
-        "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 remains the authored Riter route target; retained Battle 103 has no opcode-2 caller in this source snapshot."
+        "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 is the authored Riter route target; Land 3 AP 5 independently has an opcode-2 range that can select Battle 103."
+      },
+      "currentCompilerRegeneration": {
+        "operation": "regenerate-from-pinned-source",
+        "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+        "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
+        "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
+        "compilerBinaries": {
+          "providenceCliSha256": "50d33784921a7ccfd79c89ba1d75a08d4c11c6fd4b00ba9dedfe3cb6ee00800f",
+          "providenceNativeAdapterSha256": "465f6b77e077c721872b9745ec82e35a4644ee3b11c0fd3e8f1074e01af4c665",
+          "providenceApplicationLibrarySha256": "dc6312915aeaa87a9e5c59c03cf44f79b0987b47cbb76986042e47e5d023e8e9"
+        },
+        "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+        "applicationPackageArchiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+        "applicationMediaCatalogSha256": "b1c7438d5a5fcdbf974fe01c5284a54db2228bc33a0e0f3ef0c93b018b24f0e5",
+        "previousPackage": {
+          "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+          "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+          "contentId": "73a69b7c35bff5e6fc50acda21d27577f269cf832f3742b72f10a78b829b3fd3",
+          "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
+          "bytes": 883939
+        },
+        "generatedPackage": {
+          "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+          "contentId": "1539bc1df94967ddd641e8e497b15f008ac891230abf0be02461a1134d4cadf1",
+          "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+          "bytes": 917225
+        },
+        "sourceOwnedAdditions": {
+          "items": 2,
+          "monsterDescriptions": 213,
+          "monsters": 84,
+          "monsterSets": 2,
+          "thiefEncounters": 4,
+          "timedEncounters": 1,
+          "programs": 1
+        },
+        "sourceCorrectedSharedItemTexts": 21,
+        "explanation": "The pinned native Prelude source retains timed encounter row 0 and its XAP 303 destination. Land 4 AP 10 reschedules row 0; Castle scans it at midnight. The previous package omitted both. The regenerated archive preserves the existing programs, world cells, and media and restores the source-owned catalogs and item text."
       },
       "correctionsCatalog": "prelude-to-pestilence.corrections.json"
     },

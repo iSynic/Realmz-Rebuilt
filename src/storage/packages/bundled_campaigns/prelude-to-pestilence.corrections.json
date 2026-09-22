@@ -7,6 +7,10 @@
     {
       "file": "Data ED3",
       "sha256": "d519b69ee4dee10b4a44f14a25e57076cc1c7d7e5f172de76c9575a320ca7892"
+    },
+    {
+      "file": "Data TD3",
+      "sha256": "a5178ee952195fedd45404a6acf261783f5610afaf0120d3481085d2950dfba0"
     }
   ],
   "packageBefore": {
@@ -41,6 +45,18 @@
         ]
       },
       "evidence": "Castle Data ED3 record 97 is the unpaid-gold branch from XAP 90. It displays message -248 and ends with Keep Codes (opcode 24), so the Action Point remains available when the party cannot pay. The compiled package omitted this authored XAP, causing a runtime unknown_scenario_program failure before the Keep Codes result could run."
+    },
+    {
+      "id": "prelude-reschedulable-timed-row-zero",
+      "source": "Data TD3 record 0 and Data ED3 record 303",
+      "method": "compiler-reachability-and-catalog-preservation",
+      "params": {
+        "timedEncounterId": 0,
+        "programId": "xap:303",
+        "schedulingActionPoint": "Data DD:4:10",
+        "schedulingExtraCode": [0, 100, 0, 1, 2]
+      },
+      "evidence": "Castle copies Data TD3 into mutable timed state, opcode 54 reschedules row 0, and the midnight scan starts at row 0. The prior package omitted the source-owned row and XAP 303; the pinned-source regeneration restores both."
     }
   ],
   "compilerRegeneration": {
@@ -87,11 +103,40 @@
       "operandId": 4,
       "extraCode": [4, 0, 0, 0, 5]
     },
-    "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 remains the authored Riter route target; retained Battle 103 has no opcode-2 caller in this source snapshot."
+    "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 is the authored Riter route target; Land 3 AP 5 independently has an opcode-2 range that can select Battle 103."
   },
-  "packageAfter": {
+  "currentCompilerRegeneration": {
+    "operation": "regenerate-from-pinned-source",
+    "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+    "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
+    "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
+    "compilerBinaries": {
+      "providenceCliSha256": "50d33784921a7ccfd79c89ba1d75a08d4c11c6fd4b00ba9dedfe3cb6ee00800f",
+      "providenceNativeAdapterSha256": "465f6b77e077c721872b9745ec82e35a4644ee3b11c0fd3e8f1074e01af4c665",
+      "providenceApplicationLibrarySha256": "dc6312915aeaa87a9e5c59c03cf44f79b0987b47cbb76986042e47e5d023e8e9"
+    },
+    "previousPackage": {
+      "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+      "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
+      "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
+      "bytes": 883939
+    },
+    "generatedPackage": {
+      "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+      "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+      "bytes": 917225
+    },
+    "preservedAuthoredPrograms": ["xap:97", "xap:149", "simple:7:result:3", "xap:303"],
+    "explanation": "This later pinned-source regeneration restores executable timed row 0 and XAP 303 plus source-owned catalog records and text. The prior compiler-regeneration record remains above under its original identity."
+  },
+  "previousPackageAfter": {
     "packageHash": "7f18df4eecc935dd7c1481b0c2419cfc224e8e03950b2263e121c5236073c95c",
     "archiveSha256": "728c06887eaf9bde5f2117b3e8d06f0b6c69b2671a9972d762dd7ef603904d93",
     "bytes": 883939
+  },
+  "packageAfter": {
+    "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+    "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+    "bytes": 917225
   }
 }
