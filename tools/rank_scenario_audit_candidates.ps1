@@ -90,10 +90,14 @@ function Convert-Candidate($Raw, [int]$Index) {
 
 function Convert-CandidateForState($Candidate) {
     $result = [ordered]@{}
-    foreach ($name in @("candidateId", "stableIdentity", "tier", "scenario", "source", "ap", "program", "slot", "behaviorFamily", "coverageLevel", "callerChain", "suspectedDefect", "evidence", "preparation", "proofMode")) {
+    foreach ($name in @("candidateId", "stableIdentity", "tier", "scenario", "source", "ap", "program", "slot", "behaviorFamily", "callerChain", "evidence")) {
         $result[$name] = $Candidate[$name]
     }
     if (-not [bool]$Candidate.control) {
+        $result["suspectedDefect"] = $Candidate.suspectedDefect
+        $result["preparation"] = $Candidate.preparation
+        $result["coverageLevel"] = $Candidate.coverageLevel
+        $result["proofMode"] = $Candidate.proofMode
         $result["expectedOutcome"] = $Candidate.expectedOutcome
         $result["status"] = $Candidate.status
     }

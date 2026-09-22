@@ -24,6 +24,22 @@ if ($openResult.requestHash.Length -ne 64) { throw "The request hash was not ret
 if (@($report.results | Where-Object { $_.candidateId -eq "control-b" }).Count -ne 1) { throw "The control candidate was not evaluated." }
 if ($report.estimatedCostUsd -le 0) { throw "Mock usage did not contribute to the cost receipt." }
 
+$heldOutPath = Join-Path $OutputRoot "held-out-control.json"
+$heldOut = Get-Content -LiteralPath $candidatePath -Raw | ConvertFrom-Json
+$heldOut.candidates[1].coverageLevel = "distinct untested behavior family"
+$heldOut.candidates[1].expectedOutcome = "different adjudicated result"
+$heldOut.candidates[1] | Add-Member -NotePropertyName proofMode -NotePropertyValue "castle-trace" -Force
+$heldOut.candidates[1] | Add-Member -NotePropertyName status -NotePropertyValue "closed" -Force
+$heldOut.candidates[1] | Add-Member -NotePropertyName suspectedDefect -NotePropertyValue "leaking label" -Force
+$heldOut.candidates[1] | Add-Member -NotePropertyName preparation -NotePropertyValue @("leaking preparation") -Force
+$heldOut | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $heldOutPath -Encoding utf8
+$heldOutReportPath = Join-Path $OutputRoot "held-out-report.json"
+& $scriptPath -CandidatesPath $heldOutPath -OutputPath $heldOutReportPath -MockResponsePath $mockPath
+$heldOutReport = Get-Content -LiteralPath $heldOutReportPath -Raw | ConvertFrom-Json
+$originalControl = @($report.results | Where-Object { $_.candidateId -eq "control-b" })[0]
+$heldOutControl = @($heldOutReport.results | Where-Object { $_.candidateId -eq "control-b" })[0]
+if ($originalControl.requestHash -ne $heldOutControl.requestHash) { throw "Adjudicated control labels leaked into the Jev request." }
+
 $malformedPath = Join-Path $OutputRoot "malformed.json"
 @{
     responses = @{
