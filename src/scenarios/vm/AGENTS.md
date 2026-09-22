@@ -6,7 +6,7 @@ Own deterministic scheduling of Classic and Safe Scenario Action frames, includi
 
 ## Ownership
 
-- `ScenarioVm`, instruction dispatch phases, frame stack, step limits, and trace publication.
+- `ScenarioVm`, instruction dispatch phases, frame stack, step limits, and trace publication; `ScenarioVmDiagnostics` retains only the active/failing Classic instruction context.
 - `ScenarioFrame`, pending continuation, operation result, snapshot, directive transition, and VM handoff records.
 
 ## Local Contracts
@@ -15,6 +15,7 @@ Own deterministic scheduling of Classic and Safe Scenario Action frames, includi
 - `ScenarioVm` alone mutates the active frame stack and applies typed directive transitions. Classic control flow under `../classic` cannot run a second VM.
 - Safe evaluation under `../actions` returns typed values; it does not own frame or continuation mutation.
 - Every unknown instruction, invalid frame, exceeded depth or step bound, and malformed resume fails explicitly.
+- Execution retains the exact active Classic program, slot, normalized opcode, and operands across waits and handoffs. A terminal instruction failure publishes that context before clearing frames so the session can contain a selected deferred-reference fault without inferring a target or continuing the timeline.
 - Snapshots preserve exact frame order, instruction cursor, execution context, pending request, nested handoff, and trace state without changing stable save representation.
 
 ## Work Guidance

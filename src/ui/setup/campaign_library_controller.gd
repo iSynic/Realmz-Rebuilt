@@ -301,8 +301,8 @@ func render_campaign_list() -> void:
 		var action := _campaign_row_scene.instantiate() as Button
 		action.set_meta(&"campaign_record", true)
 		action.name = "Scenario_%s" % (campaign.campaign_id if not campaign.campaign_id.is_empty() else campaign.path.get_file()).validate_node_name()
-		action.text = "%s\nInstalled • ready" % _display_name(campaign)
-		action.tooltip_text = campaign.path
+		action.text = "%s\nInstalled • %s" % [_display_name(campaign), "ready with compatibility warnings" if campaign.ready_with_warnings else "ready"]
+		action.tooltip_text = "%s\nThis imported scenario contains deferred legacy references. They are checked only if play reaches them." % campaign.path if campaign.ready_with_warnings else campaign.path
 		var selected := selected_campaign_summary != null and campaign.campaign_id == selected_campaign_summary.campaign_id
 		action.disabled = running or selected
 		action.button_pressed = selected
@@ -391,7 +391,10 @@ func _render_selected_campaign_record() -> void:
 			guidance.append("recommended party total %d" % selected_campaign_summary.recommended_party_levels)
 		if selected_campaign_summary.maximum_party_levels > 0:
 			guidance.append("maximum %d" % selected_campaign_summary.maximum_party_levels)
+	if selected_campaign_summary.compatibility_warning_count > 0:
+		guidance.append("%d deferred legacy reference warning%s" % [selected_campaign_summary.compatibility_warning_count, "" if selected_campaign_summary.compatibility_warning_count == 1 else "s"])
 	_selected_guidance.text = " • ".join(guidance)
+	_selected_guidance.tooltip_text = "\n".join(selected_campaign_summary.compatibility_warning_summaries)
 	_selected_guidance.visible = not guidance.is_empty()
 
 

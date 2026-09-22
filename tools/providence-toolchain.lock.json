@@ -1,0 +1,66 @@
+{
+  "kind": "realmz-rebuilt.providence-toolchain-lock",
+  "formatVersion": 1,
+  "compiler": {
+    "commit": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
+    "sourceTree": "d657eb1bb50a28064f5f302d9d3045904124cb7c",
+    "sourceDirty": false,
+    "schemaSha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
+    "cargoLockSha256": "706694c649d2d529de72816dfebc7c62c60054577f99adc7dd12e7c6f251186d",
+    "rustcVersion": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+    "cargoVersion": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+    "target": "x86_64-pc-windows-msvc",
+    "profile": "release",
+    "directoryName": "a779ad4",
+    "binaries": {
+      "cli": {
+        "tool": "providence-cli",
+        "file": "providence-cli.exe",
+        "bytes": 9003520,
+        "sha256": "6c2f7c2271a5a0467b0ab62bbbb9293a720f518107e2a37ecd896b008bec7d1d"
+      },
+      "adapter": {
+        "tool": "providence-native-adapter",
+        "file": "providence-native-adapter.exe",
+        "bytes": 13653504,
+        "sha256": "98f475fde553930f4bc8340275640ebbc2d390f134dcb1112b559e9d0976646b"
+      },
+      "slimmer": {
+        "tool": "providence-application-library",
+        "file": "providence-application-library.exe",
+        "bytes": 3585536,
+        "sha256": "6ed672916322d41a2fa17eb22e0ddda7c80bd30625756559ffea4828b6e797d3"
+      }
+    }
+  },
+  "application": {
+    "package": {
+      "path": "src/storage/packages/application/realmz-classic-application-library.realmz2",
+      "campaignId": "realmz-classic-application-library",
+      "compilerCommit": "1704ef6b1663eee578bb683b4994cba5cd8c2d88",
+      "bytes": 34303450,
+      "sha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150",
+      "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+      "contentId": "dd788b892492f8e0dae0248939705faa23012dbd8ce7a660a76e44fee12d3d1b"
+    },
+    "mediaCatalog": {
+      "bytes": 1658126,
+      "sha256": "9b54a3936924a1dd49c4545f780afdf9c3cf0feb2b56c5329f5b8012d94cce11"
+    },
+    "nativeData": {
+      "fileCount": 21,
+      "byteCount": 8472466,
+      "treeSha256": "4920e53b37cd3e62f7d7a59a97d0efc90e8a8fa8bd217cdc50406e987edad631"
+    },
+    "referenceLibrary": {
+      "fileCount": 3151,
+      "byteCount": 51466454,
+      "treeSha256": "e3740768f2844fe3fa739312ef1aece0176cca7df2cee1c67e239ccb9ab42532"
+    },
+    "referenceCatalog": {
+      "fileCount": 517,
+      "byteCount": 3936372,
+      "treeSha256": "7f524a7426c71e6974795319553224f607d9be8ca19d4dcf83c6486ae3f73c07"
+    }
+  }
+}

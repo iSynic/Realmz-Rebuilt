@@ -49,6 +49,7 @@ var action_availability: Dictionary = {}
 var domain_revisions: RefCounted
 var change_set: RefCounted
 var projection_timings_usec: Dictionary = {}
+var runtime_fault: SessionRuntimeFault
 
 
 func _init(current_revision: int, started: bool, interaction: InteractionRequest, map_id: String = "", coordinate: Vector2i = Vector2i.ZERO, day: int = 0, hour: int = 0, minute: int = 0, current_map_view: MapView = null, members: Array[CharacterView] = [], fatigue: int = 0, gold: int = 0, current_combat: CombatView = null) -> void:

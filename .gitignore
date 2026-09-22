@@ -23,6 +23,7 @@ user-data/
 
 # Local oracle/reference worktrees are never repository content.
 .references/
+tools/providence-toolchain.local.json
 
 # Local source-intelligence workspaces and generated browsers are not product source.
 .ua/

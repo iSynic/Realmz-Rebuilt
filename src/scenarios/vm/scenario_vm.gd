@@ -6,6 +6,7 @@ extends RefCounted
 ## Runs serializable Classic programs and Safe Scenario Actions through the typed runtime API.
 
 
+const VmDiagnostics := preload("res://src/scenarios/vm/scenario_vm_diagnostics.gd")
 const CLASSIC_CALL_LIMIT: int = 20
 const ACTION_CALL_LIMIT: int = 32
 const EXECUTION_STEP_LIMIT: int = 65536
@@ -23,6 +24,7 @@ var _execution_step_limit: int = EXECUTION_STEP_LIMIT
 var _halted: bool = true
 var _last_outcome: Variant
 var _debug_program: ScenarioProgramDefinition
+var diagnostics := VmDiagnostics.new()
 
 
 func configure(definition: ScenarioDefinition, execution_step_limit: int = EXECUTION_STEP_LIMIT) -> void:
@@ -42,6 +44,7 @@ func reset() -> void:
 	_halted = true
 	_last_outcome = null
 	_debug_program = null
+	diagnostics.clear()
 
 
 func start_program(program_id: String, context: ScenarioExecutionContext = null) -> ScenarioVmResult:
@@ -110,6 +113,7 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 		return ScenarioVmResult.failed(&"interaction_mismatch", "The interaction response does not match the issuing VM request.")
 	if not response.is_supported_kind():
 		return ScenarioVmResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")
+	diagnostics.restore_pending_instruction(_frames, _definition, _debug_program, DEBUG_PROGRAM_ID)
 	var events: Array[DomainEvent] = []
 	var reward_retry_checkpoint := snapshot() if _is_reward_continuation(_pending_continuation) else null
 	var continuation := _pending_continuation.copy() if _pending_continuation != null else null
@@ -177,6 +181,7 @@ func _complete_pending_operation(continuation: ScenarioVmPendingContinuation, op
 		var directive_result := _apply_classic_directive(operation.directive, inherited_context, runtime_api)
 		if directive_result.state == ScenarioVmResult.State.FAILED:
 			return _fail(directive_result.error_code, directive_result.error_message, events)
+		diagnostics.clear_instruction()
 	var resumed := run(runtime_api)
 	events.append_array(resumed.events)
 	if resumed.state == ScenarioVmResult.State.WAITING:
@@ -193,6 +198,7 @@ func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperat
 		return ScenarioVmResult.failed(&"invalid_vm_handoff", "The suspended Scenario VM is unavailable.")
 	if handoff == null or operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
 		return ScenarioVmResult.failed(&"invalid_runtime_handoff", "The Realmz runtime did not complete the suspended operation.")
+	diagnostics.restore_pending_instruction(_frames, _definition, _debug_program, DEBUG_PROGRAM_ID)
 	var events: Array[DomainEvent] = []
 	events.append_array(operation.events)
 	match handoff.kind:
@@ -341,6 +347,7 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 	if not instruction is ClassicActionDefinition:
 		return ScenarioVmResult.failed(&"unknown_scenario_instruction", "Scenario program '%s' contains an unknown instruction." % program.id)
 	var action: ClassicActionDefinition = instruction
+	diagnostics.capture_instruction(program.id, action)
 	_append_trace({"event": "execute-classic", "programId": program.id, "cursor": frame.cursor, "slot": action.slot, "rawOpcode": action.raw_opcode, "opcode": action.opcode, "id": action.operand_id})
 	match action.opcode:
 		39:
@@ -354,14 +361,17 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 			replacement.set_context(transfer_context)
 			_frames[_frames.size() - 1] = replacement
 			_append_trace({"event": "classic-transfer", "programId": target_id})
+			diagnostics.clear_instruction()
 			return ScenarioVmResult.completed()
 		111:
 			_append_trace({"event": "classic-return", "programId": program.id})
 			_return_from_frame(null)
+			diagnostics.clear_instruction()
 			return ScenarioVmResult.completed()
 		112:
 			frame.cursor += 1
 			_pop_classic_caller_below_top()
+			diagnostics.clear_instruction()
 			return ScenarioVmResult.completed()
 	var request_id := _next_request_id()
 	var operation := runtime_api.execute_classic(action, request_id, frame.context())
@@ -378,6 +388,7 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 	var directive_result := _apply_classic_directive(operation.directive, frame.context(), runtime_api)
 	if directive_result.state == ScenarioVmResult.State.FAILED:
 		return directive_result
+	diagnostics.clear_instruction()
 	return ScenarioVmResult.completed(operation.events)
 
 
@@ -660,6 +671,7 @@ func _append_trace(entry: Dictionary) -> void:
 
 
 func _fail(code: StringName, message: String, events: Array[DomainEvent]) -> ScenarioVmResult:
+	diagnostics.capture_failure(code, message)
 	_frames.clear()
 	_pending_request = null
 	_pending_continuation = null

@@ -13,6 +13,7 @@ Own immutable compiled scenario definitions and the mutable scenario-progress st
 - `ScenarioProgressState` for searched cells, quests, journal discovery, and the current selected-character set.
 - `ScenarioEncounterState` for timed encounter records, eliminated results, attempt counts, thief flags, and program redirects.
 - `CampaignSummaryView` carries the detached campaign facts shown during selection without making discovery load the complete package.
+- `ScenarioCompatibilityWarning` carries one immutable unavailable imported reference with exact source, field or slot, target, reason, and optional native provenance. `RealmzContent` retains the validated warning set and effective exact media identities for consumer-time checks; warnings never mutate authored definitions.
 - Complex Encounter, Thief Encounter, and Pick Lock request bodies carry detached scenario decisions without exposing VM frames.
 - `ClassicPickLockRules` owns the pure source-backed tumbler timing, chance, and frame calculations used by the Pick Lock interaction.
 

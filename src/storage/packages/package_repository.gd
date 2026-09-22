@@ -4,7 +4,7 @@ class_name PackageRepository
 extends RefCounted
 
 const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d"
-const DECODER_VERSION: int = 7
+const DECODER_VERSION: int = 8
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -12,6 +12,7 @@ const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.presentation.battle-atlas-v1",
 	"realmz.presentation.tileset-atlases-v1",
 	"realmz.scenario.classic-vm-v1",
+	"realmz.scenario.deferred-references-v1",
 	"realmz.scenario.safe-actions-v1",
 	"realmz.world.topology-v2",
 ]
@@ -207,6 +208,8 @@ func _load_installed_package(path: String, install_root: String, progress_callba
 		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
 	var receipt := _receipt_store.read(path)
 	if receipt.is_empty():
+		if _receipt_store.last_error.contains("incompatible package decoder"):
+			return null
 		return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error if not _receipt_store.last_error.is_empty() else "Installed package receipt is invalid.")
 	if _receipt_store.requires_application_revalidation:
 		if not _receipt_store.validate_archive_sha256(receipt, _archive_reader.sha256_file(path)):

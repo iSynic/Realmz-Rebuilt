@@ -38,6 +38,8 @@ class WorldContent extends RefCounted:
 
 func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary, media_assets: Array[MediaAsset] = [], trusted_install: bool = false, application_content: RealmzContent = null, application_media_assets: Array[MediaAsset] = []) -> RealmzContent:
 	clear_error()
+	var allow_deferred: bool = manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1")
+	var validate_references: bool = not trusted_install or application_content != null
 	if application_content != null and application_content.rules_version != manifest["engine"]["rulesVersion"]:
 		_reject("The scenario rules version does not match the loaded application definition catalog.")
 		return null
@@ -49,7 +51,7 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if story_content == null:
 		return null
 	var media_validator := PackageMediaValidatorResolver.new(_diagnostic)
-	var rules_content := _decode_rules_content(content_decoder, media_validator, content, media_assets, trusted_install, application_content, application_media_assets)
+	var rules_content := _decode_rules_content(content_decoder, media_validator, content, media_assets, trusted_install, application_content, application_media_assets, allow_deferred)
 	if rules_content == null:
 		return null
 	var scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
@@ -57,16 +59,18 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if scenario_definition == null:
 		return null
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
-	if not _validate_content_references(reference_validator, scenario_definition, story_content, rules_content, trusted_install):
+	reference_validator.clear_warnings()
+	reference_validator.warnings.append_array(media_validator.warnings)
+	if not _validate_content_references(reference_validator, scenario_definition, story_content, rules_content, allow_deferred, validate_references):
 		return null
-	var world_content := _decode_world_content(PackageWorldDecoder.new(_diagnostic), reference_validator, world, scenario_definition, rules_content, trusted_install)
+	var world_content := _decode_world_content(PackageWorldDecoder.new(_diagnostic), reference_validator, world, scenario_definition, rules_content, trusted_install, allow_deferred, validate_references)
 	if world_content == null:
 		return null
-	var start_coordinate_value: Variant = _validate_start(manifest, world_content, trusted_install)
+	var start_coordinate_value: Variant = _validate_start(manifest, world_content, reference_validator, allow_deferred, validate_references)
 	if start_coordinate_value == null:
 		return null
 	var start_coordinate: Vector2i = start_coordinate_value
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], manifest["start"]["mapId"], start_coordinate, world_content.definition, scenario_definition, story_content.messages, world_content.triggers, story_content.simple_encounters, rules_content.races, rules_content.castes, rules_content.items, rules_content.spells, rules_content.monsters, rules_content.battles, rules_content.treasures, rules_content.shops, story_content.complex_encounters, story_content.thief_encounters, story_content.timed_encounters, story_content.option_labels, story_content.campaign, rules_content.appearance_options, rules_content.monster_sets)
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], manifest["start"]["mapId"], start_coordinate, world_content.definition, scenario_definition, story_content.messages, world_content.triggers, story_content.simple_encounters, rules_content.races, rules_content.castes, rules_content.items, rules_content.spells, rules_content.monsters, rules_content.battles, rules_content.treasures, rules_content.shops, story_content.complex_encounters, story_content.thief_encounters, story_content.timed_encounters, story_content.option_labels, story_content.campaign, rules_content.appearance_options, rules_content.monster_sets, reference_validator.warnings, allow_deferred, rules_content.media)
 
 
 func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, world: Dictionary, trusted_install: bool) -> StoryContent:
@@ -96,7 +100,7 @@ func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, 
 	return result
 
 
-func _decode_rules_content(decoder: PackageContentDecoder, media_validator: PackageMediaValidatorResolver, content: Dictionary, scenario_media: Array[MediaAsset], trusted_install: bool, application_content: RealmzContent, application_media: Array[MediaAsset]) -> RulesContent:
+func _decode_rules_content(decoder: PackageContentDecoder, media_validator: PackageMediaValidatorResolver, content: Dictionary, scenario_media: Array[MediaAsset], trusted_install: bool, application_content: RealmzContent, application_media: Array[MediaAsset], allow_deferred: bool) -> RulesContent:
 	var races_value: Variant = decoder.decode_races(content.get("races"))
 	var castes_value: Variant = decoder.decode_castes(content.get("castes"))
 	var items_value: Variant = decoder.decode_items(content.get("items"))
@@ -125,7 +129,7 @@ func _decode_rules_content(decoder: PackageContentDecoder, media_validator: Pack
 	var all_monsters: Variant = _all_monsters(result.monsters, result.monster_sets, trusted_install)
 	if all_monsters == null:
 		return null
-	if not trusted_install and not media_validator.validate_monster_media(all_monsters, result.media):
+	if not trusted_install and not media_validator.validate_monster_media(all_monsters, result.media, allow_deferred):
 		return null
 	result.appearance_options = media_validator.resolve_character_appearance_options(result.media, result.races)
 	return result
@@ -152,22 +156,22 @@ func _all_monsters(monsters: Array[MonsterDefinition], monster_sets: Dictionary,
 	return result
 
 
-func _validate_content_references(validator: PackageCrossReferenceValidator, scenario: ScenarioDefinition, story: StoryContent, rules: RulesContent, trusted_install: bool) -> bool:
-	if trusted_install:
+func _validate_content_references(validator: PackageCrossReferenceValidator, scenario: ScenarioDefinition, story: StoryContent, rules: RulesContent, allow_deferred: bool, validate_references: bool) -> bool:
+	if not validate_references:
 		return true
-	if not validator.validate_scenario_references(scenario, story.message_ids, story.simple_encounters, story.complex_encounters, story.thief_encounters, rules.items, rules.spells, rules.media):
+	if not validator.validate_scenario_references(scenario, story.message_ids, story.simple_encounters, story.complex_encounters, story.thief_encounters, rules.items, rules.spells, rules.media, allow_deferred):
 		return false
-	if not validator.validate_timed_encounter_references(scenario, story.timed_encounters):
+	if not validator.validate_timed_encounter_references(scenario, story.timed_encounters, allow_deferred):
 		return false
-	if not validator.validate_rule_references(rules.races, rules.castes, rules.items, rules.spells, rules.monsters, rules.battles, rules.treasures, rules.shops, story.message_ids):
+	if not validator.validate_rule_references(rules.races, rules.castes, rules.items, rules.spells, rules.monsters, rules.battles, rules.treasures, rules.shops, story.message_ids, allow_deferred):
 		return false
 	for set_id: Variant in rules.monster_sets:
-		if not validator.validate_monster_record_references(rules.monster_sets[set_id], rules.items, rules.spells):
+		if not validator.validate_monster_record_references(rules.monster_sets[set_id], rules.items, rules.spells, allow_deferred):
 			return false
 	return true
 
 
-func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCrossReferenceValidator, world: Dictionary, scenario: ScenarioDefinition, rules: RulesContent, trusted_install: bool) -> WorldContent:
+func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCrossReferenceValidator, world: Dictionary, scenario: ScenarioDefinition, rules: RulesContent, trusted_install: bool, allow_deferred: bool, validate_references: bool) -> WorldContent:
 	var triggers_value: Variant = decoder.decode_triggers(world.get("triggers"), scenario)
 	if triggers_value == null:
 		return null
@@ -196,9 +200,9 @@ func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCross
 	var player_maps: Array[PlayerMapDefinition] = player_maps_value
 	var transitions: Array[MapTransition] = transitions_value
 	result.definition = WorldDefinition.new(maps, transitions, terrain_sets, player_maps)
-	if not trusted_install and not validator.validate_random_region_references(maps, scenario, rules.battles):
+	if validate_references and not validator.validate_random_region_references(maps, scenario, rules.battles, allow_deferred):
 		return null
-	if not trusted_install and not validator.validate_player_map_opcode_references(scenario, result.definition):
+	if validate_references and not validator.validate_player_map_opcode_references(scenario, result.definition, allow_deferred):
 		return null
 	return result
 
@@ -213,17 +217,17 @@ func _trigger_ids(triggers: Array[TriggerDefinition]) -> Variant:
 	return result
 
 
-func _validate_start(manifest: Dictionary, world: WorldContent, trusted_install: bool) -> Variant:
+func _validate_start(manifest: Dictionary, world: WorldContent, validator: PackageCrossReferenceValidator, allow_deferred: bool, validate_references: bool) -> Variant:
 	var start: Variant = manifest.get("start")
 	if not start is Dictionary or not start.get("mapId") is String or _integer(start.get("x")) < 0 or _integer(start.get("y")) < 0:
 		_reject("Manifest start location is malformed.")
 		return null
 	var start_coordinate := Vector2i(_integer(start["x"]), _integer(start["y"]))
 	var start_map := world.definition.map_by_id(start["mapId"])
-	if start_map == null or not trusted_install and start_map.topology.cell_at(start_coordinate) == null:
+	if start_map == null or start_map.topology.cell_at(start_coordinate) == null:
 		_reject("Manifest start location does not identify a topology cell.")
 		return null
-	for trigger: TriggerDefinition in world.triggers if not trusted_install else []:
+	for trigger: TriggerDefinition in world.triggers if validate_references else []:
 		if not trigger.map_id.is_empty():
 			var map := world.definition.map_by_id(trigger.map_id)
 			if map == null or map.topology.cell_at(trigger.coordinate) == null:
@@ -231,7 +235,10 @@ func _validate_start(manifest: Dictionary, world: WorldContent, trusted_install:
 				return null
 		if trigger.post_action_location != null:
 			var destination_map := world.definition.map_by_id(trigger.post_action_location.map_id)
-			if destination_map == null or destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
+			if destination_map == null:
+				if not validator.defer_or_reject(allow_deferred, &"trigger", trigger.id, "postAction", -1, &"map", trigger.post_action_location.map_id, "Trigger '%s' references an unavailable post-action map." % trigger.id):
+					return null
+			elif destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
 	return start_coordinate

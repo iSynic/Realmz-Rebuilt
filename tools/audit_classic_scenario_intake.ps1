@@ -1,13 +1,15 @@
 param(
     [Parameter(Mandatory)][string]$ScenarioRoot,
     [Parameter(Mandatory)][string[]]$ScenarioName,
-    [Parameter(Mandatory)][string]$ProvidenceCliPath,
-    [Parameter(Mandatory)][string]$ProvidenceAdapterPath,
-    [Parameter(Mandatory)][string]$ProvidenceCommit,
-    [Parameter(Mandatory)][string]$ApplicationDataDirectory,
-    [Parameter(Mandatory)][string]$ApplicationLibraryRoot,
-    [Parameter(Mandatory)][string]$ReferenceCatalogRoot,
     [Parameter(Mandatory)][string]$OutputRoot,
+    [string]$ToolchainLockPath = "",
+    [string]$ToolchainConfigPath = "",
+    [string]$ProvidenceCliPath = "",
+    [string]$ProvidenceAdapterPath = "",
+    [string]$ProvidenceCommit = "",
+    [string]$ApplicationDataDirectory = "",
+    [string]$ApplicationLibraryRoot = "",
+    [string]$ReferenceCatalogRoot = "",
     [hashtable]$ScenarioSourceOverrides = @{},
     [string]$ProvidenceSlimmerPath = "",
     [string]$ApplicationPackagePath = "",
@@ -17,15 +19,42 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
+$resolver = Join-Path $PSScriptRoot 'resolve_providence_toolchain.ps1'
+$resolveArguments = @{}
+if (-not [string]::IsNullOrWhiteSpace($ToolchainLockPath)) { $resolveArguments.LockPath = $ToolchainLockPath }
+if (-not [string]::IsNullOrWhiteSpace($ToolchainConfigPath)) { $resolveArguments.LocalConfigPath = $ToolchainConfigPath }
+$resolvedToolchain = (& $resolver @resolveArguments) | ConvertFrom-Json
+
+function Resolve-ToolchainValue([string]$Label, [string]$Supplied, [string]$Resolved) {
+    if (-not [string]::IsNullOrWhiteSpace($Supplied)) {
+        $suppliedPath = [IO.Path]::GetFullPath($Supplied)
+        $resolvedPath = [IO.Path]::GetFullPath($Resolved)
+        if ($suppliedPath -cne $resolvedPath) {
+            throw "$Label is a caller assertion and does not match the locked Providence toolchain."
+        }
+    }
+    return [IO.Path]::GetFullPath($Resolved)
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ProvidenceCommit) -and $ProvidenceCommit -cne $resolvedToolchain.compilerCommit) {
+    throw "ProvidenceCommit is a caller assertion and does not match the locked compiler identity."
+}
+$ProvidenceCommit = $resolvedToolchain.compilerCommit
+$ProvidenceCliPath = Resolve-ToolchainValue 'ProvidenceCliPath' $ProvidenceCliPath $resolvedToolchain.cliPath
+$ProvidenceAdapterPath = Resolve-ToolchainValue 'ProvidenceAdapterPath' $ProvidenceAdapterPath $resolvedToolchain.adapterPath
+$ProvidenceSlimmerPath = Resolve-ToolchainValue 'ProvidenceSlimmerPath' $ProvidenceSlimmerPath $resolvedToolchain.slimmerPath
+$ApplicationDataDirectory = Resolve-ToolchainValue 'ApplicationDataDirectory' $ApplicationDataDirectory $resolvedToolchain.applicationDataDirectory
+$ApplicationLibraryRoot = Resolve-ToolchainValue 'ApplicationLibraryRoot' $ApplicationLibraryRoot $resolvedToolchain.applicationLibraryRoot
+$ReferenceCatalogRoot = Resolve-ToolchainValue 'ReferenceCatalogRoot' $ReferenceCatalogRoot $resolvedToolchain.referenceCatalogRoot
+$ApplicationPackagePath = Resolve-ToolchainValue 'ApplicationPackagePath' $ApplicationPackagePath $resolvedToolchain.applicationPackagePath
+$ApplicationMediaCatalogPath = Resolve-ToolchainValue 'ApplicationMediaCatalogPath' $ApplicationMediaCatalogPath $resolvedToolchain.applicationMediaCatalogPath
 $ScenarioRoot = [IO.Path]::GetFullPath($ScenarioRoot)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $requiredFiles = @($ProvidenceCliPath, $ProvidenceAdapterPath)
 $requiredDirectories = @($ScenarioRoot, $ApplicationDataDirectory, $ApplicationLibraryRoot, $ReferenceCatalogRoot)
-$slimEnabled = -not [string]::IsNullOrWhiteSpace($ProvidenceSlimmerPath)
+$slimEnabled = $true
 if ($slimEnabled) {
     $requiredFiles += @($ProvidenceSlimmerPath, $ApplicationPackagePath, $ApplicationMediaCatalogPath)
-} elseif (-not [string]::IsNullOrWhiteSpace($ApplicationPackagePath) -or -not [string]::IsNullOrWhiteSpace($ApplicationMediaCatalogPath)) {
-    throw "Application package and media catalog require ProvidenceSlimmerPath."
 }
 foreach ($path in $requiredFiles) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing required file: $path" }
@@ -195,6 +224,35 @@ function Request-CompleteReadiness($Process, [ref]$RequestId) {
         }
     }
     $problems_complete = $problems.Count -eq $problemCount
+    $warnings = @($first.warnings)
+    $warningCount = [int]$first.warningCount
+    $warningPage = $first
+    $warningPages = 1
+    if ([int]$warningPage.warningOffset -ne 0) {
+        throw "Providence readiness did not start its warning projection at offset zero."
+    }
+    while ([bool]$warningPage.warningsTruncated) {
+        $nextWarningOffset = $warnings.Count
+        $warningPage = Request-Adapter $Process $RequestId 'project.inspect-rebuilt-readiness' @{
+            offset = 0
+            limit = 1
+            warningOffset = $nextWarningOffset
+            warningLimit = 200
+        }
+        if ([int]$warningPage.warningOffset -ne $nextWarningOffset) {
+            throw "Providence readiness changed warning-page identity while paging."
+        }
+        $warningItems = @($warningPage.warnings)
+        if ($warningItems.Count -eq 0) {
+            throw "Providence readiness returned an incomplete warning page."
+        }
+        $warnings += $warningItems
+        $warningPages++
+        if ($warnings.Count -gt $warningCount) {
+            throw "Providence readiness returned more warnings than its denominator."
+        }
+    }
+    $warnings_complete = $warnings.Count -eq $warningCount
     return [ordered]@{
         revision = $first.revision
         target = $first.target
@@ -203,6 +261,14 @@ function Request-CompleteReadiness($Process, [ref]$RequestId) {
         groupCount = $first.groupCount
         groups = @($first.groups)
         blockers = $blockers
+        warningCount = $warningCount
+        warningGroupCount = $first.warningGroupCount
+        warningGroups = @($first.warningGroups)
+        warnings = $warnings
+        warningOffset = 0
+        warningLimit = 200
+        warningPages = $warningPages
+        warningsTruncated = -not $warnings_complete
         problemCount = $problemCount
         problems = $problems
         problemOffset = 0
@@ -213,8 +279,14 @@ function Request-CompleteReadiness($Process, [ref]$RequestId) {
         limit = 200
         truncated = $false
         pages = $pages.Count
-        complete = $blockers.Count -eq $total -and $problems_complete
-        incompleteReason = if ($problems_complete) { $null } else { "Providence readiness returned an incomplete runtime problem projection." }
+        complete = $blockers.Count -eq $total -and $problems_complete -and $warnings_complete
+        incompleteReason = if (-not $problems_complete) {
+            "Providence readiness returned an incomplete runtime problem projection."
+        } elseif (-not $warnings_complete) {
+            "Providence readiness returned an incomplete warning projection."
+        } else {
+            $null
+        }
     }
 }
 
@@ -259,9 +331,9 @@ if ($slimEnabled) {
     $compilerIdentity.applicationPackageSha256 = (Get-FileHash -LiteralPath $ApplicationPackagePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $compilerIdentity.applicationMediaCatalogSha256 = (Get-FileHash -LiteralPath $ApplicationMediaCatalogPath -Algorithm SHA256).Hash.ToLowerInvariant()
 }
-$applicationDataIdentity = Get-TreeIdentity $ApplicationDataDirectory
-$applicationLibraryIdentity = Get-TreeIdentity $ApplicationLibraryRoot
-$referenceCatalogIdentity = Get-TreeIdentity $ReferenceCatalogRoot
+$applicationDataIdentity = $resolvedToolchain.applicationDataIdentity
+$applicationLibraryIdentity = $resolvedToolchain.applicationLibraryIdentity
+$referenceCatalogIdentity = $resolvedToolchain.referenceCatalogIdentity
 $bundledCatalog = Get-Content -LiteralPath (Join-Path $repoRoot 'src/storage/packages/bundled_campaigns/castle-bundled-scenarios.provenance.json') -Raw | ConvertFrom-Json
 $results = @()
 
@@ -378,7 +450,7 @@ foreach ($name in @($ScenarioName | Select-Object -Unique)) {
         $readiness = Request-CompleteReadiness $adapter ([ref]$requestId)
         $entry.readiness = $readiness
         if ($readiness.complete) { $entry.stages.readiness = "passed" } else { $entry.stages.readiness = "incomplete" }
-        if ($readiness.status -ne 'ready') {
+        if ($readiness.status -notin @('ready', 'ready-with-warnings')) {
             $entry.status = "readiness-blocked"
             $entry.failure = "Providence Rebuilt readiness is incomplete."
         } else {
@@ -489,6 +561,7 @@ $report = [ordered]@{
     generatedAt=(Get-Date).ToUniversalTime().ToString('o')
     runtimeCommit=$runtimeCommit
     providenceCommit=$ProvidenceCommit
+    toolchainLockSha256=$resolvedToolchain.lockSha256
     compiler=$compilerIdentity
     applicationDataIdentity=[ordered]@{ root=[IO.Path]::GetFullPath($ApplicationDataDirectory); fileCount=$applicationDataIdentity.fileCount; byteCount=$applicationDataIdentity.byteCount; treeSha256=$applicationDataIdentity.treeSha256 }
     applicationLibraryIdentity=[ordered]@{ root=[IO.Path]::GetFullPath($ApplicationLibraryRoot); fileCount=$applicationLibraryIdentity.fileCount; byteCount=$applicationLibraryIdentity.byteCount; treeSha256=$applicationLibraryIdentity.treeSha256 }

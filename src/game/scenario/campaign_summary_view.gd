@@ -19,3 +19,5 @@ var guidance_authored: bool = false
 var banned_races: Array[String] = []
 var banned_castes: Array[String] = []
 var package_hash: String = ""
+var compatibility_warning_count: int = 0
+var compatibility_warning_summaries: Array[String] = []

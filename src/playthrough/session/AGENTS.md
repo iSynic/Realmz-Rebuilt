@@ -18,6 +18,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - Its optional `can_update` fact marks only an explicitly eligible package-revision copy; the playthrough layer does not decide archive trust or mutate saves.
 - `PlayerIntent` is the stable public command envelope. Session transactions consume the lower-level `InteractionRequest` and `InteractionResponse` contracts from `src/game/shared/interactions` without owning their wire codec.
 - `GameView`, `ViewDomainRevisions`, and `SessionStep` are the detached read model and transaction result returned to callers.
+- `SessionRuntimeFault` is the nonserialized terminal diagnostic for selected deferred legacy data. It records campaign, program, instruction slot, opcode, operands, target, and underlying typed failure.
 
 ## Local Contracts
 
@@ -25,6 +26,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - Every operation receives the one owned context by reference. Coordinators never copy or mirror session state.
 - Rejected input is distinct from committed failure; only `GameSession` advances revision or constructs `SessionStep`.
 - Restore validation and transaction rollback leave the live aggregate untouched on every failure.
+- Selecting unavailable deferred data rolls back the complete attempted transaction, latches one `SessionRuntimeFault`, blocks later intents, responses, debug commands, and snapshots, and permits direct close or replacement-session restore. It never retries effects, advances the failed instruction, removes the issuing AP, or writes the fault into a save.
 - A pending placed AP keeps its post-move continuation anchored to the issuing cell even after its program moves the party. Restore validates that source's selected trigger and region identities independently from the already-validated current party location; post-move continuations without an active AP still require source/current equality.
 - A friendly-collision interaction is created only from the exact pending post-Guard combat reaction. Its continuation retains that actor and destination across intervening age or death-macro work, restore rejects any choice whose pending reaction or adjacent ally no longer matches, and its declared Back out response cancels only that movement attempt.
 - Continuation kinds, fields, versions, RNG order, event order, save shape, and stable identities remain unchanged.

@@ -48,6 +48,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `macro-spell-reachability-evidence.md` records the reproducible compiled-package call-graph audit for battle/death-macro opcode-17 spell families while keeping static reachability distinct from controlled and ordinary-route execution.
 - `spell-capability-batch-acceptance.md` owns the reviewed spell capability batch's gate results, diagnostic warning, unchanged format contracts, and remaining runtime signatures.
 - `third-party-scenario-intake.md` records payload-free, hash-pinned Providence conversion/readiness and Rebuilt startup evidence for the locally available third-party corpus; it never upgrades controlled package probing to ordinary-route playability.
+- `scenario-compiler-readiness-report-2026-09-22.md` records the accepted Providence toolchain, all 25 current intake outcomes, installed private revisions, shared warning/quarantine policy, and unresolved hard faults without promoting startup to campaign certification.
 - `scenario-vm-evidence.md` owns Classic control-flow, nested macro, and host-boundary evidence.
 - `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.
 - `ui-visual-audit.md` owns the complete player-visible screen/state inventory, Castle/Remake design leads, target composition decisions, media opportunities, and phased visual-remediation queue.
