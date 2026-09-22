@@ -87,6 +87,9 @@ test("rejects observe-service mutation and requires revision for fixture mutatio
   await assert.rejects(() => requestSession(observed.descriptor.sessionId, "restore", {}, 0, "client-gate", observed.home), /observe sessions reject mutating commands/);
   const denied = await sendRequest(observed.descriptor.port, request(observed.descriptor, "restore", "restore-observe", observed.descriptor.token, 0));
   assert.equal(denied.error?.code, "access_denied");
+  const liveVictory = await sendRequest(observed.descriptor.port, { ...request(observed.descriptor, "invoke", "live-battle-victory", observed.descriptor.token, 0), params: { target: { kind: "battle-victory", id: 0 } } });
+  assert.equal(liveVictory.error?.code, "access_denied");
+  assert.equal(observed.getHandled(), 0, "the observe service did not dispatch either mutation");
   const fixture = await setup("fixture");
   const missing = await sendRequest(fixture.descriptor.port, request(fixture.descriptor, "restore", "restore-missing"));
   assert.equal(missing.error?.code, "expected_revision_required");

@@ -103,6 +103,17 @@ async function observe(client: Client, id: string): Promise<ToolReply> {
   return reply(await tool(client, "realmz_observe", { sessionId: id, params: { diagnostics: "complete" } }), "observe");
 }
 
+async function waitForHostInput(client: Client, id: string): Promise<ToolReply> {
+  for (let attempt = 0; attempt < 150; attempt += 1) {
+    const observed = await observe(client, id);
+    const result = successfulResult(observed, "input readiness observation");
+    const readiness = result.readiness as Record<string, unknown>;
+    if (readiness.fixtureReady === true && readiness.combatPlayback !== true && readiness.hostInteraction !== true) return observed;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("rendered fixture did not leave its combat/host presentation boundary");
+}
+
 async function invoke(client: Client, id: string, revision: number, target: Record<string, unknown>, requestId: string): Promise<ToolReply> {
   return reply(await tool(client, "realmz_invoke", { sessionId: id, params: { target }, expectedRevision: revision, requestId }), "invoke");
 }
@@ -213,6 +224,22 @@ test("rendered MCP fixture lifecycle and typed continuations", { skip: !runRende
     const cloneRestore = reply(await tool(client, "realmz_fixture", { operation: "restore", sessionId: cloneId, checkpoint, expectedRevision: currentRevision(cloneObservation, "clone observation"), requestId: "clone-restore" }), "clone restore");
     assert.equal(cloneRestore.ok, true);
     created[1]!.revision = currentRevision(cloneRestore, "clone restore");
+
+    const noCombatVictory = await invoke(client, cloneId, currentRevision(cloneRestore, "clone restore"), { kind: "battle-victory", id: 0 }, "victory-no-combat");
+    assert.equal(noCombatVictory.error?.code, "battle_victory_unavailable", "fixture victory requires active combat");
+    const startedBattle = await invoke(client, cloneId, currentRevision(cloneRestore, "clone restore"), { kind: "battle", id: 0 }, "victory-start-battle");
+    successfulResult(startedBattle, "victory battle setup");
+    const battleRevision = currentRevision(await waitForHostInput(client, cloneId), "victory battle readiness");
+    const staleVictory = await invoke(client, cloneId, battleRevision - 1, { kind: "battle-victory", id: 0 }, "victory-stale");
+    assert.equal(staleVictory.error?.code, "stale_revision", "fixture victory requires the observed combat revision");
+    const wrongVictory = await invoke(client, cloneId, battleRevision, { kind: "battle-victory", id: 1 }, "victory-wrong-battle");
+    assert.equal(wrongVictory.error?.code, "battle_victory_wrong_battle", "fixture victory requires the exact Classic battle ID");
+    const won = await invoke(client, cloneId, battleRevision, { kind: "battle-victory", id: 0 }, "victory-once");
+    assert.equal(successfulResult(won, "fixture victory").mode, "fixture-forced-victory");
+    const retried = await invoke(client, cloneId, battleRevision, { kind: "battle-victory", id: 0 }, "victory-once");
+    assert.deepEqual(retried, won, "an identical retry returns the same reply without repeating rewards");
+    const repeated = await invoke(client, cloneId, currentRevision(await waitForHostInput(client, cloneId), "post-victory readiness"), { kind: "battle-victory", id: 0 }, "victory-after-combat");
+    assert.equal(repeated.error?.code, "battle_victory_unavailable", "a new request cannot repeat the completed battle");
 
     const invalid = await invoke(client, id, revision, { kind: "not-a-supported-target", id: 0 }, "invalid-target");
     assert.equal(invalid.ok, false);
