@@ -8,10 +8,13 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	if arguments.size() != 2 or not arguments[0].begins_with("--package-path=") or not arguments[1].begins_with("--package-hash="):
-		printerr("USAGE: --script res://tools/wrath_player_map_probe.gd -- --package-path=<archive> --package-hash=<sha256>")
+	var valid_shape := arguments.size() == 2 or arguments.size() == 3 and arguments[2] == "--visual" or arguments.size() == 4 and arguments[2] == "--visual" and arguments[3].begins_with("--capture-dir=")
+	if not valid_shape or not arguments[0].begins_with("--package-path=") or not arguments[1].begins_with("--package-hash="):
+		printerr("USAGE: --script res://tools/wrath_player_map_probe.gd -- --package-path=<archive> --package-hash=<sha256> [--visual [--capture-dir=<outside-Git-directory>]]")
 		quit(2)
 		return
+	var visual := arguments.size() >= 3
+	var capture_dir := arguments[3].substr("--capture-dir=".length()) if arguments.size() == 4 else ""
 	var package_path := arguments[0].substr("--package-path=".length())
 	var expected_hash := arguments[1].substr("--package-hash=".length())
 	if package_path.is_empty() or expected_hash.length() != 64:
@@ -56,7 +59,7 @@ func _run() -> void:
 		quit(1)
 		return
 	var snapshot := session.snapshot()
-	for map_id in [13, 14, 15]:
+	for map_id in [2, 13, 14, 17]:
 		var definition := content.world.player_map_by_classic_id(map_id)
 		if definition == null:
 			printerr("PLAYER_MAP_MISSING ", map_id)
@@ -79,7 +82,7 @@ func _run() -> void:
 		printerr("MAP_CHOOSER_MISSING")
 		quit(1)
 		return
-	for map_id in [13, 14, 15]:
+	for map_id in [2, 13, 14, 17]:
 		var definition := content.world.player_map_by_classic_id(map_id)
 		var button: Button
 		for node: Node in chooser.find_children("*", "Button", true, false):
@@ -105,6 +108,40 @@ func _run() -> void:
 		print("PRESENTED ", JSON.stringify({"id": definition.id, "cells": selected.cells.size(), "markers": selected.markers.size()}))
 	await process_frame
 	await process_frame
-	body.queue_free()
 	print("WRATH_PLAYER_MAP_PROBE_PASS ", JSON.stringify({"packageHash": content.package_hash, "playerMaps": content.world.player_maps().size(), "markers": marker_count}))
+	if visual:
+		DisplayServer.window_set_title("ISOLATED Wrath player-map fixture")
+		var controls := HBoxContainer.new()
+		var label := Label.new()
+		label.text = "ISOLATED TEST FIXTURE — Wrath player maps 2, 13, 14, 17"
+		controls.add_child(label)
+		var close_button := Button.new()
+		close_button.text = "Close fixture"
+		close_button.pressed.connect(func() -> void: quit(0))
+		controls.add_child(close_button)
+		if not capture_dir.is_empty():
+			var capture_button := Button.new()
+			capture_button.text = "Capture fixture"
+			capture_button.pressed.connect(func() -> void: _capture_fixture(body, capture_dir))
+			controls.add_child(capture_button)
+		body.add_child(controls)
+		body.move_child(controls, 0)
+		print("VISUAL_FIXTURE_READY")
+		return
+	body.queue_free()
 	quit(0)
+
+
+func _capture_fixture(body: VBoxContainer, output_dir: String) -> void:
+	await process_frame
+	var canvas := body.find_child("PlayerMapCanvas", true, false) as PlayerMapCanvas
+	var selected := canvas.get("_view") as PlayerMapView if canvas != null else null
+	if selected == null or DirAccess.make_dir_recursive_absolute(output_dir) != OK:
+		printerr("CAPTURE_UNAVAILABLE")
+		return
+	var path := output_dir.path_join("wrath-" + selected.id.replace(".", "-") + "-" + str(Time.get_ticks_usec()) + ".png")
+	var error := root.get_texture().get_image().save_png(path)
+	if error != OK:
+		printerr("CAPTURE_FAILED ", error)
+		return
+	print("CAPTURED ", JSON.stringify({"playerMapId": selected.id, "path": path, "sha256": FileAccess.get_sha256(path)}))
