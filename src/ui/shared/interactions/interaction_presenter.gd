@@ -123,6 +123,13 @@ func _exit_tree() -> void:
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
+	if _component is ShopInteraction and (_component as ShopInteraction).refresh_money(request, game_view):
+		_request = request
+		_playback_masked = false
+		visible = true
+		_claim_modal_layer()
+		_apply_classic_region()
+		return
 	var shop_state := (_component as ShopInteraction).capture_browser_state() if _component is ShopInteraction and request != null and request.kind == InteractionRequest.SHOP else {}
 	var treasure_state := (_component as TreasureDistributionInteraction).capture_browser_state() if _component is TreasureDistributionInteraction and _request != null and request != null and request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.request_id == _request.request_id else {}
 	if _can_present_nested_treasure_confirmation(request):
@@ -342,10 +349,12 @@ func _create_component(request: InteractionRequest, game_view: GameView, media: 
 func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
-	_overlays.close_side_workspace()
-	_overlays.close_encounter_dock()
-	_overlays.close_application_workspace()
-	_overlays.close_modal_shield()
+	var retain_shop_money := _component is ShopInteraction and body is InteractionResponse.ShopBody and bool((_component as ShopInteraction).capture_browser_state().get("moneyOpen", false))
+	if not retain_shop_money:
+		_overlays.close_side_workspace()
+		_overlays.close_encounter_dock()
+		_overlays.close_application_workspace()
+		_overlays.close_modal_shield()
 	var response := InteractionResponse.new(_request.request_id, _request.kind, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"transfer", &"done"]
 	if body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action == &"done":
@@ -353,7 +362,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	_request = null
 	_set_classic_acknowledgement_cursor(false)
 	_combat.clear()
-	if not preserve_treasure_workspace:
+	if not preserve_treasure_workspace and not retain_shop_money:
 		visible = false
 	response_submitted.emit(response)
 

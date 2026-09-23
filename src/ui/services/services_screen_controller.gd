@@ -62,7 +62,8 @@ func present_shop(target: Control, view: GameView, media: ClassicMediaCatalog) -
 func _present(target: Control, view: GameView, media: ClassicMediaCatalog, include_location_services: bool) -> void:
 	if target == null or view == null:
 		return
-	if _held_button != null and (target as ServicesScreen == null or (target as ServicesScreen).workspace() != _workspace):
+	var same_workspace := _workspace != null and is_instance_valid(_workspace) and ((target as ServicesScreen).workspace() == _workspace if target is ServicesScreen else _workspace.get_parent() == target)
+	if _held_button != null and not same_workspace:
 		_stop_repeat()
 	_media = media
 	var screen := target as ServicesScreen
@@ -71,9 +72,10 @@ func _present(target: Control, view: GameView, media: ClassicMediaCatalog, inclu
 		_workspace = screen.workspace()
 	else:
 		var parent := target as VBoxContainer
-		_clear(parent)
-		_workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as ServicesWorkspace
-		parent.add_child(_workspace)
+		if not same_workspace:
+			_clear(parent)
+			_workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as ServicesWorkspace
+			parent.add_child(_workspace)
 		_workspace.prepare(_layout_profile == UiLayoutProfile.COMPACT)
 	if not _bind_money_workspace(view):
 		return
@@ -224,12 +226,12 @@ func _bind_transfer(view: GameView, money: MoneyWorkspaceView, selected: MoneyCh
 func _bind_changing(view: GameView, money: MoneyWorkspaceView) -> void:
 	var status := _workspace.changing_pane().get_node("Content/Header/Status") as Label
 	var available := money.changing_available and _browse_only_reason.is_empty()
-	_bind_label(status, "Available here · converts pooled wealth" if available and _return_to_shop else "Available here · converts pooled wealth · hold to repeat" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
+	_bind_label(status, "Available here · converts pooled wealth · hold to repeat" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
 	var buttons := _workspace.changing_buttons()
 	for index in mini(buttons.size(), money.changes.size()):
 		var rate := money.changes[index]
 		var button := buttons[index]
-		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change" if available and _return_to_shop and rate.availability.enabled else "Change · hold to repeat" if available and rate.availability.enabled else "Unavailable here"]
+		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change · hold to repeat" if available and rate.availability.enabled else "Unavailable here"]
 		_bind_money_action(button, view, rate.availability, EconomyIntents.money(rate.action, "", String(rate.source), rate.source_amount), true)
 
 
@@ -262,7 +264,6 @@ func _bind_location_services(view: GameView) -> void:
 func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilityView, intent: PlayerIntent, repeat_while_held: bool = false) -> void:
 	_clear_pressed_connections(button)
 	_clear_repeat_connections(button)
-	repeat_while_held = repeat_while_held and not _return_to_shop
 	if not _browse_only_reason.is_empty():
 		button.disabled = true
 		button.tooltip_text = _browse_only_reason

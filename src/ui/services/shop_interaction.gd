@@ -110,6 +110,46 @@ func restore_browser_state(state: Dictionary) -> void:
 		_show_workspace(&"money", String(state.get("moneyCharacterId", "")))
 
 
+func refresh_money(request: InteractionRequest, game_view: GameView) -> bool:
+	if request == null or request.kind != InteractionRequest.SHOP:
+		return false
+	var next_body := request.body as ShopRequestBody
+	if not _money_workspace_open or _money_workspace == null or not is_instance_valid(_money_workspace) or next_body == null or _body.shop_id != next_body.shop_id or game_view == null:
+		return false
+	var stock_key := _selected_stock.stock_key if _selected_stock != null else ""
+	var item_id := _selected_item.instance_id if _selected_item != null else ""
+	var item_owner := _selected_item_owner_id
+	_body = next_body
+	_game_view = game_view
+	_characters = _body.characters.duplicate()
+	_stock = _body.stock.duplicate()
+	%ShopFacts.text = "Prices %d%%" % _body.inflation_percent if _compact else "%d gold  •  prices %d%%" % [_body.party_gold, _body.inflation_percent]
+	if _character_by_id(_selected_character_id) == null:
+		_selected_character_id = _characters[0].id if not _characters.is_empty() else ""
+	if _character_by_id(_right_character_id) == null:
+		_right_character_id = ""
+	_selected_stock = null
+	_selected_item = null
+	_selected_item_owner_id = ""
+	for entry: InteractionRequestValue.ShopStock in _stock:
+		if entry.stock_key == stock_key:
+			_selected_stock = entry
+			break
+	for character: InteractionRequestValue.ServiceCharacter in _characters:
+		if character.id != item_owner:
+			continue
+		for item: InteractionRequestValue.InventoryItem in character.inventory:
+			if item.instance_id == item_id:
+				_selected_item = item
+				_selected_item_owner_id = item_owner
+				break
+	_refresh_stock()
+	_refresh_inventory()
+	_refresh_inspector()
+	_refresh_workspace(&"money")
+	return true
+
+
 func build(request: InteractionRequest) -> void:
 	_body = request.body as ShopRequestBody
 	if _body == null:
@@ -224,7 +264,7 @@ func _bind_footer() -> void:
 	_buy_button.pressed.connect(_submit_buy)
 	_sell_button.pressed.connect(_submit_sell)
 	_identify_button.pressed.connect(_submit_identify)
-	%ShopDone.pressed.connect(_submit_leave)
+	%ShopDone.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"leave")))
 	var pool_availability: ActionAvailabilityView = _game_view.money_workspace.pool if _game_view != null and _game_view.money_workspace != null else null
 	var share_availability: ActionAvailabilityView = _game_view.money_workspace.share if _game_view != null and _game_view.money_workspace != null else null
 	var pool_button: Button = %ShopCompactPool if _compact else %ShopPool
@@ -385,10 +425,6 @@ func _submit_sell() -> void:
 func _submit_identify() -> void:
 	if _selected_item != null and _selected_item.can_identify:
 		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"identify", _selected_item_owner_id, _selected_item.instance_id))
-
-
-func _submit_leave() -> void:
-	response_body_submitted.emit(InteractionResponse.ShopBody.new(&"leave"))
 
 
 func _drop_on_character(payload: Dictionary, _character_id: String) -> void:
