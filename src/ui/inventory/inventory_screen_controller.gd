@@ -100,7 +100,6 @@ func present_browse(target: Control, view: GameView, media: ClassicMediaCatalog,
 	_browse_only_reason = reason
 	_encounter_mode = false
 	_encounter_items.clear()
-	_trade_mode = false
 	_clear_pending_action()
 	_present(target as VBoxContainer, view, media, text_scale)
 
@@ -125,8 +124,8 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		if ledger != null:
 			_trade_scroll_positions[ledger.target_id] = ledger.item_scroll().scroll_vertical
 	var workspace: InventoryWorkspace
-	if screen != null:
-		workspace = screen.workspace()
+	if screen != null or parent is InventoryWorkspace:
+		workspace = screen.workspace() if screen != null else parent as InventoryWorkspace
 		workspace.clear_rendered_content()
 	else:
 		_scene_binding.clear_children(parent)
@@ -415,12 +414,13 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 		return
 	if not _browse_only_reason.is_empty():
 		panel.show_actions(false)
-		var browse_actions: Array[Array] = [[panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip" if item.equipped else "Equip"], [panel.action_button("UseAction"), &"inventory.action.use", "Use"], [panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify All"], [panel.action_button("TradeAction"), &"inventory.action.trade", "Trade"], [panel.action_button("JoinAction"), &"inventory.action.join", "Join"], [panel.action_button("SplitAction"), &"inventory.action.split", "Split"], [panel.action_button("DropAction"), &"inventory.action.drop", "Drop"]]
+		var browse_actions: Array[Array] = [[panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip" if item.equipped else "Equip"], [panel.action_button("UseAction"), &"inventory.action.use", "Use"], [panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify All"], [panel.action_button("JoinAction"), &"inventory.action.join", "Join"], [panel.action_button("SplitAction"), &"inventory.action.split", "Split"], [panel.action_button("DropAction"), &"inventory.action.drop", "Drop"]]
 		for spec: Array in browse_actions:
 			var browse_button := spec[0] as ClassicBitmapButton
 			_bind_bitmap_button(browse_button, spec[1], spec[2])
 			browse_button.disabled = true
 			browse_button.tooltip_text = _browse_only_reason
+		_bind_trade_action(panel.action_button("TradeAction"), item)
 		return
 	if not _pending_item_action.is_empty():
 		_render_operation_stage(panel, item, character)

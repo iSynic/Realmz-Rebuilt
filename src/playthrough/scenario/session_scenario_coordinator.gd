@@ -91,6 +91,9 @@ func begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent]
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"unsupported_vm_handoff_owner", "Total-party defeat cannot suspend this scenario caller.", events)
 	var saved = _context.scenario_vm.snapshot()
+	if result.handoff.runtime.source_kind == ScenarioRuntimeHandoff.CLASSIC_HEALTH and not _context.state.party.characters().all(func(character: CharacterState) -> bool: return character.current_health <= 0):
+		_context.session_continuation.clear()
+		return SessionCoordinatorResult.failed(&"invalid_party_defeat_handoff", "Classic health damage did not defeat the complete party.", events)
 	if not ScenarioVm.handoff_is_valid(result.handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_context.content, _context.state, result.handoff.runtime):
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_party_defeat_handoff", "The Scenario VM total-party defeat handoff is invalid.", events)

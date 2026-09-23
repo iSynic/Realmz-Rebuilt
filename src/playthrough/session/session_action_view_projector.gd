@@ -359,9 +359,15 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			var instance := ProjectionPolicy.item_instance(character, item_view.instance_id)
 			var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
 			var actions := InventoryItemActionsView.new()
+			item_view.actions = actions
+			if result.pending_interaction != null and result.pending_interaction.kind == InteractionRequest.SHOP:
+				actions.block_all(context_reason)
+				var shop_trade := _inventory_trade_actions(context, character, instance, definition, party, item_view.weight)
+				actions.trade_targets.assign(shop_trade["targets"])
+				actions.trade = shop_trade["availability"]
+				continue
 			if not context_reason.is_empty():
 				actions.block_all(context_reason)
-				item_view.actions = actions
 				continue
 			var equip_probe := rules.equipment.classic_equip_probe(character, instance, definition, race, caste, party, definitions)
 			var unequip_probe := rules.equipment.classic_unequip_probe(character, instance, definition, definitions)
@@ -378,12 +384,10 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			_apply_inventory_item_actions(actions, equip_probe, unequip_probe, drop_probe, split_probe, join_probe, use_probe, identify_cast)
 			if battle_active:
 				actions.trade = ActionAvailabilityView.new(&"trade_item", false, "Trade is unavailable during battle.")
-				item_view.actions = actions
 				continue
 			var trade := _inventory_trade_actions(context, character, instance, definition, party, item_view.weight)
 			actions.trade_targets.assign(trade["targets"])
 			actions.trade = trade["availability"]
-			item_view.actions = actions
 
 
 static func _inventory_combat_probes(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, item_instance_id: String, active_actor_id: String, combat_item_options: Array[CombatItemOptionView], combat_scroll_options: Array[CombatSpellOptionView], equip_probe: InventoryActionProbe, unequip_probe: InventoryActionProbe, drop_probe: InventoryActionProbe) -> Dictionary:

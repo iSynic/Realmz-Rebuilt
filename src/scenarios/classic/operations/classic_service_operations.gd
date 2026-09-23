@@ -285,6 +285,8 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "The pending shop is unavailable.")
 	match String(body.action):
+		"refresh":
+			return _continue_shop(shop, continuation, request_id, [])
 		"leave":
 			if _game_state.location_services.bank_available:
 				_rules.economy.pool_to_bank(_game_state.party)

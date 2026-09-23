@@ -123,7 +123,7 @@ func _exit_tree() -> void:
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
-	if _component is ShopInteraction and (_component as ShopInteraction).refresh_money(request, game_view):
+	if _component is ShopInteraction and (_component as ShopInteraction).refresh_workspace(request, game_view):
 		_request = request
 		_playback_masked = false
 		visible = true
@@ -348,8 +348,8 @@ func _create_component(request: InteractionRequest, game_view: GameView, media: 
 func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
-	var retain_shop_money := _component is ShopInteraction and body is InteractionResponse.ShopBody and bool((_component as ShopInteraction).capture_browser_state().get("moneyOpen", false))
-	if not retain_shop_money:
+	var retain_shop_workspace := _component is ShopInteraction and body is InteractionResponse.ShopBody and (bool((_component as ShopInteraction).capture_browser_state().get("moneyOpen", false)) or bool((_component as ShopInteraction).capture_browser_state().get("itemsOpen", false)))
+	if not retain_shop_workspace:
 		_overlays.close_side_workspace()
 		_overlays.close_encounter_dock()
 		_overlays.close_application_workspace()
@@ -361,7 +361,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	_request = null
 	_set_classic_acknowledgement_cursor(false)
 	_combat.clear()
-	if not preserve_treasure_workspace and not retain_shop_money:
+	if not preserve_treasure_workspace and not retain_shop_workspace:
 		visible = false
 	response_submitted.emit(response)
 
