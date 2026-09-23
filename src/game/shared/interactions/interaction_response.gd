@@ -184,12 +184,16 @@ class ShopBody:
 	var character_id: String
 	var instance_id: String
 	var stock_key: String
+	var denomination: String
+	var amount: int
 
-	func _init(action_value: StringName, character: String = "", instance: String = "", stock: String = "") -> void:
+	func _init(action_value: StringName, character: String = "", instance: String = "", stock: String = "", money_kind: String = "", money_amount: int = 0) -> void:
 		action = action_value
 		character_id = character
 		instance_id = instance
 		stock_key = stock
+		denomination = money_kind
+		amount = money_amount
 
 	func is_valid() -> bool:
 		return not action.is_empty()
@@ -202,6 +206,10 @@ class ShopBody:
 			data["instanceId"] = instance_id
 		if not stock_key.is_empty():
 			data["stockKey"] = stock_key
+		if not denomination.is_empty():
+			data["denomination"] = denomination
+		if amount != 0:
+			data["amount"] = amount
 		return data
 
 
@@ -557,15 +565,13 @@ static func _encounter_body_from_data(response_kind: StringName, data: Dictionar
 
 static func _service_body_from_data(response_kind: StringName, data: Dictionary) -> Body:
 	if response_kind == InteractionRequest.SHOP:
-		if not _fields_are_exact(data, ["action", "characterId", "instanceId", "stockKey"], ["action"]):
+		if not _fields_are_exact(data, ["action", "characterId", "instanceId", "stockKey", "denomination", "amount"], ["action"]):
 			return null
-		if not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId", "instanceId", "stockKey"]):
+		if not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId", "instanceId", "stockKey", "denomination"]) or not _optional_integers_are_valid(data, ["amount"]):
 			return null
 		return ShopBody.new(
-			StringName(data.get("action", "")),
-			String(data.get("characterId", "")),
-			String(data.get("instanceId", "")),
-			String(data.get("stockKey", "")),
+			StringName(data.get("action", "")), String(data.get("characterId", "")), String(data.get("instanceId", "")),
+			String(data.get("stockKey", "")), String(data.get("denomination", "")), int(data.get("amount", 0)),
 		)
 	if response_kind == InteractionRequest.TEMPLE:
 		if not _fields_are_exact(data, ["action", "characterId", "serviceId"], ["action"]):

@@ -251,6 +251,21 @@ size_flags_stretch_ratio = 1.0
 theme_override_constants/separation = 3
 alignment = 2
 
+[node name="ShopWealthActions" type="VBoxContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+[node name="ShopPool" type="Button" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopWealthActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 24)
+layout_mode = 2
+text = "Pool"
+[node name="ShopShare" type="Button" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls/ShopWealthActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(54, 24)
+layout_mode = 2
+text = "Share"
+
 [node name="ShopLeftLoadPanel" type="PanelContainer" parent="ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopLeftControls"]
 custom_minimum_size = Vector2(86, 0)
 layout_mode = 2

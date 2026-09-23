@@ -20,6 +20,7 @@ var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _media: ClassicMediaCatalog
 var _workspace: ServicesWorkspace
 var _browse_only_reason: String = ""
+var _return_to_shop := false
 var _held_button: Button
 var _held_intent: PlayerIntent
 
@@ -32,13 +33,29 @@ func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
 
 
+func selected_character_id() -> String:
+	return _money_character_id
+
+
+func set_selected_character_id(character_id: String) -> void:
+	_money_character_id = character_id
+
+
 func present(target: Control, view: GameView, media: ClassicMediaCatalog = null) -> void:
 	_browse_only_reason = ""
+	_return_to_shop = false
 	_present(target, view, media, true)
 
 
 func present_browse(target: Control, view: GameView, media: ClassicMediaCatalog, reason: String) -> void:
 	_browse_only_reason = reason
+	_return_to_shop = true
+	_present(target, view, media, false)
+
+
+func present_shop(target: Control, view: GameView, media: ClassicMediaCatalog) -> void:
+	_browse_only_reason = ""
+	_return_to_shop = true
 	_present(target, view, media, false)
 
 
@@ -153,9 +170,9 @@ func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 	for index in selected.transfers.size():
 		_bind_transfer(view, money, selected, selected.transfers[index], index)
 	var done := _workspace.done_button()
-	done.text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
+	done.text = "Back to shop" if _return_to_shop else "Done"
 	_bind_button(done, func() -> void:
-		if not _browse_only_reason.is_empty():
+		if _return_to_shop:
 			back_requested.emit()
 		else:
 			route_requested.emit(&"exploration")
@@ -207,12 +224,12 @@ func _bind_transfer(view: GameView, money: MoneyWorkspaceView, selected: MoneyCh
 func _bind_changing(view: GameView, money: MoneyWorkspaceView) -> void:
 	var status := _workspace.changing_pane().get_node("Content/Header/Status") as Label
 	var available := money.changing_available and _browse_only_reason.is_empty()
-	_bind_label(status, "Available here · converts pooled wealth · hold to repeat" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
+	_bind_label(status, "Available here · converts pooled wealth" if available and _return_to_shop else "Available here · converts pooled wealth · hold to repeat" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
 	var buttons := _workspace.changing_buttons()
 	for index in mini(buttons.size(), money.changes.size()):
 		var rate := money.changes[index]
 		var button := buttons[index]
-		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change · hold to repeat" if available and rate.availability.enabled else "Unavailable here"]
+		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change" if available and _return_to_shop and rate.availability.enabled else "Change · hold to repeat" if available and rate.availability.enabled else "Unavailable here"]
 		_bind_money_action(button, view, rate.availability, EconomyIntents.money(rate.action, "", String(rate.source), rate.source_amount), true)
 
 
@@ -245,11 +262,14 @@ func _bind_location_services(view: GameView) -> void:
 func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilityView, intent: PlayerIntent, repeat_while_held: bool = false) -> void:
 	_clear_pressed_connections(button)
 	_clear_repeat_connections(button)
+	repeat_while_held = repeat_while_held and not _return_to_shop
 	if not _browse_only_reason.is_empty():
 		button.disabled = true
 		button.tooltip_text = _browse_only_reason
 		return
 	var workspace_availability := view.availability(&"money_action")
+	if _return_to_shop and _browse_only_reason.is_empty() and view.pending_interaction != null and view.pending_interaction.kind == InteractionRequest.SHOP:
+		workspace_availability = ActionAvailabilityView.new(&"money_action", true)
 	button.disabled = not workspace_availability.enabled or local == null or not local.enabled
 	if not workspace_availability.enabled:
 		button.tooltip_text = workspace_availability.reason
