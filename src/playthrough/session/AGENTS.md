@@ -32,6 +32,7 @@ Own the public, deterministic, all-or-nothing transaction boundary around one ac
 - Continuation kinds, fields, versions, RNG order, event order, save shape, and stable identities remain unchanged.
 - Detached projections are read-only, cached only by committed revision, and disposable across replacement or close.
 - Combat Inventory responses are accepted at the active battle boundary for both scenario-owned pending combat requests and direct combat requests translated by the application policy. The coordinator revalidates the active request and exact character/item identities, then rebuilds the request after a committed inventory mutation without advancing the turn.
+- A pending Shop admits exact-instance Trade between party members through its own typed response. The shared inventory workflow validates custody and destination, and the same Shop continuation refreshes without closing or repeating a purchase.
 
 ## Work Guidance
 

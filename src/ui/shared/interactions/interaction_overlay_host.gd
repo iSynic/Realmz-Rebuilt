@@ -172,6 +172,7 @@ func show_application_workspace(workspace: Control) -> void:
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_application_workspace_panel.add_child(workspace)
 	_apply_application_workspace_layout()
+	_apply_application_workspace_layout.call_deferred()
 
 
 func close_application_workspace() -> void:

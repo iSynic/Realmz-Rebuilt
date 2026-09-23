@@ -70,6 +70,7 @@ var _inventory_workspace: VBoxContainer
 var _money_controller: ServicesScreenController
 var _money_workspace: VBoxContainer
 var _money_workspace_open := false
+var _inventory_workspace_open := false
 var _inventory_focus := WorkspaceFocusController.new()
 var _money_focus := WorkspaceFocusController.new()
 
@@ -87,7 +88,7 @@ func capture_browser_state() -> Dictionary:
 		"tab": (_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab if _compact else 0,
 		"inventoryScroll": (_inventory_rows.get_parent() as ScrollContainer).scroll_vertical, "stockScroll": (_stock_rows.get_parent() as ScrollContainer).scroll_vertical,
 		"itemOwnerId": _selected_item_owner_id, "instanceId": _selected_item.instance_id if _selected_item != null else "", "stockKey": _selected_stock.stock_key if _selected_stock != null else "", "moneyOpen": _money_workspace_open,
-		"moneyCharacterId": _money_controller.selected_character_id() if _money_workspace_open and _money_controller != null else ""}
+		"moneyCharacterId": _money_controller.selected_character_id() if _money_workspace_open and _money_controller != null else "", "itemsOpen": _inventory_workspace_open}
 
 
 func restore_browser_state(state: Dictionary) -> void:
@@ -108,13 +109,17 @@ func restore_browser_state(state: Dictionary) -> void:
 	(_stock_rows.get_parent() as ScrollContainer).set_deferred("scroll_vertical", int(state.get("stockScroll", 0)))
 	if bool(state.get("moneyOpen", false)):
 		_show_workspace(&"money", String(state.get("moneyCharacterId", "")))
+	elif bool(state.get("itemsOpen", false)):
+		_show_workspace(&"items")
 
 
-func refresh_money(request: InteractionRequest, game_view: GameView) -> bool:
+func refresh_workspace(request: InteractionRequest, game_view: GameView) -> bool:
 	if request == null or request.kind != InteractionRequest.SHOP:
 		return false
 	var next_body := request.body as ShopRequestBody
-	if not _money_workspace_open or _money_workspace == null or not is_instance_valid(_money_workspace) or next_body == null or _body.shop_id != next_body.shop_id or game_view == null:
+	var kind: StringName = &"money" if _money_workspace_open else &"items"
+	var workspace: Control = _money_workspace if _money_workspace_open else _inventory_workspace
+	if not _money_workspace_open and not _inventory_workspace_open or workspace == null or not is_instance_valid(workspace) or next_body == null or _body.shop_id != next_body.shop_id or game_view == null:
 		return false
 	var stock_key := _selected_stock.stock_key if _selected_stock != null else ""
 	var item_id := _selected_item.instance_id if _selected_item != null else ""
@@ -146,7 +151,7 @@ func refresh_money(request: InteractionRequest, game_view: GameView) -> bool:
 	_refresh_stock()
 	_refresh_inventory()
 	_refresh_inspector()
-	_refresh_workspace(&"money")
+	_refresh_workspace(kind)
 	return true
 
 
@@ -569,8 +574,17 @@ func _show_workspace(kind: StringName, money_character_id: String = "") -> void:
 		_inventory_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
 		_inventory_workspace = scene.instantiate() as VBoxContainer
 		_inventory_workspace.name = "ShopItemsWorkspace"
+		_inventory_workspace_open = true
 		_inventory_controller.refresh_requested.connect(_refresh_workspace.bind(kind))
+		_inventory_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
+			if intent.kind != PlayerIntent.Kind.TRADE_ITEM:
+				return
+			var trade := intent.payload as InventoryIntentPayloads.Action
+			if trade != null:
+				response_body_submitted.emit(InteractionResponse.ShopBody.new(&"trade", trade.actor_id, trade.item_id, "", "", 0, trade.destination_character_id))
+		)
 		_inventory_controller.back_requested.connect(func() -> void:
+			_inventory_workspace_open = false
 			application_workspace_closed.emit()
 			_inventory_controller = null
 			_inventory_workspace = null

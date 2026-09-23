@@ -17,7 +17,7 @@ Feature-specific request bodies live under their character, economy, combat, or 
 ## Local Contracts
 
 - Bodies extend `InteractionRequestBody` and remain pure values.
-- Existing serialized kinds, fields, versions, and optional-field presence remain stable. Shop responses additionally admit optional `denomination` and `amount` for source-backed Shop Swap and changing; strict decoding still rejects unknown or mistyped fields.
+- Existing serialized kinds, fields, versions, and optional-field presence remain stable. Shop responses additionally admit optional `denomination` and `amount` for source-backed Shop Swap and changing, plus `targetCharacterId` for exact-instance Trade; strict decoding still rejects unknown or mistyped fields.
 - Request decoding remains strict and rejects unknown or mixed fields.
 - Optional item icon keys are paired exact resource type and signed nonzero ID values. Inventory, Shop stock, and Treasure records preserve both fields through decoding and serialization; zero denotes an absent key, never a positive-only admission rule.
 - Bodies never retain session state, Nodes, repositories, media bytes, or live continuations.

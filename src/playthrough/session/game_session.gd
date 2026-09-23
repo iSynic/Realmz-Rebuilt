@@ -154,6 +154,9 @@ func respond(response: InteractionResponse) -> SessionStep:
 		return SessionStep.failed(_context.current_revision(), &"interaction_mismatch", "The response does not match the pending request.")
 	if not response.is_supported_kind():
 		return SessionStep.failed(_context.current_revision(), &"invalid_interaction_response", "The response payload does not match its interaction kind.")
+	var shop_body := response.body as InteractionResponse.ShopBody
+	if pending.kind == InteractionRequest.SHOP and shop_body != null and shop_body.action == &"trade":
+		return _respond_shop_trade(response, shop_body)
 	var combat_body := response.body as InteractionResponse.CombatBody
 	if pending.kind == InteractionRequest.COMBAT and combat_body != null and SessionIntentCoordinator.is_inventory_combat_action(combat_body.action):
 		_ensure_coordinators()
@@ -170,6 +173,32 @@ func respond(response: InteractionResponse) -> SessionStep:
 	events.append_array(result.events)
 	if _context.session_continuation.kind == &"application-hook" and _events_have(result.events, &"party_revived"):
 		_context.session_continuation.application_hook().party_revived = true
+	return _finish_resumed_vm_result(result, events)
+
+
+func _respond_shop_trade(response: InteractionResponse, body: InteractionResponse.ShopBody) -> SessionStep:
+	if body.character_id.is_empty() or body.instance_id.is_empty() or body.target_character_id.is_empty() or not body.stock_key.is_empty() or not body.denomination.is_empty() or body.amount != 0:
+		return SessionStep.failed(_context.current_revision(), &"invalid_interaction_response", "Shop Trade requires an item, its owner, and a destination character.")
+	# A Shop refresh preserves the service or VM continuation after custody changes.
+	var refresh := InteractionResponse.new(response.request_id, response.kind, InteractionResponse.ShopBody.new(&"refresh"))
+	if _context.session_interaction != null:
+		var service := _context.session_continuation.service()
+		if service == null or service.runtime_continuation == null:
+			return SessionStep.failed(_context.current_revision(), &"invalid_session_continuation", "The pending Shop cannot be refreshed.")
+	else:
+		if _context.scenario_vm == null or _context.scenario_vm.pending_request() == null:
+			return SessionStep.failed(_context.current_revision(), &"invalid_session_continuation", "The pending Shop cannot be refreshed.")
+	var trade := InventoryWorkflow.trade_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.instance_id, body.character_id, 1, body.target_character_id))
+	if not trade.ok:
+		return SessionStep.failed(_context.current_revision(), trade.error_code, trade.error_message)
+	if _context.session_interaction != null:
+		_ensure_coordinators()
+		var service_result: SessionCoordinatorResult = _response_coordinator.respond_session_interaction(refresh)
+		service_result.events = trade.events + service_result.events
+		return _commit_coordinator_result(service_result)
+	var result := _context.scenario_vm.resume(refresh, _context.runtime_api)
+	var events: Array[DomainEvent] = trade.events.duplicate()
+	events.append_array(result.events)
 	return _finish_resumed_vm_result(result, events)
 
 

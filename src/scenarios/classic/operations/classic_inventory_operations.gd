@@ -231,16 +231,22 @@ func _mutate_shop(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic shop mutation references unavailable shop %d." % action.extra_code[0])
 	var inflation := maxi(0, _game_state.location_services.shop_inflation(shop) + action.extra_code[1])
 	_game_state.location_services.set_shop_inflation(shop, inflation)
-	var stock_index := -1
+	var changed_stock: Array[int] = []
 	if action.extra_code[2] != 0:
-		var item := _content.items.item_by_classic_id(absi(action.extra_code[2]))
-		if item == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic shop mutation references unavailable item %d." % action.extra_code[2])
-		stock_index = shop.item_ids().find(item.id)
-		if stock_index < 0:
-			return ScenarioRuntimeOperationResult.failed(&"shop_item_unavailable", "Classic shop mutation item is not stocked by the shop.")
-		_game_state.location_services.set_shop_quantity(shop, stock_index, _game_state.location_services.shop_quantity(shop, stock_index) + action.extra_code[3])
-	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"shop_changed", {"shopId": shop.id, "inflationPercent": inflation, "stockIndex": stock_index, "quantity": _game_state.location_services.shop_quantity(shop, stock_index) if stock_index >= 0 else 0})])
+		var item_ids := shop.item_ids()
+		for stock_index: int in item_ids.size():
+			var stocked := _content.items.item_by_id(item_ids[stock_index])
+			if stocked == null or stocked.classic_id != action.extra_code[2]:
+				continue
+			_game_state.location_services.set_shop_quantity(shop, stock_index, _game_state.location_services.shop_quantity(shop, stock_index) + action.extra_code[3])
+			changed_stock.append(stock_index)
+	var events: Array[DomainEvent] = []
+	if changed_stock.is_empty():
+		events.append(DomainEvent.new(&"shop_changed", {"shopId": shop.id, "inflationPercent": inflation, "stockIndex": -1, "quantity": 0}))
+	else:
+		for stock_index: int in changed_stock:
+			events.append(DomainEvent.new(&"shop_changed", {"shopId": shop.id, "inflationPercent": inflation, "stockIndex": stock_index, "quantity": _game_state.location_services.shop_quantity(shop, stock_index)}))
+	return ScenarioRuntimeOperationResult.completed(true, events)
 
 
 func _clear_character_money(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
