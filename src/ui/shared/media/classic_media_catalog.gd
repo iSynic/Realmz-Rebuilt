@@ -47,6 +47,9 @@ func assets_of_kind(kind: String) -> Array[MediaAsset]:
 
 
 func asset_by_id(asset_id: String) -> MediaAsset:
+	var landlook_resource_id := _landlook_resource_id(asset_id)
+	if landlook_resource_id >= 0:
+		return asset_by_resource("PICT", landlook_resource_id)
 	var package_asset := package_media.asset_by_id(asset_id) if package_media != null else null
 	if package_asset != null:
 		return package_asset
@@ -90,6 +93,17 @@ static func _land_overlay_resource_id(asset_id: String) -> int:
 	if magnitude.is_empty() or not magnitude.is_valid_int() or int(magnitude) <= 0:
 		return 0
 	return sign * int(magnitude)
+
+
+static func _landlook_resource_id(asset_id: String) -> int:
+	const PREFIX := "landlook-"
+	if not asset_id.begins_with(PREFIX):
+		return -1
+	var suffix := asset_id.trim_prefix(PREFIX)
+	if suffix.is_empty() or not suffix.is_valid_int():
+		return -1
+	var landlook := int(suffix)
+	return 300 + landlook if landlook >= 0 and landlook <= 10 else -1
 
 
 func battle_tileset() -> MediaAsset:

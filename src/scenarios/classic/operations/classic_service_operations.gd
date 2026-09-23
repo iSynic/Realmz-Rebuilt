@@ -102,7 +102,7 @@ func shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Array
 		"stock": _shop_stock_rows(shop),
 		"characters": _shop_character_rows(shop, accept_ranges, party_gold),
 		"acceptRanges": accept_ranges.duplicate(),
-		"actions": ["buy", "sell", "identify", "leave"],
+		"actions": ["buy", "sell", "identify", "pool", "share", "to-pool", "to-character", String(MoneyChangingRules.JEWELRY_TO_GEMS), String(MoneyChangingRules.GEMS_TO_GOLD), String(MoneyChangingRules.GOLD_TO_GEMS), "leave"],
 	})
 
 
@@ -295,8 +295,62 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 			return _sell_shop_item(shop, continuation, body, request_id)
 		"identify":
 			return _identify_shop_item(shop, continuation, body, request_id)
+		"pool", "share", "to-pool", "to-character", MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
+			return _shop_money_action(shop, continuation, body, request_id)
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_shop_action", "Shop action '%s' is unavailable." % body.action)
+
+
+func _shop_money_action(shop: ShopDefinition, continuation: ScenarioRuntimeContinuation, body: InteractionResponse.ShopBody, request_id: String) -> ScenarioRuntimeOperationResult:
+	var movement_error := _money.movement_context_error()
+	if not movement_error.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+	var events: Array[DomainEvent] = []
+	match body.action:
+		&"pool":
+			var probe := _rules.economy.pool_probe(_game_state.party)
+			if not probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+			_rules.economy.pool_party_wealth(_game_state.party)
+			events.append(DomainEvent.new(&"wealth_pooled", {"source": "classic-shop", "wealth": _game_state.party.pooled_wealth.to_data()}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-shop-pool"}))
+		&"share":
+			var probe := _rules.economy.share_probe(_game_state.party)
+			if not probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+			_rules.economy.share_pooled_wealth(_game_state.party)
+			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-shop", "remaining": _game_state.party.pooled_wealth.to_data()}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-shop-share"}))
+		&"to-pool", &"to-character":
+			if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop Swap requires character, denomination, and amount.")
+			var character := _game_state.party.character_by_id(body.character_id)
+			var kind := ClassicMoneyTransferSupport.wealth_kind(body.denomination)
+			if character == null or kind < 0:
+				return ScenarioRuntimeOperationResult.failed(&"unknown_money_target", "The selected Shop transfer is unavailable.")
+			if body.amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
+				return ScenarioRuntimeOperationResult.failed(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+			var to_character := body.action == &"to-character"
+			var probe := _rules.economy.transfer_probe(_game_state.party, character, kind as WealthState.Kind, body.amount, to_character)
+			if not probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+			var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, body.amount) if to_character else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, body.amount)
+			if not transferred:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", "The selected Shop transfer is no longer available.")
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-shop", "characterId": character.id, "direction": String(body.action), "kind": body.denomination, "amount": body.amount}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-shop-swap"}))
+		MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
+			var rate := MoneyChangingRules.rate(body.action)
+			if not body.character_id.is_empty() or body.denomination != String(rate.source) or body.amount != rate.source_amount:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_money_increment", "The money-changing amount does not match the Castle rate.")
+			var probe := MoneyChangingRules.probe(_game_state.party, true, body.action)
+			if not probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+			MoneyChangingRules.convert(_game_state.party, true, body.action)
+			events.append(DomainEvent.new(&"wealth_changed", {"source": "classic-shop", "action": String(body.action), "from": String(rate.source), "spent": rate.source_amount, "to": String(rate.result), "received": rate.result_amount}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10129, "waitForCompletion": body.action == MoneyChangingRules.JEWELRY_TO_GEMS, "source": "classic-shop-change"}))
+	_money.recalculate_party_movement()
+	return _continue_shop(shop, continuation, request_id, events)
 
 
 func _buy_shop_item(shop: ShopDefinition, continuation: ScenarioRuntimeContinuation, body: InteractionResponse.ShopBody, request_id: String) -> ScenarioRuntimeOperationResult:

@@ -44,6 +44,12 @@ func _commit_coordinator_result(result: SessionCoordinatorResult) -> SessionStep
 		SessionCoordinatorResult.State.WAITING:
 			return _finish_waiting(result.interaction, result.events)
 		SessionCoordinatorResult.State.FAILED:
+			var fault := _latch_deferred_reference_fault(result.error_code, result.error_message)
+			if fault != null:
+				var events: Array[DomainEvent] = []
+				events.assign(result.events)
+				events.append(DomainEvent.new(&"scenario_runtime_faulted", fault.to_data()))
+				return _finish_failed(&"scenario_content_fault", fault.display_message(), events)
 			return _finish_failed(result.error_code, result.error_message, result.events) if result.commit_failure else SessionStep.failed(_context.current_revision(), result.error_code, result.error_message)
 		SessionCoordinatorResult.State.CLOSE:
 			return _commit_close(result.events, result.close_reason)
@@ -79,6 +85,8 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 func close() -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_context.current_revision(), &"session_not_started", "There is no active session to close.")
+	if _context.runtime_fault != null:
+		return _commit_close([], "scenario-content-fault")
 	var pending := _pending_interaction()
 	if (_context.scenario_vm.is_active() and pending == null) or (pending != null and pending.kind != InteractionRequest.COMBAT):
 		return SessionStep.failed(_context.current_revision(), &"session_not_committed", "The session can close only at a committed boundary.")
@@ -104,6 +112,8 @@ func _commit_close(events: Array[DomainEvent], reason: String) -> SessionStep:
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_context.current_revision(), &"session_not_started", "Start or restore the session first.")
+	if _context.runtime_fault != null:
+		return SessionStep.failed(_context.current_revision(), &"scenario_session_faulted", _context.runtime_fault.display_message())
 	if intent == null:
 		return SessionStep.failed(_context.current_revision(), &"invalid_intent", "A typed player intent is required.")
 	if not intent.is_valid():
@@ -123,6 +133,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_context.current_revision(), &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
+	if _context.runtime_fault != null:
+		return SessionStep.failed(_context.current_revision(), &"scenario_session_faulted", _context.runtime_fault.display_message())
 	_ensure_coordinators()
 	var result: SessionCoordinatorResult = _debug_coordinator.run(command)
 	if _debug_coordinator.started_ephemeral_operation:
@@ -133,6 +145,8 @@ func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
 func respond(response: InteractionResponse) -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_context.current_revision(), &"session_not_started", "Start or restore the session first.")
+	if _context.runtime_fault != null:
+		return SessionStep.failed(_context.current_revision(), &"scenario_session_faulted", _context.runtime_fault.display_message())
 	var pending := _pending_interaction()
 	if pending == null:
 		return SessionStep.failed(_context.current_revision(), &"no_interaction_pending", "There is no interaction to resume.")
@@ -166,6 +180,8 @@ func _finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEve
 
 func view(events: Array[DomainEvent] = []) -> GameView:
 	var result := _view_projector.project(_context.workflow_context(), _pending_interaction(), _context.current_revision(), _started, events)
+	if result != null:
+		result.runtime_fault = _context.runtime_fault.copy() if _context.runtime_fault != null else null
 	if result != null and result.combat_action_request == null and result.pending_interaction == null and result.combat_view != null and result.combat_view.outcome == &"active":
 		result.combat_action_request = _context.runtime_api.active_combat_request("session.combat-command:%d" % _context.current_revision())
 	return result
@@ -176,7 +192,7 @@ func set_map_projection_size(requested_size: Vector2i) -> bool:
 
 
 func snapshot() -> SessionSnapshot:
-	if not _started or _debug_operation_active or (_context.scenario_vm.is_active() and _context.scenario_vm.pending_request() == null):
+	if not _started or _context.runtime_fault != null or _debug_operation_active or (_context.scenario_vm.is_active() and _context.scenario_vm.pending_request() == null):
 		return null
 	return _context.create_snapshot()
 
@@ -240,6 +256,32 @@ func _finish_waiting(request: InteractionRequest, events: Array[DomainEvent]) ->
 func _finish_failed(code: StringName, message: String, events: Array[DomainEvent]) -> SessionStep:
 	_context.set_revision(_context.next_revision())
 	return SessionStep.failed(_context.current_revision(), code, message, events)
+
+
+func _latch_deferred_reference_fault(code: StringName, message: String) -> SessionRuntimeFault:
+	if _context.content == null or not _context.content.requires_deferred_references:
+		return null
+	if _context.runtime_fault != null:
+		return _context.runtime_fault
+	var failure := _context.scenario_vm.diagnostics.failure_context() if _context.scenario_vm != null else {}
+	if failure.is_empty():
+		return null
+	var program_id := String(failure.get("programId", ""))
+	var slot := int(failure.get("slot", -1))
+	var warning := _context.content.compatibility_warning_for(&"scenario-program", program_id, slot)
+	if warning == null:
+		for candidate: ScenarioCompatibilityWarning in _context.content.compatibility_warnings:
+			if not candidate.target_id.is_empty() and message.contains(candidate.target_id):
+				warning = candidate
+				break
+	if warning == null:
+		return null
+	var operands: Array[int] = []
+	for value: Variant in failure.get("operands", []):
+		if value is int:
+			operands.append(value)
+	_context.runtime_fault = SessionRuntimeFault.new(_context.content.campaign_id, program_id, slot, int(failure.get("opcode", 0)), operands, warning.target_kind, warning.target_id, code, message)
+	return _context.runtime_fault
 
 
 func _record_current_visibility() -> void:

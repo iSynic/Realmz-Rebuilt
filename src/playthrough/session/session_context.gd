@@ -13,6 +13,7 @@ var runtime_api: RealmzRuntimeApi
 var session_continuation: SessionContinuation
 var battle_return_continuation: SessionContinuation
 var session_interaction: InteractionRequest
+var runtime_fault: SessionRuntimeFault
 var _view_revision: int
 var _exploration_coordinator: RefCounted
 var _scenario_coordinator: RefCounted
@@ -58,6 +59,7 @@ func begin(content_library: RealmzContent, initial_seed: int) -> void:
 	session_continuation.clear()
 	battle_return_continuation.clear()
 	session_interaction = null
+	runtime_fault = null
 	set_revision(1)
 
 
@@ -72,6 +74,7 @@ func restore(content_library: RealmzContent, candidate: SessionRestoreCandidate)
 	session_continuation = candidate.continuation
 	battle_return_continuation = candidate.battle_return_continuation
 	session_interaction = candidate.session_interaction
+	runtime_fault = null
 	set_revision(candidate.view_revision)
 
 
@@ -79,6 +82,7 @@ func reset_scenario_execution() -> void:
 	session_continuation.clear()
 	battle_return_continuation.clear()
 	session_interaction = null
+	runtime_fault = null
 	scenario_vm = ScenarioVm.new()
 	scenario_vm.configure(content.scenario)
 	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules)
@@ -96,6 +100,7 @@ func clear() -> void:
 	rng = null
 	state = null
 	content = null
+	runtime_fault = null
 
 
 func create_snapshot() -> SessionSnapshot:

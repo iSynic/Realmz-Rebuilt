@@ -3,7 +3,11 @@
 class_name PackageMediaValidatorResolver
 extends PackageDecoderBase
 
-func validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[MediaAsset]) -> bool:
+var warnings: Array[ScenarioCompatibilityWarning] = []
+
+
+func validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[MediaAsset], allow_deferred: bool = false) -> bool:
+	warnings.clear()
 	var assets_by_resource: Dictionary = {}
 	for asset: MediaAsset in media_assets:
 		if not asset.resource_type.is_empty():
@@ -13,10 +17,24 @@ func validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Ar
 			continue
 		for resource_id: int in [monster.icon_id, monster.icon_id + 308]:
 			var asset := assets_by_resource.get(JSON.stringify(["cicn", resource_id])) as MediaAsset
-			var missing_dimensions := resource_id == monster.icon_id and (asset == null or asset.width < 1 or asset.height < 1)
-			if asset == null or asset.mime_type != "image/png" or missing_dimensions:
-				var facing_label := "right-facing " if resource_id != monster.icon_id else ""
-				return _reject("Monster '%s' requires unavailable Classic %scicn %d." % [monster.id, facing_label, resource_id])
+			var facing_label := "right-facing " if resource_id != monster.icon_id else ""
+			if asset == null:
+				var reason := "Monster '%s' requires unavailable Classic %scicn %d." % [monster.id, facing_label, resource_id]
+				if not allow_deferred:
+					return _reject(reason)
+				warnings.append(ScenarioCompatibilityWarning.new(
+					&"monster",
+					monster.id,
+					"facingRightIconId" if resource_id != monster.icon_id else "iconId",
+					-1,
+					&"cicn",
+					resource_id,
+					reason,
+				))
+				continue
+			var missing_dimensions := resource_id == monster.icon_id and (asset.width < 1 or asset.height < 1)
+			if asset.mime_type != "image/png" or missing_dimensions:
+				return _reject("Monster '%s' has invalid Classic %scicn %d media." % [monster.id, facing_label, resource_id])
 	return true
 
 func validate_package_assets(document: Dictionary, files: Dictionary) -> bool:

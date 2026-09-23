@@ -105,6 +105,9 @@ static func _populate_complete_campaign(context: SessionWorkflowContext, result:
 	result.campaign_summary.banned_races = campaign.restrictions.banned_races.duplicate()
 	result.campaign_summary.banned_castes = campaign.restrictions.banned_castes.duplicate()
 	result.campaign_summary.package_hash = content.package_hash
+	result.campaign_summary.compatibility_warning_count = content.compatibility_warnings.size()
+	for warning: ScenarioCompatibilityWarning in content.compatibility_warnings:
+		result.campaign_summary.compatibility_warning_summaries.append(warning.summary())
 
 
 static func _populate_complete_party(context: SessionWorkflowContext, result: GameView) -> void:

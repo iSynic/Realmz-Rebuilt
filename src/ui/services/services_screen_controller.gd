@@ -20,6 +20,7 @@ var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _media: ClassicMediaCatalog
 var _workspace: ServicesWorkspace
 var _browse_only_reason: String = ""
+var _return_to_shop := false
 var _held_button: Button
 var _held_intent: PlayerIntent
 
@@ -32,20 +33,37 @@ func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
 
 
+func selected_character_id() -> String:
+	return _money_character_id
+
+
+func set_selected_character_id(character_id: String) -> void:
+	_money_character_id = character_id
+
+
 func present(target: Control, view: GameView, media: ClassicMediaCatalog = null) -> void:
 	_browse_only_reason = ""
+	_return_to_shop = false
 	_present(target, view, media, true)
 
 
 func present_browse(target: Control, view: GameView, media: ClassicMediaCatalog, reason: String) -> void:
 	_browse_only_reason = reason
+	_return_to_shop = true
+	_present(target, view, media, false)
+
+
+func present_shop(target: Control, view: GameView, media: ClassicMediaCatalog) -> void:
+	_browse_only_reason = ""
+	_return_to_shop = true
 	_present(target, view, media, false)
 
 
 func _present(target: Control, view: GameView, media: ClassicMediaCatalog, include_location_services: bool) -> void:
 	if target == null or view == null:
 		return
-	if _held_button != null and (target as ServicesScreen == null or (target as ServicesScreen).workspace() != _workspace):
+	var same_workspace := _workspace != null and is_instance_valid(_workspace) and ((target as ServicesScreen).workspace() == _workspace if target is ServicesScreen else _workspace.get_parent() == target)
+	if _held_button != null and not same_workspace:
 		_stop_repeat()
 	_media = media
 	var screen := target as ServicesScreen
@@ -54,9 +72,10 @@ func _present(target: Control, view: GameView, media: ClassicMediaCatalog, inclu
 		_workspace = screen.workspace()
 	else:
 		var parent := target as VBoxContainer
-		_clear(parent)
-		_workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as ServicesWorkspace
-		parent.add_child(_workspace)
+		if not same_workspace:
+			_clear(parent)
+			_workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as ServicesWorkspace
+			parent.add_child(_workspace)
 		_workspace.prepare(_layout_profile == UiLayoutProfile.COMPACT)
 	if not _bind_money_workspace(view):
 		return
@@ -153,9 +172,9 @@ func _bind_exchange(view: GameView, money: MoneyWorkspaceView) -> void:
 	for index in selected.transfers.size():
 		_bind_transfer(view, money, selected, selected.transfers[index], index)
 	var done := _workspace.done_button()
-	done.text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
+	done.text = "Back to shop" if _return_to_shop else "Done"
 	_bind_button(done, func() -> void:
-		if not _browse_only_reason.is_empty():
+		if _return_to_shop:
 			back_requested.emit()
 		else:
 			route_requested.emit(&"exploration")
@@ -250,6 +269,8 @@ func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilit
 		button.tooltip_text = _browse_only_reason
 		return
 	var workspace_availability := view.availability(&"money_action")
+	if _return_to_shop and _browse_only_reason.is_empty() and view.pending_interaction != null and view.pending_interaction.kind == InteractionRequest.SHOP:
+		workspace_availability = ActionAvailabilityView.new(&"money_action", true)
 	button.disabled = not workspace_availability.enabled or local == null or not local.enabled
 	if not workspace_availability.enabled:
 		button.tooltip_text = workspace_availability.reason

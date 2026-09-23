@@ -69,6 +69,7 @@ var _inventory_controller: InventoryScreenController
 var _inventory_workspace: VBoxContainer
 var _money_controller: ServicesScreenController
 var _money_workspace: VBoxContainer
+var _money_workspace_open := false
 var _inventory_focus := WorkspaceFocusController.new()
 var _money_focus := WorkspaceFocusController.new()
 
@@ -85,7 +86,8 @@ func capture_browser_state() -> Dictionary:
 	return {"shopId": _body.shop_id, "leftId": _selected_character_id, "rightId": _right_character_id, "category": _selected_category,
 		"tab": (_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab if _compact else 0,
 		"inventoryScroll": (_inventory_rows.get_parent() as ScrollContainer).scroll_vertical, "stockScroll": (_stock_rows.get_parent() as ScrollContainer).scroll_vertical,
-		"itemOwnerId": _selected_item_owner_id, "instanceId": _selected_item.instance_id if _selected_item != null else "", "stockKey": _selected_stock.stock_key if _selected_stock != null else ""}
+		"itemOwnerId": _selected_item_owner_id, "instanceId": _selected_item.instance_id if _selected_item != null else "", "stockKey": _selected_stock.stock_key if _selected_stock != null else "", "moneyOpen": _money_workspace_open,
+		"moneyCharacterId": _money_controller.selected_character_id() if _money_workspace_open and _money_controller != null else ""}
 
 
 func restore_browser_state(state: Dictionary) -> void:
@@ -104,6 +106,48 @@ func restore_browser_state(state: Dictionary) -> void:
 		(_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab = int(state.get("tab", 0))
 	(_inventory_rows.get_parent() as ScrollContainer).set_deferred("scroll_vertical", int(state.get("inventoryScroll", 0)))
 	(_stock_rows.get_parent() as ScrollContainer).set_deferred("scroll_vertical", int(state.get("stockScroll", 0)))
+	if bool(state.get("moneyOpen", false)):
+		_show_workspace(&"money", String(state.get("moneyCharacterId", "")))
+
+
+func refresh_money(request: InteractionRequest, game_view: GameView) -> bool:
+	if request == null or request.kind != InteractionRequest.SHOP:
+		return false
+	var next_body := request.body as ShopRequestBody
+	if not _money_workspace_open or _money_workspace == null or not is_instance_valid(_money_workspace) or next_body == null or _body.shop_id != next_body.shop_id or game_view == null:
+		return false
+	var stock_key := _selected_stock.stock_key if _selected_stock != null else ""
+	var item_id := _selected_item.instance_id if _selected_item != null else ""
+	var item_owner := _selected_item_owner_id
+	_body = next_body
+	_game_view = game_view
+	_characters = _body.characters.duplicate()
+	_stock = _body.stock.duplicate()
+	%ShopFacts.text = "Prices %d%%" % _body.inflation_percent if _compact else "%d gold  •  prices %d%%" % [_body.party_gold, _body.inflation_percent]
+	if _character_by_id(_selected_character_id) == null:
+		_selected_character_id = _characters[0].id if not _characters.is_empty() else ""
+	if _character_by_id(_right_character_id) == null:
+		_right_character_id = ""
+	_selected_stock = null
+	_selected_item = null
+	_selected_item_owner_id = ""
+	for entry: InteractionRequestValue.ShopStock in _stock:
+		if entry.stock_key == stock_key:
+			_selected_stock = entry
+			break
+	for character: InteractionRequestValue.ServiceCharacter in _characters:
+		if character.id != item_owner:
+			continue
+		for item: InteractionRequestValue.InventoryItem in character.inventory:
+			if item.instance_id == item_id:
+				_selected_item = item
+				_selected_item_owner_id = item_owner
+				break
+	_refresh_stock()
+	_refresh_inventory()
+	_refresh_inspector()
+	_refresh_workspace(&"money")
+	return true
 
 
 func build(request: InteractionRequest) -> void:
@@ -135,6 +179,11 @@ func _select_profile_browser() -> void:
 	var wide := %ShopExchangeLedgers as HBoxContainer
 	var compact := %ShopCompactBrowser as PanelContainer
 	if _compact:
+		%ShopCompactWealthActions.visible = true
+		%ShopWealthPanel.visible = false
+		%ShopCompactWealthPanel.visible = true
+		%ShopFacts.text = "Prices %d%%" % _body.inflation_percent
+		(get_node("ShopHeader/Title") as Label).size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		wide.get_parent().remove_child(wide)
 		wide.free()
 		compact.visible = true
@@ -215,7 +264,19 @@ func _bind_footer() -> void:
 	_buy_button.pressed.connect(_submit_buy)
 	_sell_button.pressed.connect(_submit_sell)
 	_identify_button.pressed.connect(_submit_identify)
-	%ShopDone.pressed.connect(_submit_leave)
+	%ShopDone.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"leave")))
+	var pool_availability: ActionAvailabilityView = _game_view.money_workspace.pool if _game_view != null and _game_view.money_workspace != null else null
+	var share_availability: ActionAvailabilityView = _game_view.money_workspace.share if _game_view != null and _game_view.money_workspace != null else null
+	var pool_button: Button = %ShopCompactPool if _compact else %ShopPool
+	var share_button: Button = %ShopCompactShare if _compact else %ShopShare
+	pool_button.disabled = pool_availability == null or not pool_availability.enabled
+	share_button.disabled = share_availability == null or not share_availability.enabled
+	pool_button.tooltip_text = "Party wealth is unavailable." if pool_availability == null else pool_availability.reason if not pool_availability.enabled else "Pool party wealth"
+	share_button.tooltip_text = "Party wealth is unavailable." if share_availability == null else share_availability.reason if not share_availability.enabled else "Share pooled wealth"
+	if not pool_button.disabled:
+		pool_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"pool")))
+	if not share_button.disabled:
+		share_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"share")))
 	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", func() -> void: _select_category(_selected_category), {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
 	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_workspace.bind(&"items"), {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
 	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_workspace.bind(&"money"), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
@@ -238,11 +299,11 @@ func _apply_profile_sizes() -> void:
 	find_child("ShopSelectedShopper", true, false).custom_minimum_size.x = 56.0 if _compact else 76.0
 	find_child("ShopTransactionContainer", true, false).custom_minimum_size.x = 150.0 if _compact else 174.0
 	find_child("ShopTransactionPanel", true, false).custom_minimum_size.x = 142.0 if _compact else 166.0
-	find_child("ShopRouteControls", true, false).custom_minimum_size.x = 210.0 if _compact else 257.0
-	find_child("ShopRightLoadPanel", true, false).custom_minimum_size.x = 66.0 if _compact else 86.0
+	find_child("ShopRouteControls", true, false).custom_minimum_size.x = 190.0 if _compact else 257.0
+	find_child("ShopRightLoadPanel", true, false).custom_minimum_size.x = 58.0 if _compact else 86.0
 	get_node("ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopperPortraitSelector").custom_minimum_size.x = 76.0 if _compact else 96.0
 	_left_load.custom_minimum_size.x = 62.0 if _compact else 78.0
-	_right_load.custom_minimum_size.x = 62.0 if _compact else 78.0
+	_right_load.custom_minimum_size.x = 54.0 if _compact else 78.0
 	for button: Button in [_buy_button, _sell_button, _identify_button]:
 		button.custom_minimum_size = Vector2(44.0, 22.0) if _compact else Vector2(52.0, 24.0)
 	%ShopDone.custom_minimum_size = _route_size
@@ -366,10 +427,6 @@ func _submit_identify() -> void:
 		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"identify", _selected_item_owner_id, _selected_item.instance_id))
 
 
-func _submit_leave() -> void:
-	response_body_submitted.emit(InteractionResponse.ShopBody.new(&"leave"))
-
-
 func _drop_on_character(payload: Dictionary, _character_id: String) -> void:
 	if StringName(payload.get("kind", &"")) != &"shop-stock-item":
 		return
@@ -485,6 +542,11 @@ func _update_shopper_buttons() -> void:
 func _refresh_shopper_facts() -> void:
 	var left := _character_by_id(_selected_character_id)
 	var right := _character_by_id(_right_character_id)
+	var money: MoneyWorkspaceView = _game_view.money_workspace if _game_view != null else null
+	var selected_money: MoneyCharacterView = money.character(_selected_character_id) if money != null else null
+	%ShopCurrentGold.text = "Gold %d" % selected_money.gold if selected_money != null else "Gold —"
+	%ShopPooledGold.text = "Pool %d" % money.pooled_gold if money != null else "Pool —"
+	%ShopCompactWealth.text = "%s  •  %s" % [%ShopCurrentGold.text, %ShopPooledGold.text]
 	if left != null:
 		_left_load.text = "Load\n%d / %d\nItems %d" % [left.load, left.maximum_load, left.inventory.size()]
 		_shopper_name.text = left.name
@@ -496,7 +558,7 @@ func _refresh_shopper_facts() -> void:
 	_right_load.text = ("Shop\nStock %d" if _compact else "Shop Keeper\nStock %d") % _stock.size() if right == null else "Load\n%d / %d\nItems %d" % [right.load, right.maximum_load, right.inventory.size()]
 
 
-func _show_workspace(kind: StringName) -> void:
+func _show_workspace(kind: StringName, money_character_id: String = "") -> void:
 	var is_items := kind == &"items"
 	var scene := inventory_workspace_scene if is_items else money_workspace_scene
 	if _game_view == null or scene == null:
@@ -519,10 +581,19 @@ func _show_workspace(kind: StringName) -> void:
 		return
 	_money_controller = ServicesScreenController.new()
 	_money_controller.set_layout_profile(UiLayoutProfile.COMPACT if _compact else UiLayoutProfile.WIDE)
+	_money_controller.set_selected_character_id(money_character_id)
 	_money_workspace = scene.instantiate() as VBoxContainer
 	_money_workspace.name = "ShopMoneyWorkspace"
+	_money_workspace_open = true
 	_money_controller.refresh_requested.connect(_refresh_workspace.bind(kind))
+	_money_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
+		var money := intent.payload as EconomyIntentPayloads.Money
+		if intent.kind != PlayerIntent.Kind.MONEY_ACTION or money == null:
+			return
+		response_body_submitted.emit(InteractionResponse.ShopBody.new(money.action, money.character_id, "", "", money.denomination, money.amount))
+	)
 	_money_controller.back_requested.connect(func() -> void:
+		_money_workspace_open = false
 		application_workspace_closed.emit()
 		_money_controller = null
 		_money_workspace = null
@@ -541,7 +612,7 @@ func _refresh_workspace(kind: StringName) -> void:
 	var mounted := workspace.is_inside_tree()
 	if mounted: focus.store(workspace, workspace, route)
 	if is_items: _inventory_controller.present_browse(workspace, _game_view, _media, 1.0, "Return to the Shop before changing carried items.")
-	else: _money_controller.present_browse(workspace, _game_view, _media, "Return to the Shop before changing party wealth.")
+	else: _money_controller.present_shop(workspace, _game_view, _media)
 	focus.prepare(workspace, route)
 	if mounted: Callable(focus, "restore").call_deferred(workspace, workspace, null, route, false, 0, 0)
 

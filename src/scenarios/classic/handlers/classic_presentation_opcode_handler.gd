@@ -44,6 +44,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		28:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"map_redraw_requested", {"source": "classic"})])
 		62:
+			if _content.requires_deferred_references and not _content.has_media_resource("TEXT", action.operand_id):
+				return ScenarioRuntimeOperationResult.failed(&"unknown_media_resource", "Classic opcode 62 references unavailable TEXT resource %d." % action.operand_id)
 			return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {
 				"prompt": "",
 				"presentation": "classic-scrolling-text",

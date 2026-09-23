@@ -83,7 +83,7 @@ func inspect(path: String) -> PackageDiscoveryResult:
 		archive.close()
 		return PackageDiscoveryResult.new(path, false, campaign_id, package_hash, rules_version, last_error, display_name)
 	archive.close()
-	return PackageDiscoveryResult.new(path, true, campaign_id, package_hash, rules_version, "", display_name)
+	return PackageDiscoveryResult.new(path, true, campaign_id, package_hash, rules_version, "", display_name, manifest["capabilities"].has("realmz.scenario.deferred-references-v1"))
 
 
 func validate_structure(manifest: Dictionary, archive_entries: Array[String]) -> bool:
