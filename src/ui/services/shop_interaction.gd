@@ -139,6 +139,11 @@ func _select_profile_browser() -> void:
 	var wide := %ShopExchangeLedgers as HBoxContainer
 	var compact := %ShopCompactBrowser as PanelContainer
 	if _compact:
+		%ShopCompactWealthActions.visible = true
+		%ShopWealthPanel.visible = false
+		%ShopCompactWealthPanel.visible = true
+		%ShopFacts.text = "Prices %d%%" % _body.inflation_percent
+		(get_node("ShopHeader/Title") as Label).size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		wide.get_parent().remove_child(wide)
 		wide.free()
 		compact.visible = true
@@ -222,14 +227,16 @@ func _bind_footer() -> void:
 	%ShopDone.pressed.connect(_submit_leave)
 	var pool_availability: ActionAvailabilityView = _game_view.money_workspace.pool if _game_view != null and _game_view.money_workspace != null else null
 	var share_availability: ActionAvailabilityView = _game_view.money_workspace.share if _game_view != null and _game_view.money_workspace != null else null
-	%ShopPool.disabled = pool_availability == null or not pool_availability.enabled
-	%ShopShare.disabled = share_availability == null or not share_availability.enabled
-	%ShopPool.tooltip_text = "Party wealth is unavailable." if pool_availability == null else pool_availability.reason if not pool_availability.enabled else "Pool party wealth"
-	%ShopShare.tooltip_text = "Party wealth is unavailable." if share_availability == null else share_availability.reason if not share_availability.enabled else "Share pooled wealth"
-	if not %ShopPool.disabled:
-		%ShopPool.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"pool")))
-	if not %ShopShare.disabled:
-		%ShopShare.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"share")))
+	var pool_button: Button = %ShopCompactPool if _compact else %ShopPool
+	var share_button: Button = %ShopCompactShare if _compact else %ShopShare
+	pool_button.disabled = pool_availability == null or not pool_availability.enabled
+	share_button.disabled = share_availability == null or not share_availability.enabled
+	pool_button.tooltip_text = "Party wealth is unavailable." if pool_availability == null else pool_availability.reason if not pool_availability.enabled else "Pool party wealth"
+	share_button.tooltip_text = "Party wealth is unavailable." if share_availability == null else share_availability.reason if not share_availability.enabled else "Share pooled wealth"
+	if not pool_button.disabled:
+		pool_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"pool")))
+	if not share_button.disabled:
+		share_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"share")))
 	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", func() -> void: _select_category(_selected_category), {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
 	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_workspace.bind(&"items"), {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
 	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_workspace.bind(&"money"), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
@@ -499,6 +506,11 @@ func _update_shopper_buttons() -> void:
 func _refresh_shopper_facts() -> void:
 	var left := _character_by_id(_selected_character_id)
 	var right := _character_by_id(_right_character_id)
+	var money: MoneyWorkspaceView = _game_view.money_workspace if _game_view != null else null
+	var selected_money: MoneyCharacterView = money.character(_selected_character_id) if money != null else null
+	%ShopCurrentGold.text = "Gold %d" % selected_money.gold if selected_money != null else "Gold —"
+	%ShopPooledGold.text = "Pool %d" % money.pooled_gold if money != null else "Pool —"
+	%ShopCompactWealth.text = "%s  •  %s" % [%ShopCurrentGold.text, %ShopPooledGold.text]
 	if left != null:
 		_left_load.text = "Load\n%d / %d\nItems %d" % [left.load, left.maximum_load, left.inventory.size()]
 		_shopper_name.text = left.name
