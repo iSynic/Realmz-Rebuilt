@@ -34,6 +34,21 @@ func clear_command_connections(button: ClassicBitmapButton) -> void:
 		button.command_requested.disconnect(connection["callable"] as Callable)
 
 
+func bind_exit_column(column: InventoryDoneColumn, in_shop: bool, on_back: Callable, on_route: Callable) -> void:
+	var done := column.done_button()
+	var money := column.shop_money_button()
+	var shop_done := column.shop_done_button()
+	for button: Button in [done, money, shop_done]:
+		clear_pressed_connections(button)
+	done.text = "Back to shop" if in_shop else "Done"
+	done.pressed.connect(on_back)
+	money.visible = in_shop
+	shop_done.visible = in_shop
+	if in_shop:
+		money.pressed.connect(on_route.bind(&"shop-money"))
+		shop_done.pressed.connect(on_route.bind(&"shop-done"))
+
+
 func clear_children(parent: Container) -> void:
 	for child: Node in parent.get_children():
 		parent.remove_child(child)

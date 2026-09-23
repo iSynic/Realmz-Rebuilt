@@ -44,13 +44,9 @@ var _selected_category: StringName = &"weapons"
 var _stock_rows: VBoxContainer
 var _inventory_rows: VBoxContainer
 var _stock_heading: Label
-var _selection_summary: Label
 var _left_load: Label
 var _right_load: Label
 var _shopper_name: Label
-var _transaction_facts: Label
-var _item_description: Label
-var _item_stats: Label
 var _selected_portrait: TextureRect
 var _buy_button: Button
 var _sell_button: Button
@@ -73,6 +69,7 @@ var _money_workspace_open := false
 var _inventory_workspace_open := false
 var _inventory_focus := WorkspaceFocusController.new()
 var _money_focus := WorkspaceFocusController.new()
+var _transaction_presenter := ShopTransactionPresenter.new()
 
 
 func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool) -> void:
@@ -220,6 +217,11 @@ func _bind_ledgers() -> void:
 func _refresh_stock() -> void:
 	if _stock_rows == null:
 		return
+	if not _compact:
+		var pack_ledger := _browser.find_child("SelectedInventoryColumn", true, false) as ClassicExchangeLedger
+		var right_ledger := _browser.find_child("ShopStockColumn", true, false) as ClassicExchangeLedger
+		pack_ledger.configure_drop(&"shop-stock-item" if _right_character_id.is_empty() else &"shop-inventory-item", _selected_character_id)
+		right_ledger.configure_drop(&"shop-inventory-item", "shop" if _right_character_id.is_empty() else _right_character_id)
 	for child: Node in _stock_rows.get_children():
 		_stock_rows.remove_child(child)
 		child.free()
@@ -259,13 +261,12 @@ func _bind_footer() -> void:
 	_left_load = %ShopLeftLoad as Label
 	_right_load = %ShopRightLoad as Label
 	_shopper_name = %ShopperName as Label
-	_transaction_facts = %ShopTransactionFacts as Label
-	_item_description = %ShopItemDescription as Label
-	_item_stats = %ShopItemStats as Label
 	_selected_portrait = %ShopSelectedPortrait as TextureRect
 	_buy_button = %ShopBuy as Button
 	_sell_button = %ShopSellSelected as Button
 	_identify_button = %ShopIdentify as Button
+	_transaction_presenter.bind_controls(%ShopItemDescription, %ShopTransactionFacts, %ShopItemStats, _buy_button, _sell_button, _identify_button)
+	_transaction_presenter.trade_requested.connect(func(body: InteractionResponse.ShopBody) -> void: response_body_submitted.emit(body))
 	_buy_button.pressed.connect(_submit_buy)
 	_sell_button.pressed.connect(_submit_sell)
 	_identify_button.pressed.connect(_submit_identify)
@@ -286,7 +287,6 @@ func _bind_footer() -> void:
 	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_workspace.bind(&"items"), {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
 	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_workspace.bind(&"money"), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
 	_apply_profile_sizes()
-	_selection_summary = _item_description
 
 
 func _configure_route_button(button: ClassicBitmapButton, caption: String, asset_id: StringName, callback: Callable, art_options: Dictionary = {}) -> void:
@@ -316,21 +316,27 @@ func _apply_profile_sizes() -> void:
 
 func _select_character(character_id: String) -> void:
 	_selected_character_id = character_id
+	if _right_character_id == character_id:
+		_right_character_id = ""
 	_selected_stock = null
 	_selected_item = null
 	_selected_item_owner_id = ""
 	_update_shopper_buttons()
+	_refresh_stock()
 	_refresh_inventory()
 	_refresh_inspector()
 
 
 func _select_right_character(character_id: String) -> void:
+	if character_id == _selected_character_id:
+		return
 	_right_character_id = character_id
 	_selected_stock = null
 	_selected_item = null
 	_selected_item_owner_id = ""
 	_update_shopper_buttons()
 	_refresh_stock()
+	_refresh_inventory()
 	_refresh_inspector()
 
 
@@ -353,6 +359,7 @@ func _select_category(category: StringName) -> void:
 	for id: Variant in _category_buttons:
 		(_category_buttons[id] as BaseButton).set_pressed_no_signal(StringName(id) == category)
 	_refresh_stock()
+	_refresh_inventory()
 	_update_shopper_buttons()
 	_refresh_inspector()
 
@@ -389,40 +396,26 @@ func _refresh_inventory() -> void:
 
 
 func _refresh_inspector() -> void:
-	if _selection_summary == null:
+	if _buy_button == null:
 		return
-	_buy_button.disabled = _selected_stock == null or _selected_character_id.is_empty() or not _selected_stock.can_buy
-	_sell_button.disabled = _selected_item == null or _selected_item_owner_id.is_empty() or not _selected_item.can_sell
-	_identify_button.disabled = _selected_item == null or _selected_item_owner_id.is_empty() or not _selected_item.can_identify
-	_buy_button.tooltip_text = "Select shop stock." if _selected_stock == null else "No shopper is available." if _selected_character_id.is_empty() else _selected_stock.buy_reason if not _selected_stock.can_buy else ""
-	_sell_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.sell_reason if not _selected_item.can_sell else ""
-	_identify_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.identify_reason if not _selected_item.can_identify else ""
-	if _selected_stock != null:
-		_selection_summary.text = _selected_stock.description if not _selected_stock.description.is_empty() else _selected_stock.name
-		_selection_summary.tooltip_text = _selected_stock.buy_reason
-		_transaction_facts.text = "Cost %d  •  Offer —  •  Weight %d" % [_selected_stock.buy_price, _selected_stock.weight]
-		_item_stats.text = _facts_text(_selected_stock.facts, "Quantity", str(_selected_stock.quantity))
-	elif _selected_item != null:
-		var state := "Equipped" if _selected_item.equipped else "Carried"
-		var knowledge := "Identified" if _selected_item.identified else "Unidentified"
-		_selection_summary.text = _selected_item.description if not _selected_item.description.is_empty() else _selected_item.name
-		_selection_summary.tooltip_text = _selected_item.sell_reason if not _selected_item.can_sell else _selected_item.identify_reason if not _selected_item.can_identify else ""
-		_transaction_facts.text = "Cost —  •  Offer %d  •  Weight %d" % [_selected_item.sell_price, _selected_item.weight]
-		_item_stats.text = _facts_text(_selected_item.facts, "State", "%s / %s" % [state, knowledge])
-	else:
-		_selection_summary.text = "Choose stock or a carried item."
-		_selection_summary.tooltip_text = ""
-		_transaction_facts.text = "Cost —  •  Offer —  •  Weight —"
-		_item_stats.text = ""
+	_transaction_presenter.render(_game_view, _selected_stock, _selected_item, _selected_item_owner_id, _selected_character_id, _right_character_id)
 	_refresh_shopper_facts()
 
 
 func _submit_buy() -> void:
+	if not _right_character_id.is_empty():
+		if _selected_item_owner_id == _right_character_id:
+			_transaction_presenter.submit_trade(_selected_character_id)
+		return
 	if _selected_stock != null and not _selected_character_id.is_empty() and _selected_stock.can_buy:
 		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"buy", _selected_character_id, "", _selected_stock.stock_key))
 
 
 func _submit_sell() -> void:
+	if not _right_character_id.is_empty():
+		if _selected_item_owner_id == _selected_character_id:
+			_transaction_presenter.submit_trade(_right_character_id)
+		return
 	if _selected_item != null and _selected_item.can_sell:
 		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"sell", _selected_item_owner_id, _selected_item.instance_id))
 
@@ -433,6 +426,11 @@ func _submit_identify() -> void:
 
 
 func _drop_on_character(payload: Dictionary, _character_id: String) -> void:
+	if not _right_character_id.is_empty():
+		if StringName(payload.get("kind", &"")) == &"shop-inventory-item" and String(payload.get("sourceId", "")) == _right_character_id:
+			_select_item(_right_character_id, String(payload.get("instanceId", "")))
+			_transaction_presenter.submit_trade(_selected_character_id)
+		return
 	if StringName(payload.get("kind", &"")) != &"shop-stock-item":
 		return
 	_select_stock(String(payload.get("stockKey", "")))
@@ -443,7 +441,11 @@ func _drop_on_shop(payload: Dictionary, _target_id: String) -> void:
 	if StringName(payload.get("kind", &"")) != &"shop-inventory-item":
 		return
 	_select_item(String(payload.get("sourceId", "")), String(payload.get("instanceId", "")))
-	_submit_sell()
+	if not _right_character_id.is_empty():
+		if _selected_item_owner_id == _selected_character_id:
+			_transaction_presenter.submit_trade(_right_character_id)
+	else:
+		_submit_sell()
 
 
 func _character_by_id(character_id: String) -> InteractionRequestValue.ServiceCharacter:
@@ -524,7 +526,7 @@ func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: I
 	var button := row.get_node("%ItemButton") as ClassicExchangeItemButton
 	button.name = "%s_%s" % [prefix, item.instance_id.replace(".", "_")]
 	button.set_meta("item_instance_id", item.instance_id)
-	button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
+	button.text = "%s\n%s" % [item.name, "Equipped" if item.equipped else "Carried"] if not _right_character_id.is_empty() else "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
 	button.custom_minimum_size.y = _row_height
 	button.button_group = _inventory_group
 	button.button_pressed = _selected_item != null and _selected_item.instance_id == item.instance_id and _selected_item_owner_id == character.id
@@ -576,19 +578,8 @@ func _show_workspace(kind: StringName, money_character_id: String = "") -> void:
 		_inventory_workspace.name = "ShopItemsWorkspace"
 		_inventory_workspace_open = true
 		_inventory_controller.refresh_requested.connect(_refresh_workspace.bind(kind))
-		_inventory_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
-			if intent.kind != PlayerIntent.Kind.TRADE_ITEM:
-				return
-			var trade := intent.payload as InventoryIntentPayloads.Action
-			if trade != null:
-				response_body_submitted.emit(InteractionResponse.ShopBody.new(&"trade", trade.actor_id, trade.item_id, "", "", 0, trade.destination_character_id))
-		)
-		_inventory_controller.back_requested.connect(func() -> void:
-			_inventory_workspace_open = false
-			application_workspace_closed.emit()
-			_inventory_controller = null
-			_inventory_workspace = null
-		)
+		_inventory_controller.back_requested.connect(_close_items_workspace)
+		_inventory_controller.route_requested.connect(_route_from_items)
 		_refresh_workspace(kind)
 		application_workspace_requested.emit(_inventory_workspace)
 		if _inventory_workspace.is_inside_tree(): Callable(_inventory_focus, "focus_first").call_deferred(_inventory_workspace)
@@ -617,6 +608,30 @@ func _show_workspace(kind: StringName, money_character_id: String = "") -> void:
 	if _money_workspace.is_inside_tree(): Callable(_money_focus, "focus_first").call_deferred(_money_workspace)
 
 
+func _close_items_workspace() -> void:
+	_inventory_workspace_open = false
+	application_workspace_closed.emit()
+	_inventory_controller = null
+	_inventory_workspace = null
+
+
+func _route_from_items(route: StringName) -> void:
+	match route:
+		&"shop-money":
+			_close_items_workspace()
+			_show_workspace(&"money", _selected_character_id)
+		&"shop-trade":
+			_close_items_workspace()
+			if _right_character_id.is_empty():
+				for character: InteractionRequestValue.ServiceCharacter in _characters:
+					if character.id != _selected_character_id:
+						_select_right_character(character.id)
+						break
+		&"shop-done":
+			_close_items_workspace()
+			response_body_submitted.emit(InteractionResponse.ShopBody.new(&"leave"))
+
+
 func _refresh_workspace(kind: StringName) -> void:
 	var is_items := kind == &"items"
 	var workspace: VBoxContainer = _inventory_workspace if is_items else _money_workspace
@@ -629,22 +644,6 @@ func _refresh_workspace(kind: StringName) -> void:
 	else: _money_controller.present_shop(workspace, _game_view, _media)
 	focus.prepare(workspace, route)
 	if mounted: Callable(focus, "restore").call_deferred(workspace, workspace, null, route, false, 0, 0)
-
-
-func _facts_text(facts: Array[InteractionRequestValue.ItemDetailFact], extra_label: String, extra_value: String) -> String:
-	var lines: Array[String] = []
-	for fact: InteractionRequestValue.ItemDetailFact in facts:
-		lines.append("%s  %s" % [fact.label, fact.value])
-	lines.append("%s  %s" % [extra_label, extra_value])
-	return "  •  ".join(lines)
-
-
-func _detail_facts(facts: Array[InteractionRequestValue.ItemDetailFact], suffix: Array[Dictionary]) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-	for fact: InteractionRequestValue.ItemDetailFact in facts:
-		result.append({"label": fact.label, "value": fact.value})
-	result.append_array(suffix)
-	return result
 
 
 func _visible_stock() -> Array[InteractionRequestValue.ShopStock]:
@@ -662,16 +661,19 @@ func _portrait_texture(asset_id: String) -> Texture2D:
 
 
 func _stock_detail(entry: InteractionRequestValue.ShopStock) -> Dictionary:
-	return {"title": entry.name, "subtitle": entry.description, "facts": _detail_facts(entry.facts, [{"label": "Price", "value": "%d gold" % entry.buy_price}, {"label": "Quantity", "value": str(entry.quantity)}]), "restrictions": [entry.buy_reason] if not entry.buy_reason.is_empty() else [], "iconResourceType": entry.icon_resource_type, "iconId": entry.icon_id}
+	return {"title": entry.name, "subtitle": entry.description, "facts": ShopTransactionPresenter.detail_facts(entry.facts, [{"label": "Price", "value": "%d gold" % entry.buy_price}, {"label": "Quantity", "value": str(entry.quantity)}]), "restrictions": [entry.buy_reason] if not entry.buy_reason.is_empty() else [], "iconResourceType": entry.icon_resource_type, "iconId": entry.icon_id}
 
 
 func _inventory_detail(item: InteractionRequestValue.InventoryItem) -> Dictionary:
-	var facts: Array[Dictionary] = _detail_facts(item.facts, [{"label": "State", "value": "Equipped" if item.equipped else "Carried"}, {"label": "Knowledge", "value": "Identified" if item.identified else "Unidentified"}, {"label": "Sell", "value": "%d gold" % item.sell_price}])
+	var suffix: Array[Dictionary] = [{"label": "State", "value": "Equipped" if item.equipped else "Carried"}, {"label": "Knowledge", "value": "Identified" if item.identified else "Unidentified"}]
+	if _right_character_id.is_empty(): suffix.append({"label": "Sell", "value": "%d gold" % item.sell_price})
+	var facts: Array[Dictionary] = ShopTransactionPresenter.detail_facts(item.facts, suffix)
 	if item.charges != 0:
 		facts.append({"label": "Charges", "value": "Unlimited" if item.charges < 0 else str(item.charges)})
 	var restrictions: Array[String] = []
-	if not item.sell_reason.is_empty(): restrictions.append(item.sell_reason)
-	if not item.identify_reason.is_empty(): restrictions.append(item.identify_reason)
+	if _right_character_id.is_empty():
+		if not item.sell_reason.is_empty(): restrictions.append(item.sell_reason)
+		if not item.identify_reason.is_empty(): restrictions.append(item.identify_reason)
 	return {"title": item.name, "subtitle": item.description, "facts": facts, "restrictions": restrictions, "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
 
 

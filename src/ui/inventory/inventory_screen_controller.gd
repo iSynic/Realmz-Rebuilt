@@ -189,10 +189,8 @@ func _present_empty(workspace: InventoryWorkspace, title: String, detail: String
 	var host := workspace.prepare_alternate_layout()
 	var empty := workspace.empty_state_scene.instantiate() as InventoryEmptyState
 	empty.bind(title, detail, show_done)
-	_scene_binding.clear_pressed_connections(empty.done_button())
 	if show_done:
-		empty.done_button().text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
-		empty.done_button().pressed.connect(func() -> void: back_requested.emit())
+		_scene_binding.bind_exit_column(empty.done_button().get_parent() as InventoryDoneColumn, not _browse_only_reason.is_empty(), func() -> void: back_requested.emit(), func(route: StringName) -> void: route_requested.emit(route))
 	host.add_child(empty)
 
 
@@ -358,11 +356,8 @@ func _bind_item_record(content: InventoryItemInspector, character: CharacterView
 	var record := content.record()
 	content.set_compact(_layout_profile == UiLayoutProfile.COMPACT)
 	content.done_column().visible = not _encounter_mode
-	var done := content.done_column().done_button()
-	_scene_binding.clear_pressed_connections(done)
 	if not _encounter_mode:
-		done.text = "Back to shop" if not _browse_only_reason.is_empty() else "Done"
-		done.pressed.connect(func() -> void: back_requested.emit())
+		_scene_binding.bind_exit_column(content.done_column(), not _browse_only_reason.is_empty(), func() -> void: back_requested.emit(), func(route: StringName) -> void: route_requested.emit(route))
 	if item == null:
 		record.show_empty("Select an item to inspect it.")
 		return
@@ -420,7 +415,12 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 			_bind_bitmap_button(browse_button, spec[1], spec[2])
 			browse_button.disabled = true
 			browse_button.tooltip_text = _browse_only_reason
-		_bind_trade_action(panel.action_button("TradeAction"), item)
+		var shop_trade := panel.action_button("TradeAction")
+		_bind_bitmap_button(shop_trade, &"inventory.action.trade", "Trade")
+		shop_trade.disabled = view == null or view.party_members.size() < 2
+		shop_trade.tooltip_text = "Use Shop to trade between two shoppers" if not shop_trade.disabled else "Trade requires two party members."
+		if not shop_trade.disabled:
+			shop_trade.command_requested.connect(func(_command_id: StringName) -> void: route_requested.emit(&"shop-trade"))
 		return
 	if not _pending_item_action.is_empty():
 		_render_operation_stage(panel, item, character)
