@@ -18,6 +18,7 @@ Own the shared session-constructed boundary between `ScenarioVm`, Classic opcode
 - Runtime records and continuations remain pure, serializable, presentation-independent values. They never retain Nodes, presenters, repositories, or host services.
 - `ScenarioExecutionContextCodec` is the only dictionary boundary for trigger, encounter, application, combat, and program-transfer provenance.
 - `ScenarioRuntimeContinuationCodec` alone admits suspended-operation dictionaries and rejects unknown kinds, versions, fields, or mismatched payload families.
+- The typed Party Death handoff also carries Classic health opcode 15/16 operands, stable target identities, and the next target cursor. Its strict existing-version codec permits pending-hook save/restore without changing the save schema; resume completes only after authored revival.
 - Nested battle and death-macro VMs reference the owning runtime API weakly so the session graph has no `RefCounted` cycle.
 - Unknown operations and malformed responses fail explicitly. There is no script-name dispatch or GDScript fallback.
 

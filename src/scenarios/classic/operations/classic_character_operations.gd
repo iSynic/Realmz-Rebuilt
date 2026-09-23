@@ -29,7 +29,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		-14, 14:
 			return _request_character_selection(action, request_id, action.opcode == -14)
 		15, 16:
-			return _apply_health(action, action.opcode == 16)
+			return ClassicHealthOperations.apply(_content, _game_state, _rng, action)
 		17, 18:
 			return _with_age_update_interactions(apply_scenario_spell(action, action.opcode == 18, context), request_id)
 		30:
@@ -197,32 +197,6 @@ func _request_character_ability(action: ClassicActionDefinition, request_id: Str
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic ability check has no living party member.")
 	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": 1, "eligible": eligible, "allowDead": false}), ScenarioInteractionContinuations.character_ability(action.extra_code, action.gosub))
-
-
-func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_health_effect", "Classic health action requires a valid Extra Code roll range.")
-	var message: MessageDefinition = null
-	if action.extra_code[4] != 0:
-		message = _content.scenario_records.message_by_id(absi(action.extra_code[4]))
-		if message == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 15 references unavailable message %d." % action.extra_code[4])
-	var targets := _game_state.party.characters() if whole_party else _game_state.scenario_progress.selected_characters()
-	var hits: Array[Dictionary] = []
-	var events: Array[DomainEvent] = []
-	for character: CharacterState in targets:
-		if action.extra_code[3] != 0:
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic-opcode-15"}))
-		var roll := _rng.draw_between_classic(action.extra_code[1], action.extra_code[2], &"classic.health-effect")
-		var amount := action.extra_code[0] * roll
-		var previous := character.current_health
-		character.current_health = mini(character.maximum_health, maxi(-32_768, character.current_health + amount))
-		hits.append({"characterId": character.id, "previousHealth": previous, "health": character.current_health, "amount": character.current_health - previous})
-		events.append(DomainEvent.new(&"character_effect_requested", {"characterId": character.id, "resourceType": "cicn", "firstResourceId": 12112, "frameCount": 8, "source": "classic-opcode-15"}))
-	events.append(DomainEvent.new(&"party_health_changed", {"targets": "party" if whole_party else "selected", "hits": hits}))
-	if message != null:
-		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-15", "classicClick": action.extra_code[4] > 0}))
-	return ScenarioRuntimeOperationResult.completed(hits, events)
 
 
 func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:

@@ -17,6 +17,7 @@ Own application-hook transactions and scenario handoff coordination above the sc
 - Scenario definitions, VM frames, runtime continuations, and opcode behavior remain under `src/scenarios`; this feature coordinates them with the active playthrough.
 - Application-hook programs resolve from immutable scenario content and resume only through their typed execution context.
 - Party-defeat handoff preserves the suspended VM, owning session continuation, typed VM handoff, event order, RNG order, and revival decision exactly once.
+- Scripted total-party loss from Classic health opcodes uses that same Party Death hook and placed-AP continuation. An unrevived party closes the adventure; a revived party completes only the suspended remainder of the health operation before later authored AP slots.
 - Continuation kind, fields, version, and wire representation remain stable.
 - `GameSession` alone commits, rolls back, changes revision, closes the adventure, and constructs steps.
 

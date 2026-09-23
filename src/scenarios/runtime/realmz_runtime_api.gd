@@ -186,10 +186,14 @@ func request_available_bank(request_id: String) -> ScenarioRuntimeOperationResul
 
 
 static func party_defeat_handoff_is_valid(content: RealmzContent, state: GameState, handoff: ScenarioRuntimeHandoff) -> bool:
+	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_HEALTH:
+		return ClassicHealthOperations.handoff_is_valid(state, handoff)
 	return ClassicBattleRewardOperations.party_defeat_handoff_is_valid(content, state, handoff)
 
 
 func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:
+	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_HEALTH:
+		return ClassicHealthOperations.resume(_content, _game_state, _rng, handoff)
 	return _battle_reward_operations.complete_party_defeat_handoff(handoff)
 
 
