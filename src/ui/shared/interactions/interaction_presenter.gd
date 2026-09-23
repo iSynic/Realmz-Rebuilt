@@ -127,7 +127,6 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_request = request
 		_playback_masked = false
 		visible = true
-		_claim_modal_layer()
 		_apply_classic_region()
 		return
 	var shop_state := (_component as ShopInteraction).capture_browser_state() if _component is ShopInteraction and request != null and request.kind == InteractionRequest.SHOP else {}
