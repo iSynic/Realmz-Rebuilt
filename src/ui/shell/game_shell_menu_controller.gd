@@ -39,7 +39,7 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 	var contextual_definition: Dictionary = owner._command_controller.presentation_definition(ClassicCommandCatalog.command(&"contextual"))
 	var contextual_label := String(contextual_definition.get("label", "Encounter"))
 	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
-	var groups := _menu_catalog(game_view, settings, music_title, music_playing, contextual_label, contextual_availability)
+	var groups := _menu_catalog(game_view, settings, music_title, music_playing, contextual_label, contextual_availability, owner._navigator.content_presenter.system_preferences.active_slot_id)
 	var row_path := "MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/"
 	for group: Dictionary in groups:
 		var menu := owner.get_node(row_path + String(group["node"])) as MenuButton
@@ -53,15 +53,13 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 		_restore_controller_selection(retained_heading, retained_entry)
 
 
-static func _menu_catalog(game_view: GameView, settings: PresentationSettings, music_title: String, music_playing: bool, contextual_label: String, contextual_availability: StringName) -> Array[Dictionary]:
+static func _menu_catalog(game_view: GameView, settings: PresentationSettings, music_title: String, music_playing: bool, contextual_label: String, contextual_availability: StringName, active_slot_id: String) -> Array[Dictionary]:
 	return [
 		{"node": "GameMenu", "heading": "Game", "entries": [
 			{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": GameShellAvailability.campaign_library_reason(game_view)},
 			{"label": "Save & Load…", "route": &"save_load", "disabled_reason": GameShellAvailability.save_reason(game_view)},
-			{"label": "Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": GameShellAvailability.save_reason(game_view)},
-			{"label": "Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": GameShellAvailability.save_reason(game_view)},
-			{"label": "Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": GameShellAvailability.load_reason(game_view)},
-			{"label": "Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": GameShellAvailability.load_reason(game_view)},
+			{"label": "Quicksave %s" % active_slot_id, "system": &"save", "value": "quick", "disabled_reason": GameShellAvailability.save_reason(game_view)},
+			{"label": "Quickload %s" % active_slot_id, "system": &"load", "value": active_slot_id, "disabled_reason": GameShellAvailability.load_reason(game_view)},
 			{"label": "Main Menu…", "system": &"end_adventure", "disabled_reason": GameShellAvailability.end_adventure_reason(game_view)},
 			{"label": "Quit", "system": &"quit"},
 		]},

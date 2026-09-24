@@ -28,7 +28,7 @@ func _test_top_menu_consolidation_and_pointer_ownership() -> void:
 	assert_equal(headings.map(func(menu: MenuButton) -> String: return menu.text), ["Game", "Adventure", "Party", "Settings", "Help"], "the desktop strip presents exactly the five coordinated headings")
 	var game := headings[0]
 	var settings := headings[3]
-	assert_true(game.get_popup().item_count == 8 and game.get_popup().get_item_text(1) == "Save & Load…" and game.get_popup().is_item_disabled(1), "Game keeps its campaign, save, quick-action, exit, and quit choices with the current save blocker")
+	assert_true(game.get_popup().item_count == 6 and game.get_popup().get_item_text(1) == "Save & Load…" and game.get_popup().is_item_disabled(1) and game.get_popup().get_item_text(2) == "Quicksave A" and game.get_popup().get_item_text(3) == "Quickload A", "Game exposes one quicksave and quickload for the active slot alongside its campaign, save, and exit choices")
 	assert_true(headings[1].get_popup().get_item_text(9) == "Bestiary" and headings[1].get_popup().get_item_text(10) == "Maps and Notes" and headings[2].get_popup().get_item_text(5) == "Current Allies", "Adventure owns Bestiary and Maps while Party owns Current Allies")
 	assert_true(settings.get_popup().get_item_text(0) == "Preferences…" and settings.get_popup().get_item_text(7) == "Playlist…" and headings[1].get_popup().get_item_text(1) == "Move To" and headings[1].get_popup().is_item_checkable(1) and not headings[1].get_popup().is_item_checked(1) and headings[4].get_popup().get_item_text(0) == "About Realmz Rebuilt", "Settings keeps preferences and music, Adventure exposes default-off Move To, and Help keeps About")
 	var menu_controller := shell.get("_menu_controller") as GameShellMenuController
@@ -51,7 +51,7 @@ func _test_top_menu_consolidation_and_pointer_ownership() -> void:
 	host.size = Vector2(800.0, 600.0)
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var compact := shell.get_node("%CompactMenu") as MenuButton
-	assert_true(compact.visible and compact.get_popup().item_count > 20 and compact.get_popup().get_item_text(0).begins_with("Game — ") and compact.get_popup().get_item_text(8).begins_with("Adventure — "), "the compact menu flattens the same catalog while retaining each destination group")
+	assert_true(compact.visible and compact.get_popup().item_count > 20 and compact.get_popup().get_item_text(0).begins_with("Game — ") and compact.get_popup().get_item_text(6).begins_with("Adventure — "), "the compact menu flattens the same catalog while retaining each destination group")
 	assert_true(not compact.get_popup().exclusive and headings.all(func(menu: MenuButton) -> bool: return not menu.get_popup().exclusive and not menu.switch_on_hover), "embedded dropdowns keep compositor input forwarding available and heading changes remain controller-managed")
 	host.free()
 	await (Engine.get_main_loop() as SceneTree).process_frame

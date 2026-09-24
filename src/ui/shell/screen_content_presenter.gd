@@ -12,6 +12,7 @@ signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
 signal route_requested(screen_id: StringName)
 signal refresh_requested
+signal save_previews_changed
 signal back_requested
 signal sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal combat_inventory_response_submitted(body: InteractionResponse.CombatBody)
@@ -229,6 +230,7 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: S
 
 func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: String = "", active_slot_id: String = "A") -> void:
 	_system_controller.set_save_previews(previews, selected_slot_id, active_slot_id)
+	save_previews_changed.emit()
 
 
 func set_save_and_quit_mode(enabled: bool) -> void:

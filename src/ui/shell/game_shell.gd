@@ -300,6 +300,7 @@ func _ready() -> void:
 	_navigator.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
 	_navigator.screen_changed.connect(_on_screen_changed)
 	_navigator.system_action_requested.connect(handle_system_action_requested)
+	_navigator.content_presenter.save_previews_changed.connect(_build_menus)
 	_navigator.presentation_setting_changed.connect(_on_presentation_setting_changed)
 	_navigator.combat_inventory_response_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: combat_inventory_response_submitted.emit(body))
 	_navigator.combat_inventory_item_use_requested.connect(func(character_id: String, instance_id: String) -> void: combat_inventory_item_use_requested.emit(character_id, instance_id))

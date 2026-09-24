@@ -74,6 +74,8 @@ const CONTROL_HELP: Array[Dictionary] = [
 var _save_previews: Array[SaveSlotPreview] = []
 var _selected_save_key: String = ""
 var _active_slot_id: String = "A"
+var active_slot_id: String:
+	get: return _active_slot_id
 var _pending_save_action: StringName = &""
 var _pending_save_slot: String = ""
 var _pending_save_backup: bool = false
