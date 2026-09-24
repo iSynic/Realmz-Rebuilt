@@ -230,6 +230,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.save_and_quit_requested.connect(lifecycle_host.save_and_quit)
 	_shell_presenter.load_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id))
 	_shell_presenter.load_backup_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id, true))
+	_shell_presenter.legacy_save_load_requested.connect(func(slot_id: String, backup: bool, target_slot_id: String) -> void: adventure_storage.load(_active_content, slot_id, backup, target_slot_id))
 	_shell_presenter.update_save_requested.connect(func(slot_id: String, backup: bool) -> void: adventure_storage.update_save(_active_content, slot_id, backup))
 	_shell_presenter.refresh_saves_requested.connect(func() -> void: adventure_storage.refresh(_active_content))
 	_shell_presenter.end_adventure_requested.connect(lifecycle_host.request_end_adventure)
@@ -618,8 +619,7 @@ func _complete_closed_session() -> void:
 	character_files.refresh_vault_views(_active_content)
 	_refresh_campaigns()
 	_shell_presenter.show_splash()
-	_status_label.text = "Adventure ended • main menu"
-	_shell_presenter.status.set_status(_status_label.text)
+	_shell_presenter.status.set_status("Adventure ended • main menu")
 
 
 func _on_playback_step_settled(step: SessionStep) -> void:

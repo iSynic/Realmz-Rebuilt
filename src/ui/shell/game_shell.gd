@@ -11,6 +11,7 @@ signal save_requested(slot_id: String)
 signal save_and_quit_requested(slot_id: String)
 signal load_requested(slot_id: String)
 signal load_backup_requested(slot_id: String)
+signal legacy_save_load_requested(slot_id: String, backup: bool, target_slot_id: String)
 signal update_save_requested(slot_id: String, backup: bool)
 signal refresh_saves_requested
 signal end_adventure_requested
@@ -554,12 +555,13 @@ func _set_play_regions_visible(visible: bool) -> void:
 
 
 func handle_system_action_requested(action_id: StringName, value: Variant) -> void:
-	if action_id in [&"end_adventure", &"campaigns", &"quit", &"load", &"load_backup"] and _navigator.draft_dialog.defer_if_dirty(_navigator.content_presenter.system_preferences, handle_system_action_requested.bind(action_id, value)): return
+	if action_id in [&"end_adventure", &"campaigns", &"quit", &"load", &"load_backup", &"load_legacy_into_slot"] and _navigator.draft_dialog.defer_if_dirty(_navigator.content_presenter.system_preferences, handle_system_action_requested.bind(action_id, value)): return
 	match action_id:
 		&"save": save_requested.emit("quick" if value == null else String(value))
 		&"save_and_quit": save_and_quit_requested.emit("quick" if value == null else String(value))
 		&"load": load_requested.emit("quick" if value == null else String(value))
 		&"load_backup": load_backup_requested.emit("quick" if value == null else String(value))
+		&"load_legacy_into_slot": legacy_save_load_requested.emit(String(value.get("slotId", "")), bool(value.get("backup", false)), String(value.get("targetSlotId", "")))
 		&"update_save": update_save_requested.emit(String(value.get("slotId", "")), bool(value.get("backup", false)))
 		&"refresh_saves": refresh_saves_requested.emit()
 		&"end_adventure": end_adventure_requested.emit()

@@ -47,7 +47,7 @@ func save(content: RealmzContent, slot_id: String) -> bool:
 	return saved
 
 
-func load(content: RealmzContent, slot_id: String, backup: bool = false) -> SessionStep:
+func load(content: RealmzContent, slot_id: String, backup: bool = false, replacement_slot: String = "") -> SessionStep:
 	if content == null:
 		_shell.status.set_status("Load failed • no package loaded", true)
 		return SessionStep.failed(0, "no_package_loaded", "Load a package before restoring a save.")
@@ -55,12 +55,31 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false) -> Sess
 	if envelope == null:
 		_shell.status.set_status("Load failed • %s" % _repository_host.last_error(), true)
 		return SessionStep.failed(_session.view().revision, "save_load_failed", _repository_host.last_error())
+	var resolved_slot := slot_id
+	if slot_id in ["quick", "quick-2"]:
+		# This copies supported v5 records to A–J slots; it never migrates an older save schema.
+		var validation := GameSession.new().restore(content, envelope)
+		if validation.state == SessionStep.State.FAILED:
+			_shell.status.set_status("Load failed • %s" % validation.error_message, true)
+			return validation
+		resolved_slot = _repository_host.assign_legacy_slot(content, envelope, replacement_slot)
+		if resolved_slot.is_empty():
+			_shell.status.set_status("Load failed • %s" % _repository_host.last_error(), true)
+			return SessionStep.failed(_session.view().revision, "save_slot_assignment_failed", _repository_host.last_error())
+		if not _repository_host.set_active_slot(content, resolved_slot):
+			var message := "Copied to Slot %s, but could not remember its Quick Save assignment. The current adventure is unchanged. %s" % [resolved_slot, _repository_host.last_error()]
+			refresh(content, resolved_slot)
+			_shell.status.set_status(message, true)
+			return SessionStep.failed(_session.view().revision, "save_slot_assignment_failed", message)
 	var step := _session.restore(content, envelope)
 	if step.state != SessionStep.State.FAILED:
-		if slot_id.length() == 1 and SaveRepository.CLASSIC_SLOTS.contains(slot_id):
-			_repository_host.set_active_slot(content, slot_id)
+		if resolved_slot.length() == 1 and SaveRepository.CLASSIC_SLOTS.contains(resolved_slot) and resolved_slot == slot_id:
+			_repository_host.set_active_slot(content, resolved_slot)
 		_load_committed_operation.call()
+		refresh(content, resolved_slot)
 	var status := "Loaded %s %s" % ["backup" if backup else "save", slot_id] if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
+	if step.state != SessionStep.State.FAILED and resolved_slot != slot_id:
+		status = "Loaded into Slot %s • Quick Save uses %s • earlier save preserved" % [resolved_slot, resolved_slot]
 	_shell.status.set_status(status, step.state == SessionStep.State.FAILED)
 	return step
 

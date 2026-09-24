@@ -79,6 +79,7 @@ var active_slot_id: String:
 var _pending_save_action: StringName = &""
 var _pending_save_slot: String = ""
 var _pending_save_backup: bool = false
+var _legacy_target_slot: String = ""
 var _save_view_session_started: bool = false
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _save_and_quit_mode: bool = false
@@ -261,7 +262,7 @@ func _add_save_preview_row(rows: VBoxContainer, group: ButtonGroup, preview: Sav
 	button.text = label
 	button.button_group = group
 	button.button_pressed = _key(preview) == _selected_save_key
-	button.pressed.connect(_select_save.bind(preview))
+	button.pressed.connect(_select_save_key.bind(_key(preview)))
 	rows.add_child(button)
 
 
@@ -322,14 +323,12 @@ func _bind_save_footer(view: GameView) -> void:
 	update_new_slot.call(slot_name.text)
 
 
-func _select_save(preview: SaveSlotPreview) -> void:
-	_clear_save_confirmation()
-	_selected_save_key = _key(preview)
-	_refresh_save_detail()
-
-
 func _select_save_key(key: String) -> void:
-	_clear_save_confirmation()
+	if _pending_save_action == &"load_legacy_into_slot":
+		var slot := key.get_slice(":", 0)
+		_legacy_target_slot = slot if slot.length() == 1 and SaveSlotPreview.SCENARIO_SLOTS.contains(slot) and key.ends_with(":primary") else ""
+	else:
+		_clear_save_confirmation()
 	_selected_save_key = key
 	_refresh_save_detail()
 
@@ -350,6 +349,7 @@ func _refresh_save_detail() -> void:
 	load_selected.text = "Load %s" % slot_id if preview != null and preview.can_load else "Load Slot"
 	update_save.visible = preview != null and preview.can_update
 	update_save.tooltip_text = "Create and verify a corrected Half Truth copy. The original save and backup remain untouched."
+	_update_save_confirmation()
 	var record := _workspace.save_detail_record()
 	var empty := _workspace.save_detail_empty()
 	record.visible = preview != null
@@ -392,11 +392,23 @@ func _load_selected_preview() -> void:
 	var preview := _selected_preview()
 	if preview == null or not preview.can_load:
 		return
+	if preview.slot_id in ["quick", "quick-2"] and not _has_empty_scenario_slot():
+		_legacy_target_slot = ""
+		_stage_save_confirmation(&"load_legacy_into_slot", preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
+		return
 	var action_id: StringName = &"load_backup" if preview.source == SaveSlotPreview.BACKUP else &"load"
 	if _save_view_session_started:
 		_stage_save_confirmation(action_id, preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
 	else:
 		action_requested.emit(action_id, preview.slot_id)
+
+
+func _has_empty_scenario_slot() -> bool:
+	for index: int in SaveSlotPreview.SCENARIO_SLOTS.length():
+		var slot := SaveSlotPreview.SCENARIO_SLOTS.substr(index, 1)
+		if _preview_for_slot(slot, SaveSlotPreview.PRIMARY) == null and _preview_for_slot(slot, SaveSlotPreview.BACKUP) == null:
+			return true
+	return false
 
 
 func _save_selected_preview() -> void:
@@ -430,6 +442,13 @@ func _confirm_save_action() -> void:
 		return
 	var action_id := _pending_save_action
 	var slot_id := _pending_save_slot
+	if action_id == &"load_legacy_into_slot":
+		if _legacy_target_slot.is_empty():
+			return
+		var request := {"slotId": slot_id, "backup": _pending_save_backup, "targetSlotId": _legacy_target_slot}
+		_clear_save_confirmation()
+		action_requested.emit(action_id, request)
+		return
 	_clear_save_confirmation()
 	action_requested.emit(action_id, slot_id)
 
@@ -438,17 +457,30 @@ func _clear_save_confirmation() -> void:
 	_pending_save_action = &""
 	_pending_save_slot = ""
 	_pending_save_backup = false
+	_legacy_target_slot = ""
 	_update_save_confirmation()
+	_refresh_save_detail()
 
 
 func _update_save_confirmation() -> void:
 	if _workspace == null:
 		return
 	var row := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/ConfirmActionRow") as BoxContainer
+	var migrating := _pending_save_action == &"load_legacy_into_slot"
+	(row.get_node("Confirm") as Button).disabled = migrating and _legacy_target_slot.is_empty()
+	var actions := row.get_parent().get_node("SaveWorkspaceActions")
+	for action: String in ["QuickSave1", "SaveAndQuitSelected", "UpdateSave"]:
+		(actions.get_node(action) as Button).disabled = migrating
+	if migrating:
+		(actions.get_node("SaveSelectedSlot") as Button).disabled = true
+		(actions.get_node("LoadSelectedSave") as Button).disabled = true
 	row.visible = _pending_save_action != &""
 	if not row.visible:
 		return
 	var copy := "Load %s%s and replace the current adventure?" % [slot_label(_pending_save_slot), " backup" if _pending_save_backup else ""] if _pending_save_action in [&"load", &"load_backup"] else "Overwrite %s? The current record becomes its backup." % slot_label(_pending_save_slot)
+	if migrating:
+		var source := "%s%s" % [slot_label(_pending_save_slot), " backup" if _pending_save_backup else ""]
+		copy = "All ten slots are occupied. Select an A–J slot to replace with %s." % source if _legacy_target_slot.is_empty() else "Replace Slot %s with %s and load it? The current slot record becomes its backup; the earlier save is kept." % [_legacy_target_slot, source]
 	(row.get_node("ConfirmText") as Label).text = copy
 
 

@@ -47,6 +47,14 @@ func previews(content: RealmzContent) -> Array[SaveSlotPreview]:
 	return result
 
 
+func assign_legacy_slot(content: RealmzContent, envelope: SessionSnapshot, replacement_slot: String = "") -> String:
+	_last_error = ""
+	if content == null or not envelope is SaveEnvelope:
+		_last_error = "A validated legacy save is required."
+		return ""
+	return _repository.copy_to_scenario_slot(content.campaign_id, envelope as SaveEnvelope, replacement_slot)
+
+
 func update_half_truth_save(content: RealmzContent, slot_id: String, backup: bool = false) -> String:
 	_last_error = ""
 	if content == null or not _half_truth_update.eligible(content.campaign_id, HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH, content.package_hash):

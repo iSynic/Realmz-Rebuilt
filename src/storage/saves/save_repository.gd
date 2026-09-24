@@ -116,6 +116,36 @@ func load_backup(campaign_id: String, slot_id: String, expected_package_hash: St
 	return _load_path(campaign_id, slot_id, expected_package_hash, true)
 
 
+func first_empty_slot(campaign_id: String) -> String:
+	if not _safe_component(campaign_id):
+		return ""
+	for index: int in CLASSIC_SLOTS.length():
+		var slot := CLASSIC_SLOTS.substr(index, 1)
+		var path := "%s/%s/%s.r2save" % [_root_path, campaign_id, slot]
+		if not FileAccess.file_exists(path) and not FileAccess.file_exists(path + ".bak") and not DirAccess.dir_exists_absolute(path) and not DirAccess.dir_exists_absolute(path + ".bak"):
+			return slot
+	return ""
+
+
+func copy_to_scenario_slot(campaign_id: String, envelope: SaveEnvelope, replacement_slot: String = "") -> String:
+	last_error = ""
+	if envelope == null or envelope.campaign_id != campaign_id:
+		_fail("A validated save for this campaign is required.")
+		return ""
+	var target := first_empty_slot(campaign_id) if replacement_slot.is_empty() else replacement_slot
+	if target.length() != 1 or not CLASSIC_SLOTS.contains(target):
+		_fail("No empty scenario slot. Choose an A–J slot in Save & Load and confirm replacement.")
+		return ""
+	var copied := save_new_copy(campaign_id, target, envelope) if replacement_slot.is_empty() else save(campaign_id, target, envelope, envelope.map_preview_jpeg)
+	if not copied:
+		return ""
+	var readback := self.load(campaign_id, target, envelope.package_hash)
+	if readback == null or readback.to_data() != envelope.to_data():
+		_fail("Copied save failed readback. Loading was stopped; the earlier save is unchanged.")
+		return ""
+	return target
+
+
 func read_for_explicit_update(campaign_id: String, slot_id: String, old_package_hash: String, backup: bool) -> SaveEnvelope:
 	return _load_path(campaign_id, slot_id, old_package_hash, backup)
 
