@@ -10,6 +10,9 @@ title = "Save & Load"
 description = "Ten scenario slots. Quick Save overwrites the active slot."
 script = ExtResource("2_screen")
 
+[node name="ScreenBodyScroll" parent="WorkspaceColumn/BodyClip" index="0"]
+vertical_scroll_mode = 0
+
 [node name="SystemWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
 layout_mode = 2
 

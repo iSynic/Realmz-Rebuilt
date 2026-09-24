@@ -449,6 +449,7 @@ func _mount_workspace(screen_id: StringName) -> void:
 
 
 func _release_workspace() -> void:
+	_set_workspace_visible(false)
 	if _workspace_view != null:
 		_workspace_host.remove_child(_workspace_view)
 		_workspace_view.queue_free()

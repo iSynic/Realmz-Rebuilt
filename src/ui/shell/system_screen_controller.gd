@@ -272,7 +272,7 @@ func _preview_for_slot(slot_id: String, source: StringName) -> SaveSlotPreview:
 
 func _bind_save_footer(view: GameView) -> void:
 	var root := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter") as VBoxContainer
-	var actions := root.get_node("SaveWorkspaceActions") as BoxContainer
+	var actions := root.get_node("SaveWorkspaceActions") as Container
 	var save_and_quit := actions.get_node("SaveAndQuitSelected") as Button
 	var quick_one := actions.get_node("QuickSave1") as Button
 	var quick_two := actions.get_node("QuickSave2") as Button

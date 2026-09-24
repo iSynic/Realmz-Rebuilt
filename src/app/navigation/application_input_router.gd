@@ -72,6 +72,9 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 	var direction_action := _controller_direction(action_id)
 	if _update_controller_direction(action_id, direction_action, pressed):
 		return
+	if _top_menu_is_open():
+		_handle_top_menu_action(action_id)
+		return
 	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
 		if action_id == &"realmz_controller_back":
 			if _application.click_to_move != null: _application.click_to_move.cancel("Move To cancelled.")
@@ -137,9 +140,6 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 
 func _handle_controller_navigation_action(action_id: StringName) -> bool:
 	var interaction_blocking: bool = _application._interaction_presenter.has_blocking_request()
-	if _top_menu_is_open():
-		_handle_top_menu_action(action_id)
-		return true
 	if _music_playlist_owns_controller() and action_id not in [
 		&"realmz_controller_back",
 		&"realmz_controller_confirm",
