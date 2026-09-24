@@ -51,6 +51,13 @@ func apply(workspace_rect: Rect2, profile: UiLayoutProfile) -> void:
 	_sync_narrative_after_layout(content_rect, combat_rect)
 
 
+func sync_display_world_region(display: DisplayCompositor, settings: PresentationSettings) -> void:
+	if display == null: return
+	var world_visible := _map.visible or _battlefield.visible or _dungeon.visible
+	var zoom := settings.world_zoom if settings.display_scaling_mode == PresentationSettings.DISPLAY_INTEGER_CANVAS and not _dungeon.visible else 1
+	display.set_world_region(world_rect if world_visible else Rect2(), zoom)
+
+
 static func classic_textbox_rect(workspace_rect: Rect2, bottom_height: float, full_width: float = 0.0) -> Rect2:
 	var width := full_width if full_width > 0.0 else workspace_rect.size.x
 	return Rect2(0.0 if full_width > 0.0 else workspace_rect.position.x, workspace_rect.end.y, width, bottom_height)

@@ -3,9 +3,9 @@
 [resource]
 script = ExtResource("1_route")
 route_id = &"system"
-label = "System"
+label = "Preferences"
 shortcut = &"ui_screen_system"
 primary = true
-description = "Save, load, settings, and readiness diagnostics."
+description = "Display, audio, accessibility, controls, and diagnostics."
 presentation = 1
 workspace_scene_path = "res://src/ui/shell/system_screen.tscn"

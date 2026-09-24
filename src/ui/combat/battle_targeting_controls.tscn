@@ -1,43 +1,99 @@
-[gd_scene format=3]
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/combat/battle_targeting_controls.gd" id="1"]
 
 [node name="BattleTargetingControls" type="VBoxContainer"]
+script = ExtResource("1")
 size_flags_horizontal = 3
-theme_override_constants/separation = 3
-[node name="TargetingStatus" type="Label" parent="."]
+theme_override_constants/separation = 8
+
+[node name="Record" type="PanelContainer" parent="."]
+layout_mode = 2
+theme_type_variation = &"BattleSummaryInset"
+
+[node name="Margin" type="MarginContainer" parent="Record"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="Record/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TargetingHeader" type="BoxContainer" parent="Record/Margin/Content"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 12
-text = "Targeting • Aim with the pointer; T marks or cycles a target; Space casts."
-horizontal_alignment = 1
+theme_override_constants/separation = 12
+
+[node name="Identity" type="VBoxContainer" parent="Record/Margin/Content/TargetingHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="TargetingTitle" type="Label" parent="Record/Margin/Content/TargetingHeader/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941, 0.808, 0.349, 1)
+theme_override_font_sizes/font_size = 20
+text = "Choose a target"
 autowrap_mode = 2
 max_lines_visible = 1
 text_overrun_behavior = 3
-[node name="TargetActions" type="HBoxContainer" parent="."]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 3
-[node name="ConfirmBattleTarget" type="Button" parent="TargetActions"]
+
+[node name="TargetingFacts" type="Label" parent="Record/Margin/Content/TargetingHeader/Identity"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
-size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 2
+max_lines_visible = 1
+text_overrun_behavior = 3
+
+[node name="TargetActions" type="HBoxContainer" parent="Record/Margin/Content/TargetingHeader"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 8
+
+[node name="ConfirmBattleTarget" type="Button" parent="Record/Margin/Content/TargetingHeader/TargetActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 36)
+layout_mode = 2
 theme_type_variation = &"BattleCommandButton"
+theme_override_colors/font_color = Color(0.941, 0.808, 0.349, 1)
+theme_override_font_sizes/font_size = 18
 text = "Confirm target"
-tooltip_text = "Press Space to confirm the selected target."
+tooltip_text = "Click a target or press T to mark it, then press Space to confirm."
 disabled = true
-[node name="RotateBattleTarget" type="Button" parent="TargetActions"]
+
+[node name="RotateBattleTarget" type="Button" parent="Record/Margin/Content/TargetingHeader/TargetActions"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 30)
+custom_minimum_size = Vector2(96, 36)
 layout_mode = 2
-size_flags_horizontal = 3
 theme_type_variation = &"BattleCommandButton"
 text = "Rotate area"
 tooltip_text = "Cycle the source-authored area orientations."
-[node name="CancelBattleTarget" type="Button" parent="TargetActions"]
+
+[node name="CancelBattleTarget" type="Button" parent="Record/Margin/Content/TargetingHeader/TargetActions"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 30)
+custom_minimum_size = Vector2(90, 36)
 layout_mode = 2
-size_flags_horizontal = 3
 theme_type_variation = &"BattleCommandButton"
-text = "Cancel targeting"
+text = "Cancel"
+tooltip_text = "Cancel targeting without attacking or casting. Escape or right-click also cancels."
+
+[node name="TargetingStatus" type="Label" parent="Record/Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.459, 0.839, 0.859, 1)
+theme_override_font_sizes/font_size = 16
+text = "Click a target on the battlefield."
+autowrap_mode = 2
+max_lines_visible = 2
+text_overrun_behavior = 3
+
+[node name="TargetingHelp" type="Label" parent="Record/Margin/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Click / T: select  •  Space: confirm  •  Esc / right-click: cancel"
+autowrap_mode = 2

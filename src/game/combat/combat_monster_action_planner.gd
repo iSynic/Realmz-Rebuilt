@@ -5,21 +5,50 @@ extends CombatAiScoringSupport
 
 const HARMFUL_CONDITIONS: Array[int] = [ConditionRules.RUNS_AWAY, ConditionRules.HELPLESS, ConditionRules.TANGLED, ConditionRules.CURSED, ConditionRules.STUPID, ConditionRules.SLOW, ConditionRules.POISONED, ConditionRules.TURNED_TO_STONE, ConditionRules.BLIND, ConditionRules.DISEASED, ConditionRules.CONFUSED, ConditionRules.HINDERED_ATTACKS, ConditionRules.HINDERED_DEFENSE, ConditionRules.SILENCED]
 
-func choose_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> StringName:
+func choose_monster_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> Dictionary:
 	if monster.conditions.is_active(ConditionRules.RUNS_AWAY):
-		return &"retreat"
+		return {"action": &"retreat"}
 	var adjacent := not _hostile_adjacent_ids_for_monster(state, monster).is_empty()
-	var choices: Array[Dictionary] = [{"action": &"advance", "score": 560 if adjacent else 100}]
+	var choices: Array[Dictionary] = []
+	_append_positive_choice(choices, _advance_plan(state, content, monster, definition, adjacent))
 	var spell_plan := best_monster_spell_plan(state, content, monster, definition)
 	var cast_score := int(spell_plan.get("score", -1)) + definition.cast_percent
 	if not spell_plan.is_empty() and cast_score > 0:
-		choices.append({"action": &"cast", "score": cast_score})
-	if allow_missile and not adjacent and definition.missile_percent > 0 and not definition.item_id_at(1).is_empty():
+		choices.append({"action": &"cast", "score": cast_score, "spellPlan": spell_plan})
+	if allow_missile and not adjacent and definition.missile_percent > 0 and _context.automation().monster_actions().projectile_is_available(state, content, monster, definition):
 		var missile_score := 250 + definition.missile_percent * 2
 		if missile_score > 0:
 			choices.append({"action": &"missile", "score": missile_score})
 	var selected := _weighted_choice(choices, rng, StringName("combat.monster.%s.action-choice" % monster.id))
-	return StringName(selected.get("action", &"advance"))
+	return selected
+
+
+func _advance_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, adjacent: bool) -> Dictionary:
+	var actions: CombatMonsterActions = _context.automation().monster_actions()
+	if adjacent and actions.attack_limit(monster, definition) > 0:
+		return {"action": &"advance", "score": 560}
+	var turn := state.combat.turns.active_turn
+	var movement: int = turn.movement_remaining if turn != null and turn.movement_remaining >= 0 else actions.movement_allowance(monster, definition)
+	if movement <= 0: return {}
+	var field := state.combat.battlefield
+	var terrain: BattleTerrainSetDefinition = actions.battle_terrain_set(content, field)
+	if terrain == null: return {}
+	var targets: Array[String] = []
+	var retained := turn.target_id if turn != null else monster.target_id
+	if actions.target_is_available(state, monster, retained): targets.append(retained)
+	else:
+		for target_id: String in field.actors.actor_ids():
+			if actions.target_is_available(state, monster, target_id): targets.append(target_id)
+	var pursuit_goals := CombatPursuitGoals.new(_context)
+	var profiles := pursuit_goals.monster_profiles(state, content, monster, definition)
+	for target_id: String in targets:
+		var anchors := pursuit_goals.firing_anchors(state, content, monster.id, target_id, profiles)
+		if actions.attack_limit(monster, definition) > 0 and anchors.has(field.actors.actor_position(monster.id)):
+			anchors.clear()
+		var step := _context.battlefield.probe_path_step_toward_actors(field, terrain, monster.id, [target_id], movement, [], [], anchors, actions.attack_limit(monster, definition) > 0)
+		if step.allowed:
+			return {"action": &"advance", "score": 100, "targetId": target_id}
+	return {}
 
 
 func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition) -> Dictionary:
@@ -32,10 +61,15 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 	var actors_by_cell := _actors_by_cell(state.combat.battlefield)
 	var area_placement_cache: Dictionary = {}
 	var area_center_cache: Dictionary = {}
+	var scored_spells: Dictionary = {}
 	for slot: int in 10:
 		var spell := content.magic.spell_by_id(definition.spell_id_at(slot))
 		if spell == null or not _context.automation().monster_spell_unavailable_reason(spell).is_empty():
 			continue
+		# Repeated native slots have identical plans. Strict score comparison has
+		# always retained the earliest slot; repetition must not multiply work.
+		if scored_spells.has(spell.id): continue
+		scored_spells[spell.id] = true
 		if spell.target_type != 12 and not _auto_group_target_is_safe(spell):
 			continue
 		if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.spell_runtime.can_queue_persistent_field():
@@ -101,9 +135,6 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 
 
 func _monster_summon_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
-	var coordinate: Vector2i = _context.summoning().automatic_monster_coordinate(state, content, monster, spell, power)
-	if coordinate == INVALID_COORDINATE:
-		return {}
 	var friendly_count := 0
 	var hostile_count := 0
 	var allied_summon_count := 0
@@ -120,6 +151,9 @@ func _monster_summon_spell_power_plan(state: GameState, content: RealmzContent, 
 		else:
 			hostile_count += 1
 	if hostile_count <= 0 or friendly_count > hostile_count or allied_summon_count >= maxi(1, hostile_count - friendly_count + 1):
+		return {}
+	var coordinate: Vector2i = _context.summoning().automatic_monster_coordinate(state, content, monster, spell, power)
+	if coordinate == INVALID_COORDINATE:
 		return {}
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [], "targetCoordinates": [coordinate], "score": 400 + (hostile_count - friendly_count) * 120 + hostile_count * 20 - spell.cost * power * 3}
 

@@ -47,6 +47,7 @@ var character_files: ApplicationCharacterFilesHost
 var adventure_storage: ApplicationAdventureStorageHost
 var _spatial_layout: ApplicationSpatialLayout
 var _runtime_testing_host: RuntimeTestingHost
+var click_to_move: ClickToMoveCoordinator
 
 
 func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void:
@@ -62,6 +63,11 @@ func _ready() -> void:
 	_bind_debug_and_movement()
 	_bind_combat_and_interactions()
 	_bind_shell_and_settings()
+	click_to_move = ClickToMoveCoordinator.new(session_controller, presentation_coordinator, _shell_presenter, _map_presenter, _battlefield_presenter, _held_movement, accepts_exploration_input, func() -> bool: return _dungeon_presenter.is_active(), submit_intent, func(response: InteractionResponse) -> SessionStep:
+		response.body = ApplicationCombatPolicy.body_with_preferences(response.body as InteractionResponse.CombatBody, _presentation_settings)
+		return submit_response(response)
+	)
+	click_to_move.combat_input_available = func() -> bool: return not lifecycle_host.has_active_interaction() and _interaction_presenter.combat.accepts_spatial_input()
 	if RuntimeTestingHost.live_requested() or has_meta(&"runtime_testing_fixture"):
 		_runtime_testing_host = RuntimeTestingHost.new()
 		add_child(_runtime_testing_host)
@@ -104,7 +110,7 @@ func _build_dependencies() -> void:
 		_game_shell,
 		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null
 	)
-	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear())
+	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear(), _map_presenter.save_map_preview_jpeg)
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
 	lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, func(slot_id: String) -> bool: return adventure_storage.save(_active_content, slot_id), func() -> void: adventure_storage.refresh(_active_content), _present_step_status, _complete_closed_session, _quit_application)
 	_persistent_auto.configure(
@@ -122,6 +128,9 @@ func _build_dependencies() -> void:
 		func(step: SessionStep) -> void:
 			var detail := step.error_message if step != null and not step.error_message.is_empty() else "The automatic activation did not commit."
 			_shell_presenter.status.set_status("Party Auto paused • %s" % detail, true),
+		func(reason: String) -> void:
+			abort_full_party_auto(false)
+			_shell_presenter.status.set_status(reason, true),
 	)
 
 
@@ -201,10 +210,12 @@ func _bind_combat_and_interactions() -> void:
 	_interaction_presenter.combat.targeting_rotate_requested.connect(_battlefield_presenter.interaction.rotate_targeting)
 	_interaction_presenter.combat.combatant_focus_requested.connect(_on_combatant_focus_requested)
 	_interaction_presenter.combat.reveal_friends_requested.connect(_on_reveal_friends_requested)
+	_interaction_presenter.combat.move_to_requested.connect(func() -> void: _battlefield_presenter.movement_preview.toggle())
 	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
 	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.status.set_status)
 	_battlefield_presenter.interaction.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.interaction.combatant_inspected.connect(_on_battlefield_combatant_inspected)
+	_battlefield_presenter.interaction.combatant_hovered.connect(func(id: String) -> void: _interaction_presenter.combat.open_combatant_inspection(id, false))
 	_battlefield_presenter.interaction.targeting_changed.connect(_interaction_presenter.combat.update_targeting)
 	_battlefield_presenter.interaction.targeting_cancelled.connect(_interaction_presenter.combat.targeting_cancelled)
 
@@ -225,7 +236,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.quit_requested.connect(lifecycle_host.request_quit)
 	_shell_presenter.route_changed.connect(lifecycle_host.route_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
-	presentation_coordinator.spatial_visibility_changed.connect(_sync_display_world_region)
+	presentation_coordinator.spatial_visibility_changed.connect(func() -> void: _spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings))
 	_shell_presenter.route_changed.connect(_on_route_changed)
 	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
 	_shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: character_files.restore_character(_active_content, character_id, revision_hash))
@@ -265,6 +276,7 @@ func _finish_startup() -> void:
 
 
 func _process(_delta: float) -> void:
+	if click_to_move != null: click_to_move.poll(_delta)
 	_persistent_auto.poll()
 	var library_completed := character_files.poll_library_load(_active_content)
 	if library_completed and _pending_prepared_package != null:
@@ -330,6 +342,7 @@ func _on_smoke_action_pressed() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		if click_to_move != null: click_to_move.cancel("Move To cancelled • application focus changed.")
 		if _held_movement != null:
 			_held_movement.stop()
 		if _interaction_presenter != null:
@@ -337,6 +350,8 @@ func _notification(what: int) -> void:
 		if _controller_input != null and _controller_input.active_device() >= 0:
 			_controller_input.suspend("Application focus changed. Center the controller, then press a button to continue.")
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		if _game_shell != null and _game_shell.navigator.draft_dialog.defer_if_dirty(_game_shell.navigator.content_presenter.system_preferences, lifecycle_host.request_quit):
+			return
 		lifecycle_host.request_quit()
 
 
@@ -475,6 +490,7 @@ func _on_battlefield_combatant_inspected(combatant_id: String) -> void:
 
 
 func _on_combat_targeting_requested(request: CombatTargetingRequest) -> void:
+	_battlefield_presenter.interaction.immediate_single_target_actions = _presentation_settings.immediate_single_target_actions
 	if not _battlefield_presenter.interaction.begin_targeting(request):
 		_shell_presenter.status.set_status("Battlefield targeting is unavailable for this action.", true)
 
@@ -511,6 +527,8 @@ func submit_movement(direction: Vector2i) -> bool:
 
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
+	if intent != null and intent.kind == PlayerIntent.Kind.SET_COMBAT_AUTO:
+		_persistent_auto.reset_progress()
 	if character_files.creator_active():
 		return character_files.submit_creator_intent(intent)
 	var debug_step := debug_tools.noclip_step(intent) if debug_tools != null else null
@@ -657,15 +675,7 @@ func _try_prewarm_last_campaign() -> void:
 
 func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) -> void:
 	_spatial_layout.apply(workspace_rect, _profile)
-	_sync_display_world_region()
-
-
-func _sync_display_world_region() -> void:
-	var display := get_viewport().get_parent() as DisplayCompositor
-	if display != null:
-		var world_visible := _map_presenter.visible or _battlefield_presenter.visible or _dungeon_presenter.visible
-		var zoom := _presentation_settings.world_zoom if _presentation_settings.display_scaling_mode == PresentationSettings.DISPLAY_INTEGER_CANVAS and not _dungeon_presenter.visible else 1
-		display.set_world_region(_spatial_layout.world_rect if world_visible else Rect2(), zoom)
+	_spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings)
 
 
 func _on_route_changed(route_id: StringName) -> void:

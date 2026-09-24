@@ -6,7 +6,11 @@ extends InteractionComponent
 ## Presents one typed battle request and emits typed combat responses.
 
 signal combat_items_requested
+signal move_to_requested
 signal combat_inventory_targeting_started
+signal weapon_aim_requested(mode: StringName, preparation: StringName)
+signal weapon_ability_prepared(instance_id: String)
+signal inspection_requested(combatant: InteractionRequestValue.Combatant, pinned: bool)
 
 const MAX_VISIBLE_TURNS := 6
 const COMMAND_HEIGHT := 30.0
@@ -22,13 +26,12 @@ const ControllerCommandCatalog := preload("res://src/ui/combat/battle_controller
 @export var targeting_controls_scene: PackedScene
 
 var _actor_id: String = ""
+var _body: CombatRequestBody
 var _combatants: Array[InteractionRequestValue.Combatant] = []
 var _inspected_index: int = -1
 var _inspected_label: Label
 var _mode_panels: Array[Control] = []
-var _targeting_status_label: Label
-var _targeting_confirm_button: Button
-var _targeting_controls: VBoxContainer
+var _targeting_controls: BattleTargetingControls
 var _targeting_active: bool = false
 var _targeting_setup_controls: Array[Control] = []
 var _targeting_parent: Control
@@ -43,17 +46,14 @@ var _combatant_icons: Dictionary = {}
 var _overview: Control
 var _inventory_scroll_panel_open := false
 var _inspected_icon: TextureRect
-var _inspection_panel: VBoxContainer
-var _inspection_title: Label
-var _inspection_content: Label
-var _inspection_section: StringName = &"attacks"
-var _inspection_buttons: Dictionary = {}
 var _command_scaling := BattleCommandScaleController.new()
 var _compact := false
+var _equipped_weapon_id := ""
 
 
-func configure(combatant_icons: Dictionary, command_scale: float = 1.0, compact: bool = false) -> void:
+func configure(combatant_icons: Dictionary, command_scale: float = 1.0, compact: bool = false, equipped_weapon_id: String = "") -> void:
 	_combatant_icons = combatant_icons.duplicate()
+	_equipped_weapon_id = equipped_weapon_id
 	set_command_layout(command_scale, compact)
 
 
@@ -63,31 +63,29 @@ func set_command_layout(command_scale: float, compact: bool) -> void:
 	if initiative != null:
 		(initiative.get_node("%Heading") as Label).visible = not compact
 	_command_scaling.set_layout(command_scale, compact)
+	if is_instance_valid(_targeting_controls):
+		_targeting_controls.set_compact(compact)
 
 
 func build(request: InteractionRequest) -> void:
 	var body := request.body as CombatRequestBody
 	if body == null: return
 	_actor_id = body.actor_id
+	_body = body
 	_command_scaling.reset()
-	_targeting_status_label = null
-	_targeting_confirm_button = null
 	_targeting_controls = null
 	_targeting_active = false
 	_inventory_scroll_panel_open = false
 	_targeting_parent = null
-	_read_combatants(body.combatants)
+	_combatants.assign(body.combatants.filter(func(value: InteractionRequestValue.Combatant) -> bool: return not value.id.is_empty()))
 	var action_ids: Array[String] = body.actions
-	var weapon_mode := String(body.weapon_mode)
 	var targets := body.targets
 	var target_panel := %BattleTargetPanel as VBoxContainer
 	var spell_panel := %BattleSpellPanel as VBoxContainer
 	_spell_panel = spell_panel
 	var scroll_panel := %BattleScrollPanel as VBoxContainer
 	var bandage_panel := %BattleBandagePanel as VBoxContainer
-	var inspection_panel := %BattleCombatantInspection as VBoxContainer
-	_inspection_panel = inspection_panel
-	_mode_panels.assign([target_panel, spell_panel, scroll_panel, %BattleItemPanel as VBoxContainer, bandage_panel, inspection_panel])
+	_mode_panels.assign([target_panel, spell_panel, scroll_panel, %BattleItemPanel as VBoxContainer, bandage_panel])
 	_spell_casts = body.spell_casts
 	_item_casts = body.item_casts
 	_scroll_casts = body.scroll_casts
@@ -95,17 +93,15 @@ func build(request: InteractionRequest) -> void:
 	var overview := %BattleOverview as VBoxContainer
 	_overview = overview
 	_build_combatant_information(body, targets)
-	_build_command_shelf(body, _actor_id, action_ids, targets, target_panel, spell_panel, scroll_panel, bandage_panel, _mode_panels, overview)
+	_build_command_shelf(body, _actor_id, action_ids, spell_panel, scroll_panel, bandage_panel, _mode_panels, overview)
 	for panel: Control in _mode_panels:
 		panel.visible = false
 		_add_mode_back_button(panel, overview, _mode_panels)
-	_build_attack_panel(body, _actor_id, action_ids, targets, target_panel, weapon_mode)
 	var spell_unavailable := %SpellUnavailable as Button
 	if not action_ids.has("cast_spell") or body.spell_casts.is_empty():
 		(%CombatSpellbookStatus as Label).visible = false
 		spell_unavailable.visible = not body.spell_cast_reason.is_empty()
 		spell_unavailable.tooltip_text = body.spell_cast_reason
-	_build_combatant_inspection()
 	_build_scroll_panel(body, _actor_id, action_ids, scroll_panel)
 
 
@@ -151,28 +147,33 @@ func _build_scroll_panel(body: CombatRequestBody, actor_id: String, action_ids: 
 		unavailable.tooltip_text = body.scroll_cast_reason
 
 
-func _build_attack_panel(body: CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: VBoxContainer, weapon_mode: String) -> void:
-	var status := %AttackStatus as Label
-	var button := %ChooseAttackTarget as Button
-	if action_ids.has("attack"):
-		var candidate_ids: Array[String] = []
-		for target: InteractionRequestValue.CombatTarget in targets:
-			if not target.id.is_empty(): candidate_ids.append(target.id)
-		var targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", actor_id))
-		targeting.candidate_ids = candidate_ids
-		button.text = "Choose Fire target on battlefield" if weapon_mode == "missile" else "Choose attack target on battlefield"
-		button.pressed.connect(func() -> void: _start_targeting(targeting, target_panel))
-	elif weapon_mode == "melee" and not body.melee_attack_reason.is_empty():
-		button.visible = false
-		status.text = body.melee_attack_reason
-	if weapon_mode == "missile" and not action_ids.has("attack") and not action_ids.has("prepare_projectile"):
-		button.text = "Fire unavailable"
-		button.disabled = true
-		button.tooltip_text = body.ranged_attack.reason
+func aim_weapon(mode: StringName) -> void:
+	_cancel_active_targeting()
+	var preparation: StringName = &""
+	if _body.weapon_mode != mode:
+		if not _body.actions.has("switch_weapon") or not _body.weapon_switch.enabled or _body.weapon_switch.target_mode != mode:
+			return
+		preparation = &"switch_weapon"
+	elif _body.actions.has("prepare_projectile"):
+		preparation = &"prepare_projectile"
+	if not preparation.is_empty():
+		weapon_aim_requested.emit(mode, preparation)
+		response_body_submitted.emit(InteractionResponse.CombatBody.new(preparation, _actor_id))
+		return
+	var targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", _actor_id))
+	if _body.actions.has("attack"):
+		for target: InteractionRequestValue.CombatTarget in _body.targets:
+			if not target.id.is_empty(): targeting.candidate_ids.append(target.id)
+	_start_targeting(targeting, %BattleTargetPanel)
+	if targeting.candidate_ids.is_empty():
+		_targeting_controls.show_unavailable(_body.ranged_attack.reason if mode == &"missile" else _body.melee_attack_reason)
 
 
 func cast_spell_option(option: InteractionRequestValue.CastOption) -> void:
-	if option == null or not _contains_spell_option(option):
+	if option == null:
+		_cancel_active_targeting()
+		return
+	if not _contains_spell_option(option):
 		return
 	_cancel_active_targeting()
 	var response_body := InteractionResponse.CombatBody.new(&"cast_spell", _actor_id)
@@ -184,7 +185,7 @@ func cast_spell_option(option: InteractionRequestValue.CastOption) -> void:
 	_start_targeting(_spell_targeting_configuration(_spell_casts, option, response_body), _spell_panel)
 
 
-func open_item_from_inventory(instance_id: String, open_scrolls: bool = false) -> bool:
+func open_item_from_inventory(instance_id: String, open_scrolls: bool = false, from_inventory: bool = true) -> bool:
 	if open_scrolls:
 		if _scroll_casts.is_empty():
 			return false
@@ -201,9 +202,12 @@ func open_item_from_inventory(instance_id: String, open_scrolls: bool = false) -
 		var response_body := InteractionResponse.CombatBody.new(&"use_scenario_item" if option.spell_id.is_empty() else &"use_item", _actor_id)
 		response_body.item_instance_id = instance_id
 		if option.target_mode in [&"automatic", &"random_power"]:
+			if option.target_mode == &"random_power" and not from_inventory:
+				weapon_ability_prepared.emit(instance_id)
 			response_body_submitted.emit(response_body)
 			return true
-		combat_inventory_targeting_started.emit()
+		if from_inventory:
+			combat_inventory_targeting_started.emit()
 		_start_targeting(_spell_targeting_configuration(_item_casts, option, response_body), %BattleItemPanel as VBoxContainer)
 		return true
 	return false
@@ -264,11 +268,8 @@ func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
 
 
 func update_battlefield_targeting(selection: CombatTargetingState) -> void:
-	if not _targeting_active or _targeting_status_label == null or _targeting_confirm_button == null:
-		return
-	_targeting_status_label.text = "Targeting • %s" % selection.status_text
-	_targeting_status_label.tooltip_text = selection.status_text
-	_targeting_confirm_button.disabled = not selection.can_confirm()
+	if _targeting_active and is_instance_valid(_targeting_controls):
+		_targeting_controls.update_selection(selection)
 
 
 func battlefield_targeting_cancelled() -> void:
@@ -314,21 +315,16 @@ func _start_targeting(configuration: CombatTargetingRequest, parent: Container) 
 			panel.visible = panel == parent
 		_overview.visible = false
 	for child: Node in parent.get_children():
-		if child is Control and child.name not in ["BattleModeBack", "BattleTargetingControls"]:
+		if child is Control and child.visible and child.name != "BattleTargetingControls":
 			(child as Control).visible = false
 			_targeting_setup_controls.append(child as Control)
-	_targeting_controls = targeting_controls_scene.instantiate() as VBoxContainer
+	_targeting_controls = targeting_controls_scene.instantiate() as BattleTargetingControls
 	parent.add_child(_targeting_controls)
-	_targeting_status_label = _targeting_controls.get_node("%TargetingStatus") as Label
-	_targeting_confirm_button = _targeting_controls.get_node("%ConfirmBattleTarget") as Button
-	_targeting_confirm_button.text = "Cast spell" if configuration.response_body.action == &"cast_spell" else "Confirm target"
-	_targeting_confirm_button.pressed.connect(func() -> void: combat_targeting_confirm_requested.emit())
-	var rotate := _targeting_controls.get_node("%RotateBattleTarget") as Button
-	rotate.visible = configuration.supports_rotation()
-	if rotate.visible:
-		rotate.pressed.connect(func() -> void: combat_targeting_rotate_requested.emit())
-	var cancel := _targeting_controls.get_node("%CancelBattleTarget") as Button
-	cancel.pressed.connect(func() -> void: combat_targeting_cancel_requested.emit())
+	_targeting_controls.configure(configuration, _body, configuration.response_body.action == &"use_item" and configuration.response_body.item_instance_id == _equipped_weapon_id)
+	_targeting_controls.set_compact(_compact)
+	_targeting_controls.confirm_requested.connect(func() -> void: combat_targeting_confirm_requested.emit())
+	_targeting_controls.rotate_requested.connect(func() -> void: combat_targeting_rotate_requested.emit())
+	_targeting_controls.cancel_requested.connect(func() -> void: combat_targeting_cancel_requested.emit())
 	combat_targeting_requested.emit(configuration)
 
 
@@ -341,8 +337,6 @@ func _restore_targeting_setup() -> void:
 		_targeting_controls.visible = false
 		_targeting_controls.queue_free()
 	_targeting_controls = null
-	_targeting_status_label = null
-	_targeting_confirm_button = null
 	_targeting_parent = null
 	_targeting_parent_was_visible = false
 
@@ -356,23 +350,12 @@ func inspect_combatant(combatant_id: String) -> bool:
 	return false
 
 
-func open_combatant_inspection(combatant_id: String) -> bool:
-	if not inspect_combatant(combatant_id) or _inspection_panel == null:
-		return false
-	_cancel_active_targeting()
-	for panel: Control in _mode_panels:
-		panel.visible = panel == _inspection_panel
-	if _overview != null:
-		_overview.visible = false
-	_inspection_section = &"attacks"
-	_refresh_combatant_inspection()
-	return true
-
-
-func _read_combatants(value: Array[InteractionRequestValue.Combatant]) -> void:
-	_combatants.clear()
-	for combatant: InteractionRequestValue.Combatant in value:
-		if not combatant.id.is_empty(): _combatants.append(combatant)
+func open_combatant_inspection(combatant_id: String, pinned: bool = true) -> bool:
+	for combatant: InteractionRequestValue.Combatant in _combatants:
+		if combatant.id == combatant_id:
+			inspection_requested.emit(combatant, pinned)
+			return true
+	return false
 
 
 func _build_combatant_information(body: CombatRequestBody, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
@@ -397,6 +380,7 @@ func _build_combatant_information(body: CombatRequestBody, targets: Array[Intera
 func _bind_presentation_button(button: Button, text: String, action: StringName) -> void:
 	button.name = "CombatPresentation%s" % String(action).to_pascal_case()
 	button.text = text
+	_controller_command_buttons.append(button)
 	_command_scaling.register_button(button, Vector2(0.0, PRESENTATION_COMMAND_HEIGHT))
 	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	if action == &"reveal_friends":
@@ -447,47 +431,6 @@ func _refresh_inspected_label() -> void:
 	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
 	_inspected_label.text = "Shown • %s\n%s • %s" % [combatant.name, " • ".join(details), " • ".join(secondary)]
 	_inspected_label.tooltip_text = "Shown • %s\n%s\n%s%s" % [combatant.name, " • ".join(details), " • ".join(secondary), defense_line]
-	_refresh_combatant_inspection()
-
-
-func _build_combatant_inspection() -> void:
-	_inspection_title = %BattleInspectionTitle as Label
-	_inspection_buttons.clear()
-	var sections: Array[StringName] = [&"items", &"conditions", &"attacks"]
-	var buttons: Array[Button] = [%BattleInspectionItems as Button, %BattleInspectionConditions as Button, %BattleInspectionAttacks as Button]
-	for index: int in sections.size():
-		var section := sections[index]
-		var button := buttons[index]
-		_command_scaling.register_button(button, Vector2(0.0, PRESENTATION_COMMAND_HEIGHT))
-		button.pressed.connect(func() -> void:
-			_inspection_section = section
-			_refresh_combatant_inspection()
-		)
-		_inspection_buttons[section] = button
-	_inspection_content = %BattleInspectionContent as Label
-	_refresh_combatant_inspection()
-
-
-func _refresh_combatant_inspection() -> void:
-	if _inspection_title == null or _inspection_content == null:
-		return
-	if _inspected_index < 0 or _inspected_index >= _combatants.size():
-		_inspection_title.text = "Inspect combatant"
-		_inspection_content.text = "No combatant selected."
-		return
-	var combatant := _combatants[_inspected_index]
-	_inspection_title.text = "%s • %s" % [combatant.name, String(_inspection_section).capitalize()]
-	var rows: Array[String] = []
-	match _inspection_section:
-		&"items": rows.assign(combatant.items)
-		&"conditions": rows.assign(combatant.conditions)
-		_: rows.assign(combatant.attack_rows)
-	if rows.is_empty():
-		rows.append("None")
-	_inspection_content.text = "\n".join(rows)
-	_inspection_content.tooltip_text = _inspection_content.text
-	for section: StringName in _inspection_buttons:
-		(_inspection_buttons[section] as Button).set_pressed_no_signal(section == _inspection_section)
 
 
 func _combatant_name(combatant_id: String) -> String:
@@ -512,13 +455,15 @@ func activate_controller_action(action_id: StringName) -> bool:
 	if action_text.begins_with("fast_spell_"):
 		return handle_fast_spell(action_text.trim_prefix("fast_spell_").to_int(), true)
 	var button := find_child("CombatCommand%s" % action_text.to_pascal_case(), true, false) as Button
+	if button == null:
+		button = find_child("CombatPresentation%s" % action_text.to_pascal_case(), true, false) as Button
 	if button == null or button.disabled:
 		return false
 	button.pressed.emit()
 	return true
 
 
-func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids: Array[String], spell_panel: Control, scroll_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	_controller_command_buttons.clear()
 	var scaled_panels: Array[Control] = [find_child("BattleInspectionCommandsInset", true, false), %BattlePrimaryCommandsInset, find_child("BattleTurnCommandsInset", true, false)]
 	var scaled_columns: Array[VBoxContainer] = [find_child("BattleInspectionCommands", true, false), %BattlePrimaryCommands, %BattleTurnCommands]
@@ -529,20 +474,16 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	_bind_presentation_button(inspection_rows[0].get_node("Center") as Button, "Center", &"center_active")
 	_bind_presentation_button(inspection_rows[0].get_node("Next") as Button, "Next", &"inspect_next")
 	_bind_presentation_button(inspection_rows[1].get_node("RevealFriends") as Button, "Reveal Friends", &"reveal_friends")
+	var move_to := inspection_rows[1].get_node("MoveTo") as Button
+	_bind_fixed_presentation_action(move_to, "MoveTo", "Move To", body.movement_remaining > 0, "No movement remains.")
+	move_to.pressed.connect(func() -> void: move_to_requested.emit())
 	var primary_rows: Array[HBoxContainer] = [%BattlePrimaryPrimary, %BattlePrimarySecondary]
-	var can_switch := action_ids.has("switch_weapon") and body.weapon_switch.enabled
-	var shown_weapon_mode := String(body.weapon_switch.target_mode) if can_switch else String(body.weapon_mode)
-	_bind_fixed_response(primary_rows[0].get_node("Weapon") as Button, "Weapon", "Weapon: %s" % shown_weapon_mode.capitalize(), InteractionResponse.CombatBody.new(&"switch_weapon", actor_id), can_switch, body.weapon_switch.reason)
+	_bind_weapon_action(primary_rows[0].get_node("Weapon") as Button, &"melee", "Attack", "Attack")
 	var guard := primary_rows[0].get_node("Guard") as Button
 	_bind_fixed_response(guard, "Guard", "Guard", InteractionResponse.CombatBody.new(&"defend", actor_id), action_ids.has("defend"), "Guard is unavailable during this activation.")
 	_color_command(guard, TURN_COMMAND_COLOR)
-	var weapon_mode := String(body.weapon_mode)
 	var attack_button := primary_rows[0].get_node("Attack") as Button
-	if action_ids.has("prepare_projectile"):
-		_bind_fixed_response(attack_button, "Fire", "Roll Power", InteractionResponse.CombatBody.new(&"prepare_projectile", actor_id), true, "")
-	else:
-		_bind_panel_toggle(attack_button, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, action_ids.has("attack") and not targets.is_empty(), body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason)
-	_name_command(attack_button, "Attack")
+	_bind_weapon_action(attack_button, &"missile", "FireWeapon", "Fire Weapon")
 	_color_command(attack_button, PRIMARY_COMMAND_COLOR)
 	var finish_button := primary_rows[0].get_node("Finish") as Button
 	_bind_fixed_response(finish_button, "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
@@ -564,8 +505,8 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	var item_button := primary_rows[1].get_node("Items") as Button
 	_bind_fixed_presentation_action(item_button, "Items", "Items", true, "")
 	item_button.pressed.connect(func() -> void: combat_items_requested.emit())
-	_name_command(item_button, "Items")
 	_color_command(item_button, VIEW_COMMAND_COLOR)
+	_bind_equipped_ability(primary_rows[1].get_node("UseWeapon") as Button)
 	var turn_rows: Array[HBoxContainer] = [%BattleTurnPrimary, %BattleTurnSecondary]
 	_add_classic_turn_commands(turn_rows[0], turn_rows[1], body, actor_id, bandage_panel, mode_panels, overview)
 	var retreat_enabled := action_ids.has("retreat") and body.retreat.enabled
@@ -573,6 +514,32 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	_bind_fixed_response(escape, "Escape", "Escape", InteractionResponse.CombatBody.new(&"retreat", actor_id), retreat_enabled, body.retreat.reason)
 	_color_command(escape, PRIMARY_COMMAND_COLOR)
 	_command_scaling.apply()
+
+
+func _bind_equipped_ability(weapon_button: Button) -> void:
+	var weapon_option: InteractionRequestValue.CastOption
+	for option: InteractionRequestValue.CastOption in _item_casts:
+		if option.item_instance_id == _equipped_weapon_id:
+			weapon_option = option
+			break
+	_bind_fixed_presentation_action(weapon_button, "UseWeapon", "Use Weapon", weapon_option != null, "No equipped weapon ability is available during this activation.")
+	if weapon_option != null:
+		weapon_button.tooltip_text = "%s • %s" % [weapon_option.item_name, weapon_option.spell_name]
+	weapon_button.pressed.connect(func() -> void: open_item_from_inventory(_equipped_weapon_id, false, false))
+	_color_command(weapon_button, PRIMARY_COMMAND_COLOR)
+
+
+func _bind_weapon_action(button: Button, mode: StringName, command: String, label: String) -> void:
+	var current := _body.weapon_mode == mode
+	var enabled := (_body.actions.has("attack") and not _body.targets.is_empty()) or (mode == &"missile" and _body.actions.has("prepare_projectile"))
+	if not current:
+		enabled = _body.actions.has("switch_weapon") and _body.weapon_switch.enabled and _body.weapon_switch.target_mode == mode
+	button.text = label
+	button.disabled = not enabled
+	button.tooltip_text = (_body.ranged_attack.reason if mode == &"missile" else _body.melee_attack_reason) if current else _body.weapon_switch.reason
+	button.pressed.connect(func() -> void: aim_weapon(mode))
+	_name_command(button, command)
+	_color_command(button, PRIMARY_COMMAND_COLOR)
 
 
 func _add_classic_turn_commands(first_row: Container, second_row: Container, body: CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
@@ -666,7 +633,8 @@ func _bind_panel_toggle(button: Button, label: String, panel: Control, panels: A
 func _bind_fixed_presentation_action(button: Button, command_name: String, label: String, enabled: bool, reason: String) -> void:
 	button.text = label
 	button.disabled = not enabled
-	button.tooltip_text = reason if not enabled else "Open the full Inventory workspace."
+	button.tooltip_text = reason if not enabled else ""
+	_name_command(button, command_name)
 
 
 func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Control]) -> void:

@@ -15,10 +15,10 @@ var magic_resistance: int
 var movement_maximum: int
 var attack_count: int
 var magic_attack_count: int
-var weapon_name: String = "Unarmed"
 var immunities: Array[String] = []
 var vulnerabilities: Array[String] = []
 var attack_rows: Array[String] = []
+var weapon_name: String = "Unarmed"
 
 
 func _init(definition: MonsterDefinition, content: RealmzContent = null) -> void:
@@ -34,15 +34,26 @@ func _init(definition: MonsterDefinition, content: RealmzContent = null) -> void
 	movement_maximum = definition.movement_max
 	attack_count = definition.attack_count
 	magic_attack_count = definition.magic_attack_count
-	if content != null and not definition.weapon_id.is_empty():
-		var weapon := content.items.item_by_id(definition.weapon_id)
-		if weapon != null:
-			weapon_name = weapon.name
+	var catalog_weapon: ItemDefinition = null
+	if definition.random_weapon_table > 0:
+		weapon_name = ""
+	elif not definition.weapon_id.is_empty():
+		weapon_name = ""
+		if content != null:
+			catalog_weapon = content.items.item_by_id(definition.weapon_id)
+			if catalog_weapon != null:
+				weapon_name = catalog_weapon.name
 	for index: int in 6:
 		if definition.spell_immune(index):
 			immunities.append(CharacterView.SAVE_NAMES[index])
 	for index: int in 5:
 		if definition.save_value(index) < 0:
 			vulnerabilities.append(CharacterView.SAVE_NAMES[index])
-	for attack: MonsterAttackDefinition in definition.attacks():
-		attack_rows.append("%d–%d damage%s" % [attack.damage_min, attack.damage_max, " • special %d" % attack.special if attack.special != 0 else ""])
+	attack_rows = ClassicMonsterInspection.attack_rows(
+		definition.attacks(),
+		catalog_weapon,
+		catalog_weapon.name if catalog_weapon != null else "",
+		definition.damage_bonus,
+		definition.random_weapon_table,
+		definition.random_weapon_table == 0 and not definition.weapon_id.is_empty() and catalog_weapon == null,
+	)

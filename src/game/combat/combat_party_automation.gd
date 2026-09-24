@@ -51,26 +51,19 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	_context.processing_auto = true
 	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.turns.active_actor_id() == actor_id and state.combat.turns.round_number == starting_round:
 		operation_count += 1
-		var choice: Dictionary = _ai_scoring.choose_party_action(state, content, actor, rng)
-		var chosen_action := StringName(choice.get("action", &"defend"))
+		actor = state.party.character_by_id(actor_id)
+		var pursuit := plan_pursuit_step(state, content, actor, visited_anchors)
+		var choice: Dictionary = _ai_scoring.choose_party_action(state, content, actor, rng, pursuit)
 		var result := _execute_auto_choice(state, content, actor, choice, rng, visited_anchors)
 		if result == null or not result.ok:
-			# A scored spell or attack can become invalid when an earlier operation in
-			# the same activation changes occupancy or resources. Continue tactical
-			# pursuit before falling back to Castle's stationary defend action.
-			if chosen_action != &"move" and actor.movement > 0:
-				result = auto_move_toward_target(state, content, actor, rng, visited_anchors)
-		if result == null or not result.ok:
-			result = _context.actions().submit_action(state, content, actor.id, &"defend", "", rng)
-		if result == null or not result.ok:
 			_context.processing_auto = previous_processing
-			return CombatFlowResult.failed(&"combat_auto_failed", "Automatic combat could not choose a legal source-backed action.")
+			return result if result != null else CombatFlowResult.failed(&"combat_auto_failed", "Automatic combat produced no action result.")
 		events.append_array(result.events)
 		if state.combat != null and state.combat.battlefield.actors.has_actor(actor.id):
 			var current_anchor := state.combat.battlefield.actors.actor_position(actor.id)
 			if not visited_anchors.has(current_anchor):
 				visited_anchors.append(current_anchor)
-		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null:
+		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null or state.combat.pending_reaction != null:
 			break
 	_context.processing_auto = previous_processing
 	if operation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.turns.active_actor_id() == actor_id and state.combat.turns.round_number == starting_round:
@@ -81,15 +74,27 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 
 func _execute_auto_choice(state: GameState, content: RealmzContent, actor: CharacterState, choice: Dictionary, rng: RealmzRng, visited_anchors: Array[Vector2i]) -> CombatFlowResult:
 	var action := StringName(choice.get("action", &"defend"))
-	if action == &"cast_spell":
+	var preparation_events: Array[DomainEvent] = []
+	if choice.has("weaponMode") and state.combat.actor_statuses.character_weapon_mode(actor.id) != StringName(choice["weaponMode"]):
+		var switched: CombatFlowResult = _context.actions().submit_action(state, content, actor.id, &"switch_weapon", "", rng)
+		if not switched.ok: return switched
+		preparation_events.append_array(switched.events)
+	if action in [&"cast_spell", &"use_item"]:
 		var target_ids: Array[String] = []
 		target_ids.assign(choice.get("targetIds", []))
 		var target_coordinates: Array[Vector2i] = []
 		target_coordinates.assign(choice.get("targetCoordinates", []))
+		if action == &"use_item":
+			return _context.magic_flow().use_spell_item(state, content, actor.id, String(choice.get("targetId", "")), String(choice["itemInstanceId"]), rng, choice.get("coordinate", INVALID_COORDINATE), int(choice.get("rotation", 0)), target_ids, target_coordinates)
 		return _context.magic_flow().cast_spell(state, content, actor.id, String(choice.get("targetId", "")), String(choice["spellId"]), int(choice["power"]), rng, choice.get("coordinate", INVALID_COORDINATE), int(choice.get("rotation", 0)), target_ids, target_coordinates)
 	if action == &"move":
-		return auto_move_toward_target(state, content, actor, rng, visited_anchors)
-	return _context.actions().submit_action(state, content, actor.id, action, String(choice.get("targetId", "")), rng)
+		state.combat.turns.active_turn.target_id = String(choice["targetId"])
+		return _context.reactions().move_character(state, content, actor.id, choice["coordinate"], rng)
+	var result: CombatFlowResult = _context.actions().submit_action(state, content, actor.id, action, String(choice.get("targetId", "")), rng)
+	if result.ok:
+		preparation_events.append_array(result.events)
+		result.events = preparation_events
+	return result
 
 
 func run_persistent_auto_characters(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
@@ -129,10 +134,18 @@ func _commit_or_rollback(state: GameState, rng: RealmzRng, state_checkpoint: Dic
 
 
 func auto_move_toward_target(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, visited_anchors: Array[Vector2i] = []) -> CombatFlowResult:
+	_context.actions().prepare_character_turn(state.combat, actor)
+	var plan := plan_pursuit_step(state, content, actor, visited_anchors)
+	if plan.is_empty():
+		return CombatFlowResult.failed(&"combat_auto_blocked", "No legal pursuit route reaches an opposed combatant.")
+	state.combat.turns.active_turn.target_id = String(plan["targetId"])
+	return _context.reactions().move_character(state, content, actor.id, plan["coordinate"], rng)
+
+
+func plan_pursuit_step(state: GameState, content: RealmzContent, actor: CharacterState, visited_anchors: Array[Vector2i] = []) -> Dictionary:
 	var combat := state.combat
-	_context.actions().prepare_character_turn(combat, actor)
 	if actor.movement <= 0:
-		return CombatFlowResult.failed(&"combat_auto_no_movement", "The automatic character cannot move toward a target.")
+		return {}
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
 		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.actors.has_actor(character.id):
@@ -141,13 +154,13 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.actors.has_actor(monster.id):
 			candidates.append(monster.id)
 	if candidates.is_empty():
-		return CombatFlowResult.failed(&"combat_auto_no_target", "No opposed battlefield combatant remains.")
+		return {}
 	var target_id := combat.turns.active_turn.target_id
-	if not candidates.has(target_id):
-		target_id = candidates[rng.draw_between(0, candidates.size() - 1, StringName("combat.auto.%s.target" % actor.id))]
-		combat.turns.active_turn.target_id = target_id
-	var origin := combat.battlefield.actors.actor_position(actor.id)
+	if candidates.has(target_id):
+		candidates.assign([target_id])
 	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
+	var pursuit_goals := CombatPursuitGoals.new(_context)
+	var profiles := pursuit_goals.character_profiles(state, content, actor)
 	var swappable_ids: Array[String] = []
 	if combat.battlefield.actors.actor_size(actor.id) == 0:
 		for character: CharacterState in state.party.characters():
@@ -156,21 +169,16 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 		for monster: MonsterState in combat.roster.monsters():
 			if monster.current_health > 0 and monster.traitor == actor.traitor and combat.battlefield.actors.has_actor(monster.id) and combat.battlefield.actors.actor_size(monster.id) == 0:
 				swappable_ids.append(monster.id)
-	var path_probe := _direct_auto_swap_probe(combat.battlefield, actor.id, target_id, actor.movement, swappable_ids, visited_anchors)
-	if path_probe == null:
-		path_probe = _context.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, candidates, actor.movement, swappable_ids, visited_anchors)
-	if path_probe.allowed:
-		return _context.reactions().move_character(state, content, actor.id, path_probe.destination, rng)
-	if path_probe.reason != &"path_not_found":
-		return CombatFlowResult.failed(&"combat_auto_route_satisfied", "The automatic character has no productive pursuit step.")
-	for retry: int in 20:
-		var shifted := Vector2i(rng.draw(3, StringName("combat.auto.%s.shift.%d.x" % [actor.id, retry])) - 2, rng.draw(3, StringName("combat.auto.%s.shift.%d.y" % [actor.id, retry])) - 2)
-		if shifted == Vector2i.ZERO or visited_anchors.has(origin + shifted):
-			continue
-		var shifted_result = _context.reactions().move_character(state, content, actor.id, origin + shifted, rng)
-		if shifted_result.ok:
-			return shifted_result
-	return CombatFlowResult.failed(&"combat_auto_blocked", "The automatic character exhausted Castle's bounded movement retries.")
+	for candidate_id: String in candidates:
+		if actor.attacks_remaining >= 2 and _context.battlefield.are_adjacent(combat.battlefield, actor.id, candidate_id): continue
+		var firing_anchors := pursuit_goals.firing_anchors(state, content, actor.id, candidate_id, profiles)
+		if firing_anchors.has(combat.battlefield.actors.actor_position(actor.id)): continue
+		var path_probe := _direct_auto_swap_probe(combat.battlefield, actor.id, candidate_id, actor.movement, swappable_ids, visited_anchors) if firing_anchors.is_empty() and actor.attacks_remaining >= 2 else null
+		if path_probe == null:
+			path_probe = _context.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain_set, actor.id, [candidate_id], actor.movement, swappable_ids, visited_anchors, firing_anchors, actor.attacks_remaining >= 2)
+		if path_probe.allowed:
+			return {"action": &"move", "score": 100, "targetId": candidate_id, "coordinate": path_probe.destination}
+	return {}
 
 
 static func _direct_auto_swap_probe(battlefield: BattlefieldState, actor_id: String, target_id: String, movement: int, swappable_ids: Array[String], visited_anchors: Array[Vector2i]) -> BattlefieldStepResult:

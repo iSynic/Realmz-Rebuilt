@@ -467,6 +467,14 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: the public System workspace/settings proof covers schema-10 round-trip and migration plus eligible Items, Spells, and Swap openings, retained action sound 141, and restored default audio. The differential case is `system.classic-preferences`.
 - Legacy quirk: application resource-file mutation is intentionally not supported. It is visual-only and cannot alter importability, navigation, targeting, rules, RNG, time, or gameplay saves.
 
+## FD-SYSTEM-002 — Enable Auto Note for new players
+
+- Affected preference: automatic recording of eligible positive Classic journal messages.
+- Castle evidence: `tests/fixtures/oracle/authored-journal-boundary-correction.json` records application PRFN 128's Auto Note byte as zero and `pref.c` loading that byte when no host preferences exist. This is source/resource evidence, not a Castle runtime observation.
+- Player-facing reason: new players should retain eligible journal passages without first discovering and enabling Auto Note.
+- Chosen behavior: fresh `PresentationSettings` enables Auto Note. Explicit saved booleans retain their value, and settings predating schema 6 keep their existing false migration fallback. Controls can disable the preference; manual `N`, eligible-message limits, typed acknowledgement, and gameplay-save formats remain unchanged. This supersedes only the historical fixture's default-off Rebuilt preference decision.
+- Verification: the existing settings migration and Classic choice-context cases pass; they cover persisted off, old-settings migration, and enabled/disabled acknowledgement behavior. The default is set by the same value constructor used when the settings file is absent.
+
 ## FD-LAND-001 — Bound marked-cell mapstats entry time
 
 - Affected rule: movement-time projection for a land AP or revealed-secret marker whose normalized mapstats index is 402.

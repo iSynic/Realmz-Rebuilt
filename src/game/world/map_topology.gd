@@ -43,6 +43,12 @@ func contains(coordinate: Vector2i) -> bool:
 	return coordinate.x >= 0 and coordinate.y >= 0 and coordinate.x < width and coordinate.y < height
 
 
+static func classic_exploration_window(coordinate: Vector2i, map_size: Vector2i) -> Rect2i:
+	var span := Vector2i(mini(15, map_size.x), mini(13, map_size.y))
+	var maximum := Vector2i(maxi(map_size.x - span.x, 0), maxi(map_size.y - span.y, 0))
+	return Rect2i(Vector2i(clampi(coordinate.x - 8, 0, maximum.x), clampi(coordinate.y - 6, 0, maximum.y)), span)
+
+
 func cell_at(coordinate: Vector2i) -> MapCell:
 	if not contains(coordinate):
 		return null
@@ -345,6 +351,98 @@ func find_path(origin: Vector2i, destination: Vector2i, world_state: WorldState,
 				return _reconstruct_path(origin, destination, previous)
 			frontier.append(neighbor)
 	return []
+
+
+## Finds a lowest-timeclick route using only caller-supplied revealed cells.
+## Equal-cost routes prefer shorter geometry, then proximity to the direct line.
+## The supplied boat state applies to every step; embark/disembark transitions are not inferred.
+func find_revealed_path(origin: Vector2i, destination: Vector2i, world_state: WorldState, level_type: StringName, party_in_boat: bool, revealed_coordinates: Array[Vector2i]) -> Array[Vector2i]:
+	if not contains(origin) or not contains(destination):
+		return []
+	if origin == destination:
+		return []
+	var revealed: Dictionary = {}
+	for coordinate: Vector2i in revealed_coordinates:
+		if contains(coordinate):
+			revealed[coordinate] = true
+	if not revealed.has(origin) or not revealed.has(destination):
+		return []
+	var frontier: Array[Dictionary] = []
+	var insertion_order := 0
+	_push_route_frontier(frontier, {"coordinate": origin, "score": Vector3i.ZERO, "order": insertion_order})
+	var previous: Dictionary = {origin: origin}
+	var best_score: Dictionary = {origin: Vector3i.ZERO}
+	var heading := destination - origin
+	var directions := land_directions() if level_type == &"land" else cardinal_directions()
+	while not frontier.is_empty():
+		var entry := _pop_route_frontier(frontier)
+		var current: Vector2i = entry["coordinate"]
+		var current_score: Vector3i = entry["score"]
+		if current_score != best_score[current]:
+			continue
+		if current == destination:
+			return _reconstruct_path(origin, destination, previous)
+		for move_direction: Vector2i in directions:
+			var neighbor := current + move_direction
+			if not revealed.has(neighbor):
+				continue
+			var movement := probe_movement(neighbor, move_direction, world_state, level_type, party_in_boat)
+			if not movement.allowed or movement.target_cell == null:
+				continue
+			# Geometry only breaks timeclick ties; it never changes charged movement costs.
+			var offset := neighbor - origin
+			var length := 1414 if is_diagonal_direction(move_direction) else 1000
+			var deviation := absi(heading.x * offset.y - heading.y * offset.x)
+			var candidate_score := current_score + Vector3i(maxi(0, movement.target_cell.movement_cost), length, deviation)
+			if best_score.has(neighbor) and not candidate_score < (best_score[neighbor] as Vector3i):
+				continue
+			best_score[neighbor] = candidate_score
+			previous[neighbor] = current
+			insertion_order += 1
+			_push_route_frontier(frontier, {"coordinate": neighbor, "score": candidate_score, "order": insertion_order})
+	return []
+
+
+static func _push_route_frontier(frontier: Array[Dictionary], entry: Dictionary) -> void:
+	frontier.append(entry)
+	var index := frontier.size() - 1
+	while index > 0:
+		var parent_index := (index - 1) >> 1
+		if not _route_frontier_precedes(frontier[index], frontier[parent_index]):
+			break
+		var parent := frontier[parent_index]
+		frontier[parent_index] = frontier[index]
+		frontier[index] = parent
+		index = parent_index
+
+
+static func _pop_route_frontier(frontier: Array[Dictionary]) -> Dictionary:
+	var first := frontier[0]
+	var last: Dictionary = frontier.pop_back()
+	if not frontier.is_empty():
+		frontier[0] = last
+		var index := 0
+		while true:
+			var left_index := index * 2 + 1
+			if left_index >= frontier.size():
+				break
+			var right_index := left_index + 1
+			var child_index := left_index
+			if right_index < frontier.size() and _route_frontier_precedes(frontier[right_index], frontier[left_index]):
+				child_index = right_index
+			if not _route_frontier_precedes(frontier[child_index], frontier[index]):
+				break
+			var parent := frontier[index]
+			frontier[index] = frontier[child_index]
+			frontier[child_index] = parent
+			index = child_index
+	return first
+
+
+static func _route_frontier_precedes(left: Dictionary, right: Dictionary) -> bool:
+	var left_score: Vector3i = left["score"]
+	var right_score: Vector3i = right["score"]
+	return left_score < right_score or left_score == right_score and int(left["order"]) < int(right["order"])
 
 
 static func direction_name(direction: Vector2i) -> StringName:

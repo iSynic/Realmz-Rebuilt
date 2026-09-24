@@ -30,7 +30,7 @@ func _test_allies_workspace() -> void:
 	assert_true((allies.find_child("CreatureColumns", true, false) as BoxContainer).vertical, "the optional 800x600 profile stacks list and detail instead of squeezing their fact columns")
 	controller.set_layout_profile(UiLayoutProfile.WIDE); controller.present_bestiary(bestiary, view, null, 1.0); labels = _labels_in(bestiary)
 	assert_true(labels.has("Allied Knight") and labels.has("Classic monster 4  •  name 42") and labels.has("A disciplined guardian recorded in the active monster set."), "Bestiary consumes the preserved description and independent Classic name identity from its detached catalog")
-	assert_true(bestiary.find_child("CreatureListPanel", true, false) != null and bestiary.find_child("CreatureDetailPanel", true, false) != null and bestiary.find_child("CreatureIcon", true, false) != null and labels.has("1–6 damage") and labels.has("Charm"), "Bestiary exposes source combat facts and exact CICN stage through its authored workspace")
+	assert_true(bestiary.find_child("CreatureListPanel", true, false) != null and bestiary.find_child("CreatureDetailPanel", true, false) != null and bestiary.find_child("CreatureIcon", true, false) != null and labels.has("Slime: 1–6 base damage • No Special Attacks") and labels.has("Charm"), "Bestiary exposes named source combat facts and exact CICN stage through its authored workspace")
 	view.party_allies.clear()
 	controller.present_allies(allies, view, null, 1.0)
 	assert_true(_labels_in(allies).has("No current allies") and _labels_in(allies).has("No allies are currently with the party."), "Allies has an explicit concise empty state")

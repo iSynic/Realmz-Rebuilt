@@ -71,6 +71,15 @@ func bind() -> void:
 	_shell.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	_shell.reduced_sound_changed.connect(_on_reduced_sound_changed)
 	_shell.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
+	_shell.immediate_single_target_actions_changed.connect(func(enabled: bool) -> void:
+		_settings.immediate_single_target_actions = enabled
+		_save()
+	)
+	_shell.click_to_move_enabled_changed.connect(_on_click_to_move_enabled_changed)
+	_shell.classic_keyboard_shortcuts_changed.connect(func(enabled: bool) -> void:
+		_settings.classic_keyboard_shortcuts = enabled
+		_save()
+	)
 	_shell.exploration_speed_changed.connect(_on_exploration_speed_changed)
 	_shell.combat_playback_speed_changed.connect(_on_combat_playback_speed_changed)
 	_shell.hurry_spell_resolution_changed.connect(_on_hurry_spell_resolution_changed)
@@ -272,6 +281,12 @@ func _on_reduced_sound_changed(enabled: bool) -> void:
 
 func _on_auto_switch_to_melee_changed(enabled: bool) -> void:
 	_settings.auto_switch_to_melee = enabled
+	_save()
+
+
+func _on_click_to_move_enabled_changed(enabled: bool) -> void:
+	_settings.click_to_move_enabled = enabled
+	_shell.apply_settings(_settings)
 	_save()
 
 

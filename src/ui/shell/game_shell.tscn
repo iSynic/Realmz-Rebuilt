@@ -102,10 +102,6 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 2
 
-[node name="InfoMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Info"
-
 [node name="GameMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
 text = "Game"
@@ -114,31 +110,17 @@ text = "Game"
 layout_mode = 2
 text = "Adventure"
 
-[node name="CharacterMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
+[node name="PartyMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
-text = "Character"
+text = "Party"
 
-[node name="BestiaryMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
+[node name="SettingsMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
-text = "Bestiary"
-tooltip_text = "Bestiary facts are not supplied by the current detached view."
-disabled = true
+text = "Settings"
 
-[node name="AlliesMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
+[node name="HelpMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2
-text = "Allies"
-
-[node name="MapsMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Maps / Notes"
-
-[node name="PreferencesMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Preferences"
-
-[node name="MusicMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Music"
+text = "Help"
 
 [node name="MenuSpacer" type="Control" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
 layout_mode = 2

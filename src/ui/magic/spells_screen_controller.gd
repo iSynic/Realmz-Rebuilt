@@ -41,6 +41,13 @@ func reset() -> void:
 	_selected_power = 1
 
 
+func navigate_section(section_name: StringName, delta: int = 0) -> bool:
+	var next := StringName(String(section_name).to_lower()) if not section_name.is_empty() else SECTIONS[posmod(SECTIONS.find(_section_id) + delta, SECTIONS.size())]
+	if next not in SECTIONS or _encounter_mode: return false
+	_select_section(next)
+	return true
+
+
 func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float, fixed_actions: Container = null) -> void:
 	if target == null or view == null:
 		return

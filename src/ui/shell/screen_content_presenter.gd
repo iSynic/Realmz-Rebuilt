@@ -27,6 +27,9 @@ var _media: ClassicMediaCatalog
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _ordinary_money_workspace_open: bool = false
 var _system_controller := SystemScreenController.new()
+var system_preferences: SystemScreenController:
+	get: return _system_controller
+var _system_route: StringName = &"system"
 var _character_controller := CharacterScreenController.new()
 var _inventory_controller := InventoryScreenController.new()
 var _services_controller := ServicesScreenController.new()
@@ -93,6 +96,8 @@ func set_controller_live_input(value: String) -> void:
 
 
 func navigate_section(screen_id: StringName, section_name: StringName = &"", delta: int = 0) -> bool:
+	if screen_id == &"spells":
+		return _spells_controller.navigate_section(section_name, delta)
 	if screen_id == &"system":
 		return _system_controller.navigate_section(section_name, delta)
 	if screen_id == &"journal":
@@ -222,8 +227,8 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: S
 	_character_controller.set_vault_revisions(revisions, notice)
 
 
-func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: String = "") -> void:
-	_system_controller.set_save_previews(previews, selected_slot_id)
+func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: String = "", active_slot_id: String = "A") -> void:
+	_system_controller.set_save_previews(previews, selected_slot_id, active_slot_id)
 
 
 func set_save_and_quit_mode(enabled: bool) -> void:
@@ -251,8 +256,8 @@ func party_order_draft_ids() -> Array[String]:
 	return _character_controller.draft_order_ids()
 
 
-func select_inventory_character(character_id: String) -> bool:
-	return _inventory_controller.select_roster_character(character_id, _view)
+func select_inventory_character(character_id: String, refresh: bool = true) -> bool:
+	return _inventory_controller.select_roster_character(character_id, _view, refresh)
 
 
 func select_character(character_id: String) -> bool:
@@ -276,7 +281,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 	if screen == null:
 		return
 	var body := screen.body_control()
-	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells", &"system", &"vault"]:
+	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells", &"system", &"save_load", &"vault"]:
 		_clear(body)
 	if context_actions != null:
 		_clear(context_actions)
@@ -323,8 +328,13 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 		&"journal":
 			_maps_journal_controller.set_text_scale(_settings.text_scale)
 			_maps_journal_controller.present(screen, _view, _media)
-		&"system":
+		&"system", &"save_load":
 			_system_controller.present(screen, _view, _settings)
+			if screen_id == &"save_load":
+				_system_controller.show_saves()
+			elif _system_route == &"save_load":
+				_system_controller.show_category(&"Display")
+			_system_route = screen_id
 
 
 func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:

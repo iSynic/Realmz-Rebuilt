@@ -87,7 +87,13 @@ func character_projectile_profile(character: CharacterState, content: RealmzCont
 	if power == 8:
 		power = combat.turns.staged_random_item_power(character.id, instance_id) if combat != null else 0
 		if power == 0:
-			return ProjectileAttackProfile.blocked(&"projectile_power_roll_required", "Roll this projectile's power before choosing its target.")
+			var staged := ProjectileAttackProfile.blocked(&"projectile_power_roll_required", "Roll this projectile's power before choosing its target.")
+			staged.item = projectile_item
+			staged.item_instance_id = instance_id
+			staged.spell = spell
+			for possible_power: int in range(1, 8):
+				staged.maximum_range = maxi(staged.maximum_range, absi(spell.range_min + spell.range_max * possible_power))
+			return staged
 	return ProjectileAttackProfile.permitted(projectile_item, instance_id, spell, power, absi(spell.range_min + spell.range_max * power))
 
 
@@ -136,8 +142,7 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 		_context.rounds().complete_battle(state, content, &"retreated", events)
 		return CombatFlowResult.succeeded(events, true)
 	_context.rounds().advance_turn(state, content, rng, events)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng, auto_switch_to_melee: bool = false, friendly_collision_action: StringName = &"") -> CombatFlowResult:
@@ -197,7 +202,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 			_context.rounds().advance_turn(state, content, rng, events)
 		if _context.rounds().finish_if_resolved(state, content, events):
 			return CombatFlowResult.succeeded(events, true)
-		_context.automation().process_monster_turns(state, content, rng, events)
+		return _context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
@@ -228,7 +233,7 @@ func _resolve_friendly_collision(state: GameState, content: RealmzContent, actio
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	if reaction_result == REACTION_MOVER_DEFEATED:
-		_context.automation().process_monster_turns(state, content, rng, events)
+		return _context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 

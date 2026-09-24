@@ -13,11 +13,19 @@ func _init(repository: SaveRepository = null, half_truth_update: HalfTruthMediaS
 	_half_truth_update = half_truth_update if half_truth_update != null else HalfTruthMediaSaveUpdate.new()
 
 
-func save(content: RealmzContent, slot_id: String, snapshot: SessionSnapshot) -> bool:
+func save(content: RealmzContent, slot_id: String, snapshot: SessionSnapshot, preview_jpeg: PackedByteArray = PackedByteArray()) -> bool:
 	_last_error = ""
 	if content == null:
 		return false
-	return _repository.save(content.campaign_id, slot_id, snapshot)
+	return _repository.save(content.campaign_id, slot_id, snapshot, preview_jpeg)
+
+
+func active_slot(content: RealmzContent) -> String:
+	return _repository.active_slot(content.campaign_id) if content != null else "A"
+
+
+func set_active_slot(content: RealmzContent, slot_id: String) -> bool:
+	return content != null and _repository.set_active_slot(content.campaign_id, slot_id)
 
 
 func load(content: RealmzContent, slot_id: String, backup: bool = false) -> SessionSnapshot:

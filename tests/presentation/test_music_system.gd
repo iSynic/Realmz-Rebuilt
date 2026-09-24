@@ -1,7 +1,40 @@
 extends RealmzTestCase
 
 func run() -> void:
+	_test_immediate_single_target_action_preference()
 	_test_music_system()
+
+func _test_immediate_single_target_action_preference() -> void:
+	var settings := PresentationSettings.new()
+	assert_false(settings.immediate_single_target_actions, "immediate single-target actions default off")
+	settings.immediate_single_target_actions = true
+	var serialized := settings.to_data()
+	assert_equal(serialized["schemaVersion"], 19, "presentation settings serialize with schema nineteen")
+	assert_true(serialized["immediateSingleTargetActions"], "the preference uses its stable serialized key")
+	var restored := PresentationSettings.from_data(serialized)
+	assert_true(restored != null and restored.immediate_single_target_actions, "schema-nineteen preference round-trips through serialization")
+	var introduced_fields := {
+		2: ["dungeon3d"], 3: ["uiScaleMode", "windowMode"], 4: ["autoSwitchToMelee"],
+		5: ["explorationSpeedPercent"], 6: ["showExplorationMinimap", "autojournalEnabled"],
+		7: ["typographyMode"], 8: ["soundVolume", "musicVolume", "musicEnabled", "musicPlaylistModes"],
+		9: ["classicExplorationVisibility"], 10: ["reducedSound"], 11: ["combatPlaybackSpeedPercent"],
+		12: ["lastCampaignId"], 13: ["customFogTileEnabled"], 14: ["controller"],
+		16: ["hurrySpellResolution"], 17: ["displayScalingMode", "worldZoom", "pixelArtSmoothing"],
+		18: ["crtEnabled", "crtShader", "crtArea"],
+	}
+	for schema_version: int in range(1, 19):
+		var legacy := serialized.duplicate(true)
+		legacy["schemaVersion"] = schema_version
+		legacy.erase("immediateSingleTargetActions")
+		for introduced_version: int in introduced_fields:
+			if schema_version < introduced_version:
+				for field: String in introduced_fields[introduced_version]:
+					legacy.erase(field)
+		var migrated := PresentationSettings.from_data(legacy)
+		assert_true(migrated != null and not migrated.immediate_single_target_actions, "schema %d inherits the disabled preference default" % schema_version)
+	var malformed := serialized.duplicate(true)
+	malformed["immediateSingleTargetActions"] = 1
+	assert_equal(PresentationSettings.from_data(malformed), null, "schema-nineteen settings reject a nonboolean preference")
 
 func _test_music_system() -> void:
 	var application_media := ApplicationMediaCatalog.new(); var stock_media := ClassicMediaCatalog.new(null, application_media); var snow_asset := stock_media.tileset_by_id("landlook-10"); assert_true(application_media.is_valid() and [0, 3, 4, 5, 9, 10].all(func(landlook: int) -> bool: return stock_media.tileset_by_id("landlook-%d" % landlook) != null) and snow_asset.region_for(155).has_area() and application_media.image_texture(snow_asset) == stock_media.image_texture(snow_asset), "the effective application fallback uses every exported stock landlook texture needed by exploration and active-landlook combat")

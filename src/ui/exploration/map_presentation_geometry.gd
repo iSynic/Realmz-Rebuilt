@@ -70,10 +70,7 @@ static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, view
 
 
 static func classic_visible_rect(party_coordinate: Vector2i, map_size: Vector2i) -> Rect2i:
-	var view_size := Vector2i(mini(CLASSIC_VIEW_CELLS.x, map_size.x), mini(CLASSIC_VIEW_CELLS.y, map_size.y))
-	var maximum := Vector2i(maxi(map_size.x - view_size.x, 0), maxi(map_size.y - view_size.y, 0))
-	var origin := Vector2i(clampi(party_coordinate.x - 8, 0, maximum.x), clampi(party_coordinate.y - 6, 0, maximum.y))
-	return Rect2i(origin, view_size)
+	return MapTopology.classic_exploration_window(party_coordinate, map_size)
 
 
 static func land_discovery_coordinates(visited: Array[Vector2i], map_size: Vector2i) -> Dictionary:

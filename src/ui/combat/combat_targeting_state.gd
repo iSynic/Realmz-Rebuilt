@@ -133,10 +133,11 @@ func move_coordinate_preview(direction: Vector2i) -> bool:
 	var next := hovered_coordinate + direction
 	if hovered_coordinate.x < 0 or hovered_coordinate.y < 0:
 		next = legal_coordinates[0] if not legal_coordinates.is_empty() else Vector2i.ZERO
+	next = next.clamp(Vector2i.ZERO, Vector2i.ONE * (BattlefieldGrid.SIZE - 1))
+	hovered_coordinate = next
 	if not validation_deferred and not legal_coordinates.is_empty() and not legal_coordinates.has(next):
 		status_text = "That battlefield space is outside the legal target area."
-		return false
-	hovered_coordinate = next
+		return true
 	status_text = "Previewing battlefield space %d, %d." % [next.x, next.y]
 	return true
 

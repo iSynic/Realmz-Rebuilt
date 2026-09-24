@@ -116,6 +116,27 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_map_id = ""
 
 
+func save_map_preview_jpeg() -> PackedByteArray:
+	if _map_view == null or _map_view.level_type != &"land" or _viewport == null or DisplayServer.get_name() == "headless":
+		return PackedByteArray()
+	if not visible:
+		var prior_modulate := modulate
+		modulate.a = 0.0
+		visible = true
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+		RenderingServer.force_draw()
+		visible = false
+		modulate = prior_modulate
+	var image := _viewport.get_texture().get_image()
+	if image == null or image.is_empty():
+		return PackedByteArray()
+	var side := mini(image.get_width(), image.get_height())
+	var crop := image.get_region(Rect2i((image.get_width() - side) / 2, (image.get_height() - side) / 2, side, side))
+	crop.convert(Image.FORMAT_RGB8)
+	crop.resize(320, 320, Image.INTERPOLATE_LANCZOS)
+	return crop.save_jpg_to_buffer(0.72)
+
+
 func set_custom_fog_tile_enabled(enabled: bool) -> void:
 	if _custom_fog_tile_enabled == enabled:
 		return

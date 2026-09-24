@@ -35,6 +35,10 @@ signal window_mode_changed(value: String)
 signal reduced_motion_changed(enabled: bool)
 signal reduced_sound_changed(enabled: bool)
 signal auto_switch_to_melee_changed(enabled: bool)
+signal immediate_single_target_actions_changed(enabled: bool)
+signal click_to_move_enabled_changed(enabled: bool)
+signal classic_keyboard_shortcuts_changed(enabled: bool)
+signal exploration_move_to_requested
 signal exploration_speed_changed(percent: int)
 signal combat_playback_speed_changed(percent: int)
 signal hurry_spell_resolution_changed(enabled: bool)
@@ -109,6 +113,8 @@ var _presentation_settings := PresentationSettings.new()
 var _profile: UiLayoutProfile
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
+var _selected_combat_battle_id: String = ""
+var _selected_combat_actor_id: String = ""
 var _command_controller: GameShellCommandController
 var _menu_controller: GameShellMenuController
 var _picture_presenter: GameShellPicturePresenter
@@ -120,6 +126,7 @@ var _music_title: String = ""
 var _music_playing: bool = false
 var _controller_radial_kind: StringName = &""
 var _controller_radial_activation := Callable()
+var exploration_move_to_available: Callable
 var controller: ControllerAccess:
 	get: return ControllerAccess.new(self)
 
@@ -133,8 +140,12 @@ var roster: ClassicPartyRoster:
 	get: return _party_roster
 var settings: PresentationSettings:
 	get: return _presentation_settings
+var click_to_move_enabled: bool:
+	get: return _presentation_settings.click_to_move_enabled
 var picture_stage: Control:
 	get: return _picture_stage
+var navigation_overlay_active: bool:
+	get: return (_music_dialog != null and _music_dialog.visible) or _menu_controller.owns_native_menu_input() or _menu_controller.controller_is_open() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
 
 
 class ControllerAccess:
@@ -143,9 +154,12 @@ class ControllerAccess:
 	func _init(shell: Variant) -> void: _shell = shell
 	func show_prompts(family: String, context: StringName = &"") -> void:
 		_shell._controller_prompts.present(family, context, _shell._presentation_settings.controller)
+		_shell._controller_radial.set_prompt_family(family)
 	func hide_prompts() -> void:
 		_shell._controller_prompts.hide_prompts()
 	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
+	func music_playlist_focus_root() -> Control:
+		return _shell._music_dialog if _shell._music_dialog != null and _shell._music_dialog.visible else null
 	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
 	func cycle_section(delta: int) -> bool: return _shell._navigator.content_presenter.navigate_section(_shell._navigator.current_screen(), &"", delta)
 	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
@@ -159,6 +173,9 @@ class ControllerAccess:
 	func back_top_menu() -> bool: return _shell._menu_controller.controller_back()
 	func selected_top_menu_label() -> String: return _shell._menu_controller.controller_selected_label()
 	func close_top_menu_for_pointer() -> void: _shell._menu_controller.controller_pointer_takeover()
+	func handle_top_menu_input(event: InputEvent) -> bool: return _shell._menu_controller.handle_host_input(event)
+	func handle_navigation_modal_input(event: InputEvent) -> bool: return _shell._navigator.draft_dialog.handle_input(event)
+	func handle_navigation_modal_controller(action: StringName, pressed: bool, direction: Vector2i = Vector2i.ZERO) -> bool: return _shell._navigator.draft_dialog.handle_controller(action, pressed, direction)
 	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
 	func open_text_editor() -> bool:
 		var focused: Control = _shell.get_viewport().gui_get_focus_owner()
@@ -177,6 +194,9 @@ class ControllerAccess:
 			&"realmz_controller_character_next": _shell._controller_keyboard.caret_right()
 	func open_action_radial() -> bool:
 		var entries: Array[ControllerRadialEntry] = _shell._command_controller.controller_entries()
+		if _shell._navigator.current_screen() == &"exploration":
+			var available: bool = _shell.exploration_move_to_available.is_valid() and _shell.exploration_move_to_available.call()
+			entries.append(ControllerRadialEntry.new(&"move_to", "Move To", available, "Available on the active two-dimensional exploration map." if not available else "", null, "✥"))
 		if entries.is_empty(): return false
 		_open_radial(&"action", "ACTIONS", entries)
 		return true
@@ -228,13 +248,14 @@ class ControllerAccess:
 		var kind: StringName = _shell._controller_radial_kind
 		var activation: Callable = _shell._controller_radial_activation
 		_clear_radial_owner()
-		if kind == &"action": _shell._command_controller.activate_controller(command_id)
+		if kind == &"action" and command_id == &"move_to": _shell.exploration_move_to_requested.emit()
+		elif kind == &"action": _shell._command_controller.activate_controller(command_id)
 		elif kind == &"workspace": _activate_workspace(command_id)
 		elif kind == &"interaction" and activation.is_valid(): activation.call(command_id)
 	func _activate_workspace(command_id: StringName) -> void:
 		match command_id:
 			&"workspace_preferences": _shell._navigator.open_screen(&"system", true, &"Display")
-			&"workspace_save_load": _shell._navigator.open_screen(&"system", true, &"Save & Load")
+			&"workspace_save_load": _shell._navigator.open_screen(&"save_load")
 			&"workspace_music": _shell._navigator.open_screen(&"system", true, &"Audio")
 			&"workspace_diagnostics": _shell._navigator.open_screen(&"system", true, &"Diagnostics")
 			&"workspace_top_menu": _shell._menu_controller.controller_open()
@@ -308,6 +329,7 @@ func present(game_view: GameView) -> void:
 	var ordinary_exploration_update: bool = previous_view != null and game_view != null and not game_view.change_set.complete_refresh and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
 	var ordinary_party_update: bool = ordinary_exploration_update and game_view.domain_revisions.party != previous_view.domain_revisions.party
 	_current_view = game_view
+	_sync_combat_roster_selection(game_view)
 	if ordinary_exploration_update:
 		_present_ordinary_exploration_shell(game_view, ordinary_party_update)
 		return
@@ -327,7 +349,7 @@ func present(game_view: GameView) -> void:
 	_party_effects.present(game_view)
 	_apply_exploration_mode()
 	_status_controller.set_campaign_title(game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id)
-	if not game_view.party_members.any(func(character: CharacterView) -> bool: return character.id == _selected_character_id):
+	if (game_view.combat_view == null or game_view.combat_view.outcome != &"active") and not game_view.party_members.any(func(character: CharacterView) -> bool: return character.id == _selected_character_id):
 		_on_character_selected(game_view.party_members[0].id if not game_view.party_members.is_empty() else "")
 	# Party setup owns its six-slot assembly pane and covers the persistent
 	# gameplay roster. Rebuilding that hidden roster after every import added a
@@ -342,6 +364,19 @@ func present(game_view: GameView) -> void:
 		_navigator.open_screen(automatic_route, false)
 	_build_menus()
 	_rebuild_command_deck()
+
+
+func _sync_combat_roster_selection(view: GameView) -> void:
+	var combat := view.combat_view if view != null else null
+	if combat == null or combat.outcome != &"active":
+		_selected_combat_battle_id = ""
+		_selected_combat_actor_id = ""
+		return
+	if combat.battle_id == _selected_combat_battle_id and combat.active_actor_id == _selected_combat_actor_id:
+		return
+	_selected_combat_battle_id = combat.battle_id
+	_selected_combat_actor_id = combat.active_actor_id
+	_selected_character_id = combat.active_actor_id if view.party_members.any(func(character: CharacterView) -> bool: return character.id == combat.active_actor_id) else ""
 
 
 func _present_ordinary_exploration_shell(game_view: GameView, party_update: bool = false) -> void:
@@ -389,6 +424,7 @@ func apply_settings(settings: PresentationSettings) -> void:
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.open(settings, _music_playlist_id, _music_title, _music_playing)
 	_apply_layout()
+	_build_menus()
 
 
 func set_music_playback_state(playlist_id: int, title: String, playing: bool) -> void:
@@ -509,14 +545,15 @@ func _on_screen_changed(screen_id: StringName) -> void:
 
 
 func _set_play_regions_visible(visible: bool) -> void:
-	var play_route := visible and _navigator.current_screen() in [&"exploration", &"combat", &"spells"]
+	var play_route := visible and _navigator.current_screen() in [&"exploration", &"combat", &"spells", &"save_load"]
 	_stage_frame.visible = play_route
-	_bottom_region.visible = play_route and _navigator.current_screen() in [&"exploration", &"spells"]
+	_bottom_region.visible = play_route and _navigator.current_screen() in [&"exploration", &"spells", &"save_load"]
 	_party_roster.visible = play_route
 	play_stage_visibility_changed.emit(play_route)
 
 
 func handle_system_action_requested(action_id: StringName, value: Variant) -> void:
+	if action_id in [&"end_adventure", &"campaigns", &"quit", &"load", &"load_backup"] and _navigator.draft_dialog.defer_if_dirty(_navigator.content_presenter.system_preferences, handle_system_action_requested.bind(action_id, value)): return
 	match action_id:
 		&"save": save_requested.emit("quick" if value == null else String(value))
 		&"save_and_quit": save_and_quit_requested.emit("quick" if value == null else String(value))
@@ -528,6 +565,7 @@ func handle_system_action_requested(action_id: StringName, value: Variant) -> vo
 		&"campaigns": show_campaign_selection()
 		&"music_toggle": music_enabled_changed.emit(not _presentation_settings.music_enabled)
 		&"music_playlist": _music_dialog.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
+		&"click_to_move_toggle": click_to_move_enabled_changed.emit(not _presentation_settings.click_to_move_enabled)
 		&"quit": quit_requested.emit()
 
 
@@ -552,6 +590,9 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"reduced_motion": reduced_motion_changed.emit(bool(value))
 		&"reduced_sound": reduced_sound_changed.emit(bool(value))
 		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
+		&"immediate_single_target_actions": immediate_single_target_actions_changed.emit(bool(value))
+		&"click_to_move_enabled": click_to_move_enabled_changed.emit(bool(value))
+		&"classic_keyboard_shortcuts": classic_keyboard_shortcuts_changed.emit(bool(value))
 		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
 		&"combat_playback_speed_percent": combat_playback_speed_changed.emit(int(value))
 		&"hurry_spell_resolution": hurry_spell_resolution_changed.emit(bool(value))

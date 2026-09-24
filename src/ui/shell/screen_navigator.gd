@@ -57,6 +57,8 @@ var _workspace_host: Control
 var _overlay_host: Control
 var _media: ClassicMediaCatalog
 var content_presenter := SCREEN_CONTENT_PRESENTER.new()
+var draft_dialog: Control:
+	get: return get_node("ControllerDraftDialog") as Control
 var setup_controller := CampaignPartySetupController.new()
 var _initialized: bool = false
 var _startup_splash_enabled: bool = true
@@ -145,7 +147,7 @@ func present(view: GameView) -> void:
 			_load_after_campaign_selection = false
 			_show_load_workspace()
 			return
-		if _system_return_to_setup and _screen_id == &"system":
+		if _system_return_to_setup and _screen_id == &"save_load":
 			setup_controller.hide_overlays()
 			refresh_current_workspace()
 			return
@@ -203,7 +205,7 @@ func set_presentation_settings(settings: PresentationSettings) -> void:
 		return
 	content_presenter.set_presentation_settings(settings)
 	setup_controller.character_creation.set_presentation_settings(settings)
-	if _screen_id == &"system":
+	if _screen_id in [&"system", &"save_load"]:
 		refresh_current_workspace()
 
 
@@ -260,6 +262,7 @@ func _prepare_campaign_selection() -> void:
 
 
 func show_splash() -> void:
+	if draft_dialog.defer_if_dirty(content_presenter.system_preferences, show_splash): return
 	if setup_controller.splash_overlay == null:
 		return
 	_vault_return_to_campaign = false
@@ -272,6 +275,7 @@ func show_splash() -> void:
 
 
 func show_campaign_selection(load_after_selection: bool = false) -> void:
+	if draft_dialog.defer_if_dirty(content_presenter.system_preferences, show_campaign_selection.bind(load_after_selection)): return
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
@@ -289,11 +293,16 @@ func accepts_exploration_input() -> bool:
 func open_screen(screen_id: StringName, play_opening_sound: bool = true, section_name: StringName = &"") -> void:
 	if not UiRouteCatalog.has_route(screen_id):
 		return
+	if screen_id != _screen_id and draft_dialog.defer_if_dirty(content_presenter.system_preferences, open_screen.bind(screen_id, play_opening_sound, section_name)): return
 	if screen_id == &"vault":
 		_vault_return_to_campaign = false
 		_vault_return_to_setup = false
 	_store_focus()
 	var changed := screen_id != _screen_id
+	if changed and screen_id == &"inventory" and _view != null and _view.combat_view != null and _view.combat_view.outcome == &"active":
+		var actor_id := _view.combat_view.active_actor_id
+		if _view.party_members.any(func(character: CharacterView) -> bool: return character.id == actor_id):
+			content_presenter.select_inventory_character(actor_id, false)
 	if changed:
 		route_exiting.emit(_screen_id)
 		_route_history.append(_screen_id)
@@ -308,6 +317,10 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true, section
 
 
 func handle_back() -> bool:
+	if (get_node("ControllerDraftDialog") as Control).visible:
+		get_node("ControllerDraftDialog").resolve(&"keep")
+		return true
+	if draft_dialog.defer_if_dirty(content_presenter.system_preferences, handle_back): return true
 	if setup_controller.handle_back():
 		return true
 	if _system_return_to_setup and _view != null and _view.party_setup_available:
@@ -370,7 +383,7 @@ func _show_load_workspace() -> void:
 	_load_after_campaign_selection = false
 	_system_return_to_setup = true
 	_route_history.clear()
-	open_screen(&"system")
+	open_screen(&"save_load")
 
 
 func current_screen() -> StringName:
@@ -448,6 +461,7 @@ func _release_workspace() -> void:
 func _set_workspace_visible(visible: bool) -> void:
 	if _body_frame != null:
 		_body_frame.visible = visible
+	(get_node("SaveModalShield") as ColorRect).visible = visible and _screen_id == &"save_load"
 
 
 

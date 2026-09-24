@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" path="res://src/ui/shared/controller/controller_radial_overlay.gd" id="1_overlay"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_card"]
-bg_color = Color(0.0705882, 0.0901961, 0.109804, 0.98)
+[sub_resource type="StyleBoxFlat" id="StyleBox_panel"]
+bg_color = Color(0.105882, 0.12549, 0.12549, 0.99)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
@@ -13,21 +13,26 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-content_margin_left = 8.0
-content_margin_top = 8.0
-content_margin_right = 8.0
-content_margin_bottom = 8.0
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_reason"]
-bg_color = Color(0.12549, 0.14902, 0.168627, 1)
+[sub_resource type="StyleBoxFlat" id="StyleBox_detail"]
+bg_color = Color(0.0705882, 0.0901961, 0.109804, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.337255, 0.403922, 0.415686, 1)
 corner_radius_top_left = 4
 corner_radius_top_right = 4
 corner_radius_bottom_right = 4
 corner_radius_bottom_left = 4
 content_margin_left = 12.0
-content_margin_top = 8.0
+content_margin_top = 10.0
 content_margin_right = 12.0
-content_margin_bottom = 8.0
+content_margin_bottom = 10.0
 
 [node name="ControllerRadialOverlay" type="Control"]
 layout_mode = 3
@@ -50,115 +55,639 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.0156863, 0.0235294, 0.0313725, 0.76)
 
-[node name="Heading" type="VBoxContainer" parent="."]
+[node name="Panel" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(800, 560)
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = -256.0
-offset_right = 180.0
-offset_bottom = -210.0
+offset_left = -400.0
+offset_top = -280.0
+offset_right = 400.0
+offset_bottom = 280.0
 grow_horizontal = 2
 grow_vertical = 2
-mouse_filter = 2
-theme_override_constants/separation = 0
+theme_type_variation = &"ClassicFrame"
+theme_override_styles/panel = SubResource("StyleBox_panel")
 
-[node name="Title" type="Label" parent="Heading"]
+[node name="Wheel" type="Control" parent="Panel"]
+custom_minimum_size = Vector2(776, 538)
+layout_mode = 2
+mouse_filter = 1
+
+[node name="Heading" type="VBoxContainer" parent="Panel/Wheel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 4.0
+offset_right = 450.0
+offset_bottom = 52.0
+theme_override_constants/separation = 0
+mouse_filter = 2
+
+[node name="Title" type="Label" parent="Panel/Wheel/Heading"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
 theme_override_font_sizes/font_size = 20
-text = "COMMANDS"
+text = "QUICK ACCESS"
 horizontal_alignment = 1
 
-[node name="PageIndicator" type="Label" parent="Heading"]
+[node name="PageIndicator" type="Label" parent="Panel/Wheel/Heading"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Page 1 / 1"
 horizontal_alignment = 1
 
-[node name="Card" type="PanelContainer" parent="."]
-custom_minimum_size = Vector2(120, 72)
+[node name="Divider" type="ColorRect" parent="Panel/Wheel"]
+layout_mode = 0
+offset_left = 458.0
+offset_top = 66.0
+offset_right = 460.0
+offset_bottom = 454.0
+mouse_filter = 2
+color = Color(0.337255, 0.403922, 0.415686, 1)
+
+[node name="North" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 180.0
+offset_top = 94.0
+offset_right = 280.0
+offset_bottom = 140.0
+focus_mode = 2
+action_mode = 0
+text = ""
+icon_alignment = 1
+
+[node name="NorthContent" type="VBoxContainer" parent="Panel/Wheel/North"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -60.0
-offset_top = -36.0
-offset_right = 60.0
-offset_bottom = 36.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBox_card")
+theme_override_constants/separation = 0
 
-[node name="Center" type="CenterContainer" parent="Card"]
+[node name="NorthIcon" type="TextureRect" parent="Panel/Wheel/North/NorthContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="NorthSymbol" type="Label" parent="Panel/Wheel/North/NorthContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="NorthLabel" type="Label" parent="Panel/Wheel/North/NorthContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.92549, 0.870588, 1)
+theme_override_font_sizes/font_size = 12
+text = "North"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="NorthEast" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 293.0
+offset_top = 141.0
+offset_right = 393.0
+offset_bottom = 205.0
+focus_mode = 2
+action_mode = 0
+text = ""
+
+[node name="NorthEastContent" type="VBoxContainer" parent="Panel/Wheel/NorthEast"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="NorthEastIcon" type="TextureRect" parent="Panel/Wheel/NorthEast/NorthEastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="NorthEastSymbol" type="Label" parent="Panel/Wheel/NorthEast/NorthEastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="NorthEastLabel" type="Label" parent="Panel/Wheel/NorthEast/NorthEastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "NorthEast"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="East" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 340.0
+offset_top = 254.0
+offset_right = 440.0
+offset_bottom = 318.0
+focus_mode = 2
+action_mode = 0
+text = ""
+
+[node name="EastContent" type="VBoxContainer" parent="Panel/Wheel/East"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="EastIcon" type="TextureRect" parent="Panel/Wheel/East/EastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="EastSymbol" type="Label" parent="Panel/Wheel/East/EastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="EastLabel" type="Label" parent="Panel/Wheel/East/EastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "East"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="SouthEast" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 293.0
+offset_top = 367.0
+offset_right = 393.0
+offset_bottom = 431.0
+focus_mode = 2
+action_mode = 0
+text = ""
+
+[node name="SouthEastContent" type="VBoxContainer" parent="Panel/Wheel/SouthEast"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="SouthEastIcon" type="TextureRect" parent="Panel/Wheel/SouthEast/SouthEastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="SouthEastSymbol" type="Label" parent="Panel/Wheel/SouthEast/SouthEastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="SouthEastLabel" type="Label" parent="Panel/Wheel/SouthEast/SouthEastContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "SouthEast"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="South" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 180.0
+offset_top = 414.0
+offset_right = 280.0
+offset_bottom = 478.0
+focus_mode = 2
+action_mode = 0
+text = ""
+
+[node name="SouthContent" type="VBoxContainer" parent="Panel/Wheel/South"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="SouthIcon" type="TextureRect" parent="Panel/Wheel/South/SouthContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="SouthSymbol" type="Label" parent="Panel/Wheel/South/SouthContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="SouthLabel" type="Label" parent="Panel/Wheel/South/SouthContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "South"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="SouthWest" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 67.0
+offset_top = 367.0
+offset_right = 167.0
+offset_bottom = 431.0
+focus_mode = 2
+action_mode = 0
+text = ""
+
+[node name="SouthWestContent" type="VBoxContainer" parent="Panel/Wheel/SouthWest"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="SouthWestIcon" type="TextureRect" parent="Panel/Wheel/SouthWest/SouthWestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="SouthWestSymbol" type="Label" parent="Panel/Wheel/SouthWest/SouthWestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="SouthWestLabel" type="Label" parent="Panel/Wheel/SouthWest/SouthWestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "SouthWest"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="West" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 20.0
+offset_top = 254.0
+offset_right = 120.0
+offset_bottom = 318.0
+focus_mode = 2
+action_mode = 0
+text = ""
+
+[node name="WestContent" type="VBoxContainer" parent="Panel/Wheel/West"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="WestIcon" type="TextureRect" parent="Panel/Wheel/West/WestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="WestSymbol" type="Label" parent="Panel/Wheel/West/WestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="WestLabel" type="Label" parent="Panel/Wheel/West/WestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "West"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="NorthWest" type="Button" parent="Panel/Wheel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(100, 64)
+layout_mode = 0
+offset_left = 67.0
+offset_top = 141.0
+offset_right = 167.0
+offset_bottom = 205.0
+focus_mode = 2
+action_mode = 0
+text = ""
+
+[node name="NorthWestContent" type="VBoxContainer" parent="Panel/Wheel/NorthWest"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 2.0
+offset_right = -3.0
+offset_bottom = -2.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+
+[node name="NorthWestIcon" type="TextureRect" parent="Panel/Wheel/NorthWest/NorthWestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+mouse_filter = 2
+
+[node name="NorthWestSymbol" type="Label" parent="Panel/Wheel/NorthWest/NorthWestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+mouse_filter = 2
+
+[node name="NorthWestLabel" type="Label" parent="Panel/Wheel/NorthWest/NorthWestContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "NorthWest"
+horizontal_alignment = 1
+text_overrun_behavior = 3
+mouse_filter = 2
+
+[node name="Card" type="PanelContainer" parent="Panel/Wheel"]
+custom_minimum_size = Vector2(112, 56)
+layout_mode = 0
+offset_left = 174.0
+offset_top = 258.0
+offset_right = 286.0
+offset_bottom = 314.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBox_detail")
+
+[node name="Center" type="CenterContainer" parent="Panel/Wheel/Card"]
 layout_mode = 2
 
-[node name="SelectionLabel" type="Label" parent="Card/Center"]
+[node name="SelectionLabel" type="Label" parent="Panel/Wheel/Card/Center"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(104, 56)
+custom_minimum_size = Vector2(96, 40)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 14
 text = "No commands"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
 text_overrun_behavior = 3
 
-[node name="ReasonPanel" type="PanelContainer" parent="."]
+[node name="Detail" type="VBoxContainer" parent="Panel/Wheel"]
+layout_mode = 0
+offset_left = 480.0
+offset_top = 78.0
+offset_right = 770.0
+offset_bottom = 440.0
+theme_override_constants/separation = 10
+
+[node name="DetailHeading" type="Label" parent="Panel/Wheel/Detail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.741176, 0.611765, 0.333333, 1)
+theme_override_font_sizes/font_size = 14
+text = "SELECTED"
+
+[node name="DetailLabel" type="Label" parent="Panel/Wheel/Detail"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
+theme_override_font_sizes/font_size = 22
+text = "No commands"
+autowrap_mode = 2
+
+[node name="ReasonPanel" type="PanelContainer" parent="Panel/Wheel"]
 unique_name_in_owner = true
 visible = false
-layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -190.0
-offset_top = 190.0
-offset_right = 190.0
-offset_bottom = 248.0
-grow_horizontal = 2
-grow_vertical = 2
+layout_mode = 0
+offset_left = 480.0
+offset_top = 330.0
+offset_right = 770.0
+offset_bottom = 438.0
 mouse_filter = 2
-theme_override_styles/panel = SubResource("StyleBox_reason")
+theme_override_styles/panel = SubResource("StyleBox_detail")
 
-[node name="ReasonScroll" type="ScrollContainer" parent="ReasonPanel"]
+[node name="ReasonScroll" type="ScrollContainer" parent="Panel/Wheel/ReasonPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 horizontal_scroll_mode = 0
 
-[node name="ReasonLabel" type="Label" parent="ReasonPanel/ReasonScroll"]
+[node name="ReasonLabel" type="Label" parent="Panel/Wheel/ReasonPanel/ReasonScroll"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(352, 0)
+custom_minimum_size = Vector2(264, 0)
 layout_mode = 2
+size_flags_horizontal = 3
 text = ""
-horizontal_alignment = 1
 autowrap_mode = 2
 
-[node name="Hint" type="Label" parent="."]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -310.0
-offset_top = -48.0
-offset_right = 310.0
-offset_bottom = -14.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_styles/normal = SubResource("StyleBox_reason")
-text = "Direction highlights  ·  South / Enter selects  ·  East / Esc cancels  ·  Shoulders page"
-horizontal_alignment = 1
-vertical_alignment = 1
-text_overrun_behavior = 3
+[node name="Footer" type="HBoxContainer" parent="Panel/Wheel"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 482.0
+offset_right = 764.0
+offset_bottom = 530.0
+theme_override_constants/separation = 12
+
+[node name="PreviousButton" type="Button" parent="Panel/Wheel/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+action_mode = 0
+text = "Previous"
+
+[node name="NextButton" type="Button" parent="Panel/Wheel/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+action_mode = 0
+text = "Next"
+
+[node name="SelectButton" type="Button" parent="Panel/Wheel/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+action_mode = 0
+text = "Select"
+
+[node name="CancelButton" type="Button" parent="Panel/Wheel/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+action_mode = 0
+text = "Cancel"

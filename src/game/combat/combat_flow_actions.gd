@@ -48,8 +48,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	var events := action_result.events
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func _submit_standard_action(state: GameState, content: RealmzContent, actor: CharacterState, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool) -> CombatFlowResult:
@@ -502,8 +501,7 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 		return CombatFlowResult.succeeded(events)
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 static func projectile_spell_unavailable_reason(spell: SpellDefinition) -> String:

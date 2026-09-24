@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 18
+const SCHEMA_VERSION: int = 19
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -47,6 +47,9 @@ var pixel_art_smoothing: String = SMOOTHING_OFF
 var crt_enabled: bool = false
 var crt_shader: String = CRT_PI
 var crt_area: String = CRT_WORLD
+var immediate_single_target_actions: bool = false
+var click_to_move_enabled: bool = false
+var classic_keyboard_shortcuts: bool = false
 var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var combat_playback_speed_percent: int = 100
@@ -54,7 +57,8 @@ var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
 var custom_fog_tile_enabled: bool = true
-var autojournal_enabled: bool = false
+# FD-SYSTEM-002: new players enable Auto Note; Castle's PRFN 128 defaults it off.
+var autojournal_enabled: bool = true
 var typography_mode: String = TYPOGRAPHY_CLASSIC
 var last_campaign_id: String = ""
 var controller := ControllerPreferences.new()
@@ -82,6 +86,9 @@ func to_data() -> Dictionary:
 		"crtEnabled": crt_enabled,
 		"crtShader": crt_shader,
 		"crtArea": crt_area,
+		"immediateSingleTargetActions": immediate_single_target_actions,
+		"clickToMoveEnabled": click_to_move_enabled,
+		"classicKeyboardShortcuts": classic_keyboard_shortcuts,
 		"windowMode": window_mode,
 		"explorationSpeedPercent": exploration_speed_percent,
 		"combatPlaybackSpeedPercent": combat_playback_speed_percent,
@@ -154,6 +161,12 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 18 and (not data.get("crtEnabled") is bool or data.get("crtShader") not in [CRT_PI, CRT_LOTTES] or data.get("crtArea") not in [CRT_WORLD, CRT_WINDOW]):
 		return false
+	if schema_version >= 19 and not data.get("immediateSingleTargetActions") is bool:
+		return false
+	if schema_version >= 19 and data.has("clickToMoveEnabled") and not data["clickToMoveEnabled"] is bool:
+		return false
+	if data.has("classicKeyboardShortcuts") and not data["classicKeyboardShortcuts"] is bool:
+		return false
 	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
 
 
@@ -213,6 +226,10 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 		settings.crt_enabled = data["crtEnabled"]
 		settings.crt_shader = String(data["crtShader"])
 		settings.crt_area = String(data["crtArea"])
+	if int(data["schemaVersion"]) >= 19:
+		settings.immediate_single_target_actions = data["immediateSingleTargetActions"]
+	settings.click_to_move_enabled = bool(data.get("clickToMoveEnabled", false))
+	settings.classic_keyboard_shortcuts = bool(data.get("classicKeyboardShortcuts", false))
 	settings.window_mode = String(data.get("windowMode", WINDOWED))
 	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
 	settings.combat_playback_speed_percent = int(data.get("combatPlaybackSpeedPercent", 100))

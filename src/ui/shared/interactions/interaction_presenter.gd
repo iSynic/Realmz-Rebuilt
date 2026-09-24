@@ -360,7 +360,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 		_treasure_money_workspace_open = false
 	_request = null
 	_set_classic_acknowledgement_cursor(false)
-	_combat.clear()
+	_combat.clear(body is InteractionResponse.CombatBody and (body as InteractionResponse.CombatBody).action in [&"switch_weapon", &"prepare_projectile", &"use_item"])
 	if not preserve_treasure_workspace and not retain_shop_workspace:
 		visible = false
 	response_submitted.emit(response)
@@ -432,7 +432,7 @@ func _update_treasure_slot_order(request: InteractionRequest) -> void:
 
 
 func _clear_options() -> void:
-	_combat.clear()
+	_combat.clear(_request != null and _request.kind == InteractionRequest.COMBAT)
 	_overlays.close_side_workspace()
 	_overlays.close_encounter_dock()
 	_overlays.close_application_workspace()

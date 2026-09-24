@@ -4,6 +4,7 @@ class_name SaveSlotPreview
 extends RefCounted
 
 const PRIMARY: StringName = &"primary"
+const SCENARIO_SLOTS := "ABCDEFGHIJ"
 const BACKUP: StringName = &"backup"
 const VALID: StringName = &"valid"
 const CORRUPT: StringName = &"corrupt"
@@ -28,6 +29,7 @@ var character_names: Array[String] = []
 var error_message: String = ""
 var can_load: bool = false
 var can_update: bool = false
+var map_preview_jpeg: PackedByteArray = PackedByteArray()
 
 
 func _init(save_slot_id: String, save_source: StringName, save_status: StringName) -> void:

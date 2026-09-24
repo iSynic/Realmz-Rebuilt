@@ -15,6 +15,7 @@ const ROUTE_RESOURCE_PATHS: PackedStringArray = [
 	"res://src/ui/shell/routes/combat.tres",
 	"res://src/ui/shell/routes/journal.tres",
 	"res://src/ui/shell/routes/system.tres",
+	"res://src/ui/shell/routes/save_load.tres",
 ]
 
 static var _routes: Array[UiRouteDefinition] = []

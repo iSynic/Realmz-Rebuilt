@@ -35,7 +35,7 @@
       "kind": "data-collection",
       "reason": "The Controls page materializes one binding row per typed configurable controller action inside the scene-authored list.",
       "currentMaximum": 1,
-      "functions": ["_bind_controller_editor"]
+      "functions": ["bind_binding_list"]
     }
   ],
   "missingPurposeHeaders": {

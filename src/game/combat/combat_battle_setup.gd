@@ -125,6 +125,7 @@ func _commit(assembly: BattleAssembly, state: GameState, content: RealmzContent,
 			return _setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_weapon_mode", "Battle '%s' could not initialize '%s' weapon mode." % [battle.id, character.id])
 	for ally: MonsterState in assembly.consumed_ally_states:
 		ally.traitor = false
+		ally.target_id = ""
 	if not state.allies_suspended:
 		state.party.set_allies([])
 	for character: CharacterState in assembly.inputs.party_characters:
@@ -133,8 +134,7 @@ func _commit(assembly: BattleAssembly, state: GameState, content: RealmzContent,
 		character.movement = character.maximum_movement
 	state.combat = combat
 	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 10049, "waitForCompletion": false, "source": "classic-battle-entry"}), DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": assembly.battlefield.rolled_distance, "direction": assembly.battlefield.direction_degrees, "mapId": assembly.battlefield.map_id, "surprise": surprise, "turnOrder": combat.turns.turn_order(), "participantCharacterIds": assembly.inputs.party_characters.map(func(character: CharacterState) -> String: return character.id), "consumedAllyIds": assembly.consumed_ally_ids})]
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func _prepare_inputs(state: GameState, content: RealmzContent, battle: BattleDefinition, participant_character_ids: Array[String]) -> Variant:

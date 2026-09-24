@@ -7,16 +7,66 @@ extends RefCounted
 var _root_path: String
 var last_error: String = ""
 
+const CLASSIC_SLOTS := SaveSlotPreview.SCENARIO_SLOTS
+
 
 func _init(root_path: String = "user://saves") -> void:
 	_root_path = root_path.trim_suffix("/")
 
 
-func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot) -> bool:
+func active_slot(campaign_id: String) -> String:
+	if not _safe_component(campaign_id):
+		return "A"
+	var path := "%s/%s/active-slot" % [_root_path, campaign_id]
+	for candidate: String in [path, path + ".bak"]:
+		if not FileAccess.file_exists(candidate):
+			continue
+		var file := FileAccess.open(candidate, FileAccess.READ)
+		if file == null:
+			continue
+		var value := file.get_as_text().strip_edges()
+		if value.length() == 1 and CLASSIC_SLOTS.contains(value):
+			return value
+	return "A"
+
+
+func set_active_slot(campaign_id: String, slot_id: String) -> bool:
+	if not _safe_component(campaign_id) or slot_id.length() != 1 or not CLASSIC_SLOTS.contains(slot_id):
+		return _fail("The active save slot must be A–J.")
+	var folder := "%s/%s" % [_root_path, campaign_id]
+	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder)) != OK:
+		return _fail("Could not create the campaign save directory.")
+	var path := folder.path_join("active-slot")
+	var temporary := path + ".tmp"
+	var file := FileAccess.open(temporary, FileAccess.WRITE)
+	if file == null:
+		return _fail("Could not write the active save slot.")
+	file.store_string(slot_id)
+	file.flush()
+	file.close()
+	var backup := path + ".bak"
+	if FileAccess.file_exists(backup) and not _delete_file(backup):
+		_delete_file(temporary)
+		return _fail("Could not rotate the active save slot pointer.")
+	if FileAccess.file_exists(path) and DirAccess.rename_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(backup)) != OK:
+		_delete_file(temporary)
+		return _fail("Could not rotate the active save slot pointer.")
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(path)) != OK:
+		if FileAccess.file_exists(backup):
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(path))
+		_delete_file(temporary)
+		return _fail("Could not install the active save slot.")
+	_delete_file(backup)
+	return true
+
+
+func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot, preview_jpeg: PackedByteArray = PackedByteArray()) -> bool:
 	last_error = ""
 	if snapshot == null or snapshot.campaign_id != campaign_id:
 		return _fail("Save envelope does not match the requested campaign.")
-	var envelope := SaveEnvelope.from_snapshot(snapshot)
+	if not preview_jpeg.is_empty() and not SaveEnvelope.valid_map_preview(preview_jpeg):
+		return _fail("The map preview must be a 320×320 JPEG under 256 KiB.")
+	var envelope := SaveEnvelope.from_snapshot(snapshot, preview_jpeg)
 	if envelope == null:
 		return _fail("The session snapshot could not be encoded.")
 	if not _safe_component(campaign_id) or not _safe_component(slot_id):
@@ -80,7 +130,7 @@ func save_new_copy(campaign_id: String, slot_id: String, envelope: SaveEnvelope)
 		if existing != null and existing.to_data() == envelope.to_data():
 			return true
 		return _fail("The updated save slot already contains different data; no save was replaced.")
-	if not save(campaign_id, slot_id, envelope):
+	if not save(campaign_id, slot_id, envelope, envelope.map_preview_jpeg):
 		return false
 	var verified := self.load(campaign_id, slot_id, envelope.package_hash)
 	if verified == null or verified.to_data() != envelope.to_data():
@@ -168,6 +218,8 @@ func _preview_for_path(path: String, slot_id: String, source: StringName, expect
 		preview.character_names.append(character.name)
 	preview.error_message = error_message
 	preview.can_load = status == SaveSlotPreview.VALID
+	if preview.can_load:
+		preview.map_preview_jpeg = envelope.map_preview_jpeg.duplicate()
 	return preview
 
 

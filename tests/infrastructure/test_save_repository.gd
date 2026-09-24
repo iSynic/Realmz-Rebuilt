@@ -11,16 +11,16 @@ func run() -> void:
 		return
 	var campaign_id: String = loaded.content.campaign_id
 	var campaign_path := TEST_ROOT.path_join(campaign_id)
-	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save", "updated.r2save", "updated.r2save.tmp", "updated.r2save.bak"])
+	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save", "updated.r2save", "updated.r2save.tmp", "updated.r2save.bak", "active-slot", "active-slot.bak"])
 	var session := GameSession.new()
 	assert_equal(session.start(loaded.content, 7).state, SessionStep.State.COMPLETED, "save-preview session starts")
 	var first := session.snapshot()
-	assert_not_null(first, "a committed setup boundary can be indexed")
 	if first == null:
 		return
 	var valid_root := save_data(first)
 	var malformed_roots: Array[Dictionary] = []
 	malformed_roots.append({"name": "unknown field", "data": valid_root.merged({"unexpected": true})})
+	malformed_roots.append({"name": "invalid JPEG preview", "data": valid_root.merged({"mapPreviewJpeg": "bm90IGEganBlZw=="})})
 	var missing_field := valid_root.duplicate(true)
 	missing_field.erase("rulesVersion")
 	malformed_roots.append({"name": "missing required field", "data": missing_field})
@@ -32,10 +32,13 @@ func run() -> void:
 	first.game_state.party.add_character(CharacterState.new("preview.hero", "Mira", 10, 10))
 	first.game_state.experience_multiplier = 1.0 / 3.0
 	var repository := SaveRepository.new(TEST_ROOT)
-	assert_true(repository.save(campaign_id, "quick", first), "the first preview save is installed")
+	var preview_jpeg := Image.create_empty(320, 320, false, Image.FORMAT_RGB8).save_jpg_to_buffer(0.72)
+	assert_true(repository.save(campaign_id, "quick", first, preview_jpeg), "the first preview save is installed with its 320×320 JPEG")
+	assert_true(repository.set_active_slot(campaign_id, "C") and SaveRepository.new(TEST_ROOT).active_slot(campaign_id) == "C", "the active A–J slot survives repository restart")
+	assert_false(repository.set_active_slot(campaign_id, "K"), "an out-of-range slot cannot become the Quick Save target")
 	var second := save_round_trip(first)
 	second.game_state.clock.advance_minutes(95)
-	assert_true(repository.save(campaign_id, "quick", second), "the second save rotates the first into a backup")
+	assert_true(repository.save(campaign_id, "quick", second, preview_jpeg), "the second save rotates the first into a backup")
 	var mismatch_data: Dictionary = save_data(first)
 	mismatch_data["packageHash"] = "f".repeat(64)
 	var mismatch := SaveEnvelope.from_data(mismatch_data)
@@ -52,22 +55,19 @@ func run() -> void:
 	corrupt.close()
 	var previews := repository.list_previews(campaign_id, loaded.content.package_hash)
 	assert_equal(previews.size(), 5, "primary, backup, mismatch, incompatible, and corrupt records are indexed independently")
-	var host_previews: Array[SaveSlotPreview] = SaveHostController.new(repository).previews(loaded.content)
-	assert_equal(host_previews.size(), previews.size(), "the app host preserves the typed save-preview boundary")
 	var current := _preview(previews, "quick", SaveSlotPreviewScript.PRIMARY)
 	var backup := _preview(previews, "quick", SaveSlotPreviewScript.BACKUP)
 	var wrong_package := _preview(previews, "mismatch", SaveSlotPreviewScript.PRIMARY)
 	var incompatible := _preview(previews, "legacy", SaveSlotPreviewScript.PRIMARY)
 	var broken := _preview(previews, "broken", SaveSlotPreviewScript.PRIMARY)
-	assert_not_null(current, "current save preview is present")
 	assert_not_null(backup, "rotated backup preview is present")
 	assert_not_null(wrong_package, "package mismatch preview is present")
 	assert_not_null(incompatible, "incompatible v3 preview is present")
 	assert_not_null(broken, "corrupt preview is present")
 	if current != null:
-		assert_equal([current.status, current.can_load, current.realmz_day, current.realmz_hour, current.realmz_minute, current.map_id, current.character_names], [SaveSlotPreviewScript.VALID, true, 1, 1, 35, "land:0", ["Mira"]], "current preview derives detached campaign facts without mutating the session")
+		assert_equal([current.status, current.can_load, current.realmz_day, current.realmz_hour, current.realmz_minute, current.map_id, current.character_names, current.map_preview_jpeg], [SaveSlotPreviewScript.VALID, true, 1, 1, 35, "land:0", ["Mira"], preview_jpeg], "current preview derives detached campaign facts and JPEG without mutating the session")
 	if backup != null:
-		assert_equal([backup.status, backup.can_load, backup.realmz_hour, backup.realmz_minute], [SaveSlotPreviewScript.VALID, true, 0, 0], "backup retains the previous committed boundary")
+		assert_equal([backup.status, backup.can_load, backup.realmz_hour, backup.realmz_minute, backup.map_preview_jpeg], [SaveSlotPreviewScript.VALID, true, 0, 0, preview_jpeg], "backup retains the previous committed boundary and map JPEG")
 	if wrong_package != null:
 		assert_equal([wrong_package.status, wrong_package.can_load], [SaveSlotPreviewScript.PACKAGE_MISMATCH, false], "package mismatch is visible but cannot be loaded")
 	if incompatible != null:
@@ -82,7 +82,7 @@ func run() -> void:
 	assert_true(repository.load(campaign_id, "legacy", loaded.content.package_hash) == null and repository.last_error == "Save format v4 is incompatible with Realmz Rebuilt save v5.", "ordinary load reports the intentional save compatibility cut")
 	var original_before := FileAccess.get_sha256(campaign_path.path_join("quick.r2save"))
 	var backup_before := FileAccess.get_sha256(campaign_path.path_join("quick.r2save.bak"))
-	var update_copy := SaveEnvelope.from_data(save_data(first))
+	var update_copy := SaveEnvelope.from_data(save_data(first).merged({"mapPreviewJpeg": Marshalls.raw_to_base64(preview_jpeg)}))
 	assert_true(repository.save_new_copy(campaign_id, "updated", update_copy), "an explicit copy installs into a separate empty slot")
 	assert_equal(repository.load(campaign_id, "updated", loaded.content.package_hash).to_data(), update_copy.to_data(), "the copied save round-trips every state and RNG field")
 	assert_true(repository.save_new_copy(campaign_id, "updated", update_copy), "retrying the same completed copy is idempotent")

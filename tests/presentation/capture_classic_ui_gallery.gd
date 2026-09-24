@@ -412,23 +412,23 @@ func _capture_gallery() -> void:
 	_application._battlefield_presenter.clear_playback_frame()
 	_interaction.present(null)
 	gallery_view.combat_view = null
-	await _resize(Vector2i(1280, 720))
-	var current_save := SAVE_SLOT_PREVIEW_SCRIPT.new("quick", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.VALID); current_save.rules_version = gallery_view.rules_version; current_save.package_hash = "1".repeat(64); current_save.realmz_day = 5; current_save.realmz_hour = 15; current_save.realmz_minute = 55; current_save.map_id = "land:0"; current_save.coordinate = Vector2i(49, 15); current_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; current_save.can_load = true
-	var backup_save := SAVE_SLOT_PREVIEW_SCRIPT.new("quick", SAVE_SLOT_PREVIEW_SCRIPT.BACKUP, SAVE_SLOT_PREVIEW_SCRIPT.VALID); backup_save.rules_version = gallery_view.rules_version; backup_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; backup_save.can_load = true
+	_application._map_presenter.present(gallery_view); _shell.present(gallery_view); await _resize(Vector2i(1280, 720)); await _settle()
+	var current_save := SAVE_SLOT_PREVIEW_SCRIPT.new("C", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.VALID); current_save.rules_version = gallery_view.rules_version; current_save.package_hash = "1".repeat(64); current_save.realmz_day = 5; current_save.realmz_hour = 15; current_save.realmz_minute = 55; current_save.map_id = "land:0"; current_save.coordinate = Vector2i(49, 15); current_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; current_save.can_load = true; current_save.map_preview_jpeg = _application._map_presenter.save_map_preview_jpeg(); assert(not current_save.map_preview_jpeg.is_empty(), "Save gallery needs a rendered overworld JPEG.")
+	var backup_save := SAVE_SLOT_PREVIEW_SCRIPT.new("C", SAVE_SLOT_PREVIEW_SCRIPT.BACKUP, SAVE_SLOT_PREVIEW_SCRIPT.VALID); backup_save.rules_version = gallery_view.rules_version; backup_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; backup_save.can_load = true
 	var corrupt_save := SAVE_SLOT_PREVIEW_SCRIPT.new("broken", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.CORRUPT); corrupt_save.error_message = "This save is corrupt or uses an unsupported schema. The active session is unchanged."
-	_router.content_presenter.set_save_previews([current_save, backup_save, corrupt_save])
-	_router.open_screen(&"system")
+	_router.content_presenter.set_save_previews([current_save, backup_save, corrupt_save], "C", "C")
+	_router.open_screen(&"save_load")
 	await _settle()
-	await _capture("canonical-system-1280x720")
+	await _capture_canonical_compact("canonical-save-modal-1280x720", "compact-save-modal-800x600")
 	var corrupt_row := _router.find_child("SavePreview_broken_primary", true, false) as Button
-	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720")
+	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720"); _router.open_screen(&"system")
 	var system_tabs := _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
-	for index: int in range(1, 7):
-		system_tabs.current_tab = index; await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "pacing", "accessibility", "controls", "diagnostics"][index - 1])
+	for index: int in range(1, 6):
+		system_tabs.current_tab = index; await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "accessibility", "controls", "diagnostics"][index - 1])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("canonical-music-playlist-1280x720"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
 	await _resize(Vector2i(800, 600)); _router.open_screen(&"system"); await _settle(); system_tabs = _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
-	for index: int in range(0, 7):
-		system_tabs.current_tab = index; await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "pacing", "accessibility", "controls", "diagnostics"][index])
+	for index: int in range(0, 6):
+		system_tabs.current_tab = index; await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "accessibility", "controls", "diagnostics"][index])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("classic-music-playlist-800x600"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
 	var settings := PresentationSettings.new()
 	settings.text_scale = 1.5

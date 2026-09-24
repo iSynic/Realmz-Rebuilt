@@ -27,6 +27,7 @@ class ControllerAccess:
 
 signal combat_body_submitted(body: InteractionResponse.CombatBody)
 signal combatant_inspected(combatant_id: String)
+signal combatant_hovered(combatant_id: String)
 signal targeting_changed(selection: CombatTargetingState)
 signal targeting_cancelled
 signal redraw_requested
@@ -56,6 +57,7 @@ var _reveal_friends: bool = false
 var _targeting: CombatTargetingState
 var _playback_frame: CombatPlaybackFrame
 var _movement_preview: CombatMoveOptionView
+var immediate_single_target_actions := false
 var controller: ControllerAccess:
 	get: return ControllerAccess.new(self)
 
@@ -151,6 +153,8 @@ func cancel_movement_preview() -> bool:
 func handle_input(event: InputEvent, viewport_size: Vector2, render_camera_top_left: Vector2i, render_camera_visible_cells: Vector2i) -> bool:
 	if _playback_frame != null or _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return false
+	if _handle_inspection_input(event, viewport_size, render_camera_top_left, render_camera_visible_cells):
+		return true
 	if _targeting != null:
 		return _handle_targeting_input(event, viewport_size, render_camera_top_left, render_camera_visible_cells)
 	if event is InputEventMouseMotion:
@@ -167,14 +171,20 @@ func handle_input(event: InputEvent, viewport_size: Vector2, render_camera_top_l
 		return false
 	if dismiss_reveal_friends():
 		return true
-	if mouse_button.ctrl_pressed or mouse_button.meta_pressed:
-		var inspected_id := BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, _coordinate_at_local_position(mouse_button.position, viewport_size, render_camera_top_left, render_camera_visible_cells))
-		if inspected_id.is_empty():
-			return false
-		focus_combatant(inspected_id)
-		combatant_inspected.emit(inspected_id)
-		return true
 	return _submit_movement_option(_movement_option_toward_local_position(mouse_button.position, viewport_size, render_camera_top_left, render_camera_visible_cells))
+
+
+func _handle_inspection_input(event: InputEvent, viewport_size: Vector2, camera: Vector2i, cells: Vector2i) -> bool:
+	var mouse := event as InputEventMouse
+	if mouse == null or not (mouse.ctrl_pressed or mouse.meta_pressed):
+		return false
+	var id := BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, _coordinate_at_local_position(mouse.position, viewport_size, camera, cells))
+	if not id.is_empty():
+		if mouse is InputEventMouseMotion:
+			combatant_hovered.emit(id)
+		elif mouse is InputEventMouseButton and mouse.button_index == MOUSE_BUTTON_LEFT and mouse.pressed:
+			combatant_inspected.emit(id)
+	return true
 
 
 func handle_mouse_exit() -> void:
@@ -222,7 +232,20 @@ func cancel_targeting() -> bool:
 
 
 func target_with_keyboard() -> bool:
-	if _targeting == null or not _targeting.target_with_keyboard():
+	if _targeting == null:
+		return false
+	var selected := false
+	if _targeting.mode in [&"combatant", &"sequence"] and _view != null and _view.combat_view != null and _targeting.hovered_coordinate.x >= 0 and _targeting.hovered_coordinate.y >= 0:
+		var hovered_id := BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, _targeting.hovered_coordinate)
+		if not hovered_id.is_empty():
+			selected = _targeting.select_combatant(hovered_id)
+			if selected:
+				_camera_focus_id = _targeting.selected_ids[-1] if not _targeting.selected_ids.is_empty() else ""
+			targeting_changed.emit(_targeting)
+			redraw_requested.emit()
+			return true
+	selected = _targeting.target_with_keyboard()
+	if not selected:
 		return false
 	if not _targeting.selected_ids.is_empty():
 		_camera_focus_id = _targeting.selected_ids[-1]
@@ -285,7 +308,9 @@ func _handle_targeting_input(event: InputEvent, viewport_size: Vector2, render_c
 		_targeting.select_coordinate(coordinate)
 	else:
 		var combatant_id := BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, coordinate)
-		_targeting.select_combatant(combatant_id)
+		var selected := _targeting.select_combatant(combatant_id)
+		if selected and immediate_single_target_actions and _targeting.mode == &"combatant" and _targeting.can_confirm():
+			return confirm_targeting()
 	targeting_changed.emit(_targeting)
 	redraw_requested.emit()
 	return true

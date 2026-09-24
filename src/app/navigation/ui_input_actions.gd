@@ -37,6 +37,7 @@ const CONTROLLER_ACTIONS: Array[StringName] = ControllerPreferences.ACTIONS
 
 
 static func ensure_defaults() -> void:
+	ClassicKeyboardShortcuts.ensure_defaults()
 	for definition: Dictionary in DEFINITIONS:
 		var action_id: StringName = definition["id"]
 		if not InputMap.has_action(action_id):

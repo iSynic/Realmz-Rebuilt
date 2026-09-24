@@ -4,12 +4,25 @@ extends RefCounted
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_FALLBACK := 3
+const MONSTER_ATTACK_FAILED := 4
 
 var _context: CombatContext
 
 
 func _init(context: CombatContext) -> void:
 	_context = context
+
+
+func projectile_is_available(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition) -> bool:
+	var item := content.items.item_by_id(definition.item_id_at(1))
+	var spell := content.magic.spell_by_classic_id(absi(item.special_2)) if item != null else null
+	if spell == null or not _context.actions().projectile_spell_unavailable_reason(spell).is_empty() or monster.spell_points < absi(spell.cost):
+		return false
+	var terrain := battle_terrain_set(content, state.combat.battlefield)
+	if terrain == null: return false
+	for power: int in range(1, 8):
+		if not projectile_target_ids(state, monster, terrain, absi(spell.range_min + spell.range_max * power)).is_empty(): return true
+	return false
 
 
 func process_projectile(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
@@ -23,14 +36,12 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 	elif projectile_spell != null:
 		unavailable = _context.actions().projectile_spell_unavailable_reason(projectile_spell)
 	if projectile_item == null or projectile_spell == null or not unavailable.is_empty():
-		active_turn.movement_remaining = 0
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": unavailable, "source": "classic"}))
-		return MONSTER_ATTACK_COMPLETED
+		return MONSTER_ATTACK_FAILED if not projectile_item_id.is_empty() and (projectile_item == null or projectile_spell == null) else MONSTER_ATTACK_FALLBACK
 	var terrain_set := battle_terrain_set(content, combat.battlefield)
 	if terrain_set == null:
-		active_turn.movement_remaining = 0
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "missing-battle-terrain", "source": "classic"}))
-		return MONSTER_ATTACK_COMPLETED
+		return MONSTER_ATTACK_FAILED
 	var range_power := rng.draw(7, StringName("combat.monster-projectile.%s.power" % monster.id))
 	var maximum_range := absi(projectile_spell.range_min + projectile_spell.range_max * range_power)
 	var target_ids := projectile_target_ids(state, monster, terrain_set, maximum_range)
@@ -43,7 +54,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 		events.append(DomainEvent.new(&"combat_monster_projectile_skipped", {"actorId": monster.id, "reason": "insufficient-spell-points", "source": "classic"}))
 		return MONSTER_ATTACK_FALLBACK
 	var spell_cost := absi(projectile_spell.cost * cost_power)
-	var target_id := target_ids[rng.draw_between(0, target_ids.size() - 1, StringName("combat.monster-projectile.%s.target" % monster.id))]
+	var target_id := target_ids[0]
 	var target := state.party.character_by_id(target_id)
 	monster.weapon_id = projectile_item.id
 	monster.target_id = target.id
@@ -55,7 +66,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 	var resolution := _context.magic.resolve_monster_projectile(monster, projectile_item, target, projectile_spell, 1, rng)
 	if resolution == null:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "projectile-resolution-failed", "source": "classic"}))
-		return MONSTER_ATTACK_COMPLETED
+		return MONSTER_ATTACK_FAILED
 	target.lifetime_record.add_projectile_damage_taken(resolution.total_damage, resolution.hit_count, resolution.miss_count)
 	if resolution.total_damage > 0: combat.actor_statuses.mark_attacked(target.id)
 	events.append(DomainEvent.new(&"combat_projectile_resolved", {
@@ -73,7 +84,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 	return MONSTER_ATTACK_COMPLETED
 
 
-func select_adjacent_target(state: GameState, monster: MonsterState, rng: RealmzRng) -> String:
+func select_adjacent_target(state: GameState, monster: MonsterState, _rng: RealmzRng) -> String:
 	var target_ids: Array[String] = []
 	var adjacent_ids := _context.battlefield.adjacent_actor_ids(state.combat.battlefield, monster.id)
 	for character: CharacterState in state.party.characters():
@@ -81,7 +92,7 @@ func select_adjacent_target(state: GameState, monster: MonsterState, rng: Realmz
 	for candidate: MonsterState in state.combat.roster.monsters():
 		if target_is_available(state, monster, candidate.id) and adjacent_ids.has(candidate.id): target_ids.append(candidate.id)
 	if target_ids.is_empty(): return ""
-	return target_ids[rng.draw_between(0, target_ids.size() - 1, &"combat.monster-target")]
+	return monster.target_id if target_ids.has(monster.target_id) else target_ids[0]
 
 
 func projectile_target_ids(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, maximum_range: int) -> Array[String]:

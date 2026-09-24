@@ -1,7 +1,7 @@
 [gd_scene format=3]
 
 [node name="SaveSlotRow" type="Button"]
-custom_minimum_size = Vector2(0, 54)
+custom_minimum_size = Vector2(0, 37)
 size_flags_horizontal = 3
 toggle_mode = true
 alignment = 0

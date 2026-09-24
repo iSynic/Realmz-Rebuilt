@@ -118,8 +118,7 @@ func commit(state: GameState, content: RealmzContent, caster: CharacterState, sp
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func _append_resolution(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, index: int, center: Vector2i, shape: int, event_source: String, item_instance_id: String, events: Array[DomainEvent]) -> void:

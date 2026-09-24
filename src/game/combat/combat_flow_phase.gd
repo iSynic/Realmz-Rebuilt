@@ -86,8 +86,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 		return CombatFlowResult.succeeded(events, true)
 	if defeated and combat.turns.active_actor_id() == caster.id:
 		_context.rounds().advance_turn(state, content, rng, events)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 static func _destination_is_solid(state: GameState, content: RealmzContent, combat: CombatState, destination: Vector2i) -> bool:

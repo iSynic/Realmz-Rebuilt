@@ -9,6 +9,7 @@
 [ext_resource type="Theme" path="res://src/ui/shared/style/classic_ui_theme.tres" id="7_theme"]
 [ext_resource type="Script" path="res://src/ui/combat/classic_battlefield_presenter.gd" id="8_p3gde"]
 [ext_resource type="Script" path="res://src/app/startup/startup_route_bridge.gd" id="9_startup"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/movement_route_preview.tscn" id="10_movement"]
 
 [sub_resource type="StyleBoxFlat" id="InteractionStyle"]
 bg_color = Color(0.055, 0.063, 0.078, 0.985)
@@ -80,6 +81,8 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_gxxd3")
 
+[node name="MovementPreview" parent="ExplorationMap" instance=ExtResource("10_movement")]
+
 [node name="GameShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
 
 [node name="InteractionPanel" parent="." instance=ExtResource("3_uarpi")]
@@ -96,6 +99,8 @@ clip_contents = true
 anchors_preset = 0
 mouse_filter = 2
 script = ExtResource("8_p3gde")
+
+[node name="MovementPreview" parent="BattlefieldMap" instance=ExtResource("10_movement")]
 
 [node name="StartupRouteBridge" type="Node" parent="."]
 script = ExtResource("9_startup")

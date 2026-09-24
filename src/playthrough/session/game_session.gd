@@ -3,7 +3,10 @@
 class_name GameSession
 extends RefCounted
 
+const SessionNavigationQuery = preload("res://src/playthrough/session/session_navigation_queries.gd")
+
 var _context: SessionContext = SessionContext.new()
+var navigation: SessionNavigationQuery = SessionNavigationQuery.new(_context)
 var _started: bool = false
 var _view_projector := SessionViewProjector.new()
 var _exploration_coordinator: RefCounted

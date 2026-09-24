@@ -139,6 +139,11 @@ layout_mode = 2
 theme_type_variation = &"BattleCommandButton"
 text = "Reveal Friends"
 
+[node name="MoveTo" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/SecondaryCenter/BattleInspectionSecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Move To"
+
 [node name="BattlePrimaryCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
@@ -203,6 +208,10 @@ text = "Scrolls"
 layout_mode = 2
 theme_type_variation = &"BattleCommandButton"
 text = "Items"
+
+[node name="UseWeapon" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset/BattlePrimaryCommands/SecondaryCenter/BattlePrimarySecondary"]
+layout_mode = 2
+text = "Use Weapon"
 
 [node name="BattleTurnCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
 custom_minimum_size = Vector2(0, 100)
@@ -276,16 +285,6 @@ layout_mode = 2
 size_flags_horizontal = 4
 theme_type_variation = &"BattleCommandButton"
 text = "Back to battle"
-[node name="AttackStatus" type="Label" parent="BattleTargetPanel"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-autowrap_mode = 2
-[node name="ChooseAttackTarget" type="Button" parent="BattleTargetPanel"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"BattleCommandButton"
 
 [node name="BattleSpellPanel" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
@@ -397,59 +396,3 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Bandage selected character"
 tooltip_text = "Bandage the selected party member."
-
-[node name="BattleCombatantInspection" type="VBoxContainer" parent="."]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-[node name="Back" type="Button" parent="BattleCombatantInspection"]
-layout_mode = 2
-size_flags_horizontal = 4
-theme_type_variation = &"BattleCommandButton"
-text = "Back to battle"
-[node name="BattleInspectionHeading" type="HBoxContainer" parent="BattleCombatantInspection"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 4
-[node name="BattleInspectionTitle" type="Label" parent="BattleCombatantInspection/BattleInspectionHeading"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
-[node name="BattleInspectionItems" type="Button" parent="BattleCombatantInspection/BattleInspectionHeading"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"BattleCommandButton"
-text = "Items"
-toggle_mode = true
-[node name="BattleInspectionConditions" type="Button" parent="BattleCombatantInspection/BattleInspectionHeading"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"BattleCommandButton"
-text = "Conditions"
-toggle_mode = true
-[node name="BattleInspectionAttacks" type="Button" parent="BattleCombatantInspection/BattleInspectionHeading"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"BattleCommandButton"
-text = "Attacks"
-toggle_mode = true
-[node name="BattleInspectionRecord" type="PanelContainer" parent="BattleCombatantInspection"]
-custom_minimum_size = Vector2(0, 58)
-layout_mode = 2
-size_flags_horizontal = 3
-clip_contents = true
-theme_type_variation = &"BattleSummaryInset"
-[node name="BattleInspectionScroll" type="ScrollContainer" parent="BattleCombatantInspection/BattleInspectionRecord"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-[node name="BattleInspectionContent" type="Label" parent="BattleCombatantInspection/BattleInspectionRecord/BattleInspectionScroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
-autowrap_mode = 2

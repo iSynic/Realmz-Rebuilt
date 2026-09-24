@@ -116,6 +116,19 @@ static func cell_rect(coordinate: Vector2i, camera: Vector2i, draw_origin: Vecto
 	return Rect2(draw_origin + Vector2(coordinate - camera) * NATIVE_CELL_SIZE, Vector2.ONE * NATIVE_CELL_SIZE)
 
 
+static func offscreen_indicator_rect(coordinate: Vector2i, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2, indicator_size: Vector2) -> Rect2:
+	if coordinate.x < 0 or coordinate.y < 0 or coordinate_is_visible(coordinate, camera, visible_cells):
+		return Rect2()
+	var stage_center := draw_origin + Vector2(visible_cells) * NATIVE_CELL_SIZE * 0.5
+	var target_offset := cell_rect(coordinate, camera, draw_origin).get_center() - stage_center
+	var center_limit := (Vector2(visible_cells) * NATIVE_CELL_SIZE - indicator_size) * 0.5 - Vector2(4.0, 4.0)
+	if center_limit.x <= 0.0 or center_limit.y <= 0.0 or target_offset == Vector2.ZERO:
+		return Rect2()
+	var x_scale := INF if is_zero_approx(target_offset.x) else center_limit.x / absf(target_offset.x)
+	var y_scale := INF if is_zero_approx(target_offset.y) else center_limit.y / absf(target_offset.y)
+	return Rect2(stage_center + target_offset * minf(x_scale, y_scale) - indicator_size * 0.5, indicator_size)
+
+
 static func footprint_rect(footprint: Array[Vector2i], camera: Vector2i, draw_origin: Vector2) -> Rect2:
 	if footprint.is_empty():
 		return Rect2()

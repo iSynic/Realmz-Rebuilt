@@ -148,16 +148,14 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 			if reaction_result == REACTION_WAITING or reaction_result == REACTION_DEATH_MACRO:
 				return CombatFlowResult.succeeded(events)
 			if reaction_result == REACTION_COMPLETED:
-				_context.automation().process_monster_turns(state, content, rng, events)
-				return CombatFlowResult.succeeded(events, state.combat.completed)
+				return _context.automation().process_monster_turns(state, content, rng, events)
 		else:
 			state.combat.pending_reaction = null
 		if state.combat.turns.active_actor_id() == mover_id:
 			advance_turn(state, content, rng, events)
 	if state.combat.completed or finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func finalize_scenario_monster_destruction(state: GameState, content: RealmzContent) -> CombatFlowResult:
@@ -190,8 +188,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 		advance_turn(state, content, rng, events)
 	elif resumed.defeated:
 		combat.turns.active_turn.target_id = ""
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func _commit_resumed_age_attack(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> Variant:
@@ -241,12 +238,10 @@ func _continue_after_age_reaction(state: GameState, content: RealmzContent, rng:
 			advance_turn(state, content, rng, events)
 		if finish_if_resolved(state, content, events):
 			return CombatFlowResult.succeeded(events, true)
-		_context.automation().process_monster_turns(state, content, rng, events)
-		return CombatFlowResult.succeeded(events, state.combat.completed)
+		return _context.automation().process_monster_turns(state, content, rng, events)
 	if reaction_kind == CombatReactionState.CHARACTER_MOVE:
 		return CombatFlowResult.succeeded(events)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func ally_selection_payload(state: GameState, content: RealmzContent) -> Dictionary:

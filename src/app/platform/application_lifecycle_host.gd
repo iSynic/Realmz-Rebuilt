@@ -108,7 +108,7 @@ func save_and_quit(slot_id: String) -> void:
 
 
 func route_changed(route_id: StringName) -> void:
-	if not _save_and_quit_pending or route_id == &"system":
+	if not _save_and_quit_pending or route_id == &"save_load":
 		return
 	_save_and_quit_pending = false
 	_set_save_and_quit_mode(false)
@@ -164,7 +164,7 @@ func _respond_quit(action: StringName) -> void:
 		_save_and_quit_pending = true
 		_refresh_saves_operation.call()
 		_shell.navigator.content_presenter.set_save_and_quit_mode(true)
-		_shell.navigator.open_screen(&"system")
+		_shell.navigator.open_screen(&"save_load")
 		_shell.status.set_status("Choose a save slot, then Save and Quit.")
 		return
 	var has_session := _session_controller.view().session_started
@@ -188,7 +188,7 @@ func _represent_error(message: String) -> void:
 
 func _set_save_and_quit_mode(enabled: bool) -> void:
 	_shell.navigator.content_presenter.set_save_and_quit_mode(enabled)
-	if _shell.navigator.current_screen() == &"system" and _session_controller.view().session_started:
+	if _shell.navigator.current_screen() == &"save_load" and _session_controller.view().session_started:
 		_shell.navigator.refresh_current_workspace()
 
 

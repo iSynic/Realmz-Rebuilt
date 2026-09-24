@@ -1,0 +1,113 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/combat/combat_inspection_card.gd" id="1_card"]
+
+[sub_resource type="StyleBoxFlat" id="CardSurface"]
+bg_color = Color(0.065, 0.075, 0.082, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.42, 0.43, 0.37, 1)
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+shadow_color = Color(0, 0, 0, 0.65)
+shadow_size = 5
+
+[node name="CombatInspectionCard" type="PanelContainer"]
+visible = false
+z_index = 100
+offset_right = 376.0
+offset_bottom = 320.0
+mouse_filter = 0
+theme_override_styles/panel = SubResource("CardSurface")
+script = ExtResource("1_card")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Identity" type="VBoxContainer" parent="Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CombatantName" type="Label" parent="Content/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.81, 0.35, 1)
+theme_override_font_sizes/font_size = 21
+autowrap_mode = 2
+
+[node name="AttackCount" type="Label" parent="Content/Header/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.39, 0.85, 0.91, 1)
+theme_override_font_sizes/font_size = 16
+autowrap_mode = 2
+
+[node name="Pin" type="Button" parent="Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+text = "Pin"
+tooltip_text = "Keep this record open after releasing Ctrl."
+
+[node name="Close" type="Button" parent="Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+text = "×"
+tooltip_text = "Close inspection (Escape)."
+
+[node name="Tabs" type="HBoxContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Attacks" type="Button" parent="Content/Tabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Attacks"
+toggle_mode = true
+
+[node name="Items" type="Button" parent="Content/Tabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Items"
+toggle_mode = true
+
+[node name="Conditions" type="Button" parent="Content/Tabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Conditions"
+toggle_mode = true
+
+[node name="RecordPanel" type="PanelContainer" parent="Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"BattleSummaryInset"
+
+[node name="RecordScroll" type="ScrollContainer" parent="Content/RecordPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Record" type="Label" parent="Content/RecordPanel/RecordScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 2
+
+[node name="Hint" type="Label" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.6, 0.65, 0.67, 1)
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 2

@@ -48,6 +48,14 @@ var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 var _fog_texture: Texture2D = load(FOG_TEXTURE_PATH) as Texture2D
 var _retained_surface: Control
 var _show_topology_markers: bool = false
+var movement_preview: MovementRoutePreview:
+	get: return get_node_or_null("MovementPreview") as MovementRoutePreview
+
+
+func save_map_preview_jpeg() -> PackedByteArray:
+	if _retained_surface == null or _view == null or _view.map_view == null or _view.map_view.level_type != &"land":
+		return PackedByteArray()
+	return (_retained_surface as ClassicRetainedMapSurface).save_map_preview_jpeg()
 
 
 func _ready() -> void:
@@ -74,6 +82,9 @@ func _ready() -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if not _movement_cursor_enabled:
+		return
+	if movement_preview != null and movement_preview.handle_pointer(event):
+		accept_event()
 		return
 	if event is InputEventMouseMotion:
 		_update_movement_cursor((event as InputEventMouseMotion).position)
@@ -313,12 +324,18 @@ func _present_retained_surface() -> void:
 	if _view == null or _view.map_view == null:
 		_retained_surface.visible = false
 		return
-	if _show_topology_markers or show_cell_topology_details:
-		_retained_surface.visible = false
+	if movement_preview != null:
+		var map_view := _view.map_view
+		var requested := MapPresentationGeometry.viewport_cells_for(size, map_origin.y, cell_size)
+		var cells := Vector2i(mini(requested.x, map_view.width), mini(requested.y, map_view.height))
+		var camera := MapPresentationGeometry.camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), cells)
+		movement_preview.configure_geometry(MapPresentationGeometry.map_draw_origin_for(size, map_origin, cell_size, cells), camera, cells, cell_size)
+	var diagnostics_visible := _show_topology_markers or show_cell_topology_details
+	if diagnostics_visible:
 		_update_visible_cell_cache(_view.map_view)
-		return
 	var party_texture := _party_marker_texture()
 	_retained_surface.present(_view, party_texture, size, map_origin, cell_size, minimap_size, classic_exploration_visibility, show_travel_preview, _visited_coordinate_cache, _seen_coordinate_cache, _land_discovery_cache, _dungeon_discovery_cache)
+	_retained_surface.visible = not diagnostics_visible
 	_party_rect = _retained_surface.party_rect()
 	_minimap_rect = _retained_surface.minimap_rect()
 

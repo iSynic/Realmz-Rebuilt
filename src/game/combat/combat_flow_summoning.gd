@@ -118,8 +118,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	_context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
 func cast_monster_summon(state: GameState, content: RealmzContent, caster: MonsterState, spell: SpellDefinition, power_level: int, rng: RealmzRng, target_coordinates: Array[Vector2i]) -> CombatFlowResult:

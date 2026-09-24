@@ -1,12 +1,12 @@
 [gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/shell/system_workspace.gd" id="1_workspace"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/save_slot_row.tscn" id="2_save"]
+[ext_resource type="Script" path="res://src/ui/shell/system_preferences_layout.gd" id="3_layout"]
 
 [node name="SystemWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
-script = ExtResource("1_workspace")
+script = ExtResource("3_layout")
 save_slot_row_scene = ExtResource("2_save")
 
 [node name="SystemSummary" type="VBoxContainer" parent="."]
@@ -23,438 +23,515 @@ text_overrun_behavior = 3
 autowrap_mode = 2
 max_lines_visible = 2
 
-[node name="SystemCategoryRail" type="HBoxContainer" parent="."]
+[node name="SystemWorkspaceBody" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="SystemCategoryRail" type="VBoxContainer" parent="SystemWorkspaceBody"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="SaveAndLoad" type="Button" parent="SystemCategoryRail"]
+[node name="Display" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
 layout_mode = 2
-size_flags_horizontal = 3
-toggle_mode = true
-text = "Save & Load"
-
-[node name="Display" type="Button" parent="SystemCategoryRail"]
-layout_mode = 2
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(142, 40)
 toggle_mode = true
 text = "Display"
 
-[node name="Audio" type="Button" parent="SystemCategoryRail"]
+[node name="Audio" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
 layout_mode = 2
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(142, 40)
 toggle_mode = true
-text = "Audio"
+text = "Audio & Pacing"
 
-[node name="Pacing" type="Button" parent="SystemCategoryRail"]
+[node name="Accessibility" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
 layout_mode = 2
-size_flags_horizontal = 3
-toggle_mode = true
-text = "Pacing"
-
-[node name="Accessibility" type="Button" parent="SystemCategoryRail"]
-layout_mode = 2
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(142, 40)
 toggle_mode = true
 text = "Accessibility"
 
-[node name="Controls" type="Button" parent="SystemCategoryRail"]
+[node name="Controls" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
 layout_mode = 2
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(142, 40)
 toggle_mode = true
 text = "Controls"
 
-[node name="Diagnostics" type="Button" parent="SystemCategoryRail"]
+[node name="Diagnostics" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
 layout_mode = 2
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(142, 40)
 toggle_mode = true
 text = "Diagnostics"
 
-[node name="SystemWorkspaceTabs" type="TabContainer" parent="."]
+[node name="SystemWorkspaceTabs" type="TabContainer" parent="SystemWorkspaceBody"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 clip_tabs = true
 
-[node name="Save & Load" type="VBoxContainer" parent="SystemWorkspaceTabs"]
+[node name="Save & Load" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 5
-[node name="SaveWorkspaceColumns" type="BoxContainer" parent="SystemWorkspaceTabs/Save & Load"]
+[node name="SaveWorkspaceColumns" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
-[node name="SaveSlotBrowser" type="PanelContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns"]
+[node name="SaveSlotBrowser" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 0.85
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 5
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
-text = "Save Slots"
-[node name="SaveSlotScroll" type="ScrollContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
+text = "Scenario Slots · A–J"
+[node name="ActiveSlotLabel" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.56, 0.81, 0.82, 1)
+text = "Slot A active · Quick Save overwrites A"
+[node name="SaveSlotScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="SaveSlotRows" type="VBoxContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll"]
+[node name="SaveSlotRows" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
-[node name="Empty" type="PanelContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
+[node name="Empty" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
 visible = false
 layout_mode = 2
 theme_type_variation = &"ClassicInset"
-[node name="Text" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/Empty"]
+[node name="Text" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/Empty"]
 layout_mode = 2
 text = "No saves for this campaign"
 autowrap_mode = 2
-[node name="SaveSlotDetail" type="PanelContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns"]
+[node name="SaveSlotDetail" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 1.25
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 5
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
-text = "Selected Record"
-[node name="SaveSlotDetailBody" type="VBoxContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content"]
+text = "Selected Slot"
+[node name="SaveSlotDetailBody" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 5
-[node name="Record" type="VBoxContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody"]
+[node name="Record" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody"]
 visible = false
 layout_mode = 2
-[node name="Title" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Title" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
 text = "Save slot • Primary"
-[node name="Status" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Status" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
 text = "Valid"
-[node name="Error" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="MapPreview" type="TextureRect" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+layout_mode = 2
+custom_minimum_size = Vector2(240, 240)
+size_flags_horizontal = 0
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+[node name="MapPreviewStatus" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.62, 0.67, 0.68, 1)
+text = "No saved overworld preview"
+[node name="Error" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 visible = false
 layout_mode = 2
 autowrap_mode = 2
-[node name="Location" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Location" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
 text = "Day 1 • 00:00 • map 0,0"
-[node name="Party" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Party" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
 text = "Party"
-[node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
-[node name="Package" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Package" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
 text = "Package"
-[node name="Rules" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Rules" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
 text = "Rules"
-[node name="Saved" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
+[node name="Saved" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
 text = "Saved"
-[node name="Empty" type="PanelContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody"]
+[node name="Empty" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody"]
 visible = false
 layout_mode = 2
 theme_type_variation = &"ClassicInset"
-[node name="Text" type="Label" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty"]
+[node name="Text" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty"]
 layout_mode = 2
 text = "No selected record\nSave slots appear at left."
 autowrap_mode = 2
-[node name="SaveWorkspaceFooter" type="VBoxContainer" parent="SystemWorkspaceTabs/Save & Load"]
+[node name="SaveWorkspaceFooter" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load"]
 layout_mode = 2
 theme_override_constants/separation = 5
-[node name="SaveWorkspaceActions" type="BoxContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
+[node name="ConfirmActionRow" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+[node name="ConfirmText" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/ConfirmActionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.9, 0.76, 0.43, 1)
+text = "Replace this save?"
+autowrap_mode = 2
+[node name="Confirm" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/ConfirmActionRow"]
+layout_mode = 2
+text = "Confirm"
+[node name="Cancel" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/ConfirmActionRow"]
+layout_mode = 2
+text = "Cancel"
+[node name="SaveWorkspaceActions" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
 layout_mode = 2
 theme_override_constants/separation = 5
-[node name="SaveAndQuitSelected" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="SaveAndQuitSelected" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Save and Quit"
-[node name="QuickSave1" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="QuickSave1" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
-text = "Quick Save 1"
-[node name="QuickSave2" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+text = "Quick Save"
+[node name="QuickSave2" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Quick Save 2"
-[node name="SaveSelectedSlot" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="SaveSelectedSlot" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Save Selected"
-[node name="LoadSelectedSave" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="LoadSelectedSave" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Load Selected"
-[node name="UpdateSave" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="UpdateSave" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 visible = false
 text = "Update Save"
-[node name="RefreshSaves" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="RefreshSaves" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Refresh"
-[node name="Spacer" type="Control" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="Spacer" type="Control" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 size_flags_horizontal = 3
-[node name="MainMenu" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+[node name="MainMenu" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Main Menu"
-[node name="NewSaveSlotRow" type="BoxContainer" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
+[node name="NewSaveSlotRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
 layout_mode = 2
 theme_override_constants/separation = 5
-[node name="NewSaveSlotName" type="LineEdit" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow"]
+[node name="NewSaveSlotName" type="LineEdit" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowLineEdit"
 placeholder_text = "New slot name (letters, numbers, - or _)"
 max_length = 128
-[node name="SaveNewSlot" type="Button" parent="SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow"]
+[node name="SaveNewSlot" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow"]
 layout_mode = 2
 text = "Save New Slot"
 
-[node name="Display" type="VBoxContainer" parent="SystemWorkspaceTabs"]
+[node name="Display" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-[node name="DisplaySettingsScroll" type="ScrollContainer" parent="SystemWorkspaceTabs/Display"]
+[node name="DisplaySettingsScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="DisplaySettingsPanel" type="PanelContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll"]
+[node name="DisplaySettingsPanel" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Display"
-[node name="Description" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
 text = "Choose how the application fills the window. World zoom enlarges map and battle tiles while the interface stays put."
 autowrap_mode = 2
-[node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+[node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
-[node name="DisplayScalingRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+[node name="DisplayTopRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayScalingRow"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="DisplaySettingsColumn" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="ScaleGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Window & Scale"
+[node name="VisualEffectsGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Image Effects"
+[node name="WorldViewGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "World View"
+[node name="WorldOptions" type="GridContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 1
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+[node name="DisplayScalingRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Display scaling"
-[node name="DisplayScalingPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayScalingRow"]
+[node name="DisplayScalingPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="WorldZoomRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+fit_to_longest_item = false
+clip_text = true
+[node name="WorldZoomRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldZoomRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "World zoom"
-[node name="WorldZoomPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldZoomRow"]
+[node name="WorldZoomPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="PixelSmoothingRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+fit_to_longest_item = false
+clip_text = true
+[node name="PixelSmoothingRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/PixelSmoothingRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/PixelSmoothingRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Pixel-art smoothing"
-[node name="PixelSmoothingPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/PixelSmoothingRow"]
+[node name="PixelSmoothingPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/PixelSmoothingRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="CrtEnabled" type="CheckButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+fit_to_longest_item = false
+clip_text = true
+[node name="CrtEnabled" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content"]
 layout_mode = 2
 text = "CRT effect"
-[node name="CrtShaderRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+autowrap_mode = 2
+[node name="CrtShaderRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtShaderRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtShaderRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "CRT shader"
-[node name="CrtShaderPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtShaderRow"]
+[node name="CrtShaderPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtShaderRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="CrtAreaRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+fit_to_longest_item = false
+clip_text = true
+[node name="CrtAreaRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtAreaRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtAreaRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "CRT area"
-[node name="CrtAreaPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/CrtAreaRow"]
+[node name="CrtAreaPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtAreaRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="InterfaceScaleRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+fit_to_longest_item = false
+clip_text = true
+[node name="InterfaceScaleRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/InterfaceScaleRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Interface scale"
-[node name="InterfaceScalePicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/InterfaceScaleRow"]
+[node name="InterfaceScalePicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="TextScaleRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+fit_to_longest_item = false
+clip_text = true
+[node name="WindowModeRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/TextScaleRow"]
-custom_minimum_size = Vector2(230, 0)
-layout_mode = 2
-text = "Text size"
-[node name="TextScaleSlider" type="HSlider" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/TextScaleRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-min_value = 0.8
-max_value = 1.5
-step = 0.1
-[node name="TypographyRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
-layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/TypographyRow"]
-custom_minimum_size = Vector2(230, 0)
-layout_mode = 2
-text = "Typography"
-[node name="TypographyPicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/TypographyRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="WindowModeRow" type="BoxContainer" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
-layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WindowModeRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Window mode"
-[node name="WindowModePicker" type="OptionButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WindowModeRow"]
+[node name="WindowModePicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
-[node name="Dungeon3d" type="CheckButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+fit_to_longest_item = false
+clip_text = true
+[node name="Dungeon3d" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Use topology-derived 3D dungeons"
-[node name="ClassicExplorationVisibility" type="CheckButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+autowrap_mode = 2
+[node name="ClassicExplorationVisibility" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Classic exploration distance with visited outer tiles"
-[node name="CustomFogTile" type="CheckButton" parent="SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+autowrap_mode = 2
+[node name="CustomFogTile" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Use custom fog-of-war tile instead of Classic black"
+autowrap_mode = 2
 
-[node name="Audio" type="VBoxContainer" parent="SystemWorkspaceTabs"]
+[node name="Audio" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]
 layout_mode = 2
 size_flags_vertical = 3
-[node name="AudioSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceTabs/Audio"]
+[node name="AudioSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="AudioSettingsPanel" type="PanelContainer" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll"]
+[node name="AudioSettingsPanel" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Audio"
-[node name="Description" type="Label" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
 layout_mode = 2
 text = "Presentation audio never advances the simulation."
-[node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
+autowrap_mode = 2
+[node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
 layout_mode = 2
-[node name="MasterVolumeRow" type="BoxContainer" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+[node name="MasterVolumeRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MasterVolumeRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MasterVolumeRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Master volume"
-[node name="MasterVolumeSlider" type="HSlider" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MasterVolumeRow"]
+[node name="MasterVolumeSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MasterVolumeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.05
-[node name="SoundVolumeRow" type="BoxContainer" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+[node name="SoundVolumeRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/SoundVolumeRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/SoundVolumeRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Sound effects"
-[node name="SoundVolumeSlider" type="HSlider" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/SoundVolumeRow"]
+[node name="SoundVolumeSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/SoundVolumeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.05
-[node name="MusicVolumeRow" type="BoxContainer" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+[node name="MusicVolumeRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MusicVolumeRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MusicVolumeRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Music"
-[node name="MusicVolumeSlider" type="HSlider" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MusicVolumeRow"]
+[node name="MusicVolumeSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MusicVolumeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 1.0
 step = 0.05
-[node name="MusicEnabled" type="CheckButton" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
+[node name="MusicEnabled" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
 layout_mode = 2
 text = "Music enabled"
-[node name="ReducedSound" type="CheckButton" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
+autowrap_mode = 2
+[node name="ReducedSound" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
 layout_mode = 2
 text = "Reduce Classic modal sounds"
-[node name="OpenMusicPlaylist" type="Button" parent="SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
+autowrap_mode = 2
+[node name="OpenMusicPlaylist" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
 layout_mode = 2
 text = "Open Music Playlist…"
 
-[node name="Pacing" type="VBoxContainer" parent="SystemWorkspaceTabs"]
+[node name="Pacing" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio"]
 layout_mode = 2
 size_flags_vertical = 3
-[node name="PacingSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceTabs/Pacing"]
+[node name="PacingSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="PacingSettingsPanel" type="PanelContainer" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll"]
+[node name="PacingSettingsPanel" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Pacing"
-[node name="Description" type="Label" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
 layout_mode = 2
 text = "Choose how long committed movement and animation remain on screen. Pacing never changes rules."
 autowrap_mode = 2
-[node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
+[node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
 layout_mode = 2
-[node name="CombatSpeedRow" type="BoxContainer" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content" groups=["system_setting_rows"]]
+[node name="CombatSpeedRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="CombatPlaybackSpeedCaption" type="Label" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/CombatSpeedRow"]
+[node name="CombatPlaybackSpeedCaption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/CombatSpeedRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Combat & animation speed"
-[node name="CombatPlaybackSpeedSlider" type="HSlider" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/CombatSpeedRow"]
+[node name="CombatPlaybackSpeedSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/CombatSpeedRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 25.0
@@ -462,21 +539,22 @@ max_value = 200.0
 step = 25.0
 tick_count = 8
 ticks_on_borders = true
-[node name="CombatExplanation" type="Label" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
+[node name="CombatExplanation" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
 layout_mode = 2
 text = "100% is the designed combat pace. This control applies consistently to every combat visual."
 autowrap_mode = 2
-[node name="HurrySpellResolution" type="CheckButton" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
+[node name="HurrySpellResolution" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
 layout_mode = 2
 text = "Hurry Spell Resolution"
 tooltip_text = "Show one shared effect for eligible area spells while preserving each target's result."
-[node name="MovementSpeedRow" type="BoxContainer" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content" groups=["system_setting_rows"]]
+autowrap_mode = 2
+[node name="MovementSpeedRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="ExplorationSpeedCaption" type="Label" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/MovementSpeedRow"]
+[node name="ExplorationSpeedCaption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/MovementSpeedRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Exploration travel speed"
-[node name="ExplorationSpeedSlider" type="HSlider" parent="SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/MovementSpeedRow"]
+[node name="ExplorationSpeedSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/MovementSpeedRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 min_value = 25.0
@@ -485,240 +563,390 @@ step = 25.0
 tick_count = 16
 ticks_on_borders = true
 
-[node name="Accessibility" type="VBoxContainer" parent="SystemWorkspaceTabs"]
+[node name="Accessibility" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]
 layout_mode = 2
 size_flags_vertical = 3
-[node name="AccessibilitySettingsScroll" type="ScrollContainer" parent="SystemWorkspaceTabs/Accessibility"]
+[node name="AccessibilitySettingsScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="AccessibilitySettingsPanel" type="PanelContainer" parent="SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll"]
+[node name="AccessibilitySettingsPanel" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Accessibility"
-[node name="Description" type="Label" parent="SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2
 text = "Accessibility changes presentation only; Classic rules remain fixed."
-[node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+autowrap_mode = 2
+[node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2
-[node name="ReducedMotion" type="CheckButton" parent="SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+[node name="ReducedMotion" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2
 text = "Reduced motion"
-[node name="ReducedMotionExplanation" type="Label" parent="SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+autowrap_mode = 2
+[node name="ReducedMotionExplanation" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2
 text = "Reduced motion settles combat feedback in one presentation frame without skipping committed events."
 autowrap_mode = 2
+[node name="TextScaleRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextScaleRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Text size"
+[node name="TextScaleSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextScaleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.8
+max_value = 1.5
+step = 0.1
+[node name="TypographyRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TypographyRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Typography"
+[node name="TypographyPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TypographyRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
 
-[node name="Controls" type="VBoxContainer" parent="SystemWorkspaceTabs"]
+[node name="TextPreview" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextPreview"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextPreview/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Text preview"
+
+[node name="Sample" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextPreview/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "The quick brown fox explores the Realmz."
+autowrap_mode = 2
+
+[node name="PreviewDetail" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextPreview/Content"]
+layout_mode = 2
+text = "This sample follows the selected font and text size."
+autowrap_mode = 2
+
+[node name="Controls" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]
 layout_mode = 2
 size_flags_vertical = 3
-[node name="ControlsSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceTabs/Controls"]
+[node name="ControlsSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="ControlsSettingsPanel" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll"]
+[node name="ControlsSettingsPanel" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Controls"
-[node name="Description" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 text = "Keyboard and mouse remain available beside the active controller profile. Edit controller bindings as a draft, then Apply."
 autowrap_mode = 2
-[node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 
-[node name="ControllerSettings" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="ControllerSettings" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
 
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings"]
+[node name="Content" type="GridContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings"]
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 2
 theme_override_constants/separation = 6
 
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="BindingColumn" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Bindings"
+[node name="BindingRows" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+theme_override_constants/separation = 3
+[node name="BindingStatus" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+autowrap_mode = 2
+[node name="Actions" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+alignment = 2
+[node name="RestoreControllerDefaults" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/Actions"]
+layout_mode = 2
+text = "Restore Defaults"
+[node name="ApplyControllerBindings" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/Actions"]
+layout_mode = 2
+text = "Apply"
+[node name="TuningColumn" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
 layout_mode = 2
 text = "Controller"
 theme_type_variation = &"ClassicHeading"
 
-[node name="PromptFamily" type="OptionButton" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="PromptFamily" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+
+[node name="LeftDeadZoneLabelRow" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
 layout_mode = 2
 
-[node name="LeftDeadZone" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/LeftDeadZoneLabelRow"]
 layout_mode = 2
+size_flags_horizontal = 3
+text = "Left stick dead zone"
+
+[node name="Value" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/LeftDeadZoneLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="LeftDeadZone" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.1
 max_value = 0.9
 step = 0.05
 
-[node name="RightDeadZone" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="RightDeadZoneLabelRow" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
 layout_mode = 2
+
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/RightDeadZoneLabelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Right stick dead zone"
+
+[node name="Value" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/RightDeadZoneLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RightDeadZone" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
 min_value = 0.1
 max_value = 0.9
 step = 0.05
 
-[node name="RepeatInitial" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="RepeatInitialLabelRow" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
 layout_mode = 2
+
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/RepeatInitialLabelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "UI repeat start delay"
+
+[node name="Value" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/RepeatInitialLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RepeatInitial" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
 min_value = 150.0
 max_value = 1000.0
 step = 25.0
 
-[node name="RepeatInterval" type="HSlider" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="RepeatIntervalLabelRow" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
 layout_mode = 2
+
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/RepeatIntervalLabelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "UI repeat interval"
+
+[node name="Value" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/RepeatIntervalLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RepeatInterval" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
 min_value = 50.0
 max_value = 500.0
 step = 25.0
 
-[node name="LiveInput" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
-layout_mode = 2
-text = "Live input • move or press a controller control"
-
-[node name="BindingRows" type="VBoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="BindingStatus" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="LiveInput" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn"]
 layout_mode = 2
 autowrap_mode = 2
+text = "Live input • move or press a controller control"
 
-[node name="Actions" type="HBoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content"]
+[node name="ClassicKeyboardShortcuts" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
-alignment = 2
+text = "Classic keyboard shortcuts"
+tooltip_text = "Use Castle's context-specific letter commands instead of WASD. Arrow keys and keypad still move. See the keyboard reference below."
+autowrap_mode = 2
 
-[node name="RestoreControllerDefaults" type="Button" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/Actions"]
+[node name="ClassicKeyboardHelp" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
-text = "Restore Defaults"
+text = "Classic exploration: I Items · M Money · S Spells · T Trade · A Area Search · C Camp · H Heal · R Rest · E Encounter · G Shop/Temple\nCombat: W Weapon · S Spells · L Scrolls · I Items · A Auto Turn · G Guard · D Delay · B Bandage · U Undo · E Escape · F Finish · C Center · N/P Next/Previous · R Reveal Friends\nTargeting: T target · Space confirm · Esc cancel. Fast Spells: 1–0 preview, Ctrl/Command-number use; Alt-number in combat."
+autowrap_mode = 3
 
-[node name="ApplyControllerBindings" type="Button" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/Actions"]
-layout_mode = 2
-text = "Apply"
-[node name="AutoSwitchToMelee" type="CheckButton" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="AutoSwitchToMelee" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 text = "Auto Switch To Melee Weapon"
-[node name="ShowExplorationMinimap" type="CheckButton" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+autowrap_mode = 2
+[node name="ImmediateSingleTargetActions" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
-text = "Show travel preview on the exploration map"
-[node name="AutojournalEnabled" type="CheckButton" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+text = "Immediate single-target actions"
+tooltip_text = "Click a combatant to commit a single-target action. Areas and multiple targets still require confirmation."
+autowrap_mode = 2
+[node name="ShowExplorationMinimap" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+layout_mode = 2
+text = "Show exploration minimap"
+autowrap_mode = 2
+[node name="AutojournalEnabled" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 text = "Add eligible scenario text to Notes automatically"
+autowrap_mode = 2
 
-[node name="ControlHelpExplore" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="ControlHelpExplore" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicInset"
-[node name="Row" type="BoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore" groups=["system_control_help_rows"]]
+[node name="Row" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore" groups=["system_control_help_rows"]]
 layout_mode = 2
-[node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
+[node name="Identity" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
 text = "Explore • Left stick / D-pad"
-[node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
+[node name="Detail" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpExplore/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Land uses eight directions; dungeons retain forward, reverse, turn, or four-way overhead movement."
 autowrap_mode = 2
-[node name="ControlHelpFieldcommands" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="ControlHelpFieldcommands" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicInset"
-[node name="Row" type="BoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands" groups=["system_control_help_rows"]]
+[node name="Row" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands" groups=["system_control_help_rows"]]
 layout_mode = 2
-[node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
+[node name="Identity" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
 text = "Actions • West radial • North workspaces • Menu System"
-[node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
+[node name="Detail" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFieldcommands/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Radials show the existing commands, current availability, and disabled reasons; South confirms and East cancels."
 autowrap_mode = 2
-[node name="ControlHelpFastSpells" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="ControlHelpFastSpells" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicInset"
-[node name="Row" type="BoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells" groups=["system_control_help_rows"]]
+[node name="Row" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells" groups=["system_control_help_rows"]]
 layout_mode = 2
-[node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
+[node name="Identity" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
 text = "Battle • South preview/choose • West commit"
-[node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
+[node name="Detail" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpFastSpells/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "North rotates areas; shoulders cycle targets; the action radial includes Fast Spells."
 autowrap_mode = 2
-[node name="ControlHelpBattle" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="ControlHelpBattle" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicInset"
-[node name="Row" type="BoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle" groups=["system_control_help_rows"]]
+[node name="Row" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle" groups=["system_control_help_rows"]]
 layout_mode = 2
-[node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
+[node name="Identity" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
 text = "Inspect & scroll • Right-stick click / right stick"
-[node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
+[node name="Detail" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpBattle/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Inspect the focused record or combatant; scroll the active panel or pan the battlefield."
 autowrap_mode = 2
-[node name="ControlHelpWorkspaces" type="PanelContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="ControlHelpWorkspaces" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicInset"
-[node name="Row" type="BoxContainer" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces" groups=["system_control_help_rows"]]
+[node name="Row" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces" groups=["system_control_help_rows"]]
 layout_mode = 2
-[node name="Identity" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
+[node name="Identity" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
 text = "Sections & party • Shoulders / triggers"
-[node name="Detail" type="Label" parent="SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
+[node name="Detail" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlHelpWorkspaces/Row"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Shoulders change sections or radial pages; triggers change the selected character where available."
 autowrap_mode = 2
 
-[node name="Diagnostics" type="VBoxContainer" parent="SystemWorkspaceTabs"]
+[node name="Diagnostics" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]
 layout_mode = 2
 size_flags_vertical = 3
-[node name="DiagnosticsSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceTabs/Diagnostics"]
+[node name="DiagnosticsSettingsScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="DiagnosticsSettingsPanel" type="PanelContainer" parent="SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll"]
+[node name="DiagnosticsSettingsPanel" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="Heading" type="Label" parent="SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Diagnostics"
-[node name="Description" type="Label" parent="SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
 layout_mode = 2
 text = "Developer overlays expose detached topology facts without becoming gameplay authority."
 autowrap_mode = 2
-[node name="Divider" type="HSeparator" parent="SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
+[node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
 layout_mode = 2
-[node name="TopologyDebug" type="CheckButton" parent="SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
+[node name="TopologyDebug" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
 layout_mode = 2
 text = "Show APs and random rectangles on map"
-[node name="TopologyExplanation" type="Label" parent="SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
+autowrap_mode = 2
+[node name="TopologyExplanation" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
 layout_mode = 2
 text = "Gold diamonds mark placed Action Points and gold outlines show effective random encounter rectangles."
 autowrap_mode = 2
@@ -733,10 +961,15 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Controller binding changes remain a draft until Apply."
 text_overrun_behavior = 3
+autowrap_mode = 2
 
 [node name="RestoreControllerDefaultsDock" type="Button" parent="ControlsDraftFooter"]
 layout_mode = 2
 text = "Restore Defaults"
+
+[node name="DiscardControllerDraftDock" type="Button" parent="ControlsDraftFooter"]
+layout_mode = 2
+text = "Discard"
 
 [node name="ApplyControllerBindingsDock" type="Button" parent="ControlsDraftFooter"]
 layout_mode = 2

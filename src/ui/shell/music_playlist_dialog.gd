@@ -17,6 +17,7 @@ var _volume: HSlider
 var _done: Button
 var _mode_buttons: Dictionary = {}
 var _settings: PresentationSettings
+var _focus_before_open: WeakRef
 
 
 func _ready() -> void:
@@ -35,6 +36,10 @@ func _ready() -> void:
 
 
 func open(settings: PresentationSettings, playlist_id: int, title: String, playing: bool) -> void:
+	var opening := not visible
+	if opening:
+		var previous_focus: Control = get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+		_focus_before_open = weakref(previous_focus) if previous_focus != null else null
 	_settings = settings
 	_enabled.set_pressed_no_signal(settings != null and settings.music_enabled)
 	_volume.set_value_no_signal(settings.music_volume if settings != null else 0.8)
@@ -46,15 +51,19 @@ func open(settings: PresentationSettings, playlist_id: int, title: String, playi
 			(buttons[mode_value] as Button).set_pressed_no_signal(int(mode_value) == mode)
 	set_playback_state(playlist_id, title, playing)
 	show()
-	if _done != null and _done.is_inside_tree():
+	if opening and _done != null and _done.is_inside_tree():
 		_done.grab_focus()
 
 
 func close() -> void:
 	if not visible:
 		return
+	var previous_focus := _focus_before_open.get_ref() as Control if _focus_before_open != null else null
+	_focus_before_open = null
 	hide()
 	closed.emit()
+	if previous_focus != null and previous_focus.is_inside_tree() and previous_focus.is_visible_in_tree():
+		previous_focus.grab_focus()
 
 
 func set_playback_state(playlist_id: int, title: String, playing: bool) -> void:

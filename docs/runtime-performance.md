@@ -122,7 +122,26 @@ Both long-route runs crossed multiple retained chunks without a script error, co
 
 ## Combat navigation
 
-Party Auto and monster advance now request a weighted route to every legal hostile contact position before committing a movement step. Each edge uses the same complete-footprint maximum terrain charge as actual movement; a rules-legal size-zero friendly swap is represented by its actual five-point edge. Four derived 1x1, 1x2, 2x1, and 2x2 profiles retain static passability and destination movement base until battlefield terrain changes; typed distance, first-step, closed, goal, heuristic, queue, and heap storage is reused with generation counters. Other dynamic combatants block the immediate move but remain forecast occupancy later in the route. If no route exists, monsters retain Castle's deterministic bounded random shifting.
+Party Auto and monster advance request a weighted route to legal contact or casting positions before committing a movement step. Each edge uses the same complete-footprint maximum terrain charge as actual movement; a rules-legal size-zero friendly swap is represented by its actual five-point edge. Four derived 1x1, 1x2, 2x1, and 2x2 profiles retain static passability and destination movement base until battlefield terrain changes; typed distance, first-step, closed, goal, heuristic, queue, and heap storage is reused with generation counters. Other dynamic combatants block the immediate move but remain forecast occupancy later in the route. Unavailable pursuit ends without random wandering; retreat retains its separate Castle directional rules.
+
+### Dense and spell-heavy Auto audit
+
+The 2026-09-24 audit compares the in-progress smarter-Auto implementation immediately before and after its performance corrections, not an older implementation with different tactical behavior. Godot 4.7.1 headless runs used bundled City of Bywater package `483ebdf07fd3b9b791aa6eeff9cf6b54c3e6454b4483e2e8cdc064aa3e9bdbbd`, the existing `combat_performance_probe.gd`, seed 17, and six synthetic benchmark characters. Runs were serial, three before and three after per battle. Values are same-machine medians, not rendered frame times or portable guarantees.
+
+| Workload | Before | After |
+|---|---:|---:|
+| Battle 53, 46 monsters: Auto activation | 900.96 ms | 160.01 ms |
+| Battle 53: monster phase | 404.90 ms | 349.23 ms |
+| Battle 53: warm monster phase | 374.86 ms | 309.11 ms |
+| Battle 178, 12 casters: Auto activation | 135.79 ms | 112.86 ms |
+| Battle 178: monster phase | 1,075.03 ms | 350.81 ms |
+| Battle 178: warm monster phase | 1,077.44 ms | 312.10 ms |
+
+Repeated identical native spell slots caused ten equivalent evaluations per power in the spell-heavy fixture. Scoring each distinct spell once preserves the earliest slot and strict tie order. Pursuit now checks all admitted current firing positions before enumerating distant anchors, coalesces equivalent firing geometry, and avoids contact searches when contact is already possible. Summon force-balance rejection precedes placement search. A bounded, nonserialized LOS cache follows terrain and actor-placement revisions; hypothetical positions bypass it.
+
+All recorded non-timing probe fields match across the before/after samples, including event-kind sequences, event counts, RNG counts, and playback workload. This is not a full event-payload or final-save equivalence claim. Separate query diagnostics compare 867 pursuit queries and 23,760 LOS queries, including footprints, terrain/occupancy mutations, restoration, and hypothetical origins. They preserve serialized state and query RNG. Focused combat checks additionally cover zero-physical-attack repositioning and propagation of malformed charmed-actor equipment instead of a silent turn skip.
+
+These results establish bounded core-query and transaction performance evidence. They do not establish rendered input latency, physical-controller acceptance, retail performance, or ordinary-gameplay certification. Tactical behavior changes are deliberate improvements over the Realmz Castle codebase; the timing optimizations preserve the selected plans and category weights.
 
 The tool-only `battlefield_navigation_benchmark.gd` compared ten repeated decisions for every combination of six fixtures and four footprint shapes. It subclasses `AStarGrid2D` only inside the probe so both planners use the same footprint passability and exact edge cost; the engine comparator runs one query per legal contact goal because it has no native multi-goal contract. Across 240 decisions, the custom planner took 5.071 seconds and `AStarGrid2D` took 3.770 seconds. All twenty reachable fixture/footprint combinations agreed on the first step, and all four unreachable cases agreed that no route existed. Routine open, choke, and congestion means were 1.34-2.43 ms for the custom planner versus 1.07-3.53 ms for the engine comparator. U-shaped detours remained the largest reachable custom cost at 31.29-35.08 ms; unreachable full-field exhaustion measured 79.11-80.14 ms versus 46.15-64.80 ms. The native engine search is therefore still faster in the worst cases, but it remains comparison infrastructure: the custom planner preserves stable tie-breaking, exact multi-cell rules, multi-goal pursuit, query-time occupancy semantics, and the Node-free deterministic core boundary.
 

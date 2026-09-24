@@ -7,6 +7,11 @@ extends RefCounted
 var _character_positions: Dictionary
 var _monster_positions: Dictionary
 var _monster_sizes: Dictionary
+var _revision: int = 0
+
+
+func revision() -> int:
+	return _revision
 
 
 func _init(character_positions: Dictionary = {}, monster_positions: Dictionary = {}, monster_sizes: Dictionary = {}) -> void:
@@ -67,29 +72,31 @@ func actor_at(coordinate: Vector2i, excluding_actor_id: String = "") -> String:
 
 
 func place_character(actor_id: String, coordinate: Vector2i) -> bool:
-	if actor_id.is_empty() or not BattlefieldGrid.contains(coordinate) or is_occupied(coordinate):
+	if actor_id.is_empty() or not BattlefieldGrid.contains(coordinate) or not actor_at(coordinate).is_empty():
 		return false
 	_character_positions[actor_id] = coordinate
+	_revision += 1
 	return true
 
 
 func remove_character(actor_id: String) -> void:
-	_character_positions.erase(actor_id)
+	if _character_positions.erase(actor_id): _revision += 1
 
 
 func place_monster(actor_id: String, coordinate: Vector2i, size: int) -> bool:
 	if actor_id.is_empty() or size < 0 or size > 3:
 		return false
 	for cell: Vector2i in BattlefieldGrid.footprint_cells(coordinate, size):
-		if not BattlefieldGrid.contains(cell) or is_occupied(cell):
+		if not BattlefieldGrid.contains(cell) or not actor_at(cell).is_empty():
 			return false
 	_monster_positions[actor_id] = coordinate
 	_monster_sizes[actor_id] = size
+	_revision += 1
 	return true
 
 
 func remove_monster(actor_id: String) -> void:
-	_monster_positions.erase(actor_id)
+	if _monster_positions.erase(actor_id): _revision += 1
 	_monster_sizes.erase(actor_id)
 
 
@@ -103,6 +110,7 @@ func move_actor(actor_id: String, destination: Vector2i) -> bool:
 		_character_positions[actor_id] = destination
 	else:
 		_monster_positions[actor_id] = destination
+	_revision += 1
 	return true
 
 
@@ -115,6 +123,7 @@ func swap_size_zero_actors(first_actor_id: String, second_actor_id: String) -> b
 		return false
 	_set_actor_position(first_actor_id, second_position)
 	_set_actor_position(second_actor_id, first_position)
+	_revision += 1
 	return true
 
 
@@ -125,17 +134,8 @@ func replace_monster_id(current_id: String, replacement_id: String) -> bool:
 	_monster_sizes[replacement_id] = _monster_sizes[current_id]
 	_monster_positions.erase(current_id)
 	_monster_sizes.erase(current_id)
+	_revision += 1
 	return true
-
-
-func is_occupied(coordinate: Vector2i) -> bool:
-	for value: Variant in _character_positions.values():
-		if value == coordinate:
-			return true
-	for actor_id: Variant in _monster_positions:
-		if BattlefieldGrid.footprint_cells(_coordinate(_monster_positions[actor_id]), int(_monster_sizes.get(actor_id, 0))).has(coordinate):
-			return true
-	return false
 
 
 func character_positions() -> Dictionary:

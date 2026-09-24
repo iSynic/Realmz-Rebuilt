@@ -6,8 +6,8 @@
 
 [node name="SystemScreen" instance=ExtResource("1_base")]
 route_id = &"system"
-title = "Preferences and Game"
-description = "Save, restore, display, audio, accessibility, and package diagnostics."
+title = "Preferences"
+description = "Display, audio, accessibility, controls, and diagnostics."
 script = ExtResource("2_screen")
 
 [node name="SystemWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]

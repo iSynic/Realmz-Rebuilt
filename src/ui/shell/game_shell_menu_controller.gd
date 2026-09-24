@@ -11,10 +11,19 @@ var _controller_heading: int = 0
 var _controller_item: int = 0
 var _controller_restore_focus: WeakRef
 var _controller_repeat_allowed: bool = true
+var _pointer_open: bool = false
+var _pointer_menu: MenuButton
+var _native_open_menu: MenuButton
+var _pointer_activation_pending: MenuButton
+var _switching_pointer_heading: bool = false
+var _pointer_close_generation: int = 0
 
 
 func _init(owner: Control) -> void:
 	_owner_ref = weakref(owner)
+	var window := owner.get_window()
+	if window != null and not window.focus_exited.is_connected(_on_window_focus_exited):
+		window.focus_exited.connect(_on_window_focus_exited, CONNECT_DEFERRED)
 
 
 func _owner():
@@ -30,83 +39,95 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 	var contextual_definition: Dictionary = owner._command_controller.presentation_definition(ClassicCommandCatalog.command(&"contextual"))
 	var contextual_label := String(contextual_definition.get("label", "Encounter"))
 	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/InfoMenu"), [
-		{"label": "About Realmz Rebuilt", "route": &"system"},
-		{"label": "Package identity and readiness", "route": &"system"},
-		{"label": "Diagnostics", "route": &"system"},
-	])
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/GameMenu"), [
-		{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": GameShellAvailability.campaign_library_reason(game_view)},
-		{"label": "Save & Load…", "route": &"system", "disabled_reason": GameShellAvailability.save_reason(game_view)}, {"label": "Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": GameShellAvailability.save_reason(game_view)}, {"label": "Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": GameShellAvailability.save_reason(game_view)},
-		{"label": "Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": GameShellAvailability.load_reason(game_view)}, {"label": "Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": GameShellAvailability.load_reason(game_view)},
-		{"label": "Main Menu…", "system": &"end_adventure", "disabled_reason": GameShellAvailability.end_adventure_reason(game_view)},
-		{"label": "Quit", "system": &"quit"},
-	])
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/AdventureMenu"), [
-		{"label": "Explore", "route": &"exploration"},
-		{"label": "Search", "command": &"search_mode", "disabled_reason": GameShellAvailability.action_reason(game_view, &"toggle_search")},
-		{"label": "Area Search", "command": &"area_search", "disabled_reason": GameShellAvailability.action_reason(game_view, &"area_search")},
-		{"label": "Torch", "command": &"torch", "disabled_reason": GameShellAvailability.action_reason(game_view, &"use_torch")},
-		{"label": "Camp", "command": &"camp", "disabled_reason": GameShellAvailability.action_reason(game_view, &"camp")},
-		{"label": "Rest", "command": &"rest", "disabled_reason": GameShellAvailability.action_reason(game_view, &"rest")},
-		{"label": "Heal", "command": &"heal", "disabled_reason": GameShellAvailability.action_reason(game_view, &"heal")},
-		{"label": contextual_label, "command": &"contextual", "disabled_reason": GameShellAvailability.action_reason(game_view, contextual_availability)},
-		{"label": "Money", "command": &"money", "disabled_reason": GameShellAvailability.action_reason(game_view, &"money_action")},
-	])
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/CharacterMenu"), [
-		{"label": "Party Order", "route": &"character"}, {"label": "Character Sheets", "route": &"character"},
-		{"label": "Inventory", "route": &"inventory"}, {"label": "Spells", "route": &"spells"}, {"label": "Vault", "route": &"vault"},
-	])
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/AlliesMenu"), [
-		{"label": "Current Allies", "route": &"allies", "disabled_reason": GameShellAvailability.allies_reason(game_view)},
-		{"label": "Bestiary", "route": &"bestiary"},
-	])
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/MapsMenu"), [{"label": "Maps and Notes", "route": &"journal"}, {"label": "Acquired Maps", "route": &"journal"}])
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/PreferencesMenu"), [{"label": "Display, Audio, and Access", "route": &"system"}, {"label": "Save, Load, and Package Diagnostics", "route": &"system"}])
-	fill(owner.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/MusicMenu"), [
-		{"label": "Now Playing: %s" % (music_title if music_playing else "Nothing"), "disabled_reason": "Current music title"},
-		{"label": "Stop Music" if settings.music_enabled else "Play Music", "system": &"music_toggle"},
-		{"label": "Playlist…", "system": &"music_playlist"},
-	])
-	fill(owner.get_node("%CompactMenu"), _compact_entries(game_view, settings, contextual_label, contextual_availability))
+	var groups := _menu_catalog(game_view, settings, music_title, music_playing, contextual_label, contextual_availability)
+	var row_path := "MenuStrip/MenuChromeColumn/MenuSurface/MenuRow/"
+	for group: Dictionary in groups:
+		var menu := owner.get_node(row_path + String(group["node"])) as MenuButton
+		menu.text = String(group["heading"])
+		fill(menu, group["entries"])
+		_bind_pointer_menu(menu)
+	var compact_menu := owner.get_node("%CompactMenu") as MenuButton
+	fill(compact_menu, _compact_entries(groups))
+	_bind_pointer_menu(compact_menu)
 	if _controller_active:
 		_restore_controller_selection(retained_heading, retained_entry)
 
 
-static func _compact_entries(game_view: GameView, settings: PresentationSettings, contextual_label: String, contextual_availability: StringName) -> Array[Dictionary]:
+static func _menu_catalog(game_view: GameView, settings: PresentationSettings, music_title: String, music_playing: bool, contextual_label: String, contextual_availability: StringName) -> Array[Dictionary]:
 	return [
-		{"label": "Adventure — Explore", "route": &"exploration"},
-		{"label": "Adventure — Search", "command": &"search_mode", "disabled_reason": GameShellAvailability.action_reason(game_view, &"toggle_search")},
-		{"label": "Adventure — Area Search", "command": &"area_search", "disabled_reason": GameShellAvailability.action_reason(game_view, &"area_search")},
-		{"label": "Adventure — Torch", "command": &"torch", "disabled_reason": GameShellAvailability.action_reason(game_view, &"use_torch")},
-		{"label": "Adventure — Camp", "command": &"camp", "disabled_reason": GameShellAvailability.action_reason(game_view, &"camp")},
-		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": GameShellAvailability.action_reason(game_view, &"rest")},
-		{"label": "Adventure — Heal", "command": &"heal", "disabled_reason": GameShellAvailability.action_reason(game_view, &"heal")},
-		{"label": "Adventure — %s" % contextual_label, "command": &"contextual", "disabled_reason": GameShellAvailability.action_reason(game_view, contextual_availability)},
-		{"label": "Adventure — Money", "command": &"money", "disabled_reason": GameShellAvailability.action_reason(game_view, &"money_action")},
-		{"label": "Character — Party Order", "route": &"character"}, {"label": "Character — Character Sheets", "route": &"character"},
-		{"label": "Character — Inventory", "route": &"inventory"}, {"label": "Character — Spells", "route": &"spells"}, {"label": "Character — Vault", "route": &"vault"},
-		{"label": "Allies — Current Allies", "route": &"allies", "disabled_reason": GameShellAvailability.allies_reason(game_view)}, {"label": "Allies — Bestiary", "route": &"bestiary"},
-		{"label": "Maps / Notes", "route": &"journal"},
-		{"label": "Game — Save & Load…", "route": &"system", "disabled_reason": GameShellAvailability.save_reason(game_view)}, {"label": "Game — Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": GameShellAvailability.save_reason(game_view)}, {"label": "Game — Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": GameShellAvailability.save_reason(game_view)},
-		{"label": "Game — Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": GameShellAvailability.load_reason(game_view)}, {"label": "Game — Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": GameShellAvailability.load_reason(game_view)},
-		{"label": "Game — Main Menu", "system": &"end_adventure", "disabled_reason": GameShellAvailability.end_adventure_reason(game_view)},
-		{"label": "Game — Campaigns", "system": &"campaigns", "disabled_reason": GameShellAvailability.campaign_library_reason(game_view)},
-		{"label": "Preferences", "route": &"system"},
-		{"label": "Music — %s" % ("Stop" if settings.music_enabled else "Play"), "system": &"music_toggle"},
-		{"label": "Music — Playlist…", "system": &"music_playlist"}, {"label": "Info / Diagnostics", "route": &"system"}, {"label": "Quit", "system": &"quit"},
+		{"node": "GameMenu", "heading": "Game", "entries": [
+			{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": GameShellAvailability.campaign_library_reason(game_view)},
+			{"label": "Save & Load…", "route": &"save_load", "disabled_reason": GameShellAvailability.save_reason(game_view)},
+			{"label": "Quick Save 1", "system": &"save", "value": "quick", "disabled_reason": GameShellAvailability.save_reason(game_view)},
+			{"label": "Quick Save 2", "system": &"save", "value": "quick-2", "disabled_reason": GameShellAvailability.save_reason(game_view)},
+			{"label": "Quick Load 1", "system": &"load", "value": "quick", "disabled_reason": GameShellAvailability.load_reason(game_view)},
+			{"label": "Quick Load 2", "system": &"load", "value": "quick-2", "disabled_reason": GameShellAvailability.load_reason(game_view)},
+			{"label": "Main Menu…", "system": &"end_adventure", "disabled_reason": GameShellAvailability.end_adventure_reason(game_view)},
+			{"label": "Quit", "system": &"quit"},
+		]},
+		{"node": "AdventureMenu", "heading": "Adventure", "entries": [
+			{"label": "Explore", "route": &"exploration"},
+			{"label": "Move To", "system": &"click_to_move_toggle", "checkable": true, "checked": settings.click_to_move_enabled},
+			{"label": "Search", "command": &"search_mode", "disabled_reason": GameShellAvailability.action_reason(game_view, &"toggle_search")},
+			{"label": "Area Search", "command": &"area_search", "disabled_reason": GameShellAvailability.action_reason(game_view, &"area_search")},
+			{"label": "Torch", "command": &"torch", "disabled_reason": GameShellAvailability.action_reason(game_view, &"use_torch")},
+			{"label": "Camp", "command": &"camp", "disabled_reason": GameShellAvailability.action_reason(game_view, &"camp")},
+			{"label": "Rest", "command": &"rest", "disabled_reason": GameShellAvailability.action_reason(game_view, &"rest")},
+			{"label": "Heal", "command": &"heal", "disabled_reason": GameShellAvailability.action_reason(game_view, &"heal")},
+			{"label": contextual_label, "command": &"contextual", "disabled_reason": GameShellAvailability.action_reason(game_view, contextual_availability)},
+			{"label": "Bestiary", "route": &"bestiary"},
+			{"label": "Maps and Notes", "route": &"journal"},
+			{"label": "Acquired Maps", "route": &"journal"},
+		]},
+		{"node": "PartyMenu", "heading": "Party", "entries": [
+			{"label": "Party Order", "route": &"character"}, {"label": "Character Sheets", "route": &"character"},
+			{"label": "Inventory", "route": &"inventory"}, {"label": "Spells", "route": &"spells"},
+			{"label": "Vault", "route": &"vault"},
+			{"label": "Current Allies", "route": &"allies", "disabled_reason": GameShellAvailability.allies_reason(game_view)},
+			{"label": "Money", "command": &"money", "disabled_reason": GameShellAvailability.action_reason(game_view, &"money_action")},
+		]},
+		{"node": "SettingsMenu", "heading": "Settings", "entries": [
+			{"label": "Preferences…", "route": &"system"},
+			{"label": "Display…", "route": &"system", "section": &"Display"},
+			{"label": "Audio & Pacing…", "route": &"system", "section": &"Audio"},
+			{"label": "Accessibility…", "route": &"system", "section": &"Accessibility"},
+			{"label": "Controls…", "route": &"system", "section": &"Controls"},
+			{"label": "Now Playing: %s" % (music_title if music_playing else "Nothing"), "disabled_reason": "Current music title"},
+			{"label": "Stop Music" if settings.music_enabled else "Play Music", "system": &"music_toggle"},
+			{"label": "Playlist…", "system": &"music_playlist"},
+		]},
+		{"node": "HelpMenu", "heading": "Help", "entries": [
+			{"label": "About Realmz Rebuilt", "route": &"system", "section": &"Diagnostics"},
+			{"label": "Package identity and readiness", "route": &"system", "section": &"Diagnostics"},
+			{"label": "Diagnostics", "route": &"system", "section": &"Diagnostics"},
+		]},
 	]
 
 
-func fill(menu: MenuButton, entries: Array[Dictionary]) -> void:
+static func _compact_entries(groups: Array[Dictionary]) -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	for group: Dictionary in groups:
+		for source_entry: Dictionary in group["entries"]:
+			var entry := source_entry.duplicate(true)
+			entry["label"] = "%s — %s" % [group["heading"], entry["label"]]
+			entries.append(entry)
+	return entries
+
+
+func fill(menu: MenuButton, entries: Array) -> void:
 	var owner = _owner()
 	var popup := menu.get_popup()
 	popup.clear()
+	# Exclusive embedded windows block the outer compositor's input forwarding.
+	popup.exclusive = false
 	var actions: Dictionary = {}
 	var enabled_count := 0
 	for index: int in entries.size():
-		var entry := entries[index]
+		var entry: Dictionary = entries[index]
 		popup.add_item(String(entry["label"]), index)
+		if bool(entry.get("checkable", false)):
+			popup.set_item_as_checkable(index, true)
+			popup.set_item_checked(index, bool(entry.get("checked", false)))
 		var reason := String(entry.get("disabled_reason", ""))
 		if reason.is_empty() and entry.has("route"):
 			reason = GameShellAvailability.route_change_reason(owner._current_view)
@@ -125,13 +146,128 @@ func fill(menu: MenuButton, entries: Array[Dictionary]) -> void:
 		_connected[menu.get_instance_id()] = true
 
 
+func _bind_pointer_menu(menu: MenuButton) -> void:
+	var key := menu.get_instance_id()
+	if _connected.has("pointer_%d" % key):
+		return
+	menu.switch_on_hover = false
+	menu.mouse_entered.connect(_on_heading_mouse_entered.bind(menu))
+	menu.mouse_exited.connect(_schedule_pointer_close)
+	menu.gui_input.connect(_on_menu_gui_input.bind(menu))
+	var popup := menu.get_popup()
+	popup.about_to_popup.connect(_on_popup_opened.bind(menu))
+	popup.popup_hide.connect(_on_popup_hidden.bind(menu))
+	popup.mouse_entered.connect(_on_popup_mouse_entered.bind(menu))
+	popup.mouse_exited.connect(_schedule_pointer_close)
+	popup.focus_exited.connect(_on_window_focus_exited, CONNECT_DEFERRED)
+	_connected["pointer_%d" % key] = true
+
+
+func _on_popup_opened(menu: MenuButton) -> void:
+	if _controller_active:
+		return
+	_native_open_menu = menu
+	if _pointer_activation_pending == menu:
+		_pointer_activation_pending = null
+		_pointer_open = true
+		_pointer_menu = menu
+		_cancel_pointer_close()
+
+
+func _on_popup_hidden(menu: MenuButton) -> void:
+	if _switching_pointer_heading or _controller_active:
+		return
+	if _native_open_menu == menu:
+		_owner().get_viewport().set_input_as_handled()
+		_native_open_menu = null
+	if _pointer_menu == menu:
+		_close_pointer_menu()
+
+
+func _on_menu_gui_input(event: InputEvent, menu: MenuButton) -> void:
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button != null and mouse_button.button_index == MOUSE_BUTTON_LEFT and mouse_button.pressed:
+		_pointer_activation_pending = menu
+
+
+func _on_popup_mouse_entered(menu: MenuButton) -> void:
+	if _controller_active or _native_open_menu != menu:
+		return
+	_pointer_open = true
+	_pointer_menu = menu
+	_cancel_pointer_close()
+
+
+func _on_heading_mouse_entered(menu: MenuButton) -> void:
+	if _controller_active:
+		return
+	if _native_open_menu != null and not _pointer_open:
+		_pointer_open = true
+		_pointer_menu = _native_open_menu
+	_cancel_pointer_close()
+	if not _pointer_open or _native_open_menu == menu:
+		return
+	_switching_pointer_heading = true
+	if _native_open_menu != null:
+		_native_open_menu.get_popup().hide()
+	_pointer_activation_pending = menu
+	menu.show_popup()
+	_switching_pointer_heading = false
+
+
+func _cancel_pointer_close() -> void:
+	_pointer_close_generation += 1
+
+
+func _schedule_pointer_close() -> void:
+	if not _pointer_open or _controller_active:
+		return
+	_pointer_close_generation += 1
+	_close_pointer_menu_after_grace(_pointer_close_generation)
+
+
+func _close_pointer_menu_after_grace(generation: int) -> void:
+	var owner = _owner()
+	if owner == null:
+		return
+	await owner.get_tree().create_timer(0.15).timeout
+	if generation == _pointer_close_generation and _pointer_open and not _controller_active:
+		_close_pointer_menu()
+
+
+func _close_pointer_menu() -> void:
+	_pointer_close_generation += 1
+	var menu := _native_open_menu if _native_open_menu != null else _pointer_menu
+	_native_open_menu = null
+	_pointer_menu = null
+	_pointer_open = false
+	_pointer_activation_pending = null
+	if menu != null and is_instance_valid(menu):
+		menu.get_popup().hide()
+
+
+func _on_window_focus_exited() -> void:
+	var current_owner = _owner()
+	if current_owner != null and current_owner.get_window().has_focus(): return
+	if _native_open_menu != null and _native_open_menu.get_popup().has_focus(): return
+	_close_pointer_menu()
+	if _controller_active:
+		var owner = _owner()
+		if owner != null and owner.is_inside_tree():
+			controller_back()
+		else:
+			_controller_active = false
+			_controller_popup_open = false
+
+
 func _on_item_pressed(item_id: int, menu: MenuButton) -> void:
+	_close_pointer_menu()
 	var owner = _owner()
 	var entry: Dictionary = _actions.get(menu.get_instance_id(), {}).get(item_id, {})
 	if entry.is_empty() or not String(entry.get("disabled_reason", "")).is_empty():
 		return
 	if entry.has("route"):
-		owner._navigator.open_screen(StringName(entry["route"]))
+		owner._navigator.open_screen(StringName(entry["route"]), true, StringName(entry.get("section", &"Display")) if entry["route"] == &"system" else &"")
 	elif entry.has("command"):
 		owner._command_controller.activate(StringName(entry["command"]))
 	elif entry.has("system"):
@@ -144,6 +280,7 @@ func controller_open() -> bool:
 		return false
 	var owner = _owner()
 	var focused: Control = owner.get_viewport().gui_get_focus_owner() if owner != null else null
+	_close_pointer_menu()
 	_controller_restore_focus = weakref(focused) if focused != null else null
 	_controller_active = true
 	_controller_popup_open = false
@@ -158,6 +295,54 @@ func controller_open() -> bool:
 
 func controller_is_open() -> bool:
 	return _controller_active
+
+
+## Lets the application input router keep native menu events out of gameplay.
+func owns_native_menu_input() -> bool:
+	return _native_open_menu != null
+
+
+## Returns true when a raw host event belongs to either top-menu interaction.
+## The host should stop gameplay routing but leave the event available to GUI controls.
+func handle_host_input(event: InputEvent) -> bool:
+	if _native_open_menu != null:
+		if event is InputEventMouseButton and event.pressed:
+			var popup := _native_open_menu.get_popup()
+			if not Rect2(popup.position, popup.size).has_point(event.position):
+				_close_pointer_menu()
+				_owner().get_viewport().set_input_as_handled()
+		return true
+	if not _controller_active:
+		return false
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		if key.pressed:
+			match key.keycode:
+				KEY_ESCAPE: controller_back()
+				KEY_ENTER, KEY_KP_ENTER, KEY_SPACE: controller_confirm()
+				KEY_LEFT: controller_direction(Vector2i.LEFT, key.echo)
+				KEY_RIGHT: controller_direction(Vector2i.RIGHT, key.echo)
+				KEY_UP: controller_direction(Vector2i.UP, key.echo)
+				KEY_DOWN: controller_direction(Vector2i.DOWN, key.echo)
+		else:
+			controller_direction(Vector2i.ZERO)
+		_owner().get_viewport().set_input_as_handled()
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		var mouse_button := event as InputEventMouseButton
+		var over_heading := _pointer_is_over_heading(mouse_button.position)
+		controller_pointer_takeover()
+		if not over_heading:
+			var owner = _owner()
+			if owner != null:
+				owner.get_viewport().set_input_as_handled()
+	return true
+
+
+func _pointer_is_over_heading(position: Vector2) -> bool:
+	for menu: MenuButton in _controller_menus():
+		if menu.get_global_rect().has_point(position):
+			return true
+	return false
 
 
 func controller_direction(direction: Vector2i, repeated: bool = false) -> bool:
@@ -301,7 +486,10 @@ func _controller_entries(menu: MenuButton) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var actions: Dictionary = _actions.get(menu.get_instance_id(), {})
 	for index: int in menu.get_popup().item_count:
-		result.append(actions.get(index, {}))
+		var entry: Dictionary = actions.get(index, {}).duplicate(true)
+		if bool(entry.get("checkable", false)):
+			entry["label"] = "%s  %s" % [entry["label"], "✓" if menu.get_popup().is_item_checked(index) else "○"]
+		result.append(entry)
 	return result
 
 
@@ -319,7 +507,7 @@ func _controller_selected_identity() -> String:
 	if menu == null or not _controller_popup_open:
 		return ""
 	var entry: Dictionary = _actions.get(menu.get_instance_id(), {}).get(_controller_item, {})
-	for key: String in ["route", "command", "system", "value", "label"]:
+	for key: String in ["route", "command", "system", "value", "label", "section"]:
 		if entry.has(key):
 			return "%s:%s" % [key, entry[key]]
 	return ""

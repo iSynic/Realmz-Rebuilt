@@ -5,6 +5,7 @@ const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_a
 class RouterOverlayAccess extends RefCounted:
 	func text_editor_is_open() -> bool: return false
 	func radial_is_open() -> bool: return false
+	func handle_navigation_modal_controller(_action: StringName, _pressed: bool, _direction: Vector2i = Vector2i.ZERO) -> bool: return false
 
 class RouterShellPresenter extends RefCounted:
 	var controller := RouterOverlayAccess.new()
@@ -23,6 +24,7 @@ class RouterDungeonPresenter extends RefCounted:
 	func is_active() -> bool: return false
 
 class RouterMovementHost extends Control:
+	var click_to_move: ClickToMoveCoordinator
 	var presentation_coordinator := RouterCoordinator.new(); var _shell_presenter := RouterShellPresenter.new(); var session_controller := RouterSessionController.new(); var _dungeon_presenter := RouterDungeonPresenter.new(); var _held_movement := HeldMovementController.new()
 	func accepts_exploration_input() -> bool: return true
 
@@ -193,6 +195,10 @@ func _test_ordered_controller_targeting() -> void:
 	assert_true(area.move_coordinate_preview(Vector2i(1, -1)) and area.hovered_coordinate == Vector2i(41, 39), "controller area targeting moves an arbitrary center over the battlefield grid")
 	assert_false(area.can_confirm(), "moving an area preview does not commit it")
 	assert_true(area.select_coordinate(area.hovered_coordinate) and area.rotate_area() and area.committed_body().target_coordinate == Vector2i(41, 39), "South selects and North rotates an area before explicit commit")
+	area.validation_deferred = false
+	area.legal_coordinates.assign([Vector2i(43, 39)])
+	assert_true(area.move_coordinate_preview(Vector2i.RIGHT) and not area.select_coordinate(area.hovered_coordinate) and not area.can_confirm(), "controller preview can cross an unavailable cell without admitting it")
+	assert_true(area.move_coordinate_preview(Vector2i.RIGHT) and area.select_coordinate(area.hovered_coordinate) and area.can_confirm(), "controller can reach a disconnected legal target region")
 	var summon_request := CombatTargetingRequest.new(&"coordinate_sequence", body)
 	summon_request.validation_deferred = true
 	summon_request.maximum_targets = 2
@@ -275,8 +281,8 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell; host.add_child(shell); await (Engine.get_main_loop() as SceneTree).process_frame
 	for shell_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]: host.size = shell_size; await (Engine.get_main_loop() as SceneTree).process_frame; shell.controller.hide_prompts(); var stage_before := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); shell.controller.show_prompts(ControllerPreferences.PROMPT_XBOX, &"workspace"); var prompt_rect := (shell.find_child("ControllerPromptStrip", true, false) as Control).get_global_rect(); var stage_rect := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); var footer_rect := (shell.find_child("BottomRegion", true, false) as Control).get_global_rect(); assert_true(prompt_rect.intersects(stage_rect) and not prompt_rect.intersects(footer_rect) and stage_rect == stage_before, "the transient controller hint floats over the upper stage without changing shell geometry at %s" % shell_size)
 	assert_true(shell.controller.open_workspace_radial(), "North opens the curated workspace wheel"); var workspace_radial := shell.find_child("ControllerRadialOverlay", true, false) as ControllerRadialOverlay; assert_equal(workspace_radial.current_page_entries().map(func(entry: ControllerRadialEntry) -> StringName: return entry.id), [&"inventory", &"spells", &"journal", &"character", &"services", &"workspace_preferences", &"workspace_save_load", &"exploration"], "the primary workspace wheel exposes the approved eight stable destinations in order"); shell.controller.cancel_radial()
-	assert_true(shell.controller.open_top_menu() and shell.controller.move_top_menu(Vector2i.DOWN), "View/Create/Minus opens the scene-owned entry layer"); var menu_overlay := shell.find_child("ControllerTopMenuOverlay", true, false) as Control; assert_true(menu_overlay.visible and (menu_overlay.find_child("Reason", true, false) as Label).visible, "disabled controller entries remain inspectable with their reason"); shell.controller.confirm_top_menu(); assert_true(shell.controller.top_menu_is_open(), "South cannot execute a disabled entry"); var quit_count := [0]
-	assert_true(shell.controller.back_top_menu() and shell.controller.move_top_menu(Vector2i.RIGHT) and shell.controller.move_top_menu(Vector2i.DOWN), "East returns to headings before a fresh direction opens another menu"); shell.controller.move_top_menu(Vector2i.ZERO); shell.quit_requested.connect(func() -> void: quit_count[0] += 1); for _repeat: int in 20: shell.controller.move_top_menu(Vector2i.DOWN, true)
+	assert_true(shell.controller.open_top_menu() and shell.controller.move_top_menu(Vector2i.DOWN) and shell.controller.move_top_menu(Vector2i.DOWN), "View/Create/Minus opens the scene-owned entry layer"); var menu_overlay := shell.find_child("ControllerTopMenuOverlay", true, false) as Control; assert_true(menu_overlay.visible and (menu_overlay.find_child("Reason", true, false) as Label).visible, "disabled controller entries remain inspectable with their reason"); shell.controller.confirm_top_menu(); assert_true(shell.controller.top_menu_is_open(), "South cannot execute a disabled entry"); var quit_count := [0]
+	assert_true(shell.controller.back_top_menu() and shell.controller.move_top_menu(Vector2i.RIGHT) and shell.controller.move_top_menu(Vector2i.LEFT) and shell.controller.move_top_menu(Vector2i.DOWN), "East returns to headings before a fresh direction opens another menu"); shell.controller.move_top_menu(Vector2i.ZERO); shell.quit_requested.connect(func() -> void: quit_count[0] += 1); for _repeat: int in 20: shell.controller.move_top_menu(Vector2i.DOWN, true)
 	assert_equal(shell.controller.selected_top_menu_label(), "Quit", "held entry navigation clamps at the final command instead of wrapping")
 	shell.controller.confirm_top_menu(); assert_equal([quit_count[0], shell.controller.top_menu_is_open()], [1, false], "South dispatches the selected controller menu command exactly once and releases menu ownership"); assert_true(shell.controller.open_top_menu() and shell.controller.move_top_menu(Vector2i.DOWN) and shell.controller.back_top_menu() and shell.controller.back_top_menu(), "East cancels the entry and heading levels independently")
 	var activated: Array[StringName] = []; assert_true(shell.controller.open_interaction_radial([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.confirm_radial(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
@@ -294,20 +300,36 @@ func _test_persistent_auto_continuation() -> void:
 		if fail_submit[0]: return SessionStep.failed(current[0].revision, &"fixture-auto-failure", "Auto activation failed visibly.")
 		current[0] = _auto_view(current[0].revision + 1, current[0].combat_view.round_number + 1, "hero" if submissions.size() < 3 else "manual")
 		(coordinator_ref.get_ref() as RefCounted).call("request"); return SessionStep.completed(current[0].revision), func(step: SessionStep) -> void: failures.append(step.error_message if step != null else "missing step"))
-	coordinator.request(); for _frame: int in 8: await (Engine.get_main_loop() as SceneTree).process_frame
+	coordinator.request(); assert_true(submissions.is_empty(), "requesting Auto never dispatches synchronously")
+	for _frame: int in 8:
+		var before := submissions.size(); coordinator.poll(); assert_true(submissions.size() - before <= 1, "one host poll dispatches at most one activation, including reentrant requests"); await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal(submissions, [{"actor": "hero", "round": 1, "revision": 10}, {"actor": "hero", "round": 2, "revision": 11}, {"actor": "hero", "round": 3, "revision": 12}], "the application-owned continuation commits one rendered Auto activation per round and yields to a manual actor")
-	current[0] = _auto_view(20, 4, "hero"); blocker[0] = &"controller-suspended"; coordinator.request(); await (Engine.get_main_loop() as SceneTree).process_frame
+	current[0] = _auto_view(20, 4, "hero"); blocker[0] = &"controller-suspended"; coordinator.request(); coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal([submissions.size(), coordinator.observation()["blocker"]], [3, "controller-suspended"], "controller suspension retains the pending Auto activation without running it")
 	blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame; await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal(submissions.size(), 4, "explicit acknowledgement wakes the retained Auto continuation")
 	current[0] = _auto_view(30, 5, "hero"); blocker[0] = &"presentation-awaiting-draw"; coordinator.request(); current[0] = _auto_view(31, 5, "manual"); blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal(submissions.size(), 4, "a session revision change discards stale continuation work before it can submit")
 	assert_true(failures.is_empty(), "successful persistent Auto never enters the failure latch")
-	current[0] = _auto_view(40, 6, "hero"); fail_submit[0] = true; coordinator.request(); coordinator.request(); assert_equal([submissions.size(), failures, coordinator.observation()["failedRevision"]], [5, ["Auto activation failed visibly."], 40], "a failed Auto response reports once and suppresses retries for the failed revision")
-	current[0] = _auto_view(41, 6, "hero"); fail_submit[0] = false; coordinator.request(); assert_equal(submissions.size(), 6, "a later committed revision can explicitly re-arm Auto after the failed revision")
+	current[0] = _auto_view(40, 6, "hero"); fail_submit[0] = true; coordinator.request(); coordinator.poll(); coordinator.request(); coordinator.poll(); assert_equal([submissions.size(), failures, coordinator.observation()["failedRevision"]], [5, ["Auto activation failed visibly."], 40], "a failed Auto response reports once and suppresses retries for the failed revision")
+	current[0] = _auto_view(41, 6, "hero"); fail_submit[0] = false; coordinator.request(); coordinator.poll(); assert_equal(submissions.size(), 6, "a later committed revision can explicitly re-arm Auto after the failed revision")
 	var completed := _auto_view(42, 7, "hero"); completed.combat_view.outcome = &"victory"; current[0] = completed
 	var terminal_observation: Dictionary = coordinator.observation(); assert_equal([terminal_observation["active"], terminal_observation["outcome"], terminal_observation["actor"], terminal_observation["round"]], [false, "victory", "", -1], "terminal combat observations expose the outcome without misreporting the final actor and round as a pending Auto activation")
 	coordinator.invalidate(); current.clear(); coordinator = null
+	var progress := preload("res://src/app/session/auto_progress_monitor.gd").new()
+	for completed_rounds: int in 3:
+		var observed := _auto_view(50 + completed_rounds, 1 + completed_rounds, "hero")
+		var hero := CharacterState.new("hero", "Hero", 10, 10)
+		observed.party_members = [CharacterView.new(hero)]; observed.combat_view.friendly_actor_ids = ["hero"]
+		var field := BattlefieldState.new("land:0", observed.combat_view.battlefield.terrain_tiles()); field.actors.place_character("hero", Vector2i(45, 45)); observed.combat_view.battlefield = BattlefieldView.new(field)
+		assert_equal(progress.before_activation(observed), completed_rounds == 2, "Auto pauses only after two complete unchanged rounds")
+	progress.reset()
+	var progress_view := _auto_view(60, 1, "hero"); var progress_hero := CharacterState.new("hero", "Hero", 10, 10); progress_view.party_members = [CharacterView.new(progress_hero)]; progress_view.combat_view.friendly_actor_ids = ["hero"]
+	var progress_field := BattlefieldState.new("land:0", progress_view.combat_view.battlefield.terrain_tiles()); progress_field.actors.place_character("hero", Vector2i(45, 45)); progress_view.combat_view.battlefield = BattlefieldView.new(progress_field)
+	for round_index: int in 5:
+		progress_view.combat_view.round_number = round_index + 1
+		assert_false(progress.before_activation(progress_view), "legal misses and resisted casts keep Auto active")
+		progress.observe([DomainEvent.new(&"combat_attack_resolved" if round_index % 2 == 0 else &"combat_spell_resolved", {"damage": 0})])
 	await (Engine.get_main_loop() as SceneTree).process_frame
 
 
@@ -385,7 +407,7 @@ func _test_controller_settings_draft_and_embedded_file_dialog() -> void:
 		if setting_id == &"controller_preferences": applied.append(value as ControllerPreferences)
 	)
 	controller.present(screen, view, settings)
-	assert_true(controller.navigate_section(&"Controls") and controller.navigate_section(&"", 1) and (screen.find_child("SystemWorkspaceTabs", true, false) as TabContainer).current_tab == 6, "shoulders switch declared Preferences sections without walking every control")
+	assert_true(controller.navigate_section(&"Controls") and controller.navigate_section(&"", 1) and (screen.find_child("SystemWorkspaceTabs", true, false) as TabContainer).get_current_tab_control().name == "Diagnostics", "shoulders switch declared Preferences sections without walking every control")
 	var confirm := screen.find_child("ControllerBinding_confirm", true, false) as Button
 	confirm.pressed.emit()
 	assert_equal(captures, [&"realmz_controller_confirm"], "the Controls page gives binding capture sole ownership of a named draft action")

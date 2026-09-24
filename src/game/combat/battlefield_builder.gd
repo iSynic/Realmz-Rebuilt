@@ -113,7 +113,7 @@ func _find_character_cell(battlefield: BattlefieldState, terrain_set: BattleTerr
 				if not _is_new_radius_edge(horizontal_offset, vertical_offset, radius):
 					continue
 				var candidate := center + Vector2i(horizontal_offset, vertical_offset)
-				if not _inside_good_rect(candidate) or battlefield.actors.is_occupied(candidate):
+				if not _inside_good_rect(candidate) or not battlefield.actors.actor_at(candidate).is_empty():
 					continue
 				var terrain := terrain_set.tile_by_id(battlefield.terrain.tile_at(candidate))
 				if terrain != null and terrain.solid == 0:
@@ -126,7 +126,7 @@ func _monster_position_is_legal(battlefield: BattlefieldState, terrain_set: Batt
 		return false
 	var footprint := BattlefieldGrid.footprint_cells(anchor, size)
 	for coordinate: Vector2i in footprint:
-		if not BattlefieldGrid.contains(coordinate) or battlefield.actors.is_occupied(coordinate):
+		if not BattlefieldGrid.contains(coordinate) or not battlefield.actors.actor_at(coordinate).is_empty():
 			return false
 		var terrain := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate))
 		if terrain == null:

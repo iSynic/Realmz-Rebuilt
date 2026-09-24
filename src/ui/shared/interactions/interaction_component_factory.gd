@@ -120,7 +120,14 @@ static func _create_service_component(kind: StringName, game_view: GameView, med
 
 static func _create_combat_component(game_view: GameView, media: ClassicMediaCatalog, compact: bool, combat_rect: Rect2) -> BattleInteraction:
 	var battle := (load(BATTLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BattleInteraction
-	battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect), compact)
+	var weapon_id := ""
+	if game_view != null and game_view.combat_view != null:
+		for character: CharacterView in game_view.party_members:
+			if character.id != game_view.combat_view.active_actor_id: continue
+			for item: ItemView in character.items:
+				if item.equipped and item.item_type == 2:
+					weapon_id = item.instance_id
+	battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect), compact, weapon_id)
 	return battle
 
 
@@ -170,7 +177,9 @@ static func prompt_for(request: InteractionRequest, classic_text_context: String
 	var explicit_prompt := request.body.prompt_text().strip_edges()
 	if not explicit_prompt.is_empty():
 		return explicit_prompt
-	if request.kind in [InteractionRequest.ACKNOWLEDGE, InteractionRequest.ENCOUNTER_CHOICE, InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]:
+	if request.kind == InteractionRequest.WORD_AND_ACTION:
+		return classic_text_context
+	if request.kind in [InteractionRequest.ACKNOWLEDGE, InteractionRequest.ENCOUNTER_CHOICE, InteractionRequest.THIEF_ENCOUNTER]:
 		return ""
 	if request.kind == InteractionRequest.YES_NO:
 		var authored_context := classic_text_context.strip_edges()

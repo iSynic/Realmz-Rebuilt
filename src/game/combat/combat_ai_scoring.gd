@@ -12,12 +12,12 @@ func _init(context: CombatContext) -> void:
 	_monster = CombatMonsterActionPlanner.new(context)
 
 
-func choose_party_action(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> Dictionary:
-	return _party.choose_party_action(state, content, actor, rng)
+func choose_party_action(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, pursuit: Dictionary = {}) -> Dictionary:
+	return _party.choose_party_action(state, content, actor, rng, pursuit)
 
 
-func choose_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> StringName:
-	return _monster.choose_monster_action(state, content, monster, definition, rng, allow_missile)
+func choose_monster_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> Dictionary:
+	return _monster.choose_monster_plan(state, content, monster, definition, rng, allow_missile)
 
 
 func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition) -> Dictionary:

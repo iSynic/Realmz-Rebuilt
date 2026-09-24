@@ -131,6 +131,7 @@ func _select_spell(spell_id: String) -> void:
 
 
 func _refresh_power_choices() -> void:
+	cast_requested.emit(null)
 	var host := $CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices/PowerButtons as HBoxContainer
 	_clear(host)
 	var representatives: Array[InteractionRequestValue.CastOption] = []
@@ -161,12 +162,14 @@ func _refresh_power_choices() -> void:
 
 
 func _select_power(option: InteractionRequestValue.CastOption) -> void:
+	cast_requested.emit(null)
 	var host := $CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices/PowerButtons as HBoxContainer
 	for child: Node in host.get_children():
 		(child as Button).button_pressed = (child as Button).get_meta("cast_option") == option
 	var cast := $SpellbookFooter/CombatSpellbookActions/CombatSpellAim as Button
 	cast.set_meta("cast_option", option)
 	cast.disabled = false
+	cast.text = "Cast Spell" if option.target_mode == &"automatic" else "Choose Targets"
 	cast.tooltip_text = "Cast the selected spell." if option.target_mode == &"automatic" else "Aim the selected spell on the battlefield."
 	var target_text := option.target_name if not option.target_name.is_empty() else String(option.target_mode).replace("_", " ").capitalize()
 	if option.target_mode == &"sequence":
@@ -315,7 +318,7 @@ func _ensure_controls() -> void:
 	($CombatSpellbookSelector/CombatSpellLevels/LevelHeading as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
 	($CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices/PowerLabel as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.power")
 	var cast := $SpellbookFooter/CombatSpellbookActions/CombatSpellAim as Button
-	cast.icon = ClassicUiAssetCatalog.texture(&"spells.action.cast")
+	cast.text = "Choose Targets"
 	cast.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	cast.pressed.connect(_emit_cast)
 	var back := $SpellbookFooter/CombatSpellbookActions/CombatSpellbookBack as Button

@@ -396,7 +396,7 @@ static func dungeon_view_toggle_available(map_view: MapView) -> bool:
 
 
 static func should_show_exploration_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return active_route in [&"exploration", &"spells"] and game_view != null and game_view.session_started and not game_view.party_setup_available and play_stage_visible
+	return active_route in [&"exploration", &"spells", &"save_load"] and game_view != null and game_view.session_started and not game_view.party_setup_available and (active_route != &"save_load" or game_view.combat_view == null) and play_stage_visible
 
 
 static func should_show_spatial_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
@@ -404,7 +404,7 @@ static func should_show_spatial_stage(active_route: StringName, game_view: GameV
 
 
 static func should_show_battle_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return active_route == &"combat" and game_view != null and game_view.session_started and game_view.combat_view != null and game_view.combat_view.battlefield != null and play_stage_visible
+	return active_route in [&"combat", &"save_load"] and game_view != null and game_view.session_started and game_view.combat_view != null and game_view.combat_view.battlefield != null and play_stage_visible
 
 
 func _present_interaction(game_view: GameView) -> void:

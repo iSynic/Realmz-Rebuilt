@@ -212,7 +212,7 @@ func _bind_character_selector(selector: InventoryCharacterSelector, view: GameVi
 		row.add_child(button)
 
 
-func select_roster_character(character_id: String, view: GameView) -> bool:
+func select_roster_character(character_id: String, view: GameView, refresh: bool = true) -> bool:
 	if view == null or view.party_members.is_empty():
 		return false
 	var character: CharacterView = null
@@ -223,7 +223,7 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 	if character == null:
 		return false
 	if not _trade_mode:
-		_select_character(character.id)
+		_select_character(character.id, refresh)
 		return true
 	var source := InventoryViewQueries.selected_character(view, _selected_character_id, _encounter_mode, _encounter_items)
 	var selected_item: ItemView = null
@@ -603,7 +603,7 @@ func _submit_encounter_item(character_id: String, instance_id: String) -> void:
 		encounter_item_selected.emit(character_id, instance_id, int(instances[instance_id]))
 
 
-func _select_character(character_id: String) -> void:
+func _select_character(character_id: String, refresh: bool = true) -> void:
 	_selected_character_id = character_id
 	_selected_item_instance_id = ""
 	_pending_drop_selection_id = ""
@@ -613,7 +613,7 @@ func _select_character(character_id: String) -> void:
 	_trade_status = ""
 	_item_scroll_position = 0
 	_clear_pending_action()
-	refresh_requested.emit()
+	if refresh: refresh_requested.emit()
 
 
 func _select_item(instance_id: String) -> void:

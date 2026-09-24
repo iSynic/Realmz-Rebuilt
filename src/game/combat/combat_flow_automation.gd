@@ -32,8 +32,8 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 	return _party.auto_move_toward_target(state, content, actor, rng, visited_anchors)
 
 
-func process_monster_turns(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
-	_monsters.process_monster_turns(state, content, rng, events)
+func process_monster_turns(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> CombatFlowResult:
+	return _monsters.process_monster_turns(state, content, rng, events)
 
 
 func process_monster_cast(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
@@ -70,10 +70,6 @@ func retreating_monster_reached_edge(state: GameState, content: RealmzContent, m
 
 func resolve_monster_attack_row(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	return _monsters.resolve_monster_attack_row(state, content, monster, definition, attack_index, active_turn, rng, events)
-
-
-func process_charmed_character_turn(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
-	return _monsters.process_charmed_character_turn(state, content, actor, rng, events)
 
 
 func hostile_adjacent_ids(state: GameState, actor_id: String, anchor_override: Vector2i = Vector2i(-1, -1)) -> Array[String]:

@@ -58,6 +58,9 @@ var _navigation_terrain_revision: int = -1
 var _navigation_profiles: Array[NavigationProfile] = []
 var _navigation_profile_build_count: int = 0
 var _route_workspace := RouteWorkspace.new()
+var _visibility_revision: Array[int] = []
+var _visibility_results: Dictionary = {}
+var _visibility_occupants: Dictionary = {}
 
 
 func adjacent_actor_ids(battlefield: BattlefieldState, actor_id: String, anchor_override: Vector2i = Vector2i(-1, -1)) -> Array[String]:
@@ -94,9 +97,11 @@ func classic_coordinate_range(battlefield: BattlefieldState, actor_id: String, d
 	return floori(Vector2(destination - battlefield.actors.actor_position(actor_id)).length())
 
 
-func projectile_target_is_valid(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, first_actor_id: String, second_actor_id: String, maximum_range: int, require_line_of_sight: bool = true) -> bool:
-	var distance := classic_range(battlefield, first_actor_id, second_actor_id)
-	return distance >= 0 and distance <= maximum_range and (not require_line_of_sight or has_line_of_sight(battlefield, terrain_set, first_actor_id, second_actor_id))
+func projectile_target_is_valid(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, first_actor_id: String, second_actor_id: String, maximum_range: int, require_line_of_sight: bool = true, origin_override: Vector2i = Vector2i(-1, -1)) -> bool:
+	if battlefield == null or not battlefield.actors.has_actor(first_actor_id) or not battlefield.actors.has_actor(second_actor_id): return false
+	var destination := battlefield.actors.actor_position(second_actor_id)
+	var distance := classic_range(battlefield, first_actor_id, second_actor_id) if origin_override.x < 0 else floori(Vector2(destination - origin_override).length())
+	return distance >= 0 and distance <= maximum_range and (not require_line_of_sight or has_line_of_sight_to_coordinate(battlefield, terrain_set, first_actor_id, destination, origin_override))
 
 
 func coordinate_target_is_valid(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, destination: Vector2i, maximum_range: int, require_line_of_sight: bool = true) -> bool:
@@ -120,14 +125,37 @@ func has_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTerrain
 	return has_line_of_sight_to_coordinate(battlefield, terrain_set, from_actor_id, battlefield.actors.actor_position(to_actor_id))
 
 
-func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i) -> bool:
+func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i, origin_override: Vector2i = Vector2i(-1, -1), occupied_cells: Dictionary = {}) -> bool:
 	if battlefield == null or terrain_set == null or not battlefield.actors.has_actor(from_actor_id) or not BattlefieldGrid.contains(destination):
 		return false
-	var occupied_cells: Dictionary = {}
-	for actor_id: String in battlefield.actors.actor_ids():
-		for coordinate: Vector2i in battlefield.actors.actor_footprint(actor_id):
-			occupied_cells[coordinate] = true
-	var origin := battlefield.actors.actor_position(from_actor_id)
+	# Hypothetical pursuit anchors/occupancy remain uncached. Real-position queries
+	# share geometry across spell powers until an authoritative spatial mutation.
+	if origin_override.x >= 0 or not occupied_cells.is_empty():
+		return _sample_line_of_sight(battlefield, terrain_set, from_actor_id, destination, origin_override, occupied_cells)
+	var revision: Array[int] = [battlefield.get_instance_id(), terrain_set.get_instance_id(), battlefield.terrain.get_instance_id(), battlefield.terrain.revision(), battlefield.actors.get_instance_id(), battlefield.actors.revision()]
+	if revision != _visibility_revision:
+		_visibility_revision = revision
+		_visibility_results.clear()
+		_visibility_occupants.clear()
+		for actor_id: String in battlefield.actors.actor_ids():
+			for cell: Vector2i in battlefield.actors.actor_footprint(actor_id):
+				_visibility_occupants[cell] = actor_id
+	var key := "%s:%d:%d" % [from_actor_id, destination.x, destination.y]
+	if not _visibility_results.has(key):
+		if _visibility_results.size() >= 4096: _visibility_results.clear()
+		_visibility_results[key] = _sample_line_of_sight(battlefield, terrain_set, from_actor_id, destination, origin_override, _visibility_occupants)
+	return _visibility_results[key]
+
+
+func _sample_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i, origin_override: Vector2i, occupied_cells: Dictionary) -> bool:
+	if battlefield == null or terrain_set == null or not battlefield.actors.has_actor(from_actor_id) or not BattlefieldGrid.contains(destination):
+		return false
+	var origin := battlefield.actors.actor_position(from_actor_id) if origin_override.x < 0 else origin_override
+	var source_cells := battlefield.actors.actor_footprint_at(from_actor_id, origin)
+	if occupied_cells.is_empty():
+		for actor_id: String in battlefield.actors.actor_ids():
+			for coordinate: Vector2i in battlefield.actors.actor_footprint(actor_id):
+				occupied_cells[coordinate] = actor_id
 	var part := Vector2(origin * 32)
 	var step := Vector2(destination - origin) * 32.0 / 128.0
 	# FD-COMBAT-008 retains Castle's 128 center-offset samples but removes the
@@ -138,7 +166,7 @@ func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set:
 			return false
 		# Castle's field contains actor IDs, so occupied cells do not expose their
 		# underlying terrain to cansee(). Preserve that observable distinction.
-		if not occupied_cells.has(coordinate):
+		if not source_cells.has(coordinate) and String(occupied_cells.get(coordinate, from_actor_id)) == from_actor_id:
 			var terrain := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate))
 			if terrain == null or terrain.blocks_los:
 				return false
@@ -146,19 +174,26 @@ func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set:
 	return true
 
 
-func ray_actor_ids(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i, stop_at_los_blocker: bool = true) -> Array[String]:
+func ray_actor_ids(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i, stop_at_los_blocker: bool = true, origin_override: Vector2i = Vector2i(-1, -1), occupied_cells: Dictionary = {}) -> Array[String]:
 	var result: Array[String] = []
 	if battlefield == null or terrain_set == null or not battlefield.actors.has_actor(from_actor_id) or not BattlefieldGrid.contains(destination):
 		return result
 	var encountered: Dictionary = {from_actor_id: true}
-	var origin := battlefield.actors.actor_position(from_actor_id)
+	var origin := battlefield.actors.actor_position(from_actor_id) if origin_override.x < 0 else origin_override
+	var source_cells := battlefield.actors.actor_footprint_at(from_actor_id, origin)
+	if occupied_cells.is_empty():
+		for actor_id: String in battlefield.actors.actor_ids():
+			for coordinate: Vector2i in battlefield.actors.actor_footprint(actor_id):
+				occupied_cells[coordinate] = actor_id
 	var part := Vector2(origin * 32)
 	var step := Vector2(destination - origin) * 32.0 / 128.0
 	for _sample: int in 128:
 		var coordinate := Vector2i(floori((part.x + 16.0) / 32.0), floori((part.y + 16.0) / 32.0))
 		if not BattlefieldGrid.contains(coordinate):
 			break
-		var actor_id := battlefield.actors.actor_at(coordinate)
+		var actor_id := String(occupied_cells.get(coordinate, ""))
+		if actor_id == from_actor_id: actor_id = ""
+		if source_cells.has(coordinate): actor_id = from_actor_id
 		if not actor_id.is_empty():
 			if not encountered.has(actor_id):
 				encountered[actor_id] = true
@@ -171,10 +206,11 @@ func ray_actor_ids(battlefield: BattlefieldState, terrain_set: BattleTerrainSetD
 	return result
 
 
-func probe_monster_step_toward(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target: Vector2i, movement_available: int, rng: RealmzRng) -> BattlefieldStepResult:
+func probe_monster_step_away(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target: Vector2i, movement_available: int, rng: RealmzRng) -> BattlefieldStepResult:
 	if battlefield == null or terrain_set == null or rng == null or not battlefield.actors.has_actor(actor_id):
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	var origin := battlefield.actors.actor_position(actor_id)
+	target = origin * 2 - target
 	var direction := Vector2i(signi(target.x - origin.x), signi(target.y - origin.y))
 	var maximum_cost := 0
 	for attempt: int in 21:
@@ -188,18 +224,45 @@ func probe_monster_step_toward(battlefield: BattlefieldState, terrain_set: Battl
 	return blocked
 
 
-func probe_monster_step_away(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target: Vector2i, movement_available: int, rng: RealmzRng) -> BattlefieldStepResult:
-	if battlefield == null or not battlefield.actors.has_actor(actor_id):
-		return BattlefieldStepResult.blocked(&"invalid_actor")
-	var origin := battlefield.actors.actor_position(actor_id)
-	return probe_monster_step_toward(battlefield, terrain_set, actor_id, origin * 2 - target, movement_available, rng)
-
-
 func probe_step(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, direction: Vector2i, movement_available: int) -> BattlefieldStepResult:
 	return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, direction, movement_available, 0)
 
 
-func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int, swappable_actor_ids: Array[String] = [], forbidden_anchors: Array[Vector2i] = []) -> BattlefieldStepResult:
+func reachable_destinations(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, movement_available: int, destination: Vector2i = Vector2i(-1, -1)) -> BattlefieldReachability:
+	var result := BattlefieldReachability.new()
+	if battlefield == null or terrain_set == null or movement_available < 0 or not battlefield.actors.has_actor(actor_id): return result
+	var origin := battlefield.actors.actor_position(actor_id)
+	var size := battlefield.actors.actor_size(actor_id)
+	var profile := _navigation_profile(battlefield, terrain_set, size)
+	if profile == null: return result
+	result.origin = origin
+	result.costs[origin] = 0
+	var generation := _route_workspace.begin_search()
+	_mark_route_occupancy(battlefield, actor_id, [])
+	_route_heap_push(_route_workspace.heap, Vector4i(0, 0, 0, _route_index(origin)))
+	var sequence := 0
+	while not _route_workspace.heap.is_empty():
+		var entry := _route_heap_pop(_route_workspace.heap)
+		var index := entry.w
+		if _route_workspace.closed_generations[index] == generation: continue
+		_route_workspace.closed_generations[index] = generation
+		var anchor := _route_coordinate(index)
+		if anchor == destination: break
+		for direction: Vector2i in DIRECTIONS:
+			var next := anchor + direction
+			if not BattlefieldGrid.contains(next): continue
+			var next_index := _route_index(next)
+			if profile.passable[next_index] == 0 or not _route_footprint_is_unoccupied(next, size, _route_workspace.occupied_cells): continue
+			var cost: int = result.costs[anchor] + profile.destination_movement_base[next_index] + _direction_cost(direction)
+			if cost > movement_available or result.costs.has(next) and result.costs[next] <= cost: continue
+			result.costs[next] = cost
+			result.predecessors[next] = anchor
+			sequence += 1
+			_route_heap_push(_route_workspace.heap, Vector4i(cost, 0, sequence, next_index))
+	return result
+
+
+func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int, swappable_actor_ids: Array[String] = [], forbidden_anchors: Array[Vector2i] = [], firing_anchors: Array[Vector2i] = [], allow_contact: bool = true) -> BattlefieldStepResult:
 	if battlefield == null or terrain_set == null or not battlefield.actors.has_actor(actor_id):
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	var valid_targets := _valid_route_target_ids(battlefield, actor_id, target_ids)
@@ -212,7 +275,7 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 		return BattlefieldStepResult.blocked(&"invalid_actor", origin)
 	var generation := _route_workspace.begin_search()
 	var target_cells := _route_target_cells(battlefield, valid_targets)
-	var goal_count := _mark_route_goal_anchors(target_cells, actor_size, profile, generation)
+	var goal_count := _mark_route_goal_anchors(target_cells, actor_size, profile, generation, firing_anchors, allow_contact)
 	if goal_count == 0:
 		return BattlefieldStepResult.blocked(&"path_not_found", origin)
 	var origin_index := _route_index(origin)
@@ -306,8 +369,16 @@ static func _route_footprint_is_passable(battlefield: BattlefieldState, terrain_
 	return true
 
 
-func _mark_route_goal_anchors(target_cells: Dictionary, actor_size: int, profile: NavigationProfile, generation: int) -> int:
+func _mark_route_goal_anchors(target_cells: Dictionary, actor_size: int, profile: NavigationProfile, generation: int, firing_anchors: Array[Vector2i], allow_contact: bool) -> int:
 	var goal_count := 0
+	for anchor: Vector2i in firing_anchors:
+		if not BattlefieldGrid.contains(anchor): continue
+		var index := _route_index(anchor)
+		if profile.passable[index] == 0 or _route_workspace.goal_generations[index] == generation: continue
+		_route_workspace.goal_generations[index] = generation
+		_route_workspace.queue[goal_count] = index
+		goal_count += 1
+	if not allow_contact: return goal_count
 	var offsets := BattlefieldGrid.footprint_cells(Vector2i.ZERO, actor_size)
 	for value: Variant in target_cells:
 		var target_cell: Vector2i = value
@@ -325,6 +396,7 @@ func _mark_route_goal_anchors(target_cells: Dictionary, actor_size: int, profile
 
 
 func _route_heuristic(index: int, generation: int, goal_count: int) -> int:
+	if goal_count > 64: return 0
 	if _route_workspace.heuristic_generations[index] == generation:
 		return _route_workspace.heuristics[index]
 	var coordinate := _route_coordinate(index)

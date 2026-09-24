@@ -94,7 +94,7 @@ func _test_representative_collections_and_modes() -> void:
 	assert_equal(allies.find_children("AllyRow_*", "Button", true, false).size(), 3, "Allies preview binds production ally records")
 	assert_equal(bestiary.find_children("BestiaryRow_*", "Button", true, false).size(), 3, "Bestiary preview binds production catalog records")
 	assert_equal((journal.find_child("JournalEntryRows", true, false) as VBoxContainer).get_child_count(), 3, "Maps and Journal preview binds production journal records")
-	assert_equal(system.find_children("SavePreview_*", "Button", true, false).size(), 2, "System preview binds production save records")
+	assert_equal(system.find_children("SavePreview_*", "Button", true, false).size(), 12, "Save preview binds ten scenario slots plus two legacy records")
 	assert_equal((shell.find_child("PackageStatus", true, false) as Label).text, "City of Bywater", "application-shell preview binds the detached campaign through GameShell")
 	assert_equal(campaign_selection.find_children("Scenario_*", "Button", true, false).size(), 3, "campaign selection preview binds installed scenarios through CampaignLibraryController")
 	assert_equal((party_assembly.find_child("PartySlots", true, false) as VBoxContainer).get_child_count(), 6, "party assembly preview binds the retained six-slot party through CampaignPartySetupController")
