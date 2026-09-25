@@ -1,15 +1,28 @@
 extends RealmzTestCase
 
 func run() -> void:
+	_test_indoor_icon_preference()
 	_test_immediate_single_target_action_preference()
 	_test_music_system()
+
+func _test_indoor_icon_preference() -> void:
+	var data := PresentationSettings.new().to_data()
+	assert_equal(data["indoorPartyIcon"], 72, "Castle PRFN 128 supplies the independent default indoor icon")
+	for value: Variant in [0, 119, 4.0, -1, 120, 0.5, "72", null, true]:
+		data["indoorPartyIcon"] = value
+		var restored := PresentationSettings.from_data(data)
+		var valid: bool = (value is float and value == 4.0) or (value is int and value in [0, 119])
+		assert_true(restored != null and restored.indoor_party_icon == int(value) if valid else restored == null, "indoor icon codec accepts only bounded whole indices")
+	data["schemaVersion"] = 19
+	data.erase("indoorPartyIcon")
+	assert_equal(PresentationSettings.from_data(data).indoor_party_icon, 72, "older settings receive the shipped default without changing saves")
 
 func _test_immediate_single_target_action_preference() -> void:
 	var settings := PresentationSettings.new()
 	assert_false(settings.immediate_single_target_actions, "immediate single-target actions default off")
 	settings.immediate_single_target_actions = true
 	var serialized := settings.to_data()
-	assert_equal(serialized["schemaVersion"], 19, "presentation settings serialize with schema nineteen")
+	assert_equal(serialized["schemaVersion"], 20, "presentation settings serialize with schema twenty")
 	assert_true(serialized["immediateSingleTargetActions"], "the preference uses its stable serialized key")
 	var restored := PresentationSettings.from_data(serialized)
 	assert_true(restored != null and restored.immediate_single_target_actions, "schema-nineteen preference round-trips through serialization")

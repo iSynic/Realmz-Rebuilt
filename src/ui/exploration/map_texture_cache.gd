@@ -82,6 +82,14 @@ func land_marker_texture(tile_id: int) -> Texture2D:
 	return texture
 
 
+func indoor_party_marker_texture(facing_right: bool, icon_index: int = PresentationSettings.DEFAULT_INDOOR_PARTY_ICON) -> Texture2D:
+	# Castle centerpict: 9500 + horseicon - 500 * face; PRFN 128 defaults horseicon to 72.
+	if _media == null:
+		return null
+	var asset := _media.asset_by_resource("cicn", (9000 if facing_right else 9500) + icon_index)
+	return _media.image_texture(asset) if asset != null else null
+
+
 static func darkness_mask_asset_id(level: int) -> String:
 	return "classic-darkness-mask-%d" % clampi(level, 0, 6)
 

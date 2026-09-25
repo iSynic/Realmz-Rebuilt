@@ -179,7 +179,7 @@ func set_save_and_quit_mode(enabled: bool) -> void:
 	_save_and_quit_mode = enabled
 
 
-func present(target: Control, view: GameView, settings: PresentationSettings) -> void:
+func present(target: Control, view: GameView, settings: PresentationSettings, media: ClassicMediaCatalog = null) -> void:
 	if target == null or view == null or settings == null:
 		return
 	var screen := target as SystemScreen
@@ -207,6 +207,7 @@ func present(target: Control, view: GameView, settings: PresentationSettings) ->
 	_bind_header(view)
 	_bind_save_workspace(view)
 	_bind_display(settings)
+	_workspace.call("bind_indoor_icon", settings.indoor_party_icon, media)
 	_workspace.call("bind_audio", settings)
 	_workspace.call("bind_pacing", settings)
 	_workspace.call("bind_accessibility", settings)

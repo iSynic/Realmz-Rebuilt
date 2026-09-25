@@ -8,6 +8,17 @@
   "modification": "Classic land PICT, ppat, item cicn, and selected combat cicn resources decoded from their Macintosh resource-fork representation into PNG files; snd resources rendered into 48 kHz 16-bit mono WAV files with Castle's linear interpolation for Godot presentation, with Godot duplicating the identical Castle channels during playback.",
   "resource_sets": [
     {
+      "source_path": "base/Realmz/Data Files/Tacticals.rsrc",
+      "source_file_sha256": "f2f2ef053107895c3fbd7e26b0f92ae3bfeb685d698858c14e260c168b319f50",
+      "resource_type": "cicn",
+      "resource_ids": [],
+      "resource_ranges": [{"start": 9500, "end": 9619}],
+      "target_directory": "land-icons",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/centerpict.c:203-222; src/realmz_orig/buttonchoice.c:70-73; src/realmz_orig/pref.c:136-155; src/realmz_orig/structs.h:11-21; resources/realmz.rsrc:PRFN:128",
+      "evidence_note": "Castle centerpict uses 9500 + horseicon - 500 * face indoors. iconpict mode 2 offers five pages of 24 choices, indices 0 through 119; PRFN 128 byte 13 defaults to 72. The application library already owns east-facing CICN 9000 through 9119; these exact west-facing counterparts complete the family without duplicating library assets. Boat and camp take precedence."
+    },
+    {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
       "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
       "resource_type": "PICT",

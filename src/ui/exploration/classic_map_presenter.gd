@@ -29,6 +29,7 @@ var _party_marker_textures: Dictionary = {}
 var _dungeon_party_marker_textures: Dictionary = {}
 var _party_marker_asset_id: StringName = MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID
 var _party_facing_asset_id: StringName = MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID
+var _indoor_party_icon: int = PresentationSettings.DEFAULT_INDOOR_PARTY_ICON
 var _movement_cursor_asset_id: StringName
 var _movement_cursor_enabled: bool = true
 var _visibility_cache_map_id: String = ""
@@ -157,6 +158,14 @@ func set_custom_fog_tile_enabled(enabled: bool) -> void:
 	custom_fog_tile_enabled = enabled
 	if _retained_surface != null:
 		_retained_surface.set_custom_fog_tile_enabled(enabled)
+	queue_redraw()
+
+
+func set_indoor_party_icon(index: int) -> void:
+	if index < 0 or index >= PresentationSettings.INDOOR_PARTY_ICON_COUNT:
+		return
+	_indoor_party_icon = index
+	_present_retained_surface()
 	queue_redraw()
 
 
@@ -385,6 +394,8 @@ func _draw_party_marker(party_rect: Rect2) -> void:
 func _party_marker_texture() -> Texture2D:
 	if _view != null and _view.map_view != null and _view.map_view.level_type == &"dungeon":
 		return _dungeon_party_marker_textures.get(clampi(_view.map_view.dungeon_heading, 1, 4)) as Texture2D
+	if _view != null and _view.map_view != null and _view.map_view.base_scale > 0 and _party_marker_asset_id == _party_facing_asset_id:
+		return _textures.indoor_party_marker_texture(_party_facing_asset_id == MapTextureCache.PARTY_MARKER_RIGHT_ASSET_ID, _indoor_party_icon)
 	return _party_marker_textures.get(_party_marker_asset_id) as Texture2D
 
 

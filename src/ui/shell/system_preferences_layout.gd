@@ -66,6 +66,17 @@ func _current_category() -> StringName:
 	return PREFERENCE_SECTIONS[index] if index >= 0 and index < PREFERENCE_SECTIONS.size() else &"Display"
 
 
+func bind_indoor_icon(index: int, media: ClassicMediaCatalog) -> void:
+	var picker := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon") as IndoorPartyIconPicker
+	if not picker.icon_selected.is_connected(_on_indoor_icon_selected):
+		picker.icon_selected.connect(_on_indoor_icon_selected)
+	picker.bind_selection(index, media)
+
+
+func _on_indoor_icon_selected(index: int) -> void:
+	setting_changed.emit(&"indoor_party_icon", index)
+
+
 func bind_audio(settings: PresentationSettings) -> void:
 	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content")
 	_bind_volume_row(root.get_node("MasterVolumeRow") as BoxContainer, "Master volume", settings.master_volume, &"master_volume")

@@ -331,7 +331,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 			_maps_journal_controller.set_text_scale(_settings.text_scale)
 			_maps_journal_controller.present(screen, _view, _media)
 		&"system", &"save_load":
-			_system_controller.present(screen, _view, _settings)
+			_system_controller.present(screen, _view, _settings, _media)
 			if screen_id == &"save_load":
 				_system_controller.show_saves()
 			elif _system_route == &"save_load":

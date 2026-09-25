@@ -3,7 +3,9 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 19
+const SCHEMA_VERSION: int = 20
+const INDOOR_PARTY_ICON_COUNT: int = 120
+const DEFAULT_INDOOR_PARTY_ICON: int = 72
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
@@ -57,6 +59,7 @@ var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
 var custom_fog_tile_enabled: bool = true
+var indoor_party_icon: int = DEFAULT_INDOOR_PARTY_ICON
 # FD-SYSTEM-002: new players enable Auto Note; Castle's PRFN 128 defaults it off.
 var autojournal_enabled: bool = true
 var typography_mode: String = TYPOGRAPHY_CLASSIC
@@ -96,6 +99,7 @@ func to_data() -> Dictionary:
 		"showExplorationMinimap": show_exploration_minimap,
 		"classicExplorationVisibility": classic_exploration_visibility,
 		"customFogTileEnabled": custom_fog_tile_enabled,
+		"indoorPartyIcon": indoor_party_icon,
 		"autojournalEnabled": autojournal_enabled,
 		"typographyMode": typography_mode,
 		"lastCampaignId": last_campaign_id,
@@ -167,7 +171,13 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if data.has("classicKeyboardShortcuts") and not data["classicKeyboardShortcuts"] is bool:
 		return false
+	if schema_version >= 20 and not _indoor_icon_is_valid(data.get("indoorPartyIcon")):
+		return false
 	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
+
+
+static func _indoor_icon_is_valid(value: Variant) -> bool:
+	return (value is int or value is float) and float(int(value)) == float(value) and int(value) >= 0 and int(value) < INDOOR_PARTY_ICON_COUNT
 
 
 static func _window_fields_are_valid(data: Dictionary) -> bool:
@@ -237,6 +247,8 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
 	settings.custom_fog_tile_enabled = bool(data.get("customFogTileEnabled", true))
+	if int(data["schemaVersion"]) >= 20:
+		settings.indoor_party_icon = int(data["indoorPartyIcon"])
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()

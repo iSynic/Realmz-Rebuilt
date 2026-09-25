@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/shell/save_slot_row.tscn" id="2_save"]
 [ext_resource type="Script" path="res://src/ui/shell/system_preferences_layout.gd" id="3_layout"]
+[ext_resource type="Script" path="res://src/ui/shell/indoor_party_icon_picker.gd" id="4_icons"]
 
 [node name="SystemWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -440,6 +441,90 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Use custom fog-of-war tile instead of Classic black"
 autowrap_mode = 2
+
+[node name="IndoorPartyIcon" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+script = ExtResource("4_icons")
+
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Indoor party icon"
+
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+layout_mode = 2
+text = "Choose the party marker used indoors, independently of the party leader. Selections save immediately."
+autowrap_mode = 2
+
+[node name="Summary" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon" groups=["system_setting_rows"]]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Current" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Summary"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+mouse_filter = 2
+flat = true
+alignment = 0
+text = "Icon 73 · Classic default"
+texture_filter = 1
+
+[node name="Change" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Summary"]
+layout_mode = 2
+text = "Change…"
+
+[node name="Choices" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Grid" type="GridContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices"]
+layout_mode = 2
+size_flags_horizontal = 0
+columns = 6
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="Actions" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Previous" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = "<"
+tooltip_text = "Previous page of indoor party icons"
+
+[node name="Page" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+custom_minimum_size = Vector2(50, 0)
+layout_mode = 2
+text = "4 / 5"
+horizontal_alignment = 1
+
+[node name="Next" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+custom_minimum_size = Vector2(42, 0)
+layout_mode = 2
+text = ">"
+tooltip_text = "Next page of indoor party icons"
+
+[node name="Default" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+layout_mode = 2
+text = "Default"
+
+[node name="Done" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+layout_mode = 2
+text = "Done"
+
+[node name="IconTemplate" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+visible = false
+custom_minimum_size = Vector2(60, 42)
+layout_mode = 2
+toggle_mode = true
+texture_filter = 1
+icon_alignment = 1
 
 [node name="Audio" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]
 layout_mode = 2

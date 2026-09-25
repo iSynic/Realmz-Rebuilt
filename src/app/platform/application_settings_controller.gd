@@ -86,6 +86,7 @@ func bind() -> void:
 	_shell.exploration_minimap_changed.connect(_on_exploration_minimap_changed)
 	_shell.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
 	_shell.custom_fog_tile_changed.connect(_on_custom_fog_tile_changed)
+	_shell.indoor_party_icon_changed.connect(_on_indoor_party_icon_changed)
 	_shell.autojournal_changed.connect(_on_autojournal_changed)
 	_shell.controller_preferences_changed.connect(_on_controller_preferences_changed)
 	_debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
@@ -104,6 +105,7 @@ func apply_initial_settings() -> void:
 	_map.set_travel_preview_visible(_settings.show_exploration_minimap)
 	_map.set_classic_exploration_visibility(_settings.classic_exploration_visibility)
 	_map.set_custom_fog_tile_enabled(_settings.custom_fog_tile_enabled)
+	_map.set_indoor_party_icon(_settings.indoor_party_icon)
 	_apply_window_mode(_settings.window_mode)
 	_audio.set_master_volume(_settings.master_volume)
 	_audio.set_sound_volume(_settings.sound_volume)
@@ -111,6 +113,14 @@ func apply_initial_settings() -> void:
 	_audio.set_music_volume(_settings.music_volume)
 	_apply_topology_debug(_settings.topology_debug)
 	_presentation.set_dungeon_3d_enabled(_settings.dungeon_3d)
+
+
+func _on_indoor_party_icon_changed(index: int) -> void:
+	if index < 0 or index >= PresentationSettings.INDOOR_PARTY_ICON_COUNT:
+		return
+	_settings.indoor_party_icon = index
+	_map.set_indoor_party_icon(index)
+	_save()
 
 
 func _on_topology_debug_changed(enabled: bool) -> void:

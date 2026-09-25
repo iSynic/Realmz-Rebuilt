@@ -6,10 +6,48 @@ const InteractionLayoutPolicyScript := preload("res://src/ui/shared/interactions
 
 
 func run() -> void:
+	await _test_indoor_party_marker()
 	await _test_top_menu_consolidation_and_pointer_ownership()
 	_test_startup_party_setup_composition()
 	_test_package_operation_presentation()
 	await _test_primary_workspace_lifecycle()
+
+
+func _test_indoor_party_marker() -> void:
+	var package := load_test_package("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2")
+	assert_true(package.is_ok(), "party markers use a validated effective media catalog")
+	if not package.is_ok():
+		return
+	var media := ClassicMediaCatalog.new(package.media, ApplicationMediaCatalog.new())
+	var presenter := ClassicMapPresenter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(presenter)
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	presenter.size = Vector2(640, 480)
+	presenter.set_media_catalog(media)
+	var cell := MapCellView.new(Vector2i.ZERO, "fixture.terrain", 1, "landlook-0", true, false, true, true, false, false, [], {}, {}, {})
+	var map := MapView.new("fixture.indoor", "Indoor marker fixture", &"land", 1, 1, Vector2i.ZERO, [cell])
+	map.landlook = 0
+	var view := GameView.new(1, true, null, map.map_id, Vector2i.ZERO, 0, 12, 0, map)
+	view.party_summary = PartySummaryView.new()
+	var marker := presenter.find_children("*", "Sprite2D", true, false).filter(func(sprite: Sprite2D) -> bool: return sprite.z_index == 20)[0] as Sprite2D
+	for state: Array in [[0, Vector2i.RIGHT, false, false, 186], [1, Vector2i.RIGHT, false, false, 9072], [1, Vector2i.LEFT, false, false, 9572], [1, Vector2i.UP, false, false, 9572], [1, Vector2i.ZERO, true, false, 178], [1, Vector2i.RIGHT, false, true, 13400], [0, Vector2i.UP, false, false, 186]]:
+		map.base_scale = state[0]
+		map.last_move_direction = state[1]
+		view.party_summary.camping = state[2]
+		view.party_summary.in_boat = state[3]
+		presenter.present(view)
+		var expected := media.image_texture(media.asset_by_resource("cicn", state[4])) if state[4] in [9072, 9572] else ClassicUiAssetCatalog.texture(&"map.party.camp" if state[4] == 178 else &"map.party.boat.right.0" if state[4] == 13400 else &"map.party.right")
+		assert_true(marker.texture != null and expected != null and marker.texture.get_image().get_data() == expected.get_image().get_data(), "retained land marker matches exact CICN %d across indoor/outdoor, facing, camp and boat transitions" % state[4])
+		if state[4] == 9072 or state[4] == 9572:
+			assert_equal(marker.texture, media.image_texture(media.asset_by_resource("cicn", state[4])), "indoor markers reuse catalog-decoded pixels")
+	map.base_scale = 1
+	for index: int in PresentationSettings.INDOOR_PARTY_ICON_COUNT:
+		presenter.set_indoor_party_icon(index)
+		presenter.present(view)
+		assert_equal(marker.texture, media.image_texture(media.asset_by_resource("cicn", 9000 + index)), "every selected indoor icon replaces the retained marker")
+		assert_not_null(media.image_texture(media.asset_by_resource("cicn", 9500 + index)), "every indoor choice owns exact west-facing source art")
+	presenter.queue_free()
+	await (Engine.get_main_loop() as SceneTree).process_frame
 
 
 func _test_top_menu_consolidation_and_pointer_ownership() -> void:
