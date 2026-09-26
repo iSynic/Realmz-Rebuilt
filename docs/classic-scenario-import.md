@@ -34,11 +34,14 @@ Dark Portal retains native resource labels containing NUL characters in its pack
 
 The graphics-signature comparison uses Adobe's [Photoshop file-format specification](https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/), which defines `8BIM`; it does not identify Hax's specific `aPAR` blocks or establish how they entered the scenario file.
 
-## Remaining delivery gates
+## Release verification
 
-- Provision the versioned Windows, Linux, and universal macOS importer archives and their repository URL/SHA variables. Build/release scripts enforce bundle integrity and platform architecture, but configured assets are a separate prerequisite.
+- `tools/scenario-importer-inputs.json` pins the GPL-3.0-or-later converter source and separately licensed stock support. The importer workflow builds native Windows, Linux, and both macOS architectures, then assembles and checks universal macOS. Runtime exports require versioned importer archive URLs and SHA-256 repository variables; missing or invalid inputs stop the export.
+- The Beta 12 local aggregate passed all 5,386 assertions across 36 suites, package alignment, provenance, architecture, maintainability, and export contracts. The owner-approved test-source ceiling is 11,402 substantive lines; other limits remain unchanged. The clean pinned Windows converter independently converted Dead of Night, whose resulting package passed installation and session initialization.
+
+Remaining acceptance work:
+
 - Run import from final packaged locations without developer tools on all three platforms, including the actual native dialog, cancellation, revision selection, and starting a working scenario. Existing app startup smoke checks do not exercise conversion.
 - Wire Providence's native editor to its installed finalization support automatically; the explicit service context alone does not prove that editor workflow.
-- The owner-approved Beta 12 test-source ceiling is 11,402 substantive lines; other architecture, suite-size, and maintainability limits remain unchanged.
 
-The folder-import implementation is not release-accepted until these gates are closed. No corpus installation receipt establishes full campaign compatibility.
+The beta's automated results do not establish complete packaged UI acceptance or full campaign compatibility.
