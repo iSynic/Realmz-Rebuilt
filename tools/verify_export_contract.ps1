@@ -103,6 +103,9 @@ foreach ($workflow in @($ci, $releaseWorkflow)) {
     foreach ($windowsSmokeContract in @('$quotedLog =', '-ArgumentList "--headless --quit-after 2 --log-file $quotedLog"')) {
         if (-not $workflow.Contains($windowsSmokeContract)) { throw "Windows native smoke must preserve an absolute log path as one quoted argument: $windowsSmokeContract" }
     }
+    foreach ($importerContract in @("install_scenario_importer.ps1", "SCENARIO_IMPORTER_WINDOWS_X86_64_URL", "SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256", "SCENARIO_IMPORTER_LINUX_X86_64_URL", "SCENARIO_IMPORTER_LINUX_X86_64_SHA256", "SCENARIO_IMPORTER_MACOS_URL", "SCENARIO_IMPORTER_MACOS_SHA256", "-ImporterRoot `$importerRoot", "Contents/MacOS/importer")) {
+        if (-not $workflow.Contains($importerContract)) { throw "Native release workflow is missing scenario importer packaging contract: $importerContract" }
+    }
 }
 
 Write-Host "Windows, Linux, and macOS release export contracts verified."
@@ -126,6 +129,21 @@ if ($actualSchemaHash -ne $expectedSchemaHash) {
     throw "Realmz 2.0 schema mirror drift: expected $expectedSchemaHash, found $actualSchemaHash."
 }
 Write-Host "Realmz 2.0 schema mirror hash verified."
+$schemaV4Path = Join-Path $repoRoot "contracts/realmz2/realmz2-package-v4.schema.json"
+$schemaV4HashPath = Join-Path $repoRoot "contracts/realmz2/realmz2-package-v4.schema.sha256"
+$expectedV4Hash = (Get-Content -Raw -LiteralPath $schemaV4HashPath).Trim()
+if ((Get-FileHash -LiteralPath $schemaV4Path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedV4Hash) {
+    throw "Realmz 2.0 schema v4 mirror drift."
+}
+$repositorySource = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src/storage/packages/package_repository.gd")
+if (-not $repositorySource.Contains($expectedV4Hash) -or -not $repositorySource.Contains($expectedSchemaHash)) {
+    throw "Runtime schema identities do not match both contract mirrors."
+}
+$schemaV5Path = Join-Path $repoRoot "contracts/realmz2/realmz2-package-v5.schema.json"
+$expectedV5Hash = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "contracts/realmz2/realmz2-package-v5.schema.sha256")).Trim()
+if ((Get-FileHash -LiteralPath $schemaV5Path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedV5Hash -or -not $repositorySource.Contains($expectedV5Hash)) {
+    throw "Realmz 2.0 schema v5 mirror or runtime identity drift."
+}
 
 if (-not (Test-Path -LiteralPath $featureSchemaPath) -or -not (Test-Path -LiteralPath $featureSchemaHashPath)) {
     throw "The mirrored Realmz 2.0 feature-report schema and expected hash are required."

@@ -67,6 +67,8 @@ func cast_group(state: GameState, content: RealmzContent, caster: CharacterState
 		return CombatFlowResult.failed(targets.get("errorCode", &"spell_target_unavailable"), String(targets.get("error", "A group spell target is unavailable.")))
 	var group := _context.magic.resolve_character_group_spell(caster, targets.get("characters", []), targets.get("monsters", []), targets.get("definitions", []), spell, power_level, cast_level, rng, false, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
 	if group == null or not group.cast:
+		if group != null and not group.error_code.is_empty():
+			return CombatFlowResult.failed(group.error_code, group.error_message)
 		return CombatFlowResult.failed(&"spell_cast_failed", "The group spell could not be cast with the available spell points.")
 	return commit(state, content, caster, spell, power_level, cast_level, group, rng)
 
@@ -86,6 +88,8 @@ func cast_area(state: GameState, content: RealmzContent, caster: CharacterState,
 	_context.actions().prepare_character_turn(combat, caster)
 	var area := _context.magic.resolve_character_group_spell(caster, targets.get("characters", []), targets.get("monsters", []), targets.get("definitions", []), spell, power_level, cast_level, rng, true, true, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()), true)
 	if area == null or not area.cast:
+		if area != null and not area.error_code.is_empty():
+			return CombatFlowResult.failed(area.error_code, area.error_message)
 		return CombatFlowResult.failed(&"spell_cast_failed", "The area spell could not be cast with the available spell points.")
 	return commit(state, content, caster, spell, power_level, cast_level, area, rng, center, shape, "classic", "", true, [persistent_field])
 

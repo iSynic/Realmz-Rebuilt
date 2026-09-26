@@ -17,12 +17,12 @@ func _init(schema_hash: String, decoder_version: int) -> void:
 	_decoder_version = decoder_version
 
 
-func read(package_path: String, archive_sha256: String) -> Dictionary:
+func read(package_path: String, archive_sha256: String, schema_hash: String = "") -> Dictionary:
 	var cache_path := path_for(package_path)
 	if not FileAccess.file_exists(cache_path):
 		return {}
 	var envelope: Variant = bytes_to_var(FileAccess.get_file_as_bytes(cache_path))
-	if not envelope is Dictionary or not _valid_envelope(envelope, archive_sha256):
+	if not envelope is Dictionary or not _valid_envelope(envelope, archive_sha256, schema_hash if not schema_hash.is_empty() else _schema_hash):
 		return {}
 	var payload: PackedByteArray = envelope["payload"]
 	if _sha256(payload) != envelope["payloadSha256"]:
@@ -40,7 +40,7 @@ func read(package_path: String, archive_sha256: String) -> Dictionary:
 	return documents
 
 
-func write(package_path: String, archive_sha256: String, documents: Dictionary) -> bool:
+func write(package_path: String, archive_sha256: String, documents: Dictionary, schema_hash: String = "") -> bool:
 	if documents.size() != DOCUMENT_PATHS.size():
 		return false
 	for document_path: String in DOCUMENT_PATHS:
@@ -54,7 +54,7 @@ func write(package_path: String, archive_sha256: String, documents: Dictionary) 
 		"kind": KIND,
 		"formatVersion": FORMAT_VERSION,
 		"decoderVersion": _decoder_version,
-		"schemaHash": _schema_hash,
+		"schemaHash": schema_hash if not schema_hash.is_empty() else _schema_hash,
 		"archiveSha256": archive_sha256,
 		"payloadSha256": _sha256(payload),
 		"payloadBytes": encoded.size(),
@@ -86,11 +86,11 @@ static func path_for(package_path: String) -> String:
 	return package_path + ".documents.cache"
 
 
-func _valid_envelope(envelope: Dictionary, archive_sha256: String) -> bool:
+func _valid_envelope(envelope: Dictionary, archive_sha256: String, schema_hash: String) -> bool:
 	var fields := ["kind", "formatVersion", "decoderVersion", "schemaHash", "archiveSha256", "payloadSha256", "payloadBytes", "payload"]
 	if envelope.size() != fields.size() or fields.any(func(field: String) -> bool: return not envelope.has(field)):
 		return false
-	return envelope["kind"] == KIND and int(envelope["formatVersion"]) == FORMAT_VERSION and int(envelope["decoderVersion"]) == _decoder_version and envelope["schemaHash"] == _schema_hash and envelope["archiveSha256"] == archive_sha256 and envelope["payloadSha256"] is String and envelope["payloadBytes"] is int and int(envelope["payloadBytes"]) > 0 and int(envelope["payloadBytes"]) <= MAX_PAYLOAD_BYTES and envelope["payload"] is PackedByteArray
+	return envelope["kind"] == KIND and int(envelope["formatVersion"]) == FORMAT_VERSION and int(envelope["decoderVersion"]) == _decoder_version and envelope["schemaHash"] == schema_hash and envelope["archiveSha256"] == archive_sha256 and envelope["payloadSha256"] is String and envelope["payloadBytes"] is int and int(envelope["payloadBytes"]) > 0 and int(envelope["payloadBytes"]) <= MAX_PAYLOAD_BYTES and envelope["payload"] is PackedByteArray
 
 
 func _sha256(bytes: PackedByteArray) -> String:

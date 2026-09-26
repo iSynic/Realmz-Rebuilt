@@ -5,7 +5,7 @@ extends PanelContainer
 
 signal import_requested(character_id: String, revision_hash: String)
 
-const ROW_HEIGHT: float = 44.0
+const ROW_HEIGHT: float = 64.0
 const PORTRAIT_SIZE: float = 44.0
 const ACTION_WIDTH: float = 58.0
 const DRAG_CURSOR_SHAPES: Array[Input.CursorShape] = [
@@ -59,7 +59,8 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	_prepare_drag_cursor(revision.revision_hash, portrait)
 	_portrait_view.texture = portrait
 	_portrait_view.tooltip_text = "%s's portrait" % revision.name
-	_summary.text = summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
+	_summary.text = "%s\nL%d • %s / %s" % [revision.name, revision.level, race_name, caste_name]
+	tooltip_text += "\n" + summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
 	_add_button.disabled = not enabled
 	_add_button.tooltip_text = tooltip_text
 

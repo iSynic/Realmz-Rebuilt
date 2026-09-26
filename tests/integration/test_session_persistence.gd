@@ -158,6 +158,8 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 
 
 func _test_party_and_creator_persistence(content: RealmzContent) -> void:
+	var original_guidance := content.campaign.guidance_authored
+	content.campaign.guidance_authored = false
 	var party_session := GameSession.new()
 	party_session.start(content, 7)
 	var setup_view := party_session.view()
@@ -176,6 +178,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var party_save := party_session.snapshot()
 	assert_true(party_save.game_state.party_setup_completed, "central save owns party setup completion")
 	assert_equal(party_save.game_state.experience_multiplier, 2.5, "party commitment freezes Castle's displayed experience ratio for the playthrough")
+	content.campaign.guidance_authored = original_guidance
 	var saved_age_group := party_save.game_state.party.characters()[0].age_group
 	assert_true(saved_age_group >= 1 and saved_age_group <= 5, "the central save owns the character's independent Classic age group")
 	var restored_party := GameSession.new()

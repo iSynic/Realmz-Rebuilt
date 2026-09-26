@@ -12,6 +12,8 @@ var selected_target_ids: Array[String] = []
 var target_kinds: Array[StringName] = []
 var reflected_targets: Array[bool] = []
 var resolutions: Array[SpellResolution] = []
+var error_code: StringName = &""
+var error_message: String = ""
 
 
 func _init(was_cast: bool, spell_cost: int, effect_duration: int, rolled_damage: int) -> void:
@@ -22,6 +24,11 @@ func _init(was_cast: bool, spell_cost: int, effect_duration: int, rolled_damage:
 
 
 func append_target(target_id: String, target_kind: StringName, resolution: SpellResolution, selected_target_id: String = "", reflected: bool = false) -> void:
+	if resolution != null and not resolution.error_code.is_empty():
+		cast = false
+		error_code = resolution.error_code
+		error_message = resolution.error_message
+		return
 	target_ids.append(target_id)
 	selected_target_ids.append(target_id if selected_target_id.is_empty() else selected_target_id)
 	target_kinds.append(target_kind)

@@ -6,6 +6,7 @@ build/
 dist/
 node_modules/
 artifacts/
+importer/
 test-results/
 release-evidence/
 *.bundle

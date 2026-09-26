@@ -6,14 +6,20 @@ extends RefCounted
 var _programs: Dictionary = {}
 var _actions: Dictionary = {}
 var _application_hooks: ScenarioApplicationHooks
+var _classic_fallthrough: bool = false
 
 
-func _init(programs: Array[ScenarioProgramDefinition], actions: Array[ScenarioActionDefinition], application_hooks: ScenarioApplicationHooks = null) -> void:
+func _init(programs: Array[ScenarioProgramDefinition], actions: Array[ScenarioActionDefinition], application_hooks: ScenarioApplicationHooks = null, classic_fallthrough: bool = false) -> void:
 	_application_hooks = application_hooks if application_hooks != null else ScenarioApplicationHooks.new()
+	_classic_fallthrough = classic_fallthrough
 	for program: ScenarioProgramDefinition in programs:
 		_programs[program.id] = program
 	for action: ScenarioActionDefinition in actions:
 		_actions[action.id] = action
+
+
+func allows_classic_fallthrough() -> bool:
+	return _classic_fallthrough
 
 
 func program_by_id(program_id: String) -> ScenarioProgramDefinition:

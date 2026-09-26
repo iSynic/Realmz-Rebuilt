@@ -17,10 +17,19 @@ jobs:
         include:
           - os: windows-latest
             platform: Windows x86_64
+            importerPlatform: windows
+            importerUrlVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_URL
+            importerHashVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256
           - os: ubuntu-latest
             platform: Linux x86_64
+            importerPlatform: linux
+            importerUrlVariable: SCENARIO_IMPORTER_LINUX_X86_64_URL
+            importerHashVariable: SCENARIO_IMPORTER_LINUX_X86_64_SHA256
           - os: macos-latest
             platform: macOS universal
+            importerPlatform: macos
+            importerUrlVariable: SCENARIO_IMPORTER_MACOS_URL
+            importerHashVariable: SCENARIO_IMPORTER_MACOS_SHA256
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -84,6 +93,17 @@ jobs:
           version: 4.7.1
           use-dotnet: false
           include-templates: true
+      - name: Download verified scenario importer
+        shell: pwsh
+        env:
+          SCENARIO_IMPORTER_URL: ${{ vars[matrix.importerUrlVariable] }}
+          SCENARIO_IMPORTER_SHA256: ${{ vars[matrix.importerHashVariable] }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SCENARIO_IMPORTER_URL) -or [string]::IsNullOrWhiteSpace($env:SCENARIO_IMPORTER_SHA256)) {
+            throw 'Set the versioned importer asset URL and SHA-256 repository variables for this platform before building the release.'
+          }
+          $downloadRoot = Join-Path $env:RUNNER_TEMP 'scenario-importer'
+          ./tools/install_scenario_importer.ps1 -Url $env:SCENARIO_IMPORTER_URL -ExpectedSha256 $env:SCENARIO_IMPORTER_SHA256 -DestinationRoot $downloadRoot -ExpectedPlatform '${{ matrix.importerPlatform }}'
       - name: Export tagged runtime
         shell: pwsh
         run: |
@@ -100,7 +120,39 @@ jobs:
           $result = Invoke-StreamingProcess -FilePath $godotPath -ArgumentList @('--headless', '--path', '.', '--export-release', '${{ matrix.preset }}', '${{ matrix.output }}') -Label '${{ matrix.platform }} tagged export'
           [IO.File]::WriteAllLines($exportLog, $result.Output, [Text.UTF8Encoding]::new($false))
           if ($result.ExitCode -ne 0) { throw "Godot export failed with exit code $($result.ExitCode)." }
-          ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog
+          $importerSource = Join-Path $env:RUNNER_TEMP 'scenario-importer'
+          $copyImporter = {
+            param([string]$Source, [string]$Destination)
+            [IO.Directory]::CreateDirectory($Destination) | Out-Null
+            $sourcePrefix = [IO.Path]::GetFullPath($Source).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+            foreach ($file in Get-ChildItem -LiteralPath $Source -File -Recurse -Force) {
+              $relative = [IO.Path]::GetFullPath($file.FullName).Substring($sourcePrefix.Length)
+              $target = Join-Path $Destination $relative
+              [IO.Directory]::CreateDirectory((Split-Path -Parent $target)) | Out-Null
+              Copy-Item -LiteralPath $file.FullName -Destination $target
+            }
+          }
+          if ('${{ runner.os }}' -eq 'macOS') {
+            $appStage = Join-Path $env:RUNNER_TEMP 'realmz-rebuilt-importer-stage'
+            Expand-Archive -LiteralPath '${{ matrix.output }}' -DestinationPath $appStage
+            $app = Join-Path $appStage 'Realmz Rebuilt.app'
+            $importerRoot = Join-Path $app 'Contents/MacOS/importer'
+            & $copyImporter $importerSource $importerRoot
+            chmod 755 (Join-Path $importerRoot 'providence-native-adapter')
+            if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS scenario importer executable permissions.' }
+            $repacked = Join-Path $env:RUNNER_TEMP 'Realmz-Rebuilt-with-importer.zip'
+            & ditto -c -k --sequesterRsrc --keepParent --zlibCompressionLevel 9 $app $repacked
+            if ($LASTEXITCODE -ne 0) { throw 'Could not repackage macOS application with its scenario importer.' }
+            Move-Item -LiteralPath $repacked -Destination '${{ matrix.output }}' -Force
+          } else {
+            $importerRoot = Join-Path (Split-Path '${{ matrix.output }}') 'importer'
+            & $copyImporter $importerSource $importerRoot
+            if ('${{ runner.os }}' -eq 'Linux') {
+              chmod 755 (Join-Path $importerRoot 'providence-native-adapter')
+              if ($LASTEXITCODE -ne 0) { throw 'Could not set Linux scenario importer executable permissions.' }
+            }
+          }
+          ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog -ImporterRoot $importerRoot
       - name: Native startup and package
         shell: pwsh
         run: |
@@ -109,7 +161,8 @@ jobs:
             $quotedLog = '"' + $log + '"'
             $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList "--headless --quit-after 2 --log-file $quotedLog" -WindowStyle Hidden -Wait -PassThru
             if ($process.ExitCode -ne 0) { throw "Windows startup failed: $($process.ExitCode)" }
-            Compress-Archive -Path '${{ matrix.artifactPath }}/*' -DestinationPath '${{ matrix.package }}'
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [IO.Compression.ZipFile]::CreateFromDirectory('${{ matrix.artifactPath }}', '${{ matrix.package }}', [IO.Compression.CompressionLevel]::Optimal, $false)
           } elseif ('${{ runner.os }}' -eq 'Linux') {
             chmod +x '${{ matrix.output }}'
             & './${{ matrix.output }}' --headless --quit-after 2 --log-file $log
@@ -119,6 +172,8 @@ jobs:
             $extracted = Join-Path $env:RUNNER_TEMP 'realmz-rebuilt-native-smoke'
             Expand-Archive -LiteralPath '${{ matrix.output }}' -DestinationPath $extracted
             $binary = Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/Realmz Rebuilt'
+            chmod 755 (Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/importer/providence-native-adapter')
+            if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS smoke importer executable permissions.' }
             chmod +x $binary
             & $binary --headless --quit-after 2 --log-file $log
             if ($LASTEXITCODE -ne 0) { throw "macOS startup failed: $LASTEXITCODE" }

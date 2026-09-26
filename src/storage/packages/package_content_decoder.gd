@@ -43,12 +43,12 @@ func decode_spells(value: Variant) -> Variant:
 	return _characters.decode_spells(value)
 
 
-func decode_monsters(value: Variant) -> Variant:
-	return _encounters.decode_monsters(value)
+func decode_monsters(value: Variant, allow_deferred: bool = false, schema_version: int = 3) -> Variant:
+	return _encounters.decode_monsters(value, allow_deferred, schema_version)
 
 
-func decode_monster_sets(value: Variant) -> Variant:
-	return _encounters.decode_monster_sets(value)
+func decode_monster_sets(value: Variant, allow_deferred: bool = false, schema_version: int = 3) -> Variant:
+	return _encounters.decode_monster_sets(value, allow_deferred, schema_version)
 
 
 func decode_battles(value: Variant) -> Variant:

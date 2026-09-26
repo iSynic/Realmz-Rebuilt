@@ -61,6 +61,8 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 
 
 func execute_classic(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
+	if action.extra_code_fault != null and (action.opcode not in [121, 123, 124, 125] or _game_state.combat != null):
+		return ScenarioRuntimeOperationResult.failed(&"malformed_classic_extra_code", action.extra_code_fault.message())
 	if not _handler_registration_error.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_opcode_registry", _handler_registration_error)
 	if _classic_handlers.has_handler(action.opcode):
@@ -321,6 +323,8 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	var selected := encounter.response_at(selected_index)
 	if selected == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
+	if selected.is_classic_eliminated(encounter.id):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Classic Simple Encounter choice has been eliminated.")
 	_game_state.scenario_progress.encounters.record_attempt(&"simple", encounter.id)
 	var attempt := choice_continuation.encounter_attempt + (0 if choice_continuation.reopen_result else 1)
 	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index).set_encounter_attempt(attempt)

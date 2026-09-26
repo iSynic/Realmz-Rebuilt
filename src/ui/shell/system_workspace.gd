@@ -66,6 +66,14 @@ func save_detail_empty() -> PanelContainer:
 	return get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty") as PanelContainer
 
 
+func focus_load_confirmation() -> void:
+	if not is_inside_tree():
+		return
+	var confirm := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/ConfirmActionRow/Confirm") as Button
+	if confirm.is_visible_in_tree() and not confirm.disabled:
+		confirm.grab_focus()
+
+
 func _clear(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		parent.remove_child(child)

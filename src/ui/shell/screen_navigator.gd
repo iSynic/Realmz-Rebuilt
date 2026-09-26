@@ -356,7 +356,7 @@ func handle_back() -> bool:
 			return true
 		show_splash()
 		return true
-	if setup_controller.campaign_library.splash_visible():
+	if setup_controller.campaign_library.splash_visible:
 		return false
 	if setup_controller.setup_overlay.visible:
 		show_splash()

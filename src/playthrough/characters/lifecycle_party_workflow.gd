@@ -293,7 +293,7 @@ static func character_draft_is_valid(content: RealmzContent, state: GameState, r
 
 
 static func party_experience_multiplier(characters: Array[CharacterState], difficulty: int, campaign: CampaignDefinition) -> float:
-	if campaign == null or not campaign.guidance_authored or campaign.recommended_party_levels <= 0:
+	if campaign == null or campaign.recommended_party_levels <= 0:
 		return 1.0
 	var current_levels := 0
 	for character: CharacterState in characters:

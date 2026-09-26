@@ -200,6 +200,8 @@ func _test_ordered_controller_targeting() -> void:
 	assert_true(area.move_coordinate_preview(Vector2i.RIGHT) and not area.select_coordinate(area.hovered_coordinate) and not area.can_confirm(), "controller preview can cross an unavailable cell without admitting it")
 	assert_true(area.move_coordinate_preview(Vector2i.RIGHT) and area.select_coordinate(area.hovered_coordinate) and area.can_confirm(), "controller can reach a disconnected legal target region")
 	var summon_request := CombatTargetingRequest.new(&"coordinate_sequence", body)
+	var footprint_request := CombatTargetingRequest.new(&"coordinate_sequence", body); footprint_request.maximum_targets = 2; footprint_request.default_target_coordinate = Vector2i(44, 46); footprint_request.area_offsets = BattlefieldGrid.footprint_cells(Vector2i.ZERO, 3); footprint_request.legal_coordinates = [Vector2i(44, 46), Vector2i(43, 46), Vector2i(44, 48)]
+	var footprint_state := CombatTargetingState.new(footprint_request); assert_equal([footprint_state.select_coordinate(Vector2i(44, 46)), footprint_state.select_coordinate(Vector2i(43, 46)), footprint_state.select_coordinate(Vector2i(44, 48)), footprint_state.committed_body().target_coordinates], [true, false, true, [Vector2i(44, 46), Vector2i(44, 48)]], "a four-cell summon preview rejects overlapping anchors and preserves two separated choices")
 	summon_request.validation_deferred = true
 	summon_request.maximum_targets = 2
 	summon_request.default_target_coordinate = Vector2i(30, 30)

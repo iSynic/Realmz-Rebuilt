@@ -51,6 +51,15 @@ func bind_setup_workspace(workspace: PartySetupWorkspace) -> void:
 	_bind_setup_workspace_controls(workspace)
 	_inspection.build_setup_character_inspection()
 	_creation.render_creator_step()
+	var weak_owner: WeakRef = weakref(self)
+	_campaign_library.preparation_changed.connect(func() -> void:
+		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		if owner != null: owner._creation.refresh_setup_options())
+	_campaign_library.back_requested.connect(func() -> void:
+		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		if owner != null:
+			if owner.campaign_library.package_operation_status.is_running(): owner.campaign_library.cancel_package_requested.emit()
+			owner.show_splash())
 
 
 func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
@@ -140,6 +149,7 @@ func present_party_setup_status(text: String, is_error: bool = false) -> void:
 func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Rect2) -> void:
 	if profile == null:
 		return
+	var profile_changed := layout_profile != profile.id
 	layout_profile = profile.id
 	setup_layout_rect = setup_rect
 	_creation.apply_creator_layout(profile.id)
@@ -148,6 +158,7 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		creator_scroll.custom_minimum_size.y = 140.0 if profile.id == UiLayoutProfile.COMPACT else 220.0
 	_campaign_library.apply_layout(profile, campaign_rect, setup_rect)
 	apply_modal_layouts()
+	if profile_changed: _assembly.refresh_party_list()
 
 func apply_modal_layouts() -> void:
 	_campaign_library.apply_modal_layouts()
@@ -188,7 +199,7 @@ func hide_overlays() -> void:
 		setup_overlay.visible = false
 
 func full_stage_overlay_visible() -> bool:
-	return _campaign_library.full_stage_overlay_visible() or setup_overlay != null and setup_overlay.visible
+	return _campaign_library.full_stage_overlay_visible or setup_overlay != null and setup_overlay.visible
 
 func show_splash() -> void:
 	_campaign_library.show_splash()

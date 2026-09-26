@@ -7,7 +7,18 @@ const SUPPORTED_SAFE_CAPABILITIES: Array[String] = RealmzRuntimeApi.SUPPORTED_SA
 const SUPPORTED_ACTION_CONTEXTS: Array[String] = ["action", "encounter", "spell", "item", "monster-ai", "lifecycle", "rule-modifier"]
 const SUPPORTED_VALUE_TYPES: Array[String] = ["void", "bool", "int", "float", "string", "location-snapshot", "time-snapshot", "wealth-snapshot", "character-snapshot", "character-snapshot-array", "combat-snapshot", "action-outcome", "encounter-outcome", "effect-outcome", "spell-validation-outcome", "spell-cast-outcome", "spell-effect-outcome", "spell-tick-outcome", "spell-expiration-outcome", "item-outcome", "monster-decision", "rule-modifier", "bool-array", "int-array", "float-array", "string-array"]
 
-func decode_scenario(document: Dictionary, campaign_id: String) -> ScenarioDefinition:
+var _allow_deferred: bool = false
+var _extra_code_tail: ClassicExtraCodeFault
+
+func decode_scenario(document: Dictionary, campaign_id: String, allow_deferred: bool = false) -> ScenarioDefinition:
+	_allow_deferred = allow_deferred
+	_extra_code_tail = null
+	if document.has("extraCodeTail"):
+		var tail: Variant = document["extraCodeTail"]
+		if not allow_deferred or document.get("schemaVersion") != 5 or not tail is Dictionary or not _exact_fields(tail, ["rowId", "availableBytes"]) or not _is_integer(tail["rowId"]) or not _is_integer(tail["availableBytes"]) or _integer(tail["rowId"]) < 0 or _integer(tail["availableBytes"]) < 1 or _integer(tail["availableBytes"]) > 9:
+			_reject("Scenario Extra Code tail must identify an incomplete imported schema-v5 row.")
+			return null
+		_extra_code_tail = ClassicExtraCodeFault.new(_integer(tail["rowId"]), _integer(tail["availableBytes"]))
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
 	if not _has_fields(document, ["applicationHooks", "programs", "scenarioActions", "stateDefinitions", "migrations"], "scenario document"):
 		return null
@@ -22,7 +33,7 @@ func decode_scenario(document: Dictionary, campaign_id: String) -> ScenarioDefin
 	var programs: Array[ScenarioProgramDefinition] = programs_value
 	var actions: Array[ScenarioActionDefinition] = actions_value
 	var hooks: ScenarioApplicationHooks = hooks_value
-	var definition := ScenarioDefinition.new(programs, actions, hooks)
+	var definition := ScenarioDefinition.new(programs, actions, hooks, allow_deferred)
 	for hook: StringName in [ScenarioApplicationHooks.START_GAME, ScenarioApplicationHooks.PARTY_DEATH, ScenarioApplicationHooks.END_ADVENTURE, ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE]:
 		var hook_program_id := definition.application_hook_program_id(hook)
 		if not hook_program_id.is_empty() and definition.program_by_id(hook_program_id) == null:
@@ -105,13 +116,14 @@ func _construct_program_instruction(instruction: Variant) -> Variant:
 	if normalized != _integer(instruction["opcode"]) or instruction["gosub"] != (raw_opcode < 0 and raw_opcode not in [-14, -23]):
 		_reject("Classic instruction raw/normalized/GOSUB identity is inconsistent.")
 		return null
-	if not ClassicOpcodeCatalog.is_executable(normalized):
+	if not _allow_deferred and not ClassicOpcodeCatalog.is_executable(normalized):
 		_reject("Scenario program requires unsupported Classic opcode %d." % normalized)
 		return null
 	var extra_code: Array[int] = []
 	if instruction["extraCode"] != null:
 		var expected_extra_count := 10 if normalized == 92 else 5
-		if not instruction["extraCode"] is Array or instruction["extraCode"].size() != expected_extra_count:
+		var partial_extra: bool = _allow_deferred and normalized == 92 and instruction["extraCode"] is Array and instruction["extraCode"].size() == 5
+		if not instruction["extraCode"] is Array or instruction["extraCode"].size() != expected_extra_count and not partial_extra:
 			_reject("Classic opcode %d E-code must contain %d integers." % [normalized, expected_extra_count])
 			return null
 		for extra: Variant in instruction["extraCode"]:
@@ -119,7 +131,16 @@ func _construct_program_instruction(instruction: Variant) -> Variant:
 				_reject("Classic E-code contains a non-integer.")
 				return null
 			extra_code.append(_integer(extra))
-	return ClassicActionDefinition.new(_integer(instruction["slot"]), raw_opcode, normalized, _integer(instruction["id"]), instruction["gosub"], extra_code)
+	var action := ClassicActionDefinition.new(_integer(instruction["slot"]), raw_opcode, normalized, _integer(instruction["id"]), instruction["gosub"], extra_code)
+	if _extra_code_tail != null and ClassicOpcodeCatalog.reads_extra_code(normalized):
+		var primary_fault := action.operand_id == _extra_code_tail.row_id
+		var companion_fault := normalized == 92 and action.operand_id + 1 == _extra_code_tail.row_id
+		if primary_fault or companion_fault:
+			if primary_fault and not extra_code.is_empty() or companion_fault and extra_code.size() > 5:
+				_reject("Scenario instruction supplies complete operands for a declared incomplete Extra Code row.")
+				return null
+			action.extra_code_fault = _extra_code_tail
+	return action
 
 func _construct_call_instruction(record: Dictionary) -> CallScenarioActionInstruction:
 	if not _exact_fields(record, ["kind", "actionId", "arguments", "result"]) or not record["actionId"] is String or record["actionId"].is_empty() or not record["arguments"] is Dictionary or record["result"] != null and not record["result"] is String:

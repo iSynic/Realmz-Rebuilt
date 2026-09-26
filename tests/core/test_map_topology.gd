@@ -3,7 +3,25 @@ extends RealmzTestCase
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
 
+func _test_castle_land_visibility() -> void:
+	var fixture: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/oracle/classic-land-visibility.json"))
+	var cells: Array[MapCell] = []
+	for y: int in 90:
+		for x: int in 90:
+			var blocked := (x * 7 + y * 11) % 9 == 0
+			cells.append(MapCell.new("sight:%d,%d" % [x, y], Vector2i(x, y), "terrain", true, 1, blocked, true, false, false, false, false, false, 0, 1, "tiles", [], [], {}, []))
+	var topology := MapTopology.new(90, 90, cells)
+	var world := WorldState.new()
+	for example: Dictionary in fixture.cases:
+		var origin := Vector2i(example.origin[0], example.origin[1])
+		var indices: Array[int] = []
+		for coordinate: Vector2i in topology.exploration_visible_cells(origin, world, true):
+			indices.append(coordinate.y * 90 + coordinate.x)
+		assert_equal(indices, example.visibleIndices.map(func(value: float) -> int: return int(value)), "land discovery matches native Castle cansee2 at %s" % origin)
+
+
 func run() -> void:
+	_test_castle_land_visibility()
 	var loaded := load_test_package(FIXTURE_PATH)
 	if not loaded.is_ok():
 		return
@@ -35,7 +53,7 @@ func run() -> void:
 	assert_equal(sight_topology.find_revealed_path(Vector2i.ZERO, Vector2i(2, 0), world_state, &"land", false, known_corridor), [Vector2i(1, 0), Vector2i(2, 0)], "revealed routing returns an exact destination path excluding the origin")
 	known_corridor.erase(Vector2i(1, 0))
 	assert_true(sight_topology.find_revealed_path(Vector2i.ZERO, Vector2i(2, 0), world_state, &"land", false, known_corridor).is_empty(), "a known destination beyond unknown intervening terrain is not plannable")
-	assert_equal([MapTopology.EXPLORATION_VISIBILITY_RADIUS, ordinary_sight.front(), ordinary_sight.back(), ordinary_sight.size()], [10, Vector2i(6, 0), Vector2i(26, 0), 21], "ordinary LOS permits a wider bounded view through an open corridor")
+	assert_equal([ordinary_sight.front(), ordinary_sight.back(), ordinary_sight.size()], [Vector2i(11, 0), Vector2i(21, 0), 11], "ordinary land discovery retains Castle's six-sample sweep through an open corridor")
 	assert_equal([MapTopology.WIZARDS_EYE_VISIBILITY_RADIUS, wizard_sight.front(), wizard_sight.back(), wizard_sight.size()], [16, Vector2i.ZERO, Vector2i(32, 0), 33], "Wizard's Eye doubles the exploration radius while remaining bounded to the current map")
 	var edge_only_cells: Array[MapCell] = [los_cells[0], MapCell.new("edge:1", Vector2i(1, 0), "classic.terrain.3", true, 1, false, true, false, false, false, false, false, 0, 3, "fixture.tileset", no_ids, no_ids, wall_edges, no_features)]; assert_false(MapTopology.new(2, 1, edge_only_cells).has_line_of_sight(Vector2i.ZERO, Vector2i(1, 0), WorldState.new()), "a blocking edge still hides a passable destination cell")
 

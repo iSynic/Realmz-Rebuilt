@@ -25,6 +25,8 @@ var transformed_definition_after: String = ""
 var special_result: StringName = &""
 var special_roll: int = 0
 var special_threshold: int = 0
+var error_code: StringName = &""
+var error_message: String = ""
 
 
 func _init(was_cast: bool, was_resisted: bool, did_save: bool, spell_cost: int, dealt_damage: int, effect_duration: int, defeated: bool = false) -> void:
@@ -35,3 +37,10 @@ func _init(was_cast: bool, was_resisted: bool, did_save: bool, spell_cost: int, 
 	damage = dealt_damage
 	duration = effect_duration
 	target_defeated = defeated
+
+
+static func failed(code: StringName, message: String) -> SpellResolution:
+	var result := SpellResolution.new(false, false, false, 0, 0, 0)
+	result.error_code = code
+	result.error_message = message
+	return result

@@ -346,14 +346,22 @@ func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells
 	if targeting.mode == &"coordinate_sequence":
 		for index: int in targeting.selected_coordinates.size():
 			var coordinate := targeting.selected_coordinates[index]
-			if not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
-				continue
-			var rect := BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin)
-			draw_rect(rect.grow(-2.0), Color(1.0, 0.86, 0.28, 0.98), false, 3.0)
-			draw_string(get_theme_font(&"font", &"Label"), rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
+			for offset: Vector2i in targeting.area_offsets if not targeting.area_offsets.is_empty() else [Vector2i.ZERO]:
+				var cell := coordinate + offset
+				if not BattlefieldPresentationGeometry.coordinate_is_visible(cell, camera, visible_cells):
+					continue
+				var rect := BattlefieldPresentationGeometry.cell_rect(cell, camera, draw_origin)
+				draw_rect(rect.grow(-2.0), Color(1.0, 0.86, 0.28, 0.98), false, 3.0)
+				if offset == Vector2i.ZERO:
+					draw_string(get_theme_font(&"font", &"Label"), rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
 		var hovered := targeting.hovered_coordinate
-		if hovered.x >= 0 and not targeting.selected_coordinates.has(hovered) and BattlefieldPresentationGeometry.coordinate_is_visible(hovered, camera, visible_cells):
-			draw_rect(BattlefieldPresentationGeometry.cell_rect(hovered, camera, draw_origin).grow(-2.0), Color(0.86, 0.80, 0.62, 0.78), false, 2.0)
+		if hovered.x >= 0 and not targeting.selected_coordinates.has(hovered):
+			var valid := targeting.validation_deferred or targeting.legal_coordinates.has(hovered)
+			var hover_color := Color(0.86, 0.80, 0.62, 0.78) if valid else Color(0.85, 0.30, 0.28, 0.84)
+			for offset: Vector2i in targeting.area_offsets if not targeting.area_offsets.is_empty() else [Vector2i.ZERO]:
+				var cell := hovered + offset
+				if BattlefieldPresentationGeometry.coordinate_is_visible(cell, camera, visible_cells):
+					draw_rect(BattlefieldPresentationGeometry.cell_rect(cell, camera, draw_origin).grow(-2.0), hover_color, false, 2.0)
 		return
 	for candidate_id: String in targeting.candidate_ids:
 		var rect := _combatant_rect(combat, candidate_id, camera, visible_cells, draw_origin)

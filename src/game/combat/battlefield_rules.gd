@@ -109,13 +109,18 @@ func coordinate_target_is_valid(battlefield: BattlefieldState, terrain_set: Batt
 	return distance >= 0 and distance <= maximum_range and (not require_line_of_sight or has_line_of_sight_to_coordinate(battlefield, terrain_set, actor_id, destination))
 
 
-func monster_footprint_is_open(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, anchor: Vector2i, size: int, additionally_occupied: Dictionary = {}) -> bool:
+func monster_footprint_is_open(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, anchor: Vector2i, size: int, additionally_occupied: Dictionary = {}, occupied_cache: Dictionary = {}) -> bool:
 	if battlefield == null or terrain_set == null or size < 0 or size > 3:
 		return false
-	var occupied_cells := additionally_occupied.duplicate()
-	for actor_id: String in battlefield.actors.actor_ids():
-		for coordinate: Vector2i in battlefield.actors.actor_footprint(actor_id):
-			occupied_cells[coordinate] = true
+	var occupied_cells := occupied_cache
+	if occupied_cells.is_empty():
+		occupied_cells = {}
+		for actor_id: String in battlefield.actors.actor_ids():
+			for coordinate: Vector2i in battlefield.actors.actor_footprint(actor_id):
+				occupied_cells[coordinate] = true
+	if not additionally_occupied.is_empty():
+		occupied_cells = occupied_cells.duplicate()
+		occupied_cells.merge(additionally_occupied, true)
 	return _route_footprint_is_passable(battlefield, terrain_set, size, BattlefieldGrid.footprint_cells(anchor, size), occupied_cells, true)
 
 

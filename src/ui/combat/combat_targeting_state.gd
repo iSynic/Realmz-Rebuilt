@@ -66,6 +66,15 @@ func select_coordinate(coordinate: Vector2i) -> bool:
 			selected_coordinates.erase(coordinate)
 			status_text = "Summon space removed from the ordered selection."
 			return true
+		if not validation_deferred and not legal_coordinates.has(coordinate):
+			status_text = "The summoned creature cannot fit at that space."
+			return false
+		if not area_offsets.is_empty():
+			for chosen: Vector2i in selected_coordinates:
+				for offset: Vector2i in area_offsets:
+					if area_offsets.has(coordinate + offset - chosen):
+						status_text = "Summoned creatures cannot overlap."
+						return false
 		if selected_coordinates.size() >= maximum_targets:
 			status_text = "The selected summon has reached its space limit."
 			return false
@@ -158,7 +167,7 @@ func can_confirm() -> bool:
 		&"area":
 			return selected_coordinate.x >= 0 and selected_coordinate.y >= 0 if validation_deferred else legal_coordinates.has(selected_coordinate)
 		&"coordinate_sequence":
-			return not selected_coordinates.is_empty()
+			return not selected_coordinates.is_empty() and (validation_deferred or selected_coordinates.all(func(coordinate: Vector2i) -> bool: return legal_coordinates.has(coordinate)))
 	return false
 
 

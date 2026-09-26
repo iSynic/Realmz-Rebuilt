@@ -11,6 +11,8 @@ var display_name: String
 var ready: bool
 var error_message: String
 var ready_with_warnings: bool
+var origin: String = "imported"
+var revisions: Array[Dictionary] = []
 
 
 func _init(package_path: String = "", is_ready: bool = false, loaded_campaign_id: String = "", loaded_package_hash: String = "", loaded_rules_version: String = "", readiness_error: String = "", loaded_display_name: String = "", has_deferred_references: bool = false) -> void:

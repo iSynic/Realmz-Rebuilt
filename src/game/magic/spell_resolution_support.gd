@@ -268,7 +268,10 @@ static func _selection_is_valid(selection: SpellTargetSelection) -> bool:
 
 
 func _polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, spell_cost: int, duration: int, context: MonsterPolymorphContext, rng: RealmzRng) -> SpellResolution:
-	var before := _monsters.polymorph_monster(target, target_definition, context, rng)
+	var failures: Array[String] = []
+	var before := _monsters.polymorph_monster(target, target_definition, context, rng, failures)
+	if not failures.is_empty():
+		return SpellResolution.failed(&"invalid_random_weapon_table", failures[0])
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	if not before.is_empty():
 		result.transformed_definition_before = before

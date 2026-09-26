@@ -18,6 +18,8 @@ func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: Mon
 		return result
 	var resolution := _resolve_monster_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng, &"magic.monster-spell.damage-save", polymorph_context)
 	result.append_target(effective.id, effective.kind, resolution, effective.original_target_id, effective.reflected)
+	if not result.cast and not result.error_code.is_empty():
+		return result
 	return result
 
 
@@ -45,6 +47,8 @@ func resolve_monster_group_spell(caster: MonsterState, caster_definition: Monste
 			continue
 		var resolution := _resolve_monster_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, &"magic.monster-group.damage-save", polymorph_context)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
+		if not result.cast and not result.error_code.is_empty():
+			return result
 	return result
 
 
@@ -100,4 +104,6 @@ func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition
 		var save_tag := StringName("%s.damage-save.%d" % [rng_tag, index])
 		var resolution := _resolve_monster_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, save_tag)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
+		if not result.cast and not result.error_code.is_empty():
+			return result
 	return result

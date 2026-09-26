@@ -5,14 +5,21 @@ extends RefCounted
 
 const CAMPAIGN_SELECTION_PANEL_SCENE := preload("res://src/ui/setup/campaign_selection_panel.tscn")
 const FRONT_DOOR_MENU_PATH := "res://src/ui/setup/front_door_menu.tscn"
+const STARTUP_SELECTION_CONTROLLER := preload("res://src/ui/setup/campaign_startup_selection_controller.gd")
 
 signal start_requested(package_path: String, seed: int)
+signal import_requested(directory: String)
+signal startup_selection_requested(directory: String, startup_file: String)
+signal revision_requested(campaign_id: String, package_hash: String)
+signal removal_requested(campaign_id: String)
 signal cancel_package_requested
 signal refresh_requested
 signal campaign_selection_requested
 signal load_adventure_requested
 signal vault_requested
 signal quit_requested
+signal preparation_changed
+signal back_requested
 
 const MAXIMUM_MODAL_Z_INDEX: int = 30
 const SPLASH_WIDE_MINIMUM_WIDTH: float = 1040.0
@@ -26,7 +33,9 @@ var campaign_list: VBoxContainer
 var campaign_scroll: ScrollContainer
 var package_operation_host: PanelContainer
 var install_dialog: FileDialog
+var import_dialog: FileDialog
 var install_button: Button
+var import_button: Button
 var refresh_button: Button
 var package_install_row: BoxContainer
 var startup_action_buttons: Array[Button] = []
@@ -41,6 +50,10 @@ var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 
 var _host: Control
 var _campaign_row_scene: PackedScene
+var _main_campaign_rows: VBoxContainer
+var _imported_campaign_rows: VBoxContainer
+var _main_campaign_heading: Label
+var _imported_campaign_heading: Label
 var _no_campaigns_state: Label
 var _selected_summary: PanelContainer
 var _selected_title: Label
@@ -59,8 +72,32 @@ var _failure_details: Label
 var _failure_actions: HBoxContainer
 var _failure_retry: Button
 var _failure_dismiss: Button
+var _operation_warning_toggle: Button
+var _operation_warning_viewport: ScrollContainer
+var _operation_warning_details: RichTextLabel
+var _focused_import_path: String = ""
+var _selected_campaign_path: String = ""
+var _requested_campaign_path: String = ""
+var _pending_revision_hash := ""
 var _startup_actions_ready: bool = true
 var _startup_action_tooltips: Dictionary = {}
+var _startup_selection: RefCounted = STARTUP_SELECTION_CONTROLLER.new()
+var _remove_dialog: CampaignRemovalDialog
+var _browsed_campaign_path := ""
+var full_stage_overlay_visible: bool:
+	get: return splash_visible or campaign_overlay != null and campaign_overlay.visible
+var splash_visible: bool:
+	get: return splash_overlay != null and splash_overlay.visible
+
+
+
+func _init() -> void:
+	var controller_ref: WeakRef = weakref(self)
+	_startup_selection.connect("selection_requested", func(directory: String, startup_file: String) -> void:
+		var controller := controller_ref.get_ref() as CampaignLibraryController
+		if controller != null:
+			controller.startup_selection_requested.emit(directory, startup_file)
+	)
 
 
 func attach(host: Control) -> void:
@@ -113,6 +150,10 @@ func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
 	campaign_overlay = panel
 	_campaign_row_scene = campaign_overlay.get("campaign_row_scene") as PackedScene
 	campaign_list = campaign_overlay.get_node("%CampaignList") as VBoxContainer
+	_main_campaign_rows = campaign_overlay.get_node("%MainCampaignRows") as VBoxContainer
+	_imported_campaign_rows = campaign_overlay.get_node("%ImportedCampaignRows") as VBoxContainer
+	_main_campaign_heading = campaign_overlay.get_node("%MainScenarioHeading") as Label
+	_imported_campaign_heading = campaign_overlay.get_node("%ImportedScenarioHeading") as Label
 	campaign_scroll = campaign_overlay.get_node("%CampaignScroll") as ScrollContainer
 	_no_campaigns_state = campaign_overlay.get_node("%NoCampaignsState") as Label
 	_selected_summary = campaign_overlay.get_node("%SelectedScenarioSummary") as PanelContainer
@@ -133,39 +174,59 @@ func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
 	_failure_actions = campaign_overlay.get_node("%PackageFailureActions") as HBoxContainer
 	_failure_retry = campaign_overlay.get_node("%RetryPackageOperation") as Button
 	_failure_dismiss = campaign_overlay.get_node("%DismissPackageFailure") as Button
+	_startup_selection.call("bind", campaign_overlay)
+	_operation_warning_toggle = campaign_overlay.get_node("%PackageWarningDetailsToggle") as Button
+	_operation_warning_viewport = campaign_overlay.get_node("%PackageWarningDetailsViewport") as ScrollContainer
+	_operation_warning_details = campaign_overlay.get_node("%PackageWarningDetails") as RichTextLabel
 	package_install_row = campaign_overlay.get_node("%PackageInstallRow") as BoxContainer
 	install_button = campaign_overlay.get_node("%InstallPackage") as Button
+	import_button = campaign_overlay.get_node("%ImportScenario") as Button
 	install_dialog = campaign_overlay.get_node("%InstallScenarioDialog") as FileDialog
+	import_dialog = campaign_overlay.get_node("%ImportScenarioDialog") as FileDialog
 	refresh_button = campaign_overlay.get_node("%RefreshScenarios") as Button
+	_remove_dialog = campaign_overlay.get_node("%RemoveScenarioDialog") as CampaignRemovalDialog
+	_remove_dialog.removal_confirmed.connect(func(campaign_id: String) -> void:
+		if not package_operation_status.is_running(): removal_requested.emit(campaign_id))
+	(campaign_overlay as CampaignSelectionPanel).revision_selected.connect(func(id: String, hash_value: String) -> void: revision_requested.emit(id, hash_value))
+	(campaign_overlay as CampaignSelectionPanel).removal_requested.connect(func(id: String, title: String) -> void: _remove_dialog.present(id, title))
+	(campaign_overlay as CampaignSelectionPanel).back_requested.connect(func() -> void: back_requested.emit())
 	install_button.pressed.connect(_open_package_dialog)
 	install_dialog.file_selected.connect(_install_selected)
+	import_dialog.dir_selected.connect(func(directory: String) -> void: import_requested.emit(directory))
+	import_button.pressed.connect(_open_import_dialog)
 	refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
 	_operation_cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
 	_failure_retry.pressed.connect(_retry_package_operation)
 	_failure_dismiss.pressed.connect(func() -> void: set_package_operation(PackageOperationView.new()))
-	render_campaign_list()
+	_operation_warning_toggle.pressed.connect(func() -> void: _operation_warning_viewport.visible = not _operation_warning_viewport.visible)
+	_render_campaign_list()
 
 
 func set_campaigns(next_campaigns: Array[CampaignPackageView]) -> void:
 	campaigns = next_campaigns.duplicate()
-	campaigns.sort_custom(_campaign_precedes)
-	render_campaign_list()
+	_render_campaign_list()
 
 
 func set_package_operation(status: RefCounted) -> void:
+	var was_running: bool = package_operation_status.is_running()
 	package_operation_status = status if status != null else PackageOperationView.new()
-	render_campaign_list()
+	if not package_operation_status.is_running(): _pending_revision_hash = ""
+	if was_running != package_operation_status.is_running():
+		_render_campaign_list()
+	else:
+		_render_package_operation()
+	if was_running != package_operation_status.is_running(): preparation_changed.emit()
 
 
 func set_selected_campaign_summary(summary: CampaignSummaryView) -> void:
 	selected_campaign_summary = summary
-	render_campaign_list()
+	_render_campaign_list()
 
 
 func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
 	media = next_media
 	if selected_campaign_summary != null:
-		render_campaign_list()
+		_render_campaign_list()
 
 
 func set_presentation_settings(next_settings: PresentationSettings) -> void:
@@ -202,7 +263,8 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 			command_panel.custom_minimum_size = Vector2(320.0, 0.0)
 		_apply_intro_frame_layout(setup_rect.size.x < SPLASH_WIDE_MINIMUM_WIDTH)
 	if package_install_row != null:
-		package_install_row.vertical = profile.id == UiLayoutProfile.COMPACT
+		package_install_row.vertical = false
+		install_button.text = ".realmz2..." if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
 	apply_modal_layouts()
 
 
@@ -226,6 +288,40 @@ func show_campaign() -> void:
 	apply_modal_layouts()
 	if campaign_scroll != null:
 		campaign_scroll.scroll_vertical = 0
+	if not _focused_import_path.is_empty():
+		_reveal_focused_import()
+
+
+func select_imported_package(path: String) -> void:
+	for campaign: CampaignPackageView in campaigns:
+		if campaign.origin == "imported" and campaign.path == path:
+			_focused_import_path = path
+			_browsed_campaign_path = path
+			if campaign_overlay != null:
+				campaign_overlay.visible = true
+				if splash_overlay != null:
+					splash_overlay.visible = false
+				_set_intro_active(false)
+				apply_modal_layouts()
+				_render_campaign_list()
+				_reveal_focused_import()
+			(campaign_overlay as CampaignSelectionPanel).reveal_campaign(campaign)
+			return
+
+func select_prepared_package(path: String) -> void:
+	for campaign: CampaignPackageView in campaigns:
+		if campaign.origin == "main" and campaign.path == _requested_campaign_path and selected_campaign_summary != null and campaign.package_hash == selected_campaign_summary.package_hash:
+			_selected_campaign_path = campaign.path
+			_render_campaign_list()
+			return
+	_selected_campaign_path = path
+	select_imported_package(path)
+
+
+func preview_revision(campaign: CampaignPackageView, package_hash: String, path: String) -> void:
+	_browsed_campaign_path = campaign.path
+	_requested_campaign_path = path
+	_pending_revision_hash = package_hash
 
 
 func show_splash() -> void:
@@ -271,74 +367,95 @@ func _set_intro_active(active: bool) -> void:
 		intro.suspend_playback()
 
 
-func full_stage_overlay_visible() -> bool:
-	return splash_visible() or campaign_overlay != null and campaign_overlay.visible
-
-
-func splash_visible() -> bool:
-	return splash_overlay != null and splash_overlay.visible
-
-
-func render_campaign_list() -> void:
+func _render_campaign_list() -> void:
 	if campaign_list == null:
 		return
-	_remove_campaign_rows()
+	var focused := campaign_overlay.get_viewport().gui_get_focus_owner()
+	var restore_path := ""
+	if focused != null and campaign_list.is_ancestor_of(focused):
+		var parent := focused.get_parent()
+		while parent != null and not parent is CampaignLibraryRow: parent = parent.get_parent()
+		if parent is CampaignLibraryRow: restore_path = parent.package_path()
+	elif focused == _operation_cancel:
+		restore_path = _selected_campaign_path
+	_remove_campaign_rows(_main_campaign_rows)
+	_remove_campaign_rows(_imported_campaign_rows)
 	_render_package_operation()
 	_render_selected_campaign_record()
 	var running: bool = package_operation_status.is_running()
-	if campaigns.is_empty():
-		_no_campaigns_state.text = "No installed scenarios. Install a Providence .realmz2 package below."
-		_no_campaigns_state.visible = not running
-		_refresh_campaign_layout()
-		return
-	var ready_count := 0
-	var hidden_count := 0
+	var ordered_campaigns: Array[CampaignPackageView] = []
+	var imported_campaigns: Array[CampaignPackageView] = []
 	for campaign: CampaignPackageView in campaigns:
-		if not campaign.ready:
-			hidden_count += 1
-			continue
-		ready_count += 1
-		var action := _campaign_row_scene.instantiate() as Button
-		action.set_meta(&"campaign_record", true)
-		action.name = "Scenario_%s" % (campaign.campaign_id if not campaign.campaign_id.is_empty() else campaign.path.get_file()).validate_node_name()
-		action.text = "%s\nInstalled • %s" % [_display_name(campaign), "ready with compatibility warnings" if campaign.ready_with_warnings else "ready"]
-		action.tooltip_text = "%s\nThis imported scenario contains deferred legacy references. They are checked only if play reaches them." % campaign.path if campaign.ready_with_warnings else campaign.path
-		var selected := selected_campaign_summary != null and campaign.campaign_id == selected_campaign_summary.campaign_id
-		action.disabled = running or selected
-		action.button_pressed = selected
-		if selected:
-			action.text = "%s\nSelected • party setup open" % _display_name(campaign)
-			action.tooltip_text = "This scenario is selected."
-		action.pressed.connect(_campaign_pressed.bind(campaign))
-		campaign_list.add_child(action)
-		campaign_list.move_child(action, _no_campaigns_state.get_index())
-	_no_campaigns_state.text = "No playable scenarios. Install a package from the current Providence exporter."
-	_no_campaigns_state.visible = ready_count == 0 and not running
-	campaign_overlay.tooltip_text = "%d incompatible or stale installation%s hidden from the ordinary scenario list." % [hidden_count, "" if hidden_count == 1 else "s"] if hidden_count > 0 else "Installed Providence scenarios."
-	_refresh_campaign_layout()
+		if campaign.origin == "main":
+			ordered_campaigns.append(campaign)
+		else:
+			imported_campaigns.append(campaign)
+	imported_campaigns.sort_custom(func(left: CampaignPackageView, right: CampaignPackageView) -> bool: return _display_name(left).naturalnocasecmp_to(_display_name(right)) < 0)
+	ordered_campaigns.append_array(imported_campaigns)
+	for campaign: CampaignPackageView in ordered_campaigns:
+		var row := _campaign_row_scene.instantiate() as Control
+		row.set_meta(&"campaign_record", true)
+		row.name = "Scenario_%s" % (campaign.campaign_id if not campaign.campaign_id.is_empty() else campaign.path.get_file()).validate_node_name()
+		row.connect("campaign_pressed", _campaign_pressed.bind(campaign))
+		var destination := _main_campaign_rows if campaign.origin == "main" else _imported_campaign_rows
+		destination.add_child(row)
+		row.call("configure", campaign, not running and _campaign_matches_selection(campaign), running, _focused_import_path == campaign.path)
+	_main_campaign_heading.visible = _has_visible_origin("main")
+	_imported_campaign_heading.visible = _has_visible_origin("imported")
+	_no_campaigns_state.text = "No installed scenarios. Install a .realmz2 package or import a scenario folder below."
+	_no_campaigns_state.visible = campaigns.is_empty() and not running
+	campaign_overlay.tooltip_text = "Installed scenarios. Unavailable entries remain visible with their readiness reason."
+	apply_modal_layouts()
+	var browsed: CampaignPackageView
+	for campaign: CampaignPackageView in ordered_campaigns:
+		if campaign.path == _browsed_campaign_path or (browsed == null and _campaign_matches_selection(campaign)):
+			browsed = campaign
+	(campaign_overlay as CampaignSelectionPanel).present_campaign(browsed, running, browsed != null and _campaign_matches_selection(browsed), _pending_revision_hash)
+	if not restore_path.is_empty(): _restore_list_focus.call_deferred(restore_path)
+
+
+func _restore_list_focus(path: String) -> void:
+	if not is_instance_valid(campaign_overlay) or not campaign_overlay.is_visible_in_tree(): return
+	if package_operation_status.is_running():
+		_operation_cancel.grab_focus()
+		return
+	for rows: VBoxContainer in [_main_campaign_rows, _imported_campaign_rows]:
+		for row: CampaignLibraryRow in rows.get_children():
+			if row.package_path() == path and row.is_visible_in_tree(): row.get_node("%LaunchCampaign").grab_focus()
 
 
 func _render_package_operation() -> void:
 	var running: bool = package_operation_status.is_running()
 	var failed: bool = package_operation_status.state == PackageOperationView.FAILED
-	package_operation_host.visible = running or failed
+	var succeeded: bool = package_operation_status.state == PackageOperationView.SUCCEEDED
+	package_operation_host.visible = running or failed or succeeded
 	install_button.disabled = running
+	import_button.disabled = running
 	refresh_button.disabled = running
 	_operation_progress.visible = running
 	_operation_percentage.visible = running
 	_operation_cancel.visible = running
 	_failure_actions.visible = failed
 	_failure_details.visible = failed
-	if not running and not failed:
+	var needs_startup_selection: bool = _startup_selection.call("present", package_operation_status, failed)
+	_operation_warning_viewport.visible = false
+	_operation_warning_toggle.visible = false
+	if not running and not failed and not succeeded:
 		return
 	var phase_text := String(package_operation_status.phase).replace("_", " ").capitalize()
-	_operation_phase.text = "Could not open scenario" if failed else phase_text if not phase_text.is_empty() else "Installing"
-	_operation_percentage.text = "%d%%" % int(round(package_operation_status.progress_ratio() * 100.0)) if package_operation_status.total > 0 else "Working"
+	_operation_phase.text = "Could not open scenario" if failed else "Import complete" if succeeded else phase_text if not phase_text.is_empty() else "Installing"
+	_operation_percentage.text = "%d%%" % int(round(package_operation_status.progress_ratio() * 100.0)) if running and package_operation_status.total > 0 else "Complete" if succeeded else "Working"
 	_operation_progress.indeterminate = package_operation_status.total <= 0
 	_operation_progress.max_value = maxf(1.0, float(package_operation_status.total))
 	_operation_progress.value = clampf(float(package_operation_status.completed), 0.0, _operation_progress.max_value)
 	_operation_status.text = package_operation_status.message
 	_operation_status.tooltip_text = package_operation_status.message
+	var diagnostics: Array[String] = package_operation_status.diagnostic_details
+	if not diagnostics.is_empty():
+		_operation_warning_toggle.visible = true
+		_operation_warning_toggle.text = "Show import diagnostics" if succeeded else "Show diagnostics"
+		_operation_warning_details.text = "\n".join(diagnostics)
+		_operation_warning_details.scroll_to_line(0)
 	if failed:
 		var operation := String(package_operation_status.operation_name).replace("_", " ").capitalize()
 		var details: Array[String] = []
@@ -350,8 +467,8 @@ func _render_package_operation() -> void:
 			details.append("Error: %s" % package_operation_status.error_code)
 		_failure_details.text = "\n".join(details)
 		_failure_details.tooltip_text = _failure_details.text
-		_failure_retry.disabled = package_operation_status.package_path.is_empty()
-		_failure_retry.tooltip_text = "Retry the same package without changing the current adventure." if not _failure_retry.disabled else "The failed operation did not retain a package path."
+		_failure_retry.disabled = package_operation_status.package_path.is_empty() or needs_startup_selection
+		_failure_retry.tooltip_text = "Choose a startup file to retry this import." if needs_startup_selection else "Retry the same operation." if not _failure_retry.disabled else "The failed operation did not retain a path."
 		_failure_dismiss.tooltip_text = "Return to the scenario list without changing current files."
 
 
@@ -386,7 +503,7 @@ func _render_selected_campaign_record() -> void:
 		limits.append("character level cap %d" % selected_campaign_summary.maximum_level)
 	_selected_limits.text = " • ".join(limits)
 	var guidance: Array[String] = []
-	if selected_campaign_summary.guidance_authored:
+	if selected_campaign_summary.recommended_party_levels > 0 or selected_campaign_summary.maximum_party_levels > 0:
 		if selected_campaign_summary.recommended_party_levels > 0:
 			guidance.append("recommended party total %d" % selected_campaign_summary.recommended_party_levels)
 		if selected_campaign_summary.maximum_party_levels > 0:
@@ -398,15 +515,18 @@ func _render_selected_campaign_record() -> void:
 	_selected_guidance.visible = not guidance.is_empty()
 
 
-func _remove_campaign_rows() -> void:
-	for child: Node in campaign_list.get_children():
+func _remove_campaign_rows(host: VBoxContainer) -> void:
+	for child: Node in host.get_children():
 		if child.has_meta(&"campaign_record"):
-			campaign_list.remove_child(child)
+			host.remove_child(child)
 			child.queue_free()
 
 
 func _campaign_pressed(campaign: CampaignPackageView) -> void:
-	if campaign.ready:
+	_browsed_campaign_path = campaign.path
+	_render_campaign_list()
+	if campaign.ready and not _campaign_matches_selection(campaign):
+		_requested_campaign_path = campaign.path
 		start_requested.emit(campaign.path, 1)
 
 
@@ -415,20 +535,23 @@ func _open_package_dialog() -> void:
 		install_dialog.popup_centered_ratio(0.7)
 
 
+func _open_import_dialog() -> void:
+	if import_dialog != null:
+		import_dialog.popup_centered_ratio(0.7)
+
+
 func _install_selected(path: String) -> void:
 	if path.get_extension().to_lower() == "realmz2":
+		_requested_campaign_path = path
 		start_requested.emit(path, 1)
 
 
 func _retry_package_operation() -> void:
 	if package_operation_status.state == PackageOperationView.FAILED and not package_operation_status.package_path.is_empty():
-		start_requested.emit(package_operation_status.package_path, 1)
-
-
-func _refresh_campaign_layout() -> void:
-	apply_modal_layouts()
-	if campaign_scroll != null:
-		campaign_scroll.scroll_vertical = 0
+		if package_operation_status.operation_name == &"import_scenario":
+			import_requested.emit(package_operation_status.package_path)
+		else:
+			start_requested.emit(package_operation_status.package_path, 1)
 
 
 func _display_name(campaign: CampaignPackageView) -> String:
@@ -437,10 +560,28 @@ func _display_name(campaign: CampaignPackageView) -> String:
 	return campaign.campaign_id.replace("-", " ").capitalize()
 
 
-func _campaign_precedes(left: CampaignPackageView, right: CampaignPackageView) -> bool:
-	if left.ready != right.ready:
-		return left.ready
-	return _display_name(left).naturalnocasecmp_to(_display_name(right)) < 0
+func _campaign_matches_selection(campaign: CampaignPackageView) -> bool:
+	if selected_campaign_summary == null or campaign.campaign_id != selected_campaign_summary.campaign_id:
+		return false
+	if not _selected_campaign_path.is_empty() and not selected_campaign_summary.package_hash.is_empty() and not campaign.package_hash.is_empty():
+		if campaign.package_hash == selected_campaign_summary.package_hash:
+			return campaign.path == _selected_campaign_path
+	if not selected_campaign_summary.package_hash.is_empty() and not campaign.package_hash.is_empty():
+		return campaign.package_hash == selected_campaign_summary.package_hash
+	return true
+
+
+func _has_visible_origin(origin: String) -> bool:
+	for campaign: CampaignPackageView in campaigns:
+		if campaign.origin == origin:
+			return true
+	return false
+
+
+func _reveal_focused_import() -> void:
+	if _focused_import_path.is_empty() or _imported_campaign_rows == null or campaign_scroll == null:
+		return
+	(campaign_overlay as CampaignSelectionPanel).call_deferred("_reveal_path", _focused_import_path)
 
 
 func _focus_first(parent: Node) -> void:

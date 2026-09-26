@@ -152,8 +152,25 @@ static func _populate_cast_target(data: Dictionary, result: InteractionRequestVa
 		result.maximum_targets = int(data["maximumTargets"])
 	if result.target_mode == &"sequence":
 		return _populate_cast_sequence(data, result)
+	if result.target_mode == &"coordinate_sequence" and data.has("areaOffsets"):
+		return _populate_cast_summon(data, result)
 	if result.target_mode == &"area":
 		return _populate_cast_area(data, result)
+	return true
+
+
+static func _populate_cast_summon(data: Dictionary, result: InteractionRequestValue.CastOption) -> bool:
+	if not InteractionValueDecoderSupport.coordinate(data.get("defaultTargetCoordinate")) or not data.get("areaOffsets") is Array or not data.get("legalTargetCoordinates") is Array:
+		return false
+	result.default_target_coordinate = InteractionValueDecoderSupport.vector(data["defaultTargetCoordinate"])
+	for coordinate: Variant in data["areaOffsets"]:
+		if not InteractionValueDecoderSupport.coordinate(coordinate):
+			return false
+		result.area_offsets.append(InteractionValueDecoderSupport.vector(coordinate))
+	for coordinate: Variant in data["legalTargetCoordinates"]:
+		if not InteractionValueDecoderSupport.coordinate(coordinate):
+			return false
+		result.legal_target_coordinates.append(InteractionValueDecoderSupport.vector(coordinate))
 	return true
 
 

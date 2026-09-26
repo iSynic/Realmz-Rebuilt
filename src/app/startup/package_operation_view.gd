@@ -17,6 +17,8 @@ var message: String
 var error_code: StringName
 var package_path: String
 var operation_name: StringName
+var diagnostic_details: Array[String] = []
+var startup_candidates: Array[String] = []
 
 
 func _init(operation_state: StringName = IDLE, operation_phase: StringName = &"", completed_units: int = 0, total_units: int = 0, operation_message: String = "", operation_error_code: StringName = &"", affected_package_path: String = "", affected_operation_name: StringName = &"") -> void:

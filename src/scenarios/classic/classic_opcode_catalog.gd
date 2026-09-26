@@ -69,9 +69,16 @@ const CLASSIC_RESERVED_OPCODES: Array[int] = [
 
 const PENDING_OPCODES: Array[int] = []
 
+# Castle 491816ad newland.c: each case that calls loadextracode(id).
+const EXTRA_CODE_OPCODES: Array[int] = [-23, 2, 3, 7, 12, 13, 15, 16, 17, 18, 19, 20, 21, 22, 23, 30, 31, 33, 37, 38, 40, 41, 42, 43, 45, 46, 48, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 63, 64, 65, 67, 68, 69, 70, 72, 73, 74, 75, 76, 77, 78, 81, 85, 86, 87, 90, 92, 103, 106, 107, 108, 120, 121, 122, 123, 124, 125, 126]
+
+
+static func reads_extra_code(opcode: int) -> bool:
+	return EXTRA_CODE_OPCODES.has(opcode)
+
 
 static func normalize(raw_opcode: int) -> int:
-	return -raw_opcode if raw_opcode < 0 and raw_opcode not in [-14, -23] else raw_opcode
+	return -raw_opcode if raw_opcode < 0 and raw_opcode not in [-14, -23, -32768] else raw_opcode
 
 
 static func owner(opcode: int) -> StringName:

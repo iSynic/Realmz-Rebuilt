@@ -57,6 +57,12 @@ func continue_application_hook(events: Array[DomainEvent]) -> SessionCoordinator
 	match resume_kind:
 		"begin-adventure":
 			events.append(DomainEvent.new(&"adventure_begun", {"campaignId": _context.content.campaign_id}))
+			if _events_have(events, &"destination_trigger_recheck_requested"):
+				var destination := _context.content.world.map_by_id(_context.state.party.map_id)
+				if destination == null:
+					return SessionCoordinatorResult.failed(&"invalid_teleport", "Start Game destination references an unavailable map.", events)
+				_context.exploration().set_post_move_continuation(destination, _context.state.party.coordinate, 1)
+				return _context.exploration().continue_post_move(events)
 			return SessionCoordinatorResult.completed(events)
 		"service":
 			return _context.responses().open_contextual_service(service_id, events)

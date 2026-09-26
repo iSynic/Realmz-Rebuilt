@@ -50,6 +50,11 @@ func catalog() -> ClassicMediaCatalog:
 	return _catalog
 
 
+func present_interaction_sound(sound_id: int) -> void:
+	if sound_id > 0:
+		_audio_presenter.present_sound(sound_id, _catalog)
+
+
 func present_music_context(active_route: StringName, game_view: GameView) -> void:
 	_active_route = active_route
 	_game_view = game_view

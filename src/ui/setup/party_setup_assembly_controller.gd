@@ -7,7 +7,7 @@ const PARTY_SLOT_SCENE_PATH := "res://src/ui/setup/party_setup_party_slot.tscn"
 const ASSEMBLY_BROWSER_SCENE_PATH := "res://src/ui/setup/party_assembly_browser.tscn"
 const STORED_ROW_GAP: float = 2.0
 const BROWSER_SECTION_GAP: float = 6.0
-const BROWSER_HEADING_HEIGHT: float = 28.0
+const BROWSER_HEADER_HEIGHT: float = 52.0
 const BROWSER_PAGER_HEIGHT: float = 28.0
 
 var _inspection: RefCounted
@@ -33,7 +33,7 @@ func refresh_party_list() -> void:
 		return
 	_ensure_party_slots()
 	_ensure_appearance_textures()
-	var import_available: bool = view != null and view.availability(&"import_vault_character").enabled and view.party_members.size() < maximum_party_size()
+	var import_available: bool = view != null and view.availability(&"import_vault_character").enabled and view.party_members.size() < maximum_party_size() and not _campaign_library.package_operation_status.is_running()
 	var import_reason := "" if import_available else "The party cannot accept another stored character right now."
 	party_list.configure_drop_target(import_available, import_reason)
 	var party_count := setup_overlay.find_child("PartyCount", true, false) as Label
@@ -43,6 +43,8 @@ func refresh_party_list() -> void:
 		var character: CharacterView = view.party_members[slot_index] if view != null and view.party_setup_available and slot_index < view.party_members.size() else null
 		var portrait: Texture2D = (_appearance_textures.get(character.portrait_id) as Texture2D) if character != null else null
 		var remove_availability := view.availability(&"remove_party_member") if view != null else ActionAvailabilityView.new(&"remove_party_member", false, "No active setup.")
+		if _campaign_library.package_operation_status.is_running():
+			remove_availability = ActionAvailabilityView.new(&"remove_party_member", false, "Wait for scenario preparation to finish.")
 		_party_slots[slot_index].call("configure", slot_index, character, portrait, layout_profile == UiLayoutProfile.COMPACT, remove_availability)
 
 
@@ -61,7 +63,7 @@ func _ensure_party_slots() -> void:
 		_party_slots.append(slot)
 
 func render_party_assembly() -> void:
-	var campaign_setup := view != null and view.party_setup_available and not standalone_character_creation_active
+	var campaign_setup: bool = view != null and view.party_setup_available and not standalone_character_creation_active and not _campaign_library.package_operation_status.is_running()
 	var party_full := campaign_setup and view.party_members.size() >= maximum_party_size()
 	_configure_assembly_actions(campaign_setup, party_full)
 	var current_revisions := _current_vault_revisions()
@@ -72,14 +74,22 @@ func render_party_assembly() -> void:
 	var next_signature := "%s:%s:%d:%d" % [_vault_signature(current_revisions), str(layout_profile), _stored_character_page, page_size]
 	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
 		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
+		_update_campaign_context()
 		return
 	_rebuild_assembly_browser(current_revisions, campaign_setup, party_full, next_signature)
+	_update_campaign_context()
+
+
+func _update_campaign_context() -> void:
+	var context := _assembly_browser.get_node("%AssemblyCampaignContext") as Label
+	context.text = "Preparing scenario..." if _campaign_library.package_operation_status.is_running() else "Adding to %s" % view.campaign_summary.title if view != null and view.party_setup_available and view.campaign_summary != null else "Choose a scenario to add characters"
+	context.tooltip_text = context.text
 
 
 func _configure_assembly_actions(campaign_setup: bool, party_full: bool) -> void:
 	create_character_button.visible = true
 	begin_button.visible = true
-	create_character_button.disabled = party_full or (not campaign_setup and not standalone_character_creation_available)
+	create_character_button.disabled = _campaign_library.package_operation_status.is_running() or party_full or (not campaign_setup and not standalone_character_creation_available)
 	if party_full:
 		create_character_button.tooltip_text = "This party already has %d characters." % maximum_party_size()
 	elif campaign_setup:
@@ -173,11 +183,11 @@ func _stored_character_page_size(item_count: int) -> int:
 
 static func stored_character_page_size_for_height(available_height: float, item_count: int) -> int:
 	var row_stride := PartySetupCharacterRow.ROW_HEIGHT + STORED_ROW_GAP
-	var unpaged_chrome := BROWSER_HEADING_HEIGHT + BROWSER_SECTION_GAP - STORED_ROW_GAP
+	var unpaged_chrome := BROWSER_HEADER_HEIGHT + BROWSER_SECTION_GAP - STORED_ROW_GAP
 	var unpaged_capacity := maxi(1, floori((available_height - unpaged_chrome) / row_stride))
 	if item_count <= unpaged_capacity:
 		return unpaged_capacity
-	var paged_chrome := BROWSER_HEADING_HEIGHT + BROWSER_PAGER_HEIGHT + BROWSER_SECTION_GAP * 2.0 - STORED_ROW_GAP
+	var paged_chrome := BROWSER_HEADER_HEIGHT + BROWSER_PAGER_HEIGHT + BROWSER_SECTION_GAP * 2.0 - STORED_ROW_GAP
 	return maxi(1, floori((available_height - paged_chrome) / row_stride))
 
 
@@ -242,6 +252,8 @@ func refresh_party_setup_options() -> void:
 		begin_button.text = "Begin adventure (0/6)"
 		return
 	party_setup_options.visible = setup_mode == &"assembly"
+	difficulty_option.disabled = _campaign_library.package_operation_status.is_running()
+	monster_set_option.disabled = difficulty_option.disabled
 	monster_set_option.clear()
 	var ordered_monster_sets: Array[int] = []
 	for preferred_set_id: int in [0, -1, 1]:
@@ -257,12 +269,13 @@ func refresh_party_setup_options() -> void:
 	_select_option_metadata(difficulty_option, view.party_setup.difficulty)
 	var summary := view.campaign_summary
 	var maximum := "None" if summary == null or summary.maximum_party_levels <= 0 else str(summary.maximum_party_levels)
-	var recommended := "—" if summary == null or not summary.guidance_authored or summary.recommended_party_levels <= 0 else str(summary.recommended_party_levels)
+	var recommended := "—" if summary == null or summary.recommended_party_levels <= 0 else str(summary.recommended_party_levels)
 	var gained := "—" if view.party_setup.experience_percent <= 0 else "%d%%" % view.party_setup.experience_percent
-	party_guidance_label.text = "Maximum %s  •  Recommended %s  •  Current %d" % [maximum, recommended, view.party_setup.current_party_levels]
+	party_guidance_label.text = "Party total levels\nRecommended %s • Current %d" % [recommended, view.party_setup.current_party_levels]
+	if maximum != "None": party_guidance_label.text += " • Maximum %s" % maximum
 	var experience_ratio := party_setup_options.find_child("ExperienceRatio", true, false) as Label
 	if experience_ratio != null:
-		experience_ratio.text = "Experience gained at %s" % gained
+		experience_ratio.text = "XP gained: %s" % gained if gained != "—" else "XP scales with party total and difficulty."
 
 func party_setup_option_changed(_index: int) -> void:
 	if view == null or view.party_setup == null:

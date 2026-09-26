@@ -55,18 +55,27 @@ jobs:
         include:
           - os: windows-latest
             platform: Windows x86_64
+            importerPlatform: windows
+            importerUrlVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_URL
+            importerHashVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256
             preset: Windows Desktop
             output: dist/windows/Realmz Rebuilt.exe
             artifactPath: dist/windows
             artifact: realmz-rebuilt-windows-x86_64
           - os: ubuntu-latest
             platform: Linux x86_64
+            importerPlatform: linux
+            importerUrlVariable: SCENARIO_IMPORTER_LINUX_X86_64_URL
+            importerHashVariable: SCENARIO_IMPORTER_LINUX_X86_64_SHA256
             preset: Linux
             output: dist/linux/Realmz Rebuilt.x86_64
             artifactPath: dist/linux
             artifact: realmz-rebuilt-linux-x86_64
           - os: macos-latest
             platform: macOS universal
+            importerPlatform: macos
+            importerUrlVariable: SCENARIO_IMPORTER_MACOS_URL
+            importerHashVariable: SCENARIO_IMPORTER_MACOS_SHA256
             preset: macOS
             output: dist/macos/Realmz Rebuilt.zip
             artifactPath: dist/macos
@@ -82,6 +91,17 @@ jobs:
           version: 4.7.1
           use-dotnet: false
           include-templates: true
+      - name: Download verified scenario importer
+        shell: pwsh
+        env:
+          SCENARIO_IMPORTER_URL: ${{ vars[matrix.importerUrlVariable] }}
+          SCENARIO_IMPORTER_SHA256: ${{ vars[matrix.importerHashVariable] }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SCENARIO_IMPORTER_URL) -or [string]::IsNullOrWhiteSpace($env:SCENARIO_IMPORTER_SHA256)) {
+            throw 'Set the versioned importer asset URL and SHA-256 repository variables for this platform before exporting.'
+          }
+          $downloadRoot = Join-Path $env:RUNNER_TEMP 'scenario-importer'
+          ./tools/install_scenario_importer.ps1 -Url $env:SCENARIO_IMPORTER_URL -ExpectedSha256 $env:SCENARIO_IMPORTER_SHA256 -DestinationRoot $downloadRoot -ExpectedPlatform '${{ matrix.importerPlatform }}'
       - name: Export verified runtime
         shell: pwsh
         run: |
@@ -97,7 +117,39 @@ jobs:
           $result = Invoke-StreamingProcess -FilePath $godotPath -ArgumentList @('--headless', '--path', '.', '--export-release', '${{ matrix.preset }}', '${{ matrix.output }}') -Label '${{ matrix.platform }} export'
           [IO.File]::WriteAllLines($exportLog, $result.Output, [Text.UTF8Encoding]::new($false))
           if ($result.ExitCode -ne 0) { throw "Godot export failed with exit code $($result.ExitCode)." }
-          ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog
+          $importerSource = Join-Path $env:RUNNER_TEMP 'scenario-importer'
+          $copyImporter = {
+            param([string]$Source, [string]$Destination)
+            [IO.Directory]::CreateDirectory($Destination) | Out-Null
+            $sourcePrefix = [IO.Path]::GetFullPath($Source).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+            foreach ($file in Get-ChildItem -LiteralPath $Source -File -Recurse -Force) {
+              $relative = [IO.Path]::GetFullPath($file.FullName).Substring($sourcePrefix.Length)
+              $target = Join-Path $Destination $relative
+              [IO.Directory]::CreateDirectory((Split-Path -Parent $target)) | Out-Null
+              Copy-Item -LiteralPath $file.FullName -Destination $target
+            }
+          }
+          if ('${{ runner.os }}' -eq 'macOS') {
+            $appStage = Join-Path $env:RUNNER_TEMP 'realmz-rebuilt-importer-stage'
+            Expand-Archive -LiteralPath '${{ matrix.output }}' -DestinationPath $appStage
+            $app = Join-Path $appStage 'Realmz Rebuilt.app'
+            $importerRoot = Join-Path $app 'Contents/MacOS/importer'
+            & $copyImporter $importerSource $importerRoot
+            chmod 755 (Join-Path $importerRoot 'providence-native-adapter')
+            if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS scenario importer executable permissions.' }
+            $repacked = Join-Path $env:RUNNER_TEMP 'Realmz-Rebuilt-with-importer.zip'
+            & ditto -c -k --sequesterRsrc --keepParent --zlibCompressionLevel 9 $app $repacked
+            if ($LASTEXITCODE -ne 0) { throw 'Could not repackage macOS application with its scenario importer.' }
+            Move-Item -LiteralPath $repacked -Destination '${{ matrix.output }}' -Force
+          } else {
+            $importerRoot = Join-Path (Split-Path '${{ matrix.output }}') 'importer'
+            & $copyImporter $importerSource $importerRoot
+            if ('${{ runner.os }}' -eq 'Linux') {
+              chmod 755 (Join-Path $importerRoot 'providence-native-adapter')
+              if ($LASTEXITCODE -ne 0) { throw 'Could not set Linux scenario importer executable permissions.' }
+            }
+          }
+          ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog -ImporterRoot $importerRoot
       - name: Launch exported Windows runtime
         if: runner.os == 'Windows'
         shell: pwsh
@@ -127,6 +179,8 @@ jobs:
           $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
           Expand-Archive -LiteralPath '${{ matrix.output }}' -DestinationPath $extracted
           $binary = Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/Realmz Rebuilt'
+          chmod 755 (Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/importer/providence-native-adapter')
+          if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS smoke importer executable permissions.' }
           chmod +x $binary
           & $binary --headless --quit-after 2 --log-file $log
           $exitCode = $LASTEXITCODE
@@ -137,5 +191,6 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifactPath }}
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14

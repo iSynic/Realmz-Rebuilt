@@ -3,7 +3,7 @@
 class_name PackageEncounterContentDecoder
 extends PackageDecoderBase
 
-func decode_monsters(value: Variant) -> Variant:
+func decode_monsters(value: Variant, allow_deferred: bool = false, schema_version: int = 3) -> Variant:
 	if not value is Array:
 		_reject("Content monsters must be an array.")
 		return null
@@ -12,19 +12,20 @@ func decode_monsters(value: Variant) -> Variant:
 	var result: Array[MonsterDefinition] = []
 	var ids: Dictionary = {}
 	for value_record: Variant in value:
-		var monster := _decode_monster_record(value_record, fields, integer_fields, ids)
+		var monster := _decode_monster_record(value_record, fields, integer_fields, ids, allow_deferred, schema_version)
 		if monster == null:
 			return null
 		result.append(monster)
 	return result
 
-func _decode_monster_record(value_record: Variant, fields: Array[String], integer_fields: Array[String], ids: Dictionary) -> MonsterDefinition:
+func _decode_monster_record(value_record: Variant, fields: Array[String], integer_fields: Array[String], ids: Dictionary, allow_deferred: bool, schema_version: int) -> MonsterDefinition:
 	if not value_record is Dictionary:
 		_reject("Monster definition is not an object.")
 		return null
 	var record: Dictionary = value_record
 	var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Monster definition")
-	if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["description"] is String or not record["notOnMenu"] is bool or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["classicNameId"]) < 0 or _integer(record["classicNameId"]) > 255 or _integer(record["requiredWeapon"]) < -128 or _integer(record["requiredWeapon"]) > 127 or _integer(record["magicToHit"]) < 0 or _integer(record["magicToHit"]) > 127 or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
+	var preserve_native := allow_deferred and schema_version >= 4
+	if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["description"] is String or not record["notOnMenu"] is bool or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["classicNameId"]) < 0 or _integer(record["classicNameId"]) > 255 or _integer(record["requiredWeapon"]) < -128 or _integer(record["requiredWeapon"]) > 127 or _integer(record["magicToHit"]) < (-128 if preserve_native else 0) or _integer(record["magicToHit"]) > 127 or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > (32768 if preserve_native else 10):
 		_reject("Monster definition is malformed or duplicated.")
 		return null
 	var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
@@ -47,7 +48,7 @@ func _decode_monster_record(value_record: Variant, fields: Array[String], intege
 		var attack_integers: Dictionary = attack_integers_value
 		attacks.append(MonsterAttackDefinition.new(attack_integers["damageMin"], attack_integers["damageMax"], attack_integers["soundOrType"], attack_integers["special"]))
 	var integers: Dictionary = integers_value
-	if integers["attackCount"] < 0 or integers["attackCount"] > 5 or integers["attackCount"] > attacks.size():
+	if (not allow_deferred and (integers["attackCount"] < 0 or integers["attackCount"] > 5 or integers["attackCount"] > attacks.size())) or integers["attackCount"] < -128 or integers["attackCount"] > 127:
 		_reject("Monster attack count exceeds its fixed Classic attack rows.")
 		return null
 	var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks, conditions_value, integers["classicNameId"], record["description"], record["notOnMenu"])
@@ -72,7 +73,7 @@ func _decode_monster_record(value_record: Variant, fields: Array[String], intege
 	monster.death_macro = integers["deathMacro"]
 	return monster
 
-func decode_monster_sets(value: Variant) -> Variant:
+func decode_monster_sets(value: Variant, allow_deferred: bool = false, schema_version: int = 3) -> Variant:
 	if not value is Array:
 		_reject("Monster sets must be an array.")
 		return null
@@ -85,7 +86,7 @@ func decode_monster_sets(value: Variant) -> Variant:
 		if set_id not in [-1, 1] or result.has(set_id) or not entry["name"] is String or entry["name"].is_empty():
 			_reject("Monster-set identity is invalid or duplicated.")
 			return null
-		var records: Variant = decode_monsters(entry["monsters"])
+		var records: Variant = decode_monsters(entry["monsters"], allow_deferred, schema_version)
 		if records == null:
 			return null
 		result[set_id] = records

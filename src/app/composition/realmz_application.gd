@@ -8,6 +8,8 @@ extends Control
 const DEVELOPMENT_PREVIEW_HOST_PATH := "res://tools/development_preview_application_host.gd"
 const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_auto_coordinator.gd")
 const RUNTIME_TESTING_READINESS := preload("res://src/app/platform/runtime_testing_readiness.gd")
+const IMPORTED_SCENARIO_WORKFLOW := preload("res://src/app/composition/imported_scenario_workflow.gd")
+const CAMPAIGN_CATALOG_WORKFLOW := preload("res://src/app/composition/campaign_catalog_workflow.gd")
 
 @onready var _status_label: Label = $GameShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $GameShell/SmokeAction
@@ -26,6 +28,8 @@ var _active_content: RealmzContent
 var _presentation_settings: PresentationSettings
 var _dungeon_presenter: DungeonMap3DPresenter
 var _package_host: PackageHostController
+var _imported_scenario_workflow: ImportedScenarioWorkflow
+var _campaign_catalog: CampaignCatalogWorkflow
 var _save_host: SaveHostController
 var _pending_package_seed: int = 1
 var _pending_package_path: String = ""
@@ -36,8 +40,6 @@ var _queued_combat_auto_changes: Dictionary = {}
 var _persistent_auto = PERSISTENT_AUTO_COORDINATOR.new()
 var _quit_operation: Callable
 var debug_tools: DebugToolsHost
-var _campaigns: Array[CampaignPackageView] = []
-var _last_campaign_prewarm_requested: bool = false
 var _input_router: ApplicationInputRouter
 var _controller_input: ControllerInputOwner
 var _controller_resume_required: bool = false
@@ -211,7 +213,7 @@ func _bind_combat_and_interactions() -> void:
 	_interaction_presenter.combat.combatant_focus_requested.connect(_on_combatant_focus_requested)
 	_interaction_presenter.combat.reveal_friends_requested.connect(_on_reveal_friends_requested)
 	_interaction_presenter.combat.move_to_requested.connect(func() -> void: _battlefield_presenter.movement_preview.toggle())
-	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
+	_interaction_presenter.presentation_sound_requested.connect(presentation_media.present_interaction_sound)
 	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.status.set_status)
 	_battlefield_presenter.interaction.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.interaction.combatant_inspected.connect(_on_battlefield_combatant_inspected)
@@ -223,7 +225,12 @@ func _bind_combat_and_interactions() -> void:
 func _bind_shell_and_settings() -> void:
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
 	_shell_presenter.cancel_package_requested.connect(_package_host.cancel)
-	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
+	var campaign_library := _shell_presenter.navigator.setup_controller.campaign_library
+	_campaign_catalog = CAMPAIGN_CATALOG_WORKFLOW.new(_package_host, campaign_library, character_files, _presentation_settings, _shell_presenter.status)
+	_shell_presenter.refresh_campaigns_requested.connect(_campaign_catalog.refresh)
+	_imported_scenario_workflow = IMPORTED_SCENARIO_WORKFLOW.new(_package_host, campaign_library, character_files, _shell_presenter.status)
+	_imported_scenario_workflow.campaign_refresh_requested.connect(_campaign_catalog.refresh)
+	_imported_scenario_workflow.bind()
 	_shell_presenter.intent_submitted.connect(submit_intent)
 	_shell_presenter.combat_inventory_response_submitted.connect(_on_battlefield_action_requested)
 	_shell_presenter.save_requested.connect(func(slot_id: String) -> void: adventure_storage.save(_active_content, slot_id))
@@ -271,7 +278,7 @@ func _finish_startup() -> void:
 	_game_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
 	Callable(character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"
-	_refresh_campaigns()
+	_campaign_catalog.refresh()
 	character_files.refresh_vault_views(_active_content)
 	set_process(true)
 
@@ -285,7 +292,7 @@ func _process(_delta: float) -> void:
 		_pending_prepared_package = null
 		_complete_package_install(pending, _pending_package_seed, _pending_package_path)
 		_pending_package_path = ""
-	_try_prewarm_last_campaign()
+	_campaign_catalog.prewarm_if_ready(not bool(get_meta(&"startup_splash_suppressed", false)) or bool(get_meta(&"startup_front_door_revealed", false)))
 	if _held_movement != null and _held_movement.is_active():
 		if not accepts_exploration_input():
 			_held_movement.stop()
@@ -304,6 +311,12 @@ func _process(_delta: float) -> void:
 	if operation.is_running():
 		return
 	var prepared := _package_host.take_prepared_package()
+	if _imported_scenario_workflow.complete_operation(operation, prepared):
+		_last_package_operation_key = ""
+		var current_view := session_controller.view()
+		if operation.state == PackageOperationView.SUCCEEDED and prepared != null and prepared.is_ok() and (not current_view.session_started or current_view.party_setup_available):
+			_complete_package_install(prepared, 1)
+		return
 	if operation.state != PackageOperationView.FAILED:
 		_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new())
 	_last_package_operation_key = ""
@@ -322,10 +335,12 @@ func _process(_delta: float) -> void:
 
 
 func _exit_tree() -> void:
+	_trace_shutdown("application tree exit started")
 	if _held_movement != null:
 		_held_movement.stop()
 	if _package_host != null:
 		_package_host.close()
+	_trace_shutdown("application tree exit finished")
 
 
 func _on_smoke_action_pressed() -> void:
@@ -381,21 +396,12 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 
 
 func _complete_package_install(prepared: PreparedPackage, initial_seed: int, source_path: String = "") -> SessionStep:
-	if prepared == null:
-		_status_label.text = "Package rejected • package operation returned no result"
-		_present_package_failure(_status_label.text, &"package_operation_failed", source_path)
-		return SessionStep.failed(0, &"package_operation_failed", "Package operation returned no result.")
-	if not prepared.is_ok():
-		_status_label.text = "Package rejected • %s" % prepared.error_message
-		_present_package_failure(_status_label.text, prepared.error_code, source_path)
-		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
-	_persistent_auto.invalidate()
-	prepared.content.characters.install_application_catalog(character_files.library_content().characters)
-	var step := session_controller.start(prepared.content, initial_seed)
+	var step := _imported_scenario_workflow.prepare_party(prepared, session_controller, initial_seed)
 	if step.state == SessionStep.State.FAILED:
-		_status_label.text = "Session start failed • %s" % step.error_message
-		_present_package_failure(_status_label.text, step.error_code, source_path)
+		presentation_coordinator.refresh()
+		_present_package_failure(step.error_message, step.error_code, source_path)
 		return step
+	_persistent_auto.invalidate()
 	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
 	_package_host.promote(prepared)
@@ -406,10 +412,10 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int, sou
 	adventure_storage.refresh(_active_content)
 	character_files.refresh_vault_views(_active_content)
 	_smoke_button.text = "Search area"
-	var current_view := session_controller.view()
-	_status_label.text = "Loaded %s • %s %d,%d • seed %d" % [_active_content.campaign_id, current_view.party_map_id, current_view.party_coordinate.x, current_view.party_coordinate.y, initial_seed]
+	_status_label.text = ApplicationStepStatusText.for_package(_active_content, session_controller.view(), initial_seed)
 	_shell_presenter.status.set_status(_status_label.text)
-	_refresh_campaigns()
+	_campaign_catalog.refresh()
+	_shell_presenter.navigator.setup_controller.campaign_library.select_prepared_package(prepared.installed_path)
 	return step
 
 
@@ -508,11 +514,6 @@ func _on_reveal_friends_requested() -> void:
 	_audio_presenter.present_sound(137, presentation_media.catalog())
 
 
-func _on_interaction_sound_requested(sound_id: int) -> void:
-	if sound_id > 0:
-		_audio_presenter.present_sound(sound_id, presentation_media.catalog())
-
-
 func submit_movement(direction: Vector2i) -> bool:
 	if not _shell_presenter.accepts_exploration_input() or not session_controller.view().session_started or session_controller.view().pending_interaction != null:
 		return false
@@ -528,6 +529,8 @@ func submit_movement(direction: Vector2i) -> bool:
 
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
+	if session_controller.view().party_setup_available and _package_host.operation_view().is_running():
+		return SessionStep.failed(session_controller.view().revision, &"campaign_preparing", "Wait for scenario preparation to finish.")
 	if intent != null and intent.kind == PlayerIntent.Kind.SET_COMBAT_AUTO:
 		_persistent_auto.reset_progress()
 	if character_files.creator_active():
@@ -604,10 +607,17 @@ func abort_full_party_auto(skip_playback: bool) -> bool:
 
 
 func _quit_application() -> void:
+	_trace_shutdown("quit accepted; closing package workers")
 	if _package_host != null:
 		_package_host.close()
+	_trace_shutdown("package workers closed; requesting engine exit")
 	if _quit_operation.is_valid(): _quit_operation.call()
 	else: get_tree().quit()
+
+
+func _trace_shutdown(stage: String) -> void:
+	if OS.is_debug_build():
+		print("Realmz shutdown | pid=%d | ticks_ms=%d | %s" % [OS.get_process_id(), Time.get_ticks_msec(), stage])
 
 
 func _complete_closed_session() -> void:
@@ -617,7 +627,7 @@ func _complete_closed_session() -> void:
 	presentation_media.set_package_media(character_files.library_media())
 	adventure_storage.refresh(_active_content)
 	character_files.refresh_vault_views(_active_content)
-	_refresh_campaigns()
+	_campaign_catalog.refresh()
 	_shell_presenter.show_splash()
 	_shell_presenter.status.set_status("Adventure ended • main menu")
 
@@ -657,20 +667,6 @@ func _present_step_status(step: SessionStep) -> void:
 			if not status_text.is_empty(): _status_label.text = status_text
 	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
 		_status_label.text = ApplicationStepStatusText.for_interaction(step.interaction)
-
-
-func _refresh_campaigns() -> void:
-	if _package_host != null and _package_host.operation_view().is_running():
-		return
-	_campaigns = _package_host.discover_available_campaigns()
-	_shell_presenter.navigator.setup_controller.campaign_library.set_campaigns(_campaigns)
-	_try_prewarm_last_campaign()
-
-
-func _try_prewarm_last_campaign() -> void:
-	if _last_campaign_prewarm_requested or _package_host == null or character_files.library_content() == null or _presentation_settings == null or _presentation_settings.last_campaign_id.is_empty() or bool(get_meta(&"startup_splash_suppressed", false)) and not bool(get_meta(&"startup_front_door_revealed", false)): return
-	_last_campaign_prewarm_requested = true
-	_package_host.prewarm_last_campaign(_campaigns, _presentation_settings.last_campaign_id)
 
 
 func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) -> void:

@@ -20,7 +20,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 	_rng = rng
 	_rules = rules
 	_rewards = rewards
-	_request_builder = CombatInteractionRequestBuilder.new(content, game_state, rules)
+	_request_builder = CombatInteractionRequestBuilder.new(content, game_state, rules, rng)
 
 
 func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:

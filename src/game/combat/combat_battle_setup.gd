@@ -94,6 +94,9 @@ func _prepare_authored_monsters(assembly: BattleAssembly, state: GameState, batt
 			break
 		var slot: BattleMonsterSlotDefinition = assembly.inputs.authored_slots[slot_index]
 		var definition: MonsterDefinition = assembly.inputs.authored_definitions[slot.monster_id]
+		var table_error := MonsterRules.random_weapon_table_error(definition)
+		if not table_error.is_empty():
+			return _setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_random_weapon_table", "Battle '%s': %s" % [battle.id, table_error])
 		var pending_id := "pending.authored.%d" % slot_index
 		if not assembly.builder.place_monster(assembly.battlefield, assembly.inputs.terrain_set, pending_id, monster_origin + slot.coordinate, definition.size):
 			return _setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"monster_placement_failed", "Battle '%s' has no legal battlefield footprint for authored monster at %s." % [battle.id, slot.coordinate])

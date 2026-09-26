@@ -65,7 +65,7 @@ func _reward_experience_multiplier() -> float:
 	var current_levels := 0
 	for party_character: CharacterState in _game_state.party.characters():
 		current_levels += party_character.level
-	return PartySetupRules.experience_multiplier(campaign.recommended_party_levels, current_levels, _game_state.difficulty) if campaign != null and campaign.guidance_authored and campaign.recommended_party_levels > 0 else 1.0
+	return PartySetupRules.experience_multiplier(campaign.recommended_party_levels, current_levels, _game_state.difficulty) if campaign != null and campaign.recommended_party_levels > 0 else 1.0
 
 
 func _select_reward_items(source_id: String, item_ids: Array[String], item_magic_detected: Array[bool]) -> RewardItemSelection:

@@ -285,6 +285,9 @@ func _execute_monster_spell(state: GameState, content: RealmzContent, monster: M
 			created_fields.append(actor_field)
 	var resolutions := _resolve_monster_spell(state, content, monster, definition, spell, cost_power, cast_level, target_plan, rng, created_fields)
 	if resolutions == null or not resolutions.cast:
+		if resolutions != null and not resolutions.error_code.is_empty():
+			_fail(resolutions.error_code, resolutions.error_message)
+			return false
 		_fail(&"monster_spell_execution_failed", "Actor '%s' could not execute its selected legal spell '%s' at power %d." % [monster.id, spell.id, cost_power])
 		return false
 	if persistent_field != null:

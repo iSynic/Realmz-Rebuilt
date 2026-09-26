@@ -8,15 +8,19 @@ extends RefCounted
 var _content: RealmzContent
 var _game_state: GameState
 var _rules: RealmzRules
+var _rng: RealmzRng
+var _summon_previews: Dictionary = {}
 
 
-func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules) -> void:
+func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rng: RealmzRng) -> void:
 	_content = content
 	_game_state = game_state
 	_rules = rules
+	_rng = rng
 
 
 func build(request_id: String) -> InteractionRequest:
+	_summon_previews.clear()
 	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)
 	var actions := _base_actions(combat_view)
 	var spell_casts := _spell_cast_payloads(combat_view.active_actor_id)
@@ -174,9 +178,24 @@ func _scroll_cast_payloads(actor_id: String) -> Array[Dictionary]:
 	return result
 
 
-static func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
+func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
 	if option.target_mode in [&"sequence", &"coordinate_sequence"]:
 		payload["maximumTargets"] = option.maximum_targets
+	if option.target_mode == &"coordinate_sequence":
+		payload["areaOffsets"] = []
+		payload["legalTargetCoordinates"] = []
+		payload["defaultTargetCoordinate"] = [-1, -1]
+		var spell := _content.magic.spell_by_id(option.spell_id)
+		if spell != null:
+			if not _summon_previews.has(spell.id):
+				_summon_previews[spell.id] = _rules.combat_flow.summoning.preview_definition(_game_state, _content, spell, _rng)
+			var definition: MonsterDefinition = _summon_previews[spell.id]
+			if definition != null:
+				var offsets := BattlefieldGrid.footprint_cells(Vector2i.ZERO, definition.size)
+				var anchors := _rules.combat_flow.summoning.legal_anchor_coordinates(_game_state, _content, _game_state.combat.turns.active_actor_id(), spell, option.power, definition.size)
+				payload["areaOffsets"] = offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+				payload["legalTargetCoordinates"] = anchors.map(func(anchor: Vector2i) -> Array[int]: return [anchor.x, anchor.y])
+				payload["defaultTargetCoordinate"] = [anchors[0].x, anchors[0].y] if not anchors.is_empty() else [-1, -1]
 	if option.target_mode == &"sequence":
 		var candidates: Array[Dictionary] = []
 		for candidate: CombatSpellTargetView in option.target_candidates:

@@ -20,6 +20,8 @@ const RANDOM_WEAPON_TABLES: Array = [
 func build_monster(definition: MonsterDefinition, instance_id: String, traitor_override: int, difficulty: int, realmz_day: int, rng: RealmzRng) -> MonsterState:
 	if definition == null or rng == null:
 		return null
+	if not random_weapon_table_error(definition).is_empty():
+		return null
 	var stamina := definition.stamina_bonus
 	for die: int in definition.hit_dice:
 		stamina += rng.draw(8, StringName("monster.%s.stamina.%d" % [instance_id, die]))
@@ -58,6 +60,8 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 func build_battle_monster(definition: MonsterDefinition, instance_id: String, invert_traitor: bool, difficulty: int, realmz_day: int, rng: RealmzRng) -> MonsterState:
 	if definition == null or rng == null:
 		return null
+	if not random_weapon_table_error(definition).is_empty():
+		return null
 	# combatsetup.c places the footprint before these draws, then randomizes AC,
 	# DX, spell points, stamina, and an optional carried weapon in this order.
 	var armor := definition.armor + rng.draw(3, StringName("battle.monster.%s.armor" % instance_id)) - 2
@@ -93,13 +97,17 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	return result
 
 
-func polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, context: MonsterPolymorphContext, rng: RealmzRng) -> String:
+func polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, context: MonsterPolymorphContext, rng: RealmzRng, failure: Array[String] = []) -> String:
 	if target == null or target_definition == null or context == null or rng == null or not context.has_eligible_definition(target_definition.size):
 		return ""
 	var definition: MonsterDefinition = null
 	while definition == null:
 		var candidate: MonsterDefinition = context.definition_for_classic_roll(rng.draw(200, &"magic.polymorph.candidate"))
 		if candidate != null and candidate.size == target_definition.size and candidate.hit_dice > 0 and candidate.can_summon == 1:
+			var table_error := random_weapon_table_error(candidate)
+			if not table_error.is_empty():
+				failure.append(table_error)
+				return ""
 			definition = candidate
 	var old_definition_id := target.definition_id
 	var old_traitor := target.traitor
@@ -145,6 +153,12 @@ func polymorph_monster(target: MonsterState, target_definition: MonsterDefinitio
 			target.conditions.set_value(index, int(old_conditions[index]))
 	target.set_loot_item_ids(definition.item_ids())
 	return old_definition_id
+
+
+static func random_weapon_table_error(definition: MonsterDefinition) -> String:
+	if definition == null or definition.random_weapon_table <= 10:
+		return ""
+	return "Monster '%s' (Classic %d) selects random weapon table %d; Classic supports tables 1 through 10." % [definition.id, definition.classic_id, definition.random_weapon_table]
 
 
 static func _set_runtime_loot(monster: MonsterState, definition: MonsterDefinition) -> void:

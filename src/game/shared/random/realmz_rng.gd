@@ -95,6 +95,11 @@ func snapshot() -> RealmzRngState:
 	return RealmzRngState.new(_state, _draw_count)
 
 
+func fork() -> RealmzRng:
+	var result := RealmzRng.new(1, _trace_limit)
+	return result if result.rollback(checkpoint()) else null
+
+
 func checkpoint() -> Dictionary:
 	return {
 		"generatorState": _state,

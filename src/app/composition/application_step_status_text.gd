@@ -3,6 +3,10 @@ class_name ApplicationStepStatusText
 extends RefCounted
 
 
+static func for_package(content: RealmzContent, view: GameView, seed_value: int) -> String:
+	return "Loaded %s • %s %d,%d • seed %d" % [content.campaign_id, view.party_map_id, view.party_coordinate.x, view.party_coordinate.y, seed_value]
+
+
 static func for_event(event: DomainEvent) -> String:
 	match event.kind:
 		&"character_draft_generated": return "Classic character roll ready for review"

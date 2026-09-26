@@ -20,8 +20,8 @@ func _bind_scene_nodes() -> void:
 		return
 	_portrait = get_node("Row/Portrait") as TextureRect
 	_summary = get_node("Row/Summary") as Label
-	_inspect = get_node("Row/InspectPartyCharacter") as Button
-	_remove = get_node("Row/RemovePartyCharacter") as Button
+	_inspect = get_node("%InspectPartyCharacter") as Button
+	_remove = get_node("%RemovePartyCharacter") as Button
 
 
 func _request_inspection() -> void:
@@ -56,9 +56,11 @@ func submit_drop_payload(data: Variant) -> void:
 
 func configure(slot_index: int, character: CharacterView, portrait: Texture2D, compact: bool, remove_availability: ActionAvailabilityView) -> void:
 	_bind_scene_nodes()
+	(get_node("Row/Actions") as BoxContainer).vertical = compact
 	name = ("PartySlot%d" if character != null else "EmptyPartySlot%d") % (slot_index + 1)
 	_character_id = character.id if character != null else ""
 	_portrait.texture = portrait
+	custom_minimum_size.y = 44.0 if character == null else 64.0
 	_portrait.tooltip_text = "%s's portrait" % character.name if character != null else ""
 	if character == null:
 		_summary.text = "%d. Empty position" % (slot_index + 1)
@@ -66,12 +68,13 @@ func configure(slot_index: int, character: CharacterView, portrait: Texture2D, c
 		_inspect.visible = false
 		_remove.visible = false
 		return
-	_summary.text = CharacterRow.summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
+	_summary.text = "%s\nL%d • %s / %s" % [character.name, character.level, character.race_name, character.caste_name]
+	tooltip_text = CharacterRow.summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
 	_summary.modulate = Color("e0e2e5")
 	_inspect.visible = true
 	_inspect.text = "View" if compact else "Inspect"
 	_inspect.tooltip_text = "Open %s's complete character record without changing party state." % character.name
 	_remove.visible = true
-	_remove.text = "−" if compact else "Remove"
+	_remove.text = "Remove"
 	_remove.disabled = remove_availability == null or not remove_availability.enabled
 	_remove.tooltip_text = remove_availability.reason if _remove.disabled and remove_availability != null else "Remove %s from the current party." % character.name

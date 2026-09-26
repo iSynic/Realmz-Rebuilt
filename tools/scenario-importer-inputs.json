@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "source": {
+    "url": "https://github.com/iSynic/Realmz-Rebuilt/releases/download/scenario-importer-inputs-beta12/providence-converter-source.bundle",
+    "sha256": "504be9155b73d7e41847f3abc49427b53c0d3d2a3e4e05db932c6934e124f491",
+    "commit": "1633d76db1db951655c9896dc16f1b9d6ef6e36b",
+    "tree": "f4777ff180a19c6110d7a66ea0775b76c9c708d4",
+    "schemaSha256": "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d",
+    "cargoLockSha256": "6284fae1e7efc5d31b0a872730ee022472d8b8e939491e1b6d02df35a780b104"
+  },
+  "support": {
+    "url": "https://github.com/iSynic/Realmz-Rebuilt/releases/download/scenario-importer-inputs-beta12/providence-converter-support.zip",
+    "sha256": "d0fc3ff8c05007150d417e68c731856bbcf4c5e63fabb7d5e06065d24e2fb37c"
+  }
+}

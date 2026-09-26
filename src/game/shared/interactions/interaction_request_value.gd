@@ -267,6 +267,10 @@ class CastOption:
 		if source_kind == &"scroll": data["scrollSlot"] = scroll_slot
 		if target_mode in [&"sequence", &"coordinate_sequence"]:
 			data["maximumTargets"] = maximum_targets
+		if target_mode == &"coordinate_sequence" and not area_offsets.is_empty():
+			data["defaultTargetCoordinate"] = [default_target_coordinate.x, default_target_coordinate.y]
+			data["areaOffsets"] = area_offsets.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y])
+			data["legalTargetCoordinates"] = legal_target_coordinates.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y])
 		if target_mode == &"sequence":
 			data["targetCandidates"] = target_candidates.map(func(value: CombatTarget) -> Dictionary: return value.to_data())
 		if target_mode == &"area":

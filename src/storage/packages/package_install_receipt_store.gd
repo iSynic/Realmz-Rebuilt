@@ -8,15 +8,15 @@ const FORMAT_VERSION: int = 3
 const LEGACY_FORMAT_VERSION: int = 2
 const LEGACY_DECODER_VERSION: int = 6
 
-var schema_hash: String
+var schema_hashes: Array[String]
 var decoder_version: int
 var application_package_hash: String
 var last_error: String = ""
 var requires_application_revalidation: bool = false
 
 
-func _init(expected_schema_hash: String, expected_decoder_version: int, expected_application_package_hash: String) -> void:
-	schema_hash = expected_schema_hash
+func _init(expected_schema_hashes: Array[String], expected_decoder_version: int, expected_application_package_hash: String) -> void:
+	schema_hashes = expected_schema_hashes.duplicate()
 	decoder_version = expected_decoder_version
 	application_package_hash = expected_application_package_hash
 
@@ -39,16 +39,16 @@ func read(package_path: String) -> Dictionary:
 	return value
 
 
-func write(package_path: String, content: RealmzContent, archive_sha256: String) -> bool:
+func write(package_path: String, content: RealmzContent, archive_sha256: String, package_schema_hash: String) -> bool:
 	last_error = ""
-	if content == null or not _is_sha256(archive_sha256):
+	if content == null or not schema_hashes.has(package_schema_hash) or not _is_sha256(archive_sha256):
 		last_error = "Installed package receipt identity is invalid."
 		return false
 	var receipt := {
 		"kind": KIND,
 		"formatVersion": FORMAT_VERSION,
 		"decoderVersion": decoder_version,
-		"schemaHash": schema_hash,
+		"schemaHash": package_schema_hash,
 		"applicationPackageHash": application_package_hash,
 		"campaignId": content.campaign_id,
 		"packageHash": content.package_hash,
@@ -123,7 +123,7 @@ func _validate(receipt: Dictionary, package_path: String) -> bool:
 		return _fail("Installed package receipt has an unsupported shape.")
 	if receipt["kind"] != KIND:
 		return _fail("Installed package receipt has an unsupported kind.")
-	if receipt["schemaHash"] != schema_hash or not _safe_path_component(receipt["campaignId"]):
+	if not schema_hashes.has(str(receipt["schemaHash"])) or not _safe_path_component(receipt["campaignId"]):
 		return _fail("Installed package receipt does not match the runtime contract.")
 	if format_version == FORMAT_VERSION and not _is_sha256(receipt["applicationPackageHash"]):
 		return _fail("Installed package receipt does not match the runtime contract.")

@@ -282,6 +282,9 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 	var definition := _content.combat.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 124 references unavailable monster %d." % action.extra_code[1])
+	var table_error := MonsterRules.random_weapon_table_error(definition)
+	if not table_error.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_random_weapon_table", "Classic opcode 124: %s" % table_error)
 	var battlefield := _game_state.combat.battlefield
 	var map := _content.world.map_by_id(battlefield.map_id) if battlefield != null else null
 	var terrain_set := _content.world.battle_terrain_set_for_map(map, _game_state.world) if map != null else null

@@ -8,6 +8,17 @@ scenarios, application resources, music, fonts, artwork, and starter-character
 data described below are separate works licensed under CC BY-NC-SA 4.0 or their
 specifically named licenses. They are not relicensed by the program's GPL.
 
+Providence scenario converter
+
+The bundled Providence converter source is licensed under GPL-3.0-or-later.
+Its exact source revision, dependency lock, and support inventory are recorded
+in importer/build-manifest.json. Corresponding source and build inputs are at:
+https://github.com/iSynic/Realmz-Rebuilt/releases/tag/scenario-importer-inputs-beta12
+The reproducible build recipe and archive pins are tools/build_release_importer.ps1
+and tools/scenario-importer-inputs.json. Converter license terms and retained
+notices are included under importer/support/licenses. Realmz-derived support
+resources retain their separate licenses and pinned application provenance.
+
 Classic Realmz application icon
 
 Realmz copyright 1994 by Tim Phillips.

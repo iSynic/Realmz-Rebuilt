@@ -12,3 +12,7 @@ func _init(response_id: String, response_label: String, program_id: String) -> v
 	id = response_id
 	label = response_label
 	result_program_id = program_id
+
+
+func is_classic_eliminated(encounter_id: int) -> bool:
+	return result_program_id == "simple:%d:result:-1" % encounter_id

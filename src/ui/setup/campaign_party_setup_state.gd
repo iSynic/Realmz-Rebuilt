@@ -131,6 +131,8 @@ func apply_setup_mode_layout() -> void:
 		character_pane.size_flags_stretch_ratio = 1.0
 		return
 	party_pane.visible = true
+	(setup_overlay.get_node("%PartyFooter") as BoxContainer).vertical = compact
+	(setup_overlay.get_node("%Selectors") as BoxContainer).vertical = compact
 	character_pane.custom_minimum_size.x = 500.0 if creator_active else 240.0 if compact else 286.0
 	party_pane.custom_minimum_size.x = 270.0 if creator_active else 236.0 if compact else 286.0
 	character_pane.size_flags_stretch_ratio = 1.85 if creator_active else 1.15
@@ -164,7 +166,7 @@ func ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void
 
 func apply_availability(button: BaseButton, action_id: StringName) -> void:
 	var availability := view.availability(action_id) if view != null else ActionAvailabilityView.new(action_id, false, "No active session.")
-	button.disabled = not availability.enabled
+	button.disabled = not availability.enabled or campaign_library.package_operation_status.is_running()
 	button.tooltip_text = availability.reason if not availability.enabled else ""
 
 static func select_option_metadata(option: OptionButton, value: int) -> void:

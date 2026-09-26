@@ -6,14 +6,14 @@ extends RefCounted
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 
 var last_error: String = ""
-var _expected_schema_hash: String
+var _schema_hashes: Dictionary
 var _supported_capabilities: Array[String]
 var _deferred_capabilities: Array[String]
 var _archive_reader: PackageArchiveReader
 
 
-func _init(expected_schema_hash: String, supported_capabilities: Array[String], deferred_capabilities: Array[String], archive_reader: PackageArchiveReader) -> void:
-	_expected_schema_hash = expected_schema_hash
+func _init(schema_hashes: Dictionary, supported_capabilities: Array[String], deferred_capabilities: Array[String], archive_reader: PackageArchiveReader) -> void:
+	_schema_hashes = schema_hashes.duplicate()
 	_supported_capabilities = supported_capabilities.duplicate()
 	_deferred_capabilities = deferred_capabilities.duplicate()
 	_archive_reader = archive_reader
@@ -92,9 +92,9 @@ func validate_structure(manifest: Dictionary, archive_entries: Array[String]) ->
 	for field: String in required_fields:
 		if not manifest.has(field):
 			return _reject("manifest is missing required field '%s'." % field)
-	if manifest["kind"] != "realmz2.manifest" or manifest["format"] != "realmz2" or not _is_integer(manifest["formatVersion"]) or int(manifest["formatVersion"]) != 2 or not _is_integer(manifest["schemaVersion"]) or int(manifest["schemaVersion"]) != 3:
+	if manifest["kind"] != "realmz2.manifest" or manifest["format"] != "realmz2" or not _is_integer(manifest["formatVersion"]) or int(manifest["formatVersion"]) != 2 or not _is_integer(manifest["schemaVersion"]) or not _schema_hashes.has(int(manifest["schemaVersion"])):
 		return _reject("Unsupported Realmz 2.0 package or schema version.")
-	if manifest["schemaHash"] != _expected_schema_hash:
+	if manifest["schemaHash"] != _schema_hashes[int(manifest["schemaVersion"])]:
 		return _reject("Package schema hash does not match the runtime contract mirror.")
 	if not _is_sha256(manifest["packageHash"]) or not _is_sha256(manifest["contentId"]):
 		return _reject("Manifest package/content identity is malformed.")

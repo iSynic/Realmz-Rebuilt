@@ -348,6 +348,8 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 		return ScenarioVmResult.failed(&"unknown_scenario_instruction", "Scenario program '%s' contains an unknown instruction." % program.id)
 	var action: ClassicActionDefinition = instruction
 	diagnostics.capture_instruction(program.id, action)
+	if not ClassicOpcodeCatalog.is_executable(action.opcode):
+		return _execute_unrecognized_classic(frame, program, action)
 	_append_trace({"event": "execute-classic", "programId": program.id, "cursor": frame.cursor, "slot": action.slot, "rawOpcode": action.raw_opcode, "opcode": action.opcode, "id": action.operand_id})
 	match action.opcode:
 		39:
@@ -390,6 +392,15 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 		return directive_result
 	diagnostics.clear_instruction()
 	return ScenarioVmResult.completed(operation.events)
+
+
+func _execute_unrecognized_classic(frame: ScenarioFrame, program: ScenarioProgramDefinition, action: ClassicActionDefinition) -> ScenarioVmResult:
+	if _definition.allows_classic_fallthrough() and ClassicOpcodeCatalog.disposition(action.opcode) in [ClassicOpcodeCatalog.DISPOSITION_UNKNOWN, ClassicOpcodeCatalog.DISPOSITION_CLASSIC_RESERVED]:
+		_append_trace({"event": "classic-unrecognized-skipped", "programId": program.id, "slot": action.slot, "rawOpcode": action.raw_opcode, "opcode": action.opcode, "id": action.operand_id, "extraCode": action.extra_code})
+		frame.cursor += 1
+		diagnostics.clear_instruction()
+		return ScenarioVmResult.completed()
+	return ScenarioVmResult.failed(&"unsupported_classic_opcode", "Compatibility gap in '%s', slot %d: Classic opcode %d (raw %d), operand %d is not implemented." % [program.id, action.slot, action.opcode, action.raw_opcode, action.operand_id])
 
 
 func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context: ScenarioExecutionContext = null, runtime_api: RealmzRuntimeApi = null) -> ScenarioVmResult:
@@ -632,14 +643,6 @@ func _action_call_depth() -> int:
 	var count := 0
 	for frame: ScenarioFrame in _frames:
 		if frame.kind == ScenarioFrame.ACTION:
-			count += 1
-	return count
-
-
-func _classic_call_depth() -> int:
-	var count := 0
-	for frame: ScenarioFrame in _frames:
-		if frame.counts_as_classic_call:
 			count += 1
 	return count
 

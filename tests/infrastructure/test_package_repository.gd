@@ -12,7 +12,7 @@ const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.re
 func run() -> void:
 	var repository := PackageRepository.new(); var character_library := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
 	assert_true(character_library.is_ok(), "the pinned Providence-built Classic character library loads as trusted application content: %s" % character_library.error_message)
-	var bundled_campaigns := PackageHostController.new(repository).discover_available_campaigns(PackageHostController.BUNDLED_CAMPAIGN_ROOT, "res://tests/fixtures/no-bundled-overrides"); assert_equal([bundled_campaigns.size(), bundled_campaigns.map(func(campaign: CampaignPackageView) -> String: return campaign.campaign_id)], [13, ["scenario-assault-on-giant-mountain", "scenario-castle-in-the-clouds", "scenario-city-of-bywater", "scenario-destroy-the-necronomicon", "scenario-grilochs-revenge", "scenario-half-truth", "scenario-mithril-vault", "scenario-prelude-to-pestilence", "scenario-trouble-in-the-sword-lands", "scenario-twin-sands-of-time", "scenario-war-in-the-sword-lands", "scenario-white-dragon", "scenario-wrath-of-the-mind-lords"]], "public application discovery exposes exactly the ready Castle-distributed campaign bundle in deterministic order")
+	var bundled_campaigns := PackageHostController.new(repository, INSTALL_TEST_ROOT).discover_available_campaigns(PackageHostController.BUNDLED_CAMPAIGN_ROOT, "res://tests/fixtures/no-bundled-overrides"); assert_equal([bundled_campaigns.size(), bundled_campaigns.map(func(campaign: CampaignPackageView) -> String: return campaign.campaign_id)], [13, ["scenario-assault-on-giant-mountain", "scenario-castle-in-the-clouds", "scenario-city-of-bywater", "scenario-destroy-the-necronomicon", "scenario-grilochs-revenge", "scenario-half-truth", "scenario-mithril-vault", "scenario-prelude-to-pestilence", "scenario-trouble-in-the-sword-lands", "scenario-twin-sands-of-time", "scenario-war-in-the-sword-lands", "scenario-white-dragon", "scenario-wrath-of-the-mind-lords"]], "public application discovery exposes exactly the ready Castle-distributed campaign bundle in deterministic order")
 	if character_library.is_ok():
 		assert_equal([character_library.content.characters.race_definitions().size(), character_library.content.characters.caste_definitions().size()], [30, 30], "the application character library contains the complete stock Race and Caste tables"); assert_equal([character_library.content.characters.race_by_id("classic.race.1").name, character_library.content.characters.caste_by_id("classic.caste.1").name], ["Human", "Fighter"], "the stock library retains Realmz names without scenario overrides")
 		assert_equal([character_library.content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT).size(), character_library.content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON).size()], [120, 120], "the stock creator receives all built-in portraits and tactical icons")
@@ -39,6 +39,7 @@ func run() -> void:
 	var loaded := repository.load_package(FIXTURE_PATH); assert_true(loaded.is_ok(), "the Providence-authored fixture passes package validation: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
+	_test_deferred_start_locations(loaded, character_library)
 	var fixture_archive := ZIPReader.new()
 	assert_equal(fixture_archive.open(FIXTURE_PATH), OK, "the public package proof can open the validated synthetic archive")
 	if fixture_archive.file_exists("manifest.json"):
@@ -195,16 +196,16 @@ func run() -> void:
 		var receipt_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(installed.installed_path + ".receipt.json"))
 		assert_true(receipt_data is Dictionary, "the installation receipt is parseable JSON")
 		if receipt_data is Dictionary:
-			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"], receipt_data["applicationPackageHash"]], [3, 8, PackageRepository.EXPECTED_SCHEMA_HASH, ApplicationLibraryIdentity.PACKAGE_HASH], "the receipt records the v3 package, composed-catalog decoder, and exact application-library contract")
+			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"], receipt_data["applicationPackageHash"]], [3, PackageRepository.DECODER_VERSION, PackageRepository.EXPECTED_SCHEMA_HASH, ApplicationLibraryIdentity.PACKAGE_HASH], "the receipt records the v3 package, composed-catalog decoder, and exact application-library contract")
 		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
 		repository.promote_installed_package(installed.installed_path)
 		assert_equal(repository.retained_package_count(), 1, "promoting an installed package replaces the candidate without retaining an unbounded graph")
 		var repeated := repository.install_package(FIXTURE_PATH, install_root)
 		assert_true(repeated.is_ok(), "reinstalling identical immutable content is idempotent")
-		assert_equal(repeated.installed_path, installed.installed_path, "idempotent installation resolves to the same package"); var overlaid_campaigns := PackageHostController.new(repository).discover_available_campaigns("res://tests/fixtures/packages", install_root); assert_true(overlaid_campaigns.any(func(campaign: CampaignPackageView) -> bool: return campaign.campaign_id == loaded.content.campaign_id and campaign.path == installed.installed_path), "a valid user-installed revision deterministically replaces its matching bundled baseline")
+		assert_equal(repeated.installed_path, installed.installed_path, "idempotent installation resolves to the same package"); var overlaid_campaigns := PackageHostController.new(repository, install_root).discover_available_campaigns("res://tests/fixtures/packages", install_root); assert_true(overlaid_campaigns.any(func(campaign: CampaignPackageView) -> bool: return campaign.campaign_id == loaded.content.campaign_id and campaign.origin == "main"), "discovery preserves the bundled entry when an identical legacy package copy exists")
 		var shipped_duplicate := FileAccess.open(install_root.path_join("scenario-half-truth.realmz2"), FileAccess.WRITE); assert_not_null(shipped_duplicate, "the discovery fixture can stage a duplicate shipped campaign revision")
 		if shipped_duplicate != null: shipped_duplicate.store_buffer(FileAccess.get_file_as_bytes("res://src/storage/packages/bundled_campaigns/scenario-half-truth.realmz2")); shipped_duplicate.close()
-		var shipped_half_truth := PackageHostController.new(repository).discover_available_campaigns(PackageHostController.BUNDLED_CAMPAIGN_ROOT, install_root).filter(func(campaign: CampaignPackageView) -> bool: return campaign.campaign_id == "scenario-half-truth")
+		var shipped_half_truth := PackageHostController.new(repository, install_root).discover_available_campaigns(PackageHostController.BUNDLED_CAMPAIGN_ROOT, install_root).filter(func(campaign: CampaignPackageView) -> bool: return campaign.campaign_id == "scenario-half-truth")
 		assert_equal([shipped_half_truth.size(), shipped_half_truth[0].path if not shipped_half_truth.is_empty() else ""], [1, "res://src/storage/packages/bundled_campaigns/scenario-half-truth.realmz2"], "the current bundled revision wins discovery while a same-ID installation remains intact")
 		var installed_phases: Array[StringName] = []
 		var reopened := PackageRepository.new().install_package(installed.installed_path, install_root, func(phase: StringName, _completed: int, _total: int) -> void:
@@ -363,3 +364,37 @@ func _remove_install_tree(path: String, verified_root: String) -> void:
 	for directory_name: String in directory.get_directories():
 		_remove_install_tree(path.path_join(directory_name), verified_root)
 	DirAccess.remove_absolute(path)
+
+
+func _test_deferred_start_locations(loaded: Variant, character_library: Variant) -> void:
+	if not character_library.is_ok():
+		return
+	var archive := ZIPReader.new()
+	assert_equal(archive.open(FIXTURE_PATH), OK, "the start-location cases read the same validated package documents")
+	var manifest: Dictionary = JSON.parse_string(archive.read_file("manifest.json").get_string_from_utf8())
+	var content: Dictionary = JSON.parse_string(archive.read_file("content.json").get_string_from_utf8())
+	var world: Dictionary = JSON.parse_string(archive.read_file("world.json").get_string_from_utf8())
+	var scenario: Dictionary = JSON.parse_string(archive.read_file("scenario.json").get_string_from_utf8())
+	archive.close()
+	var deferred_manifest: Dictionary = manifest.duplicate(true)
+	if not deferred_manifest["capabilities"].has("realmz.scenario.deferred-references-v1"):
+		deferred_manifest["capabilities"].append("realmz.scenario.deferred-references-v1")
+	for item: Dictionary in [
+		{"start": {"mapId": "land:999", "x": 4, "y": 5}, "field": "mapId", "target": "land:999", "case": "missing startup map"},
+		{"start": {"mapId": "land:0", "x": 90, "y": 5}, "field": "coordinate", "target": "land:0:90,5", "case": "out-of-map startup coordinate"},
+	]:
+		var candidate: Dictionary = deferred_manifest.duplicate(true)
+		candidate["start"] = item.start
+		var deferred := PackageDomainAssembler.new().assemble(candidate, content, world, scenario, loaded.media.assets(), false, character_library.content)
+		assert_true(deferred != null and deferred.requires_deferred_references and deferred.compatibility_warnings.size() == 1, "an imported package with a %s remains installed with one deferred warning" % item.case)
+		if deferred == null: continue
+		var warning: ScenarioCompatibilityWarning = deferred.compatibility_warnings[0]
+		assert_equal([warning.source_id, warning.field, warning.target_kind, warning.target_id], ["manifest.start", item.field, &"map" if item.field == "mapId" else &"map-cell", item.target], "the %s warning retains its exact source field and target" % item.case)
+		var failed_start := GameSession.new().start(deferred, 7)
+		assert_equal([failed_start.state, failed_start.error_code], [SessionStep.State.FAILED, &"invalid_start_location"], "the retained package fails safely only when Play starts the %s" % item.case)
+	var strict_manifest: Dictionary = manifest.duplicate(true)
+	strict_manifest["start"] = {"mapId": "land:999", "x": 4, "y": 5}
+	assert_equal(PackageDomainAssembler.new().assemble(strict_manifest, content, world, scenario, loaded.media.assets(), false, character_library.content), null, "fresh authored packages still reject unavailable start maps")
+	var absent_start_manifest: Dictionary = deferred_manifest.duplicate(true)
+	absent_start_manifest.erase("start")
+	assert_equal(PackageDomainAssembler.new().assemble(absent_start_manifest, content, world, scenario, loaded.media.assets(), false, character_library.content), null, "the deferred-reference capability does not permit a structurally absent startup record")

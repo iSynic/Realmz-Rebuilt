@@ -132,7 +132,7 @@ func validate_presentation_capabilities(manifest: Dictionary, content: Dictionar
 	return true
 
 
-func validate_render_references(assets: Array[MediaAsset], world: Dictionary) -> bool:
+func validate_render_references(assets: Array[MediaAsset], world: Dictionary, allow_deferred: bool = false) -> bool:
 	var tileset_ids: Dictionary = {}
 	var image_ids: Dictionary = {}
 	for asset: MediaAsset in assets:
@@ -148,10 +148,10 @@ func validate_render_references(assets: Array[MediaAsset], world: Dictionary) ->
 		for cell: Variant in map["cells"]:
 			if not cell is Array or cell.size() != 13 or not cell[9] is String:
 				return _reject("Topology render facts are malformed during tileset validation.")
-			if not tileset_ids.has(cell[9]):
+			if not tileset_ids.has(cell[9]) and not allow_deferred:
 				return _reject("Topology references missing tileset asset '%s'." % cell[9])
 			var overlay_asset_id: Variant = cell[10]
-			if overlay_asset_id != null and (not overlay_asset_id is String or not image_ids.has(overlay_asset_id)):
+			if overlay_asset_id != null and (not overlay_asset_id is String or not image_ids.has(overlay_asset_id) and not allow_deferred):
 				return _reject("Topology references missing image overlay asset '%s'." % overlay_asset_id)
 	return true
 

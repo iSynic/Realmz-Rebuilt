@@ -28,6 +28,7 @@ func run() -> void:
 	_test_cancel_before_start(campaign_id, package_hash)
 	_test_shutdown_joins_worker(); _test_bundled_load_task()
 	_test_package_host_prewarm(campaign_id, package_hash)
+	_test_host_reports_unavailable_imported_preference()
 	_cleanup_test_root()
 
 
@@ -108,9 +109,18 @@ func _test_package_host_prewarm(campaign_id: String, package_hash: String) -> vo
 	host.take_prepared_package(); assert_equal(host.retained_candidate_count(), 0, "cancelled preparation retains no package"); host.close(); _cleanup_test_root()
 
 
+func _test_host_reports_unavailable_imported_preference() -> void:
+	_cleanup_test_root()
+	var host := PackageHostController.new(test_package_repository(), TEST_ROOT)
+	assert_false(host.prefer_imported_revision("campaign.unknown", "f".repeat(64)), "the host refuses a revision that discovery did not confirm")
+	assert_contains(host.imported_revision_error, "not in the imported revision library", "the host exposes the durable preference failure for visible application status")
+	host.close()
+	_cleanup_test_root()
+
+
 func _wait_for_host_prewarm(host: PackageHostController) -> void:
 	var deadline := Time.get_ticks_msec() + TERMINAL_WAIT_MILLISECONDS
-	while host.prewarm_running() and Time.get_ticks_msec() < deadline: OS.delay_msec(POLL_DELAY_MILLISECONDS)
+	while host.prewarm_running and Time.get_ticks_msec() < deadline: OS.delay_msec(POLL_DELAY_MILLISECONDS)
 
 
 func _wait_for_host_operation(host: PackageHostController) -> PackageOperationView:

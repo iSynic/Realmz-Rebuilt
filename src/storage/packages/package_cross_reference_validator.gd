@@ -32,9 +32,11 @@ func validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteD
 	if not validate_monster_record_references(monsters, items, spells, allow_deferred):
 		return false
 	for battle: BattleDefinition in battles:
-		for slot: BattleMonsterSlotDefinition in battle.monster_slots():
+		var battle_slots := battle.monster_slots()
+		for index: int in battle_slots.size():
+			var slot: BattleMonsterSlotDefinition = battle_slots[index]
 			if not monster_ids.has(slot.monster_id):
-				return _reject("Battle '%s' references unavailable monster '%s'." % [battle.id, slot.monster_id])
+				if not _unavailable(allow_deferred, &"battle", battle.id, "monsterSlots", index, &"monster", slot.monster_id, "Battle '%s' references unavailable monster '%s'." % [battle.id, slot.monster_id]): return false
 		for message_id: int in [battle.message_before_id, battle.message_after_id]:
 			if message_id != 0 and not message_ids.has(absi(message_id)):
 				var field := "messageBeforeId" if message_id == battle.message_before_id else "messageAfterId"
@@ -53,14 +55,18 @@ func validate_monster_record_references(monsters: Array[MonsterDefinition], item
 	var item_ids := _definition_ids(items)
 	var spell_ids := _definition_ids(spells)
 	for monster: MonsterDefinition in monsters:
+		if monster.random_weapon_table > 10:
+			if not _unavailable(allow_deferred, &"monster", monster.id, "randomWeaponTable", -1, &"weapon-table", monster.random_weapon_table, "Monster '%s' retains native random weapon table %d outside Castle's table; construction cannot reproduce its out-of-bounds read." % [monster.id, monster.random_weapon_table]): return false
 		for spell_id: String in monster.spell_ids():
 			if spell_id.is_empty():
 				continue
 			if not spell_ids.has(spell_id):
 				if not _unavailable(allow_deferred, &"monster", monster.id, "spells", -1, &"spell", spell_id, "Monster '%s' references unavailable spell '%s'." % [monster.id, spell_id]): return false
-		for item_id: String in monster.item_ids():
+		var monster_items := monster.item_ids()
+		for slot: int in monster_items.size():
+			var item_id := monster_items[slot]
 			if not item_id.is_empty() and not item_ids.has(item_id):
-				if not _unavailable(allow_deferred, &"monster", monster.id, "items", -1, &"item", item_id, "Monster '%s' references unavailable item '%s'." % [monster.id, item_id]): return false
+				if not _unavailable(allow_deferred, &"monster", monster.id, "itemIds", slot, &"item", item_id, "Monster '%s' references unavailable item '%s'." % [monster.id, item_id]): return false
 		if not monster.weapon_id.is_empty() and not item_ids.has(monster.weapon_id):
 			if not _unavailable(allow_deferred, &"monster", monster.id, "weaponId", -1, &"item", monster.weapon_id, "Monster '%s' references unavailable weapon '%s'." % [monster.id, monster.weapon_id]): return false
 		for random_weapon_id: String in MonsterRules.random_weapon_item_ids(monster.random_weapon_table):
@@ -96,6 +102,8 @@ func _validate_simple_encounters(scenario: ScenarioDefinition, message_ids: Dict
 		if not message_ids.has(absi(encounter.prompt_message_id)):
 			if not _unavailable(allow_deferred, &"simple-encounter", str(encounter.id), "promptMessageId", -1, &"message", absi(encounter.prompt_message_id), "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id]): return null
 		for response: SimpleEncounterResponse in encounter.responses():
+			if allow_deferred and response.is_classic_eliminated(encounter.id):
+				continue
 			if scenario.program_by_id(response.result_program_id) == null:
 				if not _unavailable(allow_deferred, &"simple-encounter", str(encounter.id), response.id, -1, &"scenario-program", response.result_program_id, "Simple Encounter %d response '%s' references unavailable result program '%s'." % [encounter.id, response.id, response.result_program_id]): return null
 	return encounter_ids
@@ -127,7 +135,14 @@ func _validate_scenario_programs(scenario: ScenarioDefinition, encounter_ids: Di
 			var instruction: Variant = program.instruction_at(index)
 			if not instruction is ClassicActionDefinition:
 				continue
+			if instruction.extra_code_fault != null:
+				if not _unavailable(allow_deferred, &"scenario-program", program.id, "extraCode", instruction.slot, &"extra-code", instruction.extra_code_fault.row_id, instruction.extra_code_fault.message()): return false
+				continue
 			match instruction.opcode:
+				65:
+					var values: Array[int] = instruction.extra_code
+					if values.size() == 5 and (absi(values[0]) > 20 or values[1] < 1 or values[2] > 999 or values[1] > values[2]):
+						if not _unavailable(allow_deferred, &"scenario-program", program.id, "extraCode", instruction.slot, &"classic-operand", instruction.operand_id, "Scenario program '%s' opcode 65 preserves an invalid native item count or range; execution cannot reproduce Castle's out-of-bounds treasure write." % program.id): return false
 				1:
 					if not message_ids.has(absi(instruction.operand_id)):
 						if not _unavailable(allow_deferred, &"scenario-program", program.id, "id", instruction.slot, &"message", absi(instruction.operand_id), "Scenario program '%s' references unavailable message %d." % [program.id, instruction.operand_id]): return false
@@ -226,10 +241,12 @@ func validate_player_map_opcode_references(scenario: ScenarioDefinition, world: 
 			var instruction: Variant = program.instruction_at(index)
 			if not instruction is ClassicActionDefinition:
 				continue
+			if instruction.extra_code_fault != null:
+				continue
 			match instruction.opcode:
 				44:
 					if program.owner_kind not in [&"simple-encounter-result", &"complex-encounter-result"] or instruction.operand_id < 1 or instruction.operand_id > 4:
-						return _reject("Scenario program '%s' opcode 44 requires result 1 through 4 in a Simple or Complex Encounter result." % program.id)
+						if not _unavailable(allow_deferred, &"scenario-program", program.id, "id", instruction.slot, &"encounter-result", instruction.operand_id, "Scenario program '%s' opcode 44 requires result 1 through 4 in a Simple or Complex Encounter result." % program.id): return false
 				29:
 					if world.player_map_by_classic_id(absi(instruction.operand_id)) == null:
 						if not _unavailable(allow_deferred, &"scenario-program", program.id, "id", instruction.slot, &"player-map", absi(instruction.operand_id), "Scenario program '%s' references unavailable player-map record %d." % [program.id, absi(instruction.operand_id)]): return false

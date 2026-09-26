@@ -301,7 +301,7 @@ func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.C
 	result.area_rotation_offsets = selected.area_rotation_offsets.duplicate(true)
 	result.default_target_coordinate = selected.default_target_coordinate
 	result.legal_coordinates = selected.legal_target_coordinates.duplicate()
-	result.validation_deferred = response_body.action == &"cast_spell" and mode in [&"combatant", &"sequence", &"coordinate_sequence"] or mode == &"area" and (result.legal_coordinates.is_empty() or result.supports_rotation())
+	result.validation_deferred = response_body.action == &"cast_spell" and mode in [&"combatant", &"sequence"] or mode == &"area" and (result.legal_coordinates.is_empty() or result.supports_rotation())
 	return result
 
 

@@ -33,6 +33,8 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 	var selections := _targets(state, content, source_id, spell, center, shape, power, rng)
 	var group := _resolve(state, content, selections, spell, power, rng, source_id)
 	if group == null or not group.cast:
+		if group != null and not group.error_code.is_empty():
+			return CombatFlowResult.failed(group.error_code, group.error_message)
 		return CombatFlowResult.failed(&"invalid_macro_spell_effect", "The monster macro spell could not resolve its battlefield targets.")
 	var events: Array[DomainEvent] = []
 	_context.fields().append_created_events(events, [persistent_field] if persistent_field != null else [], SOURCE)

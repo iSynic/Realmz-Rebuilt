@@ -14,6 +14,11 @@ func _init(values: Array[int]) -> void:
 	_scripted_values = values.duplicate()
 
 
+func fork() -> RealmzRng:
+	var result := ScriptedRng.new(_scripted_values)
+	return result if result.rollback(checkpoint()) else null
+
+
 func _next_raw() -> int:
 	if _script_index >= _scripted_values.size():
 		push_error("ScriptedRng exhausted its fixture values.")

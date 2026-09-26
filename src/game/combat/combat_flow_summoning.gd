@@ -18,6 +18,42 @@ static func is_summon_spell(spell: SpellDefinition) -> bool:
 	return ClassicSpellSpecialEffectRules.is_combat_summon_spell(spell)
 
 
+func preview_definition(state: GameState, content: RealmzContent, spell: SpellDefinition, rng: RealmzRng) -> MonsterDefinition:
+	if state == null or content == null or spell == null or rng == null:
+		return null
+	# Castle selects monpick before placement; a fork exposes that exact footprint without spending the session draw before confirmation.
+	var preview_rng := rng.fork()
+	if preview_rng == null:
+		return null
+	return _select_classic_summon_definition(state, content, spell, preview_rng)
+
+
+func legal_anchor_coordinates(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, size: int) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if state == null or content == null or spell == null or state.combat == null or state.combat.battlefield == null or size < 0 or size > 3:
+		return result
+	var battlefield := state.combat.battlefield
+	if not battlefield.actors.has_actor(caster_id):
+		return result
+	var map := content.world.map_by_id(battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
+	if terrain_set == null:
+		return result
+	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
+	var require_line_of_sight := spell.range_min + spell.range_max > 0
+	var bounds := _candidate_bounds(battlefield, caster_id, maximum_range)
+	var occupied: Dictionary = {}
+	for actor_id: String in battlefield.actors.actor_ids():
+		for cell: Vector2i in battlefield.actors.actor_footprint(actor_id):
+			occupied[cell] = true
+	for y: int in range(bounds.position.y, bounds.end.y):
+		for x: int in range(bounds.position.x, bounds.end.x):
+			var coordinate := Vector2i(x, y)
+			if _context.battlefield.coordinate_target_is_valid(battlefield, terrain_set, caster_id, coordinate, maximum_range, require_line_of_sight) and _context.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, size, {}, occupied):
+				result.append(coordinate)
+	return result
+
+
 func probe_choice(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int) -> CombatSpellCastProbe:
 	if state == null or content == null or spell == null or state.combat == null or state.combat.battlefield == null:
 		return CombatSpellCastProbe.blocked(&"summon_unavailable", "Combat summoning requires an active battlefield.")
@@ -75,6 +111,9 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	var definition := _select_classic_summon_definition(state, content, spell, rng)
 	if definition == null:
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": event_source})])
+	var table_error := MonsterRules.random_weapon_table_error(definition)
+	if not table_error.is_empty():
+		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"invalid_random_weapon_table", table_error)
 	var battlefield := state.combat.battlefield
 	var map := content.world.map_by_id(battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
@@ -132,6 +171,9 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 	var definition := _select_classic_summon_definition(state, content, spell, rng)
 	if definition == null:
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": "classic-monster"})])
+	var table_error := MonsterRules.random_weapon_table_error(definition)
+	if not table_error.is_empty():
+		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"invalid_random_weapon_table", table_error)
 	var battlefield := state.combat.battlefield
 	var map := content.world.map_by_id(battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null

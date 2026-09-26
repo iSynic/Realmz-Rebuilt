@@ -80,7 +80,7 @@ var _pending_save_action: StringName = &""
 var _pending_save_slot: String = ""
 var _pending_save_backup: bool = false
 var _legacy_target_slot: String = ""
-var _save_view_session_started: bool = false
+var _save_view_has_active_adventure: bool = false
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _save_and_quit_mode: bool = false
 var _selected_workspace_mode: StringName = &"Display"
@@ -225,7 +225,7 @@ func _bind_header(view: GameView) -> void:
 
 
 func _bind_save_workspace(view: GameView) -> void:
-	_save_view_session_started = view.session_started
+	_save_view_has_active_adventure = view.session_started and not view.party_setup_available
 	var rows := _workspace.save_slot_rows()
 	var empty := _workspace.save_browser_empty()
 	empty.visible = false
@@ -398,10 +398,8 @@ func _load_selected_preview() -> void:
 		_stage_save_confirmation(&"load_legacy_into_slot", preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
 		return
 	var action_id: StringName = &"load_backup" if preview.source == SaveSlotPreview.BACKUP else &"load"
-	if _save_view_session_started:
-		_stage_save_confirmation(action_id, preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
-	else:
-		action_requested.emit(action_id, preview.slot_id)
+	if _save_view_has_active_adventure: _stage_save_confirmation(action_id, preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
+	else: action_requested.emit(action_id, preview.slot_id)
 
 
 func _has_empty_scenario_slot() -> bool:
@@ -436,6 +434,7 @@ func _stage_save_confirmation(action_id: StringName, slot_id: String, backup: bo
 	_pending_save_slot = slot_id
 	_pending_save_backup = backup
 	_update_save_confirmation()
+	if action_id in [&"load", &"load_backup"]: _workspace.focus_load_confirmation()
 
 
 func _confirm_save_action() -> void:

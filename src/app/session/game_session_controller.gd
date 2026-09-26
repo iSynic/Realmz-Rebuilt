@@ -12,6 +12,16 @@ var _current_view: GameView = _session.view()
 var _map_projection_size: Vector2i = SessionViewProjector.DEFAULT_MAP_VIEW_SIZE
 
 
+func _init() -> void:
+	step_committed.connect(_log_scenario_fault)
+
+
+func _log_scenario_fault(step: SessionStep) -> void:
+	for event: DomainEvent in step.events:
+		if event.kind == &"scenario_runtime_faulted":
+			printerr("Scenario runtime fault: " + JSON.stringify(event.payload))
+
+
 func session() -> GameSession:
 	return _session
 

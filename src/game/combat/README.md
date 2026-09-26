@@ -15,6 +15,7 @@ Important invariants:
 - Simulation uses only the supplied serialized RNG.
 - A rejected command leaves combat state and resources unchanged.
 - Battlefield occupancy and footprints remain authoritative.
+- Summon placement previews the creature Castle selects before targeting, including every occupied footprint cell; an anchor is selectable only when that whole footprint fits. The preview forks the session RNG, so only a committed cast advances it.
 - UI playback never advances rules or owns a continuation.
 - Collaborators call named public contracts, never another object's private implementation.
 

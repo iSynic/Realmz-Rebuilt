@@ -24,6 +24,7 @@ theme_override_constants/separation = 6
 unique_name_in_owner = true
 custom_minimum_size = Vector2(44, 44)
 layout_mode = 2
+size_flags_vertical = 4
 mouse_filter = 2
 texture_filter = 1
 expand_mode = 1
@@ -34,17 +35,24 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 2
+max_lines_visible = 4
 vertical_alignment = 1
 text_overrun_behavior = 3
 
-[node name="InspectPartyCharacter" type="Button" parent="Row"]
-unique_name_in_owner = true
+[node name="Actions" type="BoxContainer" parent="Row"]
 layout_mode = 2
 
-[node name="RemovePartyCharacter" type="Button" parent="Row"]
+[node name="InspectPartyCharacter" type="Button" parent="Row/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_vertical = 3
 
-[connection signal="pressed" from="Row/InspectPartyCharacter" to="." method="_request_inspection"]
-[connection signal="pressed" from="Row/RemovePartyCharacter" to="." method="_request_removal"]
+[node name="RemovePartyCharacter" type="Button" parent="Row/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[connection signal="pressed" from="Row/Actions/InspectPartyCharacter" to="." method="_request_inspection"]
+[connection signal="pressed" from="Row/Actions/RemovePartyCharacter" to="." method="_request_removal"]

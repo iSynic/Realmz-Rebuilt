@@ -21,6 +21,8 @@ func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTa
 		return result
 	var resolution := _resolve_character_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng, [], polymorph_context)
 	result.append_target(effective.id, effective.kind, resolution, effective.original_target_id, effective.reflected)
+	if not result.cast and not result.error_code.is_empty():
+		return result
 	return result
 
 
@@ -61,6 +63,8 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 			continue
 		var resolution := _resolve_character_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, [], polymorph_context)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
+		if not result.cast and not result.error_code.is_empty():
+			return result
 	return result
 
 
@@ -140,4 +144,6 @@ func _resolve_character_selection_sequence(caster: CharacterState, selections: A
 			continue
 		var resolution := _resolve_character_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, item_definitions)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
+		if not result.cast and not result.error_code.is_empty():
+			return result
 	return result

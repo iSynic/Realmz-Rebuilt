@@ -1,0 +1,78 @@
+name: Build scenario importers
+on:
+  push:
+    branches: ['release/**']
+    paths:
+      - '.github/workflows/importers.yml'
+      - 'tools/build_release_importer.ps1'
+      - 'tools/scenario-importer-inputs.json'
+      - 'tools/package_scenario_importer.ps1'
+      - 'tools/verify_scenario_importer_platform.ps1'
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            name: windows
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            name: linux
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            name: macos-x86_64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            name: macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pinned native converter
+        shell: pwsh
+        run: |
+          ./tools/build_release_importer.ps1 -Target '${{ matrix.target }}' -WorkRoot "$env:RUNNER_TEMP/converter-build" -OutputRoot "$env:RUNNER_TEMP/importer"
+          ./tools/package_scenario_importer.ps1 -ImporterRoot "$env:RUNNER_TEMP/importer" -OutputPath 'importer-${{ matrix.name }}.zip'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: importer-${{ matrix.name }}
+          path: importer-${{ matrix.name }}.zip
+          if-no-files-found: error
+  universal:
+    needs: build
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: importer-macos-*
+          merge-multiple: true
+      - name: Assemble universal converter
+        shell: pwsh
+        run: |
+          Expand-Archive importer-macos-arm64.zip arm64
+          Expand-Archive importer-macos-x86_64.zip x86_64
+          $arm = Get-Content arm64/build-manifest.json -Raw | ConvertFrom-Json
+          $intel = Get-Content x86_64/build-manifest.json -Raw | ConvertFrom-Json
+          foreach ($field in @('commit','sourceTree','schemaSha256','cargoLockSha256','profile','sourceDirty','rustcVersion','cargoVersion')) {
+            if ($arm.buildIdentity.$field -cne $intel.buildIdentity.$field) { throw "Universal converter $field mismatch." }
+          }
+          if (($arm.supportFiles | ConvertTo-Json -Depth 8 -Compress) -cne ($intel.supportFiles | ConvertTo-Json -Depth 8 -Compress)) { throw 'Universal converter support mismatch.' }
+          lipo -create arm64/providence-native-adapter x86_64/providence-native-adapter -output providence-native-adapter
+          if ($LASTEXITCODE -ne 0) { throw 'Universal converter assembly failed.' }
+          Move-Item providence-native-adapter arm64/providence-native-adapter -Force
+          chmod 755 arm64/providence-native-adapter
+          $arm.executable.bytes = (Get-Item arm64/providence-native-adapter).Length
+          $arm.executable.sha256 = (Get-FileHash arm64/providence-native-adapter -Algorithm SHA256).Hash.ToLowerInvariant()
+          $arm | Add-Member -NotePropertyName sliceBuildIdentities -NotePropertyValue @($arm.buildIdentity, $intel.buildIdentity)
+          $arm | ConvertTo-Json -Depth 16 | Set-Content arm64/build-manifest.json
+          ./tools/verify_scenario_importer_platform.ps1 -ExpectedPlatform macos -Target $arm.buildIdentity.target -ExecutablePath arm64/providence-native-adapter
+          ./tools/package_scenario_importer.ps1 -ImporterRoot arm64 -OutputPath importer-macos.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: importer-macos
+          path: importer-macos.zip
+          if-no-files-found: error

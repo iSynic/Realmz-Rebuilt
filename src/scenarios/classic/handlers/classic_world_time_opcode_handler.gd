@@ -172,6 +172,9 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 	var definition := _content.world.player_map_by_classic_id(classic_id)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_player_map", "Classic opcode 29 references unavailable player-map record %d." % classic_id)
+	var unavailable_reference := _unavailable_player_map_reference(definition)
+	if not unavailable_reference.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"deferred_player_map_reference", unavailable_reference)
 	var already_acquired: bool = _game_state.world.exploration.has_map(definition.id)
 	_game_state.world.exploration.acquire_map(definition.id)
 	var event_payload := {"playerMapId": definition.id, "classicId": definition.classic_id, "name": definition.name, "alreadyAcquired": already_acquired, "source": "classic"}
@@ -182,6 +185,30 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 		return ScenarioRuntimeOperationResult.completed(definition.id, events)
 	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.player_map(definition.id), events)
+
+
+func _unavailable_player_map_reference(definition: PlayerMapDefinition) -> String:
+	if definition.mode != PlayerMapDefinition.SCROLLING_TEXT and _content.world.map_by_id(definition.map_id) == null:
+		return "Classic opcode 29 Player Map %d requires source map '%s', which is unavailable." % [definition.classic_id, definition.map_id]
+	for field: String in ["picture", "scrolling text", "party marker"]:
+		var asset_id := ""
+		match field:
+			"picture": asset_id = definition.picture_asset_id
+			"scrolling text": asset_id = definition.scrolling_text_asset_id
+			"party marker": asset_id = definition.party_marker_asset_id
+		if not asset_id.is_empty() and not _has_media_asset(asset_id):
+			return "Classic opcode 29 Player Map %d requires unavailable %s asset '%s'." % [definition.classic_id, field, asset_id]
+	for marker: PlayerMapMarkerDefinition in definition.markers():
+		if not _has_media_asset(marker.icon_asset_id):
+			return "Classic opcode 29 Player Map %d requires unavailable CICN resource %d ('%s')." % [definition.classic_id, marker.classic_icon_id, marker.icon_asset_id]
+	return ""
+
+
+func _has_media_asset(asset_id: String) -> bool:
+	for asset: MediaAsset in _content.media_assets:
+		if asset.id == asset_id:
+			return true
+	return false
 
 
 func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, activate_destination: bool = false) -> ScenarioRuntimeOperationResult:
@@ -219,7 +246,7 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-teleport"}))
 	if activate_destination and not target_map.topology.cell_at(coordinate).trigger_ids().is_empty():
 		events.append(DomainEvent.new(&"destination_trigger_recheck_requested", {"mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "source": "classic-opcode-20"}))
-		return ScenarioRuntimeOperationResult.completed(target_map.id, events, ScenarioVmDirective.finish())
+		return ScenarioRuntimeOperationResult.completed(target_map.id, events, ScenarioVmDirective.finish_timeline())
 	return ScenarioRuntimeOperationResult.completed(target_map.id, events)
 
 

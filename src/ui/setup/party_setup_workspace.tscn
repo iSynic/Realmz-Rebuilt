@@ -200,7 +200,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-vertical_scroll_mode = 0
+vertical_scroll_mode = 1
 follow_focus = true
 
 [node name="PartySlots" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll"]
@@ -224,8 +224,10 @@ autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 text = "Experience gained at —"
+autowrap_mode = 2
 
-[node name="Selectors" type="HBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions"]
+[node name="Selectors" type="BoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 6
 
@@ -242,6 +244,8 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+text_overrun_behavior = 3
 
 [node name="DifficultyColumn" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySetupOptions/Selectors"]
 layout_mode = 2
@@ -256,8 +260,11 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+text_overrun_behavior = 3
 
-[node name="PartyFooter" type="HBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
+[node name="PartyFooter" type="BoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
+unique_name_in_owner = true
 layout_mode = 2
 
 [node name="LoadSavedAdventure" type="Button" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyFooter"]

@@ -3,6 +3,7 @@
 class_name PackageLoadResult
 extends RefCounted
 
+var schema_hash: String = ""
 var content: RealmzContent
 var media: PackageMediaCatalog
 var error_code: StringName = &""
@@ -13,8 +14,9 @@ func is_ok() -> bool:
 	return content != null and error_code == &""
 
 
-static func succeeded(loaded_content: RealmzContent, loaded_media: PackageMediaCatalog) -> PackageLoadResult:
+static func succeeded(loaded_content: RealmzContent, loaded_media: PackageMediaCatalog, loaded_schema_hash: String = "") -> PackageLoadResult:
 	var result := PackageLoadResult.new()
+	result.schema_hash = loaded_schema_hash
 	result.content = loaded_content
 	result.media = loaded_media
 	return result

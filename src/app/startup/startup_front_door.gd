@@ -122,7 +122,7 @@ func _exit_tree() -> void:
 
 
 func menu_visible() -> bool:
-	return _splash_complete and _menu_controller != null and _menu_controller.splash_visible()
+	return _splash_complete and _menu_controller != null and _menu_controller.splash_visible
 
 
 func application_ready() -> bool:

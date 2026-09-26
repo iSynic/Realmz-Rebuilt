@@ -17,6 +17,7 @@ func run() -> void:
 	_test_public_interaction_matrix(content)
 	_test_public_classic_choice_control_flow(content); _test_half_truth_complex_spell_class()
 	_test_public_classic_difficulty_branch(content); _test_opcode_59_current_cell(content); _test_public_classic_encounter_iterations(content)
+	_test_public_encounter_teleport_handoff(content)
 	_test_public_thief_encounter(content); _test_public_session_resume(content)
 	_test_public_vm_combat_auto(content); _test_opcode_56_defeat_return(content); _test_public_classic_forced_victory(content); _test_public_classic_combat_spawn(content); _test_public_classic_combat_mutation(content); _test_opcode_127_roster_presence(content)
 	_test_public_vm_repeated_combat_item(content)
@@ -307,6 +308,35 @@ func _test_public_classic_encounter_iterations(content: RealmzContent) -> void:
 	var cancel_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(cancelled_vm.snapshot().to_data()))); var restored_cancel_vm := ScenarioVm.new(); restored_cancel_vm.configure(cancel_definition); assert_true(cancel_repeat.state == ScenarioVmResult.State.WAITING and cancel_snapshot.frames.size() == 2 and restored_cancel_vm.restore(cancel_snapshot), "authored nested repetition retains both encounter frames across VM restoration")
 	var cancelled := restored_cancel_vm.resume(InteractionResponse.from_data(restored_cancel_vm.pending_request().request_id, InteractionRequest.WORD_AND_ACTION, {"action": "back"}), cancelled_api)
 	assert_equal([cancelled.state, cancelled.interaction, cancelled_state.scenario_progress.encounters.attempts(&"complex", 0), cancelled_rng.snapshot().draw_count, restored_cancel_vm.snapshot().frames.size()], [ScenarioVmResult.State.COMPLETED, null, 1, 0, 0], "Back exits the complete restored nested encounter timeline without another attempt or RNG draw")
+
+
+func _test_public_encounter_teleport_handoff(content: RealmzContent) -> void:
+	var encounter := SimpleEncounterDefinition.new(0, 0, [SimpleEncounterResponse.new("leave", "Leave", "simple:0:result:0")], false, 99, 0)
+	var programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new("direct", &"trigger", "direct", [ClassicActionDefinition.new(0, 4, 4, 0, false, []), ClassicActionDefinition.new(1, 84, 84, 1, false, [])]),
+		ScenarioProgramDefinition.new("branched", &"trigger", "branched", [ClassicActionDefinition.new(0, -85, 85, 0, true, [1, 0, 0, 0, 0]), ClassicActionDefinition.new(1, 84, 84, 2, false, [])]),
+		ScenarioProgramDefinition.new("simple:0:result:0", &"simple-encounter-result", "0", [ClassicActionDefinition.new(0, 39, 39, 1, false, [])]),
+		ScenarioProgramDefinition.new("xap:1", &"extra-action-point", "1", [ClassicActionDefinition.new(0, 20, 20, 0, false, [0, 1, 0, 0, 0]), ClassicActionDefinition.new(1, 84, 84, 3, false, [])]),
+	]
+	var definition := ScenarioDefinition.new(programs, [])
+	var fixture := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, content.world, definition, [], [], [encounter])
+	for root_id: String in ["direct", "branched"]:
+		var state := GameState.new(PartyState.new("land:0", Vector2i.ZERO, []), RealmzClock.new())
+		var rng := RealmzRng.for_oracle(20)
+		var api := RealmzRuntimeApi.new(fixture, state, rng, ScenarioActionState.new())
+		var vm := ScenarioVm.new()
+		vm.configure(definition)
+		vm.start_program(root_id)
+		var prompt := vm.run(api)
+		assert_equal(prompt.state, ScenarioVmResult.State.WAITING, "Teleport fixture reaches its repeating encounter through " + root_id)
+		var restored := ScenarioVm.new()
+		restored.configure(definition)
+		assert_true(restored.restore(ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))), "Pending teleport choice restores its caller frames")
+		var draws_before := rng.snapshot().draw_count
+		var result := restored.resume(InteractionResponse.from_data(prompt.interaction.request_id, InteractionRequest.ENCOUNTER_CHOICE, {"index": 0}), api)
+		assert_equal([result.state, result.interaction, restored.snapshot().frames.size(), state.party.coordinate, state.scenario_progress.encounters.attempts(&"simple", 0), rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, null, 0, Vector2i(1, 0), 1, draws_before], "Destination handoff closes the restored encounter and every caller without another choice or RNG draw")
+		assert_equal(result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"destination_trigger_recheck_requested").size(), 1, "Teleport requests its destination Action Point exactly once")
+		assert_false(_event_has(result.events, &"classic_control_marker"), "Neither a later XAP slot nor the enclosing caller resumes after destination handoff")
 
 
 func _test_public_thief_encounter(content: RealmzContent) -> void:
@@ -696,8 +726,19 @@ func _test_public_application_transitions(content: RealmzContent) -> void:
 	assert_equal(forged.error_code, &"invalid_interaction_response", "player-map acknowledgement rejects forged fields")
 	var resumed := api.resume_classic(shown.continuation, InteractionResponse.acknowledge(shown.interaction), "map.resume")
 	assert_equal(resumed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "player-map acknowledgement resumes its issuing operation")
+	var missing_party_marker: MediaAsset = null
+	for asset: MediaAsset in content.media_assets:
+		if asset.id == map.party_marker_asset_id:
+			missing_party_marker = asset
+			break
+	assert_not_null(missing_party_marker, "fixture resolves the selected Player Map's exact party marker media")
+	if missing_party_marker != null:
+		content.media_assets.erase(missing_party_marker)
+		var deferred_marker := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, map.classic_id, false, []), "map.missing-marker")
+		content.media_assets.append(missing_party_marker)
+		assert_equal([deferred_marker.state, deferred_marker.error_code, deferred_marker.error_message], [ScenarioRuntimeOperationResult.State.FAILED, &"deferred_player_map_reference", "Classic opcode 29 Player Map %d requires unavailable party marker asset '%s'." % [map.classic_id, map.party_marker_asset_id]], "selected Player Map fails with its exact missing party marker before acquisition")
 	var unavailable := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 19, false, []), "map.unknown"); assert_equal(unavailable.error_code, &"unknown_player_map", "unknown player-map identities fail explicitly"); var entered_dungeon := api.execute_classic(ClassicActionDefinition.new(0, 37, 37, 0, false, [0, 0, 0, 0, -2]), "dungeon.enter"); assert_equal([entered_dungeon.state, state.party.map_id, state.dungeon_heading, state.dungeon_multiview, entered_dungeon.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested")], [ScenarioRuntimeOperationResult.State.COMPLETED, "dungeon:0", 2, false, false], "opcode 37 treats signed Extra Code 4 as Castle heading and locked-view policy rather than a sound identity"); state.party.fatigue = 100; var exhausted := api.execute_classic(ClassicActionDefinition.new(0, 68, 68, 0, false, [1, 0, 0, 0, 0]), "fatigue.exhaust"); var rested := api.execute_classic(ClassicActionDefinition.new(0, 68, 68, 0, false, [2, 0, 0, 0, 0]), "fatigue.rest"); state.party.fatigue = 100; var fatigue := api.execute_classic(ClassicActionDefinition.new(0, 68, 68, 0, false, [3, 150, 0, 0, 0]), "fatigue.calculate"); var registration := api.execute_classic(ClassicActionDefinition.new(0, 84, 84, 0, false, [-1, -1, 0, 10105, 0]), "registration.scenario"); var heading_rng := ScriptedRng.new([0]); var heading_api := RealmzRuntimeApi.new(content, state, heading_rng, ScenarioActionState.new()); var fixed_heading := heading_api.execute_classic(ClassicActionDefinition.new(0, 95, 95, 1, false, []), "heading.fixed"); var random_heading := heading_api.execute_classic(ClassicActionDefinition.new(0, 95, 95, -1, false, []), "heading.random"); assert_equal([exhausted.value, rested.value, fatigue.value, state.party.fatigue, fatigue.events[0].payload, registration.state, registration.events[0].payload, fixed_heading.value, random_heading.value, heading_rng.snapshot().draw_count], [135, 4, 135, 135, {"previous": 100, "current": 135, "reason": "classic-opcode-68", "source": "classic"}, ScenarioRuntimeOperationResult.State.COMPLETED, {"opcode": 84, "operandId": 0}, 1, 1, 1], "opcodes 68, 84, and 95 preserve corrected fatigue, registration, fixed-heading, and one-draw random-heading paths")
-	var land_map := content.world.map_by_id("land:0"); state.party.map_id = land_map.id; state.party.coordinate = Vector2i.ZERO; var open_teleport := api.execute_classic(ClassicActionDefinition.new(0, 20, 20, 0, false, [0, 3, 3, 0, 0]), "teleport.open"); var open_position := state.party.coordinate; var ap_teleport := api.execute_classic(ClassicActionDefinition.new(0, 20, 20, 0, false, [0, 1, 0, 0, 0]), "teleport.ap"); assert_equal([land_map.topology.cell_at(Vector2i(3, 3)).trigger_ids(), open_teleport.state, open_teleport.directive, _event_has(open_teleport.events, &"destination_trigger_recheck_requested"), open_position, land_map.topology.cell_at(Vector2i(1, 0)).trigger_ids().is_empty(), ap_teleport.directive.kind, _event_has(ap_teleport.events, &"destination_trigger_recheck_requested")], [[], ScenarioRuntimeOperationResult.State.COMPLETED, null, false, Vector2i(3, 3), false, ScenarioVmDirective.FINISH, true], "opcode 20 continues the issuing timeline after an unmarked destination but replaces it with a bounded recheck when the destination carries a placed AP")
+	var land_map := content.world.map_by_id("land:0"); state.party.map_id = land_map.id; state.party.coordinate = Vector2i.ZERO; var open_teleport := api.execute_classic(ClassicActionDefinition.new(0, 20, 20, 0, false, [0, 3, 3, 0, 0]), "teleport.open"); var open_position := state.party.coordinate; var ap_teleport := api.execute_classic(ClassicActionDefinition.new(0, 20, 20, 0, false, [0, 1, 0, 0, 0]), "teleport.ap"); assert_equal([land_map.topology.cell_at(Vector2i(3, 3)).trigger_ids(), open_teleport.state, open_teleport.directive, _event_has(open_teleport.events, &"destination_trigger_recheck_requested"), open_position, land_map.topology.cell_at(Vector2i(1, 0)).trigger_ids().is_empty(), ap_teleport.directive.kind, _event_has(ap_teleport.events, &"destination_trigger_recheck_requested")], [[], ScenarioRuntimeOperationResult.State.COMPLETED, null, false, Vector2i(3, 3), false, ScenarioVmDirective.FINISH_TIMELINE, true], "opcode 20 continues the issuing timeline after an unmarked destination but replaces it with a bounded recheck when the destination carries a placed AP")
 
 
 func _test_public_world_state_opcodes(content: RealmzContent) -> void:

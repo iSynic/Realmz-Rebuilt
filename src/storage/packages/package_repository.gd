@@ -4,7 +4,10 @@ class_name PackageRepository
 extends RefCounted
 
 const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d"
-const DECODER_VERSION: int = 8
+const SCHEMA_V4_HASH: String = "78b1e34503fd44fe7ce79d8225f09e36f303e8bf6c62dfbe3145472c5feaf307"
+const SCHEMA_V5_HASH: String = "ab3aca6322599dc348e48ddf82cffc99568bbbf598927ccba9377b24b396943c"
+const SCHEMA_HASHES: Dictionary = {3: EXPECTED_SCHEMA_HASH, 4: SCHEMA_V4_HASH, 5: SCHEMA_V5_HASH}
+const DECODER_VERSION: int = 11
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -22,10 +25,10 @@ const DEFERRED_PACKAGE_CAPABILITIES: Array[String] = [
 
 var _last_error: String = ""
 var _package_cache := PackageGraphCache.new()
-var _receipt_store := PackageInstallReceiptStore.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
+var _receipt_store := PackageInstallReceiptStore.new([EXPECTED_SCHEMA_HASH, SCHEMA_V4_HASH, SCHEMA_V5_HASH], DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
 var _archive_reader := PackageArchiveReader.new()
 var _document_cache := PackageDocumentCache.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
-var _manifest_discovery := PackageManifestDiscovery.new(EXPECTED_SCHEMA_HASH, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
+var _manifest_discovery := PackageManifestDiscovery.new(SCHEMA_HASHES, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
 var _media_validator := PackageMediaValidatorResolver.new()
 var _domain_assembler := PackageDomainAssembler.new()
 var _application_content: RealmzContent
@@ -94,7 +97,6 @@ func load_bundled_package(path: String, expected_campaign_id: String, expected_p
 	# startup verifies the canonical manifest identity but does not rehash every
 	# bundled portrait and combat icon on every launch.
 	var trusted_identity := {
-		"schemaHash": EXPECTED_SCHEMA_HASH,
 		"campaignId": expected_campaign_id,
 		"packageHash": expected_package_hash,
 	}
@@ -132,14 +134,14 @@ func install_package(source_path: String, install_root: String = "user://package
 
 func _resolve_existing_install(source_path: String, target_path: String, install_root: String, source: PackageLoadResult, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
 	if _same_package_path(source_path, target_path):
-		if not _receipt_store.write(target_path, source.content, _archive_reader.sha256_file(target_path)):
+		if not _receipt_store.write(target_path, source.content, _archive_reader.sha256_file(target_path), source.schema_hash):
 			return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
 		_report_progress(progress_callback, &"complete", 1, 1)
 		return PackageInstallResult.succeeded(target_path, source)
 	var existing := _load_installed_package(target_path, install_root, progress_callback, cancel_callback)
 	if existing == null:
 		existing = load_package(target_path, progress_callback, cancel_callback)
-		if existing.is_ok() and not _receipt_store.write(target_path, existing.content, _archive_reader.sha256_file(target_path)):
+		if existing.is_ok() and not _receipt_store.write(target_path, existing.content, _archive_reader.sha256_file(target_path), existing.schema_hash):
 			return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
 	if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
 		_report_progress(progress_callback, &"complete", 1, 1)
@@ -174,10 +176,10 @@ func _commit_package_install(source_path: String, target_path: String, source: P
 	if rename_error != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the verified package (error %d)." % rename_error)
-	if not _receipt_store.write(target_path, source.content, archive_sha256):
+	if not _receipt_store.write(target_path, source.content, archive_sha256, source.schema_hash):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(target_path))
 		return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
-	var installed := PackageLoadResult.succeeded(source.content, PackageMediaCatalog.new(target_path, source.content.package_hash, source.media.assets()))
+	var installed := PackageLoadResult.succeeded(source.content, PackageMediaCatalog.new(target_path, source.content.package_hash, source.media.assets()), source.schema_hash)
 	var receipt := _receipt_store.read(target_path)
 	if not receipt.is_empty():
 		_package_cache.retain_candidate(_receipt_store.cache_key(target_path, receipt), installed)
@@ -221,7 +223,7 @@ func _load_installed_package(path: String, install_root: String, progress_callba
 		_report_progress(progress_callback, &"complete", 1, 1)
 		return cached
 	var archive_sha256: String = receipt["archiveSha256"]
-	var cached_documents: Dictionary = _document_cache.read(path, archive_sha256)
+	var cached_documents: Dictionary = _document_cache.read(path, archive_sha256, receipt["schemaHash"])
 	if cached_documents.is_empty():
 		_report_progress(progress_callback, &"checking-install-integrity", 0, 1)
 		archive_sha256 = _archive_reader.sha256_file(path)
@@ -257,7 +259,7 @@ func _is_installed_package_path(path: String, install_root: String) -> bool:
 
 
 func _receipt_matches_manifest(receipt: Dictionary, manifest: Dictionary) -> bool:
-	if receipt["schemaHash"] != manifest["schemaHash"] or receipt["campaignId"] != manifest["campaignId"] or receipt["packageHash"] != manifest["packageHash"]:
+	if receipt.get("schemaHash", manifest["schemaHash"]) != manifest["schemaHash"] or receipt["campaignId"] != manifest["campaignId"] or receipt["packageHash"] != manifest["packageHash"]:
 		return _reject("Installed package manifest no longer matches its validated receipt.")
 	return true
 
@@ -293,7 +295,7 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 	var world_document: Dictionary = documents["world.json"]
 	var scenario_document: Dictionary = documents["scenario.json"]
 	var asset_document: Dictionary = documents["assets/index.json"]
-	if not _validate_document_header(content_document, "realmz2.content") or not _validate_document_header(world_document, "realmz2.world") or not _validate_document_header(scenario_document, "realmz2.scenario") or not _validate_document_header(asset_document, "realmz2.assets"):
+	if not _validate_document_header(content_document, "realmz2.content", int(manifest["schemaVersion"])) or not _validate_document_header(world_document, "realmz2.world", int(manifest["schemaVersion"])) or not _validate_document_header(scenario_document, "realmz2.scenario", int(manifest["schemaVersion"])) or not _validate_document_header(asset_document, "realmz2.assets", int(manifest["schemaVersion"])):
 		return _validation_failure()
 	if trusted_receipt.is_empty():
 		_media_validator.clear_error()
@@ -309,7 +311,7 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 		if not _media_validator.validate_presentation_capabilities(manifest, content_document, effective_assets):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
-		if not _media_validator.validate_render_references(effective_assets, world_document):
+		if not _media_validator.validate_render_references(effective_assets, world_document, manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1")):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
 	_report_progress(progress_callback, &"constructing-content", 0, 1)
@@ -318,8 +320,8 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 		_last_error = _domain_assembler.error_message()
 		return _validation_failure()
 	if cached_documents.is_empty() and trusted_receipt.has("archiveSha256"):
-		_document_cache.write(source_path, trusted_receipt["archiveSha256"], documents)
-	return PackageLoadResult.succeeded(runtime_content, PackageMediaCatalog.new(source_path, manifest["packageHash"], runtime_assets))
+		_document_cache.write(source_path, trusted_receipt["archiveSha256"], documents, manifest["schemaHash"])
+	return PackageLoadResult.succeeded(runtime_content, PackageMediaCatalog.new(source_path, manifest["packageHash"], runtime_assets), manifest["schemaHash"])
 
 
 static func package_capability_error(capability: Variant) -> String:
@@ -330,8 +332,8 @@ static func package_capability_error(capability: Variant) -> String:
 	return ""
 
 
-func _validate_document_header(document: Dictionary, expected_kind: String) -> bool:
-	if document.get("kind") != expected_kind or _integer(document.get("schemaVersion")) != 3:
+func _validate_document_header(document: Dictionary, expected_kind: String, expected_version: int) -> bool:
+	if document.get("kind") != expected_kind or _integer(document.get("schemaVersion")) != expected_version:
 		return _reject("Package document '%s' has an unsupported header." % expected_kind)
 	return true
 

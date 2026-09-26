@@ -486,6 +486,9 @@ func _add_classic_ally(classic_monster_id: int) -> ScenarioRuntimeOperationResul
 	var definition := _resolve_classic_ally_definition(classic_monster_id)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 89 references unavailable monster %d." % classic_monster_id)
+	var table_error := MonsterRules.random_weapon_table_error(definition)
+	if not table_error.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_random_weapon_table", "Classic opcode 89: %s" % table_error)
 	var ally := _rules.monsters.build_monster(definition, _game_state.next_instance_id("party.ally"), 0, _game_state.difficulty, _game_state.clock.day(), _rng)
 	if ally == null or not _game_state.party.add_ally(ally):
 		return ScenarioRuntimeOperationResult.failed(&"ally_add_failed", "The ally could not join the party.")

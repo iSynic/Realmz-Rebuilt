@@ -302,7 +302,7 @@ func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, tri
 		return _reject("Dungeon map '%s' compact topology row %d contains land-only movement facts." % [map_id, cell_index])
 	return true
 
-func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset]) -> Variant:
+func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset], allow_deferred: bool = false) -> Variant:
 	if not value is Array or value.size() > 20:
 		_reject("World player maps must be an array of no more than twenty records.")
 		return null
@@ -318,14 +318,14 @@ func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets
 	var fields: Array[String] = ["id", "classicId", "name", "unavailableName", "mode", "mapId", "start", "iconSize", "pictureAssetId", "scrollingTextAssetId", "partyMarkerAssetId", "pictureRect", "markers", "note"]
 	var modes: Array[String] = ["scrolling-text", "picture", "land-crop", "dungeon-crop"]
 	for value_record: Variant in value:
-		var player_map := _decode_player_map_record(value_record, fields, modes, maps_by_id, assets_by_id, ids, classic_ids)
+		var player_map := _decode_player_map_record(value_record, fields, modes, maps_by_id, assets_by_id, ids, classic_ids, allow_deferred)
 		if player_map == null:
 			return null
 		result.append(player_map)
 	result.sort_custom(func(left: PlayerMapDefinition, right: PlayerMapDefinition) -> bool: return left.classic_id < right.classic_id)
 	return result
 
-func _decode_player_map_record(value_record: Variant, fields: Array[String], modes: Array[String], maps_by_id: Dictionary, assets_by_id: Dictionary, ids: Dictionary, classic_ids: Dictionary) -> PlayerMapDefinition:
+func _decode_player_map_record(value_record: Variant, fields: Array[String], modes: Array[String], maps_by_id: Dictionary, assets_by_id: Dictionary, ids: Dictionary, classic_ids: Dictionary, allow_deferred: bool) -> PlayerMapDefinition:
 	if not value_record is Dictionary:
 		_reject("Player-map definition is not an object.")
 		return null
@@ -360,22 +360,22 @@ func _decode_player_map_record(value_record: Variant, fields: Array[String], mod
 	if crop:
 		var source_map := maps_by_id.get(map_id) as MapDefinition
 		var expected_type := &"dungeon" if mode == PlayerMapDefinition.DUNGEON_CROP else &"land"
-		if source_map == null or source_map.level_type != expected_type or not picture_asset_id.is_empty() or not scrolling_text_asset_id.is_empty():
+		if source_map == null and (not allow_deferred or not _classic_map_reference_matches(map_id, expected_type)) or source_map != null and source_map.level_type != expected_type or not picture_asset_id.is_empty() or not scrolling_text_asset_id.is_empty():
 			_reject("Player-map crop references an unavailable or wrong-kind topology map.")
 			return null
 	if mode == PlayerMapDefinition.PICTURE:
 		var picture_map := maps_by_id.get(map_id) as MapDefinition
-		if picture_map == null or not _player_map_asset_matches(assets_by_id.get(picture_asset_id), "PICT") or not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138 or not scrolling_text_asset_id.is_empty():
+		if picture_map == null and (not allow_deferred or not _classic_map_reference_matches(map_id, &"land") and not _classic_map_reference_matches(map_id, &"dungeon")) or not _player_map_asset_matches_or_defer(assets_by_id.get(picture_asset_id), picture_asset_id, "PICT", null, allow_deferred) or not _player_map_asset_matches_or_defer(party_marker_asset, party_marker_asset_id, "cicn", 138, allow_deferred) or not scrolling_text_asset_id.is_empty():
 			_reject("Picture-backed player map references unavailable PICT media.")
 			return null
 	elif mode == PlayerMapDefinition.SCROLLING_TEXT:
-		if not map_id.is_empty() or not _player_map_asset_matches(assets_by_id.get(scrolling_text_asset_id), "TEXT") or not picture_asset_id.is_empty() or not party_marker_asset_id.is_empty():
+		if not map_id.is_empty() or not _player_map_asset_matches_or_defer(assets_by_id.get(scrolling_text_asset_id), scrolling_text_asset_id, "TEXT", null, allow_deferred) or not picture_asset_id.is_empty() or not party_marker_asset_id.is_empty():
 			_reject("Scrolling player map references unavailable TEXT media.")
 			return null
-	elif not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138:
+	elif not _player_map_asset_matches_or_defer(party_marker_asset, party_marker_asset_id, "cicn", 138, allow_deferred):
 		_reject("Player-map crop references unavailable current-party cicn media.")
 		return null
-	var markers_value: Variant = _decode_player_map_markers(record["markers"], crop, assets_by_id)
+	var markers_value: Variant = _decode_player_map_markers(record["markers"], crop, assets_by_id, allow_deferred)
 	if markers_value == null:
 		return null
 	ids[record["id"]] = true
@@ -383,7 +383,7 @@ func _decode_player_map_record(value_record: Variant, fields: Array[String], mod
 	var rect: Dictionary = record["pictureRect"]
 	return PlayerMapDefinition.new(record["id"], classic_id, record["name"], record["unavailableName"], mode, map_id, Vector2i(_integer(record["start"]["x"]), _integer(record["start"]["y"])), _integer(record["iconSize"]), picture_asset_id, scrolling_text_asset_id, party_marker_asset_id, Rect2i(_integer(rect["left"]), _integer(rect["top"]), _integer(rect["right"]) - _integer(rect["left"]), _integer(rect["bottom"]) - _integer(rect["top"])), markers_value, record["note"])
 
-func _decode_player_map_markers(value: Variant, crop: bool, assets_by_id: Dictionary) -> Variant:
+func _decode_player_map_markers(value: Variant, crop: bool, assets_by_id: Dictionary, allow_deferred: bool) -> Variant:
 	if not value is Array or value.size() > 10 or not crop and not value.is_empty():
 		_reject("Player-map markers are malformed or attached outside a crop map.")
 		return null
@@ -393,7 +393,7 @@ func _decode_player_map_markers(value: Variant, crop: bool, assets_by_id: Dictio
 			_reject("Player-map marker is malformed.")
 			return null
 		var marker_asset := assets_by_id.get(marker_value["iconAssetId"]) as MediaAsset
-		if not _player_map_asset_matches(marker_asset, "cicn") or marker_asset.resource_id != _integer(marker_value["classicIconId"]):
+		if not _player_map_asset_matches_or_defer(marker_asset, marker_value["iconAssetId"], "cicn", _integer(marker_value["classicIconId"]), allow_deferred):
 			_reject("Player-map marker does not match its exact cicn resource identity.")
 			return null
 		markers.append(PlayerMapMarkerDefinition.new(_integer(marker_value["classicIconId"]), marker_value["iconAssetId"], Vector2i(_integer(marker_value["x"]), _integer(marker_value["y"]))))
@@ -401,6 +401,29 @@ func _decode_player_map_markers(value: Variant, crop: bool, assets_by_id: Dictio
 
 func _player_map_asset_matches(value: Variant, resource_type: String) -> bool:
 	return value is MediaAsset and value.resource_type == resource_type
+
+
+func _player_map_asset_matches_or_defer(value: Variant, asset_id: String, resource_type: String, resource_id: Variant, allow_deferred: bool) -> bool:
+	if value == null:
+		if not allow_deferred:
+			return false
+		var identity_parts := asset_id.split(".")
+		if identity_parts.size() != 4 or identity_parts[0] != "classic" or identity_parts[1] != "resource" or identity_parts[2] != resource_type or not String(identity_parts[3]).is_valid_int():
+			return false
+		return resource_id == null or String(identity_parts[3]).to_int() == _integer(resource_id)
+	if not _player_map_asset_matches(value, resource_type):
+		return false
+	var asset := value as MediaAsset
+	if asset_id.begins_with("classic.resource."):
+		var identity_parts := asset_id.split(".")
+		if identity_parts.size() != 4 or identity_parts[2] != resource_type or not String(identity_parts[3]).is_valid_int() or asset.resource_id != String(identity_parts[3]).to_int():
+			return false
+	return resource_id == null or asset.resource_id == _integer(resource_id)
+
+
+func _classic_map_reference_matches(map_id: String, expected_type: StringName) -> bool:
+	var parts := map_id.split(":")
+	return parts.size() == 2 and parts[0] == String(expected_type) and parts[1].is_valid_int()
 
 func _construct_random_regions(value: Variant, width: int, height: int, map_id: String) -> Variant:
 	if not value is Array:

@@ -224,6 +224,18 @@ func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_l
 
 
 func exploration_visible_cells(origin: Vector2i, world_state: WorldState, use_los: bool, wizard_eye_active: bool = false) -> Array[Vector2i]:
+	var origin_cell := cell_at(origin)
+	if use_los and not wizard_eye_active and origin_cell != null and origin_cell.is_land:
+		if world_state == null:
+			return ClassicLandVisibility.visible_cells(self, origin, world_state)
+		var key := "land:%d:%d:%d,%d" % [world_state.get_instance_id(), world_state.topology.revision(), origin.x, origin.y]
+		if _visibility_cache.has(key):
+			return _visibility_cache[key]
+		var revealed := ClassicLandVisibility.visible_cells(self, origin, world_state)
+		if _visibility_cache.size() >= 512:
+			_visibility_cache.clear()
+		_visibility_cache[key] = revealed
+		return revealed
 	var radius := WIZARDS_EYE_VISIBILITY_RADIUS if wizard_eye_active else EXPLORATION_VISIBILITY_RADIUS
 	return visible_cells(origin, radius, world_state, use_los, wizard_eye_active)
 

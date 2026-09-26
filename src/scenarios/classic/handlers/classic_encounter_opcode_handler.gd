@@ -71,6 +71,8 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 		if _game_state.scenario_progress.encounters.simple_option_is_eliminated(encounter.id, option_index):
 			continue
 		var response: SimpleEncounterResponse = responses[option_index]
+		if response.is_classic_eliminated(encounter.id):
+			continue
 		options.append({"id": response.id, "label": response.label})
 		option_indexes.append(option_index)
 	if options.is_empty():

@@ -55,7 +55,7 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if rules_content == null:
 		return null
 	var scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
-	var scenario_definition := scenario_decoder.decode_scenario(scenario, manifest["campaignId"])
+	var scenario_definition := scenario_decoder.decode_scenario(scenario, manifest["campaignId"], allow_deferred)
 	if scenario_definition == null:
 		return null
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
@@ -105,8 +105,8 @@ func _decode_rules_content(decoder: PackageContentDecoder, media_validator: Pack
 	var castes_value: Variant = decoder.decode_castes(content.get("castes"))
 	var items_value: Variant = decoder.decode_items(content.get("items"))
 	var spells_value: Variant = decoder.decode_spells(content.get("spells"))
-	var monsters_value: Variant = decoder.decode_monsters(content.get("monsters"))
-	var monster_sets_value: Variant = decoder.decode_monster_sets(content.get("monsterSets"))
+	var monsters_value: Variant = decoder.decode_monsters(content.get("monsters"), allow_deferred, int(content["schemaVersion"]))
+	var monster_sets_value: Variant = decoder.decode_monster_sets(content.get("monsterSets"), allow_deferred, int(content["schemaVersion"]))
 	var battles_value: Variant = decoder.decode_battles(content.get("battles"))
 	var treasures_value: Variant = decoder.decode_treasures(content.get("treasures"))
 	var shops_value: Variant = decoder.decode_shops(content.get("shops"))
@@ -191,7 +191,7 @@ func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCross
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
-	var player_maps_value: Variant = decoder.decode_player_maps(world.get("playerMaps"), maps, rules.media)
+	var player_maps_value: Variant = decoder.decode_player_maps(world.get("playerMaps"), maps, rules.media, allow_deferred)
 	if player_maps_value == null:
 		return null
 	var transitions_value: Variant = decoder.decode_transitions(world.get("transitions"), maps)
@@ -224,9 +224,12 @@ func _validate_start(manifest: Dictionary, world: WorldContent, validator: Packa
 		return null
 	var start_coordinate := Vector2i(_integer(start["x"]), _integer(start["y"]))
 	var start_map := world.definition.map_by_id(start["mapId"])
-	if start_map == null or start_map.topology.cell_at(start_coordinate) == null:
-		_reject("Manifest start location does not identify a topology cell.")
-		return null
+	if start_map == null:
+		if not validator.defer_or_reject(allow_deferred, &"scenario-start", "manifest.start", "mapId", -1, &"map", start["mapId"], "Manifest start location references unavailable map '%s'." % start["mapId"]):
+			return null
+	elif start_map.topology.cell_at(start_coordinate) == null:
+		if not validator.defer_or_reject(allow_deferred, &"scenario-start", "manifest.start", "coordinate", -1, &"map-cell", "%s:%d,%d" % [start["mapId"], start_coordinate.x, start_coordinate.y], "Manifest start location references unavailable topology cell '%s' at (%d,%d)." % [start["mapId"], start_coordinate.x, start_coordinate.y]):
+			return null
 	for trigger: TriggerDefinition in world.triggers if validate_references else []:
 		if not trigger.map_id.is_empty():
 			var map := world.definition.map_by_id(trigger.map_id)
