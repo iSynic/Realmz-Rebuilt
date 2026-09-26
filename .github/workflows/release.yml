@@ -17,19 +17,10 @@ jobs:
         include:
           - os: windows-latest
             platform: Windows x86_64
-            importerPlatform: windows
-            importerUrlVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_URL
-            importerHashVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256
           - os: ubuntu-latest
             platform: Linux x86_64
-            importerPlatform: linux
-            importerUrlVariable: SCENARIO_IMPORTER_LINUX_X86_64_URL
-            importerHashVariable: SCENARIO_IMPORTER_LINUX_X86_64_SHA256
           - os: macos-latest
             platform: macOS universal
-            importerPlatform: macos
-            importerUrlVariable: SCENARIO_IMPORTER_MACOS_URL
-            importerHashVariable: SCENARIO_IMPORTER_MACOS_SHA256
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -63,6 +54,9 @@ jobs:
         include:
           - os: windows-latest
             platform: Windows x86_64
+            importerPlatform: windows
+            importerUrlVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_URL
+            importerHashVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256
             preset: Windows Desktop
             output: dist/windows/Realmz Rebuilt.exe
             artifactPath: dist/windows
@@ -70,6 +64,9 @@ jobs:
             upload: release-windows
           - os: ubuntu-latest
             platform: Linux x86_64
+            importerPlatform: linux
+            importerUrlVariable: SCENARIO_IMPORTER_LINUX_X86_64_URL
+            importerHashVariable: SCENARIO_IMPORTER_LINUX_X86_64_SHA256
             preset: Linux
             output: dist/linux/Realmz Rebuilt.x86_64
             artifactPath: dist/linux
@@ -77,6 +74,9 @@ jobs:
             upload: release-linux
           - os: macos-latest
             platform: macOS universal
+            importerPlatform: macos
+            importerUrlVariable: SCENARIO_IMPORTER_MACOS_URL
+            importerHashVariable: SCENARIO_IMPORTER_MACOS_SHA256
             preset: macOS
             output: dist/macos/Realmz Rebuilt.zip
             artifactPath: dist/macos

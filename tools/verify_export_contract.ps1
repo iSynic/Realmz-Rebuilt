@@ -100,6 +100,13 @@ foreach ($existingReleaseContract in @('Inspect existing release state', 'Refres
     if (-not $releaseWorkflow.Contains($existingReleaseContract)) { throw "Tag workflow is missing existing-release preservation: $existingReleaseContract" }
 }
 foreach ($workflow in @($ci, $releaseWorkflow)) {
+    $exportMatrix = [regex]::Match($workflow, '(?ms)^  (?:export|build):\r?\n.*?^    runs-on:').Value
+    foreach ($platformKey in @('WINDOWS_X86_64', 'LINUX_X86_64', 'MACOS')) {
+        foreach ($variableKind in @('URL', 'SHA256')) {
+            $variable = "SCENARIO_IMPORTER_${platformKey}_${variableKind}"
+            if (-not $exportMatrix.Contains($variable)) { throw "The native export job matrix must define $variable; another job's matrix cannot supply it." }
+        }
+    }
     foreach ($windowsSmokeContract in @('$quotedLog =', '-ArgumentList "--headless --quit-after 2 --log-file $quotedLog"')) {
         if (-not $workflow.Contains($windowsSmokeContract)) { throw "Windows native smoke must preserve an absolute log path as one quoted argument: $windowsSmokeContract" }
     }
