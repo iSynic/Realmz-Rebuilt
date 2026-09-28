@@ -7,6 +7,7 @@ const WORKSPACE_PATH := "WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/Se
 
 func prepare_for_render(compact: bool) -> void:
 	workspace().prepare(compact)
+	(get_node("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button).visible = compact
 
 
 func workspace() -> ServicesWorkspace:

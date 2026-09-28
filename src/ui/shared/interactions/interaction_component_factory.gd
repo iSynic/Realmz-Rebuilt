@@ -182,8 +182,7 @@ static func prompt_for(request: InteractionRequest, classic_text_context: String
 	if request.kind in [InteractionRequest.ACKNOWLEDGE, InteractionRequest.ENCOUNTER_CHOICE, InteractionRequest.THIEF_ENCOUNTER]:
 		return ""
 	if request.kind == InteractionRequest.YES_NO:
-		var authored_context := classic_text_context.strip_edges()
-		return authored_context if not authored_context.is_empty() else "Choose Yes or No to continue."
+		return ""
 	return title_for_kind(request.kind)
 
 

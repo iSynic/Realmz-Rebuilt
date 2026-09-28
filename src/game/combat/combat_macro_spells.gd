@@ -173,6 +173,7 @@ func _append_result(state: GameState, content: RealmzContent, source_id: String,
 	if resolution.allegiance_changed:
 		payload["traitorBefore"] = resolution.target_traitor_before
 		payload["traitorAfter"] = resolution.target_traitor_after
+	CombatSpellEventBuilder.append_helpless_state(payload, resolution)
 	if not resolution.transformed_definition_after.is_empty():
 		payload["transformedDefinitionBefore"] = resolution.transformed_definition_before
 		payload["transformedDefinitionAfter"] = resolution.transformed_definition_after

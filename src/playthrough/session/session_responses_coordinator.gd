@@ -347,7 +347,10 @@ func _respond_drop_item(response: InteractionResponse) -> SessionCoordinatorResu
 	var removed = _context.rules.inventory.remove_item(character, instance.id, definition)
 	if removed == null:
 		return SessionCoordinatorResult.failed(&"item_drop_failed", "The item could not be removed from inventory.")
-	return SessionCoordinatorResult.completed(_single_event(DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})))
+	return SessionCoordinatorResult.completed([
+		DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id}),
+		DomainEvent.new(&"sound_requested", {"soundId": 655, "waitForCompletion": false, "source": "classic-item-drop"}),
+	])
 
 
 func _respond_character_spell_confirmation(response: InteractionResponse) -> SessionCoordinatorResult:

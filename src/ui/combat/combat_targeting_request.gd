@@ -3,6 +3,7 @@
 class_name CombatTargetingRequest
 extends RefCounted
 
+var classic_backdrops := false
 var mode: StringName
 var response_body: InteractionResponse.CombatBody
 var candidate_ids: Array[String] = []

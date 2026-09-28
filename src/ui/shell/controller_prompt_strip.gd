@@ -29,12 +29,17 @@ func present(family: String, context: StringName = &"", preferences: ControllerP
 	var previous := _binding_label(preferences, &"realmz_controller_section_previous", "LB")
 	var next := _binding_label(preferences, &"realmz_controller_section_next", "RB")
 	match context:
+		&"spellbook": _prompt.text = "D-pad Navigate   %s Select   %s Back   %s / %s Spell Level" % [confirm, back, previous, next]
 		&"top_menu": _prompt.text = "D-pad Navigate   %s Open / Select   %s Back" % [confirm, back]
 		&"system": _prompt.text = "D-pad Navigate   %s Select   %s Back   %s / %s Sections" % [confirm, back, previous, next]
 		_: _prompt.text = "Direction highlights   %s Select   %s Back   %s / %s Page" % [confirm, back, previous, next]
 	_detail.text = ""
 	_detail.visible = false
 	_hide_timer.start(3.0)
+
+
+func present_spellbook(preferences: ControllerPreferences, levels: bool = true) -> void:
+	present(_family, &"spellbook" if levels else &"system", preferences)
 
 
 func hide_prompts() -> void:

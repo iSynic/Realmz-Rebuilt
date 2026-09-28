@@ -20,8 +20,7 @@ func run() -> void:
 		assert_equal(repository.retained_package_count(), 1, "the package repository retains one trusted bundled graph")
 		repository.set_application_content(character_library.content, character_library.media.assets())
 	var wrong_library_identity := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, "0".repeat(64)); assert_false(wrong_library_identity.is_ok(), "a bundled library whose pinned package identity drifts is rejected")
-	var production_scenario := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-assault-on-giant-mountain.realmz2")
-	assert_true(production_scenario.is_ok(), "a production scenario composes against the pinned application definition catalog: %s" % production_scenario.error_message)
+	var production_scenario := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-assault-on-giant-mountain.realmz2"); assert_true(production_scenario.is_ok(), "a production scenario composes against the pinned application definition catalog: %s" % production_scenario.error_message); var swordlands := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-trouble-in-the-sword-lands.realmz2"); assert_true(swordlands.is_ok() and ClassicMediaCatalog.new(swordlands.media, ApplicationMediaCatalog.new()).map_atlas("landlook-7") != null, "Swordlands startup resolves its authored landlook-7 map atlas: %s" % swordlands.error_message)
 	var prelude_scenario := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2")
 	assert_true(prelude_scenario.is_ok(), "Prelude's corrected payment branch passes strict package validation: %s" % prelude_scenario.error_message)
 	if prelude_scenario.is_ok():

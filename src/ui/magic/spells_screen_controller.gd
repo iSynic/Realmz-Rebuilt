@@ -27,6 +27,13 @@ var _selected_power: int = 1
 var _compact: bool = false
 var _encounter_mode: bool = false
 var _encounter_spell_ids: Dictionary = {}
+var _controller_focus_root: Control
+var _spell_by_level_by_character: Dictionary = {}
+var _last_level_by_character: Dictionary = {}
+var _power_by_spell: Dictionary = {}
+var _controller_level_changed: bool = false
+var controller_browses_levels: bool:
+	get: return _section_id == &"known"
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -39,6 +46,66 @@ func reset() -> void:
 	_section_id = &"known"
 	_selected_level = 1
 	_selected_power = 1
+	_spell_by_level_by_character.clear()
+	_last_level_by_character.clear()
+	_power_by_spell.clear()
+	_controller_focus_root = null
+	_controller_level_changed = false
+
+
+## Returns the active ordinary screen or Encounter container, including its
+## authored fixed actions and exit control.
+func controller_focus_root() -> Control:
+	if _controller_focus_root == null or not is_instance_valid(_controller_focus_root) or not _controller_focus_root.is_visible_in_tree():
+		return null
+	return _controller_focus_root
+
+
+## Focuses the currently selected known spell after route entry. Call only
+## after the screen has finished presenting its current section.
+func focus_selected_spell() -> bool:
+	var root := controller_focus_root()
+	if root == null or _section_id != &"known":
+		return false
+	var selected := root.find_child("KnownSpell_%s" % _selected_spell_id.validate_node_name(), true, false) as Control
+	if selected == null or not selected.is_visible_in_tree() or selected.focus_mode == Control.FOCUS_NONE:
+		selected = root.find_child("EncounterCatalogCancel" if _encounter_mode else "RouteBackAction", true, false) as Control
+	if selected == null or not selected.is_visible_in_tree():
+		return false
+	selected.grab_focus()
+	SpellsWorkspace.reveal_controller_focus(selected)
+	return true
+
+
+## Moves among populated spell levels, wrapping in either direction.
+func controller_cycle_section(delta: int) -> bool:
+	if delta == 0 or _view == null:
+		return false
+	if _section_id != &"known":
+		return navigate_section(&"", delta)
+	var character := _selected_character()
+	if character == null:
+		return false
+	var levels := _available_levels(character)
+	if levels.is_empty():
+		return false
+	var current_index := levels.find(_selected_level)
+	if current_index < 0:
+		current_index = 0 if delta > 0 else levels.size() - 1
+	_controller_level_changed = true
+	_select_level(int(levels[posmod(current_index + (1 if delta > 0 else -1), levels.size())]))
+	return true
+
+
+func restore_controller_focus(opened: bool) -> void:
+	var root := controller_focus_root()
+	var owner := root.get_viewport().gui_get_focus_owner() if root != null else null
+	if owner != null and owner.is_visible_in_tree() and not root.is_ancestor_of(owner) and (not opened or not _encounter_mode):
+		_controller_level_changed = false
+		return
+	if opened or _controller_level_changed or owner is BaseButton and (owner as BaseButton).disabled:
+		focus_selected_spell()
+	_controller_level_changed = false
 
 
 func navigate_section(section_name: StringName, delta: int = 0) -> bool:
@@ -54,8 +121,12 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_s
 	var screen := target as SpellsScreen
 	var workspace: SpellsWorkspace
 	if screen != null:
+		if _controller_focus_root != screen.controller_focus_root():
+			_controller_level_changed = true
+		_controller_focus_root = screen.controller_focus_root()
 		workspace = screen.workspace()
 	else:
+		_controller_focus_root = target as Control
 		var parent := target as VBoxContainer
 		_clear(parent)
 		workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as SpellsWorkspace
@@ -67,10 +138,12 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_s
 	workspace.prepare(_compact)
 	if view.party_members.is_empty():
 		workspace.show_empty("No spellbooks", "The party has no characters.")
+		SpellsWorkspace.link_controller_focus(_controller_focus_root)
 		return
 	var character := _selected_character()
 	if character == null:
 		workspace.show_empty("No spellbooks", "No party member can be selected.")
+		SpellsWorkspace.link_controller_focus(_controller_focus_root)
 		return
 	_bind_character_selector(workspace, character)
 	_bind_section_tabs(workspace)
@@ -83,12 +156,15 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_s
 			_bind_scrolls(workspace, character)
 		_:
 			_bind_known_spells(workspace, character, fixed_actions)
+	SpellsWorkspace.link_controller_focus(_controller_focus_root)
 
 
 func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:
 	if parent == null or view == null:
 		return
 	_view = view
+	var encounter_root := parent.get_parent() as Control
+	_controller_focus_root = encounter_root if encounter_root != null else parent
 	_clear(parent)
 	var workspace := (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as SpellsWorkspace
 	parent.add_child(workspace)
@@ -105,14 +181,16 @@ func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMedi
 	var character := _selected_character()
 	if character == null:
 		workspace.show_empty("No encounter spells", "No living party member knows an eligible spell.")
+		SpellsWorkspace.link_controller_focus(_controller_focus_root)
 		return
 	_bind_character_selector(workspace, character)
 	_bind_known_spells(workspace, character, null)
+	SpellsWorkspace.link_controller_focus(_controller_focus_root)
 
 
 func _selected_character() -> CharacterView:
 	for character: CharacterView in _view.party_members:
-		if character.id == _selected_character_id and not _eligible_spells(character).is_empty():
+		if character.id == _selected_character_id and (not _encounter_mode or not _eligible_spells(character).is_empty()):
 			return character
 	for character: CharacterView in _view.party_members:
 		if not _eligible_spells(character).is_empty():
@@ -185,6 +263,7 @@ func _bind_level_rail(workspace: SpellsWorkspace, available_levels: Array[int], 
 	(rail.get_node("SpellLevelHeading") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
 	for level: int in range(1, 8):
 		var button := rail.get_node("LevelButtons/SpellLevel%d" % level) as Button
+		button.set_meta(&"focus_key", "spells:level:%d" % level)
 		SpellSelectionChrome.bind_level_button(
 			button,
 			level,
@@ -194,7 +273,9 @@ func _bind_level_rail(workspace: SpellsWorkspace, available_levels: Array[int], 
 			"No known level %d spells" % level
 		)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size = Vector2(74.0 if _compact else 88.0, 24.0)
+		button.custom_minimum_size = Vector2(31.0 if _compact else 88.0, 24.0)
+		if _compact:
+			button.text = str(level)
 	(rail.get_node("PowerDivider") as HSeparator).visible = not _encounter_mode
 	workspace.power_rail().visible = not _encounter_mode
 	if not _encounter_mode:
@@ -204,7 +285,7 @@ func _bind_level_rail(workspace: SpellsWorkspace, available_levels: Array[int], 
 func _bind_spell_list(workspace: SpellsWorkspace, character: CharacterView, selected: SpellView) -> void:
 	var panel := workspace.get_node("ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList") as PanelContainer
 	_bind_label(panel.get_node("Content/Header/Title") as Label, "Level %d spells" % _selected_level, GOLD, 18)
-	_bind_label(panel.get_node("Content/Header/Count") as Label, "%d known" % _spells_at_level(character, _selected_level).size(), MUTED, 13)
+	_bind_label(panel.get_node("Content/Header/Count") as Label, str(_spells_at_level(character, _selected_level).size()) if _compact else "%d known" % _spells_at_level(character, _selected_level).size(), MUTED, 13)
 	var list := workspace.known_spell_list()
 	_clear(list)
 	for candidate: SpellView in _spells_at_level(character, _selected_level):
@@ -220,6 +301,7 @@ func _bind_spell_list(workspace: SpellsWorkspace, character: CharacterView, sele
 			ClassicUiAssetCatalog.texture(&"spells.button.available" if candidate.id == selected.id else &"spells.button.unavailable")
 		)
 		button.clip_text = true
+		button.set_meta(&"focus_key", "spells:known:selected" if candidate.id == selected.id else "spells:known:%s:%s" % [character.id, candidate.id])
 		button.custom_minimum_size.y = 21.0
 		button.add_theme_font_size_override("font_size", int(round(14.0 * _text_scale)))
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -233,15 +315,34 @@ func _bind_spell_list(workspace: SpellsWorkspace, character: CharacterView, sele
 
 func _selected_spell(character: CharacterView) -> SpellView:
 	var eligible := _eligible_spells(character)
+	if eligible.is_empty():
+		return null
+	var character_levels: Dictionary = _spell_by_level_by_character.get(character.id, {})
+	var remembered_id := String(character_levels.get(_selected_level, ""))
 	for spell: SpellView in eligible:
-		if spell.id == _selected_spell_id:
-			_selected_power = DetailFormatter.valid_power(spell, _selected_power)
+		if DetailFormatter.level(spell) == _selected_level and (spell.id == remembered_id or spell.id == _selected_spell_id):
+			_selected_spell_id = spell.id
+			_selected_power = DetailFormatter.valid_power(spell, int(_power_by_spell.get(spell.id, _selected_power)))
+			_power_by_spell[spell.id] = _selected_power
+			_last_level_by_character[character.id] = _selected_level
+			_remember_spell_selection(character.id, _selected_level, spell.id)
 			return spell
-	var fallback: SpellView = eligible[0]
+	var fallback := _first_spell_at_level(character, _selected_level)
+	if fallback == null:
+		fallback = eligible[0]
 	_selected_spell_id = fallback.id
 	_selected_level = DetailFormatter.level(fallback)
-	_selected_power = DetailFormatter.valid_power(fallback, 1)
+	_selected_power = DetailFormatter.valid_power(fallback, int(_power_by_spell.get(fallback.id, 1)))
+	_power_by_spell[fallback.id] = _selected_power
+	_last_level_by_character[character.id] = _selected_level
+	_remember_spell_selection(character.id, _selected_level, fallback.id)
 	return fallback
+
+
+func _remember_spell_selection(character_id: String, level: int, spell_id: String) -> void:
+	var levels: Dictionary = _spell_by_level_by_character.get(character_id, {})
+	levels[level] = spell_id
+	_spell_by_level_by_character[character_id] = levels
 
 
 func _bind_spell_detail(workspace: SpellsWorkspace, character: CharacterView, spell: SpellView) -> void:
@@ -278,6 +379,7 @@ func _bind_power_rail(column: VBoxContainer, spell: SpellView) -> void:
 	var available_powers := DetailFormatter.available_powers(spell)
 	for power: int in range(1, 8):
 		var button := column.get_node("PowerButtons/SpellPower%d" % power) as Button
+		button.set_meta(&"focus_key", "spells:power:%s:%d" % [_selected_spell_id, power])
 		button.button_pressed = power == _selected_power
 		button.disabled = not available_powers.has(power)
 		button.tooltip_text = "%d SP" % absi(spell.cost * power) if not button.disabled else "This power is unavailable."
@@ -297,6 +399,8 @@ func _bind_spell_action_dock(workspace: SpellsWorkspace, character: CharacterVie
 		intent_submitted.emit(MagicIntents.cast(spell.id, character.id, "", _selected_power))
 	)
 	var make_scroll := row.get_node("MakeScrollAction") as Button
+	make_scroll.text = "Scroll" if _compact else "Make Scroll"
+	make_scroll.custom_minimum_size.x = 60.0 if _compact else 74.0
 	make_scroll.disabled = spell.make_scroll == null or not spell.make_scroll.enabled or not DetailFormatter.available_scroll_powers(spell).has(_selected_power)
 	make_scroll.tooltip_text = "Unavailable at this power" if make_scroll.disabled and spell.make_scroll != null and spell.make_scroll.enabled else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if make_scroll.disabled else "Scribe at power %d for %d SP" % [_selected_power, absi(spell.cost * 2 * _selected_power)]
 	_clear_pressed_connections(make_scroll)
@@ -418,9 +522,10 @@ func _bind_scrolls(workspace: SpellsWorkspace, character: CharacterView) -> void
 
 func _select_character(character_id: String) -> void:
 	_selected_character_id = character_id
-	_selected_spell_id = ""
-	_selected_level = 1
-	_selected_power = 1
+	var levels: Dictionary = _spell_by_level_by_character.get(character_id, {})
+	_selected_level = int(_last_level_by_character.get(character_id, 1))
+	_selected_spell_id = String(levels.get(_selected_level, ""))
+	_selected_power = int(_power_by_spell.get(_selected_spell_id, 1))
 	refresh_requested.emit()
 
 
@@ -433,9 +538,18 @@ func _select_spell(spell_id: String) -> void:
 	_selected_spell_id = spell_id
 	var character := _selected_character()
 	if character != null:
-		var spell := _selected_spell(character)
-		_selected_level = DetailFormatter.level(spell)
-		_selected_power = DetailFormatter.valid_power(spell, 1)
+		var focused_spell := _controller_focus_root.find_child("KnownSpell_%s" % spell_id.validate_node_name(), true, false) as Control if _controller_focus_root != null and is_instance_valid(_controller_focus_root) else null
+		if focused_spell != null:
+			focused_spell.set_meta(&"focus_key", "spells:known:selected")
+		for spell: SpellView in _eligible_spells(character):
+			if spell.id != spell_id:
+				continue
+			_selected_level = DetailFormatter.level(spell)
+			_selected_power = DetailFormatter.valid_power(spell, int(_power_by_spell.get(spell.id, 1)))
+			_power_by_spell[spell.id] = _selected_power
+			_last_level_by_character[character.id] = _selected_level
+			_remember_spell_selection(character.id, _selected_level, spell.id)
+			break
 	refresh_requested.emit()
 
 
@@ -444,13 +558,25 @@ func _select_level(level: int) -> void:
 	var character := _selected_character()
 	if character != null:
 		var spell := _first_spell_at_level(character, level)
-		_selected_spell_id = spell.id
-		_selected_power = DetailFormatter.valid_power(spell, 1)
+		if spell != null:
+			var levels: Dictionary = _spell_by_level_by_character.get(character.id, {})
+			var remembered_id := String(levels.get(level, ""))
+			for candidate: SpellView in _spells_at_level(character, level):
+				if candidate.id == remembered_id:
+					spell = candidate
+					break
+			_selected_spell_id = spell.id
+			_selected_power = DetailFormatter.valid_power(spell, int(_power_by_spell.get(spell.id, 1)))
+			_power_by_spell[spell.id] = _selected_power
+			_last_level_by_character[character.id] = level
+			_remember_spell_selection(character.id, level, spell.id)
 	refresh_requested.emit()
 
 
 func _select_power(power: int) -> void:
 	_selected_power = power
+	if not _selected_spell_id.is_empty():
+		_power_by_spell[_selected_spell_id] = power
 	refresh_requested.emit()
 
 

@@ -172,6 +172,7 @@ static func _resolution_payload(caster: CharacterState, spell: SpellDefinition, 
 	if resolution.allegiance_changed:
 		payload["traitorBefore"] = resolution.target_traitor_before
 		payload["traitorAfter"] = resolution.target_traitor_after
+	CombatSpellEventBuilder.append_helpless_state(payload, resolution)
 	return payload
 
 

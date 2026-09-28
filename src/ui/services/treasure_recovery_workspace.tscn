@@ -3,157 +3,157 @@
 [node name="TreasureRecoveryWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
+alignment = 1
 theme_override_constants/separation = 6
 
-[node name="TreasureWorkspaceHeader" type="HBoxContainer" parent="."]
+[node name="TreasureRecoveryCenter" type="CenterContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
-[node name="TreasureWorkspaceTitle" type="Label" parent="TreasureWorkspaceHeader"]
+size_flags_vertical = 3
+
+[node name="TreasureRecoveryCard" type="PanelContainer" parent="TreasureRecoveryCenter"]
+custom_minimum_size = Vector2(700, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 7
+
+[node name="TreasureWorkspaceHeader" type="HBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="TreasureWorkspaceTitle" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureWorkspaceHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicHeading"
 text = "Recover Fumbled Item"
-[node name="TreasureWorkspaceSummary" type="Label" parent="TreasureWorkspaceHeader"]
+[node name="TreasureWorkspaceSummary" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureWorkspaceHeader"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
 horizontal_alignment = 2
 
-[node name="TreasureWorkspaceColumns" type="HBoxContainer" parent="."]
+[node name="TreasureRecoveryItemRow" type="HBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 10
 
-[node name="TreasureItemColumn" type="PanelContainer" parent="TreasureWorkspaceColumns"]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-size_flags_stretch_ratio = 1.2
-theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="TreasureWorkspaceColumns/TreasureItemColumn"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 5
-[node name="Heading" type="Label" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content"]
-layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-text = "Dropped Item"
-[node name="TreasureLootField" type="CenterContainer" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content"]
+[node name="TreasureLootField" type="CenterContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 132)
+custom_minimum_size = Vector2(100, 96)
 layout_mode = 2
-size_flags_horizontal = 3
-[node name="Stage" type="Control" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureLootField"]
-custom_minimum_size = Vector2(130, 124)
+size_flags_horizontal = 0
+[node name="Stage" type="Control" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField"]
+custom_minimum_size = Vector2(100, 96)
 layout_mode = 2
-[node name="TreasureItemGlow" type="TextureRect" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureLootField/Stage"]
+[node name="TreasureItemGlow" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
-offset_left = 17.0
-offset_top = 14.0
-offset_right = 113.0
-offset_bottom = 110.0
+offset_left = 2.0
+offset_top = 2.0
+offset_right = 98.0
+offset_bottom = 94.0
 mouse_filter = 2
 texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
-[node name="TreasureItemIcon" type="TextureRect" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureLootField/Stage"]
+[node name="TreasureItemIcon" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
-offset_left = 11.0
-offset_top = 8.0
-offset_right = 119.0
-offset_bottom = 116.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 100.0
+offset_bottom = 96.0
 mouse_filter = 2
 texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
-[node name="TreasureItemIconUnavailable" type="Label" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureLootField/Stage"]
+[node name="TreasureItemIconUnavailable" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
 visible = false
-offset_left = 11.0
-offset_top = 8.0
-offset_right = 119.0
-offset_bottom = 116.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 100.0
+offset_bottom = 96.0
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 text = "◇"
 horizontal_alignment = 1
 vertical_alignment = 1
-[node name="TreasureSelectionCircle" type="TextureRect" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureLootField/Stage"]
+[node name="TreasureSelectionCircle" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
-offset_left = 15.0
-offset_top = 2.0
-offset_right = 115.0
-offset_bottom = 122.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 100.0
+offset_bottom = 96.0
 mouse_filter = 2
 texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
 
-[node name="TreasureSelectedItem" type="PanelContainer" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content"]
+[node name="TreasureItemFacts" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"ClassicInset"
-[node name="Facts" type="VBoxContainer" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureSelectedItem"]
-layout_mode = 2
-theme_override_constants/separation = 2
-[node name="TreasureSelectedItemName" type="Label" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureSelectedItem/Facts"]
+size_flags_vertical = 4
+theme_override_constants/separation = 3
+[node name="TreasureSelectedItemName" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 autowrap_mode = 2
-[node name="TreasureSelectedItemState" type="Label" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureSelectedItem/Facts"]
+[node name="TreasureSelectedItemState" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
-[node name="TreasureSelectedItemCharges" type="Label" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content/TreasureSelectedItem/Facts"]
+[node name="TreasureSelectedItemFacts" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
+autowrap_mode = 2
+[node name="TreasureSelectedItemCharges" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 autowrap_mode = 2
-[node name="TreasureRemainingItems" type="Label" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
-autowrap_mode = 2
-[node name="TreasurePrompt" type="Label" parent="TreasureWorkspaceColumns/TreasureItemColumn/Content"]
+[node name="TreasureSelectedItemDescription" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 autowrap_mode = 2
 
-[node name="TreasureRecipientColumn" type="PanelContainer" parent="TreasureWorkspaceColumns"]
-custom_minimum_size = Vector2(220, 0)
+[node name="TreasureRemainingItems" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="TreasureWorkspaceColumns/TreasureRecipientColumn"]
+theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
+autowrap_mode = 2
+[node name="TreasurePrompt" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 5
-[node name="Heading" type="Label" parent="TreasureWorkspaceColumns/TreasureRecipientColumn/Content"]
+theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
+autowrap_mode = 2
+
+[node name="TreasureRecipientHeading" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Recover To"
-[node name="TreasureRecipientHint" type="Label" parent="TreasureWorkspaceColumns/TreasureRecipientColumn/Content"]
+[node name="TreasureRecipientHint" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 text = "Choose an eligible adventurer to recover this exact item."
 autowrap_mode = 2
-[node name="TreasureRecipientScroll" type="ScrollContainer" parent="TreasureWorkspaceColumns/TreasureRecipientColumn/Content"]
+[node name="TreasureRecipientScroll" type="ScrollContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+custom_minimum_size = Vector2(0, 130)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="TreasureRecoveryRecipientRows" type="VBoxContainer" parent="TreasureWorkspaceColumns/TreasureRecipientColumn/Content/TreasureRecipientScroll"]
+[node name="TreasureRecoveryRecipientRows" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecipientScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
-[node name="TreasureNoRecipients" type="Label" parent="TreasureWorkspaceColumns/TreasureRecipientColumn/Content/TreasureRecipientScroll/TreasureRecoveryRecipientRows"]
+[node name="TreasureNoRecipients" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecipientScroll/TreasureRecoveryRecipientRows"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -161,15 +161,15 @@ theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 text = "No recipient is available."
 autowrap_mode = 2
 
-[node name="TreasureFooter" type="HBoxContainer" parent="."]
+[node name="TreasureFooter" type="HBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
-[node name="TreasureLeaveItem" type="Button" parent="TreasureFooter"]
+[node name="TreasureLeaveItem" type="Button" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureFooter"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(160, 0)
 layout_mode = 2
 text = "Leave Item"
-[node name="Spacer" type="Control" parent="TreasureFooter"]
+[node name="Spacer" type="Control" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureFooter"]
 layout_mode = 2
 size_flags_horizontal = 3

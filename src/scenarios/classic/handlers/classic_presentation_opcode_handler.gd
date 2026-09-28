@@ -62,9 +62,22 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		93, 94:
 			return _set_compass_enabled(action.opcode == 93)
 		96, 97:
-			_game_state.dungeon_multiview = action.opcode == 97
-			return ScenarioRuntimeOperationResult.completed(_game_state.dungeon_multiview, [DomainEvent.new(&"dungeon_view_policy_changed", {"multiview": _game_state.dungeon_multiview, "source": "classic"})])
+			return _set_dungeon_multiview(action.opcode == 97)
 	return super.execute(action, request_id, context)
+
+
+func _set_dungeon_multiview(enabled: bool) -> ScenarioRuntimeOperationResult:
+	var changed := _game_state.dungeon_multiview != enabled
+	_game_state.dungeon_multiview = enabled
+	var events: Array[DomainEvent] = [DomainEvent.new(&"dungeon_view_policy_changed", {"multiview": enabled, "source": "classic"})]
+	# Castle newland.c warns only on transitions; warn.c uses STR# 3:96/97 and sound 6000.
+	if changed:
+		events.append(DomainEvent.new(&"classic_notification_requested", {
+			"text": "You may now use the 3D or look down view." if enabled else "You may now use the 3D view only.",
+			"soundId": 6000,
+			"source": "classic-opcode-%d" % (97 if enabled else 96),
+		}))
+	return ScenarioRuntimeOperationResult.completed(enabled, events)
 
 
 func _set_compass_enabled(enabled: bool) -> ScenarioRuntimeOperationResult:

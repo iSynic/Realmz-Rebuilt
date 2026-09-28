@@ -43,16 +43,15 @@ func apply(screen: TextureRect, content: SubViewport, filter_pass: SubViewport, 
 		var crt_region := world if crt_area == PresentationSettings.CRT_WORLD else full
 		var effective_zoom := world_zoom if crt_area == PresentationSettings.CRT_WORLD else 1
 		crt.set_shader_parameter("source_texture", screen.texture)
-		if crt_shader == PresentationSettings.CRT_PI:
-			crt.set_shader_parameter("passthrough_texture", screen.texture)
 		crt.set_shader_parameter("source_size", crt_region.size / float(effective_zoom))
 		crt.set_shader_parameter("output_size", crt_region.size * scale)
 		crt.set_shader_parameter("region_rect", _normalized(crt_region, full.size))
-		var mask_allowed := scale * float(effective_zoom) >= 2.0
-		if crt_shader == PresentationSettings.CRT_PI:
-			crt.set_shader_parameter("mask_strength", 1.0 if mask_allowed else 0.0)
-		else:
-			crt.set_shader_parameter("mask_enabled", mask_allowed)
+		# The physical phosphor pattern remains resolvable even when responsive
+		# composition supplies one source pixel per output pixel. Fade only the
+		# source-sampling blur until enlargement gives it room to work.
+		crt.set_shader_parameter("filter_strength", smoothstep(2.0, 3.0, scale * float(effective_zoom)))
+		crt.set_shader_parameter("mask_strength", 0.25 if crt_shader == PresentationSettings.CRT_LOTTES else 0.75)
+		crt.set_shader_parameter("scanline_strength", 0.85)
 		screen.material = crt
 
 

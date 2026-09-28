@@ -30,7 +30,9 @@ uniform sampler2D source_texture : filter_nearest;
 uniform vec2 source_size = vec2(1.0);
 uniform vec2 output_size = vec2(1.0);
 uniform vec4 region_rect = vec4(0.0, 0.0, 1.0, 1.0);
-uniform bool mask_enabled = true;
+uniform float mask_strength : hint_range(0.0, 1.0) = 1.0;
+uniform float scanline_strength : hint_range(0.0, 1.0) = 1.0;
+uniform float filter_strength : hint_range(0.0, 1.0) = 1.0;
 
 uniform float hard_scan = -8.0;
 uniform float hard_pix = -3.0;
@@ -42,7 +44,8 @@ uniform float bright_boost = 1.0;
 uniform float hard_bloom_pix = -1.5;
 uniform float hard_bloom_scan = -2.0;
 uniform float bloom_amount = 0.15;
-uniform float shape = 2.0;
+// The curated Gaussian profile also defines the mean-energy normalization.
+const float shape = 2.0;
 
 vec2 safe_source_size() {
 	return max(source_size, vec2(1.0));
@@ -144,18 +147,36 @@ float bloom_scan(vec2 position, float offset) {
 	return gaussian(distance_to_texel(position).y + offset, hard_bloom_scan);
 }
 
+// Preserve the curated Gaussian beam's mean energy while suppressing its
+// unresolved periodic contrast. Colour interpolation keeps the original taps.
+float resolved_energy(float weight, float hardness) {
+	float mean_weight = sqrt(3.14159265 / (-hardness * log(2.0)));
+	return mean_weight / max(weight, 0.00001);
+}
+
+float physical_scanline(float output_y) {
+	return mod(floor(output_y), 3.0) < 2.0 ? 1.10 : 0.80;
+}
+
 vec3 tri(vec2 position) {
-	return horizontal3(position, -1.0) * scan(position, -1.0) +
-		horizontal5(position, 0.0) * scan(position, 0.0) +
-		horizontal3(position, 1.0) * scan(position, 1.0);
+	float a = scan(position, -1.0);
+	float b = scan(position, 0.0);
+	float c = scan(position, 1.0);
+	vec3 colour = horizontal3(position, -1.0) * a +
+		horizontal5(position, 0.0) * b + horizontal3(position, 1.0) * c;
+	return colour * resolved_energy(a + b + c, hard_scan);
 }
 
 vec3 bloom(vec2 position) {
-	return horizontal5(position, -2.0) * bloom_scan(position, -2.0) +
-		horizontal7(position, -1.0) * bloom_scan(position, -1.0) +
-		horizontal7(position, 0.0) * bloom_scan(position, 0.0) +
-		horizontal7(position, 1.0) * bloom_scan(position, 1.0) +
-		horizontal5(position, 2.0) * bloom_scan(position, 2.0);
+	float a = bloom_scan(position, -2.0);
+	float b = bloom_scan(position, -1.0);
+	float c = bloom_scan(position, 0.0);
+	float d = bloom_scan(position, 1.0);
+	float e = bloom_scan(position, 2.0);
+	vec3 colour = horizontal5(position, -2.0) * a +
+		horizontal7(position, -1.0) * b + horizontal7(position, 0.0) * c +
+		horizontal7(position, 1.0) * d + horizontal5(position, 2.0) * e;
+	return colour * resolved_energy(a + b + c + d + e, hard_bloom_scan);
 }
 
 vec3 mask(vec2 pixel_position) {
@@ -191,15 +212,17 @@ void fragment() {
 		COLOR = texture(source_texture, UV);
 	} else {
 
-	vec2 local_uv = (UV - region_rect.xy) / region_rect.zw;
-	// Curvature is disabled: the pinned shader's Warp function is identity.
-	vec2 position = local_uv;
-	vec3 result = tri(position) + bloom(position) * bloom_amount;
-	if (mask_enabled) {
-		result *= mask(local_uv * max(output_size, vec2(1.0)) * 1.000001);
+	vec4 direct = texture(source_texture, clamp_region_uv(UV));
+	vec3 colour = direct.rgb;
+	if (filter_strength > 0.0) {
+		vec2 position = (UV - region_rect.xy) / region_rect.zw;
+		// Curvature is disabled: the pinned shader's Warp is identity.
+		vec3 result = tri(position) + bloom(position) * bloom_amount;
+		colour = mix(colour, to_srgb(result), filter_strength);
 	}
-	vec2 alpha_uv = region_rect.xy + local_uv * region_rect.zw;
-	float alpha = texture(source_texture, clamp_region_uv(alpha_uv)).a;
-	COLOR = vec4(to_srgb(result), alpha);
+	colour *= mix(1.0, physical_scanline(FRAGCOORD.y), scanline_strength);
+	// The phosphor lattice belongs to physical output pixels, not region UVs.
+	colour *= mix(vec3(1.0), mask(FRAGCOORD.xy), mask_strength);
+	COLOR = vec4(colour, direct.a);
 	}
 }

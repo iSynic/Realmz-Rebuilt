@@ -14,11 +14,13 @@ var _facts: GridContainer
 var _world_command_panel: PanelContainer
 var _command_panel: PanelContainer
 var _effects_panel: PanelContainer
+var _torch_dock: PanelContainer
 var _narrative_well: PanelContainer
 var _world_command_column: VBoxContainer
 var _party_effects_row: BoxContainer
 var _party_command_column: VBoxContainer
 var _world_command_grid: GridContainer
+var _world_command_lower_grid: GridContainer
 var _command_grid: GridContainer
 var _bottom_region: PanelContainer
 var _picture_stage: Control
@@ -38,11 +40,13 @@ func _init(shell: Control) -> void:
 	_world_command_panel = shell.get_node("%WorldCommandPanel") as PanelContainer
 	_command_panel = shell.get_node("%CommandPanel") as PanelContainer
 	_effects_panel = shell.get_node("%EffectsPanel") as PanelContainer
+	_torch_dock = shell.get_node("%TorchDock") as PanelContainer
 	_narrative_well = shell.get_node("%NarrativeWell") as PanelContainer
 	_world_command_column = shell.get_node("BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn") as VBoxContainer
 	_party_effects_row = shell.get_node("%PartyEffectsRow") as BoxContainer
 	_party_command_column = shell.get_node("%PartyCommandColumn") as VBoxContainer
 	_world_command_grid = shell.get_node("%WorldCommandGrid") as GridContainer
+	_world_command_lower_grid = shell.get_node("%WorldCommandLowerGrid") as GridContainer
 	_command_grid = shell.get_node("%CommandGrid") as GridContainer
 	_bottom_region = shell.get_node("%BottomRegion") as PanelContainer
 	_picture_stage = shell.get_node("%PictureStage") as Control
@@ -107,6 +111,7 @@ func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vec
 	_world_command_panel.size_flags_stretch_ratio = 1.0
 	_command_panel.visible = _navigator.current_screen() != &"spells"
 	_effects_panel.visible = _command_panel.visible and game_view != null and game_view.session_started
+	_torch_dock.visible = _command_panel.visible and _navigator.current_screen() == &"exploration"
 	_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else command_width
 	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
 	_command_panel.size_flags_stretch_ratio = 1.0
@@ -116,13 +121,19 @@ func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vec
 	_narrative_well.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_narrative_well.size_flags_stretch_ratio = 1.45 if _world_command_panel.visible else 1.0
 	_apply_footer_alignment(profile, command_width)
-	_bottom_region.position = origin + Vector2(0.0, viewport_size.y - profile.bottom_height)
+	restore_footer_bounds(profile)
+
+
+func restore_footer_bounds(profile: UiLayoutProfile) -> void:
+	var canvas_rect := profile.application_rect
+	var footer_width := GameShellLayoutPolicy.exploration_footer_width(canvas_rect.size, profile, _navigator.current_screen())
+	_bottom_region.position = canvas_rect.position + Vector2(0.0, canvas_rect.size.y - profile.bottom_height)
 	_bottom_region.size = Vector2(footer_width, profile.bottom_height)
 
 
 func _apply_footer_alignment(profile: UiLayoutProfile, command_width: float) -> void:
 	_world_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
-	_party_effects_row.vertical = not _world_command_panel.visible
+	_party_effects_row.vertical = false
 	_party_effects_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	_party_command_column.alignment = BoxContainer.ALIGNMENT_CENTER
 	_world_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -130,7 +141,8 @@ func _apply_footer_alignment(profile: UiLayoutProfile, command_width: float) -> 
 	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.columns = 4
-	_command_grid.columns = 2 if _world_command_panel.visible else 6 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
+	_world_command_lower_grid.columns = 3
+	_command_grid.columns = 2 if _world_command_panel.visible else 4 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
 	var icon_size := GameShellLayoutPolicy.party_effect_icon_size(profile.bitmap_scale)
 	var slot_size := GameShellLayoutPolicy.party_effect_slot_size(profile.bitmap_scale)
 	for icon: TextureRect in _effect_slots:

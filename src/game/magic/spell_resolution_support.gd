@@ -67,10 +67,13 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
+	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	if applied_condition >= 0:
+		result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
 	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
@@ -115,6 +118,7 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		target.traitor = caster.traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
+	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
 	_apply_combat_movement_effect(target, spell)
 	target.current_health -= damage
@@ -122,6 +126,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		target.current_health = mini(target.maximum_health, target.current_health)
 	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	if applied_condition >= 0:
+		result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
 	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
@@ -198,6 +204,7 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 		target.traitor = caster.traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
+	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
 	_apply_combat_movement_effect(target, spell)
 	target.current_health -= damage
@@ -205,6 +212,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 		target.current_health = mini(target.maximum_health, target.current_health)
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	if applied_condition >= 0:
+		result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
 	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
@@ -255,10 +264,13 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
+	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
 	target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 	result.applied_condition = applied_condition
+	if applied_condition >= 0:
+		result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
 	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
@@ -269,10 +281,14 @@ static func _selection_is_valid(selection: SpellTargetSelection) -> bool:
 
 func _polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, spell_cost: int, duration: int, context: MonsterPolymorphContext, rng: RealmzRng) -> SpellResolution:
 	var failures: Array[String] = []
+	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
 	var before := _monsters.polymorph_monster(target, target_definition, context, rng, failures)
 	if not failures.is_empty():
 		return SpellResolution.failed(&"invalid_random_weapon_table", failures[0])
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	var helpless_after := target.conditions.is_active(ConditionRules.HELPLESS)
+	if helpless_before != helpless_after:
+		result.record_helpless_state(helpless_before, helpless_after)
 	if not before.is_empty():
 		result.transformed_definition_before = before
 		result.transformed_definition_after = target.definition_id
@@ -371,16 +387,20 @@ static func is_condition_cure_spell(spell: SpellDefinition) -> bool:
 
 
 static func _clear_condition(conditions: ConditionSet, condition_index: int, spell_cost: int, duration: int) -> SpellResolution:
+	var helpless_before := conditions.is_active(ConditionRules.HELPLESS)
 	conditions.set_value(condition_index, 0)
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	result.cleared_condition = condition_index
+	result.record_helpless_state(helpless_before, conditions.is_active(ConditionRules.HELPLESS))
 	return result
 
 
 static func _destroy_magic_character(target: CharacterState, spell_cost: int, duration: int) -> SpellResolution:
 	var traitor_before := target.traitor
+	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	result.cleared_condition_count = target.conditions.clear_positive()
+	result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
 	# Castle stores charmed character allegiance outside the condition array; special 61 resets only character slots, not summoned or NPC monster slots.
 	target.traitor = false
 	_record_allegiance_change(result, traitor_before, target.traitor)
@@ -403,8 +423,10 @@ func _remove_curse_character(target: CharacterState, spell_cost: int, duration: 
 
 
 static func _destroy_magic_monster(target: MonsterState, spell_cost: int, duration: int) -> SpellResolution:
+	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
 	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
 	result.cleared_condition_count = target.conditions.clear_positive()
+	result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
 	return result
 
 

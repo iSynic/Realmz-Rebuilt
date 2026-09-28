@@ -236,8 +236,8 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, 
 
 
 static func spell_screen_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
-	var desired_width := (288.0 if profile.id == UiLayoutProfile.COMPACT else 420.0) * profile.ui_scale
-	var minimum_stage_width := 480.0 * profile.ui_scale
+	var desired_width := 420.0 * profile.ui_scale
+	var minimum_stage_width := (300.0 if profile.id == UiLayoutProfile.COMPACT else 480.0) * profile.ui_scale
 	var workspace_width := minf(desired_width, maxf(profile.party_width, viewport_size.x - minimum_stage_width))
 	return Rect2(origin + Vector2(viewport_size.x - workspace_width, profile.menu_height), Vector2(workspace_width, maxf(220.0, viewport_size.y - profile.menu_height)))
 
@@ -489,6 +489,8 @@ func refresh_current_workspace(notify_route_change: bool = false) -> void:
 	content_presenter.present(_screen_id, _workspace_view, setup_controller.character_creation.appearance_textures(), vault_back_label, context_actions)
 	if _workspace_view != null:
 		_workspace_view.apply_route_chrome()
+		if _screen_id == &"spells":
+			_workspace_view.set_workspace_rect(_workspace_layout_rect())
 	if _screen_id in [&"exploration", &"combat"]:
 		call_deferred("_complete_route_render", transition_revision, false, previous_scroll_horizontal, previous_scroll_vertical)
 		return
@@ -500,6 +502,8 @@ func _complete_route_render(transition_revision: int, reset_scroll_to_top: bool,
 	if transition_revision != _route_transition_revision:
 		return
 	var focus_key := _focus_controller.restore(self, _body, _body_scroll, _screen_id, reset_scroll_to_top, previous_scroll_horizontal, previous_scroll_vertical)
+	if _screen_id == &"spells":
+		content_presenter.spellbook.restore_controller_focus(reset_scroll_to_top)
 	workspace_focus_restored.emit(_screen_id, focus_key)
 
 

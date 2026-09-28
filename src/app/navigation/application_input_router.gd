@@ -33,6 +33,9 @@ func handle_input(event: InputEvent) -> void:
 		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
+	if combat_pending and event.is_pressed() and _application._battlefield_presenter.interaction.dismiss_reveal_friends():
+		_mark_handled()
+		return
 	if _handle_combat_inspection_input(event, combat_pending):
 		return
 	if _application.click_to_move != null and _application.click_to_move.handle_input(event):
@@ -42,9 +45,6 @@ func handle_input(event: InputEvent) -> void:
 	if mouse_button != null and mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
 		_application._shell_presenter.commands.release()
 	if not event.is_pressed():
-		return
-	if combat_pending and _application._battlefield_presenter.interaction.dismiss_reveal_friends():
-		_mark_handled()
 		return
 	if _handle_back_input(event, combat_pending):
 		return
@@ -99,6 +99,9 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 	if combat_pending and _handle_controller_combat(action_id, routed_direction, _controller_scroll_direction(action_id), repeated):
 		_mark_handled()
 		return
+	if not combat_pending and _handle_controller_spellbook(action_id, routed_direction):
+		_mark_handled()
+		return
 	if not combat_pending and _application.click_to_move != null and _application.click_to_move.handle_controller(action_id, routed_direction):
 		_mark_handled()
 		return
@@ -130,6 +133,9 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
 	if pending != null and pending.kind == InteractionRequest.COMBAT and _handle_controller_combat(&"", direction, Vector2i.ZERO, repeated):
+		_mark_handled()
+		return
+	if _handle_controller_spellbook(&"", direction):
 		_mark_handled()
 		return
 	if _application.click_to_move != null and _application.click_to_move.handle_controller(&"", direction):
@@ -339,6 +345,8 @@ func _handle_controller_combat(action_id: StringName, direction: Vector2i, scrol
 	var inspector: CombatInspectionCard = _application._interaction_presenter.combat.inspector
 	if inspector != null and inspector.handle_controller(action_id, direction, scroll_direction):
 		return true
+	if _application._battlefield_presenter.interaction.targeting == null and _handle_controller_spellbook(action_id, direction):
+		return true
 	if _application.click_to_move != null and _application.click_to_move.handle_controller(action_id, direction):
 		return true
 	var battlefield: BattlefieldInteractionController = _application._battlefield_presenter.interaction
@@ -400,7 +408,51 @@ func _controller_focus_root() -> Control:
 	var music_root: Control = _application._shell_presenter.controller.music_playlist_focus_root()
 	if music_root != null:
 		return music_root
+	var spellbook := _controller_spellbook_root()
+	if spellbook != null:
+		return spellbook
 	return _application._interaction_presenter.controller.focus_root() if _application._interaction_presenter != null and _application._interaction_presenter.has_blocking_request() else _application
+
+
+func _controller_spellbook_root() -> Control:
+	if _application.accepts_exploration_input() or _application.lifecycle_host.has_active_interaction() or _music_playlist_owns_controller():
+		return null
+	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
+	if pending != null and pending.kind != InteractionRequest.COMBAT:
+		return _application._interaction_presenter.controller.spellbook_focus_root()
+	return _application._shell_presenter.controller.spellbook_focus_root()
+
+
+func _handle_controller_spellbook(action_id: StringName, direction: Vector2i) -> bool:
+	var root := _controller_spellbook_root()
+	if root == null:
+		return false
+	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
+	var encounter := pending != null and pending.kind != InteractionRequest.COMBAT
+	var access: Variant = _application._interaction_presenter.controller if encounter else _application._shell_presenter.controller
+	var focused := root.get_viewport().gui_get_focus_owner()
+	if focused == null or not focused.is_visible_in_tree() or not root.is_ancestor_of(focused):
+		access.focus_spellbook_selection()
+	_application._shell_presenter.controller.show_spellbook_prompts(encounter)
+	if _focus.has_active_popup(root) and direction == Vector2i.ZERO and action_id not in [&"realmz_controller_confirm", &"realmz_controller_back"]:
+		return true
+	if direction != Vector2i.ZERO:
+		_focus.move(root, direction)
+	elif action_id == &"realmz_controller_confirm":
+		_focus.activate_focused(root)
+	elif action_id == &"realmz_controller_back":
+		if not _focus.cancel_active_popup():
+			if encounter: _application._interaction_presenter.handle_back_request()
+			else: _application._shell_presenter.controller.close_spellbook()
+	elif action_id in [&"realmz_controller_section_previous", &"realmz_controller_section_next"]:
+		access.cycle_spellbook_level(-1 if action_id == &"realmz_controller_section_previous" else 1)
+	elif action_id == &"realmz_controller_inspect":
+		_application._shell_presenter.controller.show_detail(_focus.inspection_text(root))
+	elif action_id in [&"realmz_controller_character_previous", &"realmz_controller_character_next"] and pending == null:
+		_application._shell_presenter.controller.select_relative_character(-1 if action_id == &"realmz_controller_character_previous" else 1)
+	else:
+		_focus.scroll_active(root, _controller_scroll_direction(action_id))
+	return true
 
 
 func _music_playlist_owns_controller() -> bool:

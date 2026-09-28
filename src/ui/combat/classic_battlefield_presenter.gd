@@ -7,6 +7,8 @@ extends Control
 const NATIVE_CELL_SIZE: float = BattlefieldPresentationGeometry.NATIVE_CELL_SIZE
 const HEADER_HEIGHT: float = BattlefieldPresentationGeometry.HEADER_HEIGHT
 const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
+const TARGET_EDGE_DWELL_SECONDS := 0.35
+const TARGET_EDGE_STEP_SECONDS := 0.12
 
 var _view: GameView
 var _media: ClassicMediaCatalog
@@ -15,7 +17,11 @@ var interaction: BattlefieldInteractionController = BattlefieldInteractionContro
 var _render_camera_top_left := Vector2i(-1, -1)
 var _render_camera_focus_id: String = ""
 var _render_camera_visible_cells := Vector2i.ZERO
+var _targeting_camera_manually_panned := false
+var _actor_clip := Rect2()
 var _playback_frame: CombatPlaybackFrame
+var _target_edge_direction := Vector2i.ZERO
+var _target_edge_elapsed := 0.0
 ## Castle stores monster lr as -1 (left), 0 (neutral/vertical), or 1 (right).
 ## Keep that detached presentation state instead of collapsing -1 and 0 into one bool.
 var _monster_facing_lr: Dictionary = {}
@@ -27,12 +33,14 @@ var movement_preview: MovementRoutePreview:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_process(true)
 	resized.connect(queue_redraw)
 	interaction.redraw_requested.connect(queue_redraw)
 
 
 func present(game_view: GameView) -> void:
 	_view = game_view
+	_targeting_camera_manually_panned = false
 	_playback_frame = null
 	if interaction.present(game_view):
 		_render_camera_focus_id = ""
@@ -49,6 +57,9 @@ func present(game_view: GameView) -> void:
 
 
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
+	_targeting_camera_manually_panned = false
+	_target_edge_direction = Vector2i.ZERO
+	_target_edge_elapsed = 0.0
 	if interaction.playback_changed(_playback_frame, frame):
 		_render_camera_focus_id = ""
 	_update_monster_facing(frame)
@@ -113,10 +124,14 @@ func controller_pan(direction: Vector2i, center_pointer: bool = false) -> bool:
 		if point.x < 0: return false
 		direction = point - _render_camera_top_left - visible_cells / 2
 	if direction == Vector2i.ZERO: return false
-	_render_camera_top_left = Vector2i(
+	var next_camera := Vector2i(
 		clampi(_render_camera_top_left.x + direction.x, 0, maxi(0, BattlefieldGrid.SIZE - visible_cells.x)),
 		clampi(_render_camera_top_left.y + direction.y, 0, maxi(0, BattlefieldGrid.SIZE - visible_cells.y))
 	)
+	if next_camera == _render_camera_top_left:
+		return false
+	_render_camera_top_left = next_camera
+	_targeting_camera_manually_panned = interaction.targeting != null
 	_render_camera_visible_cells = visible_cells
 	_render_camera_focus_id = BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, interaction.focused_combatant_id, _view.combat_view.active_actor_id)
 	queue_redraw()
@@ -126,7 +141,9 @@ func controller_pan(direction: Vector2i, center_pointer: bool = false) -> bool:
 func _draw() -> void:
 	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return
-	_draw_battle_stage()
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
+	if _surround_texture != null:
+		draw_texture_rect(_surround_texture, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
 	var combat := _view.combat_view
 	var battlefield := combat.battlefield
 	var focus_id := BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, interaction.focused_combatant_id, combat.active_actor_id)
@@ -134,7 +151,9 @@ func _draw() -> void:
 	if active_position.x < 0:
 		active_position = battlefield.party_anchor
 	var visible_cells := BattlefieldPresentationGeometry.viewport_cells_for(size)
-	var camera := BattlefieldPresentationGeometry.tracked_camera_top_left(
+	if interaction.targeting == null:
+		_targeting_camera_manually_panned = false
+	var camera := _render_camera_top_left if _targeting_camera_manually_panned and _render_camera_visible_cells == visible_cells else BattlefieldPresentationGeometry.tracked_camera_top_left(
 		_render_camera_top_left,
 		active_position,
 		visible_cells,
@@ -156,6 +175,7 @@ func _draw() -> void:
 	_draw_revealed_relationships(combat, camera, visible_cells, draw_origin)
 	_draw_movement_options(combat, camera, visible_cells, draw_origin)
 	_draw_targeting_preview(combat, camera, visible_cells, draw_origin)
+	_actor_clip = Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE)
 	_draw_characters(combat, camera, visible_cells, draw_origin)
 	_draw_monsters(combat, camera, visible_cells, draw_origin)
 	_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
@@ -164,15 +184,11 @@ func _draw() -> void:
 		draw_string(get_theme_font(&"font", &"Label"), Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
 
 
-func _draw_battle_stage() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
-	if _surround_texture != null:
-		draw_texture_rect(_surround_texture, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
-
-
 func _draw_header(combat: CombatView) -> void:
 	var current_actor_name := BattlefieldPresentationGeometry.actor_name(combat, _view.party_members, combat.active_actor_id)
-	var title := "Battle %s • Round %d • %s" % [combat.battle_id, combat.round_number, current_actor_name]
+	var native_battle_id := combat.battle_id.trim_prefix("classic.battle.")
+	var battle_label := "Battle %s" % native_battle_id if combat.battle_id.begins_with("classic.battle.") and native_battle_id.is_valid_int() else "Battle"
+	var title := "%s • Round %d • %s" % [battle_label, combat.round_number, current_actor_name]
 	var facts := "%d attack%s • %d movement • %s" % [combat.attack_units_remaining, "" if combat.attack_units_remaining == 1 else "s", combat.movement_remaining, String(combat.weapon_mode).capitalize()]
 	draw_string(get_theme_font(&"font", &"Label"), Vector2(8.0, 17.0), title, HORIZONTAL_ALIGNMENT_LEFT, maxf(size.x - 250.0, 120.0), 16, Color(0.86, 0.75, 0.42))
 	draw_string(get_theme_font(&"font", &"Label"), Vector2(size.x - 242.0, 17.0), facts, HORIZONTAL_ALIGNMENT_RIGHT, 234.0, 12, Color(0.73, 0.76, 0.80))
@@ -242,7 +258,28 @@ func _input(event: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_PROCESS:
+		var direction := Vector2i.ZERO
+		if _playback_frame == null and interaction.targeting != null and is_visible_in_tree() and get_viewport().gui_get_hovered_control() == self:
+			direction = BattlefieldPresentationGeometry.targeting_edge_direction(get_local_mouse_position(), size)
+		if direction == Vector2i.ZERO:
+			_target_edge_direction = Vector2i.ZERO
+			_target_edge_elapsed = 0.0
+			return
+		if direction != _target_edge_direction:
+			_target_edge_direction = direction
+			_target_edge_elapsed = 0.0
+		_target_edge_elapsed += get_process_delta_time()
+		if _target_edge_elapsed < TARGET_EDGE_DWELL_SECONDS:
+			return
+		_target_edge_elapsed = TARGET_EDGE_DWELL_SECONDS - TARGET_EDGE_STEP_SECONDS
+		if controller_pan(direction):
+			var hover := InputEventMouseMotion.new()
+			hover.position = get_local_mouse_position()
+			interaction.handle_input(hover, size, _render_camera_top_left, _render_camera_visible_cells)
 	if what == NOTIFICATION_MOUSE_EXIT:
+		_target_edge_direction = Vector2i.ZERO
+		_target_edge_elapsed = 0.0
 		interaction.handle_mouse_exit()
 
 
@@ -254,26 +291,25 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 		if _playback_hides(character.id):
 			continue
 		var coordinate := _effective_actor_position(combat, character.id)
-		if not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
-			continue
+		if coordinate.x < 0: continue
 		var rect := _playback_actor_rect(character.id, coordinate, camera, draw_origin)
+		if not rect.intersects(_actor_clip): continue
+		_draw_backdrop(rect, character.id, character.traitor, character.condition_values[ConditionRules.HELPLESS] != 0, character.current_health)
 		var asset := _media.asset_by_id(character.combat_icon_id) if _media != null else null
 		_draw_actor(rect, _textures.actor_texture(asset), character.name, _actor_is_highlighted(character.id, combat.active_actor_id), target_ids.has(character.id), character.traitor)
 
 
 func _draw_persistent_fields(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
-	var atlas_asset := _textures.battle_atlas_asset()
-	var atlas_texture := _textures.battle_atlas_texture()
 	var visible_fields := _playback_frame.persistent_fields if _playback_frame != null else combat.persistent_fields
 	for field: PersistentCombatFieldView in visible_fields:
 		var tile_id := BattlefieldTextureCache.persistent_field_tile_id(field.queue_icon)
-		var region := Rect2i() if atlas_asset == null else atlas_asset.region_for(tile_id)
+		var tile_texture := _textures.transparent_battle_tile_texture(tile_id)
 		for coordinate: Vector2i in field.affected_coordinates:
 			if not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
 				continue
 			var rect := BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin)
-			if atlas_texture != null and region.has_area():
-				draw_texture_rect_region(atlas_texture, rect, Rect2(region))
+			if tile_texture != null:
+				draw_texture_rect(tile_texture, rect, false)
 			else:
 				draw_rect(rect.grow(-3.0), Color(0.48, 0.22, 0.62, 0.48), true)
 				draw_rect(rect.grow(-3.0), Color(0.86, 0.66, 0.98, 0.86), false, 1.0)
@@ -314,13 +350,10 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 			var offset := effective_anchor - source_anchor
 			for index: int in footprint.size():
 				footprint[index] += offset
-		var visible_footprint: Array[Vector2i] = []
-		for coordinate: Vector2i in footprint:
-			if BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
-				visible_footprint.append(coordinate)
-		if visible_footprint.is_empty():
-			continue
-		var rect := BattlefieldPresentationGeometry.moving_footprint_rect(visible_footprint, effective_anchor, _playback_frame if _playback_frame != null and _playback_frame.actor_id == monster.id else null, camera, draw_origin)
+		if footprint.is_empty(): continue
+		var rect := BattlefieldPresentationGeometry.moving_footprint_rect(footprint, effective_anchor, _playback_frame if _playback_frame != null and _playback_frame.actor_id == monster.id else null, camera, draw_origin)
+		if not rect.intersects(_actor_clip): continue
+		_draw_backdrop(rect, monster.id, monster.traitor, monster.helpless, monster.current_health)
 		var icon_id := BattlefieldPresentationGeometry.classic_monster_icon_id(monster.icon_id, _monster_facing_right(monster.id))
 		var asset := _media.asset_by_resource(monster.icon_resource_type, icon_id) if _media != null else null
 		if _media != null and asset == null and icon_id != monster.icon_id:
@@ -412,7 +445,21 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 			_draw_spell_effect(actor_rect, target_rect)
 		&"result":
 			_draw_result(target_rect if target_rect.has_area() or not _playback_frame.target_id.is_empty() else actor_rect, combat, camera, visible_cells, draw_origin)
-		&"defeat", &"retreat":
+		&"defeat":
+			var resource_id := _playback_frame.effect_resource_id
+			var coordinate := _effective_actor_position(combat, _playback_frame.target_id)
+			if resource_id > 0 and coordinate.x >= 0:
+				var asset := _media.asset_by_resource("cicn", resource_id) if _media != null else null
+				var texture := _textures.actor_texture(asset)
+				last_playback_media_diagnostic = _media.resolution_diagnostic("cicn", resource_id, "classic-combat-defeat", "decoded" if texture != null else "decode-failed") if _media != null else {"resourceType": "cicn", "resourceId": resource_id, "status": "catalog-unavailable"}
+				if texture != null:
+					var marker_size := texture.get_size()
+					var anchor_rect := BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin)
+					var marker_rect := Rect2(anchor_rect.position - marker_size + Vector2.ONE * NATIVE_CELL_SIZE, marker_size)
+					var visible_rect := marker_rect.intersection(Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE))
+					if visible_rect.has_area():
+						draw_texture_rect_region(texture, visible_rect, ClassicCombatBackdrop.clipped_source(marker_rect, Rect2(Vector2.ZERO, marker_size), visible_rect))
+		&"retreat":
 			_draw_result(target_rect if target_rect.has_area() else actor_rect, combat, camera, visible_cells, draw_origin)
 
 
@@ -438,15 +485,14 @@ func _draw_spell_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:
 		return
 	var point := actor_rect.get_center().lerp(target_rect.get_center(), _playback_frame.progress)
 	var atlas_asset := _textures.battle_atlas_asset()
-	var atlas_texture := _textures.battle_atlas_texture()
-	var region := Rect2i() if atlas_asset == null else atlas_asset.region_for(_playback_frame.battle_tile_id)
-	if _playback_frame.battle_tile_id <= 0 or atlas_texture == null or region.size.x <= 0 or region.size.y <= 0:
+	var tile_texture := _textures.transparent_battle_tile_texture(_playback_frame.battle_tile_id)
+	if _playback_frame.battle_tile_id <= 0 or tile_texture == null:
 		last_playback_media_diagnostic = {"resourceType": "PICT", "resourceId": 302, "tileId": _playback_frame.battle_tile_id, "decodeResult": "unavailable", "role": "classic-combat-spell-projectile"}
 		draw_circle(point, 6.0, Color(0.82, 0.72, 1.0, 0.96))
 		return
 	last_playback_media_diagnostic = {"resourceType": "PICT", "resourceId": 302, "tileId": _playback_frame.battle_tile_id, "assetId": atlas_asset.id, "decodeResult": "decoded", "role": "classic-combat-spell-projectile"}
 	var projectile_rect := Rect2(point - Vector2(16.0, 16.0), Vector2(32.0, 32.0))
-	draw_texture_rect_region(atlas_texture, projectile_rect, Rect2(region))
+	draw_texture_rect(tile_texture, projectile_rect, false)
 
 
 func _draw_spell_effect(actor_rect: Rect2, target_rect: Rect2) -> void:
@@ -598,11 +644,27 @@ func _combatant_rect(combat: CombatView, actor_id: String, camera: Vector2i, vis
 
 func _draw_actor(rect: Rect2, texture: Texture2D, label: String, active: bool, target: bool, hostile: bool) -> void:
 	if texture != null:
-		draw_texture_rect(texture, rect, false)
+		draw_texture_rect_region(texture, rect.intersection(_actor_clip), ClassicCombatBackdrop.clipped_source(rect, Rect2(Vector2.ZERO, texture.get_size()), _actor_clip))
 	else:
+		rect = rect.intersection(_actor_clip)
 		draw_rect(rect.grow(-3.0), Color(0.62, 0.20, 0.18) if hostile else Color(0.18, 0.42, 0.64), true)
 		draw_string(get_theme_font(&"font", &"Label"), rect.position + Vector2(5.0, 20.0), label.left(2).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color.WHITE)
+	# Deliberate Classic presentation improvement: retain focus/target outlines over the native backdrop.
 	if target:
-		draw_rect(rect.grow(-1.0), Color(0.95, 0.35, 0.26), false, 3.0)
+		draw_rect(rect.grow(-1.0).intersection(_actor_clip), Color(0.95, 0.35, 0.26), false, 3.0)
 	if active:
-		draw_rect(rect.grow(2.0), Color(0.98, 0.82, 0.25), false, 3.0)
+		draw_rect(rect.grow(2.0).intersection(_actor_clip), Color(0.98, 0.82, 0.25), false, 3.0)
+
+
+func _draw_backdrop(rect: Rect2, id: String, traitor: bool, helpless: bool, health: int) -> void:
+	var state := ClassicCombatBackdrop.flags(traitor, helpless)
+	if _playback_frame != null:
+		state = int(_playback_frame.combatant_backdrops.get(id, state))
+		health = int(_playback_frame.combatant_health.get(id, health))
+	if health < 1 or not ClassicCombatBackdrop.shown(id, _view.combat_view.active_actor_id, state, _playback_frame == null and ClassicCombatBackdrop.interaction_forces(id, interaction), _playback_frame): return
+	var texture := _textures.battle_atlas_texture()
+	if texture == null:
+		last_playback_media_diagnostic = _media.resolution_diagnostic("PICT", 302, "classic-combat-backdrop", "decode-failed") if _media != null else {"consumer": "classic-combat-backdrop", "resourceType": "PICT", "resourceId": 302, "status": "catalog-unavailable"}
+		return
+	var source := ClassicCombatBackdrop.source_rect(Vector2i(rect.size / NATIVE_CELL_SIZE), state)
+	draw_texture_rect_region(texture, rect.intersection(_actor_clip), ClassicCombatBackdrop.clipped_source(rect, source, _actor_clip))

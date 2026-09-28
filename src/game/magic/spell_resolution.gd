@@ -14,6 +14,9 @@ var aging: CharacterAgingResult
 var cleared_condition: int = -1
 var cleared_condition_count: int = 0
 var applied_condition: int = -1
+var has_helpless_state: bool = false
+var helpless_before: bool = false
+var helpless_after: bool = false
 var spell_point_delta: int = 0
 var allegiance_changed: bool = false
 var target_traitor_before: bool = false
@@ -44,3 +47,9 @@ static func failed(code: StringName, message: String) -> SpellResolution:
 	result.error_code = code
 	result.error_message = message
 	return result
+
+
+func record_helpless_state(before: bool, after: bool) -> void:
+	has_helpless_state = true
+	helpless_before = before
+	helpless_after = after

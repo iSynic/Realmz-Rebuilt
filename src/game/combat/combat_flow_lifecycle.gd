@@ -216,6 +216,7 @@ func _commit_resumed_age_attack(state: GameState, content: RealmzContent, rng: R
 	var resolution := AttackResolution.new(true, result.defeated, result.pending.chance, result.pending.roll, result.pending.damage)
 	_context.actions().events().append_monster_attack_audio(events, attacker, definition, attack_index, weapon, resolution, rng)
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": result.pending.actor_id, "targetId": result.pending.target_id, "action": String(result.pending.action), "attackIndex": attack_index, "hit": true, "damage": result.pending.damage, "defeated": result.defeated, "chance": result.pending.chance, "roll": result.pending.roll})
+	CombatActionEvents.append_helpless_condition_state(event.payload, result.pending.weapon_condition_index, result.pending.weapon_condition_before, result.pending.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(event, true, weapon != null)
 	if result.combat.pending_reaction != null:
 		_context.reactions().append_reaction_identity(event, result.pending.action, result.pending.action == &"withdrawal")

@@ -17,7 +17,7 @@ const DEBUG_RANDOM_RECT_COLOR := Color(0.96, 0.75, 0.36, 0.78)
 @export var show_cell_topology_details: bool = false
 @export var show_travel_preview: bool = false
 @export var classic_exploration_visibility: bool = true
-@export var custom_fog_tile_enabled: bool = true
+@export var custom_fog_tile_enabled: bool = false
 
 var _view: GameView
 var _media: ClassicMediaCatalog
@@ -48,6 +48,7 @@ var _visible_cache_party_coordinate: Vector2i = Vector2i(-1, -1)
 var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 var _fog_texture: Texture2D = load(FOG_TEXTURE_PATH) as Texture2D
 var _retained_surface: Control
+var _dungeon_view_cue: Label
 var _show_topology_markers: bool = false
 var movement_preview: MovementRoutePreview:
 	get: return get_node_or_null("MovementPreview") as MovementRoutePreview
@@ -77,6 +78,9 @@ func _ready() -> void:
 	_retained_surface.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_retained_surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_retained_surface)
+	_dungeon_view_cue = get_node_or_null("DungeonViewCue") as Label
+	if _dungeon_view_cue != null:
+		resized.connect(func() -> void: _dungeon_view_cue.position = Vector2(maxf(8.0, size.x - _dungeon_view_cue.get_minimum_size().x - 10.0), 8.0))
 	_retained_surface.set_media_catalog(_media)
 	resized.connect(_present_retained_surface)
 
@@ -114,6 +118,9 @@ func _gui_input(event: InputEvent) -> void:
 
 func present(game_view: GameView) -> void:
 	_view = game_view
+	if _dungeon_view_cue != null:
+		_dungeon_view_cue.visible = game_view != null and game_view.map_view != null and game_view.map_view.level_type == &"dungeon" and (game_view.map_view.dungeon_multiview or game_view.map_view.wizard_eye_active)
+		_dungeon_view_cue.position = Vector2(maxf(8.0, size.x - _dungeon_view_cue.get_minimum_size().x - 10.0), 8.0)
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
 	if visible:
 		_update_visibility_cache(game_view.map_view)

@@ -63,7 +63,11 @@ func tick_character(character: CharacterState) -> Array[DomainEvent]:
 	if character.conditions.is_active(ABSORBING_ENERGY) and character.maximum_spell_points > 0 and character.current_health > 0:
 		character.spell_points = mini(character.maximum_spell_points, character.spell_points + absi(character.conditions.value(ABSORBING_ENERGY)))
 	for index: int in character.conditions.decay_positive():
-		events.append(DomainEvent.new(&"condition_expired", {"characterId": character.id, "condition": index}))
+		var payload := {"characterId": character.id, "condition": index}
+		if index == HELPLESS:
+			payload["helplessBefore"] = true
+			payload["helplessAfter"] = false
+		events.append(DomainEvent.new(&"condition_expired", payload))
 	return events
 
 
@@ -81,5 +85,9 @@ func tick_party(party: PartyState) -> Array[DomainEvent]:
 		events.append_array(tick_character(character))
 	for ally: MonsterState in party.allies():
 		for index: int in ally.conditions.decay_positive():
-			events.append(DomainEvent.new(&"ally_condition_expired", {"allyId": ally.id, "condition": index}))
+			var payload := {"allyId": ally.id, "condition": index}
+			if index == HELPLESS:
+				payload["helplessBefore"] = true
+				payload["helplessAfter"] = false
+			events.append(DomainEvent.new(&"ally_condition_expired", payload))
 	return events

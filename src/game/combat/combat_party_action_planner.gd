@@ -7,9 +7,17 @@ func choose_party_action(state: GameState, content: RealmzContent, actor: Charac
 	var choices: Array[Dictionary] = []
 	if _context.actions().probe_bandage(state, actor.id).allowed:
 		var bandage: Dictionary = {}
+		var critical_bandage: Dictionary = {}
 		for target_id: String in _context.actions().bandage_candidate_ids(state):
 			var target := state.party.character_by_id(target_id)
-			bandage = _prefer(bandage, {"action": &"bandage", "targetId": target_id, "score": 1100 - (target.current_health if target != null else 0)})
+			var candidate := {"action": &"bandage", "targetId": target_id, "score": 1100 - (target.current_health if target != null else 0)}
+			bandage = _prefer(bandage, candidate)
+			if target != null and target.current_health <= -7:
+				critical_bandage = _prefer(critical_bandage, candidate)
+		# Castle bandages before attacking. Rebuilt reserves that certainty for a
+		# bleeding ally near death and retains weighted choices for milder wounds.
+		if not critical_bandage.is_empty():
+			return critical_bandage
 		_append_positive_choice(choices, bandage)
 	if _context.actions().probe_turn_undead(state, content, actor.id).allowed:
 		choices.append({"action": &"turn_undead", "score": 760})

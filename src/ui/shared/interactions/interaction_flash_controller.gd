@@ -14,6 +14,8 @@ var _layer: Control
 var _panel: PanelContainer
 var _shield: ColorRect
 var _label: Label
+var _continue: Button
+var _message_generation := 0
 
 
 func configure(presenter: Control, overlay_scene: PackedScene) -> void:
@@ -31,7 +33,7 @@ func queue_messages(messages: Array[Dictionary]) -> void:
 	for message: Dictionary in messages:
 		var text := String(message.get("text", "")).strip_edges()
 		if not text.is_empty():
-			_queue.append({"text": text, "soundId": int(message.get("soundId", 0))})
+			_queue.append({"text": text, "soundId": int(message.get("soundId", 0)), "autoCloseSeconds": maxf(0.0, float(message.get("autoCloseSeconds", 0.0)))})
 	_show_next()
 
 
@@ -46,6 +48,7 @@ func dismiss() -> bool:
 
 
 func close(clear_queue: bool = true) -> void:
+	_message_generation += 1
 	if _layer != null:
 		var parent := _layer.get_parent()
 		if parent != null:
@@ -55,6 +58,7 @@ func close(clear_queue: bool = true) -> void:
 	_panel = null
 	_shield = null
 	_label = null
+	_continue = null
 	if clear_queue:
 		_queue.clear()
 
@@ -70,6 +74,8 @@ func release() -> void:
 	_panel = null
 	_shield = null
 	_label = null
+	_continue = null
+	_message_generation += 1
 	_presenter = null
 	_queue.clear()
 
@@ -83,8 +89,8 @@ func _show_next() -> void:
 	_shield = _layer.get_node("ClassicFlashShield") as ColorRect
 	_panel = _layer.get_node("ClassicFlashMessage") as PanelContainer
 	_label = _panel.get_node("ClassicFlashContent/ClassicFlashText") as Label
-	var acknowledge := _panel.get_node("ClassicFlashContent/ClassicFlashContinue") as Button
-	acknowledge.pressed.connect(dismiss)
+	_continue = _panel.get_node("ClassicFlashContent/ClassicFlashContinue") as Button
+	_continue.pressed.connect(dismiss)
 	_panel.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
@@ -98,10 +104,22 @@ func _present_next() -> void:
 	if _panel == null or _label == null or _queue.is_empty():
 		return
 	var message: Dictionary = _queue.pop_front()
+	_message_generation += 1
+	var generation := _message_generation
 	_label.text = String(message["text"])
+	var auto_close_seconds := float(message.get("autoCloseSeconds", 0.0))
+	_continue.visible = auto_close_seconds <= 0.0
 	var sound_id := int(message.get("soundId", 0))
 	if sound_id > 0:
 		sound_requested.emit(sound_id)
+	if auto_close_seconds > 0.0:
+		_auto_close_after(auto_close_seconds, generation)
+
+
+func _auto_close_after(seconds: float, generation: int) -> void:
+	await _presenter.get_tree().create_timer(seconds).timeout
+	if is_instance_valid(_presenter) and generation == _message_generation and is_open():
+		dismiss()
 
 
 func _apply_layout() -> void:

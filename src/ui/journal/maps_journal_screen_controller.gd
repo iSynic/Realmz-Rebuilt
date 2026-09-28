@@ -9,10 +9,10 @@ signal intent_submitted(intent: PlayerIntent)
 const GOLD := Color("d5b45d")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("9aa0a8")
-const BOOK_PAPER_SELECTED := Color("c3aa70")
-const BOOK_INK := Color("30261c")
-const BOOK_MUTED_INK := Color("67553a")
-const BOOK_RED := Color("963c31")
+const JOURNAL_ROW := Color("252f31")
+const JOURNAL_ROW_SELECTED := Color("4c4932")
+const JOURNAL_TEXT := Color("e0e2e5")
+const JOURNAL_MUTED := Color("aebec0")
 
 var _selected_player_map_id: String = ""
 var _selected_location_note_id: String = ""
@@ -61,11 +61,13 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog) -> voi
 		_selected_journal_message_id = 0
 		_selected_tab = 1
 	_bind_summary(workspace, view)
+	if screen != null:
+		screen.count_label().text = workspace.summary_label().text
 	_bind_places(workspace, view, media)
 	_bind_maps(workspace, view, media)
 	_bind_journal(workspace, view)
 	var tabs := workspace.tabs()
-	tabs.current_tab = mini(_selected_tab, tabs.get_tab_count() - 1)
+	workspace.select_section(mini(_selected_tab, tabs.get_tab_count() - 1))
 	if not tabs.tab_changed.is_connected(_on_tab_changed):
 		tabs.tab_changed.connect(_on_tab_changed)
 	_rebuilding = false
@@ -82,7 +84,7 @@ func cycle_section(delta: int) -> bool:
 	var tabs := _workspace.tabs()
 	if tabs.get_tab_count() == 0:
 		return false
-	_workspace.cycle_tab(delta)
+	_workspace.select_section(-1, delta)
 	_selected_tab = tabs.current_tab
 	return true
 
@@ -124,18 +126,26 @@ func _select_location_note(workspace: MapsNotesWorkspace, view: GameView, media:
 func _bind_location_note_preview(workspace: MapsNotesWorkspace, note: LocationNoteView, media: ClassicMediaCatalog) -> void:
 	var facts := workspace.location_preview_facts()
 	var empty := workspace.location_preview_empty()
+	var preview_region := workspace.location_preview_region()
 	var presenter := workspace.historical_map()
-	var available := note != null and note.preview_map != null
-	facts.visible = available
-	empty.visible = not available
-	presenter.visible = available
-	if not available:
-		return
-	_bind_label(facts.get_node("Location") as Label, "%s  •  %s  •  %d,%d" % [note.map_name, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y], CYAN, 14)
-	_bind_label(facts.get_node("Darkness") as Label, "Saved darkness mask %d of 6" % clampi(note.darkness_value, 0, 6) if note.darkness_value > 0 else "No saved darkness mask", MUTED, 12)
-	presenter.set_classic_exploration_visibility(false)
-	presenter.set_media_catalog(media)
-	presenter.present(GameView.new(0, true, null, note.map_id, note.coordinate, 0, 0, 0, note.preview_map))
+	var selected := note != null
+	var map_available := selected and note.preview_map != null
+	facts.visible = selected
+	empty.visible = not map_available
+	presenter.visible = map_available
+	preview_region.size_flags_vertical = Control.SIZE_EXPAND_FILL if map_available else Control.SIZE_SHRINK_BEGIN
+	if selected:
+		_bind_label(facts.get_node("Location") as Label, "%s  •  %s  •  %d,%d" % [note.map_name, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y], CYAN, 14)
+		_bind_label(facts.get_node("Darkness") as Label, "Saved darkness mask %d of 6" % clampi(note.darkness_value, 0, 6) if note.darkness_value > 0 else "No saved darkness mask", MUTED, 12)
+	if not map_available:
+		var message := empty.get_node("Text") as Label
+		message.text = "No selected place\nChoose a saved note to recenter its detached map view." if not selected else "No saved map preview for this place."
+		if not selected:
+			return
+	else:
+		presenter.set_classic_exploration_visibility(false)
+		presenter.set_media_catalog(media)
+		presenter.present(GameView.new(0, true, null, note.map_id, note.coordinate, 0, 0, 0, note.preview_map))
 
 
 static func _location_note(view: GameView, note_id: String) -> LocationNoteView:
@@ -153,7 +163,7 @@ func _bind_location_note_editor(workspace: MapsNotesWorkspace, view: GameView) -
 	unavailable.visible = current == null
 	if current == null:
 		return
-	_bind_label(editor_area.get_node("CurrentLocation") as Label, "%s  •  %d,%d" % [current.map_name, current.coordinate.x, current.coordinate.y], CYAN, 15)
+	_bind_label(editor_area.get_node("CurrentLocation") as Label, "Current location note  •  %s  •  %d,%d" % [current.map_name, current.coordinate.x, current.coordinate.y], GOLD, 17)
 	var editor := editor_area.get_node("CurrentLocationNoteText") as TextEdit
 	var count_label := editor_area.get_node("LocationNoteByteCount") as Label
 	var save := editor_area.get_node("Actions/SaveLocationNote") as Button
@@ -289,9 +299,9 @@ func _bind_journal(workspace: MapsNotesWorkspace, view: GameView) -> void:
 		_style_journal_button(open, selected)
 		open.pressed.connect(_select_journal_entry.bind(workspace, view, entry.message_id))
 		var preview_text := entry.text.strip_edges()
-		if preview_text.length() > 140:
-			preview_text = preview_text.left(137).strip_edges() + "…"
-		_bind_label(panel.get_node("Content/Preview") as Label, preview_text, BOOK_MUTED_INK, 13)
+		if preview_text.length() > 78:
+			preview_text = preview_text.left(75).strip_edges() + "…"
+		_bind_label(panel.get_node("Content/Preview") as Label, preview_text, JOURNAL_MUTED, 13)
 		rows.add_child(panel)
 	search.text_changed.connect(_filter_journal_rows.bind(rows))
 	_filter_journal_rows(_journal_query, rows)
@@ -325,8 +335,8 @@ func _bind_journal_detail(workspace: MapsNotesWorkspace, view: GameView) -> void
 		if entry.message_id == _selected_journal_message_id:
 			record.visible = true
 			empty.visible = false
-			_bind_label(record.get_node("Title") as Label, "Journal entry %d" % entry.message_id, BOOK_RED, 20)
-			_bind_label(record.get_node("JournalEntryText") as Label, entry.text, BOOK_INK, 17)
+			_bind_label(record.get_node("Title") as Label, "Journal entry %d" % entry.message_id, GOLD, 20)
+			_bind_label(record.get_node("JournalEntryText") as Label, entry.text, JOURNAL_TEXT, 17)
 			return
 	record.visible = false
 	empty.visible = true
@@ -335,16 +345,16 @@ func _bind_journal_detail(workspace: MapsNotesWorkspace, view: GameView) -> void
 
 
 func _style_journal_row(panel: PanelContainer, selected: bool) -> void:
-	panel.add_theme_stylebox_override("panel", _flat_style(BOOK_PAPER_SELECTED if selected else Color("d8c38e"), BOOK_RED if selected else Color("9a8358"), 2 if selected else 1))
+	panel.add_theme_stylebox_override("panel", _flat_style(JOURNAL_ROW_SELECTED if selected else JOURNAL_ROW, GOLD if selected else Color("617071"), 2 if selected else 1))
 
 
 func _style_journal_button(button: Button, selected: bool) -> void:
-	button.add_theme_color_override("font_color", BOOK_RED if selected else BOOK_INK)
-	button.add_theme_color_override("font_hover_color", BOOK_RED)
-	button.add_theme_color_override("font_pressed_color", BOOK_RED)
+	button.add_theme_color_override("font_color", GOLD if selected else JOURNAL_TEXT)
+	button.add_theme_color_override("font_hover_color", GOLD)
+	button.add_theme_color_override("font_pressed_color", GOLD)
 	button.add_theme_stylebox_override("normal", _flat_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
-	button.add_theme_stylebox_override("hover", _flat_style(Color("e0ca96"), Color("9a8358"), 1))
-	button.add_theme_stylebox_override("pressed", _flat_style(BOOK_PAPER_SELECTED, BOOK_RED, 1))
+	button.add_theme_stylebox_override("hover", _flat_style(Color("344143"), Color("7d918f"), 1))
+	button.add_theme_stylebox_override("pressed", _flat_style(JOURNAL_ROW_SELECTED, GOLD, 1))
 
 
 static func _flat_style(background: Color, border: Color, border_width: int) -> StyleBoxFlat:

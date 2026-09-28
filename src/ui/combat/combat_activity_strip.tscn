@@ -1,0 +1,108 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/combat/combat_activity_strip.gd" id="1_script"]
+
+[node name="CombatActivityStrip" type="HBoxContainer"]
+visible = false
+z_index = 90
+z_as_relative = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 6
+script = ExtResource("1_script")
+
+[node name="ActorPreview" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.75
+theme_type_variation = &"BattleSummaryInset"
+
+[node name="Content" type="VBoxContainer" parent="ActorPreview"]
+layout_mode = 2
+
+[node name="ActorIcon" type="TextureRect" parent="ActorPreview/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="ActorName" type="Label" parent="ActorPreview/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.973, 0.863, 0.322, 1)
+text_overrun_behavior = 3
+
+[node name="ActorVitals" type="Label" parent="ActorPreview/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="LogPanel" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.5
+theme_type_variation = &"BattleSummaryInset"
+
+[node name="Content" type="VBoxContainer" parent="LogPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="CombatLog" type="RichTextLabel" parent="LogPanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+scroll_following = true
+selection_enabled = true
+theme_override_font_sizes/normal_font_size = 14
+
+[node name="CombatPlaybackStatus" type="Label" parent="LogPanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
+theme_override_font_sizes/font_size = 11
+text_overrun_behavior = 3
+
+[node name="TargetPreview" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.75
+theme_type_variation = &"BattleSummaryInset"
+
+[node name="Content" type="VBoxContainer" parent="TargetPreview"]
+layout_mode = 2
+
+[node name="PreviewTargetIcon" type="TextureRect" parent="TargetPreview/Content"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PreviewTargetName" type="Label" parent="TargetPreview/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.973, 0.863, 0.322, 1)
+text_overrun_behavior = 3
+
+[node name="PreviewTargetVitals" type="Label" parent="TargetPreview/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3

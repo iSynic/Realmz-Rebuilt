@@ -6,9 +6,18 @@
 
 [node name="JournalScreen" instance=ExtResource("1_base")]
 route_id = &"journal"
-title = "Maps / Notes"
-description = "Acquired maps, scenario notes, and player-facing history."
+title = "Maps & Notes"
+description = ""
 script = ExtResource("2_screen")
+
+[node name="JournalCount" type="Label" parent="WorkspaceColumn/WorkspaceHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+theme_override_font_sizes/font_size = 13
+text = "0 places · 0 maps · 0 journal entries"
+horizontal_alignment = 2
+vertical_alignment = 1
 
 [node name="MapsNotesWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
 layout_mode = 2
@@ -19,3 +28,9 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[node name="JournalFooter" type="HBoxContainer" parent="WorkspaceColumn"]
+layout_mode = 2
+
+[node name="BackHost" type="HBoxContainer" parent="WorkspaceColumn/JournalFooter"]
+layout_mode = 2

@@ -1,8 +1,9 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=16 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/party_roster_member_row.gd" id="1_script"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-raised-frame.png" id="2_raised"]
 [ext_resource type="Script" path="res://src/ui/shell/party_roster_character_button.gd" id="3_button"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/roster_condition_badge.tscn" id="4_badge"]
 
 
 [sub_resource type="StyleBoxTexture" id="RowFrame"]
@@ -96,6 +97,7 @@ custom_minimum_size = Vector2(0, 76)
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("RowFrame")
 script = ExtResource("1_script")
+condition_badge_scene = ExtResource("4_badge")
 
 [node name="Character" type="Button" parent="."]
 script = ExtResource("3_button")
@@ -197,14 +199,25 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_styles/panel = SubResource("FieldRule")
 
-[node name="CharacterRole" type="Label" parent="Character/Details/Record/CharacterRoleCell"]
+[node name="CharacterRoleLine" type="HBoxContainer" parent="Character/Details/Record/CharacterRoleCell"]
 layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="CharacterRole" type="Label" parent="Character/Details/Record/CharacterRoleCell/CharacterRoleLine"]
+layout_mode = 2
+size_flags_horizontal = 3
 mouse_filter = 2
 theme_type_variation = &"ClassicRosterText"
 theme_override_colors/font_color = Color(0.72, 0.82, 0.88, 1)
 theme_override_font_sizes/font_size = 14
 text = "Race / Caste"
 autowrap_mode = 2
+
+[node name="ConditionIcons" type="HBoxContainer" parent="Character/Details/Record/CharacterRoleCell/CharacterRoleLine"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
 
 [node name="Vitals" type="GridContainer" parent="Character/Details/Record"]
 layout_mode = 2

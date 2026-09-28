@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/characters/age_update_interaction.gd" id="1_interaction"]
 
 [node name="AgeUpdateInteraction" type="VBoxContainer"]
+size_flags_vertical = 3
 theme_override_constants/separation = 8
 script = ExtResource("1_interaction")
 
@@ -57,11 +58,19 @@ stretch_mode = 5
 [node name="AgeChangePanel" type="PanelContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_type_variation = &"ClassicTextWell"
 
-[node name="AgeChangeGrid" type="VBoxContainer" parent="AgeChangePanel"]
+[node name="AgeChangesScroll" type="ScrollContainer" parent="AgeChangePanel"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="AgeChangeGrid" type="VBoxContainer" parent="AgeChangePanel/AgeChangesScroll"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="NoChanges" type="Label" parent="."]

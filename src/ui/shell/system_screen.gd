@@ -5,6 +5,11 @@ extends ScreenFrame
 const BODY_PATH := "WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"
 
 
+func set_mode_title(save_mode: bool) -> void:
+	(get_node("WorkspaceColumn/WorkspaceHeader/ScreenTitle") as Label).text = "Save & Load" if save_mode else "Preferences"
+	(get_node("WorkspaceColumn/WorkspaceHeader/ScreenDescription") as Label).text = "Ten scenario slots. Quick Save overwrites the active slot." if save_mode else "Display, audio, accessibility, controls, and diagnostics."
+
+
 func workspace() -> SystemWorkspace:
 	return get_node(BODY_PATH + "/SystemWorkspace") as SystemWorkspace
 

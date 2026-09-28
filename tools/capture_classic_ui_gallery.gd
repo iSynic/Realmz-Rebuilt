@@ -49,7 +49,7 @@ func _capture_gallery() -> void:
 	inspection_state.caste_id = setup_view.caste_options[0].id
 	inspection_state.portrait_id = setup_view.portrait_options[0].id if not setup_view.portrait_options.is_empty() else ""
 	inspection_state.combat_icon_id = setup_view.combat_icon_options[0].id if not setup_view.combat_icon_options.is_empty() else ""
-	setup_view.party_members = [CharacterView.new(inspection_state)]
+	setup_view.party_members = [CharacterView.new(inspection_state, _application.get("_active_content") as RealmzContent)]
 	_shell.present(setup_view)
 	var setup_inspect := _button_named(setup.party_list, "View")
 	if setup_inspect != null:
@@ -64,28 +64,28 @@ func _capture_gallery() -> void:
 	setup.selected_race_id = setup_view.race_options[0].id
 	setup.selected_caste_id = setup_view.caste_options[0].id
 	setup.creator_step = 1
-	setup.character_creation.render_creator_step()
+	setup.character_creation.render_creator_step(); await _settle()
 	await _capture_canonical_compact("canonical-character-creator-race-class-1280x720", "compact-character-creator-race-class-800x600")
 	setup.creator_step = 2
-	setup.character_creation.render_creator_step()
-	await _settle()
+	setup.character_creation.render_creator_step(); await _settle()
 	await _capture_canonical_compact("canonical-character-creator-appearance-1280x720", "compact-character-creator-appearance-800x600")
 	var review_state := CharacterState.new("gallery.creator", "Ari", 18, 18)
 	review_state.race_id = setup_view.race_options[0].id
 	review_state.caste_id = setup_view.caste_options[0].id
 	review_state.portrait_id = setup_view.portrait_options[0].id if not setup_view.portrait_options.is_empty() else ""
 	review_state.combat_icon_id = setup_view.combat_icon_options[0].id if not setup_view.combat_icon_options.is_empty() else ""
-	setup_view.character_draft = CharacterView.new(review_state)
+	setup_view.character_draft = CharacterView.new(review_state, _application.get("_active_content") as RealmzContent)
 	setup.creator_step = 3
-	setup.character_creation.render_creator_step()
+	setup.character_creation.render_creator_step(); await _settle()
 	await _capture_canonical_compact("canonical-character-creator-review-1280x720", "compact-character-creator-review-800x600")
 	review_state.spellcaster_type = 1
-	setup_view.character_draft = CharacterView.new(review_state)
+	setup_view.character_draft = CharacterView.new(review_state, _application.get("_active_content") as RealmzContent)
 	setup_view.character_draft_spell_points_total = 4
 	setup_view.character_draft_spell_points_remaining = 3
 	setup_view.character_draft_spell_options = [CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1101", 1101, "Discover Magic", "Reveals magical influences affecting the caster."), 1, true), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1107", 1107, "Magic Darts", "A compact bolt of magical force."), 1, false), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1201", 1201, "Flame Hands", "Calls a brief fan of flame."), 2, false)]
 	setup.creator_step = 4
 	setup.character_creation.render_creator_step()
+	await _settle()
 	await _capture_canonical_compact("canonical-character-creator-spells-1280x720", "compact-character-creator-spells-800x600")
 	setup.character_creation.reset_creator(true)
 	await _settle()
@@ -184,7 +184,7 @@ func _capture_gallery() -> void:
 	var scroll_tab := _button_named(_router, "Scrolls")
 	if scroll_tab != null:
 		scroll_tab.pressed.emit(); await _settle(); await _capture("wide-scroll-case-1280x720")
-	var known_tab := _button_named(_router, "Known")
+	var known_tab := _button_named(_router, "Known Spells")
 	if known_tab != null:
 		known_tab.pressed.emit(); await _settle()
 	await _resize(Vector2i(800, 600))
@@ -202,16 +202,16 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture_canonical_compact("wide-journal-1280x720", "classic-journal-800x600")
 	var maps_notes_tabs := _router.find_child("MapsNotesTabs", true, false) as TabContainer
-	maps_notes_tabs.current_tab = 1; await _settle(); await _capture("canonical-player-maps-1280x720"); await _resize(Vector2i(800, 600))
+	(maps_notes_tabs.get_parent() as MapsNotesWorkspace).select_section(1); await _settle(); await _capture("canonical-player-maps-1280x720"); await _resize(Vector2i(800, 600))
 	maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
-	maps_notes_tabs.current_tab = 1; await _settle(); await _capture("classic-player-maps-800x600"); await _resize(Vector2i(1280, 720))
+	(maps_notes_tabs.get_parent() as MapsNotesWorkspace).select_section(1); await _settle(); await _capture("classic-player-maps-800x600"); await _resize(Vector2i(1280, 720))
 	maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
-	maps_notes_tabs.current_tab = 2; await _settle(); await _capture("canonical-authored-journal-1280x720"); await _resize(Vector2i(800, 600))
+	(maps_notes_tabs.get_parent() as MapsNotesWorkspace).select_section(0); await _settle(); await _capture_canonical_compact("canonical-player-places-1280x720", "classic-player-places-800x600"); maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
+	(maps_notes_tabs.get_parent() as MapsNotesWorkspace).select_section(2); ((_router.find_child("JournalEntryRows", true, false).get_child(1)).get_node("Content/Open") as Button).pressed.emit(); await _settle(); await _capture("canonical-authored-journal-1280x720"); await _resize(Vector2i(800, 600))
 	maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
-	maps_notes_tabs.current_tab = 2; await _settle(); await _capture("classic-authored-journal-800x600"); await _resize(Vector2i(1280, 720))
+	(maps_notes_tabs.get_parent() as MapsNotesWorkspace).select_section(2); await _settle(); await _capture("classic-authored-journal-800x600"); await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"exploration"); await _settle()
-	_interaction.present(InteractionRequest.from_payload("gallery-classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"}), "Will you enter the ruined keep?")
-	await _settle()
+	var gallery_choice := InteractionRequest.from_payload("gallery-classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"}); _shell.status.append_narrative("Will you enter the ruined keep?"); _shell.status._latest_classic_text = "Will you enter the ruined keep?"; _shell.status.present_choice_context(gallery_choice); _interaction.present(gallery_choice, _shell.status.latest_classic_text()); await _settle()
 	await _capture_canonical_compact("wide-classic-choice-context-1280x720", "classic-choice-context-800x600")
 	var encounter_request := ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION); var encounter_body := encounter_request.body as ComplexEncounterRequestBody; var gallery_encounter_item: ItemView = gallery_view.party_members[0].items[0]; encounter_body.items[0].character_id = gallery_view.party_members[0].id; encounter_body.items[0].instance_id = gallery_encounter_item.instance_id; encounter_body.items[0].classic_id = gallery_encounter_item.classic_id; encounter_body.items[0].name = gallery_encounter_item.name; encounter_body.items[0].icon_resource_type = gallery_encounter_item.icon_resource_type; encounter_body.items[0].icon_id = gallery_encounter_item.icon_id; encounter_body.items[0].charges = gallery_encounter_item.charges; encounter_body.items[0].equipped = gallery_encounter_item.equipped; _interaction.present(encounter_request, "", gallery_view, gallery_media)
 	await _settle()
@@ -314,24 +314,21 @@ func _capture_gallery() -> void:
 		await _settle()
 		await _capture_canonical_compact("canonical-allies-populated-1280x720", "classic-allies-populated-800x600")
 	if not gallery_view.party_members.is_empty():
-		var vault_revision := CharacterVaultRevisionView.new()
-		vault_revision.character_id = gallery_view.party_members[0].id
-		vault_revision.revision_hash = "a".repeat(64)
-		vault_revision.name = gallery_view.party_members[0].name
-		vault_revision.level = gallery_view.party_members[0].level
-		vault_revision.race_id = gallery_view.party_members[0].race_id
-		vault_revision.caste_id = gallery_view.party_members[0].caste_id
-		vault_revision.portrait_id = gallery_view.party_members[0].portrait_id
-		vault_revision.is_current = true
-		vault_revision.eligible = true
-		vault_revision.character = gallery_view.party_members[0]
-		_router.set_vault_revisions([vault_revision])
+		var vault_revisions: Array[CharacterVaultRevisionView] = []
+		for index: int in mini(6, gallery_view.party_members.size()):
+			var character: CharacterView = gallery_view.party_members[index]
+			var vault_revision := CharacterVaultRevisionView.new()
+			vault_revision.character_id = character.id; vault_revision.revision_hash = String.chr(97 + index).repeat(64)
+			vault_revision.name = character.name; vault_revision.level = character.level; vault_revision.race_id = character.race_id; vault_revision.caste_id = character.caste_id; vault_revision.portrait_id = character.portrait_id; vault_revision.is_current = true; vault_revision.eligible = true; vault_revision.character = character
+			vault_revisions.append(vault_revision)
+		_router.set_vault_revisions(vault_revisions)
 		_router.open_screen(&"vault")
 		await _settle()
 		await _capture("canonical-character-files-1280x720")
 		var vault_inspect := _button_named(_router, "Inspect")
 		if vault_inspect != null:
 			vault_inspect.pressed.emit(); await _settle(); await _capture_canonical_compact("canonical-character-file-inspection-1280x720", "classic-character-file-inspection-800x600")
+		var vault_back := _button_named(_router, "Back to character vault"); if vault_back != null: vault_back.pressed.emit(); await _settle()
 	await _resize(Vector2i(800, 600)); await _capture("classic-character-files-800x600")
 	_router.open_screen(&"exploration")
 	await _settle()
@@ -406,7 +403,7 @@ func _capture_gallery() -> void:
 	var battle_entry := CombatPlaybackFrame.new(&"battle_cue", 0.28); battle_entry.display_text = "Battle begins"
 	_application._battlefield_presenter.present_playback_frame(battle_entry); _interaction.present_combat_playback_mask(battle_entry); await _settle(); await _capture("canonical-combat-entry-1280x720")
 	var automatic_move := CombatPlaybackFrame.new(&"move_start", 0.02); automatic_move.actor_id = gallery_hero_id; automatic_move.from_coordinate = Vector2i(45, 45); automatic_move.to_coordinate = Vector2i(46, 45); automatic_move.automatic = true
-	_application._battlefield_presenter.present_playback_frame(automatic_move); _interaction.update_combat_playback_frame(automatic_move); await _settle(); await _capture("canonical-combat-auto-playback-1280x720")
+	_application._battlefield_presenter.present_playback_frame(automatic_move); _interaction.update_combat_playback_frame(automatic_move); var actor_cue := CombatPlaybackFrame.new(&"actor_cue", 0.2); actor_cue.actor_id = gallery_hero_id; actor_cue.display_text = "Now acting"; actor_cue.automatic = true; _interaction.update_combat_playback_frame(actor_cue); var attack_cue := CombatPlaybackFrame.new(&"melee_attack", 0.2); attack_cue.actor_id = gallery_hero_id; attack_cue.target_id = gallery_monster_id; attack_cue.automatic = true; _interaction.update_combat_playback_frame(attack_cue); var result_cue := CombatPlaybackFrame.new(&"result", 0.2); result_cue.actor_id = gallery_hero_id; result_cue.target_id = gallery_monster_id; result_cue.display_text = "4 damage"; result_cue.automatic = true; _interaction.update_combat_playback_frame(result_cue); await _settle(); await _capture("canonical-combat-auto-playback-1280x720"); await _resize(Vector2i(800, 600)); _application._battlefield_presenter.visible = true; await _settle(); await _capture("classic-combat-auto-playback-800x600"); await _resize(Vector2i(1280, 720)); _application._battlefield_presenter.visible = true; await _settle(); _interaction.queue_classic_flash_messages([{"text": "New Combat Round.", "soundId": 139, "autoCloseSeconds": 2.0}]); await _settle(); await _capture("canonical-combat-new-round-1280x720"); await create_timer(2.1).timeout
 	var victory_cue := CombatPlaybackFrame.new(&"battle_cue", 0.28); victory_cue.display_text = "Victory"
 	_application._battlefield_presenter.present_playback_frame(victory_cue); _interaction.update_combat_playback_frame(victory_cue); await _settle(); await _capture("canonical-combat-terminal-cue-1280x720")
 	_application._battlefield_presenter.clear_playback_frame()
@@ -421,14 +418,14 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture_canonical_compact("canonical-save-modal-1280x720", "compact-save-modal-800x600")
 	var corrupt_row := _router.find_child("SavePreview_broken_primary", true, false) as Button
-	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720"); _router.open_screen(&"system")
+	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720"); _router.content_presenter.set_save_previews([current_save, backup_save], "C", "C"); _router.open_screen(&"system")
 	var system_tabs := _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
 	for index: int in range(1, 6):
-		system_tabs.current_tab = index; await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "accessibility", "controls", "diagnostics"][index - 1])
+		(system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_category(SystemPreferencesLayout.PREFERENCE_SECTIONS[index - 1]); await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "accessibility", "controls", "diagnostics"][index - 1])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("canonical-music-playlist-1280x720"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
 	await _resize(Vector2i(800, 600)); _router.open_screen(&"system"); await _settle(); system_tabs = _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
 	for index: int in range(0, 6):
-		system_tabs.current_tab = index; await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "accessibility", "controls", "diagnostics"][index])
+		(system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_saves() if index == 0 else (system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_category(SystemPreferencesLayout.PREFERENCE_SECTIONS[index - 1]); await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "accessibility", "controls", "diagnostics"][index])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("classic-music-playlist-800x600"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
 	var settings := PresentationSettings.new()
 	settings.text_scale = 1.5
@@ -521,7 +518,7 @@ func _combat_view(game_view: Variant) -> CombatView:
 	var monster := MonsterState.new("gallery.goblin", "classic.monster.1", "Goblin Raider", 8, 10)
 	monster.icon_id = 9001
 	battlefield.actors.place_monster(monster.id, Vector2i(47, 45), 0)
-	var combat := CombatState.new("classic.battle.gallery", [monster], 0, battlefield)
+	var combat := CombatState.new("classic.battle.1", [monster], 0, battlefield)
 	combat.set_turn_order([hero.id, monster.id]); combat.spell_runtime.queue_persistent_field("classic.spell.1309", hero.id, Vector2i(49, 45), 0, 10, 15, 1, 3, 2)
 	var result := CombatView.new(combat, [hero], _application.get("_active_content"))
 	result.attack_units_remaining = 2

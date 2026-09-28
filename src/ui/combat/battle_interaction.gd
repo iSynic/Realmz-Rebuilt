@@ -11,6 +11,7 @@ signal combat_inventory_targeting_started
 signal weapon_aim_requested(mode: StringName, preparation: StringName)
 signal weapon_ability_prepared(instance_id: String)
 signal inspection_requested(combatant: InteractionRequestValue.Combatant, pinned: bool)
+signal bandage_selection_changed(target_ids: Array[String])
 
 const MAX_VISIBLE_TURNS := 6
 const COMMAND_HEIGHT := 30.0
@@ -20,6 +21,7 @@ const VIEW_COMMAND_COLOR := Color("63d8e7")
 const TURN_COMMAND_COLOR := Color("8fe080")
 const InitiativePanelBuilder := preload("res://src/ui/combat/battle_initiative_panel_builder.gd")
 const ControllerCommandCatalog := preload("res://src/ui/combat/battle_controller_command_catalog.gd")
+const CombatantFacts := preload("res://src/ui/combat/battle_combatant_facts.gd")
 
 @export var initiative_entry_scene: PackedScene
 
@@ -59,6 +61,13 @@ func configure(combatant_icons: Dictionary, command_scale: float = 1.0, compact:
 
 func set_command_layout(command_scale: float, compact: bool) -> void:
 	_compact = compact
+	for panel_name: String in ["ActiveCombatant", "InspectedCombatant"]:
+		var summary_panel := find_child(panel_name, true, false) as Control
+		if summary_panel != null:
+			summary_panel.custom_minimum_size.x = 220.0 if compact else 290.0
+	var actor_label := find_child("ActiveCombatantLabel", true, false) as Label
+	if actor_label != null:
+		actor_label.add_theme_font_size_override("font_size", 9 if compact else 11)
 	var initiative := find_child("BattleInitiative", true, false)
 	if initiative != null:
 		(initiative.get_node("%Heading") as Label).visible = not compact
@@ -79,7 +88,6 @@ func build(request: InteractionRequest) -> void:
 	_targeting_parent = null
 	_combatants.assign(body.combatants.filter(func(value: InteractionRequestValue.Combatant) -> bool: return not value.id.is_empty()))
 	var action_ids: Array[String] = body.actions
-	var targets := body.targets
 	var target_panel := %BattleTargetPanel as VBoxContainer
 	var spell_panel := %BattleSpellPanel as VBoxContainer
 	_spell_panel = spell_panel
@@ -92,7 +100,7 @@ func build(request: InteractionRequest) -> void:
 	_fast_spells = body.fast_spells
 	var overview := %BattleOverview as VBoxContainer
 	_overview = overview
-	_build_combatant_information(body, targets)
+	_build_combatant_information(body)
 	_build_command_shelf(body, _actor_id, action_ids, spell_panel, scroll_panel, bandage_panel, _mode_panels, overview)
 	for panel: Control in _mode_panels:
 		panel.visible = false
@@ -213,6 +221,13 @@ func open_item_from_inventory(instance_id: String, open_scrolls: bool = false, f
 	return false
 
 
+func handle_back() -> bool:
+	if _spell_panel != null and _spell_panel.visible:
+		close_spellbook()
+		return true
+	return false
+
+
 func close_spellbook() -> void:
 	_cancel_active_targeting()
 	for panel: Control in _mode_panels:
@@ -220,6 +235,9 @@ func close_spellbook() -> void:
 	if _overview != null:
 		_overview.visible = true
 	combat_spellbook_closed.emit()
+	var button := %BattlePrimarySecondary.get_node("CombatCommandSpells") as Button
+	if button.is_visible_in_tree() and not button.disabled:
+		button.grab_focus()
 
 
 func _contains_spell_option(option: InteractionRequestValue.CastOption) -> bool:
@@ -295,6 +313,7 @@ func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.C
 		for combatant: InteractionRequestValue.Combatant in _combatants:
 			if not combatant.id.is_empty(): candidate_ids.append(combatant.id)
 	var result := CombatTargetingRequest.new(mode, response_body)
+	result.classic_backdrops = true
 	result.candidate_ids = candidate_ids
 	result.maximum_targets = selected.maximum_targets
 	result.area_offsets = selected.area_offsets.duplicate()
@@ -358,24 +377,23 @@ func open_combatant_inspection(combatant_id: String, pinned: bool = true) -> boo
 	return false
 
 
-func _build_combatant_information(body: CombatRequestBody, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
+func _build_combatant_information(body: CombatRequestBody) -> void:
 	var active_icon := %ActiveCombatantIcon as TextureRect
 	active_icon.texture = _combatant_icons.get(_actor_id) as Texture2D
 	active_icon.visible = active_icon.texture != null
 	var active_label := %ActiveCombatantLabel as Label
-	active_label.text = "Active • %s\n%d AT • %d MP • %s • %d enemies" % [_combatant_name(_actor_id), body.attack_units_remaining, body.movement_remaining, String(body.weapon_mode).capitalize(), body.enemies_remaining]
-	active_label.tooltip_text = "%s\n%d attack%s • %d movement • %s\nEnemies left • %d" % [_combatant_name(_actor_id), body.attack_units_remaining, "" if body.attack_units_remaining == 1 else "s", body.movement_remaining, String(body.weapon_mode).capitalize(), body.enemies_remaining]
+	var actor: InteractionRequestValue.Combatant = CombatantFacts.find_combatant(_combatants, _actor_id)
+	active_label.text = CombatantFacts.active_summary(actor, body, actor.name if actor != null else _actor_id)
+	active_label.tooltip_text = active_label.text
 	var initiative_host := %BattleInitiativeHost as MarginContainer
 	for child: Node in initiative_host.get_children():
 		child.queue_free()
 	initiative_host.add_child(_build_initiative_panel(body.round_number))
 	_inspected_icon = %InspectedCombatantIcon as TextureRect
 	_inspected_label = %InspectedCombatantLabel as Label
-	var default_id := _actor_id
-	if not targets.is_empty(): default_id = targets[0].id
-	inspect_combatant(default_id)
-	if _inspected_index < 0 and not _combatants.is_empty():
-		_inspected_index = 0
+	# Legal candidates are not selected targets. Keep the actor selected until
+	# the player inspects another combatant or playback supplies a real result cue.
+	inspect_combatant(_actor_id)
 	_refresh_inspected_label()
 func _bind_presentation_button(button: Button, text: String, action: StringName) -> void:
 	button.name = "CombatPresentation%s" % String(action).to_pascal_case()
@@ -429,14 +447,14 @@ func _refresh_inspected_label() -> void:
 	if not combatant.immunities.is_empty(): defenses.append("Immune: %s" % ", ".join(combatant.immunities))
 	if not combatant.vulnerabilities.is_empty(): defenses.append("Vulnerable: %s" % ", ".join(combatant.vulnerabilities))
 	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
-	_inspected_label.text = "Shown • %s\n%s • %s" % [combatant.name, " • ".join(details), " • ".join(secondary)]
+	var visible_facts: Array[String] = ["HP %d/%d" % [combatant.current_health, combatant.maximum_health], "AR %d" % combatant.armor]
+	if combatant.maximum_spell_points > 0: visible_facts.append("SP %d/%d" % [combatant.spell_points, combatant.maximum_spell_points])
+	var visible_action: Array[String] = []
+	if not combatant.weapon.is_empty(): visible_action.append(combatant.weapon)
+	visible_action.append("%s attacks" % combatant.attacks)
+	visible_action.append("Move %d" % combatant.maximum_movement)
+	_inspected_label.text = "Shown • %s\n%s\n%s" % [combatant.name, " • ".join(visible_facts), " • ".join(visible_action)]
 	_inspected_label.tooltip_text = "Shown • %s\n%s\n%s%s" % [combatant.name, " • ".join(details), " • ".join(secondary), defense_line]
-
-
-func _combatant_name(combatant_id: String) -> String:
-	for combatant: InteractionRequestValue.Combatant in _combatants:
-		if combatant.id == combatant_id: return combatant.name
-	return combatant_id
 
 
 func accepts_spatial_input() -> bool:
@@ -444,6 +462,23 @@ func accepts_spatial_input() -> bool:
 		if panel.visible:
 			return false
 	return true
+
+
+func playback_combatant_facts() -> Dictionary:
+	var facts: Dictionary = {}
+	for combatant: InteractionRequestValue.Combatant in _combatants:
+		facts[combatant.id] = {
+			"name": combatant.name,
+			"maximumHealth": combatant.maximum_health,
+			"currentHealth": combatant.current_health,
+			"armor": combatant.armor,
+			"weapon": combatant.weapon,
+			"weaponCharges": combatant.weapon_charges if combatant.has_weapon_charges else -1,
+			"attacks": combatant.attacks,
+			"conditions": combatant.conditions.duplicate(),
+			"icon": _combatant_icons.get(combatant.id) as Texture2D,
+		}
+	return facts
 
 
 func controller_actions() -> Array[ControllerRadialEntry]:
@@ -553,9 +588,16 @@ func _add_classic_turn_commands(first_row: Container, second_row: Container, bod
 	var bandage_reason := body.bandage.reason
 	if body.bandage_targets.is_empty() and body.bandage.enabled:
 		bandage_reason = "No legal Bandage recipient is available."
-	_add_bandage_panel(actor_id, body.bandage_targets)
+	var recipient_panel := %BattleBandagePanel as BattleBandagePanel
+	recipient_panel.configure(actor_id, body.bandage_targets)
+	if not recipient_panel.bandage_requested.is_connected(_on_bandage_requested):
+		recipient_panel.bandage_requested.connect(_on_bandage_requested)
 	var bandage_button := first_row.get_node("Bandage") as Button
 	_bind_panel_toggle(bandage_button, "Bandage", bandage_panel, mode_panels, overview, bandage_enabled, bandage_reason)
+	bandage_button.pressed.connect(func() -> void:
+		var targets: Array[String] = (bandage_panel as BattleBandagePanel).eligible_ids() if bandage_panel.visible else []
+		bandage_selection_changed.emit(targets)
+	)
 	_name_command(bandage_button, "Bandage")
 	_color_command(bandage_button, VIEW_COMMAND_COLOR)
 	var turn_undead := second_row.get_node("TurnUndead") as Button
@@ -591,7 +633,7 @@ func _name_command(button: Button, command_name: String) -> void:
 		_controller_command_buttons.append(button)
 	button.theme_type_variation = &"BattleCommandButton"
 	_command_scaling.register_button(button, Vector2(0.0, COMMAND_HEIGHT))
-	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 
 func _color_command(button: Button, color: Color) -> void:
@@ -599,21 +641,8 @@ func _color_command(button: Button, color: Color) -> void:
 	button.add_theme_color_override("font_hover_color", color.lightened(0.22))
 
 
-func _add_bandage_panel(actor_id: String, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
-	var picker := %BandageRecipient as OptionButton
-	for target: InteractionRequestValue.CombatTarget in targets:
-		if not target.id.is_empty():
-			picker.add_item("%s • %d HP" % [target.name, target.current_health])
-			picker.set_item_metadata(picker.item_count - 1, target.id)
-	picker.disabled = picker.item_count == 0
-	var submit := %Bandage as Button
-	submit.disabled = picker.item_count == 0
-	submit.pressed.connect(func() -> void:
-		var target_id := String(picker.get_selected_metadata())
-		if target_id.is_empty():
-			return
-		response_body_submitted.emit(InteractionResponse.CombatBody.new(&"bandage", actor_id, target_id))
-	)
+func _on_bandage_requested(actor_id: String, target_id: String) -> void:
+	response_body_submitted.emit(InteractionResponse.CombatBody.new(&"bandage", actor_id, target_id))
 
 
 func _bind_panel_toggle(button: Button, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String, presentation_sound_id: int = 0) -> void:
@@ -622,6 +651,9 @@ func _bind_panel_toggle(button: Button, label: String, panel: Control, panels: A
 	button.tooltip_text = reason if not enabled else ""
 	button.pressed.connect(func() -> void:
 		var should_show := not panel.visible
+		if should_show and panel != %BattleBandagePanel and (%BattleBandagePanel as Control).visible:
+			var no_bandage_targets: Array[String] = []
+			bandage_selection_changed.emit(no_bandage_targets)
 		for candidate: Control in panels:
 			candidate.visible = should_show and candidate == panel
 		overview.visible = not should_show
@@ -650,4 +682,7 @@ func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Co
 		overview.visible = true
 		if panel == _spell_panel:
 			combat_spellbook_closed.emit()
+		if panel == %BattleBandagePanel:
+			var no_bandage_targets: Array[String] = []
+			bandage_selection_changed.emit(no_bandage_targets)
 	)

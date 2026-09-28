@@ -10,7 +10,7 @@ func _ready() -> void:
 	command_rail_content().set_item_actions(item_inspector_content().item_actions())
 
 
-func prepare_normal_layout(compact: bool) -> void:
+func prepare_normal_layout(compact: bool, encounter: bool = false) -> void:
 	clear_rendered_content()
 	var split := main_split()
 	split.visible = true
@@ -18,10 +18,11 @@ func prepare_normal_layout(compact: bool) -> void:
 	alternate_content().visible = false
 	split.vertical = false
 	split.custom_minimum_size.y = 282.0 if compact else 395.0
-	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.size_flags_vertical = Control.SIZE_FILL if encounter else Control.SIZE_EXPAND_FILL
 	item_browser_panel().custom_minimum_size = Vector2(390.0 if compact else 620.0, 282.0 if compact else 370.0)
 	command_rail_panel().custom_minimum_size = Vector2(285.0 if compact else 400.0, 282.0 if compact else 370.0)
-	item_inspector_panel().custom_minimum_size.y = 130.0 if compact else 180.0
+	item_inspector_panel().custom_minimum_size.y = 190.0 if compact and encounter else 130.0 if compact else 180.0
+	item_inspector_panel().size_flags_vertical = Control.SIZE_EXPAND_FILL if compact and encounter else Control.SIZE_FILL
 	command_rail_content().set_item_actions(item_inspector_content().item_actions())
 
 

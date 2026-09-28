@@ -28,6 +28,7 @@ var _inventory_screen_controller: InventoryScreenController
 var _inventory_screen_controller_content: VBoxContainer
 var _choice_done_button: ClassicBitmapButton
 var _command_buttons: Dictionary = {}
+var _spell_focus := WorkspaceFocusController.new()
 
 
 func configure(media: ClassicMediaCatalog, game_view: GameView = null, compact: bool = false) -> void:
@@ -96,6 +97,18 @@ func controller_actions() -> Array[ControllerRadialEntry]:
 			var icon := (button as ClassicBitmapButton).radial_art_texture() if button is ClassicBitmapButton else null
 			result.append(ControllerRadialEntry.new(entry[0], entry[1], not button.disabled, button.tooltip_text if button.disabled else "", icon))
 	return result
+
+
+func controller_spellbook_root() -> Control:
+	return _spell_screen_controller.controller_focus_root() if _catalog_kind == &"spell" and _spell_screen_controller != null else null
+
+
+func controller_cycle_spell_level(delta: int) -> bool:
+	return _spell_screen_controller.controller_cycle_section(delta) if controller_spellbook_root() != null else false
+
+
+func controller_focus_spell() -> bool:
+	return _spell_screen_controller.focus_selected_spell() if controller_spellbook_root() != null else false
 
 
 func activate_controller_action(action_id: StringName) -> bool:
@@ -168,10 +181,17 @@ func _submit_standard_encounter_item(character_id: String, instance_id: String, 
 
 func _show_standard_spell_catalog() -> void:
 	_catalog_kind = &"spell"
+	if _spell_screen_controller != null:
+		_spell_screen_controller.reset()
 	_render_standard_spell_catalog()
 
 
 func _render_standard_spell_catalog() -> void:
+	if _catalog_kind != &"spell":
+		return
+	var previous := controller_spellbook_root()
+	if previous != null:
+		_spell_focus.store(previous, previous, &"encounter_spell")
 	var workspace := spell_workspace_scene.instantiate() as VBoxContainer
 	var column := workspace.get_node("%EncounterSpellContent") as VBoxContainer
 	if _spell_screen_controller == null:
@@ -183,6 +203,17 @@ func _render_standard_spell_catalog() -> void:
 	var cancel := workspace.get_node("%EncounterCatalogCancel") as Button
 	cancel.pressed.connect(_cancel_catalog)
 	side_workspace_requested.emit(workspace)
+	_restore_spell_focus.call_deferred(previous == null)
+
+
+func _restore_spell_focus(opened: bool) -> void:
+	var workspace := controller_spellbook_root()
+	if workspace == null:
+		return
+	_spell_focus.prepare(workspace, &"encounter_spell")
+	_spell_focus.restore(workspace, workspace, null, &"encounter_spell", opened, 0, 0)
+	_spell_screen_controller.restore_controller_focus(opened)
+	SpellsWorkspace.link_controller_focus(workspace)
 
 
 func _submit_standard_encounter_spell(character_id: String, classic_spell_id: int) -> void:
@@ -253,7 +284,10 @@ func _show_word() -> void:
 
 
 func _cancel_catalog() -> void:
+	var command := _command_buttons.get(_catalog_kind) as BaseButton
 	_clear_context()
+	if command != null and command.is_visible_in_tree() and not command.disabled:
+		command.grab_focus()
 
 
 func _clear_context() -> void:

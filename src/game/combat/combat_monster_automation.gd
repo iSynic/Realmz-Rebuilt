@@ -337,6 +337,7 @@ func _append_monster_spell_resolution_events(state: GameState, content: RealmzCo
 		if resolution.allegiance_changed:
 			payload["traitorBefore"] = resolution.target_traitor_before
 			payload["traitorAfter"] = resolution.target_traitor_after
+		CombatSpellEventBuilder.append_helpless_state(payload, resolution)
 		if not resolution.transformed_definition_after.is_empty():
 			payload["transformedDefinitionBefore"] = resolution.transformed_definition_before
 			payload["transformedDefinitionAfter"] = resolution.transformed_definition_after
@@ -620,6 +621,7 @@ func _resolve_attack_against_character(state: GameState, content: RealmzContent,
 	_context.actions().events().append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
 	_context.actions().events().append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng)
 	var attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+	CombatActionEvents.append_helpless_condition_state(attack_event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(attack_event, resolution.hit, weapon != null)
 	events.append(attack_event)
 	_context.actions().mark_character_bleeding(state, target, resolution.killed)
@@ -643,6 +645,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 		_context.actions().events().append_monster_special_events(events, monster.id, target.id, &"monster", resolution)
 	_context.actions().events().append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng)
 	var monster_attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+	CombatActionEvents.append_helpless_condition_state(monster_attack_event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(monster_attack_event, resolution.hit, weapon != null)
 	events.append(monster_attack_event)
 	if resolution.killed:

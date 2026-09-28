@@ -9,6 +9,12 @@ func workspace() -> SpellsWorkspace:
 	return get_node(WORKSPACE_PATH) as SpellsWorkspace
 
 
+## The whole route is the controller boundary so fixed footer actions and Back
+## remain reachable from the same bounded focus graph as spell content.
+func controller_focus_root() -> Control:
+	return self
+
+
 func _input(event: InputEvent) -> void:
 	if not is_visible_in_tree() or not event is InputEventMouseButton:
 		return

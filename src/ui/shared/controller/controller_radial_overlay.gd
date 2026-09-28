@@ -46,12 +46,32 @@ const SLOT_KEYS: Array[int] = [
 @onready var _next_button: Button = %NextButton
 @onready var _select_button: Button = %SelectButton
 @onready var _cancel_button: Button = %CancelButton
+@onready var _panel: Control = $Panel
+@onready var _window_frame: PanelContainer = $WindowFrame
+@onready var _wheel: Control = $Panel/Wheel
+@onready var _divider: Control = $Panel/Wheel/Divider
+@onready var _detail: Control = $Panel/Wheel/Detail
+@onready var _footer: Control = $Panel/Wheel/Footer
+@onready var _workspace_hints: Label = %WorkspaceHints
+@onready var _tile_contents: Array[VBoxContainer] = [
+	$Panel/Wheel/North/NorthContent as VBoxContainer, $Panel/Wheel/NorthEast/NorthEastContent as VBoxContainer,
+	$Panel/Wheel/East/EastContent as VBoxContainer, $Panel/Wheel/SouthEast/SouthEastContent as VBoxContainer,
+	$Panel/Wheel/South/SouthContent as VBoxContainer, $Panel/Wheel/SouthWest/SouthWestContent as VBoxContainer,
+	$Panel/Wheel/West/WestContent as VBoxContainer, $Panel/Wheel/NorthWest/NorthWestContent as VBoxContainer,
+]
 
 var _entries: Array[ControllerRadialEntry] = []
 var _page: int = 0
 var _selected_index: int = 0
 var _open: bool = false
 var _text_scale: float = 1.0
+var _standalone_workspaces: bool = false
+@onready var _tile_icon_pairs: Array[HBoxContainer] = [
+	%NorthPairedIcons as HBoxContainer, %NorthEastPairedIcons as HBoxContainer,
+	%EastPairedIcons as HBoxContainer, %SouthEastPairedIcons as HBoxContainer,
+	%SouthPairedIcons as HBoxContainer, %SouthWestPairedIcons as HBoxContainer,
+	%WestPairedIcons as HBoxContainer, %NorthWestPairedIcons as HBoxContainer,
+]
 
 
 func _ready() -> void:
@@ -74,6 +94,8 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and is_node_ready():
 		_apply_text_scale()
+	elif what == NOTIFICATION_RESIZED and is_node_ready() and _standalone_workspaces:
+		_apply_mode_layout()
 
 
 func open(entries: Array[ControllerRadialEntry], initial_index: int = 0) -> void:
@@ -82,6 +104,7 @@ func open(entries: Array[ControllerRadialEntry], initial_index: int = 0) -> void
 	_selected_index = clampi(initial_index, 0, maxi(0, mini(_effective_page_size(), _entries.size()) - 1))
 	_open = not _entries.is_empty()
 	visible = _open
+	_apply_mode_layout()
 	if _open:
 		_update_text()
 		_tile_buttons[_selected_index].grab_focus.call_deferred()
@@ -90,6 +113,11 @@ func open(entries: Array[ControllerRadialEntry], initial_index: int = 0) -> void
 func set_title(value: String) -> void:
 	if is_node_ready():
 		_title.text = value
+
+
+func set_workspaces_presentation(enabled: bool) -> void:
+	_standalone_workspaces = enabled
+	_apply_mode_layout()
 
 
 ## Lets the presentation owner supply its already-resolved platform prompt family.
@@ -277,26 +305,14 @@ func _update_text() -> void:
 		return
 	var current := current_page_entries()
 	_page_indicator.text = "Page %d / %d" % [_page + 1, page_count()]
+	if _standalone_workspaces:
+		_title.text = "Workspaces  •  Page %d / %d" % [_page + 1, page_count()]
+		_page_indicator.hide()
+	else:
+		_page_indicator.show()
 	_previous_button.disabled = page_count() <= 1
 	_next_button.disabled = page_count() <= 1
-	for index: int in MAX_SECTORS_PER_PAGE:
-		var present := index < current.size()
-		_tile_buttons[index].visible = present
-		if not present:
-			continue
-		var entry := current[index]
-		_tile_labels[index].text = entry.label
-		_scale_caption(_tile_labels[index])
-		_tile_icons[index].texture = entry.icon
-		_tile_icons[index].visible = entry.icon != null
-		_tile_symbols[index].text = entry.fallback_symbol
-		_tile_symbols[index].visible = entry.icon == null and not entry.fallback_symbol.is_empty()
-		_tile_buttons[index].tooltip_text = "Unavailable: %s" % entry.disabled_reason if not entry.enabled and not entry.disabled_reason.is_empty() else entry.label
-		_tile_buttons[index].modulate = Color.WHITE if entry.enabled else Color(0.58, 0.62, 0.64)
-		_tile_buttons[index].add_theme_stylebox_override("normal", _tile_style(index, false))
-		_tile_buttons[index].add_theme_stylebox_override("hover", _tile_style(index, true))
-		_tile_buttons[index].add_theme_stylebox_override("focus", _tile_style(index, true))
-		_tile_buttons[index].add_theme_stylebox_override("pressed", _tile_style(index, true))
+	_update_tiles(current)
 	if current.is_empty():
 		_selection_label.text = "No commands"
 		_detail_label.text = ""
@@ -304,7 +320,7 @@ func _update_text() -> void:
 		_reason_panel.visible = false
 	else:
 		var entry := current[clampi(_selected_index, 0, current.size() - 1)]
-		_selection_label.text = entry.label
+		_selection_label.text = ("%s\nConfirm" % entry.label) if _standalone_workspaces and entry.enabled else entry.label
 		_detail_label.text = entry.label
 		_reason_label.text = "Unavailable: %s" % entry.disabled_reason if not entry.enabled and not entry.disabled_reason.is_empty() else ("Unavailable" if not entry.enabled else "")
 		_reason_panel.visible = not _reason_label.text.is_empty()
@@ -314,10 +330,149 @@ func _update_text() -> void:
 	_cancel_button.text = "%s  Cancel" % _binding_label(&"realmz_controller_back")
 	_previous_button.text = "%s  Previous" % _binding_label(&"realmz_controller_section_previous")
 	_next_button.text = "%s  Next" % _binding_label(&"realmz_controller_section_next")
+	_workspace_hints.text = "%s / %s  Page\n%s  Confirm\n%s  Cancel" % [
+		_binding_label(&"realmz_controller_section_previous"),
+		_binding_label(&"realmz_controller_section_next"),
+		_binding_label(&"realmz_controller_confirm"),
+		_binding_label(&"realmz_controller_back"),
+	]
+	queue_redraw()
+
+
+func _update_tiles(current: Array[ControllerRadialEntry]) -> void:
+	for index: int in MAX_SECTORS_PER_PAGE:
+		var present := index < current.size()
+		_tile_buttons[index].visible = present
+		if not present:
+			continue
+		var entry := current[index]
+		_tile_labels[index].text = entry.label
+		if _standalone_workspaces:
+			_scale_workspace_caption(_tile_labels[index])
+		else:
+			_scale_caption(_tile_labels[index])
+		_tile_icons[index].texture = entry.icon
+		_tile_icons[index].visible = entry.icon != null and entry.secondary_icon == null
+		_tile_symbols[index].text = entry.fallback_symbol
+		_tile_symbols[index].visible = entry.icon == null and entry.secondary_icon == null and not entry.fallback_symbol.is_empty()
+		var paired := _tile_icon_pairs[index]
+		paired.visible = entry.icon != null and entry.secondary_icon != null
+		if paired.visible:
+			(paired.get_child(0) as TextureRect).texture = entry.icon
+			(paired.get_child(1) as TextureRect).texture = entry.secondary_icon
+		_tile_buttons[index].tooltip_text = "Unavailable: %s" % entry.disabled_reason if not entry.enabled and not entry.disabled_reason.is_empty() else entry.label
+		_tile_buttons[index].modulate = Color.WHITE if entry.enabled else Color(0.58, 0.62, 0.64)
+		_tile_buttons[index].add_theme_stylebox_override("normal", _tile_style(index, false))
+		_tile_buttons[index].add_theme_stylebox_override("hover", _tile_style(index, true))
+		_tile_buttons[index].add_theme_stylebox_override("focus", _tile_style(index, true))
+		_tile_buttons[index].add_theme_stylebox_override("pressed", _tile_style(index, true))
+
+
+func _apply_mode_layout() -> void:
+	if not is_node_ready():
+		return
+	if _standalone_workspaces:
+		_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_window_frame.hide()
+		_wheel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		_wheel.size = Vector2(776, 538)
+		var scale_factor := minf(0.63 + (size.y - 600.0) * 0.00175, size.x / 950.0)
+		var center := Vector2(size.x * 0.36, size.y * (0.32 if size.y <= 600.0 else 0.395))
+		_wheel.scale = Vector2.ONE * scale_factor
+		_wheel.position = center - Vector2(230, 286) * scale_factor
+		$Panel/Wheel/Heading.position = Vector2(12, (size.y * 0.07 - _wheel.position.y) / scale_factor)
+		$Panel/Wheel/Heading.size = Vector2(440, 42)
+		_divider.hide()
+		_detail.hide()
+		_footer.hide()
+		_workspace_hints.show()
+		_workspace_hints.position = Vector2(458, 226)
+		_workspace_hints.size = Vector2(155, 112)
+		_workspace_hints.add_theme_font_size_override("font_size", maxi(12, int(round(18.0 * scale_factor))))
+		$Panel/Wheel/ReasonPanel.position = Vector2(458, 340)
+		$Panel/Wheel/ReasonPanel.size = Vector2(155, 108)
+		_reason_label.custom_minimum_size = Vector2(130, 0)
+		_reason_label.add_theme_font_size_override("font_size", maxi(12, int(round(14.0 * scale_factor))))
+		var center_size := minf(108.0, size.y * 0.16) / scale_factor
+		$Panel/Wheel/Card.position = Vector2(230, 286) - Vector2.ONE * center_size * 0.5
+		$Panel/Wheel/Card.size = Vector2.ONE * center_size
+		$Panel/Wheel/Card.add_theme_stylebox_override("panel", _workspace_center_style(center_size * 0.5))
+		_selection_label.custom_minimum_size = Vector2.ONE * (center_size - 16.0)
+		_selection_label.add_theme_font_size_override("font_size", maxi(12, int(round(16.0 / scale_factor))))
+	else:
+		_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_window_frame.show()
+		_wheel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		_wheel.size = Vector2(776, 538)
+		_wheel.scale = Vector2.ONE
+		_wheel.position = size * 0.5 - Vector2(400, 280)
+		$Panel/Wheel/Heading.position = Vector2(12, 4)
+		$Panel/Wheel/Heading.size = Vector2(438, 48)
+		_divider.show()
+		_detail.show()
+		_footer.show()
+		_workspace_hints.hide()
+		$Panel/Wheel/ReasonPanel.position = Vector2(480, 330)
+		$Panel/Wheel/ReasonPanel.size = Vector2(290, 108)
+		_reason_label.custom_minimum_size = Vector2(264, 0)
+		$Panel/Wheel/Card.position = Vector2(174, 258)
+		$Panel/Wheel/Card.size = Vector2(112, 56)
+		$Panel/Wheel/Card.remove_theme_stylebox_override("panel")
+		_selection_label.custom_minimum_size = Vector2(96, 40)
+		_apply_text_scale()
+	queue_redraw()
+
+
+func _workspace_center_style(radius: float) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#202b30")
+	style.border_color = Color("#d1ad61")
+	style.set_border_width_all(3)
+	style.set_corner_radius_all(int(round(radius)))
+	return style
+
+
+func _scale_workspace_caption(label: Label) -> void:
+	var font_size := int(round(13.0 / maxf(_wheel.scale.x, 0.1)))
+	var font := label.get_theme_font("font")
+	while font != null and font_size > 13 and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > 94.0:
+		font_size -= 1
+	label.add_theme_font_size_override("font_size", font_size)
+
+
+func _draw() -> void:
+	if not _standalone_workspaces or _wheel == null:
+		return
+	draw_set_transform(_wheel.position, 0.0, _wheel.scale)
+	var center := Vector2(230, 286)
+	var outer_radius := 208.0
+	for index: int in MAX_SECTORS_PER_PAGE:
+		var start_angle := -PI * 0.5 - PI / 8.0 + TAU * float(index) / 8.0
+		var end_angle := start_angle + TAU / 8.0
+		var wedge := PackedVector2Array([center])
+		for step: int in 15:
+			var angle := lerpf(start_angle, end_angle, float(step) / 14.0)
+			wedge.append(center + Vector2.from_angle(angle) * outer_radius)
+		var current := _page * _effective_page_size() + index
+		var color := Color("#394951") if index % 2 == 0 else Color("#303f47")
+		if current == _page * _effective_page_size() + _selected_index:
+			color = Color("#655536")
+		if current < _entries.size() and not _entries[current].enabled:
+			color = color.darkened(0.22)
+		draw_colored_polygon(wedge, color)
+		draw_line(center, center + Vector2.from_angle(start_angle) * outer_radius, Color("#9ba6a1"), 1.2, true)
+	draw_line(center, center + Vector2.from_angle(-PI * 0.5 - PI / 8.0 + TAU) * outer_radius, Color("#9ba6a1"), 1.2, true)
+	draw_arc(center, outer_radius, 0.0, TAU, 96, Color("#b6c0b8"), 1.5, true)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _tile_style(index: int, highlighted: bool) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
+	if _standalone_workspaces:
+		style.bg_color = Color(0, 0, 0, 0)
+		style.border_color = Color(0, 0, 0, 0)
+		style.set_border_width_all(0)
+		return style
 	var entry := current_page_entries()[index]
 	style.bg_color = Color("#6b5734") if index == _selected_index and highlighted else Color("#473b28") if index == _selected_index else Color("#263743") if entry.enabled else Color("#242d32")
 	style.border_color = Color("#d1ad61") if index == _selected_index else Color("#75868a")

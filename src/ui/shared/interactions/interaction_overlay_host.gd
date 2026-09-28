@@ -219,8 +219,12 @@ func _apply_side_workspace_layout() -> void:
 func _apply_encounter_dock_layout() -> void:
 	if _encounter_dock_panel == null:
 		return
+	var compact := _application_rect.size.x <= 800.0
+	var strip := _encounter_dock_panel.find_child("EncounterCommandStrip", true, false) as GridContainer
+	if strip != null:
+		strip.columns = 3 if compact else 6
 	var required_height := _encounter_dock_panel.get_combined_minimum_size().y
-	var dock_height := clampf(required_height, 58.0, minf(84.0, _stage_rect.size.y * 0.22))
+	var dock_height := clampf(required_height, 58.0, minf(172.0 if compact else 84.0, _stage_rect.size.y * (0.65 if compact else 0.22)))
 	_encounter_dock_panel.position = Vector2(_textbox_rect.position.x, maxf(_stage_rect.position.y, _textbox_rect.position.y - dock_height - 6.0))
 	_encounter_dock_panel.size = Vector2(_textbox_rect.size.x, dock_height)
 

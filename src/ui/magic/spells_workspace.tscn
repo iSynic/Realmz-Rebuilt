@@ -140,9 +140,10 @@ theme_override_constants/separation = 3
 [node name="SpellLevelHeading" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content" instance=ExtResource("6_level_heading")]
 layout_mode = 2
 
-[node name="LevelButtons" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content"]
+[node name="LevelButtons" type="GridContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content"]
 layout_mode = 2
 theme_override_constants/separation = 2
+columns = 1
 
 [node name="SpellLevel1" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/LevelButtons"]
 custom_minimum_size = Vector2(88, 24)
@@ -215,9 +216,10 @@ theme_override_font_sizes/font_size = 12
 text = "Cost 1 SP"
 horizontal_alignment = 1
 
-[node name="PowerButtons" type="VBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
+[node name="PowerButtons" type="GridContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
 layout_mode = 2
 theme_override_constants/separation = 2
+columns = 1
 
 [node name="SpellPower1" type="Button" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail/PowerButtons"]
 custom_minimum_size = Vector2(0, 22)
@@ -342,11 +344,9 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
 theme_override_font_sizes/font_size = 12
 text = "Spell description"
-text_overrun_behavior = 3
 autowrap_mode = 2
-max_lines_visible = 1
 
-[node name="TargetAndFacts" type="HBoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
+[node name="TargetAndFacts" type="BoxContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
@@ -356,7 +356,7 @@ layout_mode = 2
 [node name="Facts" type="GridContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts"]
 layout_mode = 2
 size_flags_horizontal = 3
-columns = 4
+columns = 2
 
 [node name="TargetName" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/SelectedSpellRecord/Content/TargetAndFacts/Facts"]
 layout_mode = 2

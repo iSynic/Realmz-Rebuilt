@@ -345,7 +345,7 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combat.c`, `combat`, lines 752–777, and `src/realmz_orig/combatinfo-combatchoice.c`, `combatchoice`, lines 208–228. The manual branch opens a broad dead-inclusive party picker and clears bleeding for every selected row; Auto instead scans party order for the first bleeding member.
 - Observable oracle behavior, determined from complete source flow: a manual selection can contain a non-bleeding or dead character and still consume the activation, while multi-selection can clear several recipients. The source-observation fixture is `tests/fixtures/oracle/combat-bandage-recipient-correction.json`, SHA-256 `e0ad7afaf91c5fd7a8cee8e02bd9d1d819ae85e736c0d2a79dc5d3abb1a0ca11`. This is `source-control-flow` evidence, not a Castle-runtime claim.
 - Player-facing problem: the command can succeed without treating a wound, and a plural hidden effect conflicts with the singular choice presented to the player.
-- Chosen 2.0 behavior: expose living, combat-owned bleeding recipients in party order, clear exactly one selected recipient, and reject invalid targets without mutation.
+- Chosen 2.0 behavior: expose living, combat-owned bleeding recipients in party order, clear exactly one selected recipient, and reject invalid targets without mutation. The manual command selects through the party portrait rail with Castle's exact one-choice cursor `crsr` 148; the visible picker remains a controller fallback. Unlike Castle's unconditional Auto bandaging, Rebuilt makes a legal Bandage mandatory at −7 HP or lower and keeps less critical bleeding in its weighted tactical choices. The mandatory rescue consumes no action-choice RNG draw.
 - Tests: combat-flow and persistence tests cover legal-recipient order, exact one-recipient mutation, invalid-target rejection, immediate persistent-Auto cleanup on defeat, party-ordered round bleeding, Castle's default party-warning RNG draw, death, and save restoration.
 - Legacy quirk: none. A no-op or hidden multi-bandage selection is not needed by authored scenario data.
 
@@ -517,3 +517,12 @@ Each entry must include:
 - chosen 2.0 behavior;
 - source-observation and chosen-result tests;
 - proof that a narrowly named legacy quirk is required, if one is introduced.
+
+
+## Combat backdrops and retained outlines
+
+- Deviation ID: `combat-backdrop-outlines-and-redraw` (presentation only).
+- Castle evidence: `0c19b9159ae1d982147f4dc5a3fd465b65a4e244`, `drawbody.c:6-116`, `centerfield.c:95`, `combatinfo-combatchoice.c:1-42`, `centerstage.c:34`, `showrange.c`, `attack.c:41`, and `spelleffect.c:40-51`. The complete behavior matrix is in [Combat backdrops](combat-backdrops.md).
+- Restore the original `PICT 302` crops and native allegiance/helpless rules. Explicit interaction lifetimes replace incidental persistence of immediate-mode pixels. Retain Rebuilt's existing focus and target outlines as additional cues; physical targeting never adopts spell targeting's all-combatant backdrops. No always-on marking preference is introduced.
+- Event-local flags change at the corresponding committed presentation cue. Sprite/backdrop clipping uses the complete native footprint and never modifies terrain, actor placement, movement costs, RNG, packages, or saves.
+- Evidence is pinned Castle source control flow, focused Rebuilt regression coverage, and isolated native renderer captures, not a controlled Castle runtime comparison or a complete gameplay certification.

@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/combat/battle_interaction.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/combat/battle_targeting_controls.tscn" id="2_targeting"]
 [ext_resource type="PackedScene" path="res://src/ui/combat/battle_initiative_entry.tscn" id="3_initiative"]
+[ext_resource type="Script" path="res://src/ui/combat/battle_bandage_panel.gd" id="4_bandage"]
 
 [node name="BattleInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -18,7 +19,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 3
 
 [node name="BattleTurnSummary" type="HBoxContainer" parent="BattleOverview"]
-custom_minimum_size = Vector2(0, 50)
+custom_minimum_size = Vector2(0, 62)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -26,7 +27,7 @@ theme_override_constants/separation = 4
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.8
+size_flags_stretch_ratio = 1.0
 clip_contents = true
 theme_type_variation = &"BattleSummaryInset"
 [node name="Content" type="HBoxContainer" parent="BattleOverview/BattleTurnSummary/ActiveCombatant"]
@@ -44,19 +45,19 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.973, 0.863, 0.322, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 autowrap_mode = 2
-max_lines_visible = 2
+max_lines_visible = 3
 text_overrun_behavior = 3
 [node name="BattleInitiativeHost" type="MarginContainer" parent="BattleOverview/BattleTurnSummary"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 [node name="InspectedCombatant" type="PanelContainer" parent="BattleOverview/BattleTurnSummary"]
-custom_minimum_size = Vector2(250, 0)
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.95
+size_flags_stretch_ratio = 1.0
 clip_contents = true
 theme_type_variation = &"BattleSummaryInset"
 [node name="Content" type="HBoxContainer" parent="BattleOverview/BattleTurnSummary/InspectedCombatant"]
@@ -73,9 +74,9 @@ stretch_mode = 5
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 11
 autowrap_mode = 2
-max_lines_visible = 2
+max_lines_visible = 3
 text_overrun_behavior = 3
 
 [node name="BattleCommandShelfCenter" type="CenterContainer" parent="BattleOverview"]
@@ -84,13 +85,14 @@ size_flags_horizontal = 3
 [node name="BattleCommandShelf" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_constants/separation = 10
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
 
 [node name="BattleInspectionCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
 clip_contents = true
 theme_type_variation = &"BattleSummaryInset"
 [node name="BattleInspectionCommands" type="VBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset"]
@@ -112,7 +114,8 @@ size_flags_horizontal = 3
 [node name="BattleInspectionPrimary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/PrimaryCenter"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.35
 theme_override_constants/separation = 5
 [node name="Previous" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/PrimaryCenter/BattleInspectionPrimary"]
 layout_mode = 2
@@ -132,7 +135,8 @@ size_flags_horizontal = 3
 [node name="BattleInspectionSecondary" type="HBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/SecondaryCenter"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.2
 theme_override_constants/separation = 5
 [node name="RevealFriends" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/SecondaryCenter/BattleInspectionSecondary"]
 layout_mode = 2
@@ -148,7 +152,8 @@ text = "Move To"
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.35
 clip_contents = true
 theme_type_variation = &"BattleSummaryInset"
 [node name="BattlePrimaryCommands" type="VBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattlePrimaryCommandsInset"]
@@ -216,7 +221,8 @@ text = "Use Weapon"
 [node name="BattleTurnCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
-size_flags_horizontal = 4
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
 clip_contents = true
 theme_type_variation = &"BattleSummaryInset"
 [node name="BattleTurnCommands" type="VBoxContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleTurnCommandsInset"]
@@ -370,6 +376,7 @@ text = "Use item unavailable"
 disabled = true
 
 [node name="BattleBandagePanel" type="VBoxContainer" parent="."]
+script = ExtResource("4_bandage")
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -383,7 +390,7 @@ text = "Back to battle"
 [node name="Hint" type="Label" parent="BattleBandagePanel"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-text = "Choose one bleeding party member."
+text = "Click a bleeding party member's portrait to Bandage. Controller: choose below."
 autowrap_mode = 2
 [node name="BandageRecipient" type="OptionButton" parent="BattleBandagePanel"]
 unique_name_in_owner = true

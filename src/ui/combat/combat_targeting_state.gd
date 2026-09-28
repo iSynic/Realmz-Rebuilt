@@ -3,6 +3,7 @@
 class_name CombatTargetingState
 extends RefCounted
 
+var classic_backdrops := false
 var mode: StringName
 var response_body: InteractionResponse.CombatBody
 var candidate_ids: Array[String] = []
@@ -21,6 +22,7 @@ var status_text: String = "Choose a target on the battlefield."
 
 
 func _init(request: CombatTargetingRequest) -> void:
+	classic_backdrops = request.classic_backdrops
 	mode = request.mode
 	response_body = request.response_body.duplicate_body()
 	candidate_ids = request.candidate_ids.duplicate()

@@ -404,6 +404,8 @@ func _build_recovery_workspace(body: TreasureRequestBody) -> void:
 		return
 	var workspace := recovery_workspace_scene.instantiate() as VBoxContainer
 	add_child(workspace)
+	var recovery_card := workspace.get_node("TreasureRecoveryCenter/TreasureRecoveryCard") as PanelContainer
+	recovery_card.custom_minimum_size.x = 620.0 if _compact else 760.0
 	(workspace.get_node("%TreasureWorkspaceSummary") as Label).text = TreasureDisplayText.summary(body)
 	var loot_field := workspace.get_node("%TreasureLootField") as CenterContainer
 	loot_field.custom_minimum_size.y = 104.0 if _compact else 132.0
@@ -444,6 +446,17 @@ func _bind_recovery_item(workspace: VBoxContainer, item: InteractionRequestValue
 	unavailable.tooltip_text = "Item image unavailable"
 	(workspace.get_node("%TreasureSelectedItemName") as Label).text = item.name
 	(workspace.get_node("%TreasureSelectedItemState") as Label).text = TreasureDisplayText.item_state(item)
+	var fact_text: Array[String] = []
+	for fact: InteractionRequestValue.RewardFact in item.facts:
+		if fact.label.strip_edges().is_empty() or fact.value.strip_edges().is_empty() or fact.label.to_lower() == "charges":
+			continue
+		fact_text.append("%s %s" % [fact.label, fact.value])
+	var facts := workspace.get_node("%TreasureSelectedItemFacts") as Label
+	facts.text = " • ".join(fact_text)
+	facts.visible = not fact_text.is_empty()
+	var description := workspace.get_node("%TreasureSelectedItemDescription") as Label
+	description.text = item.description
+	description.visible = not item.description.strip_edges().is_empty()
 	var charges := workspace.get_node("%TreasureSelectedItemCharges") as Label
 	charges.visible = item.charges > 0
 	charges.text = "%d charge%s" % [item.charges, "" if item.charges == 1 else "s"]

@@ -264,7 +264,7 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		_apply_intro_frame_layout(setup_rect.size.x < SPLASH_WIDE_MINIMUM_WIDTH)
 	if package_install_row != null:
 		package_install_row.vertical = false
-		install_button.text = ".realmz2..." if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
+		install_button.text = "Install..." if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
 	apply_modal_layouts()
 
 

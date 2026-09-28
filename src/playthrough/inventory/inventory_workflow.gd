@@ -52,7 +52,10 @@ static func drop_item(context: SessionWorkflowContext, payload: InventoryIntentP
 	if removed == null:
 		return SessionWorkflowResult.failed(&"item_drop_failed", "The item could not be removed from inventory.")
 	invalidate_combat_undo(context)
-	return SessionWorkflowResult.completed([DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id})])
+	return SessionWorkflowResult.completed([
+		DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id}),
+		DomainEvent.new(&"sound_requested", {"soundId": 655, "waitForCompletion": false, "source": "classic-item-drop"}),
+	])
 
 
 static func trade_item(context: SessionWorkflowContext, payload: InventoryIntentPayloads.Action) -> SessionWorkflowResult:

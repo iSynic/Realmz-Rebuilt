@@ -19,7 +19,8 @@ func prepare_list_layout(compact: bool) -> void:
 	current_title().visible = true
 	eligibility_context().visible = false
 	history_title().visible = false
-	character_file_list().columns = 1 if compact else 2
+	# Character Files is one full-width record per row at both authored profiles.
+	character_file_list().columns = 1
 
 
 func prepare_inspection_layout() -> void:

@@ -40,7 +40,7 @@ var _seen: Dictionary = {}
 var _land_discovery: Dictionary = {}
 var _dungeon_discovery: Dictionary = {}
 var _darkness_masks: Dictionary = {}
-var _custom_fog_tile_enabled: bool = true
+var _custom_fog_tile_enabled: bool = false
 
 
 func _ready() -> void:

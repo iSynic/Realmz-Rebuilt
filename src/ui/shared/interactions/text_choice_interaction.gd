@@ -86,7 +86,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _choice_grid(columns: int, content_width: bool = false) -> GridContainer:
 	var pane := %ChoicePane as PanelContainer
 	pane.visible = true
-	pane.size_flags_horizontal = Control.SIZE_SHRINK_END if content_width else Control.SIZE_EXPAND_FILL
+	pane.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if content_width else Control.SIZE_EXPAND_FILL
 	var grid := %ChoiceGrid as GridContainer
 	grid.columns = columns
 	return grid

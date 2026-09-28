@@ -288,181 +288,198 @@ text = "Choose how the application fills the window. World zoom enlarges map and
 autowrap_mode = 2
 [node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
-[node name="DisplayTopRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content" groups=["system_setting_rows"]]
+[node name="DisplayPreferenceTabs" type="TabContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+clip_tabs = true
+[node name="Window & Scale" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="Image Effects" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="World View" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="DisplayTopRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale" groups=["system_setting_rows"]]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="DisplaySettingsColumn" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow" groups=["system_setting_rows"]]
+[node name="DisplaySettingsColumn" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow" groups=["system_setting_rows"]]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
-[node name="ScaleGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn"]
+[node name="ScaleGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
-[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Window & Scale"
-[node name="VisualEffectsGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn"]
+[node name="VisualEffectsGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
-[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Image Effects"
-[node name="WorldViewGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+[node name="WorldViewGroup" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup"]
+[node name="Content" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
-[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "World View"
-[node name="WorldOptions" type="GridContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content"]
+[node name="WorldOptions" type="GridContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 columns = 1
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 4
-[node name="DisplayScalingRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+[node name="DisplayScalingRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Display scaling"
-[node name="DisplayScalingPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
+[node name="DisplayScalingPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="WorldZoomRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+[node name="WorldZoomRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "World zoom"
-[node name="WorldZoomPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
+[node name="WorldZoomPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="PixelSmoothingRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+[node name="PixelSmoothingRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/PixelSmoothingRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/PixelSmoothingRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Pixel-art smoothing"
-[node name="PixelSmoothingPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/PixelSmoothingRow"]
+[node name="PixelSmoothingPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/PixelSmoothingRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="CrtEnabled" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content"]
+[node name="CrtEnabled" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content"]
 layout_mode = 2
 text = "CRT effect"
 autowrap_mode = 2
-[node name="CrtShaderRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+[node name="CrtShaderRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtShaderRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtShaderRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "CRT shader"
-[node name="CrtShaderPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtShaderRow"]
+[node name="CrtShaderPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtShaderRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="CrtAreaRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+[node name="CrtAreaRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtAreaRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtAreaRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "CRT area"
-[node name="CrtAreaPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtAreaRow"]
+[node name="CrtAreaPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtAreaRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="InterfaceScaleRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+[node name="InterfaceScaleRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Interface scale"
-[node name="InterfaceScalePicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
+[node name="InterfaceScalePicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="WindowModeRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+[node name="WindowModeRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
 text = "Window mode"
-[node name="WindowModePicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
+[node name="WindowModePicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="Dungeon3d" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/WorldOptions"]
+[node name="Dungeon3d" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Use topology-derived 3D dungeons"
+text = "Enable 3D dungeons"
 autowrap_mode = 2
-[node name="ClassicExplorationVisibility" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/WorldOptions"]
+[node name="ClassicExplorationVisibility" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Classic exploration distance with visited outer tiles"
 autowrap_mode = 2
-[node name="CustomFogTile" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/WorldOptions"]
+[node name="CustomFogTile" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Use custom fog-of-war tile instead of Classic black"
+text = "Use alternative fog-of-war tile"
 autowrap_mode = 2
 
-[node name="IndoorPartyIcon" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content"]
+[node name="IndoorPartyIcon" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 script = ExtResource("4_icons")
 
-[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Indoor party icon"
 
-[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+[node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon"]
 layout_mode = 2
 text = "Choose the party marker used indoors, independently of the party leader. Selections save immediately."
 autowrap_mode = 2
 
-[node name="Summary" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon" groups=["system_setting_rows"]]
+[node name="Summary" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon" groups=["system_setting_rows"]]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Current" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Summary"]
+[node name="Current" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Summary"]
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
@@ -472,53 +489,53 @@ alignment = 0
 text = "Icon 73 · Classic default"
 texture_filter = 1
 
-[node name="Change" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Summary"]
+[node name="Change" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Summary"]
 layout_mode = 2
 text = "Change…"
 
-[node name="Choices" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+[node name="Choices" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon"]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Grid" type="GridContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices"]
+[node name="Grid" type="GridContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Choices"]
 layout_mode = 2
 size_flags_horizontal = 0
 columns = 6
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
 
-[node name="Actions" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices"]
+[node name="Actions" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Choices"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Previous" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+[node name="Previous" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
 text = "<"
 tooltip_text = "Previous page of indoor party icons"
 
-[node name="Page" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+[node name="Page" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
 custom_minimum_size = Vector2(50, 0)
 layout_mode = 2
 text = "4 / 5"
 horizontal_alignment = 1
 
-[node name="Next" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+[node name="Next" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
 custom_minimum_size = Vector2(42, 0)
 layout_mode = 2
 text = ">"
 tooltip_text = "Next page of indoor party icons"
 
-[node name="Default" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+[node name="Default" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
 layout_mode = 2
 text = "Default"
 
-[node name="Done" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
+[node name="Done" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon/Choices/Actions"]
 layout_mode = 2
 text = "Done"
 
-[node name="IconTemplate" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon"]
+[node name="IconTemplate" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon"]
 visible = false
 custom_minimum_size = Vector2(60, 42)
 layout_mode = 2

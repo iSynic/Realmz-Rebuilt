@@ -19,12 +19,14 @@ const SCALER_SHADER_PATH := "res://src/ui/shared/style/xbrz_freescale.gdshader"
 const MOVE_TWEEN_SECONDS := 0.045
 const TURN_TWEEN_SECONDS := 0.0
 const MESH_CACHE_CAPACITY := 24
+const VIEW_CUE_SCENE_PATH := "res://src/ui/exploration/dungeon/dungeon_view_cue.tscn"
 
 var _enabled: bool = false
 var _projection: DungeonGeometryProjection
 var _previous_projection: DungeonGeometryProjection
 var _viewport: SubViewport
 var _display: TextureRect
+var _view_cue: Label
 var _canvas_smoothing_enabled: bool = false
 var _canvas_smoothing_material: ShaderMaterial
 var _world: Node3D
@@ -47,6 +49,7 @@ var _retained_pillar_corners: Dictionary = {}
 var _geometry_batches: Array[MeshInstance3D] = []
 var _keyboard_direction: Vector2i = Vector2i.ZERO
 var _navigation_cursor_enabled: bool = true
+var pointer_input_gate: Callable
 var _owns_navigation_cursor: bool = false
 var _atlas: Texture2D = load(ATLAS_PATH) as Texture2D
 var _cursor_forward: Texture2D = load(CURSOR_FORWARD_PATH) as Texture2D
@@ -96,6 +99,8 @@ func _ready() -> void:
 	_display.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_display.texture = _viewport.get_texture()
 	add_child(_display)
+	_view_cue = (load(VIEW_CUE_SCENE_PATH) as PackedScene).instantiate() as Label
+	add_child(_view_cue)
 	resized.connect(_layout_internal_view)
 	mouse_exited.connect(_clear_navigation_cursor)
 	_layout_internal_view()
@@ -105,8 +110,11 @@ func _exit_tree() -> void:
 	_clear_navigation_cursor()
 
 
-func set_enabled(enabled: bool) -> void:
+func set_enabled(enabled: bool, view_toggle_available: bool = false) -> void:
 	_enabled = enabled
+	if _view_cue != null:
+		_view_cue.text = "Space  ·  2D view" if view_toggle_available else "3D view only"
+		_layout_internal_view()
 	_update_visibility()
 
 
@@ -192,6 +200,9 @@ func projection() -> DungeonGeometryProjection:
 
 func _gui_input(event: InputEvent) -> void:
 	if not is_active() or not _navigation_cursor_enabled:
+		return
+	if pointer_input_gate.is_valid() and not pointer_input_gate.call():
+		_clear_navigation_cursor()
 		return
 	if event is InputEventMouseMotion:
 		_set_navigation_cursor(_action_at_position(event.position))
@@ -410,6 +421,8 @@ func _layout_internal_view() -> void:
 	var display_size := Vector2(INTERNAL_SIZE) * display_scale
 	_display.size = display_size
 	_display.position = (size - display_size) * 0.5
+	if _view_cue != null:
+		_view_cue.position = Vector2(maxf(8.0, size.x - _view_cue.get_minimum_size().x - 10.0), 8.0)
 	_update_canvas_smoothing()
 
 

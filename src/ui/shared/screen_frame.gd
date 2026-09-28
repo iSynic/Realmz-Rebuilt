@@ -16,6 +16,8 @@ signal back_requested
 @onready var _header: BoxContainer = %WorkspaceHeader
 @onready var _back_action: Button = %RouteBackAction
 @onready var _header_rule: HSeparator = $WorkspaceColumn/HeaderRule
+var _compact_route_exit := false
+var _compact_spell_route := false
 
 
 func _ready() -> void:
@@ -33,8 +35,10 @@ func set_workspace_rect(workspace_rect: Rect2) -> void:
 	var inset := Vector2.ZERO if route_id == &"spells" else Vector2(8.0, 8.0)
 	position = workspace_rect.position + inset
 	size = workspace_rect.size - inset * 2.0
+	_compact_route_exit = workspace_rect.size.x < 900.0 and route_id in [&"inventory", &"services"]
+	_compact_spell_route = workspace_rect.size.x < 320.0 and route_id == &"spells"
 	if _header != null:
-		_header.vertical = workspace_rect.size.x < 900.0
+		_header.vertical = workspace_rect.size.x < 900.0 and not _compact_route_exit
 	_configure_navigation()
 	_update_back_visibility()
 	apply_route_chrome()
@@ -45,7 +49,7 @@ func _update_back_visibility() -> void:
 	if action == null:
 		action = get_node_or_null("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
 	if action != null:
-		action.visible = route_id not in [&"exploration", &"combat", &"vault", &"inventory", &"services"]
+		action.visible = _compact_route_exit or route_id not in [&"exploration", &"combat", &"vault", &"inventory", &"services"]
 		if not action.pressed.is_connected(_emit_back_requested):
 			action.pressed.connect(_emit_back_requested)
 
@@ -66,7 +70,7 @@ func _configure_navigation() -> void:
 		action.owner = null
 		action.reparent(back_host)
 		action.owner = self
-	var navigation_size := Vector2(82.0, 34.0)
+	var navigation_size := Vector2(60.0 if _compact_spell_route else 82.0, 34.0)
 	action.custom_minimum_size = navigation_size
 	action.size_flags_horizontal = Control.SIZE_SHRINK_END
 

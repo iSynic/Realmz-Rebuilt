@@ -8,11 +8,13 @@ signal combat_auto_changed(character_id: String, enabled: bool)
 signal character_selection_completed(character_ids: Array[String])
 signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
 signal combat_spellbook_back_requested
+signal combat_bandage_target_selected(character_id: String)
 
 const CLASSIC_PORTRAIT_STAGE_SIZE := Vector2i(50, 50)
 const CLASSIC_DEATH_HEALTH := -10
 const CLASSIC_PORTRAIT_SHADE_CICN := 2019
 const CLASSIC_DEATH_MARKER_CICN := 2015
+const ROSTER_CONDITION_ICONS := preload("res://src/ui/shell/roster_condition_icons.gd")
 
 @export var member_row_scene: PackedScene
 @export var empty_row_scene: PackedScene
@@ -26,6 +28,7 @@ const CLASSIC_DEATH_MARKER_CICN := 2015
 
 var _media: ClassicMediaCatalog
 var _portrait_composites: Dictionary = {}
+var _condition_icon_textures: Dictionary = {}
 var _selected_character_id: String = ""
 var _current_view: GameView
 var _selection_request_id: String = ""
@@ -33,6 +36,8 @@ var _selection_count: int = 0
 var _selection_eligible_ids: Array[String] = []
 var _selection_order: Array[String] = []
 var _combat_spellbook_active: bool = false
+var _combat_bandage_target_ids: Array[String] = []
+var _owns_bandage_cursor: bool = false
 var _compact_layout: bool = false
 var _controls_ready: bool = false
 
@@ -54,6 +59,7 @@ func _process(_delta: float) -> void:
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_portrait_composites.clear()
+	_condition_icon_textures.clear()
 
 
 func present(view: GameView, selected_character_id: String = "") -> void:
@@ -134,6 +140,10 @@ func combat_spellbook_active() -> bool:
 	return _combat_spellbook_active
 
 
+func controller_spellbook() -> CombatRosterSpellbook:
+	return _spellbook if _combat_spellbook_active and _spellbook.is_visible_in_tree() else null
+
+
 func set_compact_layout(compact: bool) -> void:
 	_compact_layout = compact
 	_ensure_controls()
@@ -172,6 +182,9 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row.tooltip_text = "This character is not eligible for the current selection." if row.disabled else base_tooltip
 	if not selecting:
 		row.tooltip_text += "\n\nCurrent character; click to open its record." if character.id == _selected_character_id else "\n\nClick to make this the current character."
+		if not _combat_bandage_target_ids.is_empty():
+			row.disabled = not _combat_bandage_target_ids.has(character.id)
+			row.tooltip_text = "Click to Bandage %s." % character.name if not row.disabled else "This character cannot be Bandaged."
 	row.pressed.connect(_activate_character.bind(character.id))
 	_bind_auto_toggle(record.auto_toggle(), character, combat_active and not selecting, auto_character_ids.has(character.id))
 	_party_list.add_child(record)
@@ -186,6 +199,13 @@ func _bind_character_text(row: Button, character: CharacterView, current_health:
 	var record := row.get_meta("roster_record") as PartyRosterMemberRow
 	if record != null:
 		record.bind_character(character, current_health, state_text)
+		var icon_ids: Array[int] = ROSTER_CONDITION_ICONS.icon_ids(character)
+		var icon_textures: Array[Texture2D] = []
+		var icon_labels: Array[String] = []
+		for icon_id: int in icon_ids:
+			icon_textures.append(ROSTER_CONDITION_ICONS.icon_texture(_media, _condition_icon_textures, icon_id))
+			icon_labels.append(ROSTER_CONDITION_ICONS.icon_label(icon_id))
+		record.set_condition_icons(icon_ids, icon_textures, icon_labels)
 
 
 func _bind_auto_toggle(toggle: Button, character: CharacterView, visible: bool, enabled: bool) -> void:
@@ -207,6 +227,10 @@ func _activate_character(character_id: String) -> void:
 	if character_selection_active():
 		_toggle_character_selection(character_id)
 		return
+	if not _combat_bandage_target_ids.is_empty():
+		if _combat_bandage_target_ids.has(character_id):
+			combat_bandage_target_selected.emit(character_id)
+		return
 	var already_selected := character_id == _selected_character_id
 	_selected_character_id = character_id
 	_update_current_character_markers()
@@ -214,6 +238,24 @@ func _activate_character(character_id: String) -> void:
 		character_activated.emit(character_id)
 	else:
 		character_selected.emit(character_id)
+
+
+func set_combat_bandage_targets(target_ids: Array[String]) -> void:
+	_combat_bandage_target_ids.assign(target_ids)
+	var enabled := not _combat_bandage_target_ids.is_empty()
+	if enabled != _owns_bandage_cursor:
+		var asset_id := &"interaction.cursor.select_one"
+		var texture := ClassicUiAssetCatalog.texture(asset_id) if enabled else null
+		if not enabled or texture != null:
+			Input.set_custom_mouse_cursor(texture, Input.CURSOR_ARROW, ClassicUiAssetCatalog.cursor_hotspot(asset_id) if enabled else Vector2.ZERO)
+			_owns_bandage_cursor = enabled
+	for node: Node in _party_list.find_children("*", "Button", true, false):
+		if not node.has_meta("character_id"):
+			continue
+		var row := node as Button
+		var character_id := String(row.get_meta("character_id"))
+		row.disabled = not _combat_bandage_target_ids.is_empty() and not _combat_bandage_target_ids.has(character_id)
+		row.tooltip_text = ("Click to Bandage this character." if not row.disabled else "This character cannot be Bandaged.") if not _combat_bandage_target_ids.is_empty() else String(row.get_meta("base_tooltip")) + ("\n\nCurrent character; click to open its record." if character_id == _selected_character_id else "\n\nClick to make this the current character.")
 
 
 func controller_select_relative(delta: int) -> bool:
@@ -351,6 +393,7 @@ func _update_selection_cursor() -> void:
 
 func _restore_pointer() -> void:
 	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
+	_owns_bandage_cursor = false
 	set_process(false)
 	if is_instance_valid(_selection_cursor_label):
 		_selection_cursor_label.visible = false

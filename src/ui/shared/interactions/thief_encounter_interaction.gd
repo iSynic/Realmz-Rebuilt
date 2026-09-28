@@ -37,6 +37,11 @@ func build(request: InteractionRequest) -> void:
 		call_deferred("_request_opening_sound")
 
 
+func set_layout_profile(compact: bool) -> void:
+	if _action_grid != null:
+		_action_grid.columns = 3 if compact else 2
+
+
 func _render_character() -> void:
 	if _body == null or _body.characters.is_empty():
 		return

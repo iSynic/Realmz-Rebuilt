@@ -112,6 +112,17 @@ static func coordinate_is_visible(coordinate: Vector2i, camera: Vector2i, visibl
 	return coordinate.x >= camera.x and coordinate.y >= camera.y and coordinate.x < camera.x + visible_cells.x and coordinate.y < camera.y + visible_cells.y
 
 
+static func targeting_edge_direction(local_position: Vector2, control_size: Vector2, edge_width: float = 24.0) -> Vector2i:
+	var visible_cells := viewport_cells_for(control_size)
+	var stage := Rect2(battlefield_draw_origin(control_size, visible_cells), Vector2(visible_cells) * NATIVE_CELL_SIZE)
+	if not stage.has_point(local_position):
+		return Vector2i.ZERO
+	var right := stage.position.x + stage.size.x
+	var bottom := stage.position.y + stage.size.y
+	return Vector2i(-1 if local_position.x < stage.position.x + edge_width else 1 if local_position.x >= right - edge_width else 0,
+		-1 if local_position.y < stage.position.y + edge_width else 1 if local_position.y >= bottom - edge_width else 0)
+
+
 static func cell_rect(coordinate: Vector2i, camera: Vector2i, draw_origin: Vector2) -> Rect2:
 	return Rect2(draw_origin + Vector2(coordinate - camera) * NATIVE_CELL_SIZE, Vector2.ONE * NATIVE_CELL_SIZE)
 

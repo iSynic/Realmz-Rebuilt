@@ -42,11 +42,9 @@ static func floating_choice_rect(stage_rect: Rect2, textbox_rect: Rect2, minimum
 		minf(maxf(520.0, minimum.x), available_width),
 		minf(maxf(116.0, minimum.y), maxf(116.0, stage_rect.size.y - 20.0))
 	)
-	var lower_right := Vector2(minf(stage_rect.end.x - 10.0, textbox_rect.end.x), minf(stage_rect.end.y - 10.0, textbox_rect.position.y - 8.0))
-	return Rect2(
-		Vector2(maxf(stage_rect.position.x + 10.0, lower_right.x - modal_size.x), maxf(stage_rect.position.y + 10.0, lower_right.y - modal_size.y)),
-		modal_size
-	)
+	var centered_x := textbox_rect.position.x + (textbox_rect.size.x - modal_size.x) * 0.5
+	var attached_y := textbox_rect.position.y - modal_size.y - 4.0
+	return Rect2(Vector2(clampf(centered_x, maxf(0.0, stage_rect.position.x - 10.0), stage_rect.end.x - modal_size.x - 10.0), maxf(stage_rect.position.y + 10.0, attached_y)), modal_size)
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
@@ -110,7 +108,7 @@ static func uses_application_workspace(request: InteractionRequest) -> bool:
 
 
 static func uses_application_modal_region(request: InteractionRequest) -> bool:
-	return request != null and request.kind in [InteractionRequest.PICK_LOCK, InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP]
+	return request != null and request.kind in [InteractionRequest.AGE_UPDATE, InteractionRequest.PICK_LOCK, InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP]
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:

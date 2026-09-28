@@ -30,6 +30,7 @@ signal combatant_inspected(combatant_id: String)
 signal combatant_hovered(combatant_id: String)
 signal targeting_changed(selection: CombatTargetingState)
 signal targeting_cancelled
+signal invalid_target_requested
 signal redraw_requested
 
 var movement_costs_visible: bool:
@@ -52,6 +53,12 @@ var _view: GameView
 var _movement_costs_visible: bool = false
 var _hovered_coordinate := Vector2i(-1, -1)
 var _camera_focus_id: String = ""
+var backdrop_focus_id := ""
+var inspected_combatant_id := "":
+	set(value):
+		inspected_combatant_id = value
+		if value.is_empty(): backdrop_focus_id = ""
+		redraw_requested.emit()
 var _last_active_actor_id: String = ""
 var _reveal_friends: bool = false
 var _targeting: CombatTargetingState
@@ -69,6 +76,8 @@ func present(game_view: GameView) -> bool:
 	var active_actor_changed := next_active_actor_id != _last_active_actor_id
 	if active_actor_changed:
 		_camera_focus_id = ""
+		backdrop_focus_id = ""
+		inspected_combatant_id = ""
 		_movement_preview = null
 	_last_active_actor_id = next_active_actor_id
 	_view = game_view
@@ -77,16 +86,27 @@ func present(game_view: GameView) -> bool:
 		_movement_costs_visible = false
 		_hovered_coordinate = Vector2i(-1, -1)
 		_camera_focus_id = ""
+		backdrop_focus_id = ""
+		inspected_combatant_id = ""
 		_last_active_actor_id = ""
 		_reveal_friends = false
+		_targeting = null
 	elif not _camera_focus_id.is_empty() and BattlefieldPresentationGeometry.actor_position(_view.combat_view, _view.party_members, _camera_focus_id).x < 0:
 		_camera_focus_id = ""
+		backdrop_focus_id = ""
+		inspected_combatant_id = ""
+	if not inspected_combatant_id.is_empty() and _view != null and _view.combat_view != null and BattlefieldPresentationGeometry.actor_position(_view.combat_view, _view.party_members, inspected_combatant_id).x < 0:
+		inspected_combatant_id = ""
 	return active_actor_changed
 
 
 func playback_changed(previous: CombatPlaybackFrame, current: CombatPlaybackFrame) -> bool:
 	if previous == null and current != null:
+		_reveal_friends = false
+		_targeting = null
 		_camera_focus_id = ""
+		backdrop_focus_id = ""
+		inspected_combatant_id = ""
 	_playback_frame = current
 	return current != previous and current != null and current.kind == &"actor_cue"
 
@@ -100,6 +120,7 @@ func set_movement_costs_visible(visible_costs: bool) -> void:
 
 func focus_combatant(combatant_id: String) -> void:
 	_camera_focus_id = combatant_id
+	backdrop_focus_id = combatant_id
 	redraw_requested.emit()
 
 
@@ -153,6 +174,8 @@ func cancel_movement_preview() -> bool:
 func handle_input(event: InputEvent, viewport_size: Vector2, render_camera_top_left: Vector2i, render_camera_visible_cells: Vector2i) -> bool:
 	if _playback_frame != null or _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return false
+	if _reveal_friends and (event is InputEventMouseButton or event is InputEventKey) and event.is_pressed():
+		return dismiss_reveal_friends()
 	if _handle_inspection_input(event, viewport_size, render_camera_top_left, render_camera_visible_cells):
 		return true
 	if _targeting != null:
@@ -202,6 +225,7 @@ func handle_mouse_exit() -> void:
 func begin_targeting(configuration: CombatTargetingRequest) -> bool:
 	if _playback_frame != null or _view == null or _view.combat_view == null or configuration == null or not configuration.is_valid():
 		return false
+	backdrop_focus_id = ""
 	_targeting = CombatTargetingState.new(configuration)
 	_reveal_friends = false
 	targeting_changed.emit(_targeting)
@@ -215,6 +239,7 @@ func confirm_targeting() -> bool:
 	var body := _targeting.committed_body()
 	if body == null:
 		targeting_changed.emit(_targeting)
+		invalid_target_requested.emit()
 		return false
 	_targeting = null
 	redraw_requested.emit()
@@ -270,6 +295,8 @@ func select_target_preview() -> bool:
 	if selected:
 		targeting_changed.emit(_targeting)
 		redraw_requested.emit()
+	else:
+		invalid_target_requested.emit()
 	return selected
 
 
@@ -305,10 +332,13 @@ func _handle_targeting_input(event: InputEvent, viewport_size: Vector2, render_c
 	if coordinate.x < 0:
 		return false
 	if _targeting.mode in [&"area", &"coordinate_sequence"]:
-		_targeting.select_coordinate(coordinate)
+		if not _targeting.select_coordinate(coordinate):
+			invalid_target_requested.emit()
 	else:
 		var combatant_id := BattlefieldPresentationGeometry.combatant_at(_view.combat_view, _view.party_members, coordinate)
 		var selected := _targeting.select_combatant(combatant_id)
+		if not selected:
+			invalid_target_requested.emit()
 		if selected and immediate_single_target_actions and _targeting.mode == &"combatant" and _targeting.can_confirm():
 			return confirm_targeting()
 	targeting_changed.emit(_targeting)

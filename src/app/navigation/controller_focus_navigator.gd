@@ -14,7 +14,7 @@ func move(root: Control, direction: Vector2i) -> Control:
 	var current := viewport.gui_get_focus_owner() if viewport != null else null
 	if _move_popup(direction):
 		return _popup_owner.get_ref() as Control
-	if current == null or not current.is_visible_in_tree():
+	if current == null or not current.is_visible_in_tree() or current != root and not root.is_ancestor_of(current):
 		return focus_first(root)
 	if _adjust_composite(current, direction):
 		return current
@@ -137,6 +137,16 @@ func cancel_active_popup() -> bool:
 	option.get_popup().hide()
 	_popup_owner = null
 	return true
+
+
+func has_active_popup(root: Control = null) -> bool:
+	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
+	if (option == null or not option.get_popup().visible) and root != null:
+		option = root.get_viewport().gui_get_focus_owner() as OptionButton
+		if option != null and root.is_ancestor_of(option) and option.get_popup().visible:
+			_popup_owner = weakref(option)
+			_popup_index = maxi(0, option.selected)
+	return option != null and option.get_popup().visible
 
 
 func inspection_text(root: Control) -> String:

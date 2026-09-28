@@ -32,6 +32,8 @@ static func append_resolution_effect(payload: Dictionary, spell: SpellDefinition
 	payload["spellName"] = spell.name
 	payload["castSequenceIndex"] = sequence_index
 	payload["castSequenceCount"] = sequence_count
+	if spell.target_type in [9, 10]:
+		payload["classicTargetType"] = spell.target_type
 	# Castle bypasses the ordinary eight-frame resolution effect when the target
 	# dies, while group-body flashes (target types 9 and 10) use a separate path.
 	if target_defeated or spell.target_type in [9, 10]:
@@ -41,3 +43,9 @@ static func append_resolution_effect(payload: Dictionary, spell: SpellDefinition
 	for frame_offset: int in 8:
 		effect_ids.append(first_resource_id + frame_offset)
 	payload["classicResolutionEffectResourceIds"] = effect_ids
+
+
+static func append_helpless_state(payload: Dictionary, resolution: SpellResolution) -> void:
+	if resolution != null and resolution.has_helpless_state:
+		payload["helplessBefore"] = resolution.helpless_before
+		payload["helplessAfter"] = resolution.helpless_after

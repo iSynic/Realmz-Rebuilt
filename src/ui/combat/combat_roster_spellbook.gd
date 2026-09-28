@@ -18,21 +18,30 @@ var _spell_id: String = ""
 var _spell_buttons: Dictionary = {}
 var _available_width: float = 0.0
 var _controls_ready: bool = false
+var _level_spells: Dictionary = {}
+var _spell_powers: Dictionary = {}
 
 
 func present(actor_id: String, options: Array[InteractionRequestValue.CastOption], view: GameView, available_width: float) -> void:
 	_ensure_controls()
+	var opened := not visible or _actor_id != actor_id
+	var focused := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	var focus_name: StringName = focused.name if not opened and focused != null and is_ancestor_of(focused) else &""
+	if opened:
+		_level_spells.clear()
+		_spell_powers.clear()
+		_spell_id = ""
 	visible = true
 	_view = view
 	_actor_id = actor_id
 	_options.assign(options)
-	_spell_id = ""
 	_available_width = available_width
 	var levels := _available_levels()
 	if levels.is_empty():
 		$CombatSpellbookSelector.visible = false
 		$SpellbookEmpty.visible = true
 		$SpellbookFooter/CombatSpellbookActions/CombatSpellAim.visible = false
+		focus_selected_spell.call_deferred()
 		return
 	$CombatSpellbookSelector.visible = true
 	$SpellbookEmpty.visible = false
@@ -41,10 +50,51 @@ func present(actor_id: String, options: Array[InteractionRequestValue.CastOption
 		_level = levels[0]
 	_bind_level_rail(levels)
 	_refresh_spell_list()
+	_restore_focus.call_deferred(focus_name)
+
+
+func _restore_focus(control_name: StringName) -> void:
+	if not is_inside_tree() or not is_visible_in_tree():
+		return
+	var control := find_child(String(control_name), true, false) as Control if not control_name.is_empty() else null
+	if control != null and control.is_visible_in_tree() and not (control is BaseButton and (control as BaseButton).disabled):
+		control.grab_focus()
+		SpellsWorkspace.reveal_controller_focus(control)
+	else:
+		focus_selected_spell()
 
 
 func close() -> void:
 	visible = false
+	_level_spells.clear()
+	_spell_powers.clear()
+
+
+func controller_cycle_section(delta: int) -> bool:
+	var levels := _available_levels()
+	if not levels.is_empty():
+		_select_level(levels[wrapi(levels.find(_level) + delta, 0, levels.size())])
+		focus_selected_spell.call_deferred()
+	return true
+
+
+func focus_selected_spell() -> bool:
+	if not is_inside_tree() or not is_visible_in_tree():
+		return false
+	SpellsWorkspace.link_controller_focus(self)
+	var button := _spell_buttons.get(_spell_id) as Control
+	if button == null or not button.is_visible_in_tree():
+		button = $SpellbookFooter/CombatSpellbookActions/CombatSpellbookBack
+	button.grab_focus()
+	SpellsWorkspace.reveal_controller_focus(button)
+	return true
+
+
+func focus_cast_action() -> void:
+	if is_inside_tree() and is_visible_in_tree():
+		var button := $SpellbookFooter/CombatSpellbookActions/CombatSpellAim as Button
+		if not button.disabled:
+			button.grab_focus()
 
 
 func _available_levels() -> Array[int]:
@@ -77,7 +127,10 @@ func _bind_level_rail(levels: Array[int]) -> void:
 
 
 func _select_level(level: int) -> void:
+	_level_spells[_level] = _spell_id
 	_level = level
+	_spell_id = _level_spells.get(level, "")
+	_bind_level_rail(_available_levels())
 	_refresh_spell_list()
 
 
@@ -121,10 +174,12 @@ func _refresh_spell_list() -> void:
 		_spell_buttons[spell_id] = button
 		list.add_child(button)
 	_refresh_power_choices()
+	SpellsWorkspace.link_controller_focus(self)
 
 
 func _select_spell(spell_id: String) -> void:
 	_spell_id = spell_id
+	_level_spells[_level] = spell_id
 	for candidate_id: String in _spell_buttons:
 		(_spell_buttons[candidate_id] as Button).button_pressed = candidate_id == spell_id
 	_refresh_power_choices()
@@ -158,10 +213,16 @@ func _refresh_power_choices() -> void:
 		cast.set_meta("cast_option", null)
 		cast.tooltip_text = reason
 		return
-	_select_power(representatives[0])
+	var selected := representatives[0]
+	for option: InteractionRequestValue.CastOption in representatives:
+		if option.power == int(_spell_powers.get(_spell_id, -1)):
+			selected = option
+	_select_power(selected)
+	SpellsWorkspace.link_controller_focus(self)
 
 
 func _select_power(option: InteractionRequestValue.CastOption) -> void:
+	_spell_powers[_spell_id] = option.power
 	cast_requested.emit(null)
 	var host := $CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices/PowerButtons as HBoxContainer
 	for child: Node in host.get_children():

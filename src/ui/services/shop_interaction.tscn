@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/ui/services/shop_interaction.gd" id="1_interaction"]
 [ext_resource type="Script" path="res://src/ui/shared/exchange/classic_exchange_ledger.gd" id="2_ledger"]
@@ -9,6 +9,18 @@
 [ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_popover.tscn" id="7_popover"]
 [ext_resource type="PackedScene" path="res://src/ui/inventory/inventory_workspace.tscn" id="8_inventory_workspace"]
 [ext_resource type="PackedScene" path="res://src/ui/services/services_workspace.tscn" id="9_money_workspace"]
+
+[sub_resource type="StyleBoxFlat" id="ShopCompactLedger"]
+bg_color = Color(0.965, 0.957, 0.918, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.4, 0.39, 1)
+content_margin_left = 7.0
+content_margin_top = 6.0
+content_margin_right = 7.0
+content_margin_bottom = 6.0
 
 [node name="ShopInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -189,6 +201,7 @@ theme_type_variation = &"ClassicItemLedger"
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_styles/panel = SubResource("ShopCompactLedger")
 
 [node name="Pack" type="VBoxContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs"]
 layout_mode = 2
@@ -246,6 +259,7 @@ script = ExtResource("3_bitmap_button")
 [node name="ShopStockHeading" type="Label" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.082, 0.082, 0.071, 1)
 text = "Shop Stock"
 [node name="ShopStockScroll" type="ScrollContainer" parent="ShopColumns/ShopCompactBrowser/ShopBrowserTabs/Stock"]
 layout_mode = 2

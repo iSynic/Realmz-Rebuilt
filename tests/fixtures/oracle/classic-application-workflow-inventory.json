@@ -10489,7 +10489,7 @@
         "owners": [
           {
             "path": "src/ui/combat/battle_interaction.gd",
-            "symbol": "func _add_bandage_panel("
+            "symbol": "func _add_classic_turn_commands("
           }
         ]
       },

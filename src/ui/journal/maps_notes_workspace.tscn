@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://src/ui/journal/maps_notes_workspace.gd" id="1_workspace"]
 [ext_resource type="PackedScene" path="res://src/ui/journal/location_note_row.tscn" id="2_location"]
@@ -8,30 +8,6 @@
 [ext_resource type="Script" path="res://src/ui/journal/player_map_cartographic_stage.gd" id="6_stage"]
 [ext_resource type="Script" path="res://src/ui/journal/player_map_parchment_mat.gd" id="7_parchment"]
 [ext_resource type="Script" path="res://src/ui/journal/player_map_presenter.gd" id="8_presenter"]
-
-[sub_resource type="StyleBoxFlat" id="JournalPane"]
-bg_color = Color(0.827451, 0.741176, 0.52549, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.294118, 0.156863, 0.133333, 1)
-corner_radius_top_left = 2
-corner_radius_top_right = 2
-corner_radius_bottom_right = 2
-corner_radius_bottom_left = 2
-content_margin_left = 8.0
-content_margin_top = 6.0
-content_margin_right = 8.0
-content_margin_bottom = 6.0
-
-[sub_resource type="StyleBoxFlat" id="JournalSearch"]
-bg_color = Color(0.87451, 0.8, 0.627451, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.537255, 0.45098, 0.298039, 1)
 
 [node name="MapsNotesWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -58,17 +34,17 @@ horizontal_alignment = 2
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Maps" type="Button" parent="MapsNotesSectionRail"]
-layout_mode = 2
-size_flags_horizontal = 3
-toggle_mode = true
-text = "Maps"
-
 [node name="Places" type="Button" parent="MapsNotesSectionRail"]
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 text = "Places"
+
+[node name="Maps" type="Button" parent="MapsNotesSectionRail"]
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Maps"
 
 [node name="Journal" type="Button" parent="MapsNotesSectionRail"]
 layout_mode = 2
@@ -95,7 +71,7 @@ theme_override_constants/separation = 6
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.8
+size_flags_stretch_ratio = 1.0
 theme_type_variation = &"ClassicInset"
 [node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes"]
 layout_mode = 2
@@ -128,7 +104,7 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.25
+size_flags_stretch_ratio = 2.4
 theme_type_variation = &"ClassicInset"
 [node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane"]
 layout_mode = 2
@@ -138,7 +114,7 @@ theme_override_constants/separation = 5
 [node name="Heading" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
-text = "Selected Place & Current Note"
+text = "Selected Place"
 [node name="LocationNotePreview" type="VBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content"]
 layout_mode = 2
 size_flags_vertical = 3
@@ -195,9 +171,11 @@ text = "0 / 255 encoded bytes"
 layout_mode = 2
 [node name="SaveLocationNote" type="Button" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor/Actions"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Save Note"
 [node name="CancelLocationNoteEdit" type="Button" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor/Actions"]
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Revert Draft"
 [node name="Unavailable" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor"]
 visible = false
@@ -221,7 +199,7 @@ theme_override_constants/separation = 6
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.5
+size_flags_stretch_ratio = 1.0
 theme_type_variation = &"ClassicInset"
 [node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser"]
 layout_mode = 2
@@ -298,14 +276,6 @@ text = "Fit"
 custom_minimum_size = Vector2(46, 26)
 layout_mode = 2
 text = "+"
-[node name="PlayerMapNote" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
-theme_override_font_sizes/font_size = 14
-text = "Map note"
-horizontal_alignment = 1
-autowrap_mode = 2
 [node name="AcquiredScrollingPlayerMap" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
 visible = false
 layout_mode = 2
@@ -330,6 +300,14 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("8_presenter")
 
+[node name="PlayerMapNote" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+theme_override_font_sizes/font_size = 14
+text = "Map note"
+autowrap_mode = 2
+
 [node name="Journal" type="VBoxContainer" parent="MapsNotesTabs"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -343,25 +321,22 @@ theme_override_constants/separation = 4
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("JournalPane")
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"ClassicInset"
 [node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 5
-[node name="Heading" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.588235, 0.235294, 0.192157, 1)
-theme_override_font_sizes/font_size = 18
-text = "Journal Entries"
 [node name="JournalSearch" type="LineEdit" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicTheldrowLineEdit"
-theme_override_colors/font_color = Color(0.188235, 0.14902, 0.109804, 1)
-theme_override_colors/font_placeholder_color = Color(0.403922, 0.333333, 0.227451, 1)
-theme_override_styles/normal = SubResource("JournalSearch")
 placeholder_text = "Search journal…"
 clear_button_enabled = true
+[node name="Heading" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Journal Entries"
 [node name="JournalEntryScroll" type="ScrollContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -379,23 +354,20 @@ theme_type_variation = &"ClassicInset"
 layout_mode = 2
 text = "The journal is empty\nNo journal records were supplied by the current session."
 autowrap_mode = 2
-[node name="JournalBookSpine" type="ColorRect" parent="MapsNotesTabs/Journal/JournalWorkspace"]
-custom_minimum_size = Vector2(12, 0)
-layout_mode = 2
-mouse_filter = 2
-color = Color(0.294118, 0.156863, 0.133333, 1)
 [node name="JournalEntryDetail" type="PanelContainer" parent="MapsNotesTabs/Journal/JournalWorkspace"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("JournalPane")
+size_flags_stretch_ratio = 2.5
+theme_type_variation = &"ClassicInset"
 [node name="Content" type="VBoxContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 [node name="Heading" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content"]
+visible = false
 layout_mode = 2
-theme_override_colors/font_color = Color(0.588235, 0.235294, 0.192157, 1)
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
 theme_override_font_sizes/font_size = 18
 text = "Selected Entry"
 [node name="JournalEntryDetailScroll" type="ScrollContainer" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content"]
@@ -412,7 +384,7 @@ theme_override_constants/separation = 5
 layout_mode = 2
 [node name="Title" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.588235, 0.235294, 0.192157, 1)
+theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
 theme_override_font_sizes/font_size = 20
 text = "Journal entry 0"
 [node name="Divider" type="HSeparator" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
@@ -420,7 +392,7 @@ layout_mode = 2
 [node name="JournalEntryText" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.188235, 0.14902, 0.109804, 1)
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
 theme_override_font_sizes/font_size = 17
 text = "Authored journal text"
 autowrap_mode = 2

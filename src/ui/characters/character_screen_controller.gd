@@ -149,10 +149,15 @@ func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisi
 	panel.name = "CharacterFile_%s" % revision.character_id.validate_node_name()
 	var portrait := panel.get_node("CardContent/Record/StoredAppearancePair/StoredPortrait") as TextureRect
 	portrait.texture = _vault_appearance_textures.get(revision.portrait_id) as Texture2D
+	if portrait.texture != null:
+		portrait.custom_minimum_size = portrait.texture.get_size()
 	var tactical := panel.get_node("CardContent/Record/StoredAppearancePair/StoredTacticalIcon") as TextureRect
 	if revision.character != null:
 		tactical.texture = _vault_appearance_textures.get(revision.character.combat_icon_id) as Texture2D
-	_bind_label(panel.get_node("CardContent/Record/Summary/Name") as Label, revision.name, GOLD, 18)
+		if tactical.texture != null:
+			tactical.custom_minimum_size = tactical.texture.get_size()
+	var name_label := panel.get_node("CardContent/Record/Summary/Name") as Label
+	_bind_label(name_label, revision.name, GOLD, 18)
 	var character := revision.character
 	var identity := "Level %d • %s / %s" % [revision.level, character.race_name if character != null else revision.race_id, character.caste_name if character != null else revision.caste_id]
 	_bind_label(panel.get_node("CardContent/Record/Summary/Identity") as Label, identity, Color("e0e2e5"), 14)
@@ -163,7 +168,7 @@ func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisi
 	var origin := "Realmz character file" if revision.source_campaign_id.is_empty() else "From %s" % revision.source_campaign_id
 	if not revision.publication_label.is_empty():
 		origin += " • %s" % revision.publication_label
-	_bind_label(panel.get_node("CardContent/Record/Summary/Origin") as Label, origin, MUTED, 11)
+	name_label.tooltip_text = origin
 	_bind_label(panel.get_node("CardContent/CharacterFileActions/Eligibility") as Label, "Eligible" if revision.eligible else "Unavailable", Color("75c889") if revision.eligible else Color("ef7770"), 13)
 	var inspect := panel.get_node("CardContent/CharacterFileActions/Inspect") as Button
 	inspect.disabled = character == null

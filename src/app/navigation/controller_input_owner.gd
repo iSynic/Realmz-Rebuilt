@@ -48,6 +48,29 @@ var _direction_settle_frames: int = 0
 func _ready() -> void:
 	set_process(true)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
+	get_tree().node_added.connect(_bind_popup_input)
+	_bind_existing_popups(get_parent())
+
+
+func _bind_existing_popups(node: Node) -> void:
+	_bind_popup_input(node)
+	for child: Node in node.get_children(true):
+		_bind_existing_popups(child)
+
+
+func _bind_popup_input(node: Node) -> void:
+	if not node is PopupMenu or not get_parent().is_ancestor_of(node):
+		return
+	var popup := node as PopupMenu
+	var handler := _handle_popup_input.bind(popup)
+	if popup.window_input.is_connected(handler):
+		return
+	popup.window_input.connect(handler)
+
+
+func _handle_popup_input(event: InputEvent, popup: PopupMenu) -> void:
+	if handle_input(event):
+		popup.set_input_as_handled()
 
 
 func configure(preferences: ControllerPreferences) -> void:

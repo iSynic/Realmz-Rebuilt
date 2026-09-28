@@ -5,8 +5,21 @@ extends ScreenFrame
 const BODY_PATH := "WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"
 
 
+func _enter_tree() -> void:
+	var back := get_node("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
+	back.owner = null
+	back.reparent(get_node("WorkspaceColumn/JournalFooter/BackHost"))
+	back.owner = self
+	back.custom_minimum_size = Vector2(142.0, 34.0)
+	workspace().get_node("MapsNotesSummary").visible = false
+
+
 func workspace() -> MapsNotesWorkspace:
 	return get_node(BODY_PATH + "/MapsNotesWorkspace") as MapsNotesWorkspace
+
+
+func count_label() -> Label:
+	return get_node("WorkspaceColumn/WorkspaceHeader/JournalCount") as Label
 
 
 func prepare_for_render(compact: bool = false) -> void:

@@ -59,6 +59,7 @@ var _hurry_spell_resolution: bool = false
 var _visible_fields: Array[PersistentCombatFieldView] = []
 var _hurry_cast_key: String = ""
 var _visible_health: Dictionary = {}
+var _backdrops := ClassicCombatBackdrop.new()
 
 
 func begin(previous: GameView, events: Array[DomainEvent], final: GameView, reduced_motion: bool) -> bool:
@@ -98,6 +99,7 @@ func reset() -> void:
 	_visible_fields.clear()
 	_hurry_cast_key = ""
 	_visible_health.clear()
+	_backdrops.seed(base_view)
 
 
 func is_active() -> bool:
@@ -207,6 +209,8 @@ func _build_frames(events: Array[DomainEvent]) -> Array[String]:
 	var hidden: Array[String] = []
 	_visible_fields = base_view.combat_view.persistent_fields.duplicate() if base_view != null and base_view.combat_view != null else []
 	_visible_health.clear()
+	_backdrops.seed(base_view)
+	if base_view == final_view: _backdrops.rewind(events)
 	if base_view != null:
 		for character: CharacterView in base_view.party_members:
 			_visible_health[character.id] = character.current_health
@@ -228,8 +232,10 @@ func _build_frames(events: Array[DomainEvent]) -> Array[String]:
 			continue
 		if event.kind == &"battle_started":
 			accelerated_sequence = true
+		_backdrops.observe_action(event)
 		var first_frame_index := _frames.size()
 		_append_event_frames(event, positions, hidden)
+		_backdrops.apply_result(event.payload)
 		var automatic_event := automatic_sequence or bool(event.payload.get("automatic", false))
 		if accelerated_sequence or automatic_event:
 			_accelerate_frames(first_frame_index, automatic_event)
@@ -409,6 +415,15 @@ func _append_spell_projectile(event: DomainEvent, positions: Dictionary, hidden:
 
 
 func _append_spell_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	_backdrops.apply_result(event.payload)
+	if int(event.payload.get("classicTargetType", 0)) in [9, 10] and not bool(event.payload.get("defeated", false)):
+		var highlight := _new_frame(&"backdrop_effect", SPELL_EFFECT_SECONDS, positions, hidden)
+		highlight.actor_id = String(event.payload.get("actorId", ""))
+		highlight.target_id = String(event.payload.get("targetId", ""))
+		highlight.to_coordinate = _position_for(highlight.target_id, positions)
+		_frames.append(highlight)
+		_append_result(event, positions, hidden)
+		return
 	var effect_ids: Array = event.payload.get("classicResolutionEffectResourceIds", []) as Array
 	var grouped := _hurry_spell_resolution and int(event.payload.get("castSequenceCount", 1)) > 1 and event.payload.has("areaCenter")
 	var group_key := "%s|%s|%s|%s" % [event.payload.get("actorId", ""), event.payload.get("spellId", ""), event.payload.get("castSequenceCount", 1), event.payload.get("areaCenter", [])]
@@ -442,6 +457,7 @@ func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidde
 		_hide_combatant(target_id, hidden)
 		var defeat := _new_frame(&"defeat", DEFEAT_SECONDS, positions, hidden)
 		defeat.target_id = target_id
+		defeat.effect_resource_id = CombatDefeatArt.resource_id_for_combatant(base_view, target_id)
 		defeat.result_kind = &"defeat"
 		defeat.display_text = "Destroyed"
 		_frames.append(defeat)
@@ -464,6 +480,11 @@ func _append_bleeding_result(event: DomainEvent, positions: Dictionary, hidden: 
 	_frames.append(frame)
 	if defeated:
 		_hide_combatant(target_id, hidden)
+		var defeat := _new_frame(&"defeat", DEFEAT_SECONDS, positions, hidden)
+		defeat.target_id = target_id
+		defeat.effect_resource_id = CombatDefeatArt.resource_id_for_combatant(base_view, target_id)
+		defeat.display_text = "Bled to death"
+		_frames.append(defeat)
 
 
 func _append_simple_result(event: DomainEvent, positions: Dictionary, hidden: Array[String], result_kind: StringName, text: String) -> void:
@@ -476,6 +497,7 @@ func _append_simple_result(event: DomainEvent, positions: Dictionary, hidden: Ar
 
 
 func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	_backdrops.apply_result(event.payload)
 	var target_id := String(event.payload.get("targetId", ""))
 	var defeated := bool(event.payload.get("defeated", false))
 	if _visible_health.has(target_id):
@@ -492,6 +514,7 @@ func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 		_hide_combatant(target_id, hidden)
 		var defeat := _new_frame(&"defeat", DEFEAT_SECONDS, positions, hidden)
 		defeat.target_id = result.target_id
+		defeat.effect_resource_id = CombatDefeatArt.resource_id_for_combatant(base_view, target_id)
 		defeat.result_kind = &"defeat"
 		defeat.display_text = "Defeated"
 		_frames.append(defeat)
@@ -510,6 +533,7 @@ func _append_next_actor_cue(hidden_combatant_ids: Array[String]) -> void:
 	var prior_round := previous_view.combat_view.round_number if previous_view != null and previous_view.combat_view != null else -1
 	if next_actor == prior_actor and final_view.combat_view.round_number == prior_round:
 		return
+	_backdrops.seed(final_view)
 	var positions := _positions_for(final_view)
 	var cue := _new_frame(&"actor_cue", CUE_SECONDS, positions, hidden_combatant_ids)
 	cue.actor_id = next_actor
@@ -540,6 +564,8 @@ func _new_frame(kind: StringName, duration: float, positions: Dictionary, hidden
 	frame.hidden_combatant_ids = hidden.duplicate()
 	frame.persistent_fields = _visible_fields.duplicate()
 	frame.combatant_health = _visible_health.duplicate()
+	frame.combatant_backdrops = _backdrops.actors.duplicate()
+	frame.active_combatant_id = _backdrops.active_actor_id
 	return frame
 
 

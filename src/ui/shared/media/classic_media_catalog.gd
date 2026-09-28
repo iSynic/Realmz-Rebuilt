@@ -49,6 +49,19 @@ func assets_of_kind(kind: String) -> Array[MediaAsset]:
 func asset_by_id(asset_id: String) -> MediaAsset:
 	var landlook_resource_id := _landlook_resource_id(asset_id)
 	if landlook_resource_id >= 0:
+		if package_media != null:
+			var package_status := package_media.resource_status("PICT", landlook_resource_id)
+			if package_status == &"ambiguous":
+				return null
+			if package_status == &"resolved":
+				var exact_asset := package_media.asset_by_resource("PICT", landlook_resource_id)
+				var indexed_tileset := package_media.asset_by_id(asset_id)
+				if exact_asset != null and indexed_tileset != null and indexed_tileset.is_tileset() and indexed_tileset.sha256 == exact_asset.sha256:
+					return indexed_tileset
+				return exact_asset
+			var packaged_landlook := package_media.asset_by_id(asset_id)
+			if packaged_landlook != null:
+				return packaged_landlook
 		return asset_by_resource("PICT", landlook_resource_id)
 	var package_asset := package_media.asset_by_id(asset_id) if package_media != null else null
 	if package_asset != null:

@@ -4,11 +4,11 @@ class_name BattleCommandScaleController
 extends RefCounted
 
 const COMMAND_BASE_SIZE_META: StringName = &"battle_command_base_size"
-const COMMAND_FONT_SIZE := 14.0
+const COMMAND_FONT_SIZE := 12.0
 const COMMAND_GROUP_HEIGHT := 100.0
-const COMMAND_GROUP_SEPARATION := 10.0
+const COMMAND_GROUP_SEPARATION := 6.0
 const COMMAND_COLUMN_SEPARATION := 4.0
-const COMMAND_ROW_SEPARATION := 5.0
+const COMMAND_ROW_SEPARATION := 3.0
 const COMPACT_COMMAND_FONT_SIZE := 13.0
 const COMPACT_COMMAND_GROUP_HEIGHT := 88.0
 const COMPACT_COMMAND_GROUP_SEPARATION := 8.0
@@ -77,6 +77,14 @@ func apply() -> void:
 			row.add_theme_constant_override("separation", roundi((COMPACT_COMMAND_ROW_SEPARATION if _compact else COMMAND_ROW_SEPARATION) * _scale))
 	for button: Button in _buttons:
 		_apply_button(button)
+	if _panels.size() == 3 and is_instance_valid(_panels[0]) and is_instance_valid(_panels[2]):
+		var view_panel := _panels[0]
+		var tactics_panel := _panels[2]
+		view_panel.custom_minimum_size.x = 0.0
+		tactics_panel.custom_minimum_size.x = 0.0
+		var side_width := maxf(view_panel.get_combined_minimum_size().x, tactics_panel.get_combined_minimum_size().x)
+		view_panel.custom_minimum_size.x = side_width
+		tactics_panel.custom_minimum_size.x = side_width
 
 
 func _apply_button(button: Button) -> void:

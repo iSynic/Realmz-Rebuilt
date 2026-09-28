@@ -10,6 +10,7 @@ var _upper_atlas_id := ""
 var _upper_atlas_asset: MediaAsset
 var _upper_atlas_texture: Texture2D
 var _actor_textures: Dictionary = {}
+var _transparent_battle_tiles: Dictionary = {}
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
@@ -20,6 +21,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_upper_atlas_asset = null
 	_upper_atlas_texture = null
 	_actor_textures.clear()
+	_transparent_battle_tiles.clear()
 
 
 func prepare(upper_atlas_id: String) -> void:
@@ -57,6 +59,29 @@ func battle_atlas_texture() -> Texture2D:
 
 static func persistent_field_tile_id(queue_icon: int) -> int:
 	return 200 + queue_icon
+
+
+func transparent_battle_tile_texture(tile_id: int) -> Texture2D:
+	if _transparent_battle_tiles.has(tile_id):
+		return _transparent_battle_tiles[tile_id] as Texture2D
+	if _atlas_asset == null or _atlas_texture == null:
+		return null
+	var region := _atlas_asset.region_for(tile_id)
+	if not region.has_area():
+		return null
+	var tile := _atlas_texture.get_image().get_region(region)
+	if tile == null or tile.is_empty():
+		return null
+	tile.convert(Image.FORMAT_RGBA8)
+	for y in tile.get_height():
+		for x in tile.get_width():
+			var color := tile.get_pixel(x, y)
+			if color.r == 1.0 and color.g == 1.0 and color.b == 1.0:
+				color.a = 0.0
+				tile.set_pixel(x, y, color)
+	var texture := ImageTexture.create_from_image(tile)
+	_transparent_battle_tiles[tile_id] = texture
+	return texture
 
 
 func actor_texture(asset: MediaAsset) -> Texture2D:

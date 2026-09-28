@@ -144,6 +144,12 @@ static func _append_field_collision_event(events: Array[DomainEvent], field: Per
 	var payload := {"actorId": field.caster_id, "targetId": target_id, "targetKind": "character" if target_is_character else "monster", "spellId": spell.id, "targetType": spell.target_type, "power": field.power_level, "classicTier": field.cast_level, "reflected": false, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "fieldSlot": field.slot, "areaCenter": [field.center.x, field.center.y], "areaShape": field.shape, "source": "classic-persistent-field", "detectedMagicItemCount": resolution.detected_magic_item_count}
 	if resolution.applied_condition >= 0:
 		payload["appliedCondition"] = resolution.applied_condition
+	if resolution.allegiance_changed:
+		payload["traitorBefore"] = resolution.target_traitor_before
+		payload["traitorAfter"] = resolution.target_traitor_after
+	CombatSpellEventBuilder.append_helpless_state(payload, resolution)
+	if spell.target_type in [9, 10]:
+		payload["classicTargetType"] = spell.target_type
 	events.append(DomainEvent.new(&"combat_spell_resolved", payload))
 
 

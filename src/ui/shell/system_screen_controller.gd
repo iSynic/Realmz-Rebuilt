@@ -229,7 +229,7 @@ func _bind_save_workspace(view: GameView) -> void:
 	var rows := _workspace.save_slot_rows()
 	var empty := _workspace.save_browser_empty()
 	empty.visible = false
-	(_workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/ActiveSlotLabel") as Label).text = "Slot %s active · Quick Save overwrites %s" % [_active_slot_id, _active_slot_id]
+	(_workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/ActiveSlotLabel") as Label).text = ("Slot %s active · Quick Save: %s" if _layout_profile == UiLayoutProfile.COMPACT else "Slot %s active · Quick Save overwrites %s") % [_active_slot_id, _active_slot_id]
 	if view.party_setup_available and _selected_preview() == null:
 		for existing: SaveSlotPreview in _save_previews:
 			if existing.can_load and existing.source == SaveSlotPreview.PRIMARY:
@@ -252,7 +252,7 @@ func _bind_save_workspace(view: GameView) -> void:
 	for preview: SaveSlotPreview in _save_previews:
 		if preview.slot_id.length() == 1 and SaveSlotPreview.SCENARIO_SLOTS.contains(preview.slot_id):
 			continue
-		_add_save_preview_row(rows, group, preview, "Earlier save · %s · %s" % [slot_label(preview.slot_id), preview.source_label()])
+		_add_save_preview_row(rows, group, preview, "Earlier save · %s · %s" % [SystemPreferencesLayout.slot_label(preview.slot_id), preview.source_label()])
 	_bind_save_footer(view)
 	_refresh_save_detail()
 
@@ -358,7 +358,7 @@ func _refresh_save_detail() -> void:
 	if preview == null:
 		(empty.get_node("Text") as Label).text = "Slot %s is empty. Choose Save to %s to create it." % [slot_id, slot_id]
 		return
-	_bind_label(record.get_node("Title") as Label, "%s  •  %s" % [slot_label(preview.slot_id), preview.source_label()], GOLD, 18)
+	_bind_label(record.get_node("Title") as Label, "%s  •  %s" % [SystemPreferencesLayout.slot_label(preview.slot_id), preview.source_label()], GOLD, 18)
 	_bind_label(record.get_node("Status") as Label, preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14)
 	var map_image := record.get_node("MapPreview") as TextureRect
 	var map_status := record.get_node("MapPreviewStatus") as Label
@@ -376,6 +376,7 @@ func _refresh_save_detail() -> void:
 	var valid := preview.status == SaveSlotPreview.VALID
 	for path: String in ["Location", "Party", "Divider", "Package", "Rules", "Saved"]:
 		record.get_node(path).visible = valid
+	_workspace.set_save_record_order(record, _layout_profile == UiLayoutProfile.COMPACT)
 	if not valid:
 		return
 	var party := ", ".join(preview.character_names) if not preview.character_names.is_empty() else "No party members"
@@ -477,9 +478,9 @@ func _update_save_confirmation() -> void:
 	row.visible = _pending_save_action != &""
 	if not row.visible:
 		return
-	var copy := "Load %s%s and replace the current adventure?" % [slot_label(_pending_save_slot), " backup" if _pending_save_backup else ""] if _pending_save_action in [&"load", &"load_backup"] else "Overwrite %s? The current record becomes its backup." % slot_label(_pending_save_slot)
+	var copy := "Load %s%s and replace the current adventure?" % [SystemPreferencesLayout.slot_label(_pending_save_slot), " backup" if _pending_save_backup else ""] if _pending_save_action in [&"load", &"load_backup"] else "Overwrite %s? The current record becomes its backup." % SystemPreferencesLayout.slot_label(_pending_save_slot)
 	if migrating:
-		var source := "%s%s" % [slot_label(_pending_save_slot), " backup" if _pending_save_backup else ""]
+		var source := "%s%s" % [SystemPreferencesLayout.slot_label(_pending_save_slot), " backup" if _pending_save_backup else ""]
 		copy = "All ten slots are occupied. Select an A–J slot to replace with %s." % source if _legacy_target_slot.is_empty() else "Replace Slot %s with %s and load it? The current slot record becomes its backup; the earlier save is kept." % [_legacy_target_slot, source]
 	(row.get_node("ConfirmText") as Label).text = copy
 
@@ -495,24 +496,18 @@ func _key(preview: SaveSlotPreview) -> String:
 	return "%s:%s" % [preview.slot_id, String(preview.source)] if preview != null else ""
 
 
-static func slot_label(slot_id: String) -> String:
-	if slot_id.length() == 1 and SaveSlotPreview.SCENARIO_SLOTS.contains(slot_id):
-		return "Slot %s" % slot_id
-	match slot_id:
-		"quick": return "Quick Save 1"
-		"quick-2": return "Quick Save 2"
-		_: return slot_id
-
-
 func _bind_display(settings: PresentationSettings) -> void:
-	var root := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content")
-	_bind_option(root.get_node("DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow/DisplayScalingPicker") as OptionButton, [
+	var root := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs")
+	var scale_root := root.get_node("Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content")
+	var effects_root := root.get_node("Image Effects/VisualEffectsGroup/Content")
+	var world_root := root.get_node("World View/WorldViewGroup/Content")
+	_bind_option(scale_root.get_node("DisplayScalingRow/DisplayScalingPicker") as OptionButton, [
 		{"label": "Responsive (current)", "id": PresentationSettings.DISPLAY_RESPONSIVE},
 		{"label": "Integer: whole window", "id": PresentationSettings.DISPLAY_INTEGER_WINDOW},
 		{"label": "Integer: world canvas", "id": PresentationSettings.DISPLAY_INTEGER_CANVAS},
 		{"label": "Fill window", "id": PresentationSettings.DISPLAY_FILL_WINDOW},
 	], settings.display_scaling_mode, &"display_scaling_mode")
-	var zoom_picker := root.get_node("DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow/WorldZoomPicker") as OptionButton
+	var zoom_picker := scale_root.get_node("WorldZoomRow/WorldZoomPicker") as OptionButton
 	_bind_option(zoom_picker, [
 		{"label": "1× · 32-pixel tiles", "id": "1"},
 		{"label": "2× · 64-pixel tiles", "id": "2"},
@@ -520,33 +515,33 @@ func _bind_display(settings: PresentationSettings) -> void:
 		{"label": "4× · 128-pixel tiles", "id": "4"},
 	], str(settings.world_zoom), &"world_zoom")
 	zoom_picker.disabled = settings.display_scaling_mode != PresentationSettings.DISPLAY_INTEGER_CANVAS
-	_bind_option(root.get_node("DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/PixelSmoothingRow/PixelSmoothingPicker") as OptionButton, [
+	_bind_option(effects_root.get_node("PixelSmoothingRow/PixelSmoothingPicker") as OptionButton, [
 		{"label": "Off · crisp pixels", "id": PresentationSettings.SMOOTHING_OFF},
 		{"label": "World canvas only", "id": PresentationSettings.SMOOTHING_WORLD},
 		{"label": "Whole window", "id": PresentationSettings.SMOOTHING_WINDOW},
 	], settings.pixel_art_smoothing, &"pixel_art_smoothing")
-	_bind_toggle(root.get_node("DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtEnabled") as CheckButton, settings.crt_enabled, &"crt_enabled")
-	_bind_option(root.get_node("DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtShaderRow/CrtShaderPicker") as OptionButton, [
+	_bind_toggle(effects_root.get_node("CrtEnabled") as CheckButton, settings.crt_enabled, &"crt_enabled")
+	_bind_option(effects_root.get_node("CrtShaderRow/CrtShaderPicker") as OptionButton, [
 		{"label": "CRT-Pi", "id": PresentationSettings.CRT_PI},
 		{"label": "CRT-Lottes", "id": PresentationSettings.CRT_LOTTES},
 	], settings.crt_shader, &"crt_shader")
-	_bind_option(root.get_node("DisplayTopRow/DisplaySettingsColumn/VisualEffectsGroup/Content/CrtAreaRow/CrtAreaPicker") as OptionButton, [
+	_bind_option(effects_root.get_node("CrtAreaRow/CrtAreaPicker") as OptionButton, [
 		{"label": "World canvas", "id": PresentationSettings.CRT_WORLD},
 		{"label": "Whole window", "id": PresentationSettings.CRT_WINDOW},
 	], settings.crt_area, &"crt_area")
-	_bind_option(root.get_node("DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow/InterfaceScalePicker") as OptionButton, [
+	_bind_option(scale_root.get_node("InterfaceScaleRow/InterfaceScalePicker") as OptionButton, [
 		{"label": "Fit to window", "id": PresentationSettings.UI_SCALE_AUTO},
 		{"label": "Interface density: 100%", "id": PresentationSettings.UI_SCALE_100},
 		{"label": "Interface density: 125%", "id": PresentationSettings.UI_SCALE_125},
 		{"label": "Interface density: 150%", "id": PresentationSettings.UI_SCALE_150},
 	], settings.ui_scale_mode, &"ui_scale_mode")
-	_bind_option(root.get_node("DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow/WindowModePicker") as OptionButton, [
+	_bind_option(scale_root.get_node("WindowModeRow/WindowModePicker") as OptionButton, [
 		{"label": "Windowed", "id": PresentationSettings.WINDOWED},
 		{"label": "Borderless fullscreen", "id": PresentationSettings.BORDERLESS_FULLSCREEN},
 	], settings.window_mode, &"window_mode")
-	_bind_toggle(root.get_node("WorldViewGroup/Content/WorldOptions/Dungeon3d") as CheckButton, settings.dungeon_3d, &"dungeon_3d")
-	_bind_toggle(root.get_node("WorldViewGroup/Content/WorldOptions/ClassicExplorationVisibility") as CheckButton, settings.classic_exploration_visibility, &"classic_exploration_visibility")
-	_bind_toggle(root.get_node("WorldViewGroup/Content/WorldOptions/CustomFogTile") as CheckButton, settings.custom_fog_tile_enabled, &"custom_fog_tile_enabled")
+	_bind_toggle(world_root.get_node("WorldOptions/Dungeon3d") as CheckButton, settings.dungeon_3d, &"dungeon_3d")
+	_bind_toggle(world_root.get_node("WorldOptions/ClassicExplorationVisibility") as CheckButton, settings.classic_exploration_visibility, &"classic_exploration_visibility")
+	_bind_toggle(world_root.get_node("WorldOptions/CustomFogTile") as CheckButton, settings.custom_fog_tile_enabled, &"custom_fog_tile_enabled")
 
 
 func _bind_controls(settings: PresentationSettings) -> void:

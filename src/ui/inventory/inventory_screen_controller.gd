@@ -170,7 +170,7 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		trade_host.add_child(trade_workspace)
 		_bind_trade_workspace(trade_workspace, view, selected_character, target, selected_item, media, trade_popover)
 		return
-	workspace.prepare_normal_layout(_layout_profile == UiLayoutProfile.COMPACT)
+	workspace.prepare_normal_layout(_layout_profile == UiLayoutProfile.COMPACT, _encounter_mode)
 	var detail_popover := _create_detail_popover(workspace, media)
 	_bind_item_browser(workspace.item_browser_content(), selected_character, visible_items, selected_item, media, detail_popover)
 	_bind_character_command_rail(workspace.command_rail_content(), view, selected_character, selected_item, media)
@@ -355,6 +355,8 @@ func _bind_item_record(content: InventoryItemInspector, character: CharacterView
 	content.clear_dynamic_content()
 	var record := content.record()
 	content.set_compact(_layout_profile == UiLayoutProfile.COMPACT)
+	content.move_child(content.item_actions(), 0 if _encounter_mode and _layout_profile == UiLayoutProfile.COMPACT else 1)
+	content.item_actions().size_flags_vertical = Control.SIZE_FILL if _encounter_mode and _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	content.done_column().visible = not _encounter_mode
 	if not _encounter_mode:
 		_scene_binding.bind_exit_column(content.done_column(), not _browse_only_reason.is_empty(), func() -> void: back_requested.emit(), func(route: StringName) -> void: route_requested.emit(route))
@@ -405,6 +407,7 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 		panel.show_actions(true)
 		var choose := panel.encounter_button()
 		_bind_bitmap_button(choose, &"inventory.action.use", "Use in encounter")
+		choose.custom_minimum_size.x = 220.0
 		choose.command_requested.connect(func(_command_id: StringName) -> void: _submit_encounter_item(character.id, item.instance_id))
 		return
 	if not _browse_only_reason.is_empty():

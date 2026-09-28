@@ -65,6 +65,7 @@ func _ready() -> void:
 	_bind_debug_and_movement()
 	_bind_combat_and_interactions()
 	_bind_shell_and_settings()
+	_dungeon_presenter.pointer_input_gate = func() -> bool: return accepts_exploration_input() and not _shell_presenter.navigation_overlay_active
 	click_to_move = ClickToMoveCoordinator.new(session_controller, presentation_coordinator, _shell_presenter, _map_presenter, _battlefield_presenter, _held_movement, accepts_exploration_input, func() -> bool: return _dungeon_presenter.is_active(), submit_intent, func(response: InteractionResponse) -> SessionStep:
 		response.body = ApplicationCombatPolicy.body_with_preferences(response.body as InteractionResponse.CombatBody, _presentation_settings)
 		return submit_response(response)
@@ -99,6 +100,7 @@ func _build_dependencies() -> void:
 	add_child(session_controller)
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
+	move_child(_dungeon_presenter, _game_shell.get_index())
 	add_child(_held_movement)
 	add_child(_controller_input)
 	debug_tools = DebugToolsHost.new()
@@ -179,10 +181,7 @@ func _bind_debug_and_movement() -> void:
 		func(delta: int) -> void:
 			submit_intent(ExplorationIntents.dungeon_turn(delta))
 	)
-	_dungeon_presenter.movement_requested.connect(
-		func(direction: Vector2i) -> void:
-			submit_movement(direction)
-	)
+	_dungeon_presenter.movement_requested.connect(submit_movement)
 	_dungeon_presenter.movement_hold_started.connect(
 		func(direction: Vector2i) -> void:
 			_held_movement.start(&"keyboard", direction)
@@ -206,6 +205,7 @@ func _bind_combat_and_interactions() -> void:
 	)
 	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
 	_interaction_presenter.response_submitted.connect(submit_response)
+	_interaction_presenter.combat.inspected_combatant_changed.connect(func(id: String) -> void: _battlefield_presenter.interaction.inspected_combatant_id = id)
 	_interaction_presenter.combat.targeting_requested.connect(_on_combat_targeting_requested)
 	_interaction_presenter.combat.targeting_confirm_requested.connect(_battlefield_presenter.interaction.confirm_targeting)
 	_interaction_presenter.combat.targeting_cancel_requested.connect(_battlefield_presenter.interaction.cancel_targeting)
@@ -219,6 +219,7 @@ func _bind_combat_and_interactions() -> void:
 	_battlefield_presenter.interaction.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_battlefield_presenter.interaction.combatant_hovered.connect(func(id: String) -> void: _interaction_presenter.combat.open_combatant_inspection(id, false))
 	_battlefield_presenter.interaction.targeting_changed.connect(_interaction_presenter.combat.update_targeting)
+	_battlefield_presenter.interaction.invalid_target_requested.connect(func() -> void: presentation_media.present_interaction_sound(143, true))
 	_battlefield_presenter.interaction.targeting_cancelled.connect(_interaction_presenter.combat.targeting_cancelled)
 
 
@@ -640,8 +641,6 @@ func _on_playback_step_settled(step: SessionStep) -> void:
 
 
 func _flush_queued_combat_auto_changes() -> void:
-	if _queued_combat_auto_changes.is_empty():
-		return
 	var changes := _queued_combat_auto_changes.duplicate()
 	_queued_combat_auto_changes.clear()
 	var character_ids: Array[String] = []

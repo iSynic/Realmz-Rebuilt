@@ -39,18 +39,25 @@ func rebuild() -> void:
 	var owner = _owner()
 	if not owner.is_node_ready() or owner._profile == null:
 		return
-	for grid: GridContainer in [owner._world_command_grid, owner._command_grid]:
+	for grid: Control in [owner._world_command_grid, owner._world_command_lower_grid, owner._command_grid, owner._torch_dock]:
 		for child: Node in grid.get_children():
 			grid.remove_child(child)
 			child.queue_free()
 	_buttons.clear()
 	var context: StringName = owner._navigator.current_screen()
+	var world_command_count := 0
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = presentation_definition(definition)
+		var command_id := StringName(definition["id"])
 		var button := _build_button(definition)
 		button.set_meta("focus_key", "command:%s" % definition["id"])
 		var group := StringName(definition.get("group", &"party"))
-		var target_grid: GridContainer = owner._world_command_grid if group == &"world" and owner._world_command_panel.visible else owner._command_grid
+		var target_grid: Control = owner._command_grid
+		if command_id == &"torch" and owner._torch_dock.visible:
+			target_grid = owner._torch_dock
+		elif group == &"world" and owner._world_command_panel.visible:
+			target_grid = owner._world_command_grid if world_command_count < 4 else owner._world_command_lower_grid
+			world_command_count += 1
 		target_grid.add_child(button)
 		_buttons[StringName(definition["id"])] = button
 	update_availability()

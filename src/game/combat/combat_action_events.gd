@@ -43,6 +43,7 @@ static func character_attack_event(actor_id: String, target_id: String, target_k
 		"weaponConditionAfter": resolution.weapon_condition_after,
 		"criticalRolls": resolution.critical_rolls.duplicate(),
 	})
+	append_helpless_condition_state(event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	append_physical_result_effect(event, resolution.hit, armed)
 	return event
 
@@ -51,6 +52,13 @@ static func append_physical_result_effect(event: DomainEvent, hit: bool, armed: 
 	if event == null or not hit:
 		return
 	event.payload["classicResultEffectResourceId"] = 160 if armed else 161
+
+
+static func append_helpless_condition_state(payload: Dictionary, condition_index: int, condition_before: int, condition_after: int) -> void:
+	if condition_index != ConditionRules.HELPLESS:
+		return
+	payload["helplessBefore"] = condition_before != 0
+	payload["helplessAfter"] = condition_after != 0
 
 
 func commit_character_fumble(state: GameState, content: RealmzContent, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent]) -> bool:
@@ -102,7 +110,7 @@ static func append_fumble_feedback(events: Array[DomainEvent], actor_id: String,
 
 
 static func append_monster_special_events(events: Array[DomainEvent], actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution) -> void:
-	events.append(DomainEvent.new(&"combat_monster_special_resolved", {
+	var payload := {
 		"actorId": actor_id,
 		"targetId": target_id,
 		"targetKind": String(target_kind),
@@ -134,7 +142,9 @@ static func append_monster_special_events(events: Array[DomainEvent], actor_id: 
 		"physicalDamageSkipped": resolution.physical_damage_skipped,
 		"soundId": resolution.special_sound_id,
 		"source": "classic",
-	}))
+	}
+	append_helpless_condition_state(payload, resolution.special_condition_index, resolution.special_condition_before, resolution.special_condition_after)
+	events.append(DomainEvent.new(&"combat_monster_special_resolved", payload))
 	if resolution.special_announced and resolution.special_sound_id != 0:
 		var sound_source := "classic-monster-status" if resolution.special_condition_index >= 0 else "classic-monster-special"
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": resolution.special_sound_id, "waitForCompletion": false, "source": sound_source}))

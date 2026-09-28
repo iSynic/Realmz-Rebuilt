@@ -26,6 +26,8 @@ var _save_status_texture: Texture2D = load(SAVE_STATUS_TEXTURE_PATH) as Texture2
 var _journal_status_texture: Texture2D = load(JOURNAL_STATUS_TEXTURE_PATH) as Texture2D
 var _activity_tween: Tween
 var _latest_classic_text := ""
+var _narrative_history := ""
+var _choice_context_visible := false
 
 
 func initialize(
@@ -138,11 +140,30 @@ func _present_age_change(event: DomainEvent) -> void:
 
 
 func append_narrative(text: String) -> void:
-	if _narrative.text.is_empty() or _narrative.text == "Choose a validated Realmz campaign to begin.":
-		_narrative.text = text
+	var first_message := _narrative_history.is_empty() or _narrative_history == "Choose a validated Realmz campaign to begin."
+	if first_message:
+		_narrative_history = text
 	else:
-		_narrative.append_text("\n\n%s" % text)
-	_narrative.scroll_to_line(_narrative.get_line_count())
+		_narrative_history += "\n\n%s" % text
+	if not _choice_context_visible:
+		if first_message:
+			_narrative.text = text
+		else:
+			_narrative.append_text("\n\n%s" % text)
+		_narrative.scroll_to_line(_narrative.get_line_count())
+
+
+func present_choice_context(request: InteractionRequest) -> void:
+	var show_latest := request != null and request.kind in [InteractionRequest.YES_NO, InteractionRequest.INDEXED_CHOICE] and request.body.prompt_text().strip_edges().is_empty() and not _latest_classic_text.is_empty()
+	if show_latest:
+		if _narrative_history.is_empty():
+			_narrative_history = _narrative.text
+		_choice_context_visible = true
+		_narrative.text = _latest_classic_text
+	elif _choice_context_visible:
+		_choice_context_visible = false
+		_narrative.text = _narrative_history
+		_narrative.scroll_to_line(_narrative.get_line_count())
 
 
 func present_inactive() -> void:

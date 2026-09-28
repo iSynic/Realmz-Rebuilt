@@ -83,6 +83,16 @@ script = ExtResource("2_gxxd3")
 
 [node name="MovementPreview" parent="ExplorationMap" instance=ExtResource("10_movement")]
 
+[node name="DungeonViewCue" type="Label" parent="ExplorationMap"]
+z_index = 1
+layout_mode = 0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.96, 0.84, 0.48, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 13
+text = "Space  ·  3D view"
+
 [node name="GameShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
 
 [node name="InteractionPanel" parent="." instance=ExtResource("3_uarpi")]

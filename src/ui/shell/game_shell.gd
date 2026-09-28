@@ -61,6 +61,7 @@ signal standalone_character_creation_cancelled
 signal character_selection_completed(character_ids: Array[String])
 signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
 signal combat_spellbook_back_requested
+signal combat_bandage_target_selected(character_id: String)
 signal combat_inventory_response_submitted(body: InteractionResponse.CombatBody)
 signal combat_inventory_item_use_requested(character_id: String, instance_id: String)
 
@@ -93,6 +94,7 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_cont
 @onready var _world_command_panel: PanelContainer = %WorldCommandPanel
 @onready var _world_command_column: VBoxContainer = $BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn
 @onready var _world_command_grid: GridContainer = %WorldCommandGrid
+@onready var _world_command_lower_grid: GridContainer = %WorldCommandLowerGrid
 @onready var _narrative_well: PanelContainer = %NarrativeWell
 @onready var _command_panel: PanelContainer = %CommandPanel
 @onready var _party_effects_row: BoxContainer = %PartyEffectsRow
@@ -100,6 +102,7 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_cont
 @onready var _command_grid: GridContainer = %CommandGrid
 @onready var _effects_panel: PanelContainer = %EffectsPanel
 @onready var _effects_grid: GridContainer = %EffectsGrid
+@onready var _torch_dock: PanelContainer = %TorchDock
 @onready var _navigator: ScreenNavigator = %ScreenNavigator
 @onready var _smoke_action: Button = %SmokeAction
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
@@ -121,6 +124,7 @@ var _command_controller: GameShellCommandController
 var _menu_controller: GameShellMenuController
 var _picture_presenter: GameShellPicturePresenter
 var _layout_controller: GameShellLayoutController
+var _footer_bounds_pending := false
 var _status_controller: GameShellStatusController
 var _party_effects: GameShellPartyEffectsPresenter
 var _music_playlist_id: int = 0
@@ -162,6 +166,23 @@ class ControllerAccess:
 	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
 	func music_playlist_focus_root() -> Control:
 		return _shell._music_dialog if _shell._music_dialog != null and _shell._music_dialog.visible else null
+	func spellbook_focus_root() -> Control:
+		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
+		if book != null: return book
+		return _shell._navigator.content_presenter.spellbook.controller_focus_root() if _shell._navigator.current_screen() == &"spells" else null
+	func cycle_spellbook_level(delta: int) -> bool:
+		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
+		return book.controller_cycle_section(delta) if book != null else _shell._navigator.content_presenter.spellbook.controller_cycle_section(delta)
+	func focus_spellbook_selection() -> bool:
+		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
+		return book.focus_selected_spell() if book != null else _shell._navigator.content_presenter.spellbook.focus_selected_spell()
+	func show_spellbook_prompts(encounter: bool = false) -> void:
+		var levels: bool = encounter or _shell._party_roster.controller_spellbook() != null or _shell._navigator.content_presenter.spellbook.controller_browses_levels
+		_shell._controller_prompts.present_spellbook(_shell._presentation_settings.controller, levels)
+	func close_spellbook() -> void:
+		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
+		if book != null: book.back_requested.emit()
+		else: _shell._navigator.handle_back()
 	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
 	func cycle_section(delta: int) -> bool: return _shell._navigator.content_presenter.navigate_section(_shell._navigator.current_screen(), &"", delta)
 	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
@@ -231,8 +252,12 @@ class ControllerAccess:
 			if definition["id"] == &"allies" and reason.is_empty():
 				reason = GameShellAvailability.allies_reason(_shell._current_view)
 			var icon: Texture2D = _shell._command_controller.controller_icon(StringName(definition.get("icon", &"")))
-			entries.append(ControllerRadialEntry.new(StringName(definition["id"]), String(definition["label"]), reason.is_empty(), reason, icon, String(definition.get("symbol", ""))))
-		_open_radial(&"workspace", "WORKSPACES", entries)
+			var entry := ControllerRadialEntry.new(StringName(definition["id"]), String(definition["label"]), reason.is_empty(), reason, icon, String(definition.get("symbol", "")))
+			if entry.id == &"character" and _shell._media != null:
+				entry.icon = _shell._media.image_texture(_shell._media.asset_by_resource("cicn", 9000))
+				entry.secondary_icon = _shell._media.image_texture(_shell._media.asset_by_resource("cicn", 9006))
+			entries.append(entry)
+		_open_radial(&"workspace", "WORKSPACES", entries, true)
 		return true
 	func move_radial(direction: Vector2i) -> void: _shell._controller_radial.move_direction(Vector2(direction))
 	func page_radial(delta: int) -> void:
@@ -262,10 +287,11 @@ class ControllerAccess:
 			&"workspace_diagnostics": _shell._navigator.open_screen(&"system", true, &"Diagnostics")
 			&"workspace_top_menu": _shell._menu_controller.controller_open()
 			_: _shell._navigator.open_screen(command_id)
-	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry]) -> void:
+	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry], standalone_workspaces: bool = false) -> void:
 		_shell._controller_radial_kind = kind
 		_shell._controller_radial_activation = Callable()
 		_shell._controller_radial.set_title(title)
+		_shell._controller_radial.set_workspaces_presentation(standalone_workspaces)
 		_shell._controller_radial.open(entries)
 	func _clear_radial_owner() -> void:
 		_shell._controller_radial_kind = &""
@@ -313,6 +339,7 @@ func _ready() -> void:
 	_party_roster.character_selection_completed.connect(func(character_ids: Array[String]) -> void: character_selection_completed.emit(character_ids))
 	_party_roster.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: combat_spell_cast_requested.emit(option))
 	_party_roster.combat_spellbook_back_requested.connect(func() -> void: combat_spellbook_back_requested.emit())
+	_party_roster.combat_bandage_target_selected.connect(func(character_id: String) -> void: combat_bandage_target_selected.emit(character_id))
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
 	_build_menus()
@@ -522,6 +549,15 @@ func _build_menus() -> void:
 
 func _rebuild_command_deck() -> void:
 	_command_controller.rebuild()
+	if not _footer_bounds_pending:
+		_footer_bounds_pending = true
+		call_deferred("_restore_footer_bounds")
+
+
+func _restore_footer_bounds() -> void:
+	_footer_bounds_pending = false
+	if is_node_ready() and _profile != null:
+		_layout_controller.restore_footer_bounds(_profile)
 
 
 func _update_command_availability() -> void:

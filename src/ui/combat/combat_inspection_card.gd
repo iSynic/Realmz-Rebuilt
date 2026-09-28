@@ -3,6 +3,8 @@
 class_name CombatInspectionCard
 extends PanelContainer
 
+signal combatant_changed(combatant_id: String)
+
 const SECTIONS: Array[StringName] = [&"attacks", &"items", &"conditions"]
 
 var _combatant: InteractionRequestValue.Combatant
@@ -36,6 +38,7 @@ func present(combatant: InteractionRequestValue.Combatant, pinned: bool) -> void
 	%CombatantName.text = combatant.name
 	%AttackCount.text = "%s attacks per round" % combatant.attacks
 	visible = true
+	combatant_changed.emit(combatant.id)
 	_set_pinned(pinned)
 	_select_section(_section)
 	set_process(true)
@@ -51,6 +54,7 @@ func dismiss() -> bool:
 	if not visible:
 		return false
 	visible = false
+	combatant_changed.emit("")
 	_pinned = false
 	set_process(false)
 	var previous: Control = _previous_focus.get_ref() as Control if _previous_focus != null else null

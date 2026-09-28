@@ -84,6 +84,13 @@ func bind(
 	)
 	_shell_presenter.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: _interaction_presenter.combat.cast_spell(option))
 	_shell_presenter.combat_spellbook_back_requested.connect(func() -> void: _interaction_presenter.combat.close_spellbook())
+	_interaction_presenter.combat.bandage_selection_changed.connect(func(target_ids: Array[String]) -> void:
+		_shell_presenter.roster.set_combat_bandage_targets(target_ids)
+	)
+	_shell_presenter.combat_bandage_target_selected.connect(func(character_id: String) -> void:
+		if _interaction_presenter.combat.bandage != null:
+			_interaction_presenter.combat.bandage.select(character_id)
+	)
 	_interaction_presenter.combat.items_requested.connect(_on_combat_items_requested)
 	_interaction_presenter.combat.inventory_targeting_started.connect(func() -> void: _combat_inventory_targeting_return = true)
 	_shell_presenter.combat_inventory_item_use_requested.connect(_on_combat_inventory_item_use_requested)
@@ -122,6 +129,7 @@ static func _has_event(events: Array[DomainEvent], kind: StringName) -> bool:
 
 
 func _present_committed_step(step: SessionStep, game_view: GameView, include_audio: bool) -> void:
+	var announce_round := _presented_view != null and _presented_view.combat_view != null and game_view.combat_view != null and game_view.combat_view.outcome == &"active" and game_view.combat_view.round_number > _presented_view.combat_view.round_number
 	_present_view(game_view, false, false)
 	_shell_presenter.status.present_step(step, game_view, _shell_presenter.picture_stage)
 	_shell_presenter.present_media_events(step.events, _media_controller.catalog())
@@ -142,6 +150,9 @@ func _present_committed_step(step: SessionStep, game_view: GameView, include_aud
 		_interaction_presenter.present_passive_classic_text(passive_classic_text)
 	if not classic_flash_messages.is_empty():
 		_interaction_presenter.queue_classic_flash_messages(classic_flash_messages)
+	if announce_round:
+		# Castle's getup.c displays this for 120 ticks with application sound 139.
+		_interaction_presenter.queue_classic_flash_messages([{"text": "New Combat Round.", "soundId": 139, "autoCloseSeconds": 2.0}])
 
 
 func _on_combat_playback_frame_changed(frame: CombatPlaybackFrame) -> void:
@@ -232,6 +243,9 @@ func _on_combat_inventory_item_use_requested(character_id: String, instance_id: 
 
 
 func _on_combat_targeting_cancelled() -> void:
+	var book := _shell_presenter.roster.controller_spellbook()
+	if book != null:
+		book.focus_cast_action()
 	if not _combat_inventory_targeting_return:
 		return
 	_combat_inventory_targeting_return = false
@@ -388,7 +402,7 @@ func _update_spatial_visibility(game_view: GameView) -> void:
 func _sync_dungeon_view(game_view: GameView) -> void:
 	var map_view := game_view.map_view if game_view != null else null
 	var forced_3d := map_view != null and map_view.level_type == &"dungeon" and not dungeon_view_toggle_available(map_view)
-	_dungeon_presenter.set_enabled(_dungeon_3d_enabled or forced_3d)
+	_dungeon_presenter.set_enabled(_dungeon_3d_enabled or forced_3d, dungeon_view_toggle_available(map_view))
 
 
 static func dungeon_view_toggle_available(map_view: MapView) -> bool:
@@ -421,6 +435,7 @@ func _present_request(request: InteractionRequest, game_view: GameView, characte
 		_map_presenter.set_movement_cursor_enabled(false)
 		_dungeon_presenter.set_navigation_cursor_enabled(false)
 	_shell_presenter.roster.present_character_selection(character_selection_request)
+	_shell_presenter.status.present_choice_context(request)
 	_interaction_presenter.present(request, _shell_presenter.status.latest_classic_text(), game_view, _media_controller.catalog())
 	if enables_spatial_cursor:
 		_map_presenter.set_movement_cursor_enabled(true)

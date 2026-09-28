@@ -4,6 +4,7 @@ class_name CombatInteractionController
 extends RefCounted
 
 
+signal inspected_combatant_changed(combatant_id: String)
 signal response_body_submitted(body: InteractionResponse.CombatBody)
 signal targeting_requested(request: CombatTargetingRequest)
 signal targeting_confirm_requested
@@ -17,9 +18,11 @@ signal spellbook_closed
 signal items_requested
 signal inventory_targeting_started
 signal layout_changed
+signal bandage_selection_changed(target_ids: Array[String])
 
 
 var _component: BattleInteraction
+var bandage: BattleBandagePanel
 var _dock: FastSpellDock
 var _dock_host: Node
 var _dock_scene: PackedScene
@@ -43,6 +46,7 @@ func configure(dock_host: Node, dock_scene: PackedScene) -> void:
 func bind(component: BattleInteraction, body: CombatRequestBody, game_view: GameView, media: ClassicMediaCatalog) -> void:
 	assert(component != null, "Combat interaction requires a battle component.")
 	_component = component
+	bandage = component.get_node("%BattleBandagePanel") as BattleBandagePanel
 	_component.inspection_requested.connect(func(combatant: InteractionRequestValue.Combatant, pinned: bool) -> void:
 		inspector.present(combatant, pinned)
 	)
@@ -66,6 +70,7 @@ func bind(component: BattleInteraction, body: CombatRequestBody, game_view: Game
 	_component.combat_spellbook_closed.connect(func() -> void: spellbook_closed.emit())
 	_component.combat_items_requested.connect(func() -> void: items_requested.emit())
 	_component.combat_inventory_targeting_started.connect(func() -> void: inventory_targeting_started.emit())
+	_component.bandage_selection_changed.connect(func(target_ids: Array[String]) -> void: bandage_selection_changed.emit(target_ids))
 	_mount_fast_spell_dock(body, InteractionComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells) if body != null else {})
 	var previous := _weapon_aim_body
 	var mode := _weapon_aim_mode
@@ -94,11 +99,15 @@ func _resume_weapon_aim(component: BattleInteraction, mode: StringName) -> void:
 
 
 func clear(preserve_weapon_aim: bool = false) -> void:
+	var no_bandage_targets: Array[String] = []
+	bandage_selection_changed.emit(no_bandage_targets)
+	bandage = null
 	if not preserve_weapon_aim:
 		_weapon_aim_body = null
 		_weapon_ability_body = null
 	_component = null
 	if is_instance_valid(inspector):
+		inspector.dismiss()
 		inspector.queue_free()
 	inspector = null
 	_spellbook_open = false
@@ -107,10 +116,14 @@ func clear(preserve_weapon_aim: bool = false) -> void:
 
 
 func release() -> void:
+	var no_bandage_targets: Array[String] = []
+	bandage_selection_changed.emit(no_bandage_targets)
+	bandage = null
 	_weapon_aim_body = null
 	_weapon_ability_body = null
 	_component = null
 	if is_instance_valid(inspector):
+		inspector.dismiss()
 		inspector.queue_free()
 	inspector = null
 	_spellbook_open = false
@@ -212,8 +225,10 @@ func _mount_fast_spell_dock(body: CombatRequestBody, animation_frames: Dictionar
 	_dock.slot_activated.connect(activate_fast_spell_from_dock)
 	_dock.set_stage_rect(_stage_rect)
 	if is_instance_valid(inspector):
+		inspector.dismiss()
 		inspector.queue_free()
 	inspector = (load("res://src/ui/combat/combat_inspection_card.tscn") as PackedScene).instantiate() as CombatInspectionCard
+	inspector.combatant_changed.connect(func(id: String) -> void: inspected_combatant_changed.emit(id))
 	_dock_host.add_child(inspector)
 	inspector.set_stage_rect(_stage_rect)
 

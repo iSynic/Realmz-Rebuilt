@@ -41,7 +41,7 @@ var text_scale: float = 1.0
 var reduced_motion: bool = false
 var reduced_sound: bool = false
 var auto_switch_to_melee: bool = true
-var dungeon_3d: bool = false
+var dungeon_3d: bool = true
 var ui_scale_mode: String = UI_SCALE_AUTO
 var display_scaling_mode: String = DISPLAY_RESPONSIVE
 var world_zoom: int = 1
@@ -58,7 +58,7 @@ var combat_playback_speed_percent: int = 100
 var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
-var custom_fog_tile_enabled: bool = true
+var custom_fog_tile_enabled: bool = false
 var indoor_party_icon: int = DEFAULT_INDOOR_PARTY_ICON
 # FD-SYSTEM-002: new players enable Auto Note; Castle's PRFN 128 defaults it off.
 var autojournal_enabled: bool = true
@@ -226,7 +226,7 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.reduced_motion = data["reducedMotion"]
 	settings.reduced_sound = bool(data.get("reducedSound", false))
 	settings.auto_switch_to_melee = bool(data.get("autoSwitchToMelee", true))
-	settings.dungeon_3d = bool(data.get("dungeon3d", false))
+	settings.dungeon_3d = bool(data.get("dungeon3d", true))
 	settings.ui_scale_mode = String(data.get("uiScaleMode", UI_SCALE_AUTO))
 	if int(data["schemaVersion"]) >= 17:
 		settings.display_scaling_mode = String(data["displayScalingMode"])
@@ -246,7 +246,7 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.hurry_spell_resolution = bool(data.get("hurrySpellResolution", false))
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
-	settings.custom_fog_tile_enabled = bool(data.get("customFogTileEnabled", true))
+	settings.custom_fog_tile_enabled = bool(data.get("customFogTileEnabled", false))
 	if int(data["schemaVersion"]) >= 20:
 		settings.indoor_party_icon = int(data["indoorPartyIcon"])
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))

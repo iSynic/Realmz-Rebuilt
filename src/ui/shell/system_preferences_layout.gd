@@ -26,6 +26,7 @@ func prepare(compact: bool) -> void:
 	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns") as BoxContainer).vertical = false
 	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow") as BoxContainer).vertical = compact
 	_apply_compact_rows(self, compact)
+	_apply_display_row_density(compact)
 	_clear(save_slot_rows())
 	get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/Empty").visible = false
 	get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty").visible = false
@@ -43,6 +44,7 @@ func show_category(category: StringName) -> void:
 	_save_mode = false
 	tabs().current_tab = index + 1
 	_sync_category_rail(index + 1)
+	_update_screen_heading(false)
 	category_selected.emit(category)
 
 
@@ -50,6 +52,43 @@ func show_saves() -> void:
 	_save_mode = true
 	tabs().current_tab = 0
 	_sync_category_rail(0)
+	_update_screen_heading(true)
+
+
+func _update_screen_heading(save_mode: bool) -> void:
+	var ancestor := get_parent()
+	while ancestor != null:
+		if ancestor is SystemScreen:
+			(ancestor as SystemScreen).set_mode_title(save_mode)
+			return
+		ancestor = ancestor.get_parent()
+
+
+func set_save_record_order(record: VBoxContainer, compact: bool) -> void:
+	var location := record.get_node("Location")
+	var party := record.get_node("Party")
+	var map_preview := record.get_node("MapPreview")
+	var map_status := record.get_node("MapPreviewStatus")
+	var error := record.get_node("Error")
+	record.move_child(map_preview, 2)
+	record.move_child(map_status, 3)
+	record.move_child(error, 4)
+	record.move_child(location, 5)
+	record.move_child(party, 6)
+	if compact:
+		record.move_child(location, 2)
+		record.move_child(party, 3)
+		record.move_child(map_preview, 4)
+		record.move_child(map_status, 5)
+
+
+static func slot_label(slot_id: String) -> String:
+	if slot_id.length() == 1 and SaveSlotPreview.SCENARIO_SLOTS.contains(slot_id):
+		return "Slot %s" % slot_id
+	match slot_id:
+		"quick": return "Quick Save 1"
+		"quick-2": return "Quick Save 2"
+		_: return slot_id
 
 
 func _sync_category_rail(index: int) -> void:
@@ -66,8 +105,19 @@ func _current_category() -> StringName:
 	return PREFERENCE_SECTIONS[index] if index >= 0 and index < PREFERENCE_SECTIONS.size() else &"Display"
 
 
+func _apply_display_row_density(compact: bool) -> void:
+	var tabs_root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs")
+	for row: Node in tabs_root.find_children("*", "BoxContainer", true, false):
+		if not row.is_in_group(&"system_setting_rows"):
+			continue
+		(row as BoxContainer).vertical = false
+		var caption := row.get_child(0) as Label
+		if caption != null:
+			caption.custom_minimum_size.x = 128.0 if compact else 230.0
+
+
 func bind_indoor_icon(index: int, media: ClassicMediaCatalog) -> void:
-	var picker := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/WorldViewGroup/Content/IndoorPartyIcon") as IndoorPartyIconPicker
+	var picker := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/IndoorPartyIcon") as IndoorPartyIconPicker
 	if not picker.icon_selected.is_connected(_on_indoor_icon_selected):
 		picker.icon_selected.connect(_on_indoor_icon_selected)
 	picker.bind_selection(index, media)

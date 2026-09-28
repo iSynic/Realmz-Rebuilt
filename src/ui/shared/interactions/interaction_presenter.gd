@@ -14,6 +14,15 @@ class ControllerAccess:
 	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
 	func blocks_automatic_progress() -> bool: return _presenter._playback_masked or _presenter._flash.is_open()
 	func focus_root() -> Control: return _presenter._overlays.controller_focus_root()
+	func spellbook_focus_root() -> Control:
+		var encounter := _presenter._component as EncounterInteraction
+		return encounter.controller_spellbook_root() if encounter != null and not blocks_automatic_progress() else null
+	func cycle_spellbook_level(delta: int) -> bool:
+		var encounter := _presenter._component as EncounterInteraction
+		return encounter != null and not blocks_automatic_progress() and encounter.controller_cycle_spell_level(delta)
+	func focus_spellbook_selection() -> bool:
+		var encounter := _presenter._component as EncounterInteraction
+		return encounter != null and not blocks_automatic_progress() and encounter.controller_focus_spell()
 
 
 const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
@@ -43,6 +52,12 @@ var combat: CombatInteractionController:
 @onready var _scroll: ScrollContainer = $InteractionScroll
 @onready var _stage_opaque_backing: ColorRect = $StageOpaqueBacking
 @onready var _stage_backing: TextureRect = $StageBacking
+@onready var _combat_activity: CombatActivityStrip = %CombatActivityStrip
+@onready var _playback_result_cue: PanelContainer = %PlaybackResultCue
+@onready var _playback_target_icon: TextureRect = %TargetIcon
+@onready var _playback_target_name: Label = %TargetName
+@onready var _playback_result: Label = %Result
+@onready var _playback_target_vitals: Label = %Vitals
 
 var _request: InteractionRequest
 var _owns_classic_acknowledgement_cursor: bool = false
@@ -55,7 +70,7 @@ var _application_rect := Rect2(0.0, 32.0, 1280.0, 688.0)
 var _side_workspace_rect := Rect2(928.0, 28.0, 352.0, 502.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
-var _playback_status_label: Label
+var _playback_combatant_facts: Dictionary = {}
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _treasure_slot_order: Array[String] = []
@@ -143,8 +158,19 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	if not _begin_request(request):
 		return
+	if request == null and game_view != null and game_view.combat_view == null:
+		_combat_activity.begin_battle("")
 	_present_request_text(request, classic_text_context)
 	_mount_request_component(request, game_view, media)
+	if _component is BattleInteraction:
+		var body := request.body as CombatRequestBody
+		_combat_activity.begin_battle(body.battle_id)
+		_combat_activity.set_facts((_component as BattleInteraction).playback_combatant_facts())
+		_combat_activity.set_turn_actor(body.actor_id)
+		if game_view != null and game_view.combat_view != null and game_view.combat_view.auto_character_ids.has(body.actor_id):
+			_scroll.visible = false
+			_combat_activity.visible = true
+			_combat_activity.set_compact(_combat_rect.size.x < 1000.0)
 	if _component is ShopInteraction:
 		(_component as ShopInteraction).restore_browser_state(shop_state)
 	elif _component is TreasureDistributionInteraction:
@@ -162,10 +188,15 @@ func _begin_request(request: InteractionRequest) -> bool:
 		if treasure_body == null or treasure_body.mode != &"ordinary":
 			_treasure_money_workspace_open = false
 	_request = request
+	_playback_combatant_facts.clear()
+	_playback_result_cue.visible = false
+	_combat_activity.visible = false
+	_scroll.visible = true
 	_set_classic_acknowledgement_cursor(_uses_global_classic_acknowledgement())
 	_passive_text = false
 	_playback_masked = false
-	_reset_interaction_scroll()
+	_scroll.scroll_horizontal = 0
+	_scroll.scroll_vertical = 0
 	_clear_options()
 	visible = request != null
 	if visible:
@@ -188,7 +219,7 @@ func _present_request_text(request: InteractionRequest, classic_text_context: St
 	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as CharacterSelectionRequestBody).spell_context != null:
 		_set_heading("Spell Target")
 	_prompt.text = ComponentFactory.prompt_for(request, classic_text_context)
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if LayoutPolicy.uses_classic_click_modal(request) else HORIZONTAL_ALIGNMENT_LEFT
+	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if LayoutPolicy.uses_classic_click_modal(request) or LayoutPolicy.uses_floating_choice_modal(request) else HORIZONTAL_ALIGNMENT_LEFT
 	_prompt.visible = not _prompt.text.is_empty()
 	if LayoutPolicy.uses_application_workspace(request):
 		_set_heading("")
@@ -232,6 +263,8 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
+	if _component is ThiefEncounterInteraction:
+		_component.set_layout_profile(_application_rect.size.x < 1000.0)
 	if _component is BattleInteraction:
 		_combat.bind(_component as BattleInteraction, request.body as CombatRequestBody, game_view, media)
 	_apply_classic_region()
@@ -239,27 +272,66 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 
 
 func present_combat_playback_mask(frame: CombatPlaybackFrame = null) -> void:
+	if _component is BattleInteraction:
+		_playback_combatant_facts = (_component as BattleInteraction).playback_combatant_facts()
+		var body := _request.body as CombatRequestBody if _request != null else null
+		if body != null:
+			_combat_activity.begin_battle(body.battle_id)
+		_combat_activity.set_facts(_playback_combatant_facts)
 	_request = null
 	_set_classic_acknowledgement_cursor(false)
 	_passive_text = false
 	_playback_masked = true
-	_reset_interaction_scroll()
+	_scroll.scroll_horizontal = 0
+	_scroll.scroll_vertical = 0
 	_clear_options()
 	_set_heading("")
 	_prompt.text = ""
 	_prompt.visible = false
 	_stage_opaque_backing.visible = false
 	_stage_backing.visible = false
-	_playback_status_label = _add_hint(CombatPlaybackController.status_text(frame))
-	_playback_status_label.name = "CombatPlaybackStatus"
+	_scroll.visible = false
+	_combat_activity.visible = true
+	_combat_activity.set_compact(_combat_rect.size.x < 1000.0)
+	_combat_activity.set_status("Auto combat • Esc cancels Party Auto • Space skips visual playback" if frame != null and frame.automatic else "Combat playback • Space skips visual playback")
+	_combat_activity.show_frame(frame)
+	_update_playback_result_cue(frame)
 	visible = true
 	_claim_modal_layer()
 	_apply_classic_region()
 
 
 func update_combat_playback_frame(frame: CombatPlaybackFrame) -> void:
-	if _playback_masked and _playback_status_label != null:
-		_playback_status_label.text = CombatPlaybackController.status_text(frame)
+	if _playback_masked:
+		_combat_activity.set_status("Auto combat • Esc cancels Party Auto • Space skips visual playback" if frame != null and frame.automatic else "Combat playback • Space skips visual playback")
+		_combat_activity.show_frame(frame)
+		_update_playback_result_cue(frame)
+
+
+func _update_playback_result_cue(frame: CombatPlaybackFrame) -> void:
+	_playback_result_cue.visible = false
+	_playback_target_icon.texture = null
+	_playback_target_name.text = ""
+	_playback_result.text = ""
+	_playback_target_vitals.text = ""
+	_playback_target_vitals.visible = false
+	if _combat_activity.visible or frame == null or frame.kind != &"result" or frame.target_id.is_empty() or frame.display_text.is_empty():
+		return
+	var facts: Dictionary = _playback_combatant_facts.get(frame.target_id, {})
+	if facts.is_empty():
+		return
+	_playback_target_name.text = String(facts.get("name", ""))
+	if _playback_target_name.text.is_empty():
+		return
+	var icon: Variant = facts.get("icon")
+	if icon is Texture2D:
+		_playback_target_icon.texture = icon
+	_playback_result.text = frame.display_text
+	var maximum_health := int(facts.get("maximumHealth", 0))
+	if maximum_health > 0 and frame.combatant_health.has(frame.target_id):
+		_playback_target_vitals.text = "ST %d/%d" % [int(frame.combatant_health[frame.target_id]), maximum_health]
+		_playback_target_vitals.visible = true
+	_playback_result_cue.visible = true
 
 
 func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> void:
@@ -282,6 +354,7 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	if _component != null:
 		_component.set_layout_profile(compact)
 	_combat.set_command_layout(LayoutPolicy.combat_command_scale(_combat_rect), compact)
+	_combat_activity.set_compact(compact)
 	_apply_classic_region()
 	_combat.set_stage_rect(_stage_rect)
 
@@ -438,7 +511,6 @@ func _clear_options() -> void:
 	_overlays.close_application_workspace()
 	_overlays.close_nested_modal()
 	_component = null
-	_playback_status_label = null
 	_options.visible = false
 	for child: Node in _options.get_children():
 		_options.remove_child(child)
@@ -485,12 +557,12 @@ func _apply_classic_region() -> void:
 		var modal_region := _application_rect if LayoutPolicy.uses_application_modal_region(_request) else _stage_rect
 		var desired := LayoutPolicy.preferred_modal_size(_request, modal_region.size)
 		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
-			desired.y = minf(maxf(280.0, _content.get_combined_minimum_size().y + 16.0), modal_region.size.y - 20.0)
+			desired.y = minf(maxf(280.0, _content.get_combined_minimum_size().y + 16.0), modal_region.size.y - 4.0)
 		position = modal_region.position + (modal_region.size - desired) * 0.5
 		size = desired
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
 	var modal_surface := encounter_surface or LayoutPolicy.uses_floating_choice_modal(_request) or not LayoutPolicy.uses_textbox_region(_request)
-	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface)
+	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface and not LayoutPolicy.uses_floating_choice_modal(_request))
 	_apply_content_layout()
 	_overlays.apply_layout()
 
@@ -550,15 +622,12 @@ func _add_hint(text: String) -> Label:
 
 
 func _prepare_interaction_focus() -> void:
-	_reset_interaction_scroll()
+	_scroll.scroll_horizontal = 0
+	_scroll.scroll_vertical = 0
 	var preferred := _component.preferred_initial_focus() if _component != null else null
 	var first := preferred if preferred != null else _first_focusable(_overlays.controller_focus_root())
 	if first != null:
 		first.grab_focus()
-	_reset_interaction_scroll()
-
-
-func _reset_interaction_scroll() -> void:
 	_scroll.scroll_horizontal = 0
 	_scroll.scroll_vertical = 0
 
