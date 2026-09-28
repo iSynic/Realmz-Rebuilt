@@ -16,6 +16,7 @@ func run() -> void:
 	var application := PackageRepository.new().load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
 	if application.is_ok():
 		_test_david_robe_of_speed(loaded.content, application.content)
+		_test_minstrel_pipes(application.content)
 	_test_field_spell_item_use(content)
 	_test_door_item_xap(content)
 	_test_inventory_identification(content)
@@ -65,6 +66,29 @@ func _test_david_robe_of_speed(source: RealmzContent, application: RealmzContent
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "David's equipped Robe restores through save v5"); var restored_david: CharacterState = restored.snapshot().game_state.party.character_by_id(david.id)
 	assert_equal([restored_david.conditions.value(ConditionRules.SPEEDY), restored_david.equipment_order.ids()], [-1, [instance.id]], "save v5 restores the Robe effect and exact equipped identity without replaying it")
 	assert_equal(restored.submit_intent(InventoryIntents.unequip(instance.id, david.id)).state, SessionStep.State.COMPLETED, "David removes the Robe through the public Inventory operation"); restored_david = restored.snapshot().game_state.party.character_by_id(david.id); assert_equal([restored_david.conditions.value(ConditionRules.SPEEDY), restored_david.equipment_order.ids()], [0, []], "removing the Robe clears its permanent Speedy contribution and wear order")
+
+
+func _test_minstrel_pipes(application: RealmzContent) -> void:
+	var race := application.characters.race_by_id("classic.race.15")
+	var caste := application.characters.caste_by_id("classic.caste.20")
+	var pipes := application.items.item_by_classic_id(754)
+	assert_true(race != null and caste != null and pipes != null, "stock Brownie, Minstrel, and Pipes definitions are available")
+	if race == null or caste == null or pipes == null:
+		return
+	var minstrel := CharacterState.new("inventory.minstrel-pipes", "Minstrel", 20, 20)
+	minstrel.race_id = race.id
+	minstrel.caste_id = caste.id
+	minstrel.maximum_load = 2_000
+	var rules := RealmzRules.new()
+	var first := rules.inventory.add_item(minstrel, pipes, "inventory.pipes.first", true)
+	var second := rules.inventory.add_item(minstrel, pipes, "inventory.pipes.second", true)
+	var party: Array[CharacterState] = [minstrel]
+	assert_true(rules.equipment.classic_equip_probe(minstrel, first, pipes, race, caste, party, application.items.definitions()).allowed, "Castle permits a Minstrel to equip Pipes without a belt")
+	var before := [minstrel.luck, minstrel.magic_resistance, minstrel.spell_points, minstrel.maximum_spell_points]
+	assert_true(rules.equipment.equip_classic(minstrel, first, pipes, race, caste, party, application.items.definitions()).allowed, "Pipes occupy a wearable Belt Loop slot")
+	var combat_equipment := rules.equipment.combat_equipment(minstrel, application.items.definitions())
+	assert_equal([combat_equipment.effective_luck, minstrel.magic_resistance, minstrel.spell_points, minstrel.maximum_spell_points], [before[0] + 1, before[1] + 1, before[2] + 15, before[3] + 15], "wearing Pipes applies its stock passive bonuses")
+	assert_false(rules.equipment.classic_equip_probe(minstrel, second, pipes, race, caste, party, application.items.definitions()).allowed, "a second Belt Loop item cannot occupy the same slot")
 
 
 func _test_split_join(content: RealmzContent) -> void:
@@ -242,7 +266,7 @@ func _test_equipment_probes(content: RealmzContent) -> void:
 	var race := content.characters.race_by_id(character.race_id)
 	var caste := content.characters.caste_by_id(character.caste_id)
 	var category_mask := 1 << 5
-	var missile_mask := 1 << 12
+	var missile_mask := 1 << (31 - 12)
 	var greatsword := ItemDefinition.new("classic.item.probe-greatsword", 20, "Greatsword")
 	greatsword.item_type = 2
 	greatsword.hands = 2
@@ -305,7 +329,7 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	var age_changes: Array[PackedInt32Array] = []
 	for _index: int in 5:
 		age_changes.append(PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
-	var category_mask := (1 << 5) | (1 << 12)
+	var category_mask := (1 << 5) | (1 << 12) | (1 << (31 - 12))
 	var race := RaceDefinition.new("classic.race.inventory", 1, "Human", empty_ints, empty_ints, empty_ints, empty_ints, empty_ints, empty_ranges, age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, category_mask, 0)
 	var caste := CasteDefinition.new("classic.caste.inventory", 1, "Fighter", CasteDefinition.AttributeDefinition.new(empty_ints, empty_ints, empty_ints, empty_ints), CasteDefinition.ProgressionDefinition.new(Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO))
 	caste.caste_class = 1

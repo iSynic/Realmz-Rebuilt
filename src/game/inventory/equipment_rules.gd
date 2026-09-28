@@ -343,7 +343,7 @@ static func _special_effect_supported(special: int) -> bool:
 static func _mask_has(low: int, high: int, index: int) -> bool:
 	if index < 0 or index >= 64:
 		return false
-	return ((low if index < 32 else high) & (1 << (index if index < 32 else index - 32))) != 0
+	return ((low if index < 32 else high) & (1 << (31 - index % 32))) != 0
 
 
 static func _definitions_by_id(definitions: Array[ItemDefinition]) -> Dictionary:
