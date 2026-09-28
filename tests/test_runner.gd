@@ -29,6 +29,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/presentation/test_realmz_builder_previews.gd"),
 	preload("res://tests/scenario/test_reward_workflow.gd"),
 	preload("res://tests/scenario/test_scenario_vm.gd"),
+	preload("res://tests/scenario/test_swordlands_battle_prelude.gd"),
 	preload("res://tests/integration/test_exploration_session.gd"),
 	preload("res://tests/integration/test_session_persistence.gd"),
 	preload("res://tests/integration/test_inventory_session.gd"),

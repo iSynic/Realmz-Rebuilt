@@ -943,15 +943,18 @@ func _test_classic_opcode_2_legacy_battle_record(content: RealmzContent) -> void
 	var sound_mode_events := positive_mode.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 30001 and event.payload.get("source") == "classic-battle")
 	assert_true(sound_mode_events.size() == 1, "word 4 sound projects directly")
 	state.combat = null
-	var negative_codes: Array = [[battle.classic_id, 0, -1, -30001, 0], [battle.classic_id, 1, -1, 30002, 0], [battle.classic_id, 0, 0, 30002, 0], [battle.classic_id, 0, -1, 29999, 0], [battle.classic_id, 0, -1, 30006, 0], [battle.classic_id, 0, -1, 30002]]
+	var negative_codes: Array = [[battle.classic_id, 0, -1, -30001, 0], [battle.classic_id, 0, 0, 30002, 0], [battle.classic_id, 0, -1, 29999, 0], [battle.classic_id, 0, -1, 30006, 0], [battle.classic_id, 0, -1, 30002]]
 	for code: Array in negative_codes:
 		var extra: Array[int] = []
 		extra.assign(code)
 		var result := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, extra), "battle.neg-table")
-		assert_equal(result.error_code, &"unknown_message", "opcode 2 nearby negative %s does not match legacy discriminator" % [code])
+		assert_equal(result.state, ScenarioRuntimeOperationResult.State.WAITING, "opcode 2 continues past unavailable optional prelude %s" % [code])
+		assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == extra[2]) == (extra[2] != 0), "nearby row retains authored sound word rather than the legacy projection")
+		state.combat = null
 	state.scenario_progress.set_selected_character_ids([party.characters()[0].id])
 	var wrong_opcode := api.execute_classic(ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, -1, 30002, 0]), "battle.neg-opcode")
 	assert_equal(wrong_opcode.error_code, &"unknown_message", "opcode 48 does not match legacy opcode 2 discriminator")
+
 func _test_package_backed_macro_spells() -> void:
 	var clouds := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-castle-in-the-clouds.realmz2"); var c := _package_macro_battle(clouds.content, 29); var c_rng := RealmzRng.for_oracle(273); var c_vm := ScenarioVm.new(); c_vm.configure(clouds.content.scenario); c_vm.start_program("xap:273", ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(c.state.combat.battle_id).set_combatant(c.source.id)); var c_result := c_vm.run(RealmzRuntimeApi.new(clouds.content, c.state, c_rng, ScenarioActionState.new(), RealmzRules.new())); var c1: CharacterState = c.hero1; var c2: CharacterState = c.hero2; var c_los: CharacterState = c.hero_los; var c_range: CharacterState = c.hero_range; var c_ally: MonsterState = c.ally; var c_state: GameState = c.state
 	assert_equal([c_result.state, c1.current_health < 30, c2.current_health, c_los.current_health, c_range.current_health, c_ally.current_health, c1.spell_points, c_state.combat.turns.active_actor_id(), _event_has(c_result.events, &"sound_requested"), _event_has(c_result.events, &"action_point_kept"), c_rng.snapshot().draw_count], [ScenarioVmResult.State.COMPLETED, true, 30, 30, 30, 20, 50, c1.id, true, true, 3], "Castle in the Clouds packaged xap:273 resolves Spell 3208 against the first legal hero with exact range, LOS, allegiance, resource, turn, continuation, and RNG outcomes")

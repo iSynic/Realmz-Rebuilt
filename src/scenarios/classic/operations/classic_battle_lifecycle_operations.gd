@@ -84,9 +84,10 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 			prelude.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-battle"}))
 		if message_id != 0:
 			var message := _content.scenario_records.message_by_id(absi(message_id))
-			if message == null:
+			if message == null and action.opcode != 2:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable battle message %d." % [action.opcode, message_id])
-			prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
+			if message != null:
+				prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
 	var caller_mode := action.extra_code[4] if action.opcode in [2, 48] and action.extra_code.size() > 4 else 0
 	# Opcode-2 mode 10 uses the same authored Extra Code word for its prelude
 	# sound and for the XAP to run after a total-party loss. Retain that target

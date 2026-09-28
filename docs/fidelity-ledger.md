@@ -119,6 +119,15 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `tests/scenario/test_scenario_vm.gd::_test_state_and_progression_branch_opcodes` covers all distinct variant signatures, condition selectors, destination modes, signed GOSUB, inverted-range vacuous truth, dual/zero target routing, out-of-bounds safe completion, and opcode 30 validation.
 - Deliberate correction: Out-of-bounds quest reads safely return false rather than causing memory faults; strict typed validation replaces C undefined behavior.
 
+## FD-SCENARIO-012 — Missing opcode-2 battle prelude media
+
+- Affected rule: opcode 2's optional Extra Code sound and pre-battle text must not determine whether a valid authored battle starts.
+- Castle evidence: pinned commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c` lines 1451–1477 calls `sound(extraCode[2])` and `textbox(-1, extraCode[3])` before `combat`, without a message-existence branch. `src/realmz_orig/textbox-time.c` lines 34–51 seeds an application string, seeks the Data SD2 record, and does not check the read result. That source path attempts to continue, but it is not proof that a missing sound resource is safe in a Castle runtime.
+- Player-facing problem: Trouble in the Sword Lands Land 18 AP 7 step 4 has Extra Code `[180, 180, 2221, 10136, 0]`. Its battle 180 exists, but sound 2221 and message 10136 are absent. Rebuilt rejected the missing prelude message with `unknown_message`, so the kitchen battle never began.
+- Chosen 2.0 behavior: For opcode 2, show an available pre-battle message; omit an unavailable one and continue into the resolved battle. Keep the authored sound request; the audio presenter skips a missing `snd ` resource. Do not synthesize text or alter the compiled scenario. Other battle opcodes retain their existing strict message handling, and a missing battle definition still fails.
+- Tests: `test_swordlands_battle_prelude.gd` loads the pinned package row and executes the compiled AP through its narration into actionable battle 180 with no fabricated message. `test_scenario_vm.gd::_test_classic_opcode_2_legacy_battle_record` covers the special sound projection, other missing-message rows, and opcode-48 isolation.
+- Deliberate correction: An unavailable optional prelude is suppressed instead of displaying Castle's unchecked fallback text or blocking the battle.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.
