@@ -18,6 +18,7 @@ const ITEM_DETAIL_POPOVER_SCENE_PATH := "res://src/ui/inventory/classic_item_det
 @export var loot_cell_scene: PackedScene
 @export var vacant_slot_scene: PackedScene
 @export var recipient_button_scene: PackedScene
+@export var recipient_row_scene: PackedScene
 @export var fact_label_scene: PackedScene
 @export var caster_row_scene: PackedScene
 @export var recovery_workspace_scene: PackedScene
@@ -32,6 +33,7 @@ var _selected_recipient_id: String
 var _selected_item: InteractionRequestValue.RewardItem
 var _item_buttons: Dictionary = {}
 var _recipient_buttons: Dictionary = {}
+var _drop_buttons: Dictionary = {}
 var _selection_rings: Dictionary = {}
 var _selected_item_name: Label
 var _selected_item_state: Label
@@ -97,7 +99,12 @@ func build(request: InteractionRequest) -> void:
 
 func preferred_initial_focus() -> Control:
 	var recipient := _recipient_buttons.get(_selected_recipient_id) as Control
-	return recipient if recipient != null and recipient.visible and not (recipient is BaseButton and (recipient as BaseButton).disabled) else null
+	if recipient != null and recipient.visible and not (recipient is BaseButton and (recipient as BaseButton).disabled):
+		return recipient
+	for drop: Variant in _drop_buttons.values():
+		if drop is MenuButton and not drop.disabled:
+			return drop
+	return null
 
 
 func _build_classic_treasure_workspace(body: TreasureRequestBody) -> void:
@@ -220,16 +227,37 @@ func _build_party_side(body: TreasureRequestBody) -> void:
 
 
 func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValue.RewardCharacter) -> void:
-	var button := recipient_button_scene.instantiate() as Button
+	var row := recipient_row_scene.instantiate() as HBoxContainer
+	row.name = "TreasureRecipientRow_%s" % _node_fragment(character.id)
+	parent.add_child(row)
+	var button := row.get_node("TreasureRecipientSelect") as Button
 	button.name = "TreasureRecipient_%s" % character.id
 	button.button_pressed = character.id == _selected_recipient_id
 	button.text = TreasureDisplayText.recipient(character)
+	button.clip_text = true
 	button.icon = _portrait(character.id)
 	button.disabled = not character.enabled
-	button.tooltip_text = character.reason
+	button.tooltip_text = character.name if character.reason.is_empty() else "%s: %s" % [character.name, character.reason]
 	button.pressed.connect(_select_recipient.bind(character.id))
-	parent.add_child(button)
 	_recipient_buttons[character.id] = button
+	var drop := row.get_node("TreasureRecipientDrop") as MenuButton
+	drop.name = "TreasureDrop_%s" % _node_fragment(character.id)
+	drop.disabled = character.drop_items.is_empty()
+	drop.tooltip_text = "No carried items to drop." if drop.disabled else "Drop an item carried by %s." % character.name
+	var menu := drop.get_popup()
+	for index: int in character.drop_items.size():
+		var item := character.drop_items[index]
+		menu.add_item("%s%s" % [item.name, " (equipped)" if item.equipped else ""], index)
+		menu.set_item_disabled(index, not item.enabled)
+		menu.set_item_tooltip(index, item.reason)
+	menu.id_pressed.connect(_drop_recipient_item.bind(character.id, character.drop_items))
+	_drop_buttons[character.id] = drop
+
+
+func _drop_recipient_item(index: int, character_id: String, items: Array[InteractionRequestValue.RewardDropItem]) -> void:
+	if index < 0 or index >= items.size() or not items[index].enabled:
+		return
+	response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"drop", items[index].instance_id, character_id))
 
 
 func _build_compact_commands(parent: VBoxContainer, body: TreasureRequestBody) -> void:

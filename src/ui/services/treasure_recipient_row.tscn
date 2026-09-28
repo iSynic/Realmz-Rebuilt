@@ -1,0 +1,16 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_recipient_button.tscn" id="1_recipient"]
+
+[node name="TreasureRecipientRow" type="HBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 3
+
+[node name="TreasureRecipientSelect" parent="." instance=ExtResource("1_recipient")]
+size_flags_horizontal = 3
+
+[node name="TreasureRecipientDrop" type="MenuButton" parent="."]
+custom_minimum_size = Vector2(58, 46)
+layout_mode = 2
+text = "Drop"
+tooltip_text = "Drop an item carried by this character."

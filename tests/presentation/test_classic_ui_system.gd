@@ -19,6 +19,7 @@ func run() -> void:
 	_test_fast_spell_input()
 	_test_fixture_gallery_coverage()
 	await _test_treasure_slot_and_pickup_origin()
+	_test_treasure_drop_menu()
 	_test_lifecycle_interaction()
 	_test_battle_weapon_mode_component(); await _test_battle_live_reflow()
 	_test_battle_typed_option_contracts()
@@ -656,6 +657,30 @@ func _test_treasure_slot_and_pickup_origin() -> void:
 	assert_true(effect != null and effect.get_parent() is CanvasLayer and effect.get_global_rect().get_center().is_equal_approx(source_center), "the Treasure pickup overlay remains centered on the clicked item instead of being arranged by the interaction container")
 	host.queue_free()
 	await (Engine.get_main_loop() as SceneTree).process_frame
+
+
+func _test_treasure_drop_menu() -> void:
+	var payload := (ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION).body as TreasureRequestBody).to_data()
+	var first: Dictionary = payload["characters"][0]
+	first["enabled"] = false
+	first["reason"] = "Inventory is full."
+	first["dropItems"] = [{"instanceId": "carried.one", "name": "Old boots", "equipped": false, "enabled": true, "reason": ""}, {"instanceId": "carried.cursed", "name": "Cursed mail", "equipped": true, "enabled": false, "reason": "This cursed item cannot be removed."}]
+	var request := InteractionRequest.from_payload("fixture.treasure.drop", InteractionRequest.TREASURE_DISTRIBUTION, payload)
+	assert_not_null(request, "Treasure Drop retains exact per-character carried-item records through its strict request decoder")
+	var component := instantiate_ui_scene("res://src/ui/services/treasure_distribution_interaction.tscn") as TreasureDistributionInteraction
+	component.configure(null, null, true)
+	var submitted: Array[Dictionary] = []
+	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
+	component.build(request)
+	var recipient := component.find_child("TreasureRecipient_hero-0", true, false) as Button
+	var drop := component.find_child("TreasureDrop_hero-0", true, false) as MenuButton
+	assert_true(recipient.disabled and not drop.disabled and component.preferred_initial_focus() == drop, "a capacity-blocked recipient still has a focusable Drop menu")
+	assert_true(drop.get_parent().get_combined_minimum_size().x <= 250.0, "the recipient and Drop control fit the compact Treasure column")
+	assert_equal([drop.get_popup().item_count, drop.get_popup().get_item_text(0), drop.get_popup().is_item_disabled(1), drop.get_popup().get_item_tooltip(1)], [2, "Old boots", true, "This cursed item cannot be removed."], "Treasure Drop lists exact items and explains an equipped item that cannot be removed")
+	drop.get_popup().id_pressed.emit(1)
+	drop.get_popup().id_pressed.emit(0)
+	assert_equal(submitted, [{"action": "drop", "instanceId": "carried.one", "characterId": "hero-0"}], "Treasure Drop submits only the enabled exact character and item identity")
+	component.free()
 
 
 func _test_lifecycle_interaction() -> void:

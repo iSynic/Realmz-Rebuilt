@@ -78,8 +78,8 @@ static func reward_character(data: Variant, mode: StringName) -> InteractionRequ
 
 
 static func _populate_ordinary_character(data: Dictionary, result: InteractionRequestValue.RewardCharacter) -> bool:
-	var fields := ["id", "name", "enabled", "reason", "wealth", "canTakeGold", "canTakeGems", "canTakeJewelry", "goldReason", "gemsReason", "jewelryReason", "itemCount", "maximumMovement", "load", "maximumLoad"]
-	if not InteractionValueDecoderSupport.exact(data, fields, fields) or not InteractionValueDecoderSupport.strings(data, ["id", "name", "reason", "goldReason", "gemsReason", "jewelryReason"]) or not InteractionValueDecoderSupport.bools(data, ["enabled", "canTakeGold", "canTakeGems", "canTakeJewelry"]) or not InteractionValueDecoderSupport.ints(data, ["itemCount", "maximumMovement", "load", "maximumLoad"]):
+	var required := ["id", "name", "enabled", "reason", "wealth", "canTakeGold", "canTakeGems", "canTakeJewelry", "goldReason", "gemsReason", "jewelryReason", "itemCount", "maximumMovement", "load", "maximumLoad"]
+	if not InteractionValueDecoderSupport.exact(data, required + ["dropItems"], required) or not InteractionValueDecoderSupport.strings(data, ["id", "name", "reason", "goldReason", "gemsReason", "jewelryReason"]) or not InteractionValueDecoderSupport.bools(data, ["enabled", "canTakeGold", "canTakeGems", "canTakeJewelry"]) or not InteractionValueDecoderSupport.ints(data, ["itemCount", "maximumMovement", "load", "maximumLoad"]):
 		return false
 	result.wealth = InteractionCommonValueDecoder.wealth(data["wealth"])
 	if result.wealth == null:
@@ -94,6 +94,25 @@ static func _populate_ordinary_character(data: Dictionary, result: InteractionRe
 	result.maximum_movement = int(data["maximumMovement"])
 	result.carried_load = int(data["load"])
 	result.maximum_load = int(data["maximumLoad"])
+	result.has_drop_items = data.has("dropItems")
+	if result.has_drop_items:
+		if not data["dropItems"] is Array:
+			return false
+		var seen: Dictionary = {}
+		for entry: Variant in data["dropItems"]:
+			if not entry is Dictionary or not InteractionValueDecoderSupport.exact(entry, ["instanceId", "name", "equipped", "enabled", "reason"], ["instanceId", "name", "equipped", "enabled", "reason"]) or not InteractionValueDecoderSupport.strings(entry, ["instanceId", "name", "reason"]) or not InteractionValueDecoderSupport.bools(entry, ["equipped", "enabled"]):
+				return false
+			var instance_id := String(entry["instanceId"])
+			if instance_id.is_empty() or seen.has(instance_id):
+				return false
+			seen[instance_id] = true
+			var item := InteractionRequestValue.RewardDropItem.new()
+			item.instance_id = instance_id
+			item.name = entry["name"]
+			item.equipped = entry["equipped"]
+			item.enabled = entry["enabled"]
+			item.reason = entry["reason"]
+			result.drop_items.append(item)
 	return true
 
 

@@ -19,12 +19,42 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	_test_ordinary_distribution_and_restore(loaded.content)
+	_test_treasure_carried_item_drop(loaded.content)
 	_test_experience_level_and_spell_restore(loaded.content)
 	_test_terminal_battle_rewards_once(loaded.content)
 	_test_battle_mode_five_and_incidental_rewards(loaded.content)
 	_test_opcode_48_bonus_reward_chain(loaded.content)
 	_test_corrupt_reward_boundaries(loaded.content)
 	_test_cursed_item_treasure_disclosure(loaded.content)
+
+
+func _test_treasure_carried_item_drop(content: RealmzContent) -> void:
+	var definition: ItemDefinition = null
+	for candidate: ItemDefinition in content.items.definitions():
+		if candidate.cost >= 0:
+			definition = candidate
+			break
+	assert_not_null(definition, "the fixture has an ordinary carried item for Treasure Drop")
+	if definition == null:
+		return
+	var character := _character(content, "reward.drop", "Dropper", 100_000, -100_000)
+	var rules := RealmzRules.new()
+	for index: int in InventoryRules.MAX_ITEMS:
+		assert_not_null(rules.inventory.add_item(character, definition, "reward.drop.%d" % index), "Treasure Drop fixture fills one exact carried-item slot")
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
+	var rng := RealmzRng.new(73)
+	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), rules)
+	var opened := api.execute_safe("core.economy.grant-treasure", {"treasureId": "classic.treasure.0"}, "reward.drop.open")
+	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "a full recipient can still enter Treasure")
+	var row: Dictionary = opened.interaction.body.to_data()["characters"][0]
+	assert_equal([row["enabled"], row["itemCount"], row["dropItems"].size(), row["dropItems"][0]["instanceId"]], [false, 30, 30, "reward.drop.0"], "Treasure projects each exact carried item even when the recipient cannot take loot")
+	var pending_id: String = opened.interaction.body.to_data()["items"][0]["instanceId"]
+	var draws_before := rng.snapshot().draw_count
+	var dropped := api.resume_safe(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "drop", "instanceId": "reward.drop.0", "characterId": character.id}), "reward.drop.done")
+	assert_equal([dropped.state, character.inventory().size(), dropped.interaction.body.to_data()["characters"][0]["itemCount"], dropped.interaction.body.to_data()["characters"][0]["enabled"], dropped.interaction.body.to_data()["items"][0]["instanceId"], rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.WAITING, 29, 29, true, pending_id, draws_before], "Treasure Drop frees recipient capacity without consuming or changing pending loot or RNG")
+	assert_true(dropped.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_dropped" and event.payload.get("instanceId") == "reward.drop.0") and dropped.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 655), "committed Treasure Drop emits one exact-instance event and Castle's drop cue")
+	var repeated := api.resume_safe(dropped.continuation, InteractionResponse.from_data(dropped.interaction.request_id, dropped.interaction.kind, {"action": "drop", "instanceId": "reward.drop.0", "characterId": character.id}), "reward.drop.repeat")
+	assert_equal([repeated.error_code, character.inventory().size()], [&"reward_drop_unavailable", 29], "a stale Treasure Drop cannot remove a second carried item")
 
 
 func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:

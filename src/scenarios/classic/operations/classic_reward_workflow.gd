@@ -3,6 +3,8 @@
 class_name ClassicRewardWorkflow
 extends ClassicRewardOperationsSupport
 
+const REWARD_DROP_SUPPORT := preload("res://src/scenarios/classic/operations/classic_reward_drop_support.gd")
+
 class RewardItemSelection:
 	extends RefCounted
 
@@ -173,6 +175,7 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 			"gemsReason": "The pool has no gems or the character cannot carry one.",
 			"jewelryReason": "The pool has no jewelry or the character cannot carry one.",
 			"itemCount": character.inventory().size(),
+			"dropItems": REWARD_DROP_SUPPORT.new(_content, _game_state, _rules).project(character),
 			"maximumMovement": character.maximum_movement,
 			"load": character.carried_load,
 			"maximumLoad": character.maximum_load,
@@ -320,6 +323,10 @@ func _resume_treasure_action(reward: ClassicRewardState, body: InteractionRespon
 			if discarded == null:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The item being left behind is not pending treasure.")
 			events.append(DomainEvent.new(&"reward_item_left", {"instanceId": discarded.id, "itemId": discarded.definition_id}))
+		"drop":
+			var drop_error: Dictionary = REWARD_DROP_SUPPORT.new(_content, _game_state, _rules).drop(body, events)
+			if not drop_error.is_empty():
+				return ScenarioRuntimeOperationResult.failed(StringName(drop_error["code"]), drop_error["message"])
 		"pool", "share":
 			var money_error := _apply_reward_wealth_action(action, events)
 			if not money_error.is_empty():

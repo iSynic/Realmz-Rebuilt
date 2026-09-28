@@ -1,4 +1,4 @@
-[gd_scene load_steps=11 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://src/ui/services/treasure_distribution_interaction.gd" id="1_interaction"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_loot_cell.tscn" id="2_loot_cell"]
@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_recovery_workspace.tscn" id="8_recovery"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_completion_confirmation.tscn" id="9_confirmation"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_money_workspace.tscn" id="10_money"]
+[ext_resource type="PackedScene" path="res://src/ui/services/treasure_recipient_row.tscn" id="11_recipient_row"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_loot"]
 bg_color = Color(0.969, 0.965, 0.941, 1)
@@ -27,6 +28,7 @@ script = ExtResource("1_interaction")
 loot_cell_scene = ExtResource("2_loot_cell")
 vacant_slot_scene = ExtResource("3_vacant_slot")
 recipient_button_scene = ExtResource("4_recipient")
+recipient_row_scene = ExtResource("11_recipient_row")
 fact_label_scene = ExtResource("5_fact")
 caster_row_scene = ExtResource("6_caster")
 recovery_workspace_scene = ExtResource("8_recovery")

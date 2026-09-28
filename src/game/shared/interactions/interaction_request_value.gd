@@ -363,6 +363,8 @@ class RewardCharacter:
 	var maximum_movement: int
 	var carried_load: int
 	var maximum_load: int
+	var drop_items: Array[RewardDropItem] = []
+	var has_drop_items: bool
 
 	func to_data() -> Dictionary:
 		var data := {"id": id, "name": name, "enabled": enabled, "reason": reason}
@@ -371,7 +373,21 @@ class RewardCharacter:
 			data["maximumHealth"] = maximum_health
 		else:
 			data.merge({"wealth": wealth.to_data(), "canTakeGold": can_take_gold, "canTakeGems": can_take_gems, "canTakeJewelry": can_take_jewelry, "goldReason": gold_reason, "gemsReason": gems_reason, "jewelryReason": jewelry_reason, "itemCount": item_count, "maximumMovement": maximum_movement, "load": carried_load, "maximumLoad": maximum_load})
+			if has_drop_items:
+				data["dropItems"] = drop_items.map(func(value: RewardDropItem) -> Dictionary: return value.to_data())
 		return data
+
+
+class RewardDropItem:
+	extends RefCounted
+	var instance_id: String
+	var name: String
+	var equipped: bool
+	var enabled: bool
+	var reason: String
+
+	func to_data() -> Dictionary:
+		return {"instanceId": instance_id, "name": name, "equipped": equipped, "enabled": enabled, "reason": reason}
 
 
 class RewardCaster:
