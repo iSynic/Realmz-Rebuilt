@@ -11,7 +11,7 @@ This folder is the Godot-facing home of every place where the party exchanges we
 - `temple_interaction.tscn`: character and service selection with purchase actions.
 - `bank_interaction.tscn`: bank account, party pool, and personal denomination transfers.
 - `treasure_distribution_interaction.tscn`: loot field, recipients, item inspection, Castle-shaped Money/Pool/Share actions, lore, and completion confirmation.
-- `treasure_money_workspace.tscn`: the Money-button workspace for personal denomination transfers; it stays out of the ordinary Treasure layout.
+- Treasure's Money button opens `services_workspace.tscn` with Treasure-owned pool, recipient, and transfer data; its changing controls stay hidden.
 
 The neighboring row, chip, button, and cell scenes define repeated records. Parent scenes export them as `PackedScene` properties so visual changes stay discoverable in Godot.
 

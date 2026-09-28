@@ -149,6 +149,7 @@ columns = 1
 custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
 toggle_mode = true
 text = "Level 1"
 
@@ -156,6 +157,7 @@ text = "Level 1"
 custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
 toggle_mode = true
 text = "Level 2"
 
@@ -163,6 +165,7 @@ text = "Level 2"
 custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
 toggle_mode = true
 text = "Level 3"
 
@@ -170,6 +173,7 @@ text = "Level 3"
 custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
 toggle_mode = true
 text = "Level 4"
 
@@ -177,6 +181,7 @@ text = "Level 4"
 custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
 toggle_mode = true
 text = "Level 5"
 
@@ -184,6 +189,7 @@ text = "Level 5"
 custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
 toggle_mode = true
 text = "Level 6"
 
@@ -191,6 +197,7 @@ text = "Level 6"
 custom_minimum_size = Vector2(88, 24)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicChoiceButton"
 toggle_mode = true
 text = "Level 7"
 

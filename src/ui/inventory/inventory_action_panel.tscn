@@ -16,6 +16,7 @@ autowrap_mode = 2
 [node name="InventoryActionDock" type="GridContainer" parent="."]
 visible = false
 layout_mode = 2
+size_flags_horizontal = 8
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 5
 columns = 4

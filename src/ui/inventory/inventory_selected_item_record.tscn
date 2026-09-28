@@ -89,7 +89,7 @@ layout_mode = 2
 custom_minimum_size = Vector2(300, 0)
 theme_override_constants/h_separation = 16
 theme_override_constants/v_separation = 3
-columns = 3
+columns = 2
 
 [node name="Properties" type="VBoxContainer" parent="Facts"]
 layout_mode = 2

@@ -128,6 +128,44 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Restore party HP / SP and bad conditions"
 
+[node name="ItemGrantHeading" type="Label" parent="Scroll/Content"]
+layout_mode = 2
+text = "Give item to party member"
+
+[node name="ItemRecipientRow" type="HBoxContainer" parent="Scroll/Content"]
+layout_mode = 2
+
+[node name="ItemRecipientLabel" type="Label" parent="Scroll/Content/ItemRecipientRow"]
+layout_mode = 2
+text = "Recipient"
+
+[node name="ItemRecipient" type="OptionButton" parent="Scroll/Content/ItemRecipientRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ItemSearchRow" type="HBoxContainer" parent="Scroll/Content"]
+layout_mode = 2
+
+[node name="ItemSearch" type="LineEdit" parent="Scroll/Content/ItemSearchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Classic item ID or title"
+
+[node name="ItemMatchRow" type="HBoxContainer" parent="Scroll/Content"]
+layout_mode = 2
+
+[node name="ItemMatches" type="OptionButton" parent="Scroll/Content/ItemMatchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GrantItem" type="Button" parent="Scroll/Content/ItemMatchRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Give item"
+
 [node name="EncounterRow" type="HBoxContainer" parent="Scroll/Content"]
 layout_mode = 2
 

@@ -387,7 +387,7 @@ func _render_item_detail(record: InventorySelectedItemRecord, item: ItemView, ch
 
 
 func _render_item_facts(record: InventorySelectedItemRecord, item: ItemView) -> void:
-	_scene_binding.bind_label(record.get_node("Facts/Header/Value") as Label, "Value %s" % [str(item.value) if item.identified else "unknown"], MUTED, 12)
+	_scene_binding.bind_label(record.get_node("Facts/Header/Value") as Label, "Value %s" % [str(absi(item.value)) if item.identified else "unknown"], MUTED, 12)
 	for fact: ItemFactView in item.facts:
 		var row := record.fact_row_scene.instantiate() as HBoxContainer
 		_scene_binding.bind_label(row.get_node("Name") as Label, fact.label, MUTED, 13)
@@ -488,7 +488,6 @@ func _clear_pending_action() -> void:
 
 
 func _bind_trade_workspace(workspace: InventoryTradeWorkspace, view: GameView, source: CharacterView, target: CharacterView, selected_item: ItemView, media: ClassicMediaCatalog, detail_popover: CanvasLayer) -> void:
-	workspace.ledgers().vertical = _layout_profile == UiLayoutProfile.COMPACT
 	_bind_trade_ledger(workspace.source_ledger(), view, source, target.id, media, detail_popover)
 	_bind_trade_control_spine(workspace.divider(), view, source, target, media)
 	_bind_trade_ledger(workspace.target_ledger(), view, target, source.id, media, detail_popover)
@@ -530,8 +529,8 @@ func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character:
 func _bind_trade_control_spine(divider: InventoryTradeDivider, view: GameView, source: CharacterView, target: CharacterView, media: ClassicMediaCatalog) -> void:
 	divider.clear_portraits()
 	for character: CharacterView in view.party_members:
-		divider.portraits().add_child(_trade_portrait(divider, character, true, character.id == source.id, media))
-		divider.portraits().add_child(_trade_portrait(divider, character, false, character.id == target.id, media))
+		divider.portraits(true).add_child(_trade_portrait(divider, character, true, character.id == source.id, media))
+		divider.portraits(false).add_child(_trade_portrait(divider, character, false, character.id == target.id, media))
 	_scene_binding.clear_pressed_connections(divider.money_button())
 	divider.money_button().pressed.connect(func() -> void: route_requested.emit(&"services"))
 	_scene_binding.clear_pressed_connections(divider.items_button())

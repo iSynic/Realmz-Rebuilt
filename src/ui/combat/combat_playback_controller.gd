@@ -507,7 +507,7 @@ func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 	result.target_id = target_id
 	result.result_kind = _result_kind(event.payload)
 	result.display_amount = int(event.payload.get("healing", 0)) if result.result_kind == &"healing" else int(event.payload.get("damage", 0))
-	result.display_text = _result_text(result.result_kind, result.display_amount)
+	result.display_text = _result_text(result.result_kind, result.display_amount, event.payload)
 	result.effect_resource_id = int(event.payload.get("classicResultEffectResourceId", 0))
 	_frames.append(result)
 	if defeated and not result.target_id.is_empty():
@@ -642,7 +642,19 @@ static func _result_kind(payload: Dictionary) -> StringName:
 	return &"no_effect"
 
 
-static func _result_text(result_kind: StringName, amount: int) -> String:
+static func _result_text(result_kind: StringName, amount: int, payload: Dictionary = {}) -> String:
+	if result_kind == &"condition" or result_kind == &"condition_cleared":
+		var prefix := "Condition applied" if result_kind == &"condition" else "Condition cleared"
+		var character_key := "appliedCondition" if result_kind == &"condition" else "clearedCondition"
+		if payload.has(character_key):
+			var index := int(payload[character_key])
+			var name := CharacterView.CONDITION_NAMES[index] if index >= 0 and index < CharacterView.CONDITION_NAMES.size() else "Classic condition %d" % (index + 1)
+			return "%s: %s" % [prefix, name]
+		if result_kind == &"condition" and payload.has("partyCondition"):
+			var index := int(payload["partyCondition"])
+			var name := "Torch Lit" if index == ConditionRules.PARTY_TORCH_LIT else ClassicPartyEffects.NAMES[index - 1] if index > 0 and index <= ClassicPartyEffects.NAMES.size() else "Party condition %d" % (index + 1)
+			return "%s: %s" % [prefix, name]
+		return prefix
 	match result_kind:
 		&"miss":
 			return "Miss"
@@ -660,10 +672,6 @@ static func _result_text(result_kind: StringName, amount: int) -> String:
 			return "+%d" % amount
 		&"damage":
 			return str(amount)
-		&"condition":
-			return "Condition applied"
-		&"condition_cleared":
-			return "Condition cleared"
 		&"spell_points":
 			return "Spell points changed"
 		&"allegiance":

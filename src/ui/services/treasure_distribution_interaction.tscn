@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_popover.tscn" id="7_popover"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_recovery_workspace.tscn" id="8_recovery"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_completion_confirmation.tscn" id="9_confirmation"]
-[ext_resource type="PackedScene" path="res://src/ui/services/treasure_money_workspace.tscn" id="10_money"]
+[ext_resource type="PackedScene" path="res://src/ui/services/services_workspace.tscn" id="10_money"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_recipient_row.tscn" id="11_recipient_row"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBox_loot"]

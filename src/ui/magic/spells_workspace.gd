@@ -8,14 +8,14 @@ extends VBoxContainer
 @export var scroll_slot_row_scene: PackedScene
 
 
-func prepare(compact: bool) -> void:
+func prepare(compact: bool, encounter_mode: bool = false) -> void:
 	visible = true
 	get_node("Caster").visible = true
 	caster_picker().fit_to_longest_item = not compact
 	caster_picker().clip_text = compact
 	(selected_spell_record().get_node("Content/TargetAndFacts/Facts") as GridContainer).columns = 2
 	(selected_spell_record().get_node("Content/TargetAndFacts") as BoxContainer).vertical = compact
-	(level_rail().get_node("LevelButtons") as GridContainer).columns = 2 if compact else 1
+	(level_rail().get_node("LevelButtons") as GridContainer).columns = 1 if encounter_mode else 2 if compact else 1
 	(power_rail().get_node("PowerButtons") as GridContainer).columns = 2 if compact else 1
 	(get_node("ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList") as Control).custom_minimum_size.y = 90.0 if compact else 210.0
 	get_node("Sections").visible = true

@@ -111,9 +111,11 @@ func _toggle_dialog() -> void:
 	else:
 		if _console != null and _console.visible: _console.close_console()
 		var maps: Array[Dictionary] = []
+		var item_records: Array[Dictionary] = []
 		if _developer_tools_enabled:
 			maps = _map_records()
-		_dialog.present(_controller.view(), maps, _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug)
+			item_records = _item_records()
+		_dialog.present(_controller.view(), maps, _noclip, _recent_auto_actions, _console_shortcut_enabled, _topology_debug, item_records)
 
 
 static func _is_f12_key(event: InputEventKey) -> bool:
@@ -164,6 +166,19 @@ func _map_records() -> Array[Dictionary]:
 	for map_id: String in content.world.map_ids():
 		var map := content.world.map_by_id(map_id)
 		result.append({"id": map.id, "label": "%s %d · %s" % [String(map.level_type).capitalize(), map.level_index, map.name]})
+	return result
+
+
+func _item_records() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var content: RealmzContent = _content_provider.call() if _content_provider.is_valid() else null
+	if content == null:
+		return result
+	for definition: ItemDefinition in content.items.definitions():
+		result.append({"id": definition.id, "classicId": definition.classic_id, "name": definition.name})
+	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["classicId"]) < int(b["classicId"]) if a["classicId"] != b["classicId"] else String(a["name"]) < String(b["name"])
+	)
 	return result
 
 
@@ -332,6 +347,7 @@ static func _success_message(command: SessionDebugCommand) -> String:
 		SessionDebugCommand.Kind.WARP: return "Warped to %s at %d,%d." % [command.map_id, command.coordinate.x, command.coordinate.y]
 		SessionDebugCommand.Kind.NOCLIP_STEP: return "No-clip step committed."
 		SessionDebugCommand.Kind.RESTORE_PARTY: return "Party HP, SP, and harmful conditions restored."
+		SessionDebugCommand.Kind.GRANT_ITEM: return "Item added to the selected party member's pack."
 		SessionDebugCommand.Kind.START_ACTION_POINT: return "Action Point %s triggered." % command.target_id
 		SessionDebugCommand.Kind.START_ENCOUNTER: return "%s Encounter %d triggered." % [String(command.encounter_kind).capitalize(), command.classic_id]
 		SessionDebugCommand.Kind.START_BATTLE: return "Battle %d triggered." % command.classic_id

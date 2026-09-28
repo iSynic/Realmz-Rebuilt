@@ -176,7 +176,7 @@ func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMedi
 		ids.assign(_encounter_spell_ids.get(entry.character_id, []))
 		if not ids.has(entry.classic_id): ids.append(entry.classic_id)
 		_encounter_spell_ids[entry.character_id] = ids
-	workspace.prepare(_compact)
+	workspace.prepare(_compact, true)
 	workspace.get_node("Sections").visible = false
 	var character := _selected_character()
 	if character == null:

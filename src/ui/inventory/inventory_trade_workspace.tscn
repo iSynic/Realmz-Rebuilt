@@ -35,6 +35,7 @@ horizontal_alignment = 2
 [node name="InventoryTradeLedgers" type="BoxContainer" parent="Content"]
 layout_mode = 2
 size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
 theme_override_constants/separation = 8
 
 [node name="SourceLedger" parent="Content/InventoryTradeLedgers" instance=ExtResource("2_ledger")]
@@ -55,8 +56,11 @@ text = "Trade status"
 autowrap_mode = 2
 
 [node name="TradeItemInspector" type="PanelContainer" parent="Content"]
-custom_minimum_size = Vector2(0, 92)
+custom_minimum_size = Vector2(0, 110)
 layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.0
 theme_type_variation = &"ClassicInset"
 
 [node name="InventorySelectedItemRecord" parent="Content/TradeItemInspector" instance=ExtResource("4_record")]

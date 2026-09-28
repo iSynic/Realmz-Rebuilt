@@ -17,6 +17,12 @@ var _encounter_id: SpinBox
 var _battle_id: SpinBox
 var _warp: Button
 var _restore: Button
+var _item_recipient: OptionButton
+var _item_search: LineEdit
+var _item_matches: OptionButton
+var _grant_item: Button
+var _item_records: Array[Dictionary] = []
+var _item_grant_available: bool = false
 var _trigger_encounter: Button
 var _trigger_battle: Button
 var _win_battle: Button
@@ -36,6 +42,10 @@ const DEVELOPER_CONTROL_NAMES: Array[StringName] = [
 	&"Noclip",
 	&"PartyHeading",
 	&"Restore",
+	&"ItemGrantHeading",
+	&"ItemRecipientRow",
+	&"ItemSearchRow",
+	&"ItemMatchRow",
 	&"EncounterRow",
 	&"BattleRow",
 	&"WinBattle",
@@ -55,6 +65,10 @@ func _ready() -> void:
 	_battle_id = %BattleId
 	_warp = %Warp
 	_restore = %Restore
+	_item_recipient = %ItemRecipient
+	_item_search = %ItemSearch
+	_item_matches = %ItemMatches
+	_grant_item = %GrantItem
 	_trigger_encounter = %TriggerEncounter
 	_trigger_battle = %TriggerBattle
 	_win_battle = %WinBattle
@@ -71,6 +85,11 @@ func _ready() -> void:
 	_noclip.toggled.connect(func(enabled: bool) -> void: noclip_changed.emit(enabled))
 	_topology_debug.toggled.connect(func(enabled: bool) -> void: topology_debug_changed.emit(enabled))
 	_restore.pressed.connect(func() -> void: command_requested.emit(SessionDebugCommand.restore_party()))
+	_item_search.text_changed.connect(func(_text: String) -> void: _refresh_item_matches())
+	_item_search.text_submitted.connect(func(_text: String) -> void: _request_item_grant())
+	_item_recipient.item_selected.connect(func(_index: int) -> void: _update_item_grant_enabled())
+	_item_matches.item_selected.connect(func(_index: int) -> void: _update_item_grant_enabled())
+	_grant_item.pressed.connect(_request_item_grant)
 	_trigger_encounter.pressed.connect(_request_encounter)
 	_trigger_battle.pressed.connect(_request_battle)
 	_win_battle.pressed.connect(func() -> void: command_requested.emit(SessionDebugCommand.win_battle()))
@@ -87,7 +106,7 @@ func configure_capabilities(developer_tools_enabled: bool) -> void:
 		if control != null:
 			control.visible = developer_tools_enabled
 	_title.text = "DEBUG TOOLS · F12" if developer_tools_enabled else "DIAGNOSTICS · F12"
-	_status.text = "Debug commands do not enter adventure saves." if developer_tools_enabled else "Optional map diagnostics are off until enabled here."
+	_status.text = "Debug commands can change this adventure." if developer_tools_enabled else "Optional map diagnostics are off until enabled here."
 	offset_top = -270.0 if developer_tools_enabled else -120.0
 	offset_bottom = 270.0 if developer_tools_enabled else 120.0
 
@@ -104,7 +123,37 @@ func _request_battle() -> void:
 	command_requested.emit(SessionDebugCommand.start_battle(int(_battle_id.value)))
 
 
-func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = false, topology_debug: bool = false) -> void:
+func _request_item_grant() -> void:
+	if _grant_item.disabled:
+		return
+	command_requested.emit(SessionDebugCommand.grant_item(String(_item_matches.get_item_metadata(_item_matches.selected)), String(_item_recipient.get_item_metadata(_item_recipient.selected))))
+
+
+func _refresh_item_matches() -> void:
+	_item_matches.clear()
+	var query := _item_search.text.strip_edges()
+	if not query.is_empty():
+		var numeric_id := query.is_valid_int()
+		for record: Dictionary in _item_records:
+			if (numeric_id and int(record["classicId"]) == int(query)) or (not numeric_id and String(record["name"]).to_lower().contains(query.to_lower())):
+				_item_matches.add_item("%d · %s" % [int(record["classicId"]), String(record["name"])])
+				_item_matches.set_item_metadata(_item_matches.item_count - 1, String(record["id"]))
+				if _item_matches.item_count >= 50:
+					break
+	if _item_matches.item_count == 0:
+		_item_matches.add_item("Enter an ID or title" if query.is_empty() else "No matching items")
+		_item_matches.disabled = true
+	else:
+		_item_matches.select(0)
+		_item_matches.disabled = false
+	_update_item_grant_enabled()
+
+
+func _update_item_grant_enabled() -> void:
+	_grant_item.disabled = not _item_grant_available or _item_recipient.selected < 0 or _item_matches.disabled or _item_matches.selected < 0
+
+
+func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = false, topology_debug: bool = false, item_records: Array[Dictionary] = []) -> void:
 	if not _developer_tools_enabled:
 		_topology_debug.set_pressed_no_signal(topology_debug)
 		_status.text = "AP and random-rectangle overlay enabled." if topology_debug else "Optional map diagnostics are off until enabled here."
@@ -128,6 +177,18 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions
 	_warp.disabled = not exploration or maps.is_empty()
 	_noclip.disabled = not exploration
 	_restore.disabled = not (exploration or active_battle)
+	_item_records = item_records
+	_item_grant_available = exploration
+	_item_recipient.clear()
+	if view != null:
+		for member: CharacterView in view.party_members:
+			_item_recipient.add_item(member.name)
+			_item_recipient.set_item_metadata(_item_recipient.item_count - 1, member.id)
+	if _item_recipient.item_count > 0:
+		_item_recipient.select(0)
+	_item_recipient.disabled = not exploration or _item_recipient.item_count == 0
+	_item_search.editable = exploration
+	_refresh_item_matches()
 	_trigger_encounter.disabled = not exploration
 	_trigger_battle.disabled = not exploration
 	_win_battle.disabled = not active_battle

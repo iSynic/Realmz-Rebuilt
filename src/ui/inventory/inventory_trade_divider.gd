@@ -5,14 +5,16 @@ extends PanelContainer
 @export var portrait_button_scene: PackedScene
 
 
-func portraits() -> GridContainer:
-	return get_node("Content/InventoryTradePortraitMatrix") as GridContainer
+func portraits(left_side: bool) -> GridContainer:
+	return get_node("Content/InventoryTradePortraitMatrix/LeftPortraits" if left_side else "Content/InventoryTradePortraitMatrix/RightPortraits") as GridContainer
 
 
 func clear_portraits() -> void:
-	for child: Node in portraits().get_children():
-		portraits().remove_child(child)
-		child.queue_free()
+	for left_side: bool in [true, false]:
+		var portrait_grid := portraits(left_side)
+		for child: Node in portrait_grid.get_children():
+			portrait_grid.remove_child(child)
+			child.queue_free()
 
 
 func money_button() -> Button:

@@ -3,7 +3,7 @@
 class_name SessionDebugCommand
 extends RefCounted
 
-enum Kind { WARP, NOCLIP_STEP, RESTORE_PARTY, START_ACTION_POINT, START_EXTRA_ACTION_POINT_PROGRAM, START_ENCOUNTER, START_SCROLLING_TEXT, START_BATTLE, START_TREASURE, START_SHOP, WIN_BATTLE }
+enum Kind { WARP, NOCLIP_STEP, RESTORE_PARTY, START_ACTION_POINT, START_EXTRA_ACTION_POINT_PROGRAM, START_ENCOUNTER, START_SCROLLING_TEXT, START_BATTLE, START_TREASURE, START_SHOP, WIN_BATTLE, GRANT_ITEM }
 
 var kind: Kind
 var map_id: String = ""
@@ -11,6 +11,8 @@ var coordinate: Vector2i = Vector2i.ZERO
 var classic_id: int = -1
 var encounter_kind: StringName = &"simple"
 var target_id: String = ""
+var item_definition_id: String = ""
+var character_id: String = ""
 
 
 func _init(command_kind: Kind) -> void:
@@ -32,6 +34,13 @@ static func noclip_step(direction: Vector2i) -> SessionDebugCommand:
 
 static func restore_party() -> SessionDebugCommand:
 	return SessionDebugCommand.new(Kind.RESTORE_PARTY)
+
+
+static func grant_item(definition_id: String, recipient_id: String) -> SessionDebugCommand:
+	var command := SessionDebugCommand.new(Kind.GRANT_ITEM)
+	command.item_definition_id = definition_id
+	command.character_id = recipient_id
+	return command
 
 
 static func start_action_point(trigger_id: String) -> SessionDebugCommand:

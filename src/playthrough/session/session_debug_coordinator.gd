@@ -24,6 +24,8 @@ func run(command: SessionDebugCommand) -> SessionCoordinatorResult:
 			return _workflow(SessionDebugWorkflow.noclip_step(_context.workflow_context(), command.coordinate))
 		SessionDebugCommand.Kind.RESTORE_PARTY:
 			return _workflow(SessionDebugWorkflow.restore_party(_context.workflow_context()))
+		SessionDebugCommand.Kind.GRANT_ITEM:
+			return _workflow(SessionDebugWorkflow.grant_item(_context.workflow_context(), command.item_definition_id, command.character_id))
 		SessionDebugCommand.Kind.START_ACTION_POINT:
 			return _start_action_point(command.target_id)
 		SessionDebugCommand.Kind.START_EXTRA_ACTION_POINT_PROGRAM:
