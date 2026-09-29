@@ -151,13 +151,13 @@ func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefE
 	var signed_message_id := text_ids[action_index]
 	var message_id := absi(signed_message_id)
 	var message := _content.scenario_records.message_by_id(message_id) if message_id != 0 else null
-	if message_id != 0 and message == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Thief Encounter references unavailable message %d." % signed_message_id)
 	if message != null:
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-thief", "classicClick": signed_message_id > 0}))
 	if sound_ids[action_index] != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_ids[action_index], "waitForCompletion": false, "source": "classic-thief"}))
-	if signed_message_id <= 0:
+	# FD-SCENARIO-013: unavailable optional text must not abandon the action's
+	# trap or result branch; Castle continues after its unchecked textbox read.
+	if signed_message_id <= 0 or message == null:
 		if trap_pending:
 			return _wait_for_trap_message(encounter, gosub, character, action_index, succeeded, request_id, events, encounter_attempt)
 		return _finish_action(encounter, thief, gosub, character, action_index, succeeded, request_id, events, encounter_attempt)
@@ -179,7 +179,11 @@ func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDef
 	flags[1] = false
 	flags[6] = true
 	_state.scenario_progress.encounters.set_thief_type_flags(thief, flags)
-	var targets: Array[CharacterState] = [selected] if flags[8] else _state.party.characters()
+	var targets: Array[CharacterState] = []
+	if flags[8]:
+		targets.append(selected)
+	else:
+		targets.assign(_state.party.characters())
 	var damage_by_character: Dictionary = {}
 	if thief.low_damage != 0 and thief.high_damage >= thief.low_damage:
 		for target: CharacterState in targets:

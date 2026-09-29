@@ -184,20 +184,26 @@ func _complete_pending_operation(continuation: ScenarioVmPendingContinuation, op
 		diagnostics.clear_instruction()
 	var resumed := run(runtime_api)
 	events.append_array(resumed.events)
-	if resumed.state == ScenarioVmResult.State.WAITING:
-		return ScenarioVmResult.waiting(resumed.interaction, events)
-	if resumed.state == ScenarioVmResult.State.SUSPENDED:
-		return ScenarioVmResult.suspended(resumed.handoff, events)
-	if resumed.state == ScenarioVmResult.State.FAILED:
-		return ScenarioVmResult.failed(resumed.error_code, resumed.error_message, events)
-	return ScenarioVmResult.completed(events, resumed.outcome)
+	resumed.events.assign(events)
+	return resumed
 
 
 func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperationResult, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	if _halted or _frames.is_empty() or _pending_request != null:
 		return ScenarioVmResult.failed(&"invalid_vm_handoff", "The suspended Scenario VM is unavailable.")
-	if handoff == null or operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
+	if handoff == null or operation == null or operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return ScenarioVmResult.failed(&"invalid_runtime_handoff", "The Realmz runtime did not complete the suspended operation.")
+	if handoff.kind == ScenarioVmHandoff.CLASSIC_OPERATION:
+		if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
+			return _suspend_operation(ScenarioVmHandoff.CLASSIC_OPERATION, operation)
+		if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
+			_pending_request = operation.interaction
+			_pending_request.request_id = _next_request_id()
+			_pending_continuation = ScenarioVmPendingContinuation.classic(operation.continuation)
+			_append_trace({"event": "yield", "requestId": _pending_request.request_id, "kind": String(_pending_request.kind)})
+			return ScenarioVmResult.waiting(operation.interaction, operation.events)
+	elif operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
+		return ScenarioVmResult.failed(&"invalid_runtime_handoff", "The suspended Safe operation did not complete.")
 	diagnostics.restore_pending_instruction(_frames, _definition, _debug_program, DEBUG_PROGRAM_ID)
 	var events: Array[DomainEvent] = []
 	events.append_array(operation.events)
@@ -219,13 +225,8 @@ func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperat
 	_append_trace({"event": "host-handoff-resume", "kind": String(handoff.kind)})
 	var resumed := run(runtime_api)
 	events.append_array(resumed.events)
-	if resumed.state == ScenarioVmResult.State.WAITING:
-		return ScenarioVmResult.waiting(resumed.interaction, events)
-	if resumed.state == ScenarioVmResult.State.SUSPENDED:
-		return ScenarioVmResult.suspended(resumed.handoff, events)
-	if resumed.state == ScenarioVmResult.State.FAILED:
-		return ScenarioVmResult.failed(resumed.error_code, resumed.error_message, events)
-	return ScenarioVmResult.completed(events, resumed.outcome)
+	resumed.events.assign(events)
+	return resumed
 
 
 func snapshot() -> ScenarioVmSnapshot:

@@ -3,6 +3,12 @@
 class_name ItemView
 extends RefCounted
 
+# Castle Describe uses STR# 132 for these one-based creature categories.
+const HIT_TARGET_NAMES: Array[String] = [
+	"magic-using creatures", "the undead", "demonic creatures", "reptilian creatures",
+	"evil creatures", "intelligent creatures", "large creatures", "non-humanoid creatures",
+]
+
 var instance_id: String
 var definition_id: String
 var classic_id: int
@@ -97,7 +103,9 @@ func _populate_properties(definition: ItemDefinition, content: RealmzContent) ->
 		properties.append("Stores the spell %s." % (spell.name if spell != null else "Classic spell %d" % definition.special_2))
 	if definition.special_1 != -10:
 		if definition.special_3 < 0:
-			properties.append("%+d to hit Classic monster type %d." % [definition.special_5, absi(definition.special_3)])
+			var category := absi(definition.special_3)
+			var target_name := HIT_TARGET_NAMES[category - 1] if category <= HIT_TARGET_NAMES.size() else "Classic monster type %d" % category
+			properties.append("%+d to hit %s." % [definition.special_5, target_name])
 		elif definition.special_3 > 0 and definition.special_3 < 16:
 			properties.append("%+d to %s." % [definition.special_5, _ability_name(definition.special_3)])
 		if definition.special_4 > 0 and definition.special_4 < 16:

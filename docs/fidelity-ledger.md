@@ -128,6 +128,15 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_swordlands_battle_prelude.gd` loads the pinned package row and executes the compiled AP through its narration into actionable battle 180 with no fabricated message. `test_scenario_vm.gd::_test_classic_opcode_2_legacy_battle_record` covers the special sound projection, other missing-message rows, and opcode-48 isolation.
 - Deliberate correction: An unavailable optional prelude is suppressed instead of displaying Castle's unchecked fallback text or blocking the battle.
 
+## FD-SCENARIO-013 — Missing thief-action result text
+
+- Affected rule: an unavailable optional thief success/failure message must not prevent trap resolution or the authored Complex Encounter result.
+- Castle evidence: pinned commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/encounters.c`, `thiefenc`, calls `textbox(-1, thief.textf[type], ...)` before trap handling and the `thief.codef[type]` result. `textbox-time.c`, `textbox`, seeds an application string and does not check the Data SD2 read result. This is source-control-flow evidence, not a controlled Castle runtime observation.
+- Player-facing problem: Trouble Land 7 AP 89 enters Complex Encounter 55 / Thief Encounter 44. Failed Pick Lock and Force Lock reference absent message 10049 before returning result 3. Rebuilt's text error abandoned result 3, including valid message 1049 and opcode 61's step out of the doorway.
+- Chosen behavior: omit unavailable thief-action text while retaining the source-ordered sound, trap handling, experience rule, and authored result. Existing signed click behavior applies to available messages. Preserve the missing identity in the action event and leave compiled scenario bytes unchanged.
+- Tests: `test_swordlands_battle_prelude.gd::_test_locked_door_failure` enters the exact AP by movement, detects the trap, fails disarming and picking, then verifies trap damage, result 3 narration, movement back out, and preservation of the locked AP.
+- Deliberate correction: suppress Castle's unchecked fallback text and its empty acknowledgement rather than aborting gameplay or inventing a replacement string. Required encounter/program targets remain strict.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.

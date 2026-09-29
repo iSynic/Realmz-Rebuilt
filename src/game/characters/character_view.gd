@@ -15,8 +15,8 @@ const SPECIAL_NAMES: Array[String] = [
 	"Classic special slot 9", "Classic special slot 10", "Classic special slot 11", "Classic special slot 12",
 ]
 const ABILITY_NAMES: Array[String] = [
-	"Sneak Attack", "Classic ability 2", "Resurrection", "Major Wound", "Detect Secret", "Acrobatics", "Detect Trap", "Disable Trap",
-	"Classic ability 9", "Force Lock", "Classic ability 11", "Pick Lock", "Classic ability 13", "Turn Undead", "Classic ability 15",
+	"Sneak Attack", "Hide in Shadows", "Resurrection", "Major Wound", "Detect Secret", "Acrobatics", "Detect Trap", "Disable Trap",
+	"Hear Noise", "Force Lock", "Move Silently", "Pick Lock", "Pick Pocket", "Turn Undead", "Classic ability 15",
 ]
 const AGE_CHANGE_NAMES: Array[String] = [
 	"Brawn", "Knowledge", "Judgment", "Agility", "Vitality", "Luck", "Magic Resistance", "Movement",

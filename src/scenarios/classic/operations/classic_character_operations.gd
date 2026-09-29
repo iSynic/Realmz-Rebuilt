@@ -608,8 +608,22 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool, c
 	var targets := _game_state.party.characters() if entire_party else _game_state.scenario_progress.selected_characters()
 	if targets.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode %d has no selected character targets." % action.opcode)
+	return _continue_scenario_spell(action, targets, 0)
+
+
+func resume_scenario_spell(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:
+	var targets: Array[CharacterState] = []
+	for id: String in handoff.effect_target_ids:
+		targets.append(_game_state.party.character_by_id(id))
+	var action := ClassicActionDefinition.new(0, handoff.effect_opcode, handoff.effect_opcode, 0, false, handoff.effect_extra_code)
+	return _with_age_update_interactions(_continue_scenario_spell(action, targets, handoff.effect_next_index), "classic-spell-revival")
+
+
+func _continue_scenario_spell(action: ClassicActionDefinition, targets: Array[CharacterState], start_index: int) -> ScenarioRuntimeOperationResult:
+	var spell := _content.magic.spell_by_classic_id(action.extra_code[0])
 	var events: Array[DomainEvent] = []
-	for character: CharacterState in targets:
+	for index: int in range(start_index, targets.size()):
+		var character := targets[index]
 		var before_health := character.current_health
 		var before_conditions := character.conditions.values()
 		var race := _content.characters.race_by_id(character.race_id)
@@ -636,4 +650,10 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool, c
 		}))
 		if resolution.aging != null and resolution.aging.changed_group():
 			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character, race)))
+		# Castle resolvespell -> killbody -> partyloss interrupts the target loop here.
+		if _game_state.combat == null and _game_state.party.characters().all(func(member: CharacterState) -> bool: return member.current_health <= 0):
+			var target_ids: Array[String] = []
+			for target: CharacterState in targets:
+				target_ids.append(target.id)
+			return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.character_defeat(action.opcode, action.extra_code, target_ids, index + 1), events)
 	return ScenarioRuntimeOperationResult.completed(targets.size(), events)

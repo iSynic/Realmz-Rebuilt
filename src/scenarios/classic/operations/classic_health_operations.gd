@@ -18,23 +18,23 @@ static func apply(content: RealmzContent, state: GameState, rng: RealmzRng, acti
 
 
 static func handoff_is_valid(state: GameState, handoff: ScenarioRuntimeHandoff) -> bool:
-	if state == null or state.party == null or state.combat != null or handoff == null or handoff.source_kind != ScenarioRuntimeHandoff.CLASSIC_HEALTH or handoff.to_data().is_empty():
+	if state == null or state.party == null or state.combat != null or handoff == null or handoff.source_kind not in [ScenarioRuntimeHandoff.CLASSIC_HEALTH, ScenarioRuntimeHandoff.CLASSIC_SPELL] or handoff.to_data().is_empty():
 		return false
 	var party_ids: Array[String] = []
 	for character: CharacterState in state.party.characters():
 		party_ids.append(character.id)
-	if handoff.health_opcode == 16 and party_ids != handoff.health_target_ids:
+	if handoff.effect_opcode in [16, 18] and party_ids != handoff.effect_target_ids:
 		return false
-	for id: String in handoff.health_target_ids:
+	for id: String in handoff.effect_target_ids:
 		if not party_ids.has(id):
 			return false
 	return true
 
 
 static func resume(content: RealmzContent, state: GameState, rng: RealmzRng, handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:
-	if not handoff_is_valid(state, handoff):
+	if not handoff_is_valid(state, handoff) or handoff.source_kind != ScenarioRuntimeHandoff.CLASSIC_HEALTH:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_party_defeat_handoff", "The suspended Classic health effect no longer matches the party.")
-	return _continue(content, state, rng, handoff.health_opcode, handoff.health_extra_code, handoff.health_target_ids, handoff.health_next_index)
+	return _continue(content, state, rng, handoff.effect_opcode, handoff.effect_extra_code, handoff.effect_target_ids, handoff.effect_next_index)
 
 
 static func _continue(content: RealmzContent, state: GameState, rng: RealmzRng, opcode: int, extra_code: Array[int], target_ids: Array[String], start_index: int) -> ScenarioRuntimeOperationResult:
@@ -60,7 +60,7 @@ static func _continue(content: RealmzContent, state: GameState, rng: RealmzRng, 
 		events.append(DomainEvent.new(&"character_effect_requested", {"characterId": character.id, "resourceType": "cicn", "firstResourceId": 12112, "frameCount": 8, "source": "classic-opcode-15"}))
 		if state.party.characters().all(func(member: CharacterState) -> bool: return member.current_health <= 0):
 			events.append(DomainEvent.new(&"party_health_changed", {"targets": "party" if opcode == 16 else "selected", "hits": hits}))
-			return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.health_defeat(opcode, extra_code, target_ids, index + 1), events)
+			return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.character_defeat(opcode, extra_code, target_ids, index + 1), events)
 	events.append(DomainEvent.new(&"party_health_changed", {"targets": "party" if opcode == 16 else "selected", "hits": hits}))
 	if message != null:
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-15", "classicClick": extra_code[4] > 0}))

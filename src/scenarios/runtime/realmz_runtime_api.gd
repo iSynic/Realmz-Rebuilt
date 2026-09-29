@@ -188,12 +188,16 @@ func request_available_bank(request_id: String) -> ScenarioRuntimeOperationResul
 
 
 static func party_defeat_handoff_is_valid(content: RealmzContent, state: GameState, handoff: ScenarioRuntimeHandoff) -> bool:
-	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_HEALTH:
-		return ClassicHealthOperations.handoff_is_valid(state, handoff)
+	if handoff != null and handoff.source_kind in [ScenarioRuntimeHandoff.CLASSIC_HEALTH, ScenarioRuntimeHandoff.CLASSIC_SPELL]:
+		return ClassicHealthOperations.handoff_is_valid(state, handoff) and (handoff.source_kind != ScenarioRuntimeHandoff.CLASSIC_SPELL or content.magic.spell_by_classic_id(handoff.effect_extra_code[0]) != null and handoff.effect_extra_code[1] >= 0)
 	return ClassicBattleRewardOperations.party_defeat_handoff_is_valid(content, state, handoff)
 
 
 func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:
+	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_SPELL:
+		if not party_defeat_handoff_is_valid(_content, _game_state, handoff):
+			return ScenarioRuntimeOperationResult.failed(&"invalid_party_defeat_handoff", "The suspended Classic spell no longer matches the party.")
+		return _character_operations.resume_scenario_spell(handoff)
 	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_HEALTH:
 		return ClassicHealthOperations.resume(_content, _game_state, _rng, handoff)
 	return _battle_reward_operations.complete_party_defeat_handoff(handoff)
