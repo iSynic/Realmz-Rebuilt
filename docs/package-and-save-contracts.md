@@ -47,6 +47,8 @@ Every closed protocol variant—including intent payloads where persisted, inter
 
 Versions 1 through 4 are intentionally incompatible. They are reported to the user as belonging to an older Realmz Rebuilt save contract and are never migrated or partially interpreted. There is no Classic or prior-Remake save importer.
 
+The exact additive revisions in [bundled shop restoration](bundled-shop-restoration.md) permit an explicit Update Save copy after pinned archive/receipt checks, unchanged preexisting content, and full detached restore/readback. Only those three revision pairs and the separately pinned Half Truth media transition are admitted; no general package-hash bypass exists. Original archives, primary saves, backups, and the active session remain unchanged.
+
 Saving is allowed only at committed session boundaries, including party setup with a partial party. Infrastructure writes a temporary file, decodes and validates it through the same strict v5 codec, rotates one backup, and atomically replaces the slot. Restore validates a complete replacement—content identities, equipped-instance order, carried-load totals, shop slot bands and collisions, requests, continuations, VM state, combat ownership, and RNG position—before changing the active session. Failure leaves the current session untouched.
 
 ## `.r2char`

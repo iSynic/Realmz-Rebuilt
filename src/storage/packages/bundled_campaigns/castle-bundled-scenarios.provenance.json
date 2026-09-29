@@ -409,11 +409,11 @@
       "name": "Mithril Vault",
       "campaignId": "scenario-mithril-vault",
       "file": "scenario-mithril-vault.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "31d4d1acc090146adfdb9741d308705857e1af00fcbd90eaa94b56cb097bb146",
-      "contentId": "cbaad67285df475180480f9d08fd44282ee6bcca67f67c513745009616d84128",
-      "archiveSha256": "37845d382f10af4107ae57d8a7e55f2c899efe47ee54898041e51d840bf1632f",
-      "bytes": 3175543,
+      "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
+      "packageHash": "39b054e9163e47176cebab403f8cb2a71139c248ec74c06e3dd0419ee6dc9919",
+      "contentId": "fdc2fa41de277f8869499f4afd095f737d9152d56267b87c511a7db5be123b88",
+      "archiveSha256": "163a0cd69f6371847061ec77694fb508a7df888e724242673507c381f160a1b8",
+      "bytes": 3176243,
       "sourceArchive": {
         "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
         "archiveSha256": "213a4fc5def565793f5489eff08890d22e73b8d86e33476f668d19cfdafc9ad2",
@@ -466,6 +466,10 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "shopRestoration": {
+        "catalog": "shop-restoration.json",
+        "previousCompilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909"
       }
     },
     {
@@ -629,11 +633,11 @@
       "name": "Trouble in the Sword Lands",
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "0f9ced8eac0d4b5dbdaaf2c3f0be18bc509206d8ccfc6a470ef764abdd97226d",
-      "contentId": "02a088b3838eadcb907f4066d0fb34f908a7c74bce61ab0cba86ce6fb9faf924",
-      "archiveSha256": "8bef7ef986f2d9846ecb3e596863696bb9b1a8c7c49f923daa76dfb2810c3b50",
-      "bytes": 4995793,
+      "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
+      "packageHash": "7fc1ecb2106c0514c983022f39db98666bc82ef87e6c883229e6f6624d0103dc",
+      "contentId": "f6c1c6bce933665f3c7fb35ce3953aa6bbe1c657fb52c7448fbdf7d1a8020a68",
+      "archiveSha256": "429885984f000f98fb7390be077031d58b569ed22e66d5cafa34a5e59b2b66f3",
+      "bytes": 5000906,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "10cb5cae1af68109084fd84b95254663ccf397e6a704813514f90c795ed88c42",
@@ -686,17 +690,21 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 2
+      },
+      "shopRestoration": {
+        "catalog": "shop-restoration.json",
+        "previousCompilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909"
       }
     },
     {
       "name": "Twin Sands of Time",
       "campaignId": "scenario-twin-sands-of-time",
       "file": "scenario-twin-sands-of-time.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "9ccb5877ce5bb4e61c08b4ac7e8197b948031b85a070e826dfbcb4cf29b12a20",
-      "contentId": "4d6d1358f176ac9407c8cad17f120c0d271417e1d8c0ef6e39493f358806c2c5",
-      "archiveSha256": "a584086aec24cef6d71770487cadac474e83843d9abbc7efa5918dfa8708d9c4",
-      "bytes": 1103921,
+      "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
+      "packageHash": "136ae8a319ad414a7cff2183bd01606fd7359bb1e6eb903cf8b70ba31b369b15",
+      "contentId": "eb0a050a4b3b4c0528d10075764ea0d7e3d40f86cbb2cee1ed6d653abdebb287",
+      "archiveSha256": "1c7754f894337510e71e283a6c8b95a943710f64ae6a3b9d293c6838ebc37561",
+      "bytes": 1106323,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "b1ab186356915ed759c9bfb042b47685a98b403063cdae9b91003a10502fd3fd",
@@ -749,6 +757,10 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "shopRestoration": {
+        "catalog": "shop-restoration.json",
+        "previousCompilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909"
       }
     },
     {

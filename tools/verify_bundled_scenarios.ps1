@@ -145,6 +145,9 @@ foreach ($scenario in $catalog.scenarios) {
     }
     $refresh = $scenario.scenarioMediaMigration
     $refreshCompilerRevision = $scenario.compilerRevision
+    if ($null -ne $scenario.shopRestoration) {
+        $refreshCompilerRevision = $scenario.shopRestoration.previousCompilerRevision
+    }
     if ($null -ne $scenario.currentCompilerRegeneration) {
         $refreshCompilerRevision = $scenario.currentCompilerRegeneration.previousPackage.compilerRevision
     }
@@ -475,4 +478,6 @@ if ($scenarioArchiveBytes -ge $sourceArchiveBytes -or ($scenarioArchiveBytes + $
     throw "The separated application-plus-scenario library did not reduce the previous bundled archive footprint."
 }
 
+& python (Join-Path $PSScriptRoot 'verify_bundled_shops.py')
+if ($LASTEXITCODE -ne 0) { throw 'Bundled shop preservation verification failed.' }
 Write-Host "Verified the lean 13-scenario bundle, 515 restored scenario CICN descriptors, application ownership, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."

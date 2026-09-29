@@ -85,7 +85,7 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 
 
 func update_save(content: RealmzContent, slot_id: String, backup: bool = false) -> bool:
-	var updated_slot := _repository_host.update_half_truth_save(content, slot_id, backup)
+	var updated_slot := _repository_host.update_save(content, slot_id, backup)
 	if updated_slot.is_empty():
 		_shell.status.set_status("Save update failed • %s" % _repository_host.last_error(), true)
 		return false

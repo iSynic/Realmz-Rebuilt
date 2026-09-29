@@ -349,7 +349,7 @@ func _refresh_save_detail() -> void:
 	load_selected.tooltip_text = "Select a validated save record." if preview == null else preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
 	load_selected.text = "Load %s" % slot_id if preview != null and preview.can_load else "Load Slot"
 	update_save.visible = preview != null and preview.can_update
-	update_save.tooltip_text = "Create and verify a corrected Half Truth copy. The original save and backup remain untouched."
+	update_save.tooltip_text = "Create and verify a copy for the corrected campaign. The original save and backup remain untouched."
 	_update_save_confirmation()
 	var record := _workspace.save_detail_record()
 	var empty := _workspace.save_detail_empty()
