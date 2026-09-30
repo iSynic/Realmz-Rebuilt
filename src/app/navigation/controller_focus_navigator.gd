@@ -7,7 +7,7 @@ var _popup_owner: WeakRef
 var _popup_index: int = 0
 
 
-func move(root: Control, direction: Vector2i) -> Control:
+func move(root: Node, direction: Vector2i) -> Control:
 	if root == null or direction == Vector2i.ZERO:
 		return null
 	var viewport := root.get_viewport()
@@ -30,7 +30,7 @@ func move(root: Control, direction: Vector2i) -> Control:
 	return neighbor
 
 
-func move_geometric(root: Control, direction: Vector2i) -> Control:
+func move_geometric(root: Node, direction: Vector2i) -> Control:
 	if root == null or direction == Vector2i.ZERO:
 		return null
 	var viewport := root.get_viewport()
@@ -44,7 +44,7 @@ func move_geometric(root: Control, direction: Vector2i) -> Control:
 	return neighbor
 
 
-func focus_next(root: Control, backwards: bool = false) -> Control:
+func focus_next(root: Node, backwards: bool = false) -> Control:
 	if root == null:
 		return null
 	var viewport := root.get_viewport()
@@ -65,7 +65,7 @@ func focus_next(root: Control, backwards: bool = false) -> Control:
 	return next
 
 
-func focus_first(root: Control) -> Control:
+func focus_first(root: Node) -> Control:
 	var candidates := _focusable_controls(root, "")
 	if candidates.is_empty():
 		return null
@@ -84,7 +84,7 @@ func focus_first(root: Control) -> Control:
 	return first
 
 
-func activate_focused(root: Control) -> bool:
+func activate_focused(root: Node) -> bool:
 	var viewport := root.get_viewport() if root != null else null
 	var focused := viewport.gui_get_focus_owner() if viewport != null else null
 	if focused == null or not focused.is_visible_in_tree() or focused != root and not root.is_ancestor_of(focused):
@@ -139,7 +139,7 @@ func cancel_active_popup() -> bool:
 	return true
 
 
-func has_active_popup(root: Control = null) -> bool:
+func has_active_popup(root: Node = null) -> bool:
 	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
 	if (option == null or not option.get_popup().visible) and root != null:
 		option = root.get_viewport().gui_get_focus_owner() as OptionButton
@@ -149,7 +149,7 @@ func has_active_popup(root: Control = null) -> bool:
 	return option != null and option.get_popup().visible
 
 
-func inspection_text(root: Control) -> String:
+func inspection_text(root: Node) -> String:
 	var viewport := root.get_viewport() if root != null else null
 	var focused := viewport.gui_get_focus_owner() if viewport != null else null
 	if focused == null:
@@ -157,7 +157,7 @@ func inspection_text(root: Control) -> String:
 	return focused.tooltip_text if not focused.tooltip_text.is_empty() else focused.accessibility_description
 
 
-func scroll_active(root: Control, direction: Vector2i, step: int = 48) -> bool:
+func scroll_active(root: Node, direction: Vector2i, step: int = 48) -> bool:
 	if root == null:
 		return false
 	var viewport := root.get_viewport()
@@ -177,7 +177,7 @@ func scroll_active(root: Control, direction: Vector2i, step: int = 48) -> bool:
 	return true
 
 
-func _geometric_neighbor(root: Control, current: Control, direction: Vector2i, perpendicular_weight: float = 2.0) -> Control:
+func _geometric_neighbor(root: Node, current: Control, direction: Vector2i, perpendicular_weight: float = 2.0) -> Control:
 	var focus_group := String(current.get_meta("focus_group", ""))
 	var current_center := current.get_global_rect().get_center()
 	var best: Control

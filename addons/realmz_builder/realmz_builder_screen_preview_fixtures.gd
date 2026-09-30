@@ -17,6 +17,7 @@ const SUPPORTED_SURFACES: Array[String] = [
 	"application-shell",
 	"campaign-selection",
 	"party-assembly",
+	"party-import-from-save",
 	"character-creation",
 ]
 
@@ -48,6 +49,7 @@ static func bind(surface: Node, surface_id: String, profile: String) -> bool:
 		"application-shell": _bind_application_shell(surface as GameShell, view)
 		"campaign-selection": _bind_campaign_selection(surface as CampaignSelectionPanel, view, profile)
 		"party-assembly": _bind_party_setup(surface as PartySetupWorkspace, view, profile, false)
+		"party-import-from-save": _bind_party_import_dialog(surface as PartyImportFromSaveDialog, profile)
 		"character-creation": _bind_party_setup(surface as PartySetupWorkspace, view, profile, true)
 		_: return false
 	surface.set_meta("realmz_builder_profile", profile)
@@ -156,6 +158,24 @@ static func _bind_party_setup(workspace: PartySetupWorkspace, view: GameView, pr
 	if creator:
 		(workspace.find_child("CreateCharacter", true, false) as Button).pressed.emit()
 	workspace.set_meta("realmz_builder_controller", controller)
+
+
+static func _bind_party_import_dialog(dialog: PartyImportFromSaveDialog, profile: String) -> void:
+	var preview: Dictionary = {"phase": "review", "available_slots": 2, "message": "Review the heroes and possessions that can join this adventure.", "left_behind": ["Pooled money, bank balances, shared storage, and confiscated equipment stay in the source adventure.", "Recruited allies and battlefield-dropped items stay in the source adventure."], "candidates": [
+		{"name": "Kevlar", "eligible": true, "selected": true, "detail": "Level 4 · HP 24/42 · SP 18/30\nPersonal money: 80 gold, 1 gems, 0 jewelry\nKept: Longsword, Shield\nRemoved: Item: Old Relic — The destination has no matching definition."},
+		{"name": "Lothlorian", "eligible": true, "selected": true, "detail": "Level 5 · HP 26/44 · SP 20/33\nPersonal money: 100 gold, 1 gems, 0 jewelry\nKept: Chain Armor\nRemoved: None"},
+		{"name": "Silver Leaf", "eligible": false, "selected": false, "detail": "This character exceeds the destination campaign's level limit."},
+	]}
+	match profile:
+		"Empty": preview = {"phase": "selection", "sources": [], "message": "Choose a saved adventure. Its world state stays behind."}
+		"Error": preview = {"phase": "error", "message": "The selected save could not be validated. Choose another save or refresh the list."}
+		"Unavailable": preview = {"phase": "selection", "sources": [{"label": "City of Bywater · Slot 1 · 2026-09-28 19:40", "detail": "The exact source package revision is unavailable. Install that revision, then refresh.", "valid": false}], "message": "Choose a saved adventure. Its world state stays behind."}
+		"Long Content":
+			preview["available_slots"] = 4
+			for index: int in range(3, 9):
+				preview["candidates"].append({"name": "Preview Adventurer %d" % index, "eligible": true, "selected": false, "detail": "Level %d · HP %d/48 · SP 12/30\nPersonal money: %d gold, 0 gems, 0 jewelry\nKept: Longsword, Iron Rations\nRemoved: None" % [index + 2, index * 5, index * 25]})
+		_: pass
+	dialog.show_party_import(preview)
 
 
 static func _game_view(profile: String) -> GameView:

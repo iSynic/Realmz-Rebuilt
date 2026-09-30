@@ -10,6 +10,13 @@
   },
   "runtimeControlClassifications": [
     {
+      "path": "src/ui/setup/party_import_from_save_dialog.gd",
+      "kind": "data-collection",
+      "reason": "Saved-party import materializes save sources, character candidates and their diagnostic text inside scene-authored scroll regions.",
+      "currentMaximum": 6,
+      "functions": ["_render", "_render_candidates", "_detail_label"]
+    },
+    {
       "path": "src/ui/exploration/classic_retained_map_surface.gd",
       "kind": "algorithmic-surface",
       "reason": "The retained map allocates its viewport as part of an algorithmic canvas and texture pipeline.",

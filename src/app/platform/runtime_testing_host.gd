@@ -38,11 +38,11 @@ func bind(session: GameSessionController, content: Callable, readiness: Callable
 	return _endpoint.open(OS.get_environment("REALMZ_TESTING_HOME"), "observe" if fixture == null else "fixture", func() -> int: return _observer.revision, _dispatch, fixture)
 
 
-func prepare_fixture(presentation: PresentationCoordinator, media: PresentationMediaController, shell: GameShell, content_ready: Callable) -> void:
-	_prepare.call_deferred(presentation, media, shell, content_ready)
+func prepare_fixture(presentation: PresentationCoordinator, media: PresentationMediaController, shell: GameShell, content_ready: Callable, character_files: ApplicationCharacterFilesHost = null) -> void:
+	_prepare.call_deferred(presentation, media, shell, content_ready, character_files)
 
 
-func _prepare(presentation: PresentationCoordinator, media: PresentationMediaController, shell: GameShell, content_ready: Callable) -> void:
+func _prepare(presentation: PresentationCoordinator, media: PresentationMediaController, shell: GameShell, content_ready: Callable, character_files: ApplicationCharacterFilesHost) -> void:
 	shell.status.set_status("Preparing isolated runtime fixture…")
 	await get_tree().process_frame
 	if not _prepared.load_request(_fixture):
@@ -57,6 +57,8 @@ func _prepare(presentation: PresentationCoordinator, media: PresentationMediaCon
 	presentation.refresh()
 	shell.status.set_status("TEST FIXTURE %s • isolated data" % _fixture.fixture_id.left(8))
 	_fixture_ready = true
+	if character_files != null:
+		character_files.begin_library_load()
 
 
 func _dispatch(command: String, params: Dictionary) -> Dictionary:

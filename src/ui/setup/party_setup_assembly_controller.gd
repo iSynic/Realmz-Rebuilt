@@ -89,6 +89,11 @@ func _update_campaign_context() -> void:
 func _configure_assembly_actions(campaign_setup: bool, party_full: bool) -> void:
 	create_character_button.visible = true
 	begin_button.visible = true
+	var import_party_button := setup_overlay.get_node_or_null("%ImportPartyFromSave") as Button
+	if import_party_button != null:
+		import_party_button.visible = not standalone_character_creation_active and setup_mode == &"assembly"
+		import_party_button.disabled = not campaign_setup or not standalone_character_creation_available
+		import_party_button.tooltip_text = "" if not import_party_button.disabled else "Wait for scenario and character-library preparation to finish."
 	create_character_button.disabled = _campaign_library.package_operation_status.is_running() or party_full or (not campaign_setup and not standalone_character_creation_available)
 	if party_full:
 		create_character_button.tooltip_text = "This party already has %d characters." % maximum_party_size()

@@ -152,14 +152,22 @@ layout_mode = 2
 theme_type_variation = &"ClassicTheldrowButton"
 text = "Continue"
 
-[node name="CharacterFooter" type="HBoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
+[node name="CharacterFooter" type="VBoxContainer" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
 layout_mode = 2
+theme_override_constants/separation = 4
 
 [node name="CreateCharacter" type="Button" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CharacterFooter"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Create character"
+
+[node name="ImportPartyFromSave" type="Button" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CharacterFooter"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Import party from save"
 
 [node name="CurrentPartyPane" type="PanelContainer" parent="ScenarioPartyWorkspace"]
 unique_name_in_owner = true

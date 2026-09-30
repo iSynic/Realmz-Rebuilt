@@ -70,7 +70,9 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if start_coordinate_value == null:
 		return null
 	var start_coordinate: Vector2i = start_coordinate_value
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], manifest["start"]["mapId"], start_coordinate, world_content.definition, scenario_definition, story_content.messages, world_content.triggers, story_content.simple_encounters, rules_content.races, rules_content.castes, rules_content.items, rules_content.spells, rules_content.monsters, rules_content.battles, rules_content.treasures, rules_content.shops, story_content.complex_encounters, story_content.thief_encounters, story_content.timed_encounters, story_content.option_labels, story_content.campaign, rules_content.appearance_options, rules_content.monster_sets, reference_validator.warnings, allow_deferred, rules_content.media)
+	var result := RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], manifest["start"]["mapId"], start_coordinate, world_content.definition, scenario_definition, story_content.messages, world_content.triggers, story_content.simple_encounters, rules_content.races, rules_content.castes, rules_content.items, rules_content.spells, rules_content.monsters, rules_content.battles, rules_content.treasures, rules_content.shops, story_content.complex_encounters, story_content.thief_encounters, story_content.timed_encounters, story_content.option_labels, story_content.campaign, rules_content.appearance_options, rules_content.monster_sets, reference_validator.warnings, allow_deferred, rules_content.media)
+	result.transfer_catalog = PackageTransferCatalog.build(content, application_content)
+	return result
 
 
 func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, world: Dictionary, trusted_install: bool) -> StoryContent:

@@ -1,0 +1,190 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/party_import_from_save_dialog.gd" id="1_script"]
+
+[node name="PartyImportFromSaveDialog" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+z_index = 94
+z_as_relative = false
+script = ExtResource("1_script")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0.015, 0.019, 0.027, 0.82)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="Dialog" type="PanelContainer" parent="Center"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(760, 520)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="Content" type="VBoxContainer" parent="Center/Dialog"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PhaseLabel" type="Label" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Import party from save"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 24
+horizontal_alignment = 1
+
+[node name="MessagePanel" type="PanelContainer" parent="Center/Dialog/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="MessageLabel" type="Label" parent="Center/Dialog/Content/MessagePanel"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+autowrap_mode = 2
+text = "Choose a saved adventure or browse for a save file."
+
+[node name="SourcesHeading" type="Label" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Available saved adventures"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="SourcesScroll" type="ScrollContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="SourcesList" type="VBoxContainer" parent="Center/Dialog/Content/SourcesScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CandidateHeading" type="Label" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Select characters to add"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 16
+
+[node name="CandidateScroll" type="ScrollContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="CandidateList" type="VBoxContainer" parent="Center/Dialog/Content/CandidateScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="LeftBehindPanel" type="PanelContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="LeftBehindContent" type="VBoxContainer" parent="Center/Dialog/Content/LeftBehindPanel"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="LeftBehindHeading" type="Label" parent="Center/Dialog/Content/LeftBehindPanel/LeftBehindContent"]
+layout_mode = 2
+text = "Left behind"
+theme_override_colors/font_color = Color(0.835, 0.541, 0.471, 1)
+theme_override_font_sizes/font_size = 15
+
+[node name="LeftBehindScroll" type="ScrollContainer" parent="Center/Dialog/Content/LeftBehindPanel/LeftBehindContent"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_scroll_mode = 0
+
+[node name="LeftBehindList" type="VBoxContainer" parent="Center/Dialog/Content/LeftBehindPanel/LeftBehindContent/LeftBehindScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="SelectionActions" type="HBoxContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="RefreshSources" type="Button" parent="Center/Dialog/Content/SelectionActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Refresh saves"
+
+[node name="BrowseExternalSave" type="Button" parent="Center/Dialog/Content/SelectionActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Browse save file..."
+
+[node name="ReviewActions" type="HBoxContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="CancelImport" type="Button" parent="Center/Dialog/Content/ReviewActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Cancel"
+
+[node name="ImportSelected" type="Button" parent="Center/Dialog/Content/ReviewActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Import selected"
+
+[node name="CancelSelection" type="Button" parent="Center/Dialog/Content/SelectionActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowButton"
+text = "Cancel"
+
+[node name="ExternalSaveDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Choose a saved adventure"
+initial_position = 2
+size = Vector2i(900, 620)
+ok_button_text = "Open"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.r2save ; Realmz Rebuilt Saved Adventure")
+use_native_dialog = false

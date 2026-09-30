@@ -152,9 +152,21 @@ func run() -> void:
 	var zero_ap_content := _duplicate_placed_ap_content(0, content); var zero_ap_session := GameSession.new(); zero_ap_session.start(zero_ap_content, 1); _begin_fixture_adventure(zero_ap_session, zero_ap_content)
 	var zero_ap_step := zero_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through"); assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
-	var inactive_ap_content := _inactive_placed_ap_content(content); var inactive_ap_session := GameSession.new(); inactive_ap_session.start(inactive_ap_content, 1); _begin_fixture_adventure(inactive_ap_session, inactive_ap_content)
-	var enabled_ap_step := inactive_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_true(_has_event(enabled_ap_step, &"trigger_chances_changed"), "opcode 13 ignores an unplaced native row while enabling an initially inactive placed AP")
-	var inactive_ap_step := inactive_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal(_event(inactive_ap_step, &"trigger_fired").payload["triggerId"], "ap.inactive-placed", "a positive runtime chance override activates the addressed AP")
+	for previously_disabled: bool in [false, true]:
+		var inactive_ap_content := _inactive_placed_ap_content(content)
+		var inactive_ap_session := GameSession.new()
+		inactive_ap_session.start(inactive_ap_content, 1)
+		_begin_fixture_adventure(inactive_ap_session, inactive_ap_content)
+		if previously_disabled:
+			inactive_ap_session._context.state.world.triggers.set_trigger_chance("ap.inactive-placed", -1)
+		var enabled_ap_step := inactive_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
+		assert_true(_has_event(enabled_ap_step, &"trigger_chances_changed"), "opcode 13 ignores an unplaced native row while enabling an initially inactive placed AP")
+		assert_false(inactive_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.inactive-placed"), "opcode 13 replaces a previous disabled state when restoring a positive chance")
+		assert_equal(inactive_ap_session.restore(inactive_ap_content, save_round_trip(inactive_ap_session.snapshot())).state, SessionStep.State.COMPLETED, "the re-enabled AP survives save restoration")
+		var inactive_ap_step := inactive_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
+		assert_true(_has_event(inactive_ap_step, &"trigger_fired"), "a positive runtime chance override activates the addressed AP even after earlier disabling")
+		if _has_event(inactive_ap_step, &"trigger_fired"):
+			assert_equal(_event(inactive_ap_step, &"trigger_fired").payload["triggerId"], "ap.inactive-placed", "the re-enabled AP retains its native identity")
 
 	var disabled_ap_content := _duplicate_placed_ap_content(100, content); var disabled_ap_source := GameSession.new(); disabled_ap_source.start(disabled_ap_content, 1); _begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
 	var disabled_ap_save := disabled_ap_source.snapshot(); disabled_ap_save.game_state.world.triggers.disable_trigger("ap.first-native")

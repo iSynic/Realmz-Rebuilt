@@ -9,6 +9,7 @@ func run() -> void:
 	var content: RealmzContent = loaded.content
 	_test_pit_party_loss(content)
 	_test_locked_door_failure(content)
+	_test_mine_arrival(content)
 	var program := content.scenario.program_by_id("trigger:Data DD:18:7")
 	var action: ClassicActionDefinition = program.instruction_at(3) if program != null else null
 	assert_true(action != null and action.opcode == 2 and action.extra_code == [180, 180, 2221, 10136, 0], "land 18 AP 7 retains its authored battle row")
@@ -37,6 +38,43 @@ func run() -> void:
 			break
 		ap_result = vm.resume(InteractionResponse.acknowledge(ap_result.interaction), vm_api)
 	assert_true(ap_result.state == ScenarioVmResult.State.WAITING and ap_result.interaction != null and ap_result.interaction.kind == &"combat_action" and vm_state.combat != null and vm_state.combat.battle_id == "classic.battle.180", "the compiled AP itself reaches battle 180 after its authored narration (state %d, interaction %s, error %s)" % [ap_result.state, ap_result.interaction.kind if ap_result.interaction != null else "none", ap_result.error_message])
+
+
+func _test_mine_arrival(content: RealmzContent) -> void:
+	for restore_at_mine: bool in [false, true]:
+		var session := GameSession.new()
+		session.start(content, 33)
+		var hero := CharacterState.new("arrival.hero", "Hero", 100, 100)
+		hero.race_id = content.characters.race_definitions()[0].id
+		hero.caste_id = content.characters.caste_definitions()[0].id
+		session._context.state.party = PartyState.new("land:0", Vector2i(77, 9), [hero])
+		session._context.state.party_setup_completed = true
+		session._context.state.scenario_progress.set_quest_value(15, 1)
+		var step := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
+		var events: Array[DomainEvent] = step.events.duplicate()
+		var reached_mine := false
+		for response_index: int in range(30):
+			if step.state != SessionStep.State.WAITING_FOR_INTERACTION:
+				break
+			var request := step.interaction
+			if step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"message_shown" and event.payload.get("messageId") == 930):
+				reached_mine = true
+				if restore_at_mine:
+					assert_equal(session.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the second teleport restores after the staging AP narration")
+					request = session.view().pending_interaction
+			match request.kind:
+				InteractionRequest.ACKNOWLEDGE:
+					step = session.respond(InteractionResponse.acknowledge(request))
+				InteractionRequest.YES_NO:
+					step = session.respond(InteractionResponse.yes_no(request, true))
+				_:
+					break
+			events.append_array(step.events)
+		assert_true(reached_mine and step.state == SessionStep.State.COMPLETED, "agreeing to help completes the authored mine route: %s" % step.error_message)
+		assert_equal([session.view().party_map_id, session.view().party_coordinate], ["land:8", Vector2i(45, 87)], "the party remains at the cave arrival cell without another movement intent")
+		var triggers := events.filter(func(event: DomainEvent) -> bool: return event.kind == &"trigger_fired").map(func(event: DomainEvent) -> String: return event.payload["triggerId"])
+		assert_equal(triggers, ["Data DD:0:33", "Data DD:0:42", "Data DD:8:96"], "each opcode-20 arrival checks its AP once, including after narration or save restoration")
+		assert_equal(events.filter(func(event: DomainEvent) -> bool: return event.kind == &"message_shown" and event.payload.get("messageId") == 935).size(), 1, "the cave-in announcement appears once on arrival")
 
 
 func _test_pit_party_loss(content: RealmzContent) -> void:

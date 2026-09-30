@@ -122,6 +122,8 @@ func _submit_party_intent(intent: PlayerIntent) -> SessionCoordinatorResult:
 			return _begin_adventure()
 		PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 			return _workflow(LifecyclePartyWorkflow.import_vault_character(_context.workflow_context(), pending, intent.payload as PartyIntentPayloads.VaultImport))
+		PlayerIntent.Kind.IMPORT_SAVED_PARTY:
+			return _workflow(PartyTransferWorkflow.import_selected(_context.workflow_context(), pending, intent.payload as PartyIntentPayloads.SavedParty, _context.current_revision()))
 		PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT:
 			return _workflow(LifecyclePartyWorkflow.generate_character_draft(_context.workflow_context(), pending, intent.payload as PartyIntentPayloads.Draft))
 		PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT:

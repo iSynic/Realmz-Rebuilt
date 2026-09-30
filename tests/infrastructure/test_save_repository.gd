@@ -11,7 +11,7 @@ func run() -> void:
 		return
 	var campaign_id: String = loaded.content.campaign_id
 	var campaign_path := TEST_ROOT.path_join(campaign_id)
-	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save", "updated.r2save", "updated.r2save.tmp", "updated.r2save.bak", "active-slot", "active-slot.bak"])
+	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save", "named-slot.r2save", "updated.r2save", "updated.r2save.tmp", "updated.r2save.bak", "active-slot", "active-slot.bak"])
 	var session := GameSession.new()
 	assert_equal(session.start(loaded.content, 7).state, SessionStep.State.COMPLETED, "save-preview session starts")
 	var first := session.snapshot()
@@ -88,12 +88,63 @@ func run() -> void:
 	assert_true(repository.save_new_copy(campaign_id, "updated", update_copy), "retrying the same completed copy is idempotent")
 	assert_false(repository.save_new_copy(campaign_id, "updated", SaveEnvelope.from_data(save_data(second))), "a different copy cannot overwrite the first completed copy")
 	assert_equal([FileAccess.get_sha256(campaign_path.path_join("quick.r2save")), FileAccess.get_sha256(campaign_path.path_join("quick.r2save.bak")), FileAccess.file_exists(campaign_path.path_join("updated.r2save.bak"))], [original_before, backup_before, false], "copy retries and collisions preserve the original, backup, and copied-slot backup boundary")
+	var named_path := campaign_path.path_join("named-slot.r2save")
+	var named := FileAccess.open(named_path, FileAccess.WRITE)
+	named.store_string(JSON.stringify(save_data(first)))
+	named.close()
+	var other_campaign := "save-party-other-campaign"
+	var other_path := TEST_ROOT.path_join(other_campaign)
+	_reset_files(other_path, ["Archive-slot.r2save"])
+	var other_data: Dictionary = save_data(first)
+	other_data["campaignId"] = other_campaign
+	var other_envelope := SaveEnvelope.from_data(other_data)
+	assert_not_null(other_envelope, "a second campaign source is a strict v5 envelope")
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(other_path))
+	var other_file := FileAccess.open(other_path.path_join("Archive-slot.r2save"), FileAccess.WRITE)
+	other_file.store_string(JSON.stringify(other_envelope.to_data()))
+	other_file.close()
+	var external_path := TEST_ROOT.path_join("external-party.r2save")
+	_reset_files(TEST_ROOT, ["external-party.r2save"])
+	var external_file := FileAccess.open(external_path, FileAccess.WRITE)
+	external_file.store_string(JSON.stringify(save_data(first)))
+	external_file.close()
+	var party_sources := repository.list_party_sources()
+	var quick_source := _party_source(party_sources, campaign_id, "quick", &"primary")
+	var quick_backup_source := _party_source(party_sources, campaign_id, "quick", &"backup")
+	var named_source := _party_source(party_sources, campaign_id, "named-slot", &"primary")
+	var other_source := _party_source(party_sources, other_campaign, "Archive-slot", &"primary")
+	var legacy_source := _party_source(party_sources, campaign_id, "legacy", &"primary")
+	var broken_source := _party_source(party_sources, campaign_id, "broken", &"primary")
+	assert_true(quick_source != null and quick_backup_source != null and named_source != null and other_source != null, "party-source enumeration includes primary, backup, named slots, and another campaign directory")
+	assert_true(legacy_source != null and legacy_source.error.contains("v4") and legacy_source.envelope == null, "older saves remain visible with an incompatibility error")
+	assert_true(broken_source != null and broken_source.error.contains("corrupt") and broken_source.envelope == null, "corrupt saves remain visible with an error")
+	if quick_source != null:
+		assert_true(quick_source.is_valid() and quick_source.party_names == ["Mira"] and quick_source.source_file_hash == original_before, "valid party sources expose detached party facts and exact primary-file SHA-256")
+		var reread := repository.read_party_source(quick_source)
+		assert_true(reread.is_valid() and reread.source_file_hash == original_before, "rereading a selected source returns the same current file hash")
+	if quick_backup_source != null:
+		assert_true(quick_backup_source.is_valid() and quick_backup_source.source_file_hash == backup_before, "backup party sources expose the exact backup-file SHA-256")
+	var external_source := repository.read_external_party_source(external_path)
+	assert_true(external_source.is_valid() and external_source.source_kind == &"external" and external_source.source_file_hash == FileAccess.get_sha256(external_path), "external save reads use strict decoding and hash the exact source bytes")
+	external_file = FileAccess.open(external_path, FileAccess.WRITE)
+	external_file.store_string(JSON.stringify(save_data(second)))
+	external_file.close()
+	var changed_external := repository.read_party_source(external_source)
+	assert_true(changed_external.is_valid() and changed_external.source_file_hash != external_source.source_file_hash and changed_external.envelope.game_state.clock.total_minutes() == second.game_state.clock.total_minutes(), "rereading an external selector observes changed content and recomputes its hash")
+	assert_equal([FileAccess.get_sha256(campaign_path.path_join("quick.r2save")), FileAccess.get_sha256(campaign_path.path_join("quick.r2save.bak")), FileAccess.get_file_as_string(campaign_path.path_join("active-slot")), FileAccess.file_exists(campaign_path.path_join("active-slot.bak"))], [original_before, backup_before, "C", false], "party-source enumeration and rereads leave the original save pair and active-slot record unchanged")
 
 
 func _preview(previews: Array, slot_id: String, source: StringName) -> RefCounted:
 	for preview: RefCounted in previews:
 		if preview.slot_id == slot_id and preview.source == source:
 			return preview
+	return null
+
+
+func _party_source(sources: Array[SavePartySource], campaign: String, slot_id: String, source_kind: StringName) -> SavePartySource:
+	for source: SavePartySource in sources:
+		if source.campaign_id == campaign and source.slot_id == slot_id and source.source_kind == source_kind:
+			return source
 	return null
 
 

@@ -378,6 +378,12 @@ func _test_qwerty_draft_commit_cancel_and_layout() -> void:
 	editor.backspace()
 	editor.cancel()
 	assert_equal([field.text, field.caret_column], ["Keep", 2], "Cancel restores the prior field value and caret")
+	field.max_length = 0
+	field.caret_column = 2
+	editor.open_for(field)
+	editor.confirm_key("x")
+	editor.done()
+	assert_equal(field.text, "Kexep", "the default zero LineEdit length permits unlimited controller text entry")
 	var note := TextEdit.new()
 	note.text = "Line"
 	var note_changes := [0]

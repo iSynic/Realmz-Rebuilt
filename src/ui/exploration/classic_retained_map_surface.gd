@@ -154,6 +154,10 @@ func present(game_view: GameView, party_texture: Texture2D, control_size: Vector
 	_map_view = game_view.map_view
 	_party_texture = party_texture
 	_cell_size = native_cell_size
+	# Atlases stay on their native grid; note previews use a smaller display grid.
+	var layer_scale := Vector2.ONE * _cell_size / float(_tile_set.tile_size.x)
+	for layer: TileMapLayer in [_base_layer, _marker_layer, _fog_layer] + _feature_layers:
+		layer.scale = layer_scale
 	_minimap_size = minimap_size
 	_classic_visibility = classic_visibility
 	_show_minimap = show_minimap

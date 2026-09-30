@@ -3,6 +3,14 @@
 class_name ControllerInputOwner
 extends Node
 
+class WindowInputForwarder extends Node:
+	var controller_owner: WeakRef
+
+	func _input(event: InputEvent) -> void:
+		var owner := controller_owner.get_ref() as ControllerInputOwner
+		if owner != null and owner.handle_input(event):
+			get_viewport().set_input_as_handled()
+
 signal action_pressed(action_id: StringName, repeated: bool)
 signal action_released(action_id: StringName)
 signal direction_changed(direction: Vector2i, repeated: bool)
@@ -59,16 +67,23 @@ func _bind_existing_popups(node: Node) -> void:
 
 
 func _bind_popup_input(node: Node) -> void:
-	if not node is PopupMenu or not get_parent().is_ancestor_of(node):
+	if not (node is PopupMenu or node is FileDialog) or not get_parent().is_ancestor_of(node):
 		return
-	var popup := node as PopupMenu
+	if node is FileDialog:
+		if node.get_node_or_null("ControllerWindowInput") == null:
+			var forwarder := WindowInputForwarder.new()
+			forwarder.name = "ControllerWindowInput"
+			forwarder.controller_owner = weakref(self)
+			node.add_child(forwarder)
+		return
+	var popup := node as Window
 	var handler := _handle_popup_input.bind(popup)
 	if popup.window_input.is_connected(handler):
 		return
 	popup.window_input.connect(handler)
 
 
-func _handle_popup_input(event: InputEvent, popup: PopupMenu) -> void:
+func _handle_popup_input(event: InputEvent, popup: Window) -> void:
 	if handle_input(event):
 		popup.set_input_as_handled()
 

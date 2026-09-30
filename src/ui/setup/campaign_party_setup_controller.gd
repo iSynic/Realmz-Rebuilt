@@ -4,6 +4,14 @@ class_name CampaignPartySetupController
 extends "res://src/ui/setup/party_setup_controller_component.gd"
 
 const PARTY_SETUP_WORKSPACE_PATH := "res://src/ui/setup/party_setup_workspace.tscn"
+const PARTY_IMPORT_DIALOG_PATH := "res://src/ui/setup/party_import_from_save_dialog.tscn"
+
+signal party_import_requested
+signal party_import_source_requested(index: int)
+signal party_import_external_source_requested(path: String)
+signal party_import_selected_requested(indices: Array[int])
+signal party_import_cancel_requested
+signal party_import_refresh_requested
 
 var intent_submitted: Signal:
 	get: return _state.intent_submitted
@@ -22,6 +30,7 @@ var character_creation: PartySetupCharacterCreationController:
 var _inspection: PartySetupInspectionController
 var _assembly: PartySetupAssemblyController
 var _creation: PartySetupCharacterCreationController
+var _party_import_dialog: PartyImportFromSaveDialog
 
 
 func _init() -> void:
@@ -115,7 +124,62 @@ func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
 	load_adventure.pressed.connect(func() -> void: _state.load_saved_adventure_requested.emit())
 	begin_button = setup_overlay.get_node("%BeginAdventure") as Button
 	begin_button.pressed.connect(_assembly.submit_party)
+	var import_party_button := setup_overlay.get_node("%ImportPartyFromSave") as Button
+	import_party_button.pressed.connect(_request_party_import)
 	_state.apply_setup_mode_layout()
+	_build_party_import_dialog()
+
+
+func _build_party_import_dialog() -> void:
+	if _party_import_dialog != null:
+		return
+	var dialog_scene := load(PARTY_IMPORT_DIALOG_PATH) as PackedScene
+	assert(dialog_scene != null, "Party import dialog scene is unavailable.")
+	_party_import_dialog = dialog_scene.instantiate() as PartyImportFromSaveDialog
+	_host.add_child(_party_import_dialog)
+	var weak_owner: WeakRef = weakref(self)
+	_party_import_dialog.source_requested.connect(func(index: int) -> void:
+		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		if owner != null: owner.party_import_source_requested.emit(index))
+	_party_import_dialog.external_source_requested.connect(func(path: String) -> void:
+		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		if owner != null: owner.party_import_external_source_requested.emit(path))
+	_party_import_dialog.import_selected_requested.connect(func(indices: Array[int]) -> void:
+		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		if owner != null: owner.party_import_selected_requested.emit(indices))
+	_party_import_dialog.cancel_requested.connect(func() -> void:
+		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		if owner != null: owner.party_import_cancel_requested.emit())
+	_party_import_dialog.refresh_requested.connect(func() -> void:
+		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		if owner != null: owner.party_import_refresh_requested.emit())
+	_party_import_dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_party_import_dialog.visible = false
+
+
+func _request_party_import() -> void:
+	party_import_requested.emit()
+
+
+func show_party_import(view: Dictionary) -> void:
+	if _party_import_dialog == null:
+		_build_party_import_dialog()
+	_party_import_dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_party_import_dialog.show_party_import(view)
+
+
+func close_party_import() -> void:
+	if _party_import_dialog == null:
+		return
+	_party_import_dialog.close_party_import()
+	if setup_overlay != null and setup_overlay.visible:
+		var import_button := setup_overlay.get_node_or_null("%ImportPartyFromSave") as Button
+		if import_button != null and import_button.is_inside_tree() and import_button.visible and not import_button.disabled:
+			import_button.grab_focus()
+
+
+func party_import_focus_root() -> Node:
+	return _party_import_dialog.focus_root() if _party_import_dialog != null and _party_import_dialog.visible else null
 
 func set_view(next_view: GameView) -> void:
 	view = next_view
@@ -162,6 +226,9 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 
 func apply_modal_layouts() -> void:
 	_campaign_library.apply_modal_layouts()
+	if _party_import_dialog != null:
+		_party_import_dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_party_import_dialog.position = Vector2.ZERO
 	if setup_overlay != null:
 		setup_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		setup_overlay.position = setup_layout_rect.position
@@ -197,14 +264,16 @@ func hide_overlays() -> void:
 	_campaign_library.hide_overlays()
 	if setup_overlay != null:
 		setup_overlay.visible = false
+	close_party_import()
 
 func full_stage_overlay_visible() -> bool:
-	return _campaign_library.full_stage_overlay_visible or setup_overlay != null and setup_overlay.visible
+	return _campaign_library.full_stage_overlay_visible or setup_overlay != null and setup_overlay.visible or _party_import_dialog != null and _party_import_dialog.visible
 
 func show_splash() -> void:
 	_campaign_library.show_splash()
 	if setup_overlay != null:
 		setup_overlay.visible = false
+	close_party_import()
 
 func finish_party_setup_navigation() -> void:
 	setup_inspection_character_id = ""
@@ -213,6 +282,9 @@ func finish_party_setup_navigation() -> void:
 	_creation.reset_creator(true)
 
 func handle_back() -> bool:
+	if _party_import_dialog != null and _party_import_dialog.visible:
+		_party_import_dialog.cancel_requested.emit()
+		return true
 	if setup_overlay != null and setup_inspection_overlay != null and setup_inspection_overlay.visible:
 		_inspection.close_setup_character_inspection()
 		return true

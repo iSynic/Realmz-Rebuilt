@@ -297,7 +297,8 @@ func _prepare_post_move_context(events: Array[DomainEvent]) -> PostMoveContext:
 		_context.session_continuation.clear()
 		post_move.terminal_result = SessionCoordinatorResult.failed(&"invalid_session_continuation", "Post-movement topology continuation is unavailable.", events)
 		return post_move
-	if _context.events_have(events, &"destination_trigger_recheck_requested") and exploration.action_point_destination_depth == 0:
+	# Castle's opcode 20 rechecks every destination; seconddoor only blocks header relocation.
+	if _context.events_have(events, &"destination_trigger_recheck_requested"):
 		var requested_map = _context.content.world.map_by_id(_context.state.party.map_id)
 		if requested_map == null:
 			_context.session_continuation.clear()

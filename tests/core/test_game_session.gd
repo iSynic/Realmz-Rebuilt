@@ -157,6 +157,7 @@ func _test_player_intent_contract() -> void:
 		PartyIntents.begin_adventure(),
 		PartyIntents.configure_setup(2, 1),
 		vault_intent,
+		PartyIntents.import_saved_party([], PartyTransferReview.new()),
 		PartyIntents.generate_character_draft(spec),
 		PartyIntents.cancel_character_draft(),
 		PartyIntents.set_character_draft_spells(["spell.1"]),

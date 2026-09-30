@@ -34,7 +34,7 @@
         "certified": 14
       },
       "host": {
-        "missing": 0,
+        "missing": 1,
         "partial": 1,
         "functional": 5,
         "certified": 2
@@ -93,7 +93,7 @@
     {
       "id": "host",
       "name": "Modern Realmz 2.0 host",
-      "definition": "Required package, vault, settings, failure, and release workflows that are not part of the Classic denominator."
+      "definition": "Required package, character reuse, settings, failure, and release workflows that are not part of the Classic denominator."
     }
   ],
   "domains": [
@@ -161,6 +161,11 @@
       "id": "host.vault",
       "scope": "host",
       "name": "Character vault"
+    },
+    {
+      "id": "host.party-import",
+      "scope": "host",
+      "name": "Saved party import"
     },
     {
       "id": "host.settings-accessibility",
@@ -1115,6 +1120,18 @@
         "evidence": {
           "path": "src/playthrough/session/player_intent.gd",
           "symbol": "IMPORT_VAULT_CHARACTER,"
+        }
+      },
+      {
+        "id": "IMPORT_SAVED_PARTY",
+        "classification": "implemented",
+        "workflowIds": [
+          "host.party-import.from-save"
+        ],
+        "exclusionId": "",
+        "evidence": {
+          "path": "src/playthrough/session/player_intent.gd",
+          "symbol": "IMPORT_SAVED_PARTY,"
         }
       },
       {
@@ -11209,6 +11226,75 @@
         "aogm": "observed",
         "war": "observed",
         "classic": "known-reachable"
+      },
+      "gaps": []
+    },
+    {
+      "id": "host.party-import.from-save",
+      "scope": "host",
+      "domain": "host.party-import",
+      "name": "Import a party from a saved adventure",
+      "trigger": "Choose Import Party from Save during new-adventure setup.",
+      "interactionSequence": "Browse local primary, backup or named saves or an external file; validate its exact immutable package; review eligibility and excluded possessions; select heroes and append them atomically, or cancel without mutation.",
+      "committedOutcome": "Detached heroes retain progression, wounds and compatible possessions while the source adventure stays unchanged and the destination starts with fresh world state.",
+      "variants": [
+        {"id": "portable-party", "status": "implemented"},
+        {"id": "partial-or-all-ineligible", "status": "implemented"},
+        {"id": "capacity-duplicates-and-stale-review", "status": "implemented"},
+        {"id": "equipment-and-magic-cleanup", "status": "implemented"},
+        {"id": "lasting-state-without-recovery", "status": "implemented"},
+        {"id": "invalid-or-missing-source", "status": "implemented"},
+        {"id": "pending-state-isolation", "status": "implemented"},
+        {"id": "controller-browser-review-and-startup", "status": "implemented"}
+      ],
+      "castle": {
+        "oracle": "not-required",
+        "sources": []
+      },
+      "remake": {
+        "status": "not-applicable",
+        "sources": [],
+        "tests": []
+      },
+      "providence": {
+        "status": "not-required",
+        "sources": []
+      },
+      "simulation": {
+        "status": "complete",
+        "owners": [
+          {"path": "src/playthrough/characters/party_transfer_rules.gd", "symbol": "static func prepare"},
+          {"path": "src/playthrough/characters/party_transfer_workflow.gd", "symbol": "static func import_selected"}
+        ]
+      },
+      "persistence": {
+        "status": "verified"
+      },
+      "presentation": {
+        "status": "functional",
+        "owners": [
+          {"path": "src/ui/setup/party_import_from_save_dialog.gd", "symbol": "func show_party_import"},
+          {"path": "src/app/session/application_party_import_host.gd", "symbol": "func import_selected"}
+        ]
+      },
+      "liveEvidence": ["synthetic", "route-harness"],
+      "related": {
+        "routeIds": [],
+        "intentKinds": ["IMPORT_SAVED_PARTY"],
+        "interactionKinds": [],
+        "opcodes": []
+      },
+      "tests": [
+        {"path": "tests/infrastructure/test_save_repository.gd", "symbol": "func run"},
+        {"path": "tests/integration/test_party_order_workflow.gd", "symbol": "func _test_saved_party_admission"},
+        {"path": "tests/presentation/test_realmz_builder_previews.gd", "symbol": "func run"},
+        {"path": "tests/presentation/test_controller_support.gd", "symbol": "func _test_qwerty_draft_commit_cancel_and_layout"}
+      ],
+      "differentialCaseIds": [],
+      "reachability": {
+        "aogm": "not-observed",
+        "war": "not-observed",
+        "classic": "not-observed"
       },
       "gaps": []
     },

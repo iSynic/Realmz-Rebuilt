@@ -7,7 +7,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | classic | 69 | 0 | 0 | 55 | 14 |
-| host | 8 | 0 | 1 | 5 | 2 |
+| host | 9 | 0 | 1 | 6 | 2 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
@@ -35,9 +35,9 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | classic | partial | 0 | 0 | 0 |
 | classic | functional | 55 | 55 | 0 |
 | classic | certified | 14 | 14 | 0 |
-| host | missing | 0 | 0 | 0 |
+| host | missing | 1 | 0 | -1 |
 | host | partial | 1 | 1 | 0 |
-| host | functional | 5 | 5 | 0 |
+| host | functional | 5 | 6 | +1 |
 | host | certified | 2 | 2 | 0 |
 
 ## Classic domain heatmap
@@ -106,7 +106,7 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 
 | providence | Count |
 | --- | ---: |
-| not-required | 4 |
+| not-required | 5 |
 | missing | 0 |
 | partial | 0 |
 | complete | 4 |
@@ -116,28 +116,28 @@ AP batches use failure-first priorities: known failures, untested high-risk beha
 | not-applicable | 7 |
 | absent | 0 |
 | partial | 0 |
-| complete | 1 |
+| complete | 2 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
 | partial | 0 |
-| verified | 5 |
+| verified | 6 |
 
 | presentation | Count |
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 0 |
-| functional | 6 |
+| functional | 7 |
 | accepted | 2 |
 
 ### Live evidence labels
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 69 | 8 |
-| route-harness | 40 | 2 |
+| synthetic | 69 | 9 |
+| route-harness | 40 | 3 |
 | aogm-ordinary | 45 | 3 |
 | other-ordinary | 12 | 3 |
 | cross-platform | 0 | 0 |

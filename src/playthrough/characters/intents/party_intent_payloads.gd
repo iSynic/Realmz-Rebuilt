@@ -46,6 +46,23 @@ class Draft:
 		spec = value
 
 
+class SavedParty:
+	extends PlayerIntentPayload
+	var members: Array[CharacterState] = []
+	var source_file_hash: String
+	var source_package_hash: String
+	var destination_package_hash: String
+	var setup_revision: int
+
+	func _init(values: Array[CharacterState], file_hash: String, source_hash: String, destination_hash: String, revision: int) -> void:
+		for value: CharacterState in values:
+			members.append(CharacterStateCodec.copy(value))
+		source_file_hash = file_hash
+		source_package_hash = source_hash
+		destination_package_hash = destination_hash
+		setup_revision = revision
+
+
 class StringList:
 	extends PlayerIntentPayload
 	var values: Array[String]

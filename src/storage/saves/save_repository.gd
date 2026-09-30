@@ -8,6 +8,9 @@ var _root_path: String
 var last_error: String = ""
 
 const CLASSIC_SLOTS := SaveSlotPreview.SCENARIO_SLOTS
+const MAX_PARTY_SOURCE_BYTES: int = 512 * 1024 * 1024
+const INTERNAL_SOURCE_PREFIX: String = "save://"
+const EXTERNAL_SOURCE_PREFIX: String = "external://"
 
 
 func _init(root_path: String = "user://saves") -> void:
@@ -199,6 +202,77 @@ func list_previews(campaign_id: String, expected_package_hash: String) -> Array:
 	return previews
 
 
+func list_party_sources() -> Array[SavePartySource]:
+	var sources: Array[SavePartySource] = []
+	var root_absolute := ProjectSettings.globalize_path(_root_path)
+	if not DirAccess.dir_exists_absolute(root_absolute):
+		return sources
+	for campaign_id: String in DirAccess.get_directories_at(root_absolute):
+		if not _safe_component(campaign_id):
+			continue
+		var campaign_path := _root_path.path_join(campaign_id)
+		var campaign_absolute := ProjectSettings.globalize_path(campaign_path)
+		for file_name: String in DirAccess.get_files_at(campaign_absolute):
+			var source_kind: StringName = &""
+			var slot_id := ""
+			if file_name.ends_with(".r2save.bak"):
+				source_kind = &"backup"
+				slot_id = file_name.trim_suffix(".r2save.bak")
+			elif file_name.ends_with(".r2save"):
+				source_kind = &"primary"
+				slot_id = file_name.trim_suffix(".r2save")
+			else:
+				continue
+			if not _safe_component(slot_id):
+				continue
+			var selector := INTERNAL_SOURCE_PREFIX + campaign_id + "/" + file_name
+			sources.append(_read_party_source_path(campaign_path.path_join(file_name), selector, slot_id, source_kind, campaign_id))
+	sources.sort_custom(func(left: SavePartySource, right: SavePartySource) -> bool:
+		if left.campaign_id != right.campaign_id:
+			return left.campaign_id.naturalnocasecmp_to(right.campaign_id) < 0
+		if left.slot_id != right.slot_id:
+			return left.slot_id.naturalnocasecmp_to(right.slot_id) < 0
+		return left.source_kind == &"primary" and right.source_kind == &"backup"
+	)
+	return sources
+
+
+func read_party_source(source: SavePartySource) -> SavePartySource:
+	if source == null or source._storage_selector.is_empty():
+		return _party_source_error("This save source is unavailable.")
+	if source._storage_selector.begins_with(INTERNAL_SOURCE_PREFIX):
+		var relative := source._storage_selector.trim_prefix(INTERNAL_SOURCE_PREFIX)
+		var parts := relative.split("/", false)
+		if parts.size() != 2 or not _safe_component(parts[0]):
+			return _party_source_error("This save source selector is invalid.")
+		var file_name: String = parts[1]
+		var kind: StringName = &""
+		var slot_id := ""
+		if file_name.ends_with(".r2save.bak"):
+			kind = &"backup"
+			slot_id = file_name.trim_suffix(".r2save.bak")
+		elif file_name.ends_with(".r2save"):
+			kind = &"primary"
+			slot_id = file_name.trim_suffix(".r2save")
+		if not _safe_component(slot_id):
+			return _party_source_error("This save source selector is invalid.")
+		return _read_party_source_path(_root_path.path_join(parts[0]).path_join(file_name), source._storage_selector, slot_id, kind, parts[0])
+	if source._storage_selector.begins_with(EXTERNAL_SOURCE_PREFIX):
+		var path := source._storage_selector.trim_prefix(EXTERNAL_SOURCE_PREFIX)
+		return _read_party_source_path(path, source._storage_selector, source.slot_id, &"external")
+	return _party_source_error("This save source selector is invalid.")
+
+
+func read_external_party_source(path: String) -> SavePartySource:
+	if path.is_empty():
+		return _party_source_error("Choose a save file to read.")
+	var absolute_path := ProjectSettings.globalize_path(path)
+	var file_name := path.get_file()
+	var slot_id := file_name.trim_suffix(".r2save.bak").trim_suffix(".r2save")
+	var selector := EXTERNAL_SOURCE_PREFIX + absolute_path
+	return _read_party_source_path(path, selector, slot_id, &"external")
+
+
 func _load_path(campaign_id: String, slot_id: String, expected_package_hash: String, backup: bool) -> SaveEnvelope:
 	last_error = ""
 	if not _safe_component(campaign_id) or not _safe_component(slot_id):
@@ -258,6 +332,61 @@ func _read_envelope(path: String) -> SaveEnvelope:
 	return SaveEnvelope.from_data(data) if data != null else null
 
 
+func _read_party_source_path(path: String, selector: String, slot_id: String, source_kind: StringName, fallback_campaign_id: String = "") -> SavePartySource:
+	var source := SavePartySource.new()
+	source._storage_selector = selector
+	source.slot_id = slot_id
+	source.source_kind = source_kind
+	source.campaign_id = fallback_campaign_id
+	if not FileAccess.file_exists(path):
+		source.error = "This save file is missing."
+		return source
+	source.modified_unix = int(FileAccess.get_modified_time(path))
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		source.error = "This save file could not be read."
+		return source
+	var byte_count := file.get_length()
+	if byte_count <= 0 or byte_count > MAX_PARTY_SOURCE_BYTES:
+		file.close()
+		source.error = "This save file is empty or exceeds the 512 MiB read limit."
+		return source
+	var bytes := file.get_buffer(byte_count)
+	file.close()
+	if bytes.size() != byte_count:
+		source.error = "This save file could not be read completely."
+		return source
+	var hashing := HashingContext.new()
+	if hashing.start(HashingContext.HASH_SHA256) != OK or hashing.update(bytes) != OK:
+		source.error = "This save file could not be hashed."
+		return source
+	source.source_file_hash = hashing.finish().hex_encode()
+	var parser := JSON.new()
+	var parse_error := parser.parse(bytes.get_string_from_utf8())
+	if parse_error != OK:
+		source.error = "This save is corrupt."
+		return source
+	var envelope := SaveEnvelope.from_data(parser.data)
+	if envelope == null:
+		source.error = _incompatible_schema_message_for_data(parser.data)
+		if source.error.is_empty():
+			source.error = "This save is corrupt or uses an unsupported format."
+		return source
+	source.envelope = envelope
+	source.campaign_id = envelope.campaign_id
+	source.package_hash = envelope.package_hash
+	source.rules_version = envelope.rules_version
+	for character: CharacterState in envelope.game_state.party.characters():
+		source.party_names.append(character.name)
+	return source
+
+
+func _party_source_error(message: String) -> SavePartySource:
+	var source := SavePartySource.new()
+	source.error = message
+	return source
+
+
 func _read_document(path: String) -> Variant:
 	if not FileAccess.file_exists(path):
 		return null
@@ -274,6 +403,10 @@ func _read_document(path: String) -> Variant:
 
 func _incompatible_schema_message(path: String) -> String:
 	var data: Variant = _read_document(path)
+	return _incompatible_schema_message_for_data(data)
+
+
+func _incompatible_schema_message_for_data(data: Variant) -> String:
 	if not data is Dictionary or data.get("format") != SaveEnvelope.FORMAT:
 		return ""
 	var version: Variant = data.get("formatVersion")

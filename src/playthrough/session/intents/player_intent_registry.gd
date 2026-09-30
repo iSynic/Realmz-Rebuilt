@@ -26,6 +26,8 @@ static func payload_matches(kind: PlayerIntent.Kind, payload: PlayerIntentPayloa
 			return payload is PartyIntentPayloads.SetupOptions
 		PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 			return payload is PartyIntentPayloads.VaultImport
+		PlayerIntent.Kind.IMPORT_SAVED_PARTY:
+			return payload is PartyIntentPayloads.SavedParty
 		PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT:
 			return payload is PartyIntentPayloads.Draft
 		PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.REORDER_PARTY:

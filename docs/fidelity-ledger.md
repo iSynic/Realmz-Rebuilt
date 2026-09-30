@@ -2,6 +2,10 @@
 
 Classic-visible behavior is the default ruleset. This ledger records deliberate departures only; the absence of a decision does not authorize reinterpretation.
 
+## Saved-party transfer: explicit host extension
+
+Import Party from Save offers party-level reuse of player characters in a fresh scenario. It is an explicit Rebuilt transfer operation, not a claim of Castle save compatibility or exact Castle character-export cleanup. Existing Character Files admission remains unchanged. Transfer preserves wounds, death, permanent gains and non-decaying conditions, clears positive timed effects, and removes scenario-owned possessions with source-defined forced equipment removal, including curses. It does not run the source's pending scripts, heal the party, consume RNG, or carry world progress into the destination. Definition/resource compatibility and normal destination admission remain mandatory; Begin Adventure requires a viable party. The contract is [saved-party transfer](package-and-save-contracts.md#saved-party-transfer); `test_party_order_workflow.gd` covers atomic admission, lasting-state preservation, stale confirmation and no-RNG behavior.
+
 ## FD-SCENARIO-001 — Per-character opcode 30 checks
 
 - Affected rule: Classic opcode 30 filtering of tracked characters by an attribute or trained ability.

@@ -24,6 +24,8 @@ func set_trigger_chance(trigger_id: String, percent: int) -> void:
 	_trigger_chances[trigger_id] = clampi(percent, -1, 100)
 	if percent < 0:
 		disable_trigger(trigger_id)
+	else:
+		_disabled_triggers.erase(trigger_id)
 
 
 func trigger_chance(trigger_id: String, authored_percent: int) -> int:

@@ -7,6 +7,7 @@ var _session: GameSessionController
 var _shell: GameShell
 var _load_committed_operation: Callable
 var _map_preview_operation: Callable
+var party_import: ApplicationPartyImportHost
 
 
 func _init(
@@ -14,13 +15,26 @@ func _init(
 		session: GameSessionController,
 		shell: GameShell,
 		load_committed_operation: Callable,
-		map_preview_operation: Callable = Callable()
+		map_preview_operation: Callable = Callable(),
+		packages: PackageHostController = null,
+		character_files: ApplicationCharacterFilesHost = null,
+		destination: Callable = Callable()
 ) -> void:
 	_repository_host = repository_host
 	_session = session
 	_shell = shell
 	_load_committed_operation = load_committed_operation
 	_map_preview_operation = map_preview_operation
+	if packages != null and character_files != null:
+		party_import = ApplicationPartyImportHost.new(repository_host, packages, session, shell, destination)
+		var import_owner: WeakRef = weakref(party_import)
+		var library_owner: WeakRef = weakref(character_files)
+		shell.navigator.setup_controller.party_import_requested.connect(func() -> void:
+			var host := import_owner.get_ref() as ApplicationPartyImportHost
+			var library := library_owner.get_ref() as ApplicationCharacterFilesHost
+			if host != null and library != null and library.library_media() != null:
+				host.open(library.library_content(), library.library_media().assets())
+		)
 
 
 func save(content: RealmzContent, slot_id: String) -> bool:

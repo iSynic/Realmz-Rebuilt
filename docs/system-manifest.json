@@ -16,8 +16,8 @@
       "boundary": "game",
       "guide": "docs/features/characters.md",
       "entryPoints": ["src/game/characters", "src/game/characters/caste_definition.gd", "src/game/characters/party_state.gd", "src/game/characters/requests", "src/playthrough/characters"],
-      "publicInterfaces": ["CharacterCatalog", "CharacterState", "CharacterStateCodec", "CharacterDraftState", "CharacterRules", "CharacterView", "CharacterMetricView", "CharacterAgeBandView", "CharacterAppearanceOptionView", "CharacterSpellOptionView", "PartyState", "PartySummaryView", "PartySetupView", "CharacterLifetimeRecord", "RaceDefinition", "CasteDefinition", "CasteDefinition.AttributeDefinition", "CasteDefinition.ProgressionDefinition", "CharacterAppearanceDefinition", "CharacterContinuations", "CharacterSpellConfirmationContinuationBody", "CharacterVaultPublicationContinuationBody", "PartyIntents", "PartyIntentPayloads", "CharacterCreationSpec", "AgeUpdateRequestBody", "LevelUpRequestBody"],
-      "tests": ["tests/core/test_realmz_rules.gd", "tests/infrastructure/test_character_vault_repository.gd", "tests/integration/test_session_persistence.gd", "tests/integration/test_character_appearance_workflow.gd"],
+      "publicInterfaces": ["CharacterCatalog", "CharacterState", "CharacterStateCodec", "CharacterDraftState", "CharacterRules", "CharacterView", "CharacterMetricView", "CharacterAgeBandView", "CharacterAppearanceOptionView", "CharacterSpellOptionView", "PartyState", "PartySummaryView", "PartySetupView", "CharacterLifetimeRecord", "RaceDefinition", "CasteDefinition", "CasteDefinition.AttributeDefinition", "CasteDefinition.ProgressionDefinition", "CharacterAppearanceDefinition", "CharacterContinuations", "CharacterSpellConfirmationContinuationBody", "CharacterVaultPublicationContinuationBody", "PartyIntents", "PartyIntentPayloads", "PartyAdmissionRules", "PartyTransferRules", "PartyTransferWorkflow", "PartyTransferReview", "PartyTransferCandidate", "PartyTransferOmission", "CharacterCreationSpec", "AgeUpdateRequestBody", "LevelUpRequestBody"],
+      "tests": ["tests/core/test_realmz_rules.gd", "tests/infrastructure/test_character_vault_repository.gd", "tests/integration/test_session_persistence.gd", "tests/integration/test_character_appearance_workflow.gd", "tests/integration/test_party_order_workflow.gd"],
       "performanceProbes": ["tools/combat_performance_probe.gd"]
     },
     {
@@ -70,7 +70,7 @@
       "boundary": "game",
       "guide": "docs/features/scenario-runtime.md",
       "entryPoints": ["src/game/scenario", "src/game/scenario/scenario_content_catalog.gd", "src/game/scenario/scenario_progress_state.gd", "src/game/scenario/scenario_encounter_state.gd", "src/game/scenario/requests", "src/game/scenario/README.md", "src/playthrough/scenario", "src/playthrough/scenario/session_scenario_coordinator.gd", "src/playthrough/scenario/scenario_application_hook_workflow.gd"],
-      "publicInterfaces": ["RealmzContent", "CampaignDefinition", "CampaignSummaryView", "RestrictionDefinition", "MessageDefinition", "OptionLabelDefinition", "TriggerDefinition", "TriggerDestinationDefinition", "SimpleEncounterDefinition", "SimpleEncounterResponse", "ComplexEncounterDefinition", "ThiefEncounterDefinition", "TimedEncounterDefinition", "ScenarioContentCatalog", "ScenarioProgressState", "ScenarioEncounterState", "SessionScenarioCoordinator", "ScenarioApplicationHookWorkflow", "ScenarioContinuations", "ScenarioApplicationContinuationBody", "ComplexEncounterRequestBody", "PickLockRequestBody", "ThiefEncounterRequestBody"],
+      "publicInterfaces": ["RealmzContent", "ContentTransferCatalog", "CampaignDefinition", "CampaignSummaryView", "RestrictionDefinition", "MessageDefinition", "OptionLabelDefinition", "TriggerDefinition", "TriggerDestinationDefinition", "SimpleEncounterDefinition", "SimpleEncounterResponse", "ComplexEncounterDefinition", "ThiefEncounterDefinition", "TimedEncounterDefinition", "ScenarioContentCatalog", "ScenarioProgressState", "ScenarioEncounterState", "SessionScenarioCoordinator", "ScenarioApplicationHookWorkflow", "ScenarioContinuations", "ScenarioApplicationContinuationBody", "ComplexEncounterRequestBody", "PickLockRequestBody", "ThiefEncounterRequestBody"],
       "tests": ["tests/scenario/test_scenario_vm.gd", "tests/integration/test_session_persistence.gd", "tests/integration/test_exploration_session.gd"],
       "performanceProbes": []
     },
@@ -106,7 +106,7 @@
       "boundary": "storage",
       "guide": "docs/features/packages.md",
       "entryPoints": ["src/storage/packages/package_repository.gd", "src/storage/packages/canonical_json.gd", "src/storage/packages/bundled_campaigns"],
-      "publicInterfaces": ["PackageRepository", "PackageLoadResult"],
+      "publicInterfaces": ["PackageRepository", "PackageLoadResult", "PackageReadTask", "PackageTransferCatalog"],
       "tests": ["tests/infrastructure/test_package_repository.gd", "tests/infrastructure/test_package_install_task.gd"],
       "performanceProbes": ["tools/package_probe.gd", "tools/package_discovery_probe.gd", "tools/package_document_cache_probe.gd"]
     },
@@ -115,7 +115,7 @@
       "boundary": "storage",
       "guide": "docs/features/persistence.md",
       "entryPoints": ["src/storage/saves/save_repository.gd", "src/storage/characters/character_vault_repository.gd", "src/storage/settings/settings_repository.gd"],
-      "publicInterfaces": ["SaveRepository", "CharacterVaultRepository", "SettingsRepository"],
+      "publicInterfaces": ["SaveRepository", "SavePartySource", "CharacterVaultRepository", "SettingsRepository"],
       "tests": ["tests/infrastructure/test_save_repository.gd", "tests/infrastructure/test_character_vault_repository.gd"],
       "performanceProbes": []
     },
@@ -125,7 +125,7 @@
       "guide": "docs/features/application-host.md",
       "acceptance": "docs/controller-acceptance.md",
       "entryPoints": ["src/app/composition", "src/app/startup", "src/app/navigation", "src/app/session", "src/app/platform", "src/app/composition/realmz_application.gd", "src/app/navigation/controller_input_owner.gd", "src/app/navigation/controller_focus_navigator.gd", "src/app/platform/application_lifecycle_host.gd", "src/app/platform/development_preview_request.gd", "src/app/platform/development_preview_session.gd", "src/app/platform/development_preview_result_writer.gd", "src/app/platform/runtime_testing_ui.gd", "src/app/session/application_character_files_host.gd", "src/app/session/application_adventure_storage_host.gd", "src/app/composition/application_spatial_layout.gd", "src/app/session/game_session_controller.gd", "src/ui/setup/startup_front_door.tscn", "src/ui/setup/front_door_menu.tscn", "src/ui/setup/campaign_selection_panel.tscn", "src/ui/setup", "tools/development_preview_probe.gd", "tools/development_preview_host.tscn"],
-      "publicInterfaces": ["RealmzApplication", "ApplicationLifecycleHost", "ApplicationCharacterFilesHost", "ApplicationAdventureStorageHost", "ApplicationSpatialLayout", "GameSessionController", "ApplicationInputRouter", "ControllerInputOwner", "ControllerFocusNavigator", "RuntimeTestingUi", "DevelopmentPreviewRequest", "DevelopmentPreviewSession", "DevelopmentPreviewResultWriter"],
+      "publicInterfaces": ["RealmzApplication", "ApplicationLifecycleHost", "ApplicationCharacterFilesHost", "ApplicationAdventureStorageHost", "ApplicationPartyImportHost", "SavedPartyPackageCatalog", "ApplicationSpatialLayout", "GameSessionController", "ApplicationInputRouter", "ControllerInputOwner", "ControllerFocusNavigator", "RuntimeTestingUi", "DevelopmentPreviewRequest", "DevelopmentPreviewSession", "DevelopmentPreviewResultWriter"],
       "tests": ["tests/presentation/test_controller_support.gd", "tests/presentation/test_classic_ui_system.gd"],
       "performanceProbes": ["tools/startup_probe.gd", "tools/controller_navigation_performance_probe.gd"]
     },
@@ -143,7 +143,7 @@
       "boundary": "ui",
       "guide": "docs/features/workspaces.md",
       "entryPoints": ["src/ui/setup", "src/ui/characters", "src/ui/characters/age_update_interaction.tscn", "src/ui/characters/level_up_interaction.tscn", "src/ui/inventory", "src/ui/inventory/classic_item_detail_popover.tscn", "src/ui/magic", "src/ui/magic/classic_spell_selection_chrome.gd", "src/ui/magic/classic_spell_effect_preview.tscn", "src/ui/services", "src/ui/journal", "src/ui/shared/assets", "src/ui/shared/interactions", "src/ui/shared/exchange", "src/ui/shared/screen_frame.tscn", "src/ui/shared/screen_message_label.tscn", "src/ui/shared/screen_summary_card.tscn", "src/ui/shared/interactions/interaction_presenter.gd", "src/ui/shared/interactions/interaction_overlay_host.gd", "src/ui/shared/interactions/interaction_flash_controller.gd"],
-      "publicInterfaces": ["CampaignPartySetupController", "CampaignLibraryController", "PartySetupCharacterCreationController", "PartySetupRaceCasteBinding", "ClassicCharacterSheet", "CharacterSheetSceneBinding", "AgeUpdateInteraction", "LevelUpInteraction", "InteractionPresenter", "CombatInteractionController", "InteractionOverlayHost", "InteractionFlashController", "InteractionComponent", "ClassicExchangeLedger"],
+      "publicInterfaces": ["CampaignPartySetupController", "PartyImportFromSaveDialog", "CampaignLibraryController", "PartySetupCharacterCreationController", "PartySetupRaceCasteBinding", "ClassicCharacterSheet", "CharacterSheetSceneBinding", "AgeUpdateInteraction", "LevelUpInteraction", "InteractionPresenter", "CombatInteractionController", "InteractionOverlayHost", "InteractionFlashController", "InteractionComponent", "ClassicExchangeLedger"],
       "tests": ["tests/presentation/test_classic_ui_system.gd", "tests/presentation/test_allies_workspace.gd"],
       "performanceProbes": []
     },
@@ -170,6 +170,7 @@
     {"id": "system", "scene": "src/ui/shell/system_screen.tscn"},
     {"id": "campaign-selection", "scene": "src/ui/setup/campaign_selection_panel.tscn"},
     {"id": "party-assembly", "scene": "src/ui/setup/party_setup_workspace.tscn"},
+    {"id": "party-import-from-save", "scene": "src/ui/setup/party_import_from_save_dialog.tscn"},
     {"id": "character-creation", "scene": "src/ui/setup/party_setup_workspace.tscn"},
     {"id": "shop", "scene": "src/ui/services/shop_interaction.tscn"},
     {"id": "temple", "scene": "src/ui/services/temple_interaction.tscn"},

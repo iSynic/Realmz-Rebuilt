@@ -26,6 +26,18 @@ func active_slot(content: RealmzContent) -> String:
 	return _repository.active_slot(content.campaign_id) if content != null else "A"
 
 
+func party_sources() -> Array[SavePartySource]:
+	return _repository.list_party_sources()
+
+
+func read_party_source(source: SavePartySource) -> SavePartySource:
+	return _repository.read_party_source(source)
+
+
+func read_external_party_source(path: String) -> SavePartySource:
+	return _repository.read_external_party_source(path)
+
+
 func set_active_slot(content: RealmzContent, slot_id: String) -> bool:
 	return content != null and _repository.set_active_slot(content.campaign_id, slot_id)
 

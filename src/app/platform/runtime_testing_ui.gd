@@ -25,8 +25,12 @@ func controls() -> Dictionary:
 			return {"controls": records, "controlsTruncated": true, "coordinateSpace": "window"}
 		if node is Control and not node.is_visible_in_tree():
 			continue
+		if node is FileDialog:
+			if not node.visible: continue
+			pending.append_array([node.get_vbox(), node.get_ok_button(), node.get_cancel_button()])
 		if node is BaseButton:
 			var rect: Rect2 = node.get_global_rect()
+			if node.get_window() is FileDialog: rect.position += Vector2(node.get_window().position)
 			if rect.has_area() and rect.intersects(_root.get_viewport_rect()):
 				var display := _root.get_viewport().get_parent() as DisplayCompositor
 				var window_rect := display.logical_to_window_rect(rect) if display != null else rect
@@ -36,7 +40,8 @@ func controls() -> Dictionary:
 				var label: String = node.caption_text() if node is ClassicBitmapButton else node.text if node is Button else String(node.name)
 				records.append({"controlId": identity, "label": label, "path": path, "enabled": not node.disabled, "focused": node.has_focus(), "tooltip": node.tooltip_text, "rect": {"x": window_rect.position.x, "y": window_rect.position.y, "width": window_rect.size.x, "height": window_rect.size.y}})
 		pending.append_array(node.get_children())
-	var focus := _root.get_viewport().gui_get_focus_owner()
+	var browser := _visible_file_dialog()
+	var focus := browser.gui_get_focus_owner() if browser != null else _root.get_viewport().gui_get_focus_owner()
 	var focus_path := String(_root.get_path_to(focus)) if focus != null and _root.is_ancestor_of(focus) else ""
 	return {"controls": records, "controlsTruncated": false, "coordinateSpace": "window", "focusControlId": focus_path.sha256_text().left(24) if not focus_path.is_empty() else null, "focusPath": focus_path if not focus_path.is_empty() else null}
 
@@ -55,7 +60,7 @@ func execute(params: Dictionary) -> Dictionary:
 	var button := reference.get_ref() as BaseButton if reference != null else null
 	if button == null or not button.is_visible_in_tree() or button.disabled:
 		return _observer.rejected("control_unavailable", "The selected control is no longer visible and enabled.")
-	var viewport := _root.get_viewport()
+	var viewport := button.get_viewport()
 	var position := button.get_global_rect().get_center()
 	var motion := InputEventMouseMotion.new()
 	motion.position = position
@@ -107,9 +112,17 @@ func _controller_axis(params: Dictionary) -> Dictionary:
 
 func _push_controller_event(event: InputEvent, input_description: String) -> Dictionary:
 	var before_revision := _observer.revision
-	_root.get_viewport().push_input(event, true)
+	var browser := _visible_file_dialog()
+	var viewport := browser as Viewport if browser != null else _root.get_viewport()
+	viewport.push_input(event, true)
 	var committed_step := _observer.last_step if _observer.revision != before_revision else null
 	_observer.revision += 1
 	if committed_step != null and committed_step.state == SessionStep.State.FAILED:
 		return _observer.rejected(String(committed_step.error_code), committed_step.error_message)
 	return _observer.accepted({"mode": "controller-input", "input": input_description, "observation": _observer.observe({"diagnostics": "complete"})["result"], "focus": controls()})
+
+
+func _visible_file_dialog() -> FileDialog:
+	for node: Node in _root.find_children("*", "FileDialog", true, false):
+		if node.visible: return node as FileDialog
+	return null

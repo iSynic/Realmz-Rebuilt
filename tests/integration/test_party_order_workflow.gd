@@ -57,3 +57,38 @@ func run() -> void:
 	var solo_id := solo.view().party_members[0].id
 	var solo_order := solo.submit_intent(PartyIntents.reorder([solo_id]))
 	assert_equal([solo_order.state, solo_order.error_code], [SessionStep.State.FAILED, &"party_order_unavailable"], "one-member direct submission cannot bypass availability")
+	_test_saved_party_admission(content)
+
+
+func _test_saved_party_admission(content: RealmzContent) -> void:
+	var source := GameSession.new()
+	source.start(content, 91)
+	var race := content.characters.race_definitions()[0]
+	source.submit_intent(PartyIntents.create([CharacterCreationSpec.new("Transferred", race.id, race.eligible_caste_ids[0], 1)]))
+	var original := source._context.state.party.characters()[0]
+	original.current_health = -10
+	original.brawn += 2
+	original.conditions.set_value(ConditionRules.DISEASED, -1)
+	original.conditions.set_value(ConditionRules.POISONED, -2)
+	original.conditions.set_value(ConditionRules.INVISIBLE, 5)
+	var before := save_data(source.snapshot())
+	var destination := GameSession.new()
+	destination.start(content, 92)
+	var untouched := save_data(destination.snapshot())
+	var context := SessionWorkflowContext.new(content, destination.snapshot().game_state, RealmzRules.new(), null, null, null)
+	var review := PartyTransferRules.prepare(source.snapshot().game_state, content, context, destination.view().revision, "a".repeat(64))
+	var candidate := review.candidates[0]
+	assert_true(candidate.eligible(), "compatible saved hero is eligible without recovery")
+	assert_equal([candidate.character.current_health, candidate.character.brawn, candidate.character.conditions.value(ConditionRules.DISEASED), candidate.character.conditions.value(ConditionRules.POISONED), candidate.character.conditions.value(ConditionRules.INVISIBLE)], [-10, original.brawn, -1, -2, 0], "transfer preserves permanent gains, death and lasting conditions while clearing timed effects")
+	var invalid := destination.submit_intent(PartyIntents.import_saved_party([candidate.character, candidate.character], review))
+	assert_equal(invalid.state, SessionStep.State.FAILED, "duplicate selections reject atomically")
+	assert_equal(save_data(destination.snapshot()), untouched, "failed transfer leaves every setup field unchanged")
+	assert_equal(destination.submit_intent(PartyIntents.import_saved_party([candidate.character], review)).state, SessionStep.State.COMPLETED, "reviewed selection appends in one transaction")
+	assert_equal(destination.snapshot().rng_state.to_data(), context_rng(92), "party transfer consumes no destination randomness")
+	assert_equal(save_data(source.snapshot()), before, "preparation and import preserve the source adventure")
+	assert_equal(destination.submit_intent(PartyIntents.begin_adventure()).error_code, &"incapacitated_party", "dead-only imports cannot begin an adventure")
+	assert_equal(destination.submit_intent(PartyIntents.import_saved_party([candidate.character], review)).error_code, &"party_import_stale", "repeated confirmation cannot duplicate a committed import")
+
+
+func context_rng(seed: int) -> Dictionary:
+	return RealmzRng.new(seed).snapshot().to_data()

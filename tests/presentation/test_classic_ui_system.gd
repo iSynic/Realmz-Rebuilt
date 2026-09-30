@@ -849,6 +849,13 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 		var dungeon_base_layer := retained_surface.find_children("*", "TileMapLayer", true, false)[0] as TileMapLayer; var dungeon_source_id := dungeon_base_layer.get_cell_source_id(Vector2i.ZERO); var dungeon_source := dungeon_base_layer.tile_set.get_source(dungeon_source_id) as TileSetAtlasSource if dungeon_source_id >= 0 else null
 		assert_true(dungeon_source != null and dungeon_source.texture_region_size == Vector2i(32, 32) and dungeon_source.texture.get_size() == Vector2(128, 128), "the retained 2D renderer expands every native 16x16 dungeon atlas tile to one complete 32x32 map cell")
 		assert_equal(dungeon_base_layer.map_to_local(Vector2i.RIGHT) - dungeon_base_layer.map_to_local(Vector2i.ZERO), Vector2(32, 0), "adjacent retained dungeon cells remain contiguous on the 32-pixel exploration grid")
+	var note_coordinate := Vector2i(68, 22)
+	var note_map := MapView.new("land:note", "Saved note", &"land", 90, 90, note_coordinate, [])
+	for display_cell_size: float in [20.0, 32.0, 64.0]:
+		map_presenter.cell_size = display_cell_size
+		map_presenter.present(GameView.new(5, true, null, note_map.map_id, note_coordinate, 0, 0, 0, note_map))
+		for layer: TileMapLayer in retained_surface.find_children("*", "TileMapLayer", true, false):
+			assert_equal(layer.transform * layer.map_to_local(note_coordinate), (Vector2(note_coordinate) + Vector2.ONE * 0.5) * display_cell_size, "terrain, feature, marker, and fog cells share the party and camera display geometry at %d pixels" % display_cell_size)
 	map_presenter.get_parent().remove_child(map_presenter)
 	map_presenter.free()
 

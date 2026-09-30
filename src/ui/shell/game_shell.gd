@@ -200,8 +200,8 @@ class ControllerAccess:
 	func handle_navigation_modal_input(event: InputEvent) -> bool: return _shell._navigator.draft_dialog.handle_input(event)
 	func handle_navigation_modal_controller(action: StringName, pressed: bool, direction: Vector2i = Vector2i.ZERO) -> bool: return _shell._navigator.draft_dialog.handle_controller(action, pressed, direction)
 	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
-	func open_text_editor() -> bool:
-		var focused: Control = _shell.get_viewport().gui_get_focus_owner()
+	func open_text_editor(focus_scope: Node = null) -> bool:
+		var focused: Control = (focus_scope if focus_scope != null else _shell).get_viewport().gui_get_focus_owner()
 		return _shell._controller_keyboard.open_for(focused) if focused is LineEdit or focused is TextEdit else false
 	func move_text_editor(direction: Vector2i) -> void: _shell._controller_keyboard.move_direction(Vector2(direction))
 	func confirm_text_editor() -> void: _shell._controller_keyboard.confirm_focused()

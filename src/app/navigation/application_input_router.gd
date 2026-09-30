@@ -246,7 +246,7 @@ func _handle_back_or_confirm_action(action_id: StringName) -> bool:
 	if _application._interaction_presenter.controller.submit_acknowledgement():
 		_mark_handled()
 		return true
-	if _application._shell_presenter.controller.open_text_editor():
+	if _application._shell_presenter.controller.open_text_editor(_controller_focus_root()):
 		_mark_handled()
 		return true
 	if _focus.activate_focused(_controller_focus_root()):
@@ -404,13 +404,13 @@ func _stop_controller_movement() -> void:
 		_application._held_movement.stop(&"controller")
 
 
-func _controller_focus_root() -> Control:
+func _controller_focus_root() -> Node:
+	var import_root: Node = _application._shell_presenter.navigator.setup_controller.party_import_focus_root()
+	if import_root != null: return import_root
 	var music_root: Control = _application._shell_presenter.controller.music_playlist_focus_root()
-	if music_root != null:
-		return music_root
+	if music_root != null: return music_root
 	var spellbook := _controller_spellbook_root()
-	if spellbook != null:
-		return spellbook
+	if spellbook != null: return spellbook
 	return _application._interaction_presenter.controller.focus_root() if _application._interaction_presenter != null and _application._interaction_presenter.has_blocking_request() else _application
 
 
@@ -614,8 +614,8 @@ func _handle_classic_keyboard_input(event: InputEventKey, pending: InteractionRe
 	var shell: GameShell = _application._shell_presenter
 	if event == null or not shell.settings.classic_keyboard_shortcuts or shell.controller.radial_is_open():
 		return false
-	var root: Control = _controller_focus_root()
-	if _music_playlist_owns_controller(): return false
+	var root := _controller_focus_root() as Control
+	if root == null or _music_playlist_owns_controller(): return false
 	if ClassicKeyboardShortcuts.visible_button(shell, &"cast") != null and _application._battlefield_presenter.interaction.targeting == null:
 		var action := ClassicKeyboardShortcuts.action(event, "spells")
 		if not action.is_empty():

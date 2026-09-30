@@ -114,7 +114,7 @@ func _build_dependencies() -> void:
 		_game_shell,
 		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null
 	)
-	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear(), _map_presenter.save_map_preview_jpeg)
+	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear(), _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content)
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
 	lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, func(slot_id: String) -> bool: return adventure_storage.save(_active_content, slot_id), func() -> void: adventure_storage.refresh(_active_content), _present_step_status, _complete_closed_session, _quit_application)
 	_persistent_auto.configure(
@@ -262,7 +262,7 @@ func _bind_shell_and_settings() -> void:
 
 func _finish_startup() -> void:
 	if has_meta(&"runtime_testing_fixture"):
-		_runtime_testing_host.prepare_fixture(presentation_coordinator, presentation_media, _shell_presenter, func(content: RealmzContent) -> void: _active_content = content)
+		_runtime_testing_host.prepare_fixture(presentation_coordinator, presentation_media, _shell_presenter, func(content: RealmzContent) -> void: _active_content = content, character_files)
 		return
 	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
 	if preview_request != null:
@@ -285,6 +285,7 @@ func _finish_startup() -> void:
 
 
 func _process(_delta: float) -> void:
+	if adventure_storage != null and adventure_storage.party_import != null: adventure_storage.party_import.poll()
 	if click_to_move != null: click_to_move.poll(_delta)
 	_persistent_auto.poll()
 	var library_completed := character_files.poll_library_load(_active_content)

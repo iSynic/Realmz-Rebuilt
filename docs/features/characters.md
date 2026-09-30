@@ -8,7 +8,7 @@ Read `CharacterRules.create_character` from top to bottom as the creation ledger
 
 `PartyIntents` is the command entry point for party assembly, Character Files import, creation drafts, starting spells, appearance, party order, and Begin Adventure. Its `PartyIntentPayloads` values retain stable character and provenance identities without embedding session state or presentation objects.
 
-`LifecyclePartyWorkflow.import_vault_character` is the campaign-admission ledger for a detached Character Files revision. Read its helpers in order: definition eligibility checks race, class, restrictions, exact item ownership, and campaign-derived load; magic eligibility checks known spells, Scroll Case, and Fast Spell bindings; appearance eligibility checks portrait and tactical-icon roles. Only after those phases does the workflow reject a duplicate party identity or insert the copied character. This keeps portable character data independent while resolving its authored references through the active campaign catalogs.
+`PartyAdmissionRules` owns the shared campaign-admission checks used by `LifecyclePartyWorkflow.import_vault_character` and saved-party import. Definition eligibility checks race, class, restrictions, exact item ownership, and campaign-derived load; magic eligibility checks known spells, Scroll Case, and Fast Spell bindings; appearance eligibility checks portrait and tactical-icon roles. The workflows insert detached copies only after admission succeeds. This keeps portable character data independent while resolving its authored references through the active campaign catalogs.
 
 Character spell-point confirmation, Character Files publication, and source-ordered age acknowledgements resume through `CharacterContinuations` beside their distinct typed payloads in `src/playthrough/characters`. They share the versioned session envelope without making character state responsible for save decoding.
 
@@ -29,3 +29,9 @@ Party assembly and creation live under `src/ui/setup`. `party_assembly_browser.t
 `character_sheet_inventory_magic_tabs.tscn` owns the Equipment and Spells compositions, including their wide/compact splits, headings, empty states, exact-item hosts, known-spell grid, and fixed scroll case. `character_item_card.tscn` and `character_spell_card.tscn` keep exact media and text structure editable while binding only detached records.
 
 `character_sheet_identity_tabs.tscn` owns Appearance and Race, Class & Aging. It keeps independent portrait and combat-icon previews, pickers, Apply actions, and Discard action visible in the editor, and keeps authored race, caste, and five-band aging records recognizable without changing their package-backed identities.
+
+## Bring a party from a saved adventure
+
+During new-adventure party setup, choose **Import Party from Save**, select a validated save, and review the characters that can join. The review shows available party slots, any incompatible characters, and possessions that cannot transfer. Select eligible characters and choose **Import**; **Cancel** returns to setup without changing either party. **Browse** can select an external save, and **Refresh** updates the available saves after installing the exact required scenario revision.
+
+The transfer starts a new adventure with detached character copies. The source adventure's map, progress, pooled or banked wealth, shared storage, allies, summons, and battlefield drops remain in the source save. Character-level incompatible possessions and magic are listed as left behind; required equipped effects are removed safely or the character is ineligible. See [package and save contracts](../package-and-save-contracts.md#saved-party-transfer) for the validation and identity rules.

@@ -22,6 +22,7 @@ const SHIPPED_BUNDLED_CAMPAIGN_IDS: Array[String] = [
 ]
 
 var _repository: PackageRepository
+var saved_party_catalog: SavedPartyPackageCatalog
 var _task: PackageInstallTask
 var _bundled_task: RefCounted
 var _install_root: String = USER_CAMPAIGN_ROOT
@@ -49,6 +50,7 @@ var prewarm_running: bool:
 func _init(repository: PackageRepository = null, install_root: String = USER_CAMPAIGN_ROOT) -> void:
 	_repository = repository if repository != null else PackageRepository.new()
 	_install_root = install_root
+	saved_party_catalog = SavedPartyPackageCatalog.new(_repository, [BUNDLED_CAMPAIGN_ROOT, _install_root])
 	_task = PackageInstallTask.new(_repository)
 	_bundled_task = BundledPackageLoadTask.new()
 	_imports = ImportedScenarioLibrary.new(install_root.get_base_dir().path_join("imported-scenarios.json"))

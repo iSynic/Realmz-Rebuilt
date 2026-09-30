@@ -12,6 +12,10 @@ static func begin_adventure() -> PlayerIntent:
 	return PlayerIntent.new(PlayerIntent.Kind.BEGIN_ADVENTURE)
 
 
+static func import_saved_party(members: Array[CharacterState], review: PartyTransferReview) -> PlayerIntent:
+	return PlayerIntent.new(PlayerIntent.Kind.IMPORT_SAVED_PARTY, PartyIntentPayloads.SavedParty.new(members, review.source_file_hash, review.source_package_hash, review.destination_package_hash, review.destination_revision))
+
+
 static func configure_setup(difficulty: int, monster_set: int) -> PlayerIntent:
 	return PlayerIntent.new(PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, PartyIntentPayloads.SetupOptions.new(difficulty, monster_set))
 

@@ -32,6 +32,7 @@ const PAGE_KEYS: Array[Array] = [
 @onready var _cancel_button: Button = %Cancel
 
 var _target: Control
+var _return_file_dialog: WeakRef
 var _original_text: String = ""
 var _draft_text: String = ""
 var _caret_offset: int = 0
@@ -68,8 +69,12 @@ func open_for(field: Control) -> bool:
 	_page = 0
 	_open = true
 	visible = true
+	move_to_front()
 	_update_display()
 	_focus_first_key.call_deferred()
+	var browser := field.get_window() as FileDialog
+	_return_file_dialog = weakref(browser) if browser != null else null
+	if browser != null: browser.hide()
 	return true
 
 
@@ -92,7 +97,7 @@ func confirm_key(key: String) -> void:
 		return
 	if key == "\n" and _target is LineEdit:
 		return
-	if _max_length >= 0 and _draft_text.length() >= _max_length:
+	if _max_length > 0 and _draft_text.length() >= _max_length:
 		return
 	_draft_text = _draft_text.insert(_caret_offset, key)
 	_caret_offset += key.length()
@@ -136,9 +141,10 @@ func caret_right() -> void:
 func done() -> void:
 	if not _open:
 		return
-	_write_target(_draft_text, _caret_offset)
 	_open = false
 	visible = false
+	_restore_file_dialog()
+	_write_target(_draft_text, _caret_offset)
 	completed.emit()
 
 
@@ -148,10 +154,23 @@ func cancel() -> void:
 	var restore_offset := 0
 	if _target != null and is_instance_valid(_target):
 		restore_offset = _read_caret_offset(_target, _original_text)
-	_write_target(_original_text, restore_offset)
 	_open = false
 	visible = false
+	_restore_file_dialog()
+	_write_target(_original_text, restore_offset)
 	cancelled.emit()
+
+
+func _restore_file_dialog() -> void:
+	var browser := _return_file_dialog.get_ref() as FileDialog if _return_file_dialog != null else null
+	_return_file_dialog = null
+	if browser == null or not browser.is_inside_tree():
+		return
+	var parent := browser.get_parent() as CanvasItem
+	if parent != null and not parent.is_visible_in_tree():
+		return
+	browser.popup_centered()
+	if is_instance_valid(_target): _target.grab_focus()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -215,6 +234,9 @@ func _write_target(text: String, offset: int) -> void:
 	if _target == null or not is_instance_valid(_target):
 		return
 	var previous_text := String(_target.get("text"))
+	var browser := _target.get_window() as FileDialog
+	if browser != null and _target == browser.get_line_edit():
+		browser.current_file = text
 	_target.set("text", text)
 	if _target is LineEdit:
 		var line_edit := _target as LineEdit
