@@ -18,6 +18,16 @@ func validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteD
 	var caste_ids := _definition_ids(castes)
 	var item_ids := _definition_ids(items)
 	var monster_ids := _definition_ids(monsters)
+	for race: RaceDefinition in races:
+		for caste_id: String in race.eligible_caste_ids:
+			if not caste_ids.has(caste_id):
+				_reject("Race '%s' eligibleCasteIds references unavailable caste '%s'." % [race.id, caste_id])
+				return false
+	for caste: CasteDefinition in castes:
+		for race_id: String in caste.eligible_race_ids:
+			if not race_ids.has(race_id):
+				_reject("Caste '%s' eligibleRaceIds references unavailable race '%s'." % [caste.id, race_id])
+				return false
 	for item: ItemDefinition in items:
 		if not item.cursed_item_id.is_empty() and not item_ids.has(item.cursed_item_id):
 			if not _unavailable(allow_deferred, &"item", item.id, "cursedItemId", -1, &"item", item.cursed_item_id, "Item '%s' references unavailable cursed item '%s'." % [item.id, item.cursed_item_id]): return false

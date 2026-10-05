@@ -3,13 +3,15 @@
 class_name CampaignLibraryController
 extends RefCounted
 
-const CAMPAIGN_SELECTION_PANEL_SCENE := preload("res://src/ui/setup/campaign_selection_panel.tscn")
+const CAMPAIGN_SELECTION_PANEL_PATH := "res://src/ui/setup/campaign_selection_panel.tscn"
 const FRONT_DOOR_MENU_PATH := "res://src/ui/setup/front_door_menu.tscn"
 const STARTUP_SELECTION_CONTROLLER := preload("res://src/ui/setup/campaign_startup_selection_controller.gd")
+## Folder imports use Castle's scenario-first rule-table branch, regardless of title.
+const IMPORTED_SCENARIO_RULE_SELECTION: int = 20
 
 signal start_requested(package_path: String, seed: int)
-signal import_requested(directory: String)
-signal startup_selection_requested(directory: String, startup_file: String)
+signal import_requested(directory: String, native_menu_selection: int, startup_file: String)
+signal startup_selection_requested(directory: String, native_menu_selection: int, startup_file: String)
 signal revision_requested(campaign_id: String, package_hash: String)
 signal removal_requested(campaign_id: String)
 signal cancel_package_requested
@@ -63,18 +65,7 @@ var _selected_byline: Label
 var _selected_restrictions: Label
 var _selected_limits: Label
 var _selected_guidance: Label
-var _operation_phase: Label
-var _operation_percentage: Label
-var _operation_progress: ProgressBar
-var _operation_cancel: Button
-var _operation_status: Label
-var _failure_details: Label
-var _failure_actions: HBoxContainer
-var _failure_retry: Button
-var _failure_dismiss: Button
-var _operation_warning_toggle: Button
-var _operation_warning_viewport: ScrollContainer
-var _operation_warning_details: RichTextLabel
+var _package_operation := CampaignPackageOperationController.new()
 var _focused_import_path: String = ""
 var _selected_campaign_path: String = ""
 var _requested_campaign_path: String = ""
@@ -93,10 +84,21 @@ var splash_visible: bool:
 
 func _init() -> void:
 	var controller_ref: WeakRef = weakref(self)
-	_startup_selection.connect("selection_requested", func(directory: String, startup_file: String) -> void:
+	_package_operation.cancel_requested.connect(func() -> void:
+		var controller := controller_ref.get_ref() as CampaignLibraryController
+		if controller != null: controller.cancel_package_requested.emit())
+	_package_operation.retry_requested.connect(func(operation: StringName, path: String, _selection: int) -> void:
+		var controller := controller_ref.get_ref() as CampaignLibraryController
+		if controller == null: return
+		if operation == &"import_scenario": controller.import_requested.emit(path, IMPORTED_SCENARIO_RULE_SELECTION, "")
+		else: controller.start_requested.emit(path, 1))
+	_package_operation.dismiss_requested.connect(func() -> void:
+		var controller := controller_ref.get_ref() as CampaignLibraryController
+		if controller != null: controller.set_package_operation(PackageOperationView.new()))
+	_startup_selection.connect("selection_requested", func(directory: String, native_menu_selection: int, startup_file: String) -> void:
 		var controller := controller_ref.get_ref() as CampaignLibraryController
 		if controller != null:
-			controller.startup_selection_requested.emit(directory, startup_file)
+			controller.startup_selection_requested.emit(directory, native_menu_selection, startup_file)
 	)
 
 
@@ -137,7 +139,7 @@ func build_splash_overlay() -> void:
 func build_campaign_overlay() -> void:
 	if campaign_overlay != null:
 		return
-	var panel := CAMPAIGN_SELECTION_PANEL_SCENE.instantiate() as CampaignSelectionPanel
+	var panel := (load(CAMPAIGN_SELECTION_PANEL_PATH) as PackedScene).instantiate() as CampaignSelectionPanel
 	panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	panel.z_index = 0
 	_host.add_child(panel)
@@ -165,19 +167,8 @@ func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
 	_selected_limits = campaign_overlay.get_node("%SelectedScenarioLimits") as Label
 	_selected_guidance = campaign_overlay.get_node("%SelectedScenarioGuidance") as Label
 	package_operation_host = campaign_overlay.get_node("%PackageOperationHost") as PanelContainer
-	_operation_phase = campaign_overlay.get_node("%PackageOperationPhase") as Label
-	_operation_percentage = campaign_overlay.get_node("%PackageOperationPercentage") as Label
-	_operation_progress = campaign_overlay.get_node("%PackageOperationProgress") as ProgressBar
-	_operation_cancel = campaign_overlay.get_node("%CancelPackageOperation") as Button
-	_operation_status = campaign_overlay.get_node("%PackageOperationStatus") as Label
-	_failure_details = campaign_overlay.get_node("%PackageFailureDetails") as Label
-	_failure_actions = campaign_overlay.get_node("%PackageFailureActions") as HBoxContainer
-	_failure_retry = campaign_overlay.get_node("%RetryPackageOperation") as Button
-	_failure_dismiss = campaign_overlay.get_node("%DismissPackageFailure") as Button
+	_package_operation.bind(panel)
 	_startup_selection.call("bind", campaign_overlay)
-	_operation_warning_toggle = campaign_overlay.get_node("%PackageWarningDetailsToggle") as Button
-	_operation_warning_viewport = campaign_overlay.get_node("%PackageWarningDetailsViewport") as ScrollContainer
-	_operation_warning_details = campaign_overlay.get_node("%PackageWarningDetails") as RichTextLabel
 	package_install_row = campaign_overlay.get_node("%PackageInstallRow") as BoxContainer
 	install_button = campaign_overlay.get_node("%InstallPackage") as Button
 	import_button = campaign_overlay.get_node("%ImportScenario") as Button
@@ -192,13 +183,9 @@ func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
 	(campaign_overlay as CampaignSelectionPanel).back_requested.connect(func() -> void: back_requested.emit())
 	install_button.pressed.connect(_open_package_dialog)
 	install_dialog.file_selected.connect(_install_selected)
-	import_dialog.dir_selected.connect(func(directory: String) -> void: import_requested.emit(directory))
+	import_dialog.dir_selected.connect(func(directory: String) -> void: import_requested.emit(directory, IMPORTED_SCENARIO_RULE_SELECTION, ""))
 	import_button.pressed.connect(_open_import_dialog)
 	refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
-	_operation_cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
-	_failure_retry.pressed.connect(_retry_package_operation)
-	_failure_dismiss.pressed.connect(func() -> void: set_package_operation(PackageOperationView.new()))
-	_operation_warning_toggle.pressed.connect(func() -> void: _operation_warning_viewport.visible = not _operation_warning_viewport.visible)
 	_render_campaign_list()
 
 
@@ -376,7 +363,7 @@ func _render_campaign_list() -> void:
 		var parent := focused.get_parent()
 		while parent != null and not parent is CampaignLibraryRow: parent = parent.get_parent()
 		if parent is CampaignLibraryRow: restore_path = parent.package_path()
-	elif focused == _operation_cancel:
+	elif focused == _package_operation.cancel_button:
 		restore_path = _selected_campaign_path
 	_remove_campaign_rows(_main_campaign_rows)
 	_remove_campaign_rows(_imported_campaign_rows)
@@ -417,7 +404,7 @@ func _render_campaign_list() -> void:
 func _restore_list_focus(path: String) -> void:
 	if not is_instance_valid(campaign_overlay) or not campaign_overlay.is_visible_in_tree(): return
 	if package_operation_status.is_running():
-		_operation_cancel.grab_focus()
+		_package_operation.cancel_button.grab_focus()
 		return
 	for rows: VBoxContainer in [_main_campaign_rows, _imported_campaign_rows]:
 		for row: CampaignLibraryRow in rows.get_children():
@@ -426,50 +413,11 @@ func _restore_list_focus(path: String) -> void:
 
 func _render_package_operation() -> void:
 	var running: bool = package_operation_status.is_running()
-	var failed: bool = package_operation_status.state == PackageOperationView.FAILED
-	var succeeded: bool = package_operation_status.state == PackageOperationView.SUCCEEDED
-	package_operation_host.visible = running or failed or succeeded
 	install_button.disabled = running
 	import_button.disabled = running
 	refresh_button.disabled = running
-	_operation_progress.visible = running
-	_operation_percentage.visible = running
-	_operation_cancel.visible = running
-	_failure_actions.visible = failed
-	_failure_details.visible = failed
-	var needs_startup_selection: bool = _startup_selection.call("present", package_operation_status, failed)
-	_operation_warning_viewport.visible = false
-	_operation_warning_toggle.visible = false
-	if not running and not failed and not succeeded:
-		return
-	var phase_text := String(package_operation_status.phase).replace("_", " ").capitalize()
-	_operation_phase.text = "Could not open scenario" if failed else "Import complete" if succeeded else phase_text if not phase_text.is_empty() else "Installing"
-	_operation_percentage.text = "%d%%" % int(round(package_operation_status.progress_ratio() * 100.0)) if running and package_operation_status.total > 0 else "Complete" if succeeded else "Working"
-	_operation_progress.indeterminate = package_operation_status.total <= 0
-	_operation_progress.max_value = maxf(1.0, float(package_operation_status.total))
-	_operation_progress.value = clampf(float(package_operation_status.completed), 0.0, _operation_progress.max_value)
-	_operation_status.text = package_operation_status.message
-	_operation_status.tooltip_text = package_operation_status.message
-	var diagnostics: Array[String] = package_operation_status.diagnostic_details
-	if not diagnostics.is_empty():
-		_operation_warning_toggle.visible = true
-		_operation_warning_toggle.text = "Show import diagnostics" if succeeded else "Show diagnostics"
-		_operation_warning_details.text = "\n".join(diagnostics)
-		_operation_warning_details.scroll_to_line(0)
-	if failed:
-		var operation := String(package_operation_status.operation_name).replace("_", " ").capitalize()
-		var details: Array[String] = []
-		if not operation.is_empty():
-			details.append("Operation: %s" % operation)
-		if not package_operation_status.package_path.is_empty():
-			details.append("Package: %s" % package_operation_status.package_path)
-		if not package_operation_status.error_code.is_empty():
-			details.append("Error: %s" % package_operation_status.error_code)
-		_failure_details.text = "\n".join(details)
-		_failure_details.tooltip_text = _failure_details.text
-		_failure_retry.disabled = package_operation_status.package_path.is_empty() or needs_startup_selection
-		_failure_retry.tooltip_text = "Choose a startup file to retry this import." if needs_startup_selection else "Retry the same operation." if not _failure_retry.disabled else "The failed operation did not retain a path."
-		_failure_dismiss.tooltip_text = "Return to the scenario list without changing current files."
+	var needs_startup: bool = _startup_selection.call("present", package_operation_status, package_operation_status.state == PackageOperationView.FAILED)
+	_package_operation.present(package_operation_status, needs_startup)
 
 
 func _render_selected_campaign_record() -> void:
@@ -544,14 +492,6 @@ func _install_selected(path: String) -> void:
 	if path.get_extension().to_lower() == "realmz2":
 		_requested_campaign_path = path
 		start_requested.emit(path, 1)
-
-
-func _retry_package_operation() -> void:
-	if package_operation_status.state == PackageOperationView.FAILED and not package_operation_status.package_path.is_empty():
-		if package_operation_status.operation_name == &"import_scenario":
-			import_requested.emit(package_operation_status.package_path)
-		else:
-			start_requested.emit(package_operation_status.package_path, 1)
 
 
 func _display_name(campaign: CampaignPackageView) -> String:

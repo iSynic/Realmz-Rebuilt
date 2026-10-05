@@ -47,9 +47,6 @@ func run() -> void:
 		var local_appearances: Array[CharacterAppearanceDefinition] = package.content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT).filter(func(option: CharacterAppearanceDefinition) -> bool: return option.classic_resource_id != 257); local_appearances.append_array(package.content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)); local_appearances.append(CharacterAppearanceDefinition.new("realmz-player-map-cicn-257", "Map marker", &"player-map-marker", 257)); var scenario_content := RealmzContent.new("scenario", "0".repeat(64), "scenario", package.content.rules_version, "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], package.content.characters.race_definitions(), package.content.characters.caste_definitions(), [], [], [], [], [], [], [], [], [], [], package.content.campaign, local_appearances); assert_false(repository.campaign_eligibility(record, scenario_content).eligible, "a scenario-local role collision does not masquerade as the stock portrait identity"); scenario_content.characters.install_application_catalog(package.content.characters); assert_true(repository.campaign_eligibility(record, scenario_content).eligible, "the application appearance catalog restores a stable stock portrait identity across scenarios")
 	var first_revision_hash := record.revision_hash
 	character.name = "Vault Fixture Revision Two"
-	character.portrait_id = "realmz-portrait-257"
-	character.combat_icon_id = "realmz-combat-icon-9000"
-	record.state = character
 	assert_true(repository.publish_revision(record), "publishing a changed character creates a new immutable revision")
 	assert_true(record.revision_hash != first_revision_hash, "changed character state receives a distinct revision hash")
 	var second_revision_hash := record.revision_hash
@@ -57,7 +54,6 @@ func run() -> void:
 	var revision_count_before_archive := repository.list_revisions(record.character_id).size()
 	assert_true(revision_count_before_archive >= 2, "vault history exposes both immutable revisions instead of only the current index")
 	character.race_id = "missing.race"
-	record.state = character
 	var rejected := repository.campaign_eligibility(record, package.content)
 	assert_false(rejected.eligible, "a missing campaign definition makes a vault character ineligible")
 	assert_true(not rejected.reasons.is_empty(), "vault eligibility reports an actionable reason")

@@ -6,6 +6,8 @@ extends RefCounted
 static func prepare(source: GameState, source_content: RealmzContent, destination: SessionWorkflowContext, revision: int, file_hash: String) -> PartyTransferReview:
 	var result := PartyTransferReview.new()
 	result.source_package_hash = source_content.package_hash
+	result.source_campaign_id = source_content.campaign_id
+	result.source_definitions = source_content.transfer_catalog
 	result.destination_package_hash = destination.content.package_hash
 	result.destination_revision = revision
 	result.source_file_hash = file_hash
@@ -33,10 +35,9 @@ static func _prepare_character(original: CharacterState, source: RealmzContent, 
 		return result
 	if source.rules_version != destination.content.rules_version:
 		result.reasons.append("The source and destination use different rules versions.")
-	for family: StringName in [&"races", &"castes"]:
-		var id := character.race_id if family == &"races" else character.caste_id
-		if not source.transfer_catalog.matches(destination.content.transfer_catalog, family, id):
-			result.reasons.append("The destination's %s definition differs from the source." % ("race" if family == &"races" else "caste"))
+	var definition_error := PartyAdmissionRules.source_definition_error(source.transfer_catalog, destination.content, character, source.campaign_id)
+	if not definition_error.is_empty():
+		result.reasons.append(definition_error)
 	if not result.reasons.is_empty():
 		return result
 	var rules := destination.rules

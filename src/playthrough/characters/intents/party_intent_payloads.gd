@@ -29,13 +29,15 @@ class VaultImport:
 	var character_state: CharacterState
 	var source_campaign_id: String
 	var source_package_hash: String
+	var source_definitions: ContentTransferCatalog
 
-	func _init(character: String, revision: String, state: CharacterState = null, source_campaign: String = "", source_package: String = "") -> void:
+	func _init(character: String, revision: String, state: CharacterState = null, source_campaign: String = "", source_package: String = "", definitions: ContentTransferCatalog = null) -> void:
 		character_id = character
 		revision_hash = revision
 		character_state = state
 		source_campaign_id = source_campaign
 		source_package_hash = source_package
+		source_definitions = definitions
 
 
 class Draft:
@@ -53,14 +55,18 @@ class SavedParty:
 	var source_package_hash: String
 	var destination_package_hash: String
 	var setup_revision: int
+	var source_campaign_id: String
+	var source_definitions: ContentTransferCatalog
 
-	func _init(values: Array[CharacterState], file_hash: String, source_hash: String, destination_hash: String, revision: int) -> void:
+	func _init(values: Array[CharacterState], file_hash: String, source_hash: String, destination_hash: String, revision: int, source_campaign: String, definitions: ContentTransferCatalog) -> void:
 		for value: CharacterState in values:
 			members.append(CharacterStateCodec.copy(value))
 		source_file_hash = file_hash
 		source_package_hash = source_hash
 		destination_package_hash = destination_hash
 		setup_revision = revision
+		source_campaign_id = source_campaign
+		source_definitions = definitions
 
 
 class StringList:

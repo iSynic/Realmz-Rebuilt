@@ -8,17 +8,19 @@ var name: String
 var description: String = ""
 var related_ids: Array[String] = []
 var facts: Array[String] = []
+var available_for_creation: bool = true
 
 
-func _init(definition_id: String, display_name: String, display_description: String = "", related_definition_ids: Array[String] = [], display_facts: Array[String] = []) -> void:
+func _init(definition_id: String, display_name: String, display_description: String = "", related_definition_ids: Array[String] = [], display_facts: Array[String] = [], creator_available: bool = true) -> void:
 	id = definition_id
 	name = display_name
 	description = display_description
 	related_ids = related_definition_ids.duplicate()
 	facts = display_facts.duplicate()
+	available_for_creation = creator_available
 
 
-static func from_race(definition: RaceDefinition) -> DefinitionOptionView:
+static func from_race(definition: RaceDefinition, scenario_owned: bool = false) -> DefinitionOptionView:
 	var display_facts: Array[String] = [
 		"Movement %d" % definition.base_movement,
 	]
@@ -36,10 +38,16 @@ static func from_race(definition: RaceDefinition) -> DefinitionOptionView:
 	var saves := _named_modifiers(definition.save_bonus, ["Charm", "Fire", "Cold", "Shock", "Chemical", "Mental", "SP drain", "Special"])
 	if not saves.is_empty():
 		display_facts.append("Saves • %s" % saves)
-	return DefinitionOptionView.new(definition.id, definition.name, definition.description, definition.eligible_caste_ids, display_facts)
+	var result := DefinitionOptionView.new(definition.id, definition.name, definition.description, definition.eligible_caste_ids, display_facts)
+	var has_age_range := false
+	for index: int in 5:
+		var age := definition.age_range(index)
+		has_age_range = has_age_range or (age.y > 0 and age.y >= age.x)
+	result.apply_creation_identity("Race", definition.classic_id, scenario_owned, has_age_range)
+	return result
 
 
-static func from_caste(definition: CasteDefinition) -> DefinitionOptionView:
+static func from_caste(definition: CasteDefinition, scenario_owned: bool = false) -> DefinitionOptionView:
 	var display_facts: Array[String] = [
 		"Stamina d%d initially • d%d per level" % [definition.progression.initial_stamina_die(), definition.progression.level_stamina_die()],
 		"To hit %+d initially • %+d per level" % [definition.progression.initial_to_hit(), definition.progression.level_to_hit()],
@@ -72,7 +80,23 @@ static func from_caste(definition: CasteDefinition) -> DefinitionOptionView:
 	var saves := _named_modifiers(definition.attributes.save_bonus, ["Charm", "Fire", "Cold", "Shock", "Chemical", "Mental", "SP drain", "Special"])
 	if not saves.is_empty():
 		display_facts.append("Saves • %s" % saves)
-	return DefinitionOptionView.new(definition.id, definition.name, definition.description, definition.eligible_race_ids, display_facts)
+	var result := DefinitionOptionView.new(definition.id, definition.name, definition.description, definition.eligible_race_ids, display_facts)
+	result.apply_creation_identity("Caste", definition.classic_id, scenario_owned, definition.progression.initial_stamina_die() > 0 and definition.progression.level_stamina_die() > 0)
+	return result
+
+
+func apply_creation_identity(kind: String, native_id: int, scenario_owned: bool, populated: bool) -> void:
+	var unnamed := name.strip_edges().is_empty()
+	for prefix: String in [kind + " ", "Unnamed Classic " + kind.to_lower() + " "]:
+		unnamed = unnamed or (name.begins_with(prefix) and name.trim_prefix(prefix).is_valid_int())
+	if not unnamed:
+		return
+	# Deliberate creator improvement: Castle hides unnamed records. Only scenario
+	# profiles with creation age/stamina data qualify; eligibility alone does not.
+	available_for_creation = scenario_owned and populated
+	if available_for_creation:
+		# Divinity's visible rule record is zero-based; stable Classic IDs stay one-based.
+		name = "Scenario Custom %s %d" % [kind, native_id - 1]
 
 
 static func _append_signed(target: Array[String], label: String, value: int) -> void:

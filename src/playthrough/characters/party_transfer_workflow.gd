@@ -22,6 +22,9 @@ static func import_selected(context: SessionWorkflowContext, pending: bool, payl
 		var candidate := CharacterStateCodec.copy(member)
 		if candidate == null:
 			return SessionWorkflowResult.failed(&"invalid_party_import", "A selected character is malformed.")
+		var scope_error := PartyAdmissionRules.source_definition_error(payload.source_definitions, context.content, candidate, payload.source_campaign_id)
+		if not scope_error.is_empty():
+			return SessionWorkflowResult.failed(&"vault_character_ineligible", scope_error)
 		var failure := PartyAdmissionRules.validate(staging, candidate)
 		if failure != null:
 			return failure

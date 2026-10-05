@@ -22,6 +22,9 @@ var warning_count: int = 0
 var diagnostic_details: Array[String] = []
 var startup_candidates: Array[String] = []
 var report_path: String = ""
+var error_code: StringName = &""
+var required_selection: ClassicRuleSelectionRequirement
+var native_menu_selection: int = 0
 var _pid: int = -1
 var _job_root: String = ""
 var _event_offset: int = 0
@@ -37,13 +40,14 @@ func _init(process_driver: ProcessDriver = null) -> void:
 		_process_driver = process_driver
 
 
-func start(directory: String, job_parent: String, importer_root: String = "", startup_file: String = "") -> bool:
+func start(directory: String, job_parent: String, menu_selection: int, importer_root: String = "", startup_file: String = "") -> bool:
 	if state == &"running" or _pid > 0 or _preparation != null or not _job_root.is_empty():
 		return false
-	if not startup_file.is_empty() and (startup_file.get_file() != startup_file or startup_file.contains("/") or startup_file.contains("\\") or startup_file in [".", ".."]):
-		return _fail("The selected scenario startup file must be a filename inside the selected folder.")
 	source_directory = directory
 	_startup_file = startup_file
+	native_menu_selection = menu_selection
+	error_code = &""
+	required_selection = null
 	package_path = ""
 	warning_count = 0
 	diagnostic_details.clear()
@@ -51,6 +55,12 @@ func start(directory: String, job_parent: String, importer_root: String = "", st
 	report_path = ""
 	_completed = false
 	_event_offset = 0
+	if menu_selection == 0:
+		return _fail("Choose the intended Castle scenario menu position before importing.", &"classic-rule-selection.required")
+	if menu_selection < 1 or menu_selection > 32767:
+		return _fail("The intended Castle scenario menu position must be from 1 through 32767.", &"classic-rule-selection.invalid")
+	if not startup_file.is_empty() and (startup_file.get_file() != startup_file or startup_file.contains("/") or startup_file.contains("\\") or startup_file in [".", ".."]):
+		return _fail("The selected scenario startup file must be a filename inside the selected folder.")
 	state = &"running"
 	phase = &"checking_files"
 	message = "Checking files…"
@@ -93,6 +103,7 @@ func _prepare_job(root: String, directory: String) -> String:
 	if write_error != OK:
 		return "Could not write the application library for import (error %d)." % write_error
 	var request := {"formatVersion": 1, "sourceDirectory": directory, "outputDirectory": _job_root.path_join("conversion"), "supportDirectory": root.path_join("support"), "applicationPackage": application_path, "applicationLibraryIdentity": {"campaignId": ApplicationLibraryIdentity.CAMPAIGN_ID, "packageHash": ApplicationLibraryIdentity.PACKAGE_HASH}}
+	request["nativeMenuSelection"] = native_menu_selection
 	if not _startup_file.is_empty():
 		request["startupFile"] = _startup_file
 	var request_path := _job_root.path_join("request.json")
@@ -140,7 +151,7 @@ func poll() -> void:
 	if state == &"running":
 		state = &"succeeded" if _completed else &"failed"
 		if not _completed:
-			message = "The scenario importer stopped before completing. Retry the import."
+			_fail("The scenario importer stopped before completing. Check the selected folder and retry explicitly.")
 
 
 func cancel() -> void:
@@ -212,8 +223,9 @@ func _read_events() -> void:
 				phase = StringName(str(data.get("phase", "")))
 				message = str(data.get("message", "Importing scenario…"))
 			"failed":
-				state = &"failed"
-				message = str(data.get("message", "Scenario import failed."))
+				_fail(str(data.get("message", "Scenario import failed.")), StringName(str(data.get("code", "scenario_import_failed"))))
+				required_selection = ClassicRuleSelectionRequirement.from_data(data.get("requiredSelection"))
+				_retain_diagnostics(data)
 			"complete":
 				_retain_diagnostics(data)
 				package_path = str(data.get("packagePath", ""))
@@ -255,9 +267,10 @@ func _retain_diagnostics(report: Dictionary) -> void:
 	output.close()
 
 
-func _fail(detail: String) -> bool:
+func _fail(detail: String, code: StringName = &"scenario_import_failed") -> bool:
 	state = &"failed"
 	message = detail
+	error_code = code
 	return false
 
 

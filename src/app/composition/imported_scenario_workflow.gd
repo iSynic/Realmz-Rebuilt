@@ -35,11 +35,11 @@ func complete_operation(operation: PackageOperationView, prepared: PreparedPacka
 	return true
 
 
-func _begin_import(directory: String, startup_file: String = "") -> void:
+func _begin_import(directory: String, native_menu_selection: int, startup_file: String = "") -> void:
 	if not _character_files.library_ready():
 		_status_controller.set_status("Finishing the built-in Classic definitions…", false)
 		return
-	if _package_host.start_import(directory, startup_file):
+	if _package_host.start_import(directory, native_menu_selection, startup_file):
 		_campaign_library.set_package_operation(_package_host.operation_view())
 
 

@@ -22,7 +22,7 @@ func run() -> void:
 	_test_inventory_identification(content)
 	_test_split_join(content)
 	var session := GameSession.new(); assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts"); var source := _character("inventory.source", "Alis", content); var destination := _character("inventory.destination", "Borin", content)
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(source.id, "1".repeat(64), source, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "source character enters party setup"); assert_equal(session.submit_intent(PartyIntents.import_vault_character(destination.id, "2".repeat(64), destination, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(source.id, "1".repeat(64), source, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "source character enters party setup"); assert_equal(session.submit_intent(PartyIntents.import_vault_character(destination.id, "2".repeat(64), destination, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
 	var carried_source := session._context.state.party.character_by_id(source.id); var item := content.items.item_by_id("classic.item.inventory-sword"); var instance := RealmzRules.new().inventory.add_item(carried_source, item, "inventory.instance.sword", true)
 	assert_not_null(instance, "source-backed carried item enters the source character inventory")
 	var item_view := session.view().party_members[0].items[0]; assert_true(item_view.actions.equip.enabled, "detached item actions expose a legal Classic equip"); assert_true(item_view.actions.trade.enabled, "detached item actions expose a legal recipient")
@@ -60,7 +60,7 @@ func _test_david_robe_of_speed(source: RealmzContent, application: RealmzContent
 	var race := application.characters.race_by_id("classic.race.15"); var caste := application.characters.caste_by_id("classic.caste.20"); var robe := application.items.item_by_classic_id(206); assert_equal([race != null, caste != null, robe != null], [true, true, true], "the stock Brownie, Minstrel, and Robe of Speed definitions are available for David's reported equipment case")
 	if race == null or caste == null or robe == null: return
 	var content := RealmzContent.new("inventory-david-robe", source.package_hash, "inventory-david-robe", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], [race], [caste], [robe], []); var david := CharacterState.new("inventory.david", "David", 107, 107); david.race_id = race.id; david.caste_id = caste.id; david.maximum_load = 2_000; var instance := RealmzRules.new().inventory.add_item(david, robe, "inventory.david.robe-of-speed", true); var session := GameSession.new()
-	assert_equal([session.start(content, 206).state, session.submit_intent(PartyIntents.import_vault_character(david.id, "d".repeat(64), david, "fixture", content.package_hash)).state, session.submit_intent(PartyIntents.begin_adventure()).state], [SessionStep.State.COMPLETED, SessionStep.State.COMPLETED, SessionStep.State.COMPLETED], "David's Robe fixture starts, imports its Brownie Minstrel, and begins through public operations")
+	assert_equal([session.start(content, 206).state, session.submit_intent(PartyIntents.import_vault_character(david.id, "d".repeat(64), david, content.campaign_id, content.package_hash, content.transfer_catalog)).state, session.submit_intent(PartyIntents.begin_adventure()).state], [SessionStep.State.COMPLETED, SessionStep.State.COMPLETED, SessionStep.State.COMPLETED], "David's Robe fixture starts, imports its Brownie Minstrel, and begins through public operations")
 	assert_true(session.view().party_members[0].items[0].actions.equip.enabled, "Inventory exposes Equip for David's exact Robe of Speed case"); assert_equal(session.submit_intent(InventoryIntents.equip(instance.id, david.id)).state, SessionStep.State.COMPLETED, "David equips the Robe of Speed through the public Inventory operation"); var equipped_david: CharacterState = session.snapshot().game_state.party.character_by_id(david.id)
 	assert_equal([equipped_david.conditions.value(ConditionRules.SPEEDY), equipped_david.equipment_order.ids()], [-1, [instance.id]], "the Robe applies permanent Speedy and records its authoritative wear order")
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "David's equipped Robe restores through save v5"); var restored_david: CharacterState = restored.snapshot().game_state.party.character_by_id(david.id)
@@ -99,7 +99,7 @@ func _test_split_join(content: RealmzContent) -> void:
 	owner.carried_load = stack.instance_weight(5)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 97).state, SessionStep.State.COMPLETED, "stack inventory session starts")
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(owner.id, "5".repeat(64), owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "stack owner enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(owner.id, "5".repeat(64), owner, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "stack owner enters party setup")
 	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "stack inventory fixture begins")
 	assert_true(session.view().party_members[0].items[0].actions.split.enabled, "a finite per-charge stack exposes Split")
 	assert_false(session.view().party_members[0].items[0].actions.join.enabled, "a lone stack does not expose a meaningless Join")
@@ -129,7 +129,7 @@ func _test_split_join(content: RealmzContent) -> void:
 	overflow_owner.carried_load = stack.instance_weight(20_000) * 2
 	var overflow_session := GameSession.new()
 	assert_equal(overflow_session.start(content, 101).state, SessionStep.State.COMPLETED, "overflow inventory session starts")
-	assert_equal(overflow_session.submit_intent(PartyIntents.import_vault_character(overflow_owner.id, "6".repeat(64), overflow_owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "large finite stacks enter the bounded fixture")
+	assert_equal(overflow_session.submit_intent(PartyIntents.import_vault_character(overflow_owner.id, "6".repeat(64), overflow_owner, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "large finite stacks enter the bounded fixture")
 	assert_equal(overflow_session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "overflow inventory fixture begins")
 	assert_false(overflow_session.view().party_members[0].items[0].actions.join.enabled, "a Join that would overflow Classic's signed charge field is unavailable")
 	var rejected := overflow_session.submit_intent(InventoryIntents.join("inventory.instance.large-a", overflow_owner.id))
@@ -152,8 +152,8 @@ func _test_inventory_identification(content: RealmzContent) -> void:
 	target.carried_load = content.items.item_by_id("classic.item.inventory-sword").instance_weight(2) + content.items.item_by_id("classic.item.inventory-stack").instance_weight(5)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 109).state, SessionStep.State.COMPLETED, "inventory identification session starts")
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "7".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "identification target enters party setup")
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(caster.id, "8".repeat(64), caster, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "Identify caster enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "7".repeat(64), target, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "identification target enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(caster.id, "8".repeat(64), caster, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "Identify caster enters party setup")
 	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "identification fixture begins")
 	var action := session.view().party_members[0].items[0].actions
 	assert_true(action.identify.enabled, "an inventory with items exposes Castle's Cast Identify action")
@@ -176,8 +176,8 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	var target := _character("inventory.item-target", "Fenn", content)
 	user.current_health = 4
 	target.current_health = 5
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "3".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item user enters party setup")
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "4".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item target enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "3".repeat(64), user, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "item user enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "4".repeat(64), target, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "item target enters party setup")
 	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "field item-use fixture begins")
 	var carried_user := session._context.state.party.character_by_id(user.id)
 	var carried_target := session._context.state.party.character_by_id(target.id)
@@ -249,7 +249,7 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 
 func _test_door_item_xap(content: RealmzContent) -> void:
 	var session := GameSession.new(); assert_equal(session.start(content, 79).state, SessionStep.State.COMPLETED, "door-item session starts")
-	var user := _character("inventory.door-user", "Ena", content); assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "9".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "door-item user enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "door-item fixture begins")
+	var user := _character("inventory.door-user", "Ena", content); assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "9".repeat(64), user, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "door-item user enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "door-item fixture begins")
 	var carried := session._context.state.party.character_by_id(user.id); var door := content.items.item_by_id("classic.item.inventory-door"); var instance := RealmzRules.new().inventory.add_item(carried, door, "inventory.instance.door", true); assert_true(session.view().party_members[0].items[0].actions.use.enabled, "type-23 item exposes its authored field XAP")
 	var waiting := session.submit_intent(InventoryIntents.use(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, instance.charges, session._context.session_continuation.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 1, &"item-xap"], "field door item spends one charge and waits inside its typed XAP owner")
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "pending door-item XAP restores transactionally"); var completed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction)); assert_true(completed.state == SessionStep.State.COMPLETED and completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_xap_completed"), "restored field door XAP completes exactly once")

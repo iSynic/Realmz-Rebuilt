@@ -13,6 +13,7 @@ var portrait_id: String
 var source_campaign_id: String
 var source_package_hash: String
 var source_revision: String
+var required_campaign_id: String = ""
 var publication_label: String
 var is_current: bool
 var archived: bool

@@ -13,15 +13,15 @@ static func begin_adventure() -> PlayerIntent:
 
 
 static func import_saved_party(members: Array[CharacterState], review: PartyTransferReview) -> PlayerIntent:
-	return PlayerIntent.new(PlayerIntent.Kind.IMPORT_SAVED_PARTY, PartyIntentPayloads.SavedParty.new(members, review.source_file_hash, review.source_package_hash, review.destination_package_hash, review.destination_revision))
+	return PlayerIntent.new(PlayerIntent.Kind.IMPORT_SAVED_PARTY, PartyIntentPayloads.SavedParty.new(members, review.source_file_hash, review.source_package_hash, review.destination_package_hash, review.destination_revision, review.source_campaign_id, review.source_definitions))
 
 
 static func configure_setup(difficulty: int, monster_set: int) -> PlayerIntent:
 	return PlayerIntent.new(PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, PartyIntentPayloads.SetupOptions.new(difficulty, monster_set))
 
 
-static func import_vault_character(character_id: String, revision: String, state: CharacterState = null, source_campaign_id: String = "", source_package_hash: String = "") -> PlayerIntent:
-	return PlayerIntent.new(PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PartyIntentPayloads.VaultImport.new(character_id, revision, state, source_campaign_id, source_package_hash))
+static func import_vault_character(character_id: String, revision: String, state: CharacterState = null, source_campaign_id: String = "", source_package_hash: String = "", source_definitions: ContentTransferCatalog = null) -> PlayerIntent:
+	return PlayerIntent.new(PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PartyIntentPayloads.VaultImport.new(character_id, revision, state, source_campaign_id, source_package_hash, source_definitions))
 
 
 static func generate_character_draft(spec: CharacterCreationSpec) -> PlayerIntent:

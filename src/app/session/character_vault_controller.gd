@@ -8,6 +8,8 @@ const CLASSIC_STARTER_CATALOG_PATH := "res://src/storage/characters/realmz-class
 var _repository: CharacterVaultRepository
 var _validated_records: Dictionary = {}
 var _operation_error: String = ""
+var _rule_sources: CharacterVaultRuleSources
+var _active_content: RealmzContent
 
 
 func _init(repository: CharacterVaultRepository = null) -> void:
@@ -15,6 +17,7 @@ func _init(repository: CharacterVaultRepository = null) -> void:
 
 
 func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
+	_operation_error = ""
 	var cache_key := _cache_key(character_id, revision_hash)
 	var record := _validated_records.get(cache_key) as CharacterVaultRecord
 	if record == null:
@@ -23,8 +26,23 @@ func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
 			_validated_records[cache_key] = record
 	if record == null:
 		return null
+	var source_definitions: ContentTransferCatalog
+	if _rule_sources != null:
+		if _active_content == null:
+			_operation_error = "Choose a scenario before adding a Character File."
+			return null
+		source_definitions = _rule_sources.catalog(record, _active_content)
+		_operation_error = _rule_sources.last_error if source_definitions == null else PartyAdmissionRules.source_definition_error(source_definitions, _active_content, record.state, record.source_campaign_id)
+		if not _operation_error.is_empty():
+			return null
 	var detached_state := CharacterStateCodec.copy(record.state)
-	return PartyIntents.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash) if detached_state != null else null
+	return PartyIntents.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash, source_definitions) if detached_state != null else null
+
+
+func configure_rule_sources(application: RealmzContent, packages: Array[PackageDiscoveryResult]) -> void:
+	if _rule_sources == null:
+		_rule_sources = CharacterVaultRuleSources.new()
+	_rule_sources.configure(application, packages)
 
 
 func publish(character: CharacterState, rules_version: String, source_campaign_id: String, source_package_hash: String, publication_source: String) -> bool:
@@ -82,6 +100,7 @@ func seed_classic_starters_if_empty(catalog_path: String = CLASSIC_STARTER_CATAL
 
 
 func revisions(active_content: RealmzContent, fallback_content: RealmzContent = null) -> Array[CharacterVaultRevisionView]:
+	_active_content = active_content
 	_validated_records.clear()
 	var result: Array[CharacterVaultRevisionView] = []
 	var display_content := active_content if active_content != null else fallback_content
@@ -91,7 +110,17 @@ func revisions(active_content: RealmzContent, fallback_content: RealmzContent = 
 		for record: CharacterVaultRecord in _repository.list_revisions(character_id):
 			_validated_records[_cache_key(record.character_id, record.revision_hash)] = record
 			var eligibility := _repository.campaign_eligibility(record, active_content) if active_content != null else null
-			result.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, display_content))
+			var revision := CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, display_content)
+			if _rule_sources != null and display_content != null:
+				var source := _rule_sources.catalog(record, display_content)
+				if source != null:
+					if source.is_scenario_specific(&"races", record.state.race_id) or source.is_scenario_specific(&"castes", record.state.caste_id):
+						revision.required_campaign_id = record.source_campaign_id
+				var reason := _rule_sources.last_error if source == null else PartyAdmissionRules.source_definition_error(source, display_content, record.state, record.source_campaign_id)
+				if not reason.is_empty():
+					revision.eligible = false
+					revision.eligibility_reasons.append(reason)
+			result.append(revision)
 	result.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool:
 		var character_order := left.character_id.naturalnocasecmp_to(right.character_id)
 		if character_order != 0:

@@ -28,7 +28,7 @@ func _populate_options() -> void:
 	if view == null or race_list == null or caste_list == null:
 		return
 	for option: DefinitionOptionView in view.race_options:
-		if _placeholder_definition_name(option.name, "Race"):
+		if not option.available_for_creation:
 			continue
 		var race_restricted := view.campaign_summary != null and view.campaign_summary.banned_races.has(option.id)
 		race_list.add_option(option.id, option.name, "Unavailable in this scenario." if race_restricted else option.description, not race_restricted, option.id == selected_race_id)
@@ -78,16 +78,10 @@ func _refresh_details() -> void:
 static func _related_definition_text(heading: String, options: Array[DefinitionOptionView], related_ids: Array[String]) -> String:
 	var names: Array[String] = []
 	for option: DefinitionOptionView in options:
-		if related_ids.has(option.id) and not _placeholder_definition_name(option.name, "Race") and not _placeholder_definition_name(option.name, "Caste"):
+		if related_ids.has(option.id) and option.available_for_creation:
 			names.append(option.name)
 	names.sort_custom(func(left: String, right: String) -> bool: return left.naturalnocasecmp_to(right) < 0)
 	return "%s\n%s" % [heading, ", ".join(names)] if not names.is_empty() else ""
-
-
-static func _placeholder_definition_name(display_name: String, prefix: String) -> bool:
-	if not display_name.begins_with(prefix + " "):
-		return false
-	return display_name.trim_prefix(prefix + " ").is_valid_int()
 
 
 static func _definition_option(options: Array[DefinitionOptionView], option_id: String) -> DefinitionOptionView:
@@ -129,7 +123,7 @@ func _rebuild_caste_options() -> void:
 			break
 	var ordered: Array[DefinitionOptionView] = []
 	for option: DefinitionOptionView in view.caste_options:
-		if not _placeholder_definition_name(option.name, "Caste"):
+		if option.available_for_creation:
 			ordered.append(option)
 	ordered.sort_custom(func(left: DefinitionOptionView, right: DefinitionOptionView) -> bool:
 		var left_compatible := allowed_castes.is_empty() or allowed_castes.has(left.id)

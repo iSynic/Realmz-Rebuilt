@@ -292,7 +292,7 @@ func party_setup_option_changed(_index: int) -> void:
 func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 	var current_revisions: Array[CharacterVaultRevisionView] = []
 	for revision: CharacterVaultRevisionView in vault_revisions:
-		if revision.is_current and not revision.archived:
+		if revision.is_current and not revision.archived and (revision.required_campaign_id.is_empty() or view != null and view.campaign_id == revision.required_campaign_id):
 			current_revisions.append(revision)
 	current_revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
 	return current_revisions

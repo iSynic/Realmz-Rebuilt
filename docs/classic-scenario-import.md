@@ -5,12 +5,38 @@ The current playable development line owns folder imports. The front door keeps 
 ## Conversion and library contract
 
 - Rebuilt runs its bundled Providence converter through a versioned JSON job interface. Providence owns startup selection, essential-file preflight, decoding, compilation, application composition, and finalization.
+- Folder imports use scenario-defined races and castes when supplied, independently falling back to stock rules for an absent table. The directory picker's Import action is sufficient; no legacy menu number is required. Rebuilt explicitly supplies converter selection 20, the scenario-first branch of Castle's menu-based behavior. This applies to every folder import, including names matching bundled campaigns; it does not infer publisher or replace a Main Scenario. Cancel changes no adventure, and an ambiguous-startup retry retains the policy. The converter source and support identities are pinned in `tools/scenario-importer-inputs.json`.
 - The converter captures a consistent read-only source set in disposable staging. Unknown source hashes do not affect eligibility. Hashes identify revisions and verify package and converter integrity.
 - Missing critical files and undecodable essential structures reject with an actionable operation/file diagnostic. Missing optional content and authored reference defects remain exact and produce warnings; they do not require approval.
 - Unknown numeric instructions follow Castle's unmatched-switch fallthrough. The import report inventories every occurrence, including unreachable records, with its source identity, native file, slot, raw/normalized opcode, operand, and Extra Code. A known instruction with unimplemented behavior remains a distinct execution-time compatibility gap. See [VM evidence](scenario-vm-evidence.md).
 - Main and Imported origins remain distinct even when campaign IDs match. Imported revisions group by Providence's campaign identity, retain immutable packages, and persist a preferred revision separately. Reimporting identical output selects that revision. Saves retain their exact package binding.
 - Schemas v3 and v4 remain readable. Imported values outside v3 monster ranges use v4; an imported partial `Data EDCD` tail uses v5 with its candidate row ID and available byte count. Complete rows remain usable. The source fragment is preserved without invented operands, and a prepared consumer guard logs and stops a request for it before effects. The fragment's existence does not establish its authored meaning. Malformed package structure and integrity failures remain errors.
 - Durable import reports survive staging cleanup and conversion failure. The library index stores diagnostic summaries separately from immutable archives.
+
+## Custom character choices
+
+Choose the imported scenario before creating a character. Its named and usable
+unnamed race/caste definitions are available directly in party setup; beginning
+and ending an adventure first is unnecessary. Unnamed scenario-owned races require
+a valid nonzero creation age range, and unnamed castes require positive initial
+and per-level stamina dice. Eligibility-only application/template slots stay hidden.
+
+Gameplay tables and display names are separate native inputs. A controlled Divinity
+fixture found that editing custom names changed the application's global `Custom
+Names` STR# 129/131 resources and left the scenario folder unchanged. Thus an absent
+scenario name does not establish an unused gameplay record.
+
+The accepted naming policy prefers resolved native names, then author-documented
+helper names with a verified mapping to the exact race/caste definition. Usable
+unnamed custom definitions receive `Scenario Custom Race #` or
+`Scenario Custom Caste #` using Divinity's zero-based record numbers, while unused
+application/template slots remain hidden. Names must not be guessed from campaign
+titles, portraits, or documentation list order. Convenience labels do not change
+native IDs or captured source bytes. Providence owns canonical compiled names;
+Rebuilt owns creator exposure. See the [producer/consumer agreement](castle-parity-consumer-contract.md).
+
+Reimport after a converter or source correction to create a new immutable revision.
+Existing packages and saves keep their exact content and identity.
 
 ## Verification boundaries
 
@@ -39,9 +65,12 @@ The graphics-signature comparison uses Adobe's [Photoshop file-format specificat
 - `tools/scenario-importer-inputs.json` pins the GPL-3.0-or-later converter source and separately licensed stock support. The importer workflow builds native Windows, Linux, and both macOS architectures, then assembles and checks universal macOS. Runtime exports require versioned importer archive URLs and SHA-256 repository variables; missing or invalid inputs stop the export.
 - The Beta 12 local aggregate passed all 5,386 assertions across 36 suites, package alignment, provenance, architecture, maintainability, and export contracts. The owner-approved test-source ceiling is 11,402 substantive lines; other limits remain unchanged. The clean pinned Windows converter independently converted Dead of Night, whose resulting package passed installation and session initialization.
 
+Providence's native selection R4 and whole-editor R2 flow have owner acceptance.
+Retain that producer evidence separately from Rebuilt packaged import acceptance.
+
 Remaining acceptance work:
 
 - Run import from final packaged locations without developer tools on all three platforms, including the actual native dialog, cancellation, revision selection, and starting a working scenario. Existing app startup smoke checks do not exercise conversion.
-- Wire Providence's native editor to its installed finalization support automatically; the explicit service context alone does not prove that editor workflow.
+- Publish and verify the CP-01 converter/support candidate on all supported platforms, then update the actual release pins. The local clean Windows caller receipt does not establish compatibility with the former published converter or complete clean-CI release acceptance.
 
 The beta's automated results do not establish complete packaged UI acceptance or full campaign compatibility.

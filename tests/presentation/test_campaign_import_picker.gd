@@ -188,12 +188,13 @@ func _test_campaign_import_states() -> void:
 	var import_button := router.find_child("ImportScenario", true, false) as Button
 	var import_dialog := router.find_child("ImportScenarioDialog", true, false) as FileDialog
 	assert_true(import_button != null and import_dialog != null and import_dialog.file_mode == FileDialog.FILE_MODE_OPEN_DIR and import_dialog.use_native_dialog and import_dialog.ok_button_text == "Import", "folder import requires the native directory picker and its explicit Import action")
-	var imported_directories: Array[String] = []
-	library.import_requested.connect(func(directory: String) -> void: imported_directories.append(directory))
+	var imported_directories: Array[Array] = []
+	library.import_requested.connect(func(directory: String, selection: int, startup: String) -> void: imported_directories.append([directory, selection, startup]))
 	import_button.pressed.emit()
 	assert_true(import_dialog.visible, "Import Scenario opens the directory picker")
 	import_dialog.dir_selected.emit("user://incoming/folder")
-	assert_equal(imported_directories, ["user://incoming/folder"], "confirming the directory requests import without changing the active campaign")
+	assert_equal(imported_directories, [["user://incoming/folder", 20, ""]], "folder selection immediately requests scenario-first rules without a numeric prompt")
+	imported_directories.clear()
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	scroll.scroll_vertical = 120
 	var progress := PackageOperationView.new(PackageOperationView.RUNNING, &"converting", 1, 3, "Converting scenario…", &"", "user://incoming/folder", &"import_scenario")
@@ -215,17 +216,18 @@ func _test_campaign_import_states() -> void:
 	assert_true(diagnostics.visible and diagnostics.text == "\n".join(succeeded.diagnostic_details), "expanding import diagnostics shows the supplied detail strings without reconstructing them")
 	var failed := PackageOperationView.new(PackageOperationView.FAILED, &"preflight", 1, 3, "Scenario import failed.", &"invalid_source", "user://incoming/folder", &"import_scenario")
 	failed.startup_candidates = ["START.SCN", "START2.SCN"]
+	failed.native_menu_selection = 20
 	library.set_package_operation(failed)
 	var retry := router.find_child("RetryPackageOperation", true, false) as Button
 	retry.pressed.emit()
-	assert_equal(imported_directories, ["user://incoming/folder", "user://incoming/folder"], "retrying an import failure routes the original folder back to the importer")
+	assert_true(imported_directories.is_empty(), "an ambiguous failure never automatically restarts conversion")
 	var startup_selector := router.find_child("StartupCandidateSelector", true, false) as OptionButton
 	var startup_button := router.find_child("UseStartupCandidate", true, false) as Button
 	var startup_choices: Array[Array] = []
-	library.startup_selection_requested.connect(func(directory: String, startup_file: String) -> void: startup_choices.append([directory, startup_file]))
+	library.startup_selection_requested.connect(func(directory: String, selection: int, startup_file: String) -> void: startup_choices.append([directory, selection, startup_file]))
 	startup_selector.select(1)
 	startup_button.pressed.emit()
-	assert_true(startup_selector.visible and startup_button.visible and startup_choices == [["user://incoming/folder", "START2.SCN"]], "an ambiguous folder import exposes its selected valid startup basename for a direct retry")
+	assert_true(startup_selector.visible and startup_button.visible and startup_choices == [["user://incoming/folder", 20, "START2.SCN"]], "an explicit startup retry preserves scenario rules and the selected safe basename")
 	import_dialog.hide()
 	router.queue_free()
 	await (Engine.get_main_loop() as SceneTree).process_frame

@@ -1,5 +1,6 @@
 {
   "formatVersion": 1,
+  "rustToolchain": "1.98.1",
   "source": {
     "url": "https://github.com/iSynic/Realmz-Rebuilt/releases/download/scenario-importer-inputs-beta15/providence-converter-source.bundle",
     "sha256": "7df122149ee999644e5685abd23097c7acb4587a74f8baa62e94264fc8d530ad",

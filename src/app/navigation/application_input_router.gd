@@ -294,29 +294,12 @@ func clear_controller_state() -> void:
 
 func _handle_controller_overlay(action_id: StringName) -> bool:
 	if _application._shell_presenter.controller.text_editor_is_open():
-		return _handle_controller_text_editor(action_id)
+		ApplicationControllerTextInput.handle(_application._shell_presenter.controller, action_id, _controller_direction(action_id))
+		_mark_handled()
+		return true
 	if not _application._shell_presenter.controller.radial_is_open():
 		return false
 	return _handle_controller_radial(action_id)
-
-
-func _handle_controller_text_editor(action_id: StringName) -> bool:
-	if action_id == &"realmz_controller_confirm":
-		_application._shell_presenter.controller.confirm_text_editor()
-	elif action_id == &"realmz_controller_back":
-		_application._shell_presenter.controller.cancel_text_editor()
-	elif action_id == &"realmz_controller_section_previous":
-		_application._shell_presenter.controller.page_text_editor(-1)
-	elif action_id == &"realmz_controller_section_next":
-		_application._shell_presenter.controller.page_text_editor(1)
-	elif action_id in [&"realmz_controller_action_radial", &"realmz_controller_workspace_radial", &"realmz_controller_character_previous", &"realmz_controller_character_next"]:
-		_application._shell_presenter.controller.edit_text(action_id)
-	else:
-		var direction := _controller_direction(action_id)
-		if direction != Vector2i.ZERO:
-			_application._shell_presenter.controller.move_text_editor(direction)
-	_mark_handled()
-	return true
 
 
 func _handle_controller_radial(action_id: StringName) -> bool:

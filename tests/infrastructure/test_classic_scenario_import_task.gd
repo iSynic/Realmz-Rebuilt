@@ -1,11 +1,10 @@
 extends RealmzTestCase
 
-const TaskScript := preload("res://src/storage/packages/classic_scenario_import_task.gd")
 const TestFiles := preload("res://tests/infrastructure/imported_scenario_test_files.gd")
 const TEST_ROOT: String = "user://test-classic-scenario-import-task"
 
 
-class FakeProcessDriver extends TaskScript.ProcessDriver:
+class FakeProcessDriver extends ClassicScenarioImportTask.ProcessDriver:
 	var running: bool = false
 	var started: bool = false
 	var killed: bool = false
@@ -46,9 +45,9 @@ func _test_request_identity_and_owned_cancellation() -> void:
 	TestFiles.write_text(importer_root.path_join("build-manifest.json"), JSON.stringify(manifest))
 	var jobs := ProjectSettings.globalize_path(TEST_ROOT.path_join("jobs"))
 	var driver := FakeProcessDriver.new()
-	var task: RefCounted = TaskScript.new(driver)
-	assert_false(task.start("user://source", jobs, importer_root, "nested/STARTUP.SCN"), "a selected startup cannot escape the source folder")
-	assert_true(task.start("user://source", jobs, importer_root, "STARTUP.SCN"), "a valid selected basename starts the owned import worker")
+	var task: RefCounted = ClassicScenarioImportTask.new(driver)
+	assert_false(task.start("user://source", jobs, 19, importer_root, "nested/STARTUP.SCN"), "a selected startup cannot escape the source folder")
+	assert_true(task.start("user://source", jobs, 19, importer_root, "STARTUP.SCN"), "a valid selected basename starts the owned import worker")
 	_wait_until_started(task, driver)
 	assert_true(driver.started, "the verified bundle starts the converter through the owned process boundary")
 	if not driver.started:
@@ -57,6 +56,7 @@ func _test_request_identity_and_owned_cancellation() -> void:
 		return
 	assert_equal(driver.request.get("applicationLibraryIdentity"), {"campaignId": ApplicationLibraryIdentity.CAMPAIGN_ID, "packageHash": ApplicationLibraryIdentity.PACKAGE_HASH}, "the request pins the exact application package identity")
 	assert_equal(driver.request.get("startupFile"), "STARTUP.SCN", "the request forwards only the selected startup basename")
+	assert_equal(driver.request.get("nativeMenuSelection"), 19, "the request carries the explicit Castle selection without inference")
 	var events_path: String = str(driver.request.get("outputDirectory", "")).path_join("events.jsonl")
 	DirAccess.make_dir_recursive_absolute(events_path.get_base_dir())
 	TestFiles.write_text(events_path, "not-json\n" + JSON.stringify({"formatVersion": 1, "event": "startup_selection", "data": {"candidates": ["A.SCN", "B.SCN", "../unsafe.SCN"]}}) + "\n")
@@ -72,8 +72,8 @@ func _test_request_identity_and_owned_cancellation() -> void:
 	assert_false(DirAccess.dir_exists_absolute(job_path), "staging is removed after the converter is confirmed stopped")
 	task.close()
 	var report_driver := FakeProcessDriver.new()
-	task = TaskScript.new(report_driver)
-	assert_true(task.start("user://source", jobs, importer_root), "a later conversion can reuse the verified bundle after cancellation cleanup")
+	task = ClassicScenarioImportTask.new(report_driver)
+	assert_true(task.start("user://source", jobs, 20, importer_root), "a later conversion can reuse the verified bundle after cancellation cleanup")
 	_wait_until_started(task, report_driver)
 	var report_events := str(report_driver.request.get("outputDirectory", "")).path_join("events.jsonl")
 	var source_report := {"formatVersion": 1, "sourceName": "source", "unsupportedInstructions": [{"message": "Unknown opcode 30000"}]}
@@ -91,8 +91,8 @@ func _test_request_identity_and_owned_cancellation() -> void:
 	task.close()
 	TestFiles.write_text(importer_root.path_join("build-manifest.json"), "not-json")
 	driver = FakeProcessDriver.new()
-	task = TaskScript.new(driver)
-	assert_true(task.start("user://source", jobs, importer_root), "an executable with a malformed manifest enters asynchronous bundle verification")
+	task = ClassicScenarioImportTask.new(driver)
+	assert_true(task.start("user://source", jobs, 10, importer_root), "an executable with a malformed manifest enters asynchronous bundle verification")
 	var deadline := Time.get_ticks_msec() + 10000
 	while task.state == &"running" and Time.get_ticks_msec() < deadline:
 		task.poll()

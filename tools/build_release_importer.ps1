@@ -41,6 +41,11 @@ try {
 [IO.File]::WriteAllText((Join-Path $OutputRoot '.gdignore'), '', [Text.UTF8Encoding]::new($false))
 Push-Location $sourceRoot
 try {
+    if ([string]::IsNullOrWhiteSpace($inputs.rustToolchain)) { throw 'Converter Rust toolchain pin is missing.' }
+    rustup toolchain install $inputs.rustToolchain --profile minimal
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned Rust toolchain installation failed.' }
+    rustup override set $inputs.rustToolchain
+    if ($LASTEXITCODE -ne 0) { throw 'Pinned Rust toolchain selection failed.' }
     rustup target add $Target
     if ($LASTEXITCODE -ne 0) { throw 'Rust target installation failed.' }
     cargo build --locked --release -p providence-native-adapter --target $Target
@@ -54,6 +59,7 @@ foreach ($field in @('commit', 'schemaSha256', 'cargoLockSha256')) {
     if ($identity.$field -cne $inputs.source.$field) { throw "Converter $field differs from the accepted input." }
 }
 if ($identity.sourceTree -cne $inputs.source.tree -or $identity.sourceDirty -or $identity.target -cne $Target -or $identity.profile -cne 'release') { throw 'Converter did not report the pinned clean native release identity.' }
+if (-not $identity.rustcVersion.StartsWith("rustc $($inputs.rustToolchain) ") -or -not $identity.cargoVersion.StartsWith("cargo $($inputs.rustToolchain) ")) { throw 'Converter did not report the pinned Rust toolchain.' }
 if (@(& git -C $sourceRoot status --porcelain --untracked-files=all).Count -ne 0) { throw 'Converter build modified its source checkout.' }
 Copy-Item -LiteralPath $binary -Destination (Join-Path $OutputRoot $binaryName)
 $manifest = Get-Content -Raw (Join-Path $OutputRoot 'build-manifest.json') | ConvertFrom-Json

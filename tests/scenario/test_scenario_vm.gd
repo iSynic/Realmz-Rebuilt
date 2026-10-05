@@ -603,8 +603,8 @@ func _test_public_vm_repeated_combat_item(content: RealmzContent) -> void:
 		var candidate := GameSession.new(); candidate.start(fixture, seed)
 		var caster := CharacterState.new("fixture.vm-item.caster", "VM Item Caster", 30, 30); caster.race_id = selected_race.id; caster.caste_id = selected_caste.id; caster.normal_attacks = 4; caster.maximum_movement = 12; caster.movement = 12; caster.maximum_spell_points = 17; caster.spell_points = 17; caster.set_inventory([ItemInstance.new("instance.vm-repeated-wand.caster", item.id, 2, false, true), ItemInstance.new("instance.flask-oil.caster", flask.id, 5, false, true)])
 		var ally := CharacterState.new("fixture.vm-item.ally", "VM Item Ally", 30, 30); ally.race_id = selected_race.id; ally.caste_id = selected_caste.id; ally.normal_attacks = 4; ally.maximum_movement = 12; ally.movement = 12; ally.maximum_spell_points = 17; ally.spell_points = 17; ally.set_inventory([ItemInstance.new("instance.vm-repeated-wand.ally", item.id, 2, false, true), ItemInstance.new("instance.flask-oil.ally", flask.id, 5, false, true)])
-		var caster_import := candidate.submit_intent(PartyIntents.import_vault_character(caster.id, "1".repeat(64), caster, "fixture", fixture.package_hash)); if caster_import.state != SessionStep.State.COMPLETED: continue
-		var ally_import := candidate.submit_intent(PartyIntents.import_vault_character(ally.id, "2".repeat(64), ally, "fixture", fixture.package_hash)); if ally_import.state != SessionStep.State.COMPLETED: continue
+		var caster_import := candidate.submit_intent(PartyIntents.import_vault_character(caster.id, "1".repeat(64), caster, fixture.campaign_id, fixture.package_hash, fixture.transfer_catalog)); if caster_import.state != SessionStep.State.COMPLETED: continue
+		var ally_import := candidate.submit_intent(PartyIntents.import_vault_character(ally.id, "2".repeat(64), ally, fixture.campaign_id, fixture.package_hash, fixture.transfer_catalog)); if ally_import.state != SessionStep.State.COMPLETED: continue
 		var entered := candidate.submit_intent(PartyIntents.begin_adventure())
 		if entered.state == SessionStep.State.WAITING_FOR_INTERACTION and entered.interaction != null and entered.interaction.kind == InteractionRequest.COMBAT:
 			var combat_body := entered.interaction.body as CombatRequestBody
@@ -988,7 +988,7 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
-	var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
+	var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog))
 	assert_equal(imported.state, SessionStep.State.COMPLETED, "fixture imports a deterministic party member")
 	var started := session.submit_intent(PartyIntents.begin_adventure())
 	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
@@ -1002,7 +1002,7 @@ func _vm_combat_auto_session(content: RealmzContent, seed: int) -> GameSession:
 	var session := GameSession.new(); session.start(content, seed)
 	for character_index: int in 6:
 		var character := CharacterState.new("fixture.vm-auto.%d" % (character_index + 1), "VM Auto Hero %d" % (character_index + 1), 100, 100); character.race_id = races[0].id; character.caste_id = castes[0].id
-		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
+		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog))
 		if imported.state != SessionStep.State.COMPLETED: return null
 	var entered := session.submit_intent(PartyIntents.begin_adventure())
 	if entered.state != SessionStep.State.WAITING_FOR_INTERACTION or entered.interaction == null or entered.interaction.kind != InteractionRequest.COMBAT:

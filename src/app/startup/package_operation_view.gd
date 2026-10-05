@@ -19,6 +19,8 @@ var package_path: String
 var operation_name: StringName
 var diagnostic_details: Array[String] = []
 var startup_candidates: Array[String] = []
+var native_menu_selection: int = 0
+var required_rule_selection: ClassicRuleSelectionView
 
 
 func _init(operation_state: StringName = IDLE, operation_phase: StringName = &"", completed_units: int = 0, total_units: int = 0, operation_message: String = "", operation_error_code: StringName = &"", affected_package_path: String = "", affected_operation_name: StringName = &"") -> void:
@@ -36,6 +38,15 @@ static func from_status(status: RefCounted, affected_package_path: String = "", 
 	if status == null:
 		return PackageOperationView.new()
 	return PackageOperationView.new(status.state, status.phase, status.completed, status.total, status.message, operation_error_code, affected_package_path, affected_operation_name)
+
+
+static func from_import(task: ClassicScenarioImportTask, directory: String) -> PackageOperationView:
+	var result := PackageOperationView.new(task.state, task.phase, 0, 0, task.message, task.error_code, directory, &"import_scenario")
+	result.native_menu_selection = task.native_menu_selection
+	result.required_rule_selection = ClassicRuleSelectionView.from_requirement(task.required_selection)
+	result.startup_candidates = task.startup_candidates.duplicate()
+	result.diagnostic_details = task.diagnostic_details.duplicate()
+	return result
 
 
 func is_running() -> bool:

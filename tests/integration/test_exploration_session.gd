@@ -546,7 +546,7 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent, part
 		var character := CharacterState.new(character_id, "Fixture Hero %d" % (character_index + 1), 10, 10)
 		character.race_id = races[0].id
 		character.caste_id = castes[0].id
-		assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
+		assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
 	var started := session.submit_intent(PartyIntents.begin_adventure())
 	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
 		assert_equal(started.state, SessionStep.State.COMPLETED, "exploration content without a Start Game hook leaves party setup synchronously")

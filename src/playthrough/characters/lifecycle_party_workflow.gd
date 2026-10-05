@@ -62,6 +62,9 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 	var imported := CharacterStateCodec.copy(payload.character_state)
 	if imported == null or imported.id != payload.character_id:
 		return SessionWorkflowResult.failed(&"invalid_vault_import", "The vault character state is malformed.")
+	var scope_error := PartyAdmissionRules.source_definition_error(payload.source_definitions, context.content, imported, payload.source_campaign_id)
+	if not scope_error.is_empty():
+		return SessionWorkflowResult.failed(&"vault_character_ineligible", scope_error)
 	var restrictions := context.content.campaign.restrictions
 	var maximum_party_size := clampi(restrictions.maximum_party_size, 1, 6)
 	var current_characters := context.state.party.characters()

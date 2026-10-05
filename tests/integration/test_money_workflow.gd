@@ -68,8 +68,8 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	var caste := pair[1] as CasteDefinition
 	var first := _character("money.first", "Alis", race, caste, WealthState.new(10, 2, 1))
 	var second := _character("money.second", "Borin", race, caste, WealthState.new(5, 0, 0))
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(first.id, "1".repeat(64), first, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "first money character enters party setup")
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(second.id, "2".repeat(64), second, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "second money character enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(first.id, "1".repeat(64), first, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "first money character enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(second.id, "2".repeat(64), second, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "second money character enters party setup")
 	_begin_with_start_hook(session, "money fixture begins the adventure")
 	var initial_view := session.view()
 	assert_not_null(initial_view.money_workspace, "detached view exposes the ordinary money workspace")
@@ -239,7 +239,7 @@ func _departure_session(content: RealmzContent, seed: int) -> GameSession:
 	var session := GameSession.new()
 	assert_equal(session.start(content, seed).state, SessionStep.State.COMPLETED, "pooled-wealth departure session starts")
 	var character := _character("money.departure.%d" % seed, "Traveler", pair[0] as RaceDefinition, pair[1] as CasteDefinition, WealthState.new(10, 1, 1))
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "d".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "departure character enters party setup")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "d".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "departure character enters party setup")
 	_begin_with_start_hook(session, "departure fixture begins the adventure")
 	assert_equal(session.submit_intent(EconomyIntents.money(&"pool")).state, SessionStep.State.COMPLETED, "departure fixture enters movement with pooled wealth")
 	return session

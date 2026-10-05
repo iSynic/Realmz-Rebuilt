@@ -3,6 +3,18 @@ class_name PartyAdmissionRules
 extends RefCounted
 
 
+static func source_definition_error(source: ContentTransferCatalog, target: RealmzContent, character: CharacterState, source_campaign_id: String) -> String:
+	if source == null:
+		return "The Character File's source rule definitions are unavailable."
+	for family: StringName in [&"races", &"castes"]:
+		var id := character.race_id if family == &"races" else character.caste_id
+		if source.is_scenario_specific(family, id) and source_campaign_id != target.campaign_id:
+			return "This character uses scenario custom race or class rules and is available only in its source scenario (%s)." % source_campaign_id
+		if source != target.transfer_catalog and not source.matches(target.transfer_catalog, family, id):
+			return "The destination's %s definition differs from this character's source." % ("race" if family == &"races" else "class")
+	return ""
+
+
 static func validate(context: SessionWorkflowContext, imported: CharacterState) -> SessionWorkflowResult:
 	for failure: SessionWorkflowResult in [definition_error(context, imported), magic_error(context, imported), appearance_error(context, imported)]:
 		if failure != null:

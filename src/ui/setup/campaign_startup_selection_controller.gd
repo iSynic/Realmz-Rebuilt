@@ -2,12 +2,13 @@
 
 extends RefCounted
 
-signal selection_requested(directory: String, startup_file: String)
+signal selection_requested(directory: String, native_menu_selection: int, startup_file: String)
 
 var _selection_row: HBoxContainer
 var _selector: OptionButton
 var _submit_button: Button
 var _directory: String = ""
+var _native_menu_selection: int = 0
 
 
 func bind(panel: Control) -> void:
@@ -19,6 +20,7 @@ func bind(panel: Control) -> void:
 
 func present(operation: RefCounted, failed: bool) -> bool:
 	_directory = operation.package_path
+	_native_menu_selection = operation.native_menu_selection
 	var candidates: Array[String] = operation.startup_candidates
 	var required: bool = failed and operation.operation_name == &"import_scenario" and not candidates.is_empty()
 	_selection_row.visible = required
@@ -33,4 +35,4 @@ func present(operation: RefCounted, failed: bool) -> bool:
 func _submit_selected() -> void:
 	if _selector.selected < 0 or _selector.selected >= _selector.item_count:
 		return
-	selection_requested.emit(_directory, _selector.get_item_text(_selector.selected))
+	selection_requested.emit(_directory, _native_menu_selection, _selector.get_item_text(_selector.selected))

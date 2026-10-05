@@ -58,17 +58,19 @@ func _init(repository: PackageRepository = null, install_root: String = USER_CAM
 	_conversion.recover_abandoned_jobs(ProjectSettings.globalize_path(install_root.get_base_dir().path_join("import-jobs")))
 
 
-func start_import(directory: String, startup_file: String = "") -> bool:
+func start_import(directory: String, native_menu_selection: int, startup_file: String = "") -> bool:
 	if operation_view().is_running() or directory.is_empty():
 		return false
 	_conversion.close()
 	var job_parent := ProjectSettings.globalize_path(_install_root.get_base_dir().path_join("import-jobs"))
-	if not _conversion.start(directory, job_parent, "", startup_file):
+	if not _conversion.start(directory, job_parent, native_menu_selection, "", startup_file):
 		_import_source = ""
 		_import_installing = false
 		_foreground_prepared = null
 		var reason := _conversion.message if _conversion.state == &"failed" else "The previous scenario importer is still stopping. Retry shortly."
-		_foreground_operation = PackageOperationView.new(PackageOperationView.FAILED, &"starting", 0, 0, reason, &"scenario_import_failed", directory, &"import_scenario")
+		_foreground_operation = PackageOperationView.from_import(_conversion, directory)
+		_foreground_operation.state = PackageOperationView.FAILED
+		_foreground_operation.message = reason
 		return true
 	_import_source = directory
 	_import_installing = false
@@ -274,6 +276,7 @@ func _advance_task() -> void:
 			_foreground_operation = PackageOperationView.from_status(status)
 			if _import_installing:
 				_foreground_operation.operation_name = &"import_scenario"
+				_foreground_operation.native_menu_selection = _conversion.native_menu_selection
 				_foreground_operation.package_path = _import_source
 				_foreground_operation.phase = &"installing"
 		return
@@ -289,6 +292,7 @@ func _advance_task() -> void:
 		_foreground_operation = PackageOperationView.from_status(status, completed_source_path, &"install_scenario", prepared.error_code if prepared != null else &"package_operation_failed")
 		if _import_installing:
 			_foreground_operation.operation_name = &"import_scenario"
+			_foreground_operation.native_menu_selection = _conversion.native_menu_selection
 			_foreground_operation.package_path = _import_source
 			_foreground_operation.diagnostic_details = _conversion.diagnostic_details.duplicate()
 			if prepared != null and prepared.is_ok():
@@ -334,9 +338,7 @@ func _advance_import() -> void:
 	if _import_source.is_empty() or _import_installing:
 		return
 	_conversion.poll()
-	_foreground_operation = PackageOperationView.new(_conversion.state, _conversion.phase, 0, 0, _conversion.message, &"scenario_import_failed", _import_source, &"import_scenario")
-	_foreground_operation.startup_candidates = _conversion.startup_candidates.duplicate()
-	_foreground_operation.diagnostic_details = _conversion.diagnostic_details.duplicate()
+	_foreground_operation = PackageOperationView.from_import(_conversion, _import_source)
 	if _conversion.state != &"succeeded":
 		return
 	if _task.snapshot().is_running():
@@ -347,5 +349,6 @@ func _advance_import() -> void:
 	if not _start_task(_conversion.package_path, "", true):
 		_foreground_operation = PackageOperationView.new(PackageOperationView.FAILED, &"installing", 0, 0, "Could not start scenario installation. Retry the import.", &"scenario_install_failed")
 	_foreground_operation.phase = &"installing"
+	_foreground_operation.native_menu_selection = _conversion.native_menu_selection
 	_foreground_operation.operation_name = &"import_scenario"
 	_foreground_operation.package_path = _import_source

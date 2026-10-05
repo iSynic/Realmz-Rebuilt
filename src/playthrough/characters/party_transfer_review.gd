@@ -5,6 +5,8 @@ extends RefCounted
 var candidates: Array[PartyTransferCandidate] = []
 var left_behind: Array[String] = []
 var source_package_hash: String
+var source_campaign_id: String
+var source_definitions: ContentTransferCatalog
 var destination_package_hash: String
 var destination_revision: int
 var source_file_hash: String

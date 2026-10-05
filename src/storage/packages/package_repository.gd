@@ -7,7 +7,7 @@ const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78
 const SCHEMA_V4_HASH: String = "78b1e34503fd44fe7ce79d8225f09e36f303e8bf6c62dfbe3145472c5feaf307"
 const SCHEMA_V5_HASH: String = "ab3aca6322599dc348e48ddf82cffc99568bbbf598927ccba9377b24b396943c"
 const SCHEMA_HASHES: Dictionary = {3: EXPECTED_SCHEMA_HASH, 4: SCHEMA_V4_HASH, 5: SCHEMA_V5_HASH}
-const DECODER_VERSION: int = 11
+const DECODER_VERSION: int = 12
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",

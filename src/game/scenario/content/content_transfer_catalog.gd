@@ -4,6 +4,7 @@ extends RefCounted
 
 var _fingerprints: Dictionary = {}
 var _scenario_owned: Dictionary = {}
+var _application_fingerprints: Dictionary = {}
 
 
 func record(kind: StringName, id: String, fingerprint: String, scenario_owned: bool) -> void:
@@ -16,6 +17,12 @@ func record(kind: StringName, id: String, fingerprint: String, scenario_owned: b
 func inherit_application(application: ContentTransferCatalog) -> void:
 	if application != null:
 		_fingerprints = application._fingerprints.duplicate()
+		_application_fingerprints = application._fingerprints.duplicate()
+
+
+func is_scenario_specific(kind: StringName, id: String) -> bool:
+	var key := "%s:%s" % [kind, id]
+	return _scenario_owned.has(key) and _fingerprints.get(key, "") != _application_fingerprints.get(key, "")
 
 
 func is_scenario_owned(kind: StringName, id: String) -> bool:

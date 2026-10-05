@@ -156,9 +156,9 @@ func _populate_complete_collections(context: SessionWorkflowContext, result: Gam
 			result.journal_entries.append(JournalEntryView.new(message_id, journal_message.text))
 	if result.party_setup_available:
 		for race: RaceDefinition in content.characters.race_definitions():
-			result.race_options.append(DefinitionOptionView.from_race(race))
+			result.race_options.append(DefinitionOptionView.from_race(race, content.transfer_catalog.is_scenario_owned(&"races", race.id)))
 		for caste: CasteDefinition in content.characters.caste_definitions():
-			result.caste_options.append(DefinitionOptionView.from_caste(caste))
+			result.caste_options.append(DefinitionOptionView.from_caste(caste, content.transfer_catalog.is_scenario_owned(&"castes", caste.id)))
 	for portrait: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
 		result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
 	for icon: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):

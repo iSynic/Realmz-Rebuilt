@@ -274,8 +274,12 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	imported.carried_load = 0
 	var wrong_kind_import := CharacterStateCodec.copy(imported)
 	wrong_kind_import.portrait_id = "realmz-combat-icon-9000"
-	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import, "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
-	var import_step := resumed_setup.submit_intent(PartyIntents.import_vault_character(imported.id, "a".repeat(64), imported, "fixture-source", "b".repeat(64)))
+	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import, content.campaign_id, content.package_hash, content.transfer_catalog)).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
+	for source_campaign: String in ["", "foreign-scenario"]:
+		var source_rules := content.transfer_catalog if not source_campaign.is_empty() else null
+		var rejected_import := resumed_setup.submit_intent(PartyIntents.import_vault_character(imported.id, "a".repeat(64), imported, source_campaign, content.package_hash, source_rules))
+		assert_equal([rejected_import.state, rejected_import.error_code, resumed_setup.view().party_members.size()], [SessionStep.State.FAILED, &"vault_character_ineligible", 1], "missing source definitions or foreign custom rules cannot enter or alter the assembled party")
+	var import_step := resumed_setup.submit_intent(PartyIntents.import_vault_character(imported.id, "a".repeat(64), imported, content.campaign_id, content.package_hash, content.transfer_catalog))
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
 	assert_equal(resumed_setup._context.state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
@@ -283,7 +287,7 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	conflicting_import.id = "vault.character.conflicting"
 	conflicting_import.name = "Conflicting Hero"
 	var party_before_conflict := resumed_setup.view().party_members.size()
-	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(conflicting_import.id, "d".repeat(64), conflicting_import, "fixture-source", "b".repeat(64))).error_code, &"duplicate_item_ownership", "vault import rejects a second character revision that claims an exact item instance already owned by the party")
+	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(conflicting_import.id, "d".repeat(64), conflicting_import, content.campaign_id, content.package_hash, content.transfer_catalog)).error_code, &"duplicate_item_ownership", "vault import rejects a second character revision that claims an exact item instance already owned by the party")
 	assert_equal(resumed_setup.view().party_members.size(), party_before_conflict, "rejected duplicate item ownership leaves the assembled party unchanged")
 	var duplicate_save_data := resumed_setup.snapshot().game_state.to_data()
 	var duplicate_character_data: Dictionary = duplicate_save_data["party"]["characters"][1].duplicate(true)
@@ -589,7 +593,7 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
-	assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
+	assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
 	var begin_step := session.submit_intent(PartyIntents.begin_adventure())
 	assert_equal([begin_step.state, begin_step.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Start Game application hook runs."], "fixture party commits before the Start Game hook")
 	var begin_boundary := save_round_trip(session.snapshot())
