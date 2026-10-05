@@ -38,6 +38,7 @@ try {
     }
     [IO.Compression.ZipFile]::ExtractToDirectory($support, $OutputRoot)
 } finally { $archive.Dispose() }
+[IO.File]::WriteAllText((Join-Path $OutputRoot '.gdignore'), '', [Text.UTF8Encoding]::new($false))
 Push-Location $sourceRoot
 try {
     rustup target add $Target
