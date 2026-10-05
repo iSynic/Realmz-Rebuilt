@@ -63,7 +63,8 @@ The graphics-signature comparison uses Adobe's [Photoshop file-format specificat
 ## Release verification
 
 - `tools/scenario-importer-inputs.json` pins the GPL-3.0-or-later converter source and separately licensed stock support. The importer workflow builds native Windows, Linux, and both macOS architectures, then assembles and checks universal macOS. Runtime exports require versioned importer archive URLs and SHA-256 repository variables; missing or invalid inputs stop the export.
-- The Beta 12 local aggregate passed all 5,386 assertions across 36 suites, package alignment, provenance, architecture, maintainability, and export contracts. The owner-approved test-source ceiling is 11,402 substantive lines; other limits remain unchanged. The clean pinned Windows converter independently converted Dead of Night, whose resulting package passed installation and session initialization.
+- The Beta 15 local aggregate passed all 5,622 assertions across 38 suites, package alignment, provenance, architecture, maintainability, and export contracts. The test-source ceiling remains 11,402 substantive lines. The published clean Windows converter imported Hax through the production import task, reproduced its accepted package hash, and exposed two custom races and two custom castes in session setup without using player storage.
+- The published converter source is `9281bf692dadf24863808d2474984c3e4357db33`, built with pinned Rust 1.98.1. Windows, Linux, both macOS architectures and universal assembly passed the native importer workflow. The three versioned platform archive URLs and hashes are promoted together before the runtime candidate's Verify/Export gates; a successful compiler build is separate from runtime or visible UI acceptance.
 
 Providence's native selection R4 and whole-editor R2 flow have owner acceptance.
 Retain that producer evidence separately from Rebuilt packaged import acceptance.
@@ -71,6 +72,5 @@ Retain that producer evidence separately from Rebuilt packaged import acceptance
 Remaining acceptance work:
 
 - Run import from final packaged locations without developer tools on all three platforms, including the actual native dialog, cancellation, revision selection, and starting a working scenario. Existing app startup smoke checks do not exercise conversion.
-- Publish and verify the CP-01 converter/support candidate on all supported platforms, then update the actual release pins. The local clean Windows caller receipt does not establish compatibility with the former published converter or complete clean-CI release acceptance.
 
 The beta's automated results do not establish complete packaged UI acceptance or full campaign compatibility.
