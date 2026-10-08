@@ -66,7 +66,7 @@ $binaryOutput = Join-Path $output $binaryName
 if ($Target -eq "macos-universal") {
     & $LipoPath -create $builds[0].Binary $builds[1].Binary -output $binaryOutput
     if ($LASTEXITCODE -ne 0) { throw "Could not combine x64 and arm64 music helpers." }
-    & $LipoPath -verify_arch x86_64 arm64 $binaryOutput
+    & $LipoPath $binaryOutput -verify_arch x86_64 arm64
     if ($LASTEXITCODE -ne 0) { throw "Combined music helper is missing a required macOS architecture." }
 } else {
     Copy-Item -LiteralPath $builds[0].Binary -Destination $binaryOutput
