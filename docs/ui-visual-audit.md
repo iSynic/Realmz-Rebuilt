@@ -15,6 +15,8 @@ Castle at `491816ad60037394f92c428e99c004494d3c28b3` is authoritative for workfl
 
 Every screen must have one dominant workspace, stable primary actions, explicit loading/empty/error/unavailable states, and no overlap with a prior workspace. Original bitmap art is used only when its resource identity and license/provenance are established. PICT, CICN, portrait, tactical icon, item icon, spell target art, and integrated `snd ` media remain distinct typed resources.
 
+Scaling verification uses `tools/capture_classic_ui_gallery.gd --audit-scaling` with an isolated fixture. Unlike the representative-surface sizing matrix, this pass exercises every prepared canonical gallery state and its substates across ten interface, text, and display settings. Populated Treasure uses 35 items and six recipients. Each state is resized in place; PNGs and per-control bounds results are written to `artifacts/ui-scaling-audit/gallery/`. Bounds checks permit intentional record scrolling and duplicate scrolled exits only while another route exit is visibly available. Screenshot review must still check text clipping, pane overlap, and task retention. Startup, transient native windows, and ordinary input journeys require their separate probes; capture counts do not replace the 59-surface denominator or prove live gameplay.
+
 ## Shared visual-system findings
 
 | Concern | Baseline finding | Target |

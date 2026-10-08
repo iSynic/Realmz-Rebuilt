@@ -266,7 +266,8 @@ func _apply_text_scale() -> void:
 	_scale_label(_selection_label, 14, scale)
 	_scale_label(_reason_label, 15, scale)
 	for label: Label in _tile_labels:
-		_scale_caption(label)
+		if _standalone_workspaces: _scale_workspace_caption(label)
+		else: _scale_caption(label)
 	for symbol: Label in _tile_symbols:
 		_scale_label(symbol, 20, scale)
 
@@ -276,6 +277,9 @@ func _scale_label(label: Label, base_size: int, _scale: float) -> void:
 
 
 func _scale_caption(label: Label) -> void:
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	UiSizing.minimum_size(label.get_parent().get_parent() as Control, Vector2(100.0, 64.0))
 	UiSizing.font_size(label, &"font_size", 12)
 
 
@@ -429,12 +433,28 @@ func _workspace_center_style(radius: float) -> StyleBoxFlat:
 
 
 func _scale_workspace_caption(label: Label) -> void:
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	UiSizing.font_size(label, &"font_size", 13)
+	var tile := label.get_parent().get_parent() as Button
+	var profile := UiSizing.profile_for(self)
+	var scale := profile.ui_scale if profile != null else 1.0
+	UiSizing.minimum_size(tile, Vector2(100.0, 88.0))
+	var font := label.get_theme_font(&"font")
+	var requested := label.get_theme_font_size(&"font_size")
+	var available := 94.0 * scale
+	for word: String in label.text.split(" "):
+		while requested > roundi(13.0 * scale) and font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1.0, requested).x > available:
+			requested -= 1
+	label.add_theme_font_size_override(&"font_size", requested)
 
 
 func apply_ui_sizing(profile: UiLayoutProfile) -> void:
 	_interface_size = profile.ui_scale
 	_apply_mode_layout()
+	if not is_node_ready(): return
+	for label: Label in _tile_labels:
+		if _standalone_workspaces: _scale_workspace_caption(label)
 
 
 func _draw() -> void:

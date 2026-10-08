@@ -9,6 +9,7 @@ const APPLICATION_LIFECYCLE_SCRIPT := preload("res://src/app/platform/applicatio
 const FIXTURE_REQUEST_SCRIPT := preload("res://src/app/platform/runtime_testing_fixture_request.gd")
 const DISPLAY_COMPOSITOR_SCENE := preload("res://src/ui/shared/display_compositor.tscn")
 const SCENE_PREVIEW_REGISTRY_PATH := "res://addons/realmz_builder/scene_previews.json"
+const ScalingAudit := preload("res://tools/ui_scaling_audit.gd")
 const SIZING_MATRIX_SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(800, 600), Vector2i(1920, 1080), Vector2i(2560, 1392), Vector2i(2560, 1440), Vector2i(3440, 1440), Vector2i(3840, 2160)]
 const SIZING_MATRIX_SURFACES: Array[String] = ["application-shell", "character-sheet", "character-files", "allies", "bestiary", "inventory", "spells", "services", "maps-journal", "system", "campaign-selection", "party-assembly", "party-import-from-save", "character-creation", "shop", "temple", "bank", "treasure", "encounter", "level-up", "pick-lock", "lifecycle-prompts", "scrolling-text", "combat-command-deck", "roster-spellbook"]
 var _application: RealmzApplication
@@ -24,6 +25,11 @@ var _surface_filters: Array[String] = []
 var _sizing_matrix_surfaces: Dictionary = {}
 var _matrix_metadata: FileAccess
 var _raw_scene_metadata: FileAccess
+var _audit_scaling := false
+var _audit_filter := ""
+var _audit_states: Dictionary = {}
+var _audit_failures := 0
+var _audit_metadata: FileAccess
 
 
 func _initialize() -> void:
@@ -40,6 +46,12 @@ func _read_launch_arguments() -> bool:
 	var index := 0
 	while index < arguments.size():
 		match arguments[index]:
+			"--audit-scaling":
+				_audit_scaling = true
+			"--audit-state":
+				if index + 1 >= arguments.size(): return false
+				index += 1
+				_audit_filter = arguments[index]
 			"--fixture-config":
 				if not fixture_config_path.is_empty() or index + 1 >= arguments.size():
 					printerr("FIXTURE_REQUEST_REJECTED: Supply one absolute --fixture-config path.")
@@ -89,6 +101,9 @@ func _read_launch_arguments() -> bool:
 	if not _surface_filters.is_empty() and not _sizing_matrix:
 		printerr("FIXTURE_REQUEST_REJECTED: --surface requires --sizing-matrix.")
 		return false
+	if (_audit_scaling and (_sizing_matrix or _raw_scenes)) or (not _audit_filter.is_empty() and not _audit_scaling):
+		printerr("FIXTURE_REQUEST_REJECTED: Scaling audit is a separate gallery mode; --audit-state requires --audit-scaling.")
+		return false
 	if _stress_roster and not _surface_filters.is_empty() and not _surface_filters.has("application-shell"):
 		printerr("FIXTURE_REQUEST_REJECTED: --stress-roster can only be paired with --surface application-shell.")
 		return false
@@ -107,6 +122,13 @@ func _read_launch_arguments() -> bool:
 
 func _capture_gallery() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_ROOT))
+	if _audit_scaling:
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(ScalingAudit.OUTPUT_ROOT))
+		var ignore_file := FileAccess.open(ScalingAudit.OUTPUT_ROOT.path_join(".gdignore"), FileAccess.WRITE)
+		assert(ignore_file != null, "Unable to exclude scaling captures from Godot imports.")
+		ignore_file.close()
+		_audit_metadata = FileAccess.open(ScalingAudit.OUTPUT_ROOT.path_join("results.jsonl"), FileAccess.WRITE)
+		assert(_audit_metadata != null, "Unable to create scaling audit metadata.")
 	if _sizing_matrix:
 		_matrix_metadata = FileAccess.open(ProjectSettings.globalize_path("%s/sizing-matrix.jsonl" % OUTPUT_ROOT), FileAccess.WRITE)
 		assert(_matrix_metadata != null, "Unable to create sizing-matrix metadata.")
@@ -408,11 +430,11 @@ func _capture_gallery() -> void:
 		if interaction_kind in [InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]:
 			await _resize(Vector2i(800, 600)); _interaction.present(interaction_request, "", gallery_view, gallery_media); await _settle(); await _capture("classic-interaction-%s-800x600" % String(interaction_kind).replace("_", "-")); await _resize(Vector2i(1280, 720))
 	await _resize(Vector2i(800, 600))
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"oversized" if _audit_scaling else &"nominal"), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("classic-treasure-distribution-800x600")
 	await _resize(Vector2i(1280, 720))
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"oversized" if _audit_scaling else &"nominal"), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("wide-treasure-distribution-1280x720"); _interaction.set_block_signals(true); (_interaction.find_child("TreasureDone", true, false) as Button).pressed.emit(); _interaction.set_block_signals(false); var treasure_completion := InteractionRequest.from_payload("gallery.treasure.completion", InteractionRequest.TREASURE_DISTRIBUTION, {"mode": "completion-confirmation", "summary": "One item remains unclaimed. Leave it behind?"}); _interaction.present(treasure_completion, "", gallery_view, gallery_media); await _settle(); await _capture("wide-treasure-completion-modal-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-treasure-completion-modal-800x600"); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified"), "", gallery_view, gallery_media)
@@ -589,7 +611,11 @@ func _capture_gallery() -> void:
 		_matrix_metadata.close()
 	if _raw_scenes:
 		_raw_scene_metadata.close()
-	quit(0)
+	if _audit_scaling:
+		_audit_metadata.close()
+		assert(not _audit_states.is_empty(), "Scaling audit did not match any prepared gallery state.")
+		print("SCALING AUDIT: %d states, %d samples, %d samples with unreachable controls" % [_audit_states.size(), _audit_states.size() * ScalingAudit.SETTINGS.size(), _audit_failures])
+	quit(1 if _audit_failures else 0)
 
 
 func _close_prepared_fixture_adventure() -> void:
@@ -734,6 +760,12 @@ func _settle() -> void:
 
 
 func _capture(label: String) -> void:
+	if _audit_scaling:
+		var state := ScalingAudit.state_key(label)
+		if not state.is_empty() and (_audit_filter.is_empty() or Array(_audit_filter.split(",", false)).any(func(filter: String) -> bool: return state.contains(filter))) and not _audit_states.has(state):
+			_audit_states[state] = true
+			await _capture_scaling_audit(state)
+		return
 	if _sizing_matrix:
 		var surface_id := _surface_id_for_capture(label)
 		if surface_id.is_empty() or (not _surface_filters.is_empty() and not _surface_filters.has(surface_id)) or _sizing_matrix_surfaces.has(surface_id):
@@ -744,6 +776,29 @@ func _capture(label: String) -> void:
 	if not _surface_filters.is_empty() and not _surface_filters.has(_surface_id_for_capture(label)):
 		return
 	await _save_capture(label, "")
+
+
+func _capture_scaling_audit(state: String) -> void:
+	var original_size := DisplayServer.window_get_size()
+	var visibility: Array[bool] = [_application._map_presenter.visible, _application._battlefield_presenter.visible, (_application.get("_dungeon_presenter") as Control).visible]
+	for setting: Array in ScalingAudit.SETTINGS:
+		var dimensions: Vector2i = setting[0]
+		await _resize(dimensions)
+		await _apply_sizing_settings(setting[1], setting[3], PresentationSettings.TYPOGRAPHY_CLASSIC, setting[2])
+		await _restore_capture_visibility(visibility)
+		var failures := ScalingAudit.inspect(_application)
+		var profile := _shell.get("_profile") as UiLayoutProfile
+		var label := "%s-%dx%d-%s-text%d-%s" % [state, dimensions.x, dimensions.y, setting[1], int(setting[2] * 100), setting[3]]
+		var image := root.get_texture().get_image()
+		assert(image != null and not image.is_empty(), "Scaling audit requires a graphical driver.")
+		assert(image.save_png(ScalingAudit.OUTPUT_ROOT.path_join(label + ".png")) == OK, "Scaling audit capture failed.")
+		_audit_metadata.store_line(JSON.stringify({"state": state, "capture": label, "actualWindow": [root.size.x, root.size.y], "profile": profile.id, "effectiveScale": profile.ui_scale, "fontScale": profile.font_scale, "failures": failures}))
+		_audit_metadata.flush()
+		if not failures.is_empty(): _audit_failures += 1
+		print("SCALING %s: %s (%d bounds failures)" % ["PASS" if failures.is_empty() else "FAIL", label, failures.size()])
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _resize(original_size)
+	await _restore_capture_visibility(visibility)
 
 
 func _surface_id_for_capture(label: String) -> String:
