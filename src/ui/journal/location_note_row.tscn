@@ -6,3 +6,4 @@ size_flags_horizontal = 3
 toggle_mode = true
 alignment = 1
 text = "Map name • 0,0\nLocation note"
+autowrap_mode = 2

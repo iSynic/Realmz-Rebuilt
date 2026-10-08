@@ -54,7 +54,10 @@ func _process(_delta: float) -> void:
 	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
 	var viewport := get_viewport()
 	if viewport != null:
-		_selection_cursor_label.position = viewport.get_mouse_position() + Vector2(14.0, 10.0)
+		var bounds := viewport.get_visible_rect()
+		var pointer := viewport.get_mouse_position()
+		_selection_cursor_label.visible = bounds.has_point(pointer)
+		_selection_cursor_label.position = (pointer + Vector2(14.0, 10.0)).clamp(bounds.position, (bounds.end - _selection_cursor_label.size).max(bounds.position))
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:

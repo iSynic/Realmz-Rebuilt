@@ -25,6 +25,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.0823529, 0.0823529, 0.0705882, 1)
 theme_override_font_sizes/font_size = 17
 text = "Character's items"
+autowrap_mode = 2
 
 [node name="Load" type="Label" parent="Content/Header"]
 layout_mode = 2

@@ -24,4 +24,4 @@ func status_label() -> Label:
 
 
 func item_record() -> InventorySelectedItemRecord:
-	return get_node("Content/TradeItemInspector/InventorySelectedItemRecord") as InventorySelectedItemRecord
+	return get_node("Content/TradeItemInspector/RecordScroll/InventorySelectedItemRecord") as InventorySelectedItemRecord

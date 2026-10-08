@@ -99,3 +99,13 @@ func _apply_button(button: Button) -> void:
 		base_size.y = minf(base_size.y, COMPACT_COMMAND_HEIGHT)
 	UiSizing.minimum_size(button, base_size)
 	UiSizing.font_size(button, &"font_size", roundi(COMPACT_COMMAND_FONT_SIZE if _compact else COMMAND_FONT_SIZE))
+	var profile := UiSizing.profile_for(button)
+	var wrap := _compact and profile != null and profile.font_scale > profile.ui_scale
+	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
+	if wrap:
+		var font := button.get_theme_font(&"font")
+		var width := 0.0
+		for word: String in button.text.split(" "):
+			width = maxf(width, font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, button.get_theme_font_size(&"font_size")).x)
+		base_size.x = maxf(base_size.x, ceilf((width + button.get_theme_stylebox(&"normal").get_minimum_size().x) / profile.ui_scale))
+		UiSizing.minimum_size(button, base_size)

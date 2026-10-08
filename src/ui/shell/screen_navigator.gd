@@ -238,7 +238,7 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, 
 
 
 static func spell_screen_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
-	var desired_width := 420.0 * profile.ui_scale
+	var desired_width := 420.0 * maxf(profile.ui_scale, profile.font_scale)
 	var minimum_stage_width := (300.0 if profile.id == UiLayoutProfile.COMPACT else 480.0) * profile.ui_scale
 	var workspace_width := minf(desired_width, maxf(profile.party_width, viewport_size.x - minimum_stage_width))
 	return Rect2(origin + Vector2(viewport_size.x - workspace_width, profile.menu_height), Vector2(workspace_width, maxf(220.0, viewport_size.y - profile.menu_height)))

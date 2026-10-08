@@ -35,10 +35,12 @@ func set_workspace_rect(workspace_rect: Rect2) -> void:
 	var inset := Vector2.ZERO if route_id == &"spells" else Vector2(8.0, 8.0)
 	position = workspace_rect.position + inset
 	size = workspace_rect.size - inset * 2.0
-	_compact_route_exit = workspace_rect.size.x < 900.0 and route_id in [&"inventory", &"services"]
-	_compact_spell_route = workspace_rect.size.x < 320.0 and route_id == &"spells"
+	var profile := UiSizing.profile_for(self)
+	var logical_width := workspace_rect.size.x / (profile.ui_scale if profile != null else 1.0)
+	_compact_route_exit = (logical_width < 900.0 or (profile != null and profile.id == UiLayoutProfile.COMPACT)) and route_id in [&"inventory", &"services"]
+	_compact_spell_route = logical_width < 320.0 and route_id == &"spells"
 	if _header != null:
-		_header.vertical = workspace_rect.size.x < 900.0 and not _compact_route_exit
+		_header.vertical = logical_width < 900.0 and not _compact_route_exit
 	_configure_navigation()
 	_update_back_visibility()
 	apply_route_chrome()

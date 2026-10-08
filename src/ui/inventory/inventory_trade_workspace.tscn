@@ -31,6 +31,8 @@ theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
 theme_override_font_sizes/font_size = 12
 text = "Drag an item from one pack to the other"
 horizontal_alignment = 2
+autowrap_mode = 2
+size_flags_horizontal = 3
 
 [node name="InventoryTradeLedgers" type="BoxContainer" parent="Content"]
 layout_mode = 2
@@ -63,5 +65,11 @@ size_flags_vertical = 3
 size_flags_stretch_ratio = 1.0
 theme_type_variation = &"ClassicInset"
 
-[node name="InventorySelectedItemRecord" parent="Content/TradeItemInspector" instance=ExtResource("4_record")]
+[node name="RecordScroll" type="ScrollContainer" parent="Content/TradeItemInspector"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="InventorySelectedItemRecord" parent="Content/TradeItemInspector/RecordScroll" instance=ExtResource("4_record")]
 layout_mode = 2

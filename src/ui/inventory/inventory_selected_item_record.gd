@@ -5,10 +5,18 @@ extends BoxContainer
 @export var fact_row_scene: PackedScene
 @export var text_row_scene: PackedScene
 
+var _compact: bool = false
+
 
 func set_compact(compact: bool) -> void:
+	_compact = compact
 	vertical = false
-	UiSizing.minimum_size(get_node("Narrative") as VBoxContainer, Vector2(350.0, 0.0))
+	UiSizing.minimum_size(narrative(), Vector2(300.0 if compact else 350.0, 0.0))
+	apply_ui_sizing(UiSizing.profile_for(self))
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	fact_rows().columns = 1 if _compact and profile != null and profile.font_scale > profile.ui_scale else 2
 
 
 func empty_label() -> Label:

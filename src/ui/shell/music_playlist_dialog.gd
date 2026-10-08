@@ -238,6 +238,10 @@ func _done() -> void:
 		close()
 
 
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	_apply_layout.call_deferred()
+
+
 func _apply_layout() -> void:
 	if not is_node_ready():
 		return

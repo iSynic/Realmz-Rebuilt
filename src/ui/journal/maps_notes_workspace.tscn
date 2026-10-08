@@ -124,10 +124,12 @@ layout_mode = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
 text = "Map • Land • 0,0"
+autowrap_mode = 2
 [node name="Darkness" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview/Facts"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
 text = "No saved darkness mask"
+autowrap_mode = 2
 [node name="Empty" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview"]
 visible = false
 layout_mode = 2
@@ -158,6 +160,7 @@ size_flags_vertical = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
 text = "Map • 0,0"
+autowrap_mode = 2
 [node name="CurrentLocationNoteText" type="TextEdit" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
@@ -167,6 +170,7 @@ placeholder_text = "Write a location note…"
 [node name="LocationNoteByteCount" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
 layout_mode = 2
 text = "0 / 255 encoded bytes"
+autowrap_mode = 2
 [node name="Actions" type="HBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
 layout_mode = 2
 [node name="SaveLocationNote" type="Button" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor/Actions"]

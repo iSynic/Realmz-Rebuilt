@@ -366,7 +366,7 @@ func _bind_item_record(content: InventoryItemInspector, character: CharacterView
 
 
 func _bind_trade_item_record(record: InventorySelectedItemRecord, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> void:
-	record.set_compact(false)
+	record.set_compact(_layout_profile == UiLayoutProfile.COMPACT)
 	if item == null:
 		record.show_empty("Drag an item between packs, or select one to inspect it.")
 		return

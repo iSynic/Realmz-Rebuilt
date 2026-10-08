@@ -19,8 +19,8 @@ static func party_roster_z_index(combat_spellbook_active: bool) -> int:
 	return 81 if combat_spellbook_active else 14
 
 
-static func combat_spellbook_roster_width(viewport_width: float, party_width: float, ui_scale: float, combat_spellbook_active: bool) -> float:
-	return maxf(party_width, minf(352.0 * ui_scale, viewport_width - 320.0 * ui_scale)) if combat_spellbook_active else party_width
+static func combat_spellbook_roster_width(viewport_width: float, party_width: float, ui_scale: float, combat_spellbook_active: bool, text_scale: float = 1.0) -> float:
+	return maxf(party_width, minf(352.0 * ui_scale * maxf(1.0, text_scale), viewport_width - 320.0 * ui_scale)) if combat_spellbook_active else party_width
 
 
 static func combat_spellbook_stage_width(stage_width: float, viewport_width: float, roster_width: float) -> float:
