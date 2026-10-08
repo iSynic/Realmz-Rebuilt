@@ -11,7 +11,7 @@ var _slate_texture: Texture2D
 
 func _init() -> void:
 	name = "PlayerMapCartographicStage"
-	UiSizing.minimum_size(self, Vector2(384, 320))
+	UiSizing.minimum_size(self, Vector2(384, 0))
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	UiSizing.constant(self, &"margin_left", 6)

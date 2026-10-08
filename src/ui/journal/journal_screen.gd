@@ -12,6 +12,12 @@ func _enter_tree() -> void:
 	back.owner = self
 	UiSizing.minimum_size(back, Vector2(142.0, 34.0))
 	workspace().get_node("MapsNotesSummary").visible = false
+	workspace().tabs().tab_changed.connect(_update_section_scrolling)
+	_update_section_scrolling(workspace().tabs().current_tab)
+
+
+func _update_section_scrolling(index: int) -> void:
+	scroll_control().vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED if index == 1 else ScrollContainer.SCROLL_MODE_AUTO
 
 
 func workspace() -> MapsNotesWorkspace:
@@ -26,10 +32,12 @@ func prepare_for_render(compact: bool = false) -> void:
 	workspace().visible = true
 	workspace().prepare(compact)
 	_alternate_content().visible = false
+	_update_section_scrolling(workspace().tabs().current_tab)
 
 
 func prepare_alternate_layout() -> VBoxContainer:
 	workspace().visible = false
+	scroll_control().vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	var alternate_content := _alternate_content()
 	_clear_children(alternate_content)
 	alternate_content.visible = true

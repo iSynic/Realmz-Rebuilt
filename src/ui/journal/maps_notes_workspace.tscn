@@ -213,7 +213,13 @@ size_flags_vertical = 3
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Acquired Maps"
-[node name="AcquiredMapChooser" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content"]
+[node name="AcquiredMapScroll" type="ScrollContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+[node name="AcquiredMapChooser" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content/AcquiredMapScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
@@ -223,7 +229,7 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content/Empty"]
 layout_mode = 2
-text = "No player-map records\nThis campaign supplies no Maps/Notes entries."
+text = "No maps acquired\nMaps you acquire during the adventure appear here."
 autowrap_mode = 2
 [node name="PlayerMapDisplay" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace"]
 layout_mode = 2
@@ -260,6 +266,7 @@ size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
 theme_override_font_sizes/font_size = 19
 text = "Selected map"
+autowrap_mode = 2
 [node name="PlayerMapZoomToolbar" type="HBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapStageHeader/Header"]
 layout_mode = 2
 alignment = 2
@@ -290,26 +297,31 @@ script = ExtResource("8_presenter")
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-horizontal_scroll_mode = 0
-[node name="Center" type="CenterContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll"]
+follow_focus = true
+[node name="MapContent" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+[node name="Center" type="CenterContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/MapContent"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-[node name="PlayerMapParchmentMat" type="PanelContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/Center"]
+[node name="PlayerMapParchmentMat" type="PanelContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/MapContent/Center"]
 layout_mode = 2
 script = ExtResource("7_parchment")
-[node name="AcquiredPlayerMap" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/Center/PlayerMapParchmentMat"]
+[node name="AcquiredPlayerMap" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/MapContent/Center/PlayerMapParchmentMat"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 script = ExtResource("8_presenter")
 
-[node name="PlayerMapNote" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody"]
+[node name="PlayerMapNote" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/PlayerMapCartographicStage/PlayerMapStageBody/PlayerMapScroll/MapContent"]
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
 theme_override_font_sizes/font_size = 14
 text = "Map note"
+horizontal_alignment = 1
 autowrap_mode = 2
 
 [node name="Journal" type="VBoxContainer" parent="MapsNotesTabs"]

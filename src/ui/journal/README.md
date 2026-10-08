@@ -29,9 +29,11 @@ The map presenter receives an already detached `PlayerMapView` and media catalog
 
 - Only the current-location note is editable.
 - Authored journal text and acquired-map content retain source identity and order.
+- The browser shows acquired maps only, without placeholders for unacquired slots. This presentation choice preserves the complete package records and saved acquisition identities.
 - PICT, TEXT, `styl`, and application `ppat` resources resolve through the shared exact-key media chain.
 - Immediate maps and Maps/Notes use the same renderer; scrolling acquired maps and opcode 62 use the same scrolling-text surface.
 - Automatic scroll position, drag offset, selected tab, filter, and zoom are presentation-only.
+- Map zoom controls both the native canvas footprint and its parchment border independently of interface scale. Map names have their own scroller; the map and its description, centered immediately beneath the parchment background, scroll together only when they exceed the right pane.
 
 ## Performance
 

@@ -124,7 +124,7 @@ func location_editor_unavailable() -> PanelContainer:
 
 
 func player_map_rows() -> VBoxContainer:
-	return get_node("MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content/AcquiredMapChooser") as VBoxContainer
+	return get_node("MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content/AcquiredMapScroll/AcquiredMapChooser") as VBoxContainer
 
 
 func player_map_browser_empty() -> PanelContainer:

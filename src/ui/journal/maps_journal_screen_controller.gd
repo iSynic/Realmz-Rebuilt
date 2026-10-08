@@ -190,7 +190,7 @@ func _bind_location_note_editor(workspace: MapsNotesWorkspace, view: GameView) -
 
 
 func _bind_maps(workspace: MapsNotesWorkspace, view: GameView, media: ClassicMediaCatalog) -> void:
-	var no_records := view.player_map_menu_entries.is_empty()
+	var no_records := view.acquired_player_maps.is_empty()
 	workspace.player_map_browser_empty().visible = no_records
 	if no_records:
 		workspace.player_map_empty().visible = true
@@ -203,15 +203,14 @@ func _bind_maps(workspace: MapsNotesWorkspace, view: GameView, media: ClassicMed
 	if selected == null and not view.acquired_player_maps.is_empty():
 		selected = view.acquired_player_maps[0]
 		_selected_player_map_id = selected.id
-	for player_map: PlayerMapView in view.player_map_menu_entries:
+	# Deliberate presentation correction: hide Castle's unacquired menu slots.
+	for player_map: PlayerMapView in view.acquired_player_maps:
 		var button := workspace.player_map_row_scene.instantiate() as Button
-		button.text = player_map.name if player_map.acquired else player_map.unavailable_name
-		button.disabled = not player_map.acquired
-		button.tooltip_text = "Map not acquired." if button.disabled else player_map.name
+		button.text = player_map.name
+		button.tooltip_text = player_map.name
 		button.button_pressed = selected != null and player_map.id == selected.id
 		button.set_meta("player_map_id", player_map.id)
-		if not button.disabled:
-			button.pressed.connect(_select_player_map.bind(workspace, view, media, player_map.id))
+		button.pressed.connect(_select_player_map.bind(workspace, view, media, player_map.id))
 		workspace.player_map_rows().add_child(button)
 	_bind_selected_player_map(workspace, selected, media)
 
@@ -240,10 +239,10 @@ func _bind_selected_player_map(workspace: MapsNotesWorkspace, selected: PlayerMa
 	var body := stage.get_node("PlayerMapStageBody") as VBoxContainer
 	_bind_label(body.get_node("PlayerMapStageHeader/Header/PlayerMapTitle") as Label, selected.name, GOLD, 19)
 	var toolbar := body.get_node("PlayerMapStageHeader/Header/PlayerMapZoomToolbar") as HBoxContainer
-	var note := body.get_node("PlayerMapNote") as Label
+	var note := body.get_node("PlayerMapScroll/MapContent/PlayerMapNote") as Label
 	var scrolling := body.get_node("AcquiredScrollingPlayerMap") as PlayerMapPresenter
 	var scroll := body.get_node("PlayerMapScroll") as ScrollContainer
-	var parchment := scroll.get_node("Center/PlayerMapParchmentMat") as PlayerMapParchmentMat
+	var parchment := scroll.get_node("MapContent/Center/PlayerMapParchmentMat") as PlayerMapParchmentMat
 	var presenter := parchment.get_node("AcquiredPlayerMap") as PlayerMapPresenter
 	var scrolling_mode := selected.mode == PlayerMapDefinition.SCROLLING_TEXT
 	toolbar.visible = not scrolling_mode

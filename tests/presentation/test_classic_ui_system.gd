@@ -28,6 +28,7 @@ func run() -> void:
 	_test_save_preview_workspace()
 	_test_location_note_workspace()
 	_test_player_map_workspace()
+	await _test_player_map_scrolling()
 	_test_battlefield_presenter()
 	_test_combat_targeting_state()
 	_test_combat_playback_controller()

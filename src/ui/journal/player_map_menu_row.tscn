@@ -5,3 +5,4 @@ custom_minimum_size = Vector2(0, 38)
 size_flags_horizontal = 3
 toggle_mode = true
 text = "Acquired map"
+autowrap_mode = 2

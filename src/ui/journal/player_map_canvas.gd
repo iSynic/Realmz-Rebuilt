@@ -33,6 +33,11 @@ func zoom() -> float:
 	return _zoom
 
 
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	# Map zoom owns both the drawn pixels and their layout footprint.
+	set_zoom(_zoom)
+
+
 func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * _zoom)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(MAP_SIZE, MAP_SIZE)), Color.BLACK, true)

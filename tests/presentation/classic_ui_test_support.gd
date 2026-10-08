@@ -65,8 +65,8 @@ func _test_player_map_workspace() -> void:
 	var map_snapshot := session.snapshot(); map_snapshot.game_state.world.exploration.acquire_map(definition.id); assert_equal(session.restore(loaded.content, map_snapshot).state, SessionStep.State.COMPLETED, "acquired player-map state enters presentation through the public restore boundary")
 	var view := session.view(); assert_equal([view.acquired_player_maps.size(), view.acquired_player_maps[0].id, view.acquired_player_maps[0].cells.size()], [1, definition.id, 100], "the detached player-map view derives its 320-pixel crop from authoritative topology"); assert_equal(view.player_map_menu_entries.size(), 4, "the detached menu retains every package player-map slot, not only acquired definitions")
 	var body := VBoxContainer.new(); (Engine.get_main_loop() as SceneTree).root.add_child(body); var controller := MapsJournalScreenController.new(); controller.present(body, view, media); assert_not_null(body.find_child("AcquiredMapChooser", true, false), "the Journal route exposes a presentation-owned acquired-map chooser")
-	var map_buttons: Array[Node] = body.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false); assert_equal(map_buttons.size(), 4, "Maps/Notes retains acquired and unavailable package menu slots"); assert_true(map_buttons.any(func(button: Node) -> bool: return (button as Button).disabled and (button as Button).text == "Dungeon map unavailable"), "unacquired slots use their separate Classic unavailable name and cannot open"); var map_stage := body.find_child("PlayerMapCartographicStage", true, false); var map_header := body.find_child("PlayerMapStageHeader", true, false) as PanelContainer; var map_note := body.find_child("PlayerMapNote", true, false); var map_scroll := body.find_child("PlayerMapScroll", true, false); var parchment := body.find_child("PlayerMapParchmentMat", true, false) as PanelContainer; var parchment_style := parchment.get_theme_stylebox("panel") as StyleBoxTexture if parchment != null else null; assert_true(body.find_child("PlayerMapCanvas", true, false) != null and map_stage != null and map_header != null and map_header.theme_type_variation == &"ClassicInset" and map_note != null and map_note.get_index() > map_scroll.get_index() and body.find_child("PlayerMapZoomIn", true, false) != null and map_stage.find_child("PlayerMapTitle", true, false) != null and map_stage.find_child("PlayerMapZoomToolbar", true, false) != null and parchment_style != null and parchment_style.axis_stretch_horizontal == StyleBoxTexture.AXIS_STRETCH_MODE_TILE and parchment_style.axis_stretch_vertical == StyleBoxTexture.AXIS_STRETCH_MODE_TILE and PlayerMapParchmentMat.border_size(1.0) == 40.0, "the selected crop fills one tiled-slate stage with an inset corner header, readable post-map description, and exact 12.5-percent tiled parchment mat")
-	var note := body.find_child("PlayerMapNote", true, false) as Label; assert_not_null(note, "non-scrolling maps retain their authored note"); if note != null: assert_contains(note.text, "deterministic map", "the displayed note comes from immutable player-map content")
+	var map_buttons: Array[Node] = body.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false); assert_equal(map_buttons.size(), 1, "Maps/Notes shows only acquired maps without unavailable placeholders"); assert_true(not (map_buttons[0] as Button).disabled and map_buttons[0].get_meta("player_map_id") == definition.id, "filtering retains the acquired map's stable identity"); var map_stage := body.find_child("PlayerMapCartographicStage", true, false); var map_header := body.find_child("PlayerMapStageHeader", true, false) as PanelContainer; var map_note := body.find_child("PlayerMapNote", true, false); var map_scroll := body.find_child("PlayerMapScroll", true, false); var parchment := body.find_child("PlayerMapParchmentMat", true, false) as PanelContainer; var parchment_style := parchment.get_theme_stylebox("panel") as StyleBoxTexture if parchment != null else null; assert_true(body.find_child("PlayerMapCanvas", true, false) != null and map_stage != null and map_header != null and map_header.theme_type_variation == &"ClassicInset" and map_note != null and map_scroll.is_ancestor_of(map_note) and map_note.get_index() > map_note.get_parent().get_node("Center").get_index() and body.find_child("PlayerMapZoomIn", true, false) != null and map_stage.find_child("PlayerMapTitle", true, false) != null and map_stage.find_child("PlayerMapZoomToolbar", true, false) != null and parchment_style != null and parchment_style.axis_stretch_horizontal == StyleBoxTexture.AXIS_STRETCH_MODE_TILE and parchment_style.axis_stretch_vertical == StyleBoxTexture.AXIS_STRETCH_MODE_TILE and PlayerMapParchmentMat.border_size(1.0) == 40.0, "the selected crop fills one tiled-slate stage with an inset corner header, readable post-map description, and exact 12.5-percent tiled parchment mat")
+	var note := body.find_child("PlayerMapNote", true, false) as Label; assert_not_null(note, "non-scrolling maps retain their authored note"); if note != null: assert_contains(note.text, "deterministic map", "the displayed note comes from immutable player-map content"); assert_equal(note.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER, "map descriptions are centered beneath the parchment background")
 	var immediate := instantiate_ui_scene("res://src/ui/journal/player_map_interaction.tscn") as PlayerMapInteraction; immediate.configure(view, media); var payloads: Array[Dictionary] = []; immediate.response_body_submitted.connect(func(response_body: InteractionResponse.Body) -> void: payloads.append(response_body.to_data())); immediate.build(InteractionRequest.from_payload("player-map.immediate", InteractionRequest.ACKNOWLEDGE, {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})); assert_not_null(immediate.find_child("ImmediatePlayerMap", true, false), "negative opcode 29 uses the same typed presenter as Journal browsing"); var continue_button := immediate.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Continue")[0] as Button; continue_button.pressed.emit(); assert_equal(payloads, [{}], "the immediate player-map stage emits only the empty acknowledgement accepted by the VM")
 	map_snapshot = session.snapshot()
 	for player_map_definition: PlayerMapDefinition in loaded.content.world.player_maps(): map_snapshot.game_state.world.exploration.acquire_map(player_map_definition.id)
@@ -79,4 +79,59 @@ func _test_player_map_workspace() -> void:
 	var scrolling_view := views_by_mode[PlayerMapDefinition.SCROLLING_TEXT] as PlayerMapView; var scrolling_presenter := PlayerMapPresenter.new(); scrolling_presenter.present(scrolling_view, media); var style_bytes := PackedByteArray([0, 1, 0, 0, 0, 0, 0, 12, 0, 9, 0, 0, 1, 0, 0, 12, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc]); var style_runs := ClassicScrollingTextSurface.decode_style_runs(style_bytes, 5); var unsorted_style_bytes := PackedByteArray([0, 2, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0]); var sorted_style_runs := ClassicScrollingTextSurface.decode_style_runs(unsorted_style_bytes, 5); var styled_surface := instantiate_ui_scene("res://src/ui/journal/classic_scrolling_text_surface.tscn") as ClassicScrollingTextSurface; styled_surface.configure(media); styled_surface.present_text("Color", style_bytes); assert_not_null(scrolling_presenter.find_child("PlayerMapScrollingText", true, false), "scrolling maps use the shared Castle text stage"); assert_contains((scrolling_presenter.find_child("PlayerMapScrollingText", true, false) as RichTextLabel).text, "turns north", "the exact packaged TEXT resource decodes into the scrolling map stage")
 	assert_true(scrolling_presenter.find_child("ClassicScrollingTextBackground", true, false) != null and style_runs.size() == 1 and style_runs[0]["font"] == 0 and style_runs[0]["face"] == 1 and style_runs[0]["size"] == 12 and is_equal_approx((style_runs[0]["color"] as Color).r, 0x1234 / 65535.0) and sorted_style_runs.map(func(run: Dictionary) -> int: return int(run["start"])) == [0, 4] and styled_surface.text_label().get_parsed_text() == "Color" and styled_surface.text_label().tab_size == 1 and ClassicScrollingTextSurface.classic_font_role(1602) == &"ornament" and ClassicScrollingTextSurface.classic_font_role(21) == &"utility" and [ClassicScrollingTextSurface.classic_font_size(1601, 0), ClassicScrollingTextSurface.classic_font_size(4, 9), ClassicScrollingTextSurface.classic_font_size(21, 12)] == [10, 11, 9] and ClassicScrollingTextSurface.automatic_scroll_distance(0.15) == 3.0 and [ClassicScrollingTextSurface.drag_scroll_delta(20.0, 19.0), ClassicScrollingTextSurface.drag_scroll_delta(20.0, 21.0)] == [25.0, -25.0], "scrolling maps share opcode 62's tiled background, Castle-sorted style decoding, font and point-size rules, one-space tabs, automatic cadence, and signed drag steps")
 	assert_true(scrolling_presenter.find_child("PlayerMapNote", true, false) == null, "Castle's scrolling map path skips the ordinary map note"); styled_surface.free()
-	scrolling_presenter.free(); picture_canvas.free(); immediate.free(); body.free()
+	var scaled_mat := PlayerMapParchmentMat.new()
+	scaled_mat.add_child(picture_canvas)
+	for map_zoom: float in [1.0, 2.0, 1.0]:
+		picture_canvas.set_zoom(map_zoom)
+		scaled_mat.set_map_zoom(map_zoom)
+		for interface_scale: float in [2.0, 3.0, 1.0]:
+			var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720) * interface_scale, "auto")
+			UiSizing.apply(scaled_mat, profile)
+			assert_equal(picture_canvas.custom_minimum_size, Vector2(320, 320) * map_zoom, "interface resizing preserves the map zoom's exact drawable canvas")
+			assert_equal(scaled_mat.get_theme_stylebox("panel").get_minimum_size(), Vector2(80, 80) * map_zoom, "the applied parchment border follows map zoom independently of interface scale")
+	scrolling_presenter.free(); scaled_mat.free(); immediate.free(); body.free()
+
+
+func _test_player_map_scrolling() -> void:
+	var loaded := load_test_package(FIXTURE_PATH)
+	if not loaded.is_ok(): return
+	var definition := loaded.content.world.player_map_by_classic_id(1)
+	var selected := PlayerMapView.new(definition)
+	var view := GameView.new(1, true, null)
+	view.acquired_player_maps = [selected]
+	view.player_map_menu_entries = [selected]
+	for index: int in range(32):
+		var entry := PlayerMapView.new(definition)
+		entry.id = "acquired-map-%d" % index
+		entry.name = "Acquired map %d" % index
+		view.player_map_menu_entries.append(entry)
+		view.acquired_player_maps.append(entry)
+	var viewport := SubViewport.new()
+	var tree := Engine.get_main_loop() as SceneTree
+	tree.root.add_child(viewport)
+	var screen := instantiate_ui_scene("res://src/ui/journal/journal_screen.tscn") as JournalScreen
+	viewport.add_child(screen)
+	var controller := MapsJournalScreenController.new()
+	controller.present(screen, view, ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new()))
+	for dimensions: Vector2i in [Vector2i(1280, 720), Vector2i(2560, 1440), Vector2i(3840, 2160), Vector2i(800, 600), Vector2i(1280, 720)]:
+		viewport.size = dimensions
+		var profile := UiLayoutProfile.for_viewport(dimensions, "auto")
+		screen.theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres"), PresentationSettings.new(), profile.ui_scale)
+		UiSizing.apply(screen, profile)
+		screen.set_workspace_rect(Rect2(Vector2.ZERO, dimensions))
+		for frame: int in range(4): await tree.process_frame
+		var chooser := screen.find_child("AcquiredMapScroll", true, false) as ScrollContainer
+		var map_scroll := screen.find_child("PlayerMapScroll", true, false) as ScrollContainer
+		var mat := screen.find_child("PlayerMapParchmentMat", true, false) as PlayerMapParchmentMat
+		var note := screen.find_child("PlayerMapNote", true, false) as Label
+		assert_true(chooser != null and chooser.get_v_scroll_bar().visible and not screen.scroll_control().get_v_scroll_bar().visible, "a long map list scrolls independently without creating a page scrollbar")
+		assert_equal(mat.size, Vector2(400, 400), "opening or resizing Maps retains native map pixels and a matching parchment mat")
+		assert_true(absf(note.global_position.y - mat.get_global_rect().end.y - 4.0 * profile.ui_scale) <= 1.0, "the description follows the map background immediately without expanded blank space")
+		assert_equal(map_scroll.get_v_scroll_bar().visible, map_scroll.get_child(0).get_combined_minimum_size().y > map_scroll.size.y + 1.0, "map scrolling appears only when its content exceeds the viewport")
+		(screen.find_child("PlayerMapZoomIn", true, false) as Button).pressed.emit()
+		(screen.find_child("PlayerMapZoomIn", true, false) as Button).pressed.emit()
+		for frame: int in range(4): await tree.process_frame
+		assert_equal(mat.size, Vector2(800, 800), "map zoom resizes the canvas and all four parchment borders together")
+		(screen.find_child("PlayerMapZoomFit", true, false) as Button).pressed.emit()
+		for frame: int in range(4): await tree.process_frame
+	viewport.free()
