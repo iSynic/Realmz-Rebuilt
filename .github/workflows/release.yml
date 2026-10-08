@@ -127,15 +127,22 @@ jobs:
       - name: Verify native music formats
         shell: pwsh
         run: |
-          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
-            if ($IsWindows) { choco install ffmpeg --yes --no-progress }
-            elseif ($IsMacOS) { brew install ffmpeg }
-            else { sudo apt-get update; sudo apt-get install -y ffmpeg }
+          if ($IsMacOS) {
+            brew install ffmpeg-full
             if ($LASTEXITCODE -ne 0) { throw 'Could not install the development-only audio fixture tool.' }
+            $ffmpegPrefix = brew --prefix ffmpeg-full
+            if ($LASTEXITCODE -ne 0) { throw 'Could not locate the full audio fixture tool.' }
+            $ffmpeg = Join-Path $ffmpegPrefix.Trim() 'bin/ffmpeg'
+          } else {
+            if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+              if ($IsWindows) { choco install ffmpeg --yes --no-progress }
+              else { sudo apt-get update; sudo apt-get install -y ffmpeg }
+              if ($LASTEXITCODE -ne 0) { throw 'Could not install the development-only audio fixture tool.' }
+            }
+            $ffmpeg = (Get-Command ffmpeg).Source
           }
           $binaryName = 'realmz-music-importer' + $(if ($IsWindows) { '.exe' } else { '' })
           $helper = Join-Path (Join-Path $env:RUNNER_TEMP 'music-importer-package') $binaryName
-          $ffmpeg = (Get-Command ffmpeg).Source
           $scratch = Join-Path (Get-Location) 'artifacts/music-importer/native-ci'
           python tools/music_importer/test_importer.py --helper $helper --ffmpeg $ffmpeg --scratch $scratch
           if ($LASTEXITCODE -ne 0) { throw 'Native music format verification failed.' }

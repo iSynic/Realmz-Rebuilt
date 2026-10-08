@@ -10,7 +10,7 @@ Continue leaves the current queue advancing. Off suspends it. Returning to a con
 
 `tools/music_importer/vcpkg.json` pins the complete dependency baseline. Build with CMake, Git, PowerShell 7, and a C++17 toolchain: Visual Studio 2022 C++ on Windows, GCC/Clang plus the usual vcpkg build prerequisites on Linux, or Xcode command-line tools on macOS.
 
-Windows verification and release jobs use the `windows-2022` runner image to retain the required Visual Studio 2022 toolchain.
+Windows verification and release jobs use the `windows-2022` runner image to retain the required Visual Studio 2022 toolchain. macOS format probes use Homebrew's keg-only `ffmpeg-full` executable for its Vorbis encoder; the reduced `ffmpeg` formula does not provide that fixture encoder.
 
 ```powershell
 ./tools/build_music_importer.ps1 -Triplet x64-windows-static
