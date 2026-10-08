@@ -18,6 +18,14 @@ var _cancelled: bool = false
 
 
 func start(source: String, library_root: String, helper_root: String = "", display_name: String = "") -> bool:
+	return _start(source, library_root, helper_root, display_name)
+
+
+func start_packaged(asset: MediaAsset, media: MediaSource, cache_root: String, helper_root: String = "") -> bool:
+	return _start(asset.path, cache_root, helper_root, asset.label, asset, media)
+
+
+func _start(source: String, library_root: String, helper_root: String, display_name: String, asset: MediaAsset = null, media: MediaSource = null) -> bool:
 	if state != &"idle":
 		return false
 	_root = ProjectSettings.globalize_path(library_root)
@@ -30,7 +38,10 @@ func start(source: String, library_root: String, helper_root: String = "", displ
 	message = "Copying and checking %s…" % source_name
 	_phase = &"preparing"
 	_thread = Thread.new()
-	if _thread.start(MusicImportFiles.prepare.bind(ProjectSettings.globalize_path(source), _job, helper, is_cancelled)) != OK:
+	var prepare := MusicImportFiles.prepare.bind(ProjectSettings.globalize_path(source), _job, helper, is_cancelled)
+	if asset != null:
+		prepare = MusicImportFiles.prepare_packaged.bind(asset, media, _job, helper, is_cancelled)
+	if _thread.start(prepare) != OK:
 		_thread = null
 		_fail("Could not start the music import worker.")
 		return false

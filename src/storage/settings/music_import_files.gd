@@ -7,6 +7,39 @@ const MAX_RESULT_BYTES: int = 128 * 1024
 
 
 static func prepare(source: String, job: String, helper: String, cancelled: Callable) -> Dictionary:
+	var result := _prepare_helper(job, helper)
+	if result.has("error"):
+		return result
+	var error := copy_bounded(source, job.path_join("source"), cancelled)
+	if not error.is_empty():
+		return {"error": error}
+	result["hash"] = FileAccess.get_sha256(job.path_join("source"))
+	return result
+
+
+static func prepare_packaged(asset: MediaAsset, media: MediaSource, job: String, helper: String, cancelled: Callable) -> Dictionary:
+	var result := _prepare_helper(job, helper)
+	if result.has("error"):
+		return result
+	if media == null or asset.byte_count <= 0 or asset.byte_count > MAX_BYTES or cancelled.call():
+		return {"error": "Scenario music is unavailable or exceeds the decoder limit."}
+	var bytes := media.read_bytes(asset)
+	if bytes.size() != asset.byte_count or cancelled.call():
+		return {"error": "Scenario music could not be read from its package."}
+	var file := FileAccess.open(job.path_join("source"), FileAccess.WRITE)
+	if file == null:
+		return {"error": "Could not stage scenario music."}
+	file.store_buffer(bytes)
+	file.flush()
+	var error := file.get_error()
+	file.close()
+	if error != OK or FileAccess.get_sha256(job.path_join("source")) != asset.sha256:
+		return {"error": "Scenario music failed its content hash check."}
+	result["hash"] = asset.sha256
+	return result
+
+
+static func _prepare_helper(job: String, helper: String) -> Dictionary:
 	var manifest_path := helper.path_join("manifest.json")
 	var manifest_file := FileAccess.open(manifest_path, FileAccess.READ)
 	if manifest_file == null or manifest_file.get_length() > MAX_RESULT_BYTES:
@@ -23,10 +56,7 @@ static func prepare(source: String, job: String, helper: String, cancelled: Call
 		return {"error": "The music importer executable failed its integrity check."}
 	if DirAccess.make_dir_recursive_absolute(job.path_join("audio")) != OK:
 		return {"error": "Could not create temporary music import storage."}
-	var error := copy_bounded(source, job.path_join("source"), cancelled)
-	if not error.is_empty():
-		return {"error": error}
-	return {"hash": FileAccess.get_sha256(job.path_join("source")), "executable": executable, "converter": identity}
+	return {"executable": executable, "converter": identity}
 
 
 static func copy_bounded(source: String, destination: String, cancelled: Callable) -> String:

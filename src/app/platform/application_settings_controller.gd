@@ -50,6 +50,9 @@ func _init(
 	var music_host := ApplicationMusicHost.new(repository.settings_path.get_base_dir().path_join("music"))
 	application.add_child(music_host)
 	music_host.bind(shell.music_workspace, audio.music, game_view)
+	var scenario_music := ScenarioMusicHost.new(repository.settings_path.get_base_dir().path_join("scenario-music"))
+	application.add_child(scenario_music)
+	scenario_music.bind(audio.music)
 	if _display != null:
 		_display.geometry_changed.connect(_update_dungeon_smoothing)
 

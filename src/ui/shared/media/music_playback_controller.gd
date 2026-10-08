@@ -20,6 +20,21 @@ var _context: int = 0
 var _settings: PresentationSettings
 var _media: ClassicMediaCatalog
 var _stock: ClassicMusicCatalog
+var _scenario_loader: Callable
+var _scenario_hashes: Dictionary[String, String] = {}
+var _scenario_assets: Dictionary[String, MediaAsset] = {}
+var _scenario_media: Dictionary[String, MediaSource] = {}
+
+
+func set_scenario_loader(loader: Callable) -> void:
+	_scenario_loader = loader
+
+
+func scenario_music_ready(hash: String, stream: AudioStream) -> void:
+	for key: String in _scenario_hashes:
+		if _scenario_hashes[key] == hash:
+			_originals[key] = _with_loop(stream, true)
+	refresh()
 
 
 func bind(player: AudioStreamPlayer) -> void:
@@ -156,6 +171,9 @@ func _custom_stream(id: String) -> AudioStream:
 
 func _play_original(position: float) -> void:
 	var stream := _originals.get(_active) as AudioStream
+	if stream == null and _scenario_assets.has(_active) and _scenario_loader.is_valid():
+		stream = _with_loop(_scenario_loader.call(_scenario_assets[_active], _scenario_media[_active]), true)
+		_originals[_active] = stream
 	if stream == null:
 		_player.stop()
 		state_changed.emit(0, "", false)
@@ -181,14 +199,29 @@ func _on_finished() -> void:
 func _resolve_original(key: String) -> void:
 	var stream: AudioStream
 	var title := ""
-	if _media != null and _context >= 15 and _context <= 17:
-		var asset := _media.scenario_music_asset(_context - 14)
-		if asset != null:
+	var asset := _media.scenario_music_asset(_context - 14) if _media != null and _context >= 15 and _context <= 17 else null
+	var hash := asset.sha256 if asset != null else ""
+	if _scenario_hashes.get(key, "") != hash:
+		_originals.erase(key)
+		if _queues[key].current() == "@original" or _fallbacks.get(key, false):
+			_queues[key].position = 0.0
+			_player.stop()
+	if asset != null:
+		stream = _originals.get(key) as AudioStream
+		_scenario_hashes[key] = hash
+		_scenario_assets[key] = asset
+		_scenario_media[key] = _media.package_media
+		if stream == null:
 			stream = _media.audio_stream(asset)
-			title = asset.label
+		title = asset.label
+	else:
+		_scenario_hashes.erase(key)
+		_scenario_assets.erase(key)
+		_scenario_media.erase(key)
 	if stream == null and _stock != null:
 		stream = _stock.stream(_context)
-		title = _stock.title(_context)
+		if stream != null:
+			title = _stock.title(_context)
 	_originals[key] = _with_loop(stream, true)
 	_titles[key] = title if not title.is_empty() else ClassicMusicContext.context_name(_context)
 

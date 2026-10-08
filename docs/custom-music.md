@@ -6,6 +6,8 @@ Create a playlist, add tracks, reorder them, and choose ordered or shuffled play
 
 Continue leaves the current queue advancing. Off suspends it. Returning to a context resumes its queue during this application session. Preview temporarily suspends normal music; Stop preview restores it. Repair cache reimports a track's managed original. Import errors and unavailable-track diagnostics remain in the Library panel.
 
+Scenario-owned tracker music is prepared automatically through the same bundled decoder when its original music is selected. The first preparation runs in the background; later playback reuses a hash-validated cache stored separately from the player library. Scenario tracks retain their authored Custom slot, title, and looping. Preparation does not modify packages, saves, or playlist assignments, and completion respects the currently selected music context, Off, Continue, and preview. Unavailable or unsupported scenario music reports a diagnostic in Music.
+
 ## Native build
 
 `tools/music_importer/vcpkg.json` pins the complete dependency baseline. Build with CMake, Git, PowerShell 7, and a C++17 toolchain: Visual Studio 2022 C++ on Windows, GCC/Clang plus the usual vcpkg build prerequisites on Linux, or Xcode command-line tools on macOS.
