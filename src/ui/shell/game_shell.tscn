@@ -347,7 +347,6 @@ bbcode_enabled = true
 fit_content = false
 scroll_active = true
 scroll_following = true
-text = "Choose a validated Realmz campaign to begin."
 
 [node name="Facts" type="GridContainer" parent="BottomRegion/BottomRow/NarrativeWell/NarrativeColumn"]
 unique_name_in_owner = true

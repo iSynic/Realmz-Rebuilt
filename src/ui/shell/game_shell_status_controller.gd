@@ -140,7 +140,7 @@ func _present_age_change(event: DomainEvent) -> void:
 
 
 func append_narrative(text: String) -> void:
-	var first_message := _narrative_history.is_empty() or _narrative_history == "Choose a validated Realmz campaign to begin."
+	var first_message := _narrative_history.is_empty()
 	if first_message:
 		_narrative_history = text
 	else:
