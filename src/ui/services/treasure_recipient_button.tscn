@@ -7,4 +7,5 @@ toggle_mode = true
 action_mode = 0
 alignment = 0
 expand_icon = true
+autowrap_mode = 2
 theme_override_constants/icon_max_width = 38

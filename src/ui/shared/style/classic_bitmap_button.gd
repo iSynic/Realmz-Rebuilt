@@ -39,6 +39,7 @@ func _ready() -> void:
 	button_up.connect(func() -> void: _set_physical_pressed(false))
 	pressed.connect(func() -> void: command_requested.emit(command_id))
 	resized.connect(queue_redraw)
+	get_node("CommandMargin/CommandContent/IconStage").item_rect_changed.connect(queue_redraw)
 	get_node("CommandMargin").minimum_size_changed.connect(update_minimum_size)
 
 

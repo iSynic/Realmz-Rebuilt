@@ -91,6 +91,12 @@ func restore_state(browser: Control, compact: bool, state: Dictionary) -> void:
 func apply_sizes(owner: Control, compact: bool, route_size: Vector2, left_load: Label, right_load: Label, buy: Button, sell: Button, identify: Button) -> void:
 	var profile := UiSizing.profile_for(owner)
 	var text_growth := profile.font_scale / profile.ui_scale if profile != null and profile.ui_scale > 0.0 else 1.0
+	var transaction := owner.find_child("ShopTransactionPanel", true, false) as Control
+	(transaction.get_node("Actions") as GridContainer).columns = 2 if compact and text_growth > 1.0 else 3
+	(owner.find_child("ShopTransactionFacts", true, false) as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact else TextServer.AUTOWRAP_OFF
+	if compact and profile != null:
+		for spec: Array in [["InventoryScroll", 120.0], ["ShopStockScroll", 140.0]]:
+			UiSizing.minimum_size(active_browser.find_child(spec[0], true, false) as Control, Vector2(0.0, 80.0 if text_growth > 1.0 else spec[1]))
 	var done_size := route_size
 	if compact and text_growth > 1.0:
 		done_size = Vector2(maxf(done_size.x, 58.0), maxf(done_size.y, 50.0))
@@ -112,9 +118,11 @@ func apply_sizes(owner: Control, compact: bool, route_size: Vector2, left_load: 
 	UiSizing.minimum_size(_detail_strip, Vector2(0.0, 82.0) if not compact else Vector2.ZERO)
 	for pane: PanelContainer in [description_pane, stats_pane]:
 		UiSizing.minimum_size(pane, Vector2(0.0, 64.0) if not compact else Vector2.ZERO)
-	if compact:
-		for pane: PanelContainer in [description_pane, stats_pane]:
-			pane.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	for pane: PanelContainer in [description_pane, stats_pane]:
+		pane.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if compact else Control.SIZE_EXPAND_FILL
+	if not compact:
+		var filters := wide_browser.find_child("ShopCategoryFilters", true, false) as GridContainer
+		filters.columns = 2 if profile != null and (profile.font_scale > profile.ui_scale or profile.bitmap_scale > profile.ui_scale) else 1
 
 
 func configure_route_button(button: ClassicBitmapButton, caption: String, asset_id: StringName, route_size: Vector2, callback: Callable, art_options: Dictionary = {}) -> void:

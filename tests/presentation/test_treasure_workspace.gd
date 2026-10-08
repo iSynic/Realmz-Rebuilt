@@ -5,6 +5,56 @@ extends "res://tests/presentation/classic_ui_test_support.gd"
 func run() -> void:
 	await _test_treasure_slot_and_pickup_origin()
 	await _test_treasure_drop_menu()
+	await _test_populated_treasure_scaling()
+
+
+func _test_populated_treasure_scaling() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var viewport := SubViewport.new()
+	viewport.size = Vector2i(1280, 720)
+	tree.root.add_child(viewport)
+	var host := Control.new()
+	viewport.add_child(host)
+	var settings := PresentationSettings.new()
+	var profile := UiLayoutProfile.for_viewport(Vector2(viewport.size), "auto")
+	UiSizing.apply(host, profile)
+	var presenter := load("res://src/ui/shared/interactions/interaction_presenter.tscn").instantiate() as InteractionPresenter
+	host.add_child(presenter)
+	UiSizing.bind_added(presenter.get_instance_id())
+	var payload := ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"oversized").body.to_data()
+	var lore := ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified").body.to_data()
+	payload["detect"] = lore["detect"]
+	payload["identify"] = lore["identify"]
+	var request := InteractionRequest.from_payload("fixture.treasure.scaling", InteractionRequest.TREASURE_DISTRIBUTION, payload)
+	var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new())
+	var native := media.image_texture(media.asset_by_resource("cicn", 40))
+	var native_pixels := native.get_image().get_data()
+	presenter.present(request, "", null, media)
+	var selected := presenter.find_child("TreasureItem_reward_item_3", true, false) as Button
+	selected.mouse_entered.emit()
+	for setting: Array in [[Vector2i(1280, 720), "auto", 1.0], [Vector2i(1920, 1080), "auto", 1.0], [Vector2i(2560, 1440), "auto", 1.0], [Vector2i(3840, 2160), "auto", 1.0], [Vector2i(800, 600), "auto", 1.5], [Vector2i(1280, 720), "auto", 1.5], [Vector2i(2560, 1440), "300", 1.5], [Vector2i(1280, 720), "auto", 1.0]]:
+		viewport.size = setting[0]
+		host.size = viewport.size
+		settings.text_scale = setting[2]
+		profile = UiLayoutProfile.for_viewport(Vector2(viewport.size), setting[1], PresentationSettings.DISPLAY_RESPONSIVE, settings.text_scale)
+		host.theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres"), settings, profile.ui_scale)
+		UiSizing.apply(host, profile)
+		var stage := Rect2(0, profile.menu_height, viewport.size.x - profile.party_width, viewport.size.y - profile.bottom_height - profile.menu_height)
+		var footer := Rect2(0, viewport.size.y - profile.bottom_height, viewport.size.x, profile.bottom_height)
+		presenter.set_classic_regions(stage, footer, footer)
+		for frame: int in 5:
+			await tree.process_frame
+		var bounds := Rect2(Vector2.ZERO, Vector2(viewport.size)).grow(1.0)
+		var scroll := presenter.find_child("TreasureItemScroll", true, false) as ScrollContainer
+		var grid := presenter.find_child("TreasureItemGrid", true, false) as GridContainer
+		assert_true(bounds.encloses(presenter.get_global_rect()) and grid.get_combined_minimum_size().x <= scroll.size.x, "populated Treasure wraps its actual scaled cells inside the assigned viewport at %s/%s/%s" % setting)
+		for control_name: String in ["TreasureDone", "TreasurePartyPanel", "TreasureCommandPanel"]:
+			var control := presenter.find_child(control_name, true, false) as Control
+			assert_true(control.is_visible_in_tree() and bounds.encloses(control.get_global_rect()), "Treasure keeps %s inside the window during live scaling" % control_name)
+		assert_true(grid.get_child_count() == 35 and grid.get_child(2) == selected and (presenter.find_child("TreasureSelectedItemName", true, false) as Label).text == "Fixture Wand 3", "live scaling preserves every loot slot and the inspected item")
+	assert_equal(native.get_image().get_data(), native_pixels, "repeated sizing of shared item art never mutates the source pixels")
+	viewport.queue_free()
+	await tree.process_frame
 
 
 func _test_treasure_slot_and_pickup_origin() -> void:

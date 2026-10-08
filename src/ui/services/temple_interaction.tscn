@@ -22,10 +22,14 @@ text = "Temple"
 [node name="Facts" type="Label" parent="TempleHeader"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 2
 theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
 horizontal_alignment = 2
 
 [node name="TempleCharacterPicker" type="OptionButton" parent="."]
+clip_text = true
+fit_to_longest_item = false
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -174,21 +178,25 @@ layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="CharacterName" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter/CharacterFacts"]
+autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
 
 [node name="CharacterHealth" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter/CharacterFacts"]
+autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
 
 [node name="CharacterWealth" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts/TempleSelectedCharacter/CharacterFacts"]
+autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
 
 [node name="ServiceName" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
@@ -200,6 +208,7 @@ theme_override_colors/font_color = Color(0.682353, 0.713726, 0.729412, 1)
 autowrap_mode = 2
 
 [node name="ServiceCost" type="Label" parent="TempleWorkspaceColumns/TempleInspector/Content/TempleInspectorFacts"]
+autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)

@@ -104,8 +104,9 @@ static func _scale_artwork(control: TextureRect, metrics: Dictionary, scale: int
 		var cache: Dictionary = metrics.get("artwork_cache", {})
 		var key := Vector2i(native.get_instance_id(), scale)
 		if not cache.has(key):
-			var image := native.get_image()
-			if image == null or image.is_empty(): return
+			var source_image := native.get_image()
+			if source_image == null or source_image.is_empty(): return
+			var image := source_image.duplicate() as Image
 			image.resize(image.get_width() * scale, image.get_height() * scale, Image.INTERPOLATE_NEAREST)
 			cache[key] = ImageTexture.create_from_image(image)
 		metrics["artwork_cache"] = cache

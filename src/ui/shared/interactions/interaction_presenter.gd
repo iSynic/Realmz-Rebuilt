@@ -560,6 +560,10 @@ func _apply_classic_region() -> void:
 		theme_type_variation = &"ClassicInset"
 		var modal_region := _application_rect if LayoutPolicy.uses_application_modal_region(_request) else _stage_rect
 		var profile := UiSizing.profile_for(self)
+		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
+			var minimum := _content.get_combined_minimum_size() + get_theme_stylebox("panel").get_minimum_size()
+			if minimum.x > modal_region.size.x or minimum.y > modal_region.size.y:
+				modal_region = _application_rect
 		var desired := LayoutPolicy.preferred_modal_size(_request, modal_region.size, profile.ui_scale if profile != null else 1.0)
 		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
 			desired.y = minf(maxf(280.0 * (profile.ui_scale if profile != null else 1.0), _content.get_combined_minimum_size().y + get_theme_stylebox("panel").get_minimum_size().y), modal_region.size.y - 4.0)

@@ -24,6 +24,12 @@ func configure(media: ClassicMediaCatalog, compact: bool) -> void:
 	_compact = compact
 
 
+func set_layout_profile(compact: bool) -> void:
+	_compact = compact
+	(%TempleCharacterPicker as Control).visible = compact
+	(%TempleCharacters as Control).visible = not compact
+
+
 func build(request: InteractionRequest) -> void:
 	_body = request.body as TempleRequestBody
 	if _body == null:

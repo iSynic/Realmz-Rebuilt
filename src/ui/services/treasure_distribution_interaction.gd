@@ -57,7 +57,10 @@ func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, s
 
 func set_layout_profile(compact: bool) -> void:
 	_compact = compact
-	if get_node_or_null("OrdinaryTreasure") == null: return
+	if get_node_or_null("OrdinaryTreasure") == null:
+		var recovery := find_child("TreasureRecoveryCard", true, false) as Control
+		if recovery != null: UiSizing.minimum_size(recovery, Vector2(620.0 if compact else 760.0, 0.0))
+		return
 	var inspector := %TreasureItemRecord as BoxContainer
 	inspector.vertical = false
 	(%TreasureRecordDetails as BoxContainer).vertical = _compact
@@ -71,9 +74,14 @@ func set_layout_profile(compact: bool) -> void:
 	(%TreasureSelectedItemFacts as GridContainer).columns = 2 if _compact else 4
 	(%TreasureItemGrid as GridContainer).columns = 6 if _compact else 16
 	for button: Button in _recipient_buttons.values():
+		(button.get_parent() as BoxContainer).vertical = _compact
 		button.text = TreasureDisplayText.recipient(button.get_meta(&"recipient_data") as InteractionRequestValue.RewardCharacter, _compact)
 		UiSizing.minimum_size(button, Vector2(0.0, 68.0 if _compact else 46.0))
 	call_deferred("_update_loot_columns", %TreasureItemScroll, %TreasureItemGrid)
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	set_layout_profile(profile.id == UiLayoutProfile.COMPACT)
 
 
 func capture_browser_state() -> Dictionary:
@@ -111,7 +119,15 @@ func build(request: InteractionRequest) -> void:
 		&"fumbled-item-recovery":
 			_build_recovery_workspace(body)
 		&"ordinary":
-			_build_classic_treasure_workspace(body)
+			_select_initial_recipient(body)
+			%TreasureWorkspaceTitle.text = "Victory Spoils" if body.origin == &"battle" else "Treasure"
+			%TreasureWorkspaceSummary.text = TreasureDisplayText.summary(body)
+			_build_loot_side(body)
+			_build_party_side(body)
+			_build_item_inspector(body)
+			_refresh_item_availability()
+			if _restore_money_workspace:
+				_open_money_workspace(body)
 		&"completion-confirmation":
 			_build_completion_confirmation(body)
 		_:
@@ -140,25 +156,12 @@ func _input(event: InputEvent) -> void:
 			return
 
 
-func _build_classic_treasure_workspace(body: TreasureRequestBody) -> void:
-	_select_initial_recipient(body)
-	%TreasureWorkspaceTitle.text = "Victory Spoils" if body.origin == &"battle" else "Treasure"
-	%TreasureWorkspaceSummary.text = TreasureDisplayText.summary(body)
-	_build_loot_side(body)
-	_build_party_side(body)
-	_build_item_inspector(body)
-	_refresh_item_availability()
-	if _restore_money_workspace:
-		_open_money_workspace(body)
-
-
 func _build_loot_side(body: TreasureRequestBody) -> void:
 	var scroll := %TreasureItemScroll as ScrollContainer
 	var grid := %TreasureItemGrid as GridContainer
 	grid.columns = 6 if _compact else 16
-	if not _compact:
-		scroll.resized.connect(_update_loot_columns.bind(scroll, grid))
-		call_deferred("_update_loot_columns", scroll, grid)
+	scroll.resized.connect(_update_loot_columns.bind(scroll, grid))
+	call_deferred("_update_loot_columns", scroll, grid)
 	var items_by_id: Dictionary = {}
 	for item: InteractionRequestValue.RewardItem in body.items:
 		items_by_id[item.instance_id] = item
@@ -191,22 +194,15 @@ func _build_item_inspector(body: TreasureRequestBody) -> void:
 
 
 func _update_loot_columns(scroll: ScrollContainer, grid: GridContainer) -> void:
-	if scroll == null or grid == null or _compact or not is_inside_tree():
+	if scroll == null or grid == null or not is_inside_tree():
 		return
-	var host := get_parent() as Control
-	var viewport_width := get_viewport_rect().size.x
-	var assigned_width := minf(host.size.x, viewport_width) if host != null and host.size.x > 0.0 else viewport_width
-	var workspace := %ClassicTreasureWorkspace as HBoxContainer
-	var party_panel := %TreasurePartyPanel as PanelContainer
-	var loot_margin := %TreasureItemScroll.get_parent() as MarginContainer
-	var horizontal_chrome := (
-		loot_margin.get_theme_constant("margin_left")
-		+ loot_margin.get_theme_constant("margin_right")
-		+ scroll.get_v_scroll_bar().get_combined_minimum_size().x
-	)
-	var loot_width := maxf(50.0, assigned_width - party_panel.custom_minimum_size.x - workspace.get_theme_constant("separation") - horizontal_chrome)
-	var cell_pitch := 50.0 + grid.get_theme_constant("h_separation")
-	grid.columns = maxi(1, floori((loot_width + grid.get_theme_constant("h_separation")) / cell_pitch))
+	var cell_width := 1.0
+	for child: Node in grid.get_children():
+		if child is Control:
+			cell_width = maxf(cell_width, (child as Control).get_combined_minimum_size().x)
+	var gap := grid.get_theme_constant("h_separation")
+	var loot_width := maxf(0.0, scroll.size.x - scroll.get_v_scroll_bar().get_combined_minimum_size().x)
+	grid.columns = maxi(1, floori((loot_width + gap) / (cell_width + gap)))
 
 
 func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardItem) -> void:
@@ -255,7 +251,7 @@ func _build_party_side(body: TreasureRequestBody) -> void:
 
 
 func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValue.RewardCharacter) -> void:
-	var row := recipient_row_scene.instantiate() as HBoxContainer
+	var row := recipient_row_scene.instantiate() as BoxContainer
 	row.name = "TreasureRecipientRow_%s" % _node_fragment(character.id)
 	parent.add_child(row)
 	var button := row.get_node("TreasureRecipientSelect") as Button
@@ -264,7 +260,6 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	button.set_meta(&"recipient_data", character)
 	button.text = TreasureDisplayText.recipient(character, _compact)
 	UiSizing.minimum_size(button, Vector2(0.0, 68.0 if _compact else 46.0))
-	button.clip_text = true
 	button.icon = _portrait(character.id)
 	button.disabled = not character.enabled
 	button.tooltip_text = character.name if character.reason.is_empty() else "%s: %s" % [character.name, character.reason]

@@ -51,6 +51,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicHeading"
 horizontal_alignment = 1
+autowrap_mode = 2
 
 [node name="ThiefActionPane" type="PanelContainer" parent="ThiefEncounterWorkspace"]
 layout_mode = 2

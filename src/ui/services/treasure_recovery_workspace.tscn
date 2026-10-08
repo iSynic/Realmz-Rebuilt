@@ -6,7 +6,7 @@ size_flags_vertical = 3
 alignment = 1
 theme_override_constants/separation = 6
 
-[node name="TreasureRecoveryCenter" type="CenterContainer" parent="."]
+[node name="TreasureRecoveryCenter" type="MarginContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -15,7 +15,7 @@ size_flags_vertical = 3
 custom_minimum_size = Vector2(700, 0)
 layout_mode = 2
 size_flags_horizontal = 4
-size_flags_vertical = 4
+size_flags_vertical = 3
 theme_type_variation = &"ClassicInset"
 
 [node name="Content" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard"]
@@ -37,20 +37,30 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
 horizontal_alignment = 2
 
-[node name="TreasureRecoveryItemRow" type="HBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+[node name="RecoveryScroll" type="ScrollContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="RecoveryBody" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 7
+[node name="TreasureRecoveryItemRow" type="HBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 
-[node name="TreasureLootField" type="CenterContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow"]
+[node name="TreasureLootField" type="CenterContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(100, 96)
 layout_mode = 2
 size_flags_horizontal = 0
-[node name="Stage" type="Control" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField"]
+[node name="Stage" type="Control" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureLootField"]
 custom_minimum_size = Vector2(100, 96)
 layout_mode = 2
-[node name="TreasureItemGlow" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
+[node name="TreasureItemGlow" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
 offset_left = 2.0
 offset_top = 2.0
@@ -60,7 +70,7 @@ mouse_filter = 2
 texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
-[node name="TreasureItemIcon" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
+[node name="TreasureItemIcon" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
 offset_left = 0.0
 offset_top = 0.0
@@ -70,7 +80,7 @@ mouse_filter = 2
 texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
-[node name="TreasureItemIconUnavailable" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
+[node name="TreasureItemIconUnavailable" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
 visible = false
 offset_left = 0.0
@@ -81,7 +91,7 @@ theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 text = "◇"
 horizontal_alignment = 1
 vertical_alignment = 1
-[node name="TreasureSelectionCircle" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureLootField/Stage"]
+[node name="TreasureSelectionCircle" type="TextureRect" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureLootField/Stage"]
 unique_name_in_owner = true
 offset_left = 0.0
 offset_top = 0.0
@@ -92,68 +102,68 @@ texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
 
-[node name="TreasureItemFacts" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow"]
+[node name="TreasureItemFacts" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 4
+size_flags_vertical = 3
 theme_override_constants/separation = 3
-[node name="TreasureSelectedItemName" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
+[node name="TreasureSelectedItemName" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 autowrap_mode = 2
-[node name="TreasureSelectedItemState" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
+[node name="TreasureSelectedItemState" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
-[node name="TreasureSelectedItemFacts" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
+[node name="TreasureSelectedItemFacts" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
 autowrap_mode = 2
-[node name="TreasureSelectedItemCharges" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
+[node name="TreasureSelectedItemCharges" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 autowrap_mode = 2
-[node name="TreasureSelectedItemDescription" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecoveryItemRow/TreasureItemFacts"]
+[node name="TreasureSelectedItemDescription" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureItemFacts"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 autowrap_mode = 2
 
-[node name="TreasureRemainingItems" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+[node name="TreasureRemainingItems" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.898, 0.769, 0.361, 1)
 autowrap_mode = 2
-[node name="TreasurePrompt" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+[node name="TreasurePrompt" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 autowrap_mode = 2
 
-[node name="TreasureRecipientHeading" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+[node name="TreasureRecipientHeading" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Recover To"
-[node name="TreasureRecipientHint" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+[node name="TreasureRecipientHint" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.682, 0.714, 0.729, 1)
 text = "Choose an eligible adventurer to recover this exact item."
 autowrap_mode = 2
-[node name="TreasureRecipientScroll" type="ScrollContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content"]
+[node name="TreasureRecipientScroll" type="ScrollContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody"]
 custom_minimum_size = Vector2(0, 130)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
-[node name="TreasureRecoveryRecipientRows" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecipientScroll"]
+[node name="TreasureRecoveryRecipientRows" type="VBoxContainer" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecipientScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 3
-[node name="TreasureNoRecipients" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/TreasureRecipientScroll/TreasureRecoveryRecipientRows"]
+[node name="TreasureNoRecipients" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecipientScroll/TreasureRecoveryRecipientRows"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
