@@ -65,6 +65,7 @@ func present_campaign(campaign: CampaignPackageView, running: bool, selected: bo
 	%MainFilter.disabled = running
 	%ImportedFilter.disabled = running
 	%CampaignSearch.editable = not running
+	_apply_operation_layout(UiSizing.profile_for(self))
 	_filter_rows()
 
 func reveal_campaign(campaign: CampaignPackageView) -> void:
@@ -115,8 +116,16 @@ func _open_details() -> void:
 	%CloseScenarioDetails.grab_focus()
 
 
-func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	_apply_operation_layout(profile)
 	_update_details_size()
+
+
+func _apply_operation_layout(profile: UiLayoutProfile) -> void:
+	var progress_only := _running and profile != null and profile.id == UiLayoutProfile.COMPACT and profile.font_scale > profile.ui_scale
+	get_node("ScenarioPaneContent/LibraryFilters").visible = not progress_only
+	%CampaignSearch.visible = not progress_only
+	%CampaignScroll.visible = not progress_only
 
 
 func _update_details_size() -> void:

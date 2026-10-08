@@ -36,9 +36,9 @@ size_flags_horizontal = 3
 mouse_filter = 2
 theme_override_font_sizes/font_size = 14
 autowrap_mode = 2
-max_lines_visible = 3
+max_lines_visible = -1
 vertical_alignment = 1
-text_overrun_behavior = 3
+text_overrun_behavior = 0
 
 [node name="AddCharacter" type="Button" parent="Row"]
 unique_name_in_owner = true

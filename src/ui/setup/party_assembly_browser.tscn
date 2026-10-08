@@ -10,16 +10,18 @@ theme_override_constants/separation = 6
 script = ExtResource("1_browser")
 character_row_scene = ExtResource("2_row")
 
-[node name="CharacterFilesHeading" type="CenterContainer" parent="."]
+[node name="CharacterFilesHeading" type="MarginContainer" parent="."]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 
-[node name="HeadingContent" type="HBoxContainer" parent="CharacterFilesHeading"]
+[node name="HeadingContent" type="BoxContainer" parent="CharacterFilesHeading"]
 layout_mode = 2
 
 [node name="Heading" type="Label" parent="CharacterFilesHeading/HeadingContent"]
 layout_mode = 2
+horizontal_alignment = 1
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
 theme_override_font_sizes/font_size = 20
 text = "Character Files"
@@ -27,6 +29,7 @@ text = "Character Files"
 [node name="CharacterFileCount" type="Label" parent="CharacterFilesHeading/HeadingContent"]
 unique_name_in_owner = true
 layout_mode = 2
+horizontal_alignment = 1
 theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 theme_override_font_sizes/font_size = 13
 text = "• 0 available"
@@ -67,6 +70,7 @@ text = "Previous"
 [node name="CharacterFilePage" type="Label" parent="CharacterFilePager"]
 unique_name_in_owner = true
 layout_mode = 2
+autowrap_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 theme_override_font_sizes/font_size = 12

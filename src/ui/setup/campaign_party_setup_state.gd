@@ -133,6 +133,10 @@ func apply_setup_mode_layout() -> void:
 	party_pane.visible = true
 	(setup_overlay.get_node("%PartyFooter") as BoxContainer).vertical = compact
 	(setup_overlay.get_node("%Selectors") as BoxContainer).vertical = compact
+	var party_heading_content := setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent") as BoxContainer
+	party_heading_content.vertical = compact
+	var party_heading := setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent/Heading") as Label
+	party_heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact else TextServer.AUTOWRAP_OFF
 	character_pane.custom_minimum_size.x = 500.0 if creator_active else 240.0 if compact else 286.0
 	party_pane.custom_minimum_size.x = 270.0 if creator_active else 236.0 if compact else 286.0
 	character_pane.size_flags_stretch_ratio = 1.85 if creator_active else 1.15
