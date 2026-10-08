@@ -11,7 +11,7 @@ func prepare_for_render(compact: bool) -> void:
 	_clear_children(list_rows())
 	var columns := columns_control()
 	columns.vertical = compact
-	list_panel().custom_minimum_size = Vector2(248.0, 150.0 if compact else 0.0)
+	UiSizing.minimum_size(list_panel(), Vector2(248.0, 150.0 if compact else 0.0))
 	state_cards().vertical = compact
 	detail_record().visible = false
 	empty_state().visible = false

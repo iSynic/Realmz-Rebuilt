@@ -14,7 +14,7 @@ The beta includes the thirteen scenarios that ship with the Realmz Castle codeba
 
 Assault on Giant Mountain · Castle in the Clouds · City of Bywater · Destroy the Necronomicon · Grilochs Revenge · Half Truth · Mithril Vault · Prelude to Pestilence · Trouble in the Sword Lands · Twin Sands of Time · War in the Sword Lands · White Dragon · Wrath of the Mind Lords
 
-We've kept the Classic look and sound while adding choices that make it easier to play today, including a readable-font option, display scaling, and optional pixel-art and CRT effects.
+We've kept the Classic look and sound while adding choices that make it easier to play today. You can choose how the display scales, set Interface Size to Auto or 100%–300%, and add a separate Text Size adjustment from 80%–150%. Fresh or reset preferences use Integer: world canvas; loaded settings keep your saved display choice. If the window limits your requested Interface Size, Preferences shows the size the game can apply. Whole-window modes show both logical and on-screen sizes. Classic artwork uses whole-number 1x–3x scales while fonts render at their selected size. Optional pixel-art smoothing and CRT effects are also available.
 
 ## What “beta” means here
 
@@ -29,5 +29,7 @@ The best bug reports tell us **which scenario**, **where you were** (coordinates
 ## For people who want to build it
 
 The source is here too. You'll need Godot 4.7.1 and Git LFS to open the project with its bundled packages. Start with the [Builder's Manual](docs/builders-manual.md) if you want to explore or contribute to the code.
+
+For custom music imports, build the bundled native helper using the [music library build instructions](docs/custom-music.md). Normal playback needs no external codec tools.
 
 Rebuilt's original code is GPL-3.0-or-later. Realmz-derived scenarios, characters, and assets have separate CC BY-NC-SA 4.0 terms. The [third-party notices](THIRD_PARTY_NOTICES.txt) record the details and provenance.

@@ -51,7 +51,7 @@ func set_turn_actor(actor_id: String) -> void:
 func set_compact(compact: bool) -> void:
 	(%ActorPreview as Control).custom_minimum_size.x = 150.0 if compact else 240.0
 	(%TargetPreview as Control).custom_minimum_size.x = 150.0 if compact else 240.0
-	_log.add_theme_font_size_override("normal_font_size", 12 if compact else 14)
+	UiSizing.font_size(_log, &"normal_font_size", 12 if compact else 14)
 
 
 func set_status(text: String) -> void:

@@ -18,7 +18,7 @@ const SURFACE_DARK := Color("080a0c")
 const EDGE_LIGHT := Color("686b68")
 const DISABLED_OVERLAY := Color(0.04, 0.05, 0.055, 0.64)
 
-var command_id: StringName = &"search_mode"
+@export var command_id: StringName = &"search_mode"
 var _atlas: Texture2D
 var _searching: bool
 var _frame_index: int
@@ -39,6 +39,13 @@ func _ready() -> void:
 	button_up.connect(queue_redraw)
 	pressed.connect(func() -> void: command_requested.emit(command_id))
 	set_process(false)
+	get_node("CommandMargin").minimum_size_changed.connect(update_minimum_size)
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
+	UiSizing.minimum_size(stage, Vector2(32, 43) * profile.bitmap_scale / profile.ui_scale)
+	queue_redraw()
 
 
 func sync_status(searching: bool, can_activate: bool, reason: String = "") -> void:
@@ -80,14 +87,13 @@ func _draw() -> void:
 		draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
 	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	if _atlas != null:
+		var profile := UiSizing.profile_for(self)
+		var art_scale := profile.bitmap_scale if profile != null else 1
+		var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
+		var frame_size := FRAME_SIZE * art_scale
 		var frame_rect := Rect2(Vector2(float(_frame_index) * FRAME_SIZE.x, FRAME_ROW_Y), FRAME_SIZE)
-		var destination := Rect2(Vector2(floorf((size.x - FRAME_SIZE.x) * 0.5), 4.0) + pressed_offset, FRAME_SIZE)
+		var destination := Rect2((stage.global_position - global_position + (stage.size - frame_size) * 0.5).floor() + pressed_offset, frame_size)
 		draw_texture_rect_region(_atlas, destination, frame_rect)
-	var font := get_theme_font("font", "Button")
-	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
-	draw_line(Vector2(5.0, size.y - 20.0), Vector2(size.x - 5.0, size.y - 20.0), Color(0.04, 0.05, 0.055, 0.9), 1.0)
-	var caption_size := ClassicBitmapButton.fitted_caption_font_size(font, "Search", size.x - 8.0, font_size)
-	draw_string(font, Vector2(4.0, size.y - 6.0) + pressed_offset, "Search", HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, caption_size, CAPTION_COLOR)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
 	elif pressed:
@@ -96,6 +102,11 @@ func _draw() -> void:
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
 	elif is_hovered() and not disabled:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
+
+
+func _get_minimum_size() -> Vector2:
+	var margin := get_node_or_null("CommandMargin") as MarginContainer
+	return margin.get_combined_minimum_size() if margin != null else Vector2.ZERO
 
 
 static func remove_classic_matte(texture: Texture2D) -> Texture2D:

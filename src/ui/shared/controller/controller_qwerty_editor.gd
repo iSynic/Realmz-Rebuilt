@@ -55,7 +55,9 @@ func _ready() -> void:
 	_next_page_button.pressed.connect(next_page)
 	_done_button.pressed.connect(done)
 	_cancel_button.pressed.connect(cancel)
-	_rebuild_key_grid()
+	for button: Button in _key_grid.get_children():
+		button.pressed.connect(func() -> void: confirm_key(button.text))
+	_bind_keys()
 
 
 func open_for(field: Control) -> bool:
@@ -67,6 +69,7 @@ func open_for(field: Control) -> bool:
 	_caret_offset = _read_caret_offset(field, _draft_text)
 	_max_length = (field as LineEdit).max_length if field is LineEdit else -1
 	_page = 0
+	_bind_keys()
 	_open = true
 	visible = true
 	move_to_front()
@@ -112,12 +115,12 @@ func move_direction(direction: Vector2) -> void:
 
 func previous_page() -> void:
 	_page = posmod(_page - 1, PAGE_KEYS.size())
-	_rebuild_key_grid()
+	_bind_keys()
 
 
 func next_page() -> void:
 	_page = (_page + 1) % PAGE_KEYS.size()
-	_rebuild_key_grid()
+	_bind_keys()
 
 
 func backspace() -> void:
@@ -189,19 +192,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
-func _rebuild_key_grid() -> void:
+func _bind_keys() -> void:
 	if not is_node_ready():
 		return
-	for child: Node in _key_grid.get_children():
-		child.queue_free()
-	for key: String in PAGE_KEYS[_page]:
-		var button := Button.new()
-		button.text = key
-		button.custom_minimum_size = Vector2(54.0, 38.0)
-		button.focus_mode = Control.FOCUS_ALL
-		var key_value := key
-		button.pressed.connect(func() -> void: confirm_key(key_value))
-		_key_grid.add_child(button)
+	var keys: Array = PAGE_KEYS[_page]
+	for index: int in _key_grid.get_child_count():
+		var button := _key_grid.get_child(index) as Button
+		button.visible = index < keys.size()
+		button.text = String(keys[index]) if button.visible else ""
 	_page_label.text = PAGE_NAMES[_page]
 	_focus_first_key.call_deferred()
 
@@ -236,7 +234,9 @@ func _write_target(text: String, offset: int) -> void:
 	var previous_text := String(_target.get("text"))
 	var browser := _target.get_window() as FileDialog
 	if browser != null and _target == browser.get_line_edit():
-		browser.current_file = text
+		browser.current_path = text
+		text = browser.current_file
+		_refresh_browser_selection.call_deferred(weakref(browser))
 	_target.set("text", text)
 	if _target is LineEdit:
 		var line_edit := _target as LineEdit
@@ -256,3 +256,17 @@ func _write_target(text: String, offset: int) -> void:
 		editor.set_caret_column(remaining)
 		if previous_text != text:
 			editor.text_changed.emit()
+
+
+func _refresh_browser_selection(reference: WeakRef) -> void:
+	var browser := reference.get_ref() as FileDialog
+	if browser == null or not browser.visible:
+		return
+	var mode := browser.file_mode
+	if mode != FileDialog.FILE_MODE_OPEN_FILE and mode != FileDialog.FILE_MODE_OPEN_FILES:
+		return
+	# Godot 4.7 refreshes filename selection without refreshing Open availability.
+	var title := browser.title
+	browser.file_mode = FileDialog.FILE_MODE_OPEN_ANY
+	browser.file_mode = mode
+	browser.title = title

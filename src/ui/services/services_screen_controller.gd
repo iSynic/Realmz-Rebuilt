@@ -346,7 +346,7 @@ static func wealth_resource_id(denomination: StringName) -> int:
 func _bind_label(label: Label, text: String, color: Color, base_size: int) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(base_size) * _text_scale)))
+	UiSizing.font_size(label, &"font_size", base_size)
 
 
 func _clear(parent: Node) -> void:

@@ -40,6 +40,7 @@ var _combat_bandage_target_ids: Array[String] = []
 var _owns_bandage_cursor: bool = false
 var _compact_layout: bool = false
 var _controls_ready: bool = false
+var _position_index := 0
 
 
 func _exit_tree() -> void:
@@ -147,14 +148,16 @@ func controller_spellbook() -> CombatRosterSpellbook:
 func set_compact_layout(compact: bool) -> void:
 	_compact_layout = compact
 	_ensure_controls()
-	for child: Node in _party_list.get_children():
+	for child: Node in _party_list.find_children("Member", "PanelContainer", true, false):
 		var record := child as PartyRosterMemberRow
 		if record != null:
 			record.set_compact_layout(compact)
 
 
 func _add_character(character: CharacterView, combat_active: bool, auto_character_ids: Array[String]) -> void:
-	var record := member_row_scene.instantiate() as PartyRosterMemberRow
+	var record := _party_list.get_node("Position%d/Member" % (_position_index + 1)) as PartyRosterMemberRow
+	_position_index += 1
+	record.show()
 	record.set_compact_layout(_compact_layout)
 	var row := record.character_button()
 	row.set_meta("character_id", character.id)
@@ -167,8 +170,11 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row.set_meta("condition_values", character.condition_values.duplicate())
 	_bind_character_text(row, character)
 	var portrait := _roster_portrait_texture(character)
+	row.set_meta("native_portrait", portrait)
 	if portrait != null:
 		row.icon = portrait
+	var profile := UiSizing.profile_for(record)
+	if profile != null: record.apply_ui_sizing(profile)
 	var selecting := character_selection_active()
 	record.current_marker().visible = not selecting
 	record.current_marker().set_meta("character_id", character.id)
@@ -187,7 +193,6 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 			row.tooltip_text = "Click to Bandage %s." % character.name if not row.disabled else "This character cannot be Bandaged."
 	row.pressed.connect(_activate_character.bind(character.id))
 	_bind_auto_toggle(record.auto_toggle(), character, combat_active and not selecting, auto_character_ids.has(character.id))
-	_party_list.add_child(record)
 
 
 func _bind_character_text(row: Button, character: CharacterView, current_health: int = -100_000) -> void:
@@ -296,6 +301,7 @@ func _update_exploration_character_row(row: Button, character: CharacterView) ->
 
 func _update_current_character_markers() -> void:
 	for marker: Node in _party_list.find_children("CurrentCharacterMarker", "ColorRect", true, false):
+		if not marker.has_meta("character_id"): continue
 		var current := String(marker.get_meta("character_id")) == _selected_character_id
 		(marker as ColorRect).color = Color("e0bc53") if current else Color.TRANSPARENT
 		var record := marker.get_meta("roster_record") as PartyRosterMemberRow
@@ -406,8 +412,10 @@ func play_character_effect(character_id: String, first_resource_id: int, frame_c
 	var row := _character_row(character_id)
 	if row == null:
 		return
-	var base_icon := row.icon
+	var base_icon := row.get_meta("native_portrait", row.icon) as Texture2D
+	if row.has_meta("effect_tween"): (row.get_meta("effect_tween") as Tween).kill()
 	var tween := row.create_tween()
+	row.set_meta("effect_tween", tween)
 	for frame_index: int in frame_count:
 		tween.tween_callback(_set_character_effect_frame.bind(row, base_icon, first_resource_id + frame_index))
 		tween.tween_interval(0.055)
@@ -428,18 +436,25 @@ func _set_character_effect_frame(row: Button, base_icon: Texture2D, resource_id:
 	image.fill(Color.TRANSPARENT)
 	_blend_centered(image, base_icon)
 	_blend_centered(image, _resource_texture(resource_id))
-	row.icon = ImageTexture.create_from_image(image)
+	row.set_meta("native_portrait", ImageTexture.create_from_image(image))
+	var profile := UiSizing.profile_for(row)
+	if profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(profile)
+	else: row.icon = row.get_meta("native_portrait") as Texture2D
 
 
 static func _restore_character_effect(row: Button, base_icon: Texture2D) -> void:
 	if is_instance_valid(row):
-		row.icon = base_icon
+		row.set_meta("native_portrait", base_icon)
+		var profile := UiSizing.profile_for(row)
+		if profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(profile)
+		else: row.icon = base_icon
 
 
 func _add_empty(text: String) -> void:
-	var row := empty_row_scene.instantiate() as Label
+	var row := _party_list.get_node("Position%d/Empty" % (_position_index + 1)) as Label
+	_position_index += 1
 	row.text = text
-	_party_list.add_child(row)
+	row.show()
 
 
 func _portrait_texture(asset_id: String) -> Texture2D:
@@ -500,9 +515,23 @@ func _condition_summary(values: Array[int]) -> String:
 
 
 func _clear_party() -> void:
-	for child: Node in _party_list.get_children():
-		_party_list.remove_child(child)
-		child.queue_free()
+	_position_index = 0
+	for position: Node in _party_list.get_children():
+		var record := position.get_node("Member") as PartyRosterMemberRow
+		record.hide()
+		position.get_node("Empty").hide()
+		var button := record.character_button()
+		if button.has_meta("effect_tween"):
+			(button.get_meta("effect_tween") as Tween).kill()
+			button.remove_meta("effect_tween")
+		button.remove_meta("native_portrait")
+		for connection: Dictionary in button.pressed.get_connections():
+			button.pressed.disconnect(connection["callable"])
+		for connection: Dictionary in record.auto_toggle().toggled.get_connections():
+			record.auto_toggle().toggled.disconnect(connection["callable"])
+		button.icon = null
+		button.remove_meta("character_id")
+		record.current_marker().remove_meta("character_id")
 	_party_scroll.visible = true
 	_spellbook.close()
 

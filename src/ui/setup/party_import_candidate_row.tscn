@@ -1,0 +1,15 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_detail_label.tscn" id="1_detail"]
+
+[node name="PartyImportCandidateRow" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="Candidate" type="CheckBox" parent="."]
+layout_mode = 2
+text = "Character"
+
+[node name="Detail" parent="." instance=ExtResource("1_detail")]
+text = "Record details"

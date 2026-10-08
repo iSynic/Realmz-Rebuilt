@@ -1,0 +1,135 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/music_playlist_editor.gd" id="1"]
+
+[node name="Playlists" type="VBoxContainer"]
+layout_mode = 2
+script = ExtResource("1")
+theme_override_constants/separation = 8
+
+[node name="Selection" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="PlaylistChoice" type="OptionButton" parent="Selection"]
+layout_mode = 2
+focus_neighbor_right = NodePath("../NewPlaylist")
+unique_name_in_owner = true
+size_flags_horizontal = 3
+fit_to_longest_item = false
+
+[node name="NewPlaylist" type="Button" parent="Selection"]
+layout_mode = 2
+focus_neighbor_left = NodePath("../PlaylistChoice")
+focus_neighbor_right = NodePath("../DeletePlaylist")
+focus_neighbor_bottom = NodePath("../../Identity/PlaylistName")
+unique_name_in_owner = true
+text = "New"
+
+[node name="DeletePlaylist" type="Button" parent="Selection"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Delete"
+
+[node name="Identity" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="NameLabel" type="Label" parent="Identity"]
+layout_mode = 2
+text = "Name"
+
+[node name="PlaylistName" type="LineEdit" parent="Identity"]
+layout_mode = 2
+theme_type_variation = &"SlateLineEdit"
+focus_neighbor_top = NodePath("../../Selection/NewPlaylist")
+focus_neighbor_right = NodePath("../Shuffle")
+focus_neighbor_bottom = NodePath("../../Lists/Queue/PlaylistTracks")
+unique_name_in_owner = true
+size_flags_horizontal = 3
+max_length = 120
+placeholder_text = "Playlist name"
+
+[node name="Shuffle" type="CheckButton" parent="Identity"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Shuffle"
+
+[node name="RepeatMode" type="OptionButton" parent="Identity"]
+layout_mode = 2
+unique_name_in_owner = true
+item_count = 3
+selected = 0
+popup/item_0/text = "Repeat All"
+popup/item_1/text = "Repeat One"
+popup/item_1/id = 1
+popup/item_2/text = "No repeat"
+popup/item_2/id = 2
+
+[node name="Lists" type="HBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Queue" type="VBoxContainer" parent="Lists"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="QueueTitle" type="Label" parent="Lists/Queue"]
+layout_mode = 2
+text = "Playlist order"
+
+[node name="PlaylistTracks" type="ItemList" parent="Lists/Queue"]
+layout_mode = 2
+theme_type_variation = &"SlateList"
+focus_neighbor_left = NodePath("../OrderActions/TrackUp")
+focus_neighbor_right = NodePath("../../Available/AvailableTracks")
+size_flags_horizontal = 3
+size_flags_vertical = 3
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+
+[node name="OrderActions" type="HBoxContainer" parent="Lists/Queue"]
+layout_mode = 2
+
+[node name="TrackUp" type="Button" parent="Lists/Queue/OrderActions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Up"
+size_flags_horizontal = 3
+
+[node name="TrackDown" type="Button" parent="Lists/Queue/OrderActions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Down"
+size_flags_horizontal = 3
+
+[node name="RemoveTrack" type="Button" parent="Lists/Queue/OrderActions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Remove"
+size_flags_horizontal = 3
+
+[node name="Available" type="VBoxContainer" parent="Lists"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="AvailableTitle" type="Label" parent="Lists/Available"]
+layout_mode = 2
+text = "Your library"
+
+[node name="AvailableTracks" type="ItemList" parent="Lists/Available"]
+layout_mode = 2
+theme_type_variation = &"SlateList"
+focus_neighbor_left = NodePath("../../Queue/PlaylistTracks")
+focus_neighbor_right = NodePath("../AddTrack")
+size_flags_horizontal = 3
+size_flags_vertical = 3
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 80)
+
+[node name="AddTrack" type="Button" parent="Lists/Available"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Add to playlist"

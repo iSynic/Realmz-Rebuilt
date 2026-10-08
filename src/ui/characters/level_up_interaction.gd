@@ -8,6 +8,8 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
 
+@export var spell_button_scene: PackedScene
+
 var _game_view: GameView
 var _media: ClassicMediaCatalog
 var _spell_buttons: Dictionary = {}
@@ -76,7 +78,7 @@ func _build_spell_selection(body: LevelUpRequestBody) -> void:
 	var available_levels := _available_spell_levels(body)
 	_selected_level = available_levels[0] if not available_levels.is_empty() else 1
 	%LevelSpellColumns.visible = true
-	_build_spell_level_rail(body, available_levels)
+	_bind_spell_level_rail(body, available_levels)
 	_spell_list_heading = %LevelSpellListHeading as Label
 	_spell_list = %LevelSpellList as VBoxContainer
 	_rebuild_spell_list(body)
@@ -94,19 +96,11 @@ func _build_spell_selection(body: LevelUpRequestBody) -> void:
 	_refresh_spell_selection(body)
 
 
-func _build_spell_level_rail(body: LevelUpRequestBody, available_levels: Array[int]) -> void:
-	var rail := %Rail as VBoxContainer
-	for child: Node in rail.get_children():
-		rail.remove_child(child)
-		child.queue_free()
-	rail.add_child(SpellSelectionChrome.level_heading())
-	var group := ButtonGroup.new()
+func _bind_spell_level_rail(body: LevelUpRequestBody, available_levels: Array[int]) -> void:
 	for level: int in range(1, 8):
-		var button := SpellSelectionChrome.level_button(level, level == _selected_level, available_levels.has(level), _select_spell_level.bind(body, level), "No learnable level %d spells" % level)
+		var button := %Rail.get_node("LevelSpellLevel%d" % level) as Button
+		SpellSelectionChrome.bind_level_button(button, level, level == _selected_level, available_levels.has(level), _select_spell_level.bind(body, level), "No learnable level %d spells" % level)
 		button.name = "LevelSpellLevel%d" % level
-		button.button_group = group
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		rail.add_child(button)
 
 
 func _rebuild_spell_list(body: LevelUpRequestBody) -> void:
@@ -124,7 +118,8 @@ func _rebuild_spell_list(body: LevelUpRequestBody) -> void:
 		var selected := _selected_spell_ids.has(spell.id)
 		var affordable := selected or spell.cost <= remaining
 		var tooltip := spell.name if affordable else "%s costs %d points; only %d remain." % [spell.name, spell.cost, remaining]
-		var button := SpellSelectionChrome.spell_button("LevelSpell_%s" % spell.id, "%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"], selected, affordable, tooltip, _toggle_spell.bind(body, spell.id), _spell_icon(body.character_id, spell.id))
+		var button := spell_button_scene.instantiate() as Button
+		SpellSelectionChrome.bind_spell_button(button, "LevelSpell_%s" % spell.id, "%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"], selected, affordable, tooltip, _toggle_spell.bind(body, spell.id), _spell_icon(body.character_id, spell.id))
 		button.theme_type_variation = &"ClassicTheldrowButton"
 		button.set_meta(&"spell_id", spell.id)
 		_spell_buttons[spell.id] = button

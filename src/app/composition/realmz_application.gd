@@ -17,7 +17,6 @@ const CAMPAIGN_CATALOG_WORKFLOW := preload("res://src/app/composition/campaign_c
 @onready var _battlefield_presenter: ClassicBattlefieldPresenter = %BattlefieldMap
 @onready var _interaction_presenter: InteractionPresenter = %InteractionPanel
 @onready var _shell_presenter: GameShell = $GameShell
-@onready var _game_shell: GameShell = $GameShell
 @onready var _audio_presenter: ClassicAudioPresenter = %ClassicAudio
 
 var session_controller: GameSessionController
@@ -100,7 +99,7 @@ func _build_dependencies() -> void:
 	add_child(session_controller)
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
-	move_child(_dungeon_presenter, _game_shell.get_index())
+	move_child(_dungeon_presenter, _shell_presenter.get_index())
 	add_child(_held_movement)
 	add_child(_controller_input)
 	debug_tools = DebugToolsHost.new()
@@ -111,10 +110,10 @@ func _build_dependencies() -> void:
 		session_controller,
 		presentation_coordinator,
 		presentation_media,
-		_game_shell,
+		_shell_presenter,
 		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null
 	)
-	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _game_shell, func() -> void: _queued_combat_auto_changes.clear(), _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content)
+	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _shell_presenter, func() -> void: _queued_combat_auto_changes.clear(), _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content)
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
 	lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, func(slot_id: String) -> bool: return adventure_storage.save(_active_content, slot_id), func() -> void: adventure_storage.refresh(_active_content), _present_step_status, _complete_closed_session, _quit_application)
 	_persistent_auto.configure(
@@ -244,7 +243,11 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.end_adventure_requested.connect(lifecycle_host.request_end_adventure)
 	_shell_presenter.quit_requested.connect(lifecycle_host.request_quit)
 	_shell_presenter.route_changed.connect(lifecycle_host.route_changed)
-	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
+	_shell_presenter.layout_changed.connect(func(workspace_rect: Rect2, profile: UiLayoutProfile) -> void:
+		if _settings_controller != null: _settings_controller.apply_interface_profile(profile)
+		_spatial_layout.apply(workspace_rect, profile)
+		_spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings)
+	)
 	presentation_coordinator.spatial_visibility_changed.connect(func() -> void: _spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings))
 	_shell_presenter.route_changed.connect(_on_route_changed)
 	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
@@ -254,7 +257,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_shell_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: _controller_input.begin_binding_capture(action_id))
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
-	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, debug_tools, _spatial_layout, get_viewport().get_parent() as DisplayCompositor)
+	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, debug_tools, _spatial_layout, get_viewport().get_parent() as DisplayCompositor, session_controller.view)
 	if not has_meta(&"development_preview_request"):
 		_settings_controller.bind()
 	_settings_controller.apply_initial_settings()
@@ -276,7 +279,7 @@ func _finish_startup() -> void:
 		add_child(preview_host)
 		preview_host.call("launch", preview_request, session_controller, presentation_coordinator, presentation_media, _shell_presenter, func(content: RealmzContent) -> void: _active_content = content)
 		return
-	_game_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
+	_shell_presenter.navigator.setup_controller.character_creation.set_standalone_character_creation_available(false, "Loading the built-in Classic definitions…")
 	Callable(character_files, "begin_library_load").call_deferred()
 	_status_label.text = "Pure session boundary online"
 	_campaign_catalog.refresh()
@@ -368,7 +371,7 @@ func _notification(what: int) -> void:
 		if _controller_input != null and _controller_input.active_device() >= 0:
 			_controller_input.suspend("Application focus changed. Center the controller, then press a button to continue.")
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		if _game_shell != null and _game_shell.navigator.draft_dialog.defer_if_dirty(_game_shell.navigator.content_presenter.system_preferences, lifecycle_host.request_quit):
+		if _shell_presenter != null and _shell_presenter.navigator.draft_dialog.defer_if_dirty(_shell_presenter.navigator.content_presenter.system_preferences, lifecycle_host.request_quit):
 			return
 		lifecycle_host.request_quit()
 
@@ -667,11 +670,6 @@ func _present_step_status(step: SessionStep) -> void:
 			if not status_text.is_empty(): _status_label.text = status_text
 	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
 		_status_label.text = ApplicationStepStatusText.for_interaction(step.interaction)
-
-
-func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) -> void:
-	_spatial_layout.apply(workspace_rect, _profile)
-	_spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings)
 
 
 func _on_route_changed(route_id: StringName) -> void:

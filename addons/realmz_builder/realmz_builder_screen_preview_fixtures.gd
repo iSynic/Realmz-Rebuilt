@@ -73,7 +73,7 @@ static func _bind_inventory_screen(screen: InventoryScreen, view: GameView, comp
 static func _bind_spells_screen(screen: SpellsScreen, view: GameView, compact: bool) -> void:
 	var controller := SpellsScreenController.new()
 	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
-	controller.present(screen, view, null, 1.0, screen.find_child("SpellsBackHost", true, false))
+	controller.present(screen, view, null, 1.0)
 	screen.set_meta("realmz_builder_controller", controller)
 
 

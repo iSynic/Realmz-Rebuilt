@@ -3,47 +3,75 @@
 extends RealmzTestCase
 
 const PREVIEW_FIXTURES := preload("res://addons/realmz_builder/realmz_builder_preview_fixtures.gd")
-const SURFACES := {
-	"temple": preload("res://src/ui/services/temple_interaction.tscn"),
-	"bank": preload("res://src/ui/services/bank_interaction.tscn"),
-	"pick-lock": preload("res://src/ui/shared/interactions/pick_lock_interaction.tscn"),
-	"lifecycle-prompts": preload("res://src/ui/shared/interactions/lifecycle_interaction.tscn"),
-	"scrolling-text": preload("res://src/ui/journal/scrolling_text_interaction.tscn"),
-	"level-up": preload("res://src/ui/characters/level_up_interaction.tscn"),
-	"encounter": preload("res://src/ui/shared/interactions/encounter_interaction.tscn"),
-	"shop": preload("res://src/ui/services/shop_interaction.tscn"),
-	"treasure": preload("res://src/ui/services/treasure_distribution_interaction.tscn"),
-	"combat-command-deck": preload("res://src/ui/combat/battle_interaction.tscn"),
-	"character-sheet": preload("res://src/ui/characters/character_screen.tscn"),
-	"inventory": preload("res://src/ui/inventory/inventory_screen.tscn"),
-	"spells": preload("res://src/ui/magic/spells_screen.tscn"),
-	"services": preload("res://src/ui/services/services_screen.tscn"),
-	"roster-spellbook": preload("res://src/ui/shell/classic_party_roster.tscn"),
-	"character-files": preload("res://src/ui/characters/vault_screen.tscn"),
-	"allies": preload("res://src/ui/characters/allies_screen.tscn"),
-	"bestiary": preload("res://src/ui/characters/bestiary_screen.tscn"),
-	"maps-journal": preload("res://src/ui/journal/journal_screen.tscn"),
-	"system": preload("res://src/ui/shell/system_screen.tscn"),
-	"application-shell": preload("res://src/ui/shell/game_shell.tscn"),
-	"campaign-selection": preload("res://src/ui/setup/campaign_selection_panel.tscn"),
-	"party-assembly": preload("res://src/ui/setup/party_setup_workspace.tscn"),
-	"character-creation": preload("res://src/ui/setup/party_setup_workspace.tscn"),
-}
-const PROFILES: Array[String] = ["Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error"]
+var _surfaces: Dictionary = {}
+var _contracts: Dictionary = {}
+var _profiles: Array[String] = []
 
 
 func run() -> void:
 	_test_all_profiles_bind_through_production_components()
 	_test_representative_collections_and_modes()
+	_test_character_facts_survive_rebinding()
+	_test_fixed_slot_controls_survive_rebinding()
+
+
+func _test_character_facts_survive_rebinding() -> void:
+	_load_registry()
+	var surface := (_surfaces["character-sheet"] as PackedScene).instantiate() as Control
+	var sheet := surface.find_child("ClassicCharacterSheet", true, false) as ClassicCharacterSheet
+	var retained := _fixed_character_facts(sheet)
+	assert_equal(retained.size(), 72, "the unbound character sheet authors its overview, saves, race/caste, age, scroll and lifetime facts")
+	(Engine.get_main_loop() as SceneTree).root.add_child(surface)
+	for profile: String in ["Compact", "Empty", "Long Content", "Wide"]:
+		PREVIEW_FIXTURES.bind(surface, "character-sheet", profile)
+		assert_equal(_fixed_character_facts(sheet), retained, "character facts retain their scene identity through %s rebinding" % profile)
+	_free_surface(surface)
+
+
+func _fixed_character_facts(sheet: ClassicCharacterSheet) -> Array[Node]:
+	var result: Array[Node] = []
+	for region: String in ["OverviewAttributes", "OverviewCombat", "OverviewStatus"]:
+		result.append_array(sheet.find_child(region, true, false).get_node("Content/MetricRows").get_children())
+	result.append_array(sheet.find_child("RecordCards", true, false).get_children())
+	result.append_array(sheet.find_child("ScrollCards", true, false).get_children())
+	result.append_array(sheet.find_child("AgeBands", true, false).get_children())
+	for region: String in ["SavingThrowsRegion", "RaceRegion", "CasteRegion"]:
+		result.append_array(sheet.find_child(region, true, false).get_node("Content/MetricRows").get_children())
+	return result
+
+
+func _test_fixed_slot_controls_survive_rebinding() -> void:
+	_load_registry()
+	for surface_id: String in ["spells", "system"]:
+		var surface := (_surfaces[surface_id] as PackedScene).instantiate() as Control
+		var patterns: Array[String] = []
+		patterns.assign(["FastSpellSlot*", "ScrollCaseSlot*"] if surface_id == "spells" else ["SavePreview_?_primary"])
+		var retained := _fixed_slot_controls(surface, patterns)
+		assert_equal(retained.size(), 15 if surface_id == "spells" else 10, "%s authors every fixed slot before tree entry" % surface_id)
+		(Engine.get_main_loop() as SceneTree).root.add_child(surface)
+		for profile: String in ["Wide", "Compact", "Empty", "Long Content"]:
+			PREVIEW_FIXTURES.bind(surface, surface_id, profile)
+			assert_equal(_fixed_slot_controls(surface, patterns), retained, "%s retains fixed slot identities across %s binding" % [surface_id, profile])
+		_free_surface(surface)
+
+
+func _fixed_slot_controls(surface: Control, patterns: Array[String]) -> Array[Node]:
+	var result: Array[Node] = []
+	for pattern: String in patterns:
+		result.append_array(surface.find_children(pattern, "Control", true, false))
+	return result
 
 
 func _test_all_profiles_bind_through_production_components() -> void:
+	_load_registry()
 	var scene_tree := Engine.get_main_loop() as SceneTree
-	for surface_id: String in SURFACES:
-		for profile: String in PROFILES:
-			var surface := (SURFACES[surface_id] as PackedScene).instantiate() as Control
+	for surface_id: String in _surfaces:
+		for profile: String in _profiles:
+			var surface := (_surfaces[surface_id] as PackedScene).instantiate() as Control
+			assert_true(_has_scene_nodes(surface, _contracts[surface_id].rawSceneNodes), "%s composes its raw-scene anchors before tree entry or preview binding" % surface_id)
 			scene_tree.root.add_child(surface)
 			assert_true(PREVIEW_FIXTURES.bind(surface, surface_id, profile), "%s binds the %s fixture through its production component" % [surface_id, profile])
+			assert_true(_has_scene_nodes(surface, _contracts[surface_id].populatedPreviewNodes), "%s exposes populated-preview anchors after binding" % surface_id)
 			assert_equal(String(surface.get_meta("realmz_builder_profile", "")), profile, "%s records the active detached preview profile" % surface_id)
 			scene_tree.root.remove_child(surface)
 			surface.free()
@@ -76,7 +104,7 @@ func _test_representative_collections_and_modes() -> void:
 	var character_creation := _bound_surface("character-creation", "Wide")
 	assert_equal((temple.find_child("TempleCharacterRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 2, "Temple preview uses the production adventurer-row collection")
 	assert_equal((temple.find_child("TempleServiceRows", true, false) as VBoxContainer).find_children("*", "Button", false, false).size(), 3, "Temple preview uses the production service-row collection")
-	assert_true((bank.find_child("BankPool", true, false) as Button).disabled and (bank.find_child("BankShare", true, false) as Button).disabled, "Bank unavailable preview binds request-owned disabled actions")
+	assert_true((bank.find_child("Pool", true, false) as Button).disabled and (bank.find_child("Share", true, false) as Button).disabled, "Bank unavailable preview binds request-owned disabled actions")
 	assert_equal((pick_lock.find_child("TumblerRows", true, false) as VBoxContainer).get_child_count(), 6, "Pick Lock long-content preview uses the production tumbler rows")
 	assert_equal((lifecycle.find_child("LifecycleVerticalActions", true, false) as VBoxContainer).get_child_count(), 3, "Lifecycle preview creates the production response choices")
 	assert_not_null(scrolling_text.find_child("ClassicScrollingTextDone", true, false), "scrolling-text preview binds the production scrolling surface and fixed action")
@@ -104,7 +132,7 @@ func _test_representative_collections_and_modes() -> void:
 
 
 func _bound_surface(surface_id: String, profile: String) -> Control:
-	var surface := (SURFACES[surface_id] as PackedScene).instantiate() as Control
+	var surface := (_surfaces[surface_id] as PackedScene).instantiate() as Control
 	(Engine.get_main_loop() as SceneTree).root.add_child(surface)
 	PREVIEW_FIXTURES.bind(surface, surface_id, profile)
 	return surface
@@ -113,3 +141,19 @@ func _bound_surface(surface_id: String, profile: String) -> Control:
 func _free_surface(surface: Control) -> void:
 	(Engine.get_main_loop() as SceneTree).root.remove_child(surface)
 	surface.free()
+
+
+func _load_registry() -> void:
+	var file := FileAccess.open("res://addons/realmz_builder/scene_previews.json", FileAccess.READ)
+	var registry: Dictionary = JSON.parse_string(file.get_as_text())
+	_contracts = registry.sceneContracts
+	_profiles.assign(registry.profiles)
+	for scene: Dictionary in registry.scenes:
+		_surfaces[scene.id] = load("res://" + scene.scene)
+
+
+func _has_scene_nodes(surface: Control, patterns: Array) -> bool:
+	for pattern: String in patterns:
+		if surface.find_children(pattern, "Node", true, false).is_empty():
+			return false
+	return true

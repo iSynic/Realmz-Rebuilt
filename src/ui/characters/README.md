@@ -6,12 +6,15 @@ This folder is the Godot-facing home of the Character, Allies, Bestiary, and Cha
 
 - `character_screen.tscn`: the party Character route and Party Order editor.
 - `classic_character_sheet.tscn`: the shared eight-tab character record used by Character, Character Files, party inspection, and creation review.
+- `character_sheet_stat_tabs.tscn`: edit the named Overview facts under `OverviewTab/OverviewRegions` and Lifetime Record cards under `RecordTab/LifetimeRecord/Content/RecordCards`. These fixed rows survive character, tab, and layout changes; only their detached values are rebound.
 - `creature_library_workspace.tscn`: the shared Allies and Bestiary list-and-detail body.
 - `vault_screen.tscn`: the Character Files library, history, and immutable inspection surface.
 - `character_screen_controller.gd`: route-local character and vault selection, binding, and typed commands.
 - `creature_library_screen_controller.gd`: read-only Allies and Bestiary binding.
 
 Repeated records live in the neighboring row and card scenes. Parent scenes export those `PackedScene` dependencies, so their appearance remains editable and their instances can be reused without rebuilding a route.
+
+The tab scenes also author the fixed saving throws, race/caste facts, five age bands, and five Scroll Case cards. Bind these by their stable metric or slot identities. Conditions, active abilities/modifiers, items, and known spells remain variable collections.
 
 ## Data flow
 
@@ -39,3 +42,5 @@ Routes and the shared character sheet are retained while active. Controllers rep
 ## Tests and preview
 
 Realmz Builder registers all four major scenes with Wide, Compact, empty, long-content, unavailable, and error profiles. Focused behavior lives in the Character, Allies/Bestiary, Character Files, Classic UI system, and Builder preview presentation suites. The aggregate release gate is `tools/verify.ps1`.
+
+Open the registered parent scene, choose a profile in the Realmz Builder dock, and apply it. Clear Preview returns to the authored scene. Preview data is transient; edit the actual scene or its named child scene, not the populated preview clone. See `addons/realmz_builder/README.md` for the complete dock workflow.

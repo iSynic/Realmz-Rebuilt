@@ -1,6 +1,13 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/ui/characters/level_up_interaction.gd" id="1_script"]
+
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_heading.tscn" id="2_heading"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_button.tscn" id="3_level"]
+
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_selection_button.tscn" id="4_spell"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_levels"]
 
 [node name="LevelUpInteraction" type="VBoxContainer"]
 custom_minimum_size = Vector2(0, 320)
@@ -8,6 +15,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 script = ExtResource("1_script")
+spell_button_scene = ExtResource("4_spell")
 
 [node name="LevelHeader" type="HBoxContainer" parent="."]
 layout_mode = 2
@@ -229,6 +237,45 @@ theme_type_variation = &"ClassicTextWell"
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 4
+
+
+[node name="SpellLevelHeading" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("2_heading")]
+unique_name_in_owner = true
+
+[node name="LevelSpellLevel1" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("3_level")]
+size_flags_horizontal = 3
+text = "Level 1"
+button_group = SubResource("ButtonGroup_levels")
+
+[node name="LevelSpellLevel2" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("3_level")]
+size_flags_horizontal = 3
+text = "Level 2"
+button_group = SubResource("ButtonGroup_levels")
+
+[node name="LevelSpellLevel3" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("3_level")]
+size_flags_horizontal = 3
+text = "Level 3"
+button_group = SubResource("ButtonGroup_levels")
+
+[node name="LevelSpellLevel4" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("3_level")]
+size_flags_horizontal = 3
+text = "Level 4"
+button_group = SubResource("ButtonGroup_levels")
+
+[node name="LevelSpellLevel5" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("3_level")]
+size_flags_horizontal = 3
+text = "Level 5"
+button_group = SubResource("ButtonGroup_levels")
+
+[node name="LevelSpellLevel6" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("3_level")]
+size_flags_horizontal = 3
+text = "Level 6"
+button_group = SubResource("ButtonGroup_levels")
+
+[node name="LevelSpellLevel7" parent="LevelSpellColumns/LevelSpellLevelRail/Rail" instance=ExtResource("3_level")]
+size_flags_horizontal = 3
+text = "Level 7"
+button_group = SubResource("ButtonGroup_levels")
 
 [node name="LevelSpellCandidates" type="PanelContainer" parent="LevelSpellColumns"]
 layout_mode = 2

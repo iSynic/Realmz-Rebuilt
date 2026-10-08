@@ -9,6 +9,8 @@ route_id = &"save_load"
 title = "Save & Load"
 description = "Ten scenario slots. Quick Save overwrites the active slot."
 script = ExtResource("2_screen")
+preferred_size = Vector2(1016, 586)
+window_fraction = Vector2(0.9, 0.9)
 
 [node name="ScreenBodyScroll" parent="WorkspaceColumn/BodyClip" index="0"]
 vertical_scroll_mode = 0

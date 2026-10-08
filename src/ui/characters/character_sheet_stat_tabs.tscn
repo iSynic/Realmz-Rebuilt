@@ -1,5 +1,8 @@
 [gd_scene format=3]
 
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_metric_row.tscn" id="1_metric"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_record_card.tscn" id="2_record"]
+
 [node name="CharacterSheetStatTabs" type="VBoxContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -26,6 +29,49 @@ text = "Attributes"
 layout_mode = 2
 columns = 1
 
+[node name="Brawn" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Brawn" index="0"]
+text = "Brawn"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Brawn" index="1"]
+text = "—"
+
+[node name="Knowledge" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Knowledge" index="0"]
+text = "Knowledge"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Knowledge" index="1"]
+text = "—"
+
+[node name="Judgment" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Judgment" index="0"]
+text = "Judgment"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Judgment" index="1"]
+text = "—"
+
+[node name="Agility" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Agility" index="0"]
+text = "Agility"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Agility" index="1"]
+text = "—"
+
+[node name="Vitality" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Vitality" index="0"]
+text = "Vitality"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Vitality" index="1"]
+text = "—"
+
+[node name="Luck" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Luck" index="0"]
+text = "Luck"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewAttributes/Content/MetricRows/Luck" index="1"]
+text = "—"
+
+
 [node name="OverviewCombat" type="PanelContainer" parent="OverviewTab/OverviewRegions"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -41,6 +87,77 @@ text = "Combat profile"
 layout_mode = 2
 columns = 1
 
+[node name="AttackBonus" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/AttackBonus" index="0"]
+text = "Attack Bonus"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/AttackBonus" index="1"]
+text = "—"
+
+[node name="DefenseBonus" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/DefenseBonus" index="0"]
+text = "Defense Bonus"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/DefenseBonus" index="1"]
+text = "—"
+
+[node name="BaseToHit" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/BaseToHit" index="0"]
+text = "Base To Hit"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/BaseToHit" index="1"]
+text = "—"
+
+[node name="Armor" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/Armor" index="0"]
+text = "Armor"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/Armor" index="1"]
+text = "—"
+
+[node name="Dodge" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/Dodge" index="0"]
+text = "Dodge"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/Dodge" index="1"]
+text = "—"
+
+[node name="Missile" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/Missile" index="0"]
+text = "Missile"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/Missile" index="1"]
+text = "—"
+
+[node name="TwoHand" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/TwoHand" index="0"]
+text = "Two-Hand"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/TwoHand" index="1"]
+text = "—"
+
+[node name="HandToHand" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/HandToHand" index="0"]
+text = "Hand-to-Hand"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/HandToHand" index="1"]
+text = "—"
+
+[node name="DamageBonus" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/DamageBonus" index="0"]
+text = "Damage Bonus"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/DamageBonus" index="1"]
+text = "—"
+
+[node name="MagicResistance" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/MagicResistance" index="0"]
+text = "Magic Resistance"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewCombat/Content/MetricRows/MagicResistance" index="1"]
+text = "—"
+
+
 [node name="OverviewStatus" type="PanelContainer" parent="OverviewTab/OverviewRegions"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -55,6 +172,70 @@ text = "Resources and wealth"
 [node name="MetricRows" type="GridContainer" parent="OverviewTab/OverviewRegions/OverviewStatus/Content"]
 layout_mode = 2
 columns = 1
+
+[node name="Stamina" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Stamina" index="0"]
+text = "Stamina"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Stamina" index="1"]
+text = "—"
+
+[node name="SpellPoints" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/SpellPoints" index="0"]
+text = "Spell Points"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/SpellPoints" index="1"]
+text = "—"
+
+[node name="Load" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Load" index="0"]
+text = "Load"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Load" index="1"]
+text = "—"
+
+[node name="Movement" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Movement" index="0"]
+text = "Movement"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Movement" index="1"]
+text = "—"
+
+[node name="AttacksPerRound" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/AttacksPerRound" index="0"]
+text = "Attacks / Round"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/AttacksPerRound" index="1"]
+text = "—"
+
+[node name="Experience" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Experience" index="0"]
+text = "Experience"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Experience" index="1"]
+text = "—"
+
+[node name="Gold" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Gold" index="0"]
+text = "Gold"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Gold" index="1"]
+text = "—"
+
+[node name="Gems" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Gems" index="0"]
+text = "Gems"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Gems" index="1"]
+text = "—"
+
+[node name="Jewelry" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Jewelry" index="0"]
+text = "Jewelry"
+[node name="MetricValue" parent="OverviewTab/OverviewRegions/OverviewStatus/Content/MetricRows/Jewelry" index="1"]
+text = "—"
+
 [node name="ConditionsTitle" type="Label" parent="OverviewTab/OverviewRegions/OverviewStatus/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
@@ -97,6 +278,62 @@ text = "Saving throws"
 [node name="MetricRows" type="GridContainer" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content"]
 layout_mode = 2
 columns = 1
+
+[node name="save-0" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-0" index="0"]
+text = "Charm"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-0" index="1"]
+text = "—"
+
+[node name="save-1" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-1" index="0"]
+text = "Heat"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-1" index="1"]
+text = "—"
+
+[node name="save-2" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-2" index="0"]
+text = "Cold"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-2" index="1"]
+text = "—"
+
+[node name="save-3" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-3" index="0"]
+text = "Electrical"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-3" index="1"]
+text = "—"
+
+[node name="save-4" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-4" index="0"]
+text = "Chemical"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-4" index="1"]
+text = "—"
+
+[node name="save-5" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-5" index="0"]
+text = "Mental"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-5" index="1"]
+text = "—"
+
+[node name="save-6" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-6" index="0"]
+text = "Magic"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-6" index="1"]
+text = "—"
+
+[node name="save-7" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows" instance=ExtResource("1_metric")]
+layout_mode = 2
+[node name="MetricName" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-7" index="0"]
+text = "Special"
+[node name="MetricValue" parent="ConditionsTab/ConditionSaveRegions/SavingThrowsRegion/Content/MetricRows/save-7" index="1"]
+text = "—"
 
 [node name="AbilitiesTab" type="VBoxContainer" parent="."]
 visible = false
@@ -159,6 +396,115 @@ text = "Prestige 0"
 [node name="RecordCards" type="GridContainer" parent="RecordTab/LifetimeRecord/Content"]
 layout_mode = 2
 columns = 2
+
+[node name="DamageGiven" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageGiven/Content" index="0"]
+text = "Damage given"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageGiven/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageGiven/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="DamageTaken" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageTaken/Content" index="0"]
+text = "Damage taken"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageTaken/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageTaken/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="HitsGiven" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsGiven/Content" index="0"]
+text = "Hits given"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsGiven/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsGiven/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="HitsTaken" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsTaken/Content" index="0"]
+text = "Hits taken"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsTaken/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsTaken/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="EnemyMisses" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/EnemyMisses/Content" index="0"]
+text = "Enemy misses"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/EnemyMisses/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/EnemyMisses/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="AttacksMissed" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/AttacksMissed/Content" index="0"]
+text = "Attacks missed"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/AttacksMissed/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/AttacksMissed/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="Kills" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/Kills/Content" index="0"]
+text = "Kills"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Kills/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Kills/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="Deaths" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/Deaths/Content" index="0"]
+text = "Deaths"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Deaths/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Deaths/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="Knockouts" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/Knockouts/Content" index="0"]
+text = "Knockouts"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Knockouts/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Knockouts/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="SpellsCast" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/SpellsCast/Content" index="0"]
+text = "Spells cast"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/SpellsCast/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/SpellsCast/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="Destroyed" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/Destroyed/Content" index="0"]
+text = "Destroyed"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Destroyed/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Destroyed/Content" index="2"]
+text = "Lifetime Classic counter"
+
+[node name="Turned" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
+layout_mode = 2
+[node name="Title" parent="RecordTab/LifetimeRecord/Content/RecordCards/Turned/Content" index="0"]
+text = "Turned"
+[node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Turned/Content" index="1"]
+text = "—"
+[node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Turned/Content" index="2"]
+text = "Lifetime Classic counter"
+
 [node name="PrestigePenalty" type="Label" parent="RecordTab/LifetimeRecord/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)

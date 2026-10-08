@@ -5,11 +5,10 @@ extends RefCounted
 const HELD_COMMAND_INTERVAL := 1.0 / 60.0
 const HELD_COMMAND_START_SOUND_IDS: Dictionary = {&"area_search": 6001, &"rest": 6001}
 const CONTEXTUAL_CONTROL_SOUND_ID := 141
-const TORCH_BUTTON_SCRIPT := preload("res://src/ui/exploration/classic_torch_command_button.gd")
-const SEARCH_BUTTON_SCRIPT := preload("res://src/ui/exploration/classic_search_command_button.gd")
 
 var _owner_ref: WeakRef
 var _buttons: Dictionary = {}
+var _configured_definitions: Dictionary = {}
 var _held_command: StringName = &""
 var _held_command_source: StringName = &""
 var _timer: Timer
@@ -28,6 +27,18 @@ func initialize() -> void:
 	_timer.wait_time = HELD_COMMAND_INTERVAL
 	_timer.timeout.connect(_on_timeout)
 	_owner().add_child(_timer)
+	for node: Node in _owner().find_children("*", "BaseButton", true, false):
+		if not node.has_meta("shell_command_id"):
+			continue
+		var button := node as BaseButton
+		var command_id := StringName(button.get_meta("shell_command_id"))
+		_buttons[command_id] = button
+		button.set_meta("focus_key", "command:%s" % command_id)
+		if bool(ClassicCommandCatalog.command(command_id).get("hold_repeat", false)):
+			button.button_down.connect(_begin_held_command.bind(command_id))
+			button.button_up.connect(_on_button_up)
+		else:
+			button.connect("command_requested", activate)
 
 
 func present(game_view: GameView) -> void:
@@ -39,18 +50,22 @@ func rebuild() -> void:
 	var owner = _owner()
 	if not owner.is_node_ready() or owner._profile == null:
 		return
-	for grid: Control in [owner._world_command_grid, owner._world_command_lower_grid, owner._command_grid, owner._torch_dock]:
-		for child: Node in grid.get_children():
-			grid.remove_child(child)
-			child.queue_free()
-	_buttons.clear()
+	for button: BaseButton in _buttons.values():
+		button.hide()
 	var context: StringName = owner._navigator.current_screen()
 	var world_command_count := 0
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = presentation_definition(definition)
 		var command_id := StringName(definition["id"])
-		var button := _build_button(definition)
-		button.set_meta("focus_key", "command:%s" % definition["id"])
+		var button := _buttons[command_id] as BaseButton
+		button.show()
+		if button is ClassicBitmapButton:
+			var bitmap := button as ClassicBitmapButton
+			if _configured_definitions.get(command_id) != definition:
+				bitmap.configure(definition, owner._profile.bitmap_scale)
+				_configured_definitions[command_id] = definition.duplicate(true)
+			else:
+				bitmap.set_art_scale(owner._profile.bitmap_scale)
 		var group := StringName(definition.get("group", &"party"))
 		var target_grid: Control = owner._command_grid
 		if command_id == &"torch" and owner._torch_dock.visible:
@@ -58,31 +73,10 @@ func rebuild() -> void:
 		elif group == &"world" and owner._world_command_panel.visible:
 			target_grid = owner._world_command_grid if world_command_count < 4 else owner._world_command_lower_grid
 			world_command_count += 1
-		target_grid.add_child(button)
-		_buttons[StringName(definition["id"])] = button
+		if button.get_parent() != target_grid:
+			button.reparent(target_grid, false)
+		target_grid.move_child(button, target_grid.get_child_count() - 1)
 	update_availability()
-
-
-func _build_button(definition: Dictionary) -> BaseButton:
-	var owner = _owner()
-	if bool(definition.get("search_animation", false)):
-		var search_button := SEARCH_BUTTON_SCRIPT.new() as BaseButton
-		search_button.command_requested.connect(activate)
-		search_button.set_meta("search_animation", true)
-		return search_button
-	if bool(definition.get("torch_meter", false)):
-		var torch_button := TORCH_BUTTON_SCRIPT.new() as BaseButton
-		torch_button.command_requested.connect(activate)
-		torch_button.set_meta("torch_meter", true)
-		return torch_button
-	var bitmap := ClassicBitmapButton.new()
-	bitmap.configure(definition, owner._profile.bitmap_scale)
-	if bool(definition.get("hold_repeat", false)):
-		bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
-		bitmap.button_up.connect(_on_button_up)
-	else:
-		bitmap.command_requested.connect(activate)
-	return bitmap
 
 
 func update_availability() -> void:
@@ -160,15 +154,13 @@ func controller_entries() -> Array[ControllerRadialEntry]:
 func controller_icon(command_id: StringName) -> Texture2D:
 	var button := _buttons.get(command_id) as ClassicBitmapButton
 	if button != null:
+		if not button.has_visual_art():
+			button.configure(presentation_definition(ClassicCommandCatalog.command(command_id)))
 		return button.radial_art_texture()
 	var definition := presentation_definition(ClassicCommandCatalog.command(command_id))
 	if definition.is_empty():
 		return null
-	var prepared := ClassicBitmapButton.new()
-	prepared.configure(definition)
-	var texture := prepared.radial_art_texture()
-	prepared.free()
-	return texture
+	return ClassicUiAssetCatalog.texture(StringName(definition.get("asset_id", &"")))
 
 
 static func _fallback_symbol(command_id: StringName) -> String:

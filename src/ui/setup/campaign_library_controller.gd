@@ -357,7 +357,8 @@ func _set_intro_active(active: bool) -> void:
 func _render_campaign_list() -> void:
 	if campaign_list == null:
 		return
-	var focused := campaign_overlay.get_viewport().gui_get_focus_owner()
+	var viewport := campaign_overlay.get_viewport()
+	var focused := viewport.gui_get_focus_owner() if viewport != null else null
 	var restore_path := ""
 	if focused != null and campaign_list.is_ancestor_of(focused):
 		var parent := focused.get_parent()

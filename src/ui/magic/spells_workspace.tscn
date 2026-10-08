@@ -14,9 +14,6 @@ size_flags_vertical = 3
 theme_override_constants/separation = 5
 script = ExtResource("1_workspace")
 known_spell_button_scene = ExtResource("2_spell_button")
-action_dock_scene = ExtResource("3_actions")
-fast_spell_row_scene = ExtResource("4_fast")
-scroll_slot_row_scene = ExtResource("5_scroll")
 
 [node name="Caster" type="PanelContainer" parent="."]
 layout_mode = 2
@@ -417,6 +414,11 @@ autowrap_mode = 3
 [node name="SpellActionHost" type="HBoxContainer" parent="ClassicSpellbookWorkspace/Content"]
 layout_mode = 2
 
+[node name="SpellActionDock" parent="ClassicSpellbookWorkspace/Content/SpellActionHost" instance=ExtResource("3_actions")]
+visible = false
+layout_mode = 2
+
+
 [node name="FastSection" type="VBoxContainer" parent="."]
 visible = false
 layout_mode = 2
@@ -459,6 +461,76 @@ theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 5
 columns = 1
 
+[node name="FastSpellSlot0" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot0/Content" index="0"]
+text = "Slot 1"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot0/Content" index="1"]
+name = &"FastSpellPicker0"
+
+[node name="FastSpellSlot1" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot1/Content" index="0"]
+text = "Slot 2"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot1/Content" index="1"]
+name = &"FastSpellPicker1"
+
+[node name="FastSpellSlot2" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot2/Content" index="0"]
+text = "Slot 3"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot2/Content" index="1"]
+name = &"FastSpellPicker2"
+
+[node name="FastSpellSlot3" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot3/Content" index="0"]
+text = "Slot 4"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot3/Content" index="1"]
+name = &"FastSpellPicker3"
+
+[node name="FastSpellSlot4" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot4/Content" index="0"]
+text = "Slot 5"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot4/Content" index="1"]
+name = &"FastSpellPicker4"
+
+[node name="FastSpellSlot5" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot5/Content" index="0"]
+text = "Slot 6"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot5/Content" index="1"]
+name = &"FastSpellPicker5"
+
+[node name="FastSpellSlot6" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot6/Content" index="0"]
+text = "Slot 7"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot6/Content" index="1"]
+name = &"FastSpellPicker6"
+
+[node name="FastSpellSlot7" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot7/Content" index="0"]
+text = "Slot 8"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot7/Content" index="1"]
+name = &"FastSpellPicker7"
+
+[node name="FastSpellSlot8" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot8/Content" index="0"]
+text = "Slot 9"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot8/Content" index="1"]
+name = &"FastSpellPicker8"
+
+[node name="FastSpellSlot9" parent="FastSection/FastSpellGrid/Rows" instance=ExtResource("4_fast")]
+layout_mode = 2
+[node name="Slot" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot9/Content" index="0"]
+text = "Slot 0"
+[node name="Picker" parent="FastSection/FastSpellGrid/Rows/FastSpellSlot9/Content" index="1"]
+name = &"FastSpellPicker9"
+
 [node name="ScrollSection" type="VBoxContainer" parent="."]
 visible = false
 layout_mode = 2
@@ -485,6 +557,51 @@ theme_type_variation = &"ClassicInset"
 [node name="Rows" type="VBoxContainer" parent="ScrollSection/SpellScrollCase"]
 layout_mode = 2
 theme_override_constants/separation = 5
+
+[node name="ScrollCaseSlot0" parent="ScrollSection/SpellScrollCase/Rows" instance=ExtResource("5_scroll")]
+layout_mode = 2
+[node name="Record" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot0/Content" index="0"]
+text = "Slot 1 • Empty"
+[node name="Use" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot0/Content" index="1"]
+name = &"UseScroll0"
+[node name="Discard" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot0/Content" index="2"]
+name = &"DiscardScroll0"
+
+[node name="ScrollCaseSlot1" parent="ScrollSection/SpellScrollCase/Rows" instance=ExtResource("5_scroll")]
+layout_mode = 2
+[node name="Record" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot1/Content" index="0"]
+text = "Slot 2 • Empty"
+[node name="Use" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot1/Content" index="1"]
+name = &"UseScroll1"
+[node name="Discard" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot1/Content" index="2"]
+name = &"DiscardScroll1"
+
+[node name="ScrollCaseSlot2" parent="ScrollSection/SpellScrollCase/Rows" instance=ExtResource("5_scroll")]
+layout_mode = 2
+[node name="Record" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot2/Content" index="0"]
+text = "Slot 3 • Empty"
+[node name="Use" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot2/Content" index="1"]
+name = &"UseScroll2"
+[node name="Discard" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot2/Content" index="2"]
+name = &"DiscardScroll2"
+
+[node name="ScrollCaseSlot3" parent="ScrollSection/SpellScrollCase/Rows" instance=ExtResource("5_scroll")]
+layout_mode = 2
+[node name="Record" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot3/Content" index="0"]
+text = "Slot 4 • Empty"
+[node name="Use" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot3/Content" index="1"]
+name = &"UseScroll3"
+[node name="Discard" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot3/Content" index="2"]
+name = &"DiscardScroll3"
+
+[node name="ScrollCaseSlot4" parent="ScrollSection/SpellScrollCase/Rows" instance=ExtResource("5_scroll")]
+layout_mode = 2
+[node name="Record" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot4/Content" index="0"]
+text = "Slot 5 • Empty"
+[node name="Use" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot4/Content" index="1"]
+name = &"UseScroll4"
+[node name="Discard" parent="ScrollSection/SpellScrollCase/Rows/ScrollCaseSlot4/Content" index="2"]
+name = &"DiscardScroll4"
 [node name="Empty" type="Label" parent="ScrollSection"]
 visible = false
 layout_mode = 2

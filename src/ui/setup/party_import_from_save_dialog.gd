@@ -8,9 +8,16 @@ signal import_selected_requested(indices: Array[int])
 signal cancel_requested
 signal refresh_requested
 
+@export var source_row_scene: PackedScene
+@export var candidate_row_scene: PackedScene
+@export var detail_label_scene: PackedScene
+
 const ERROR_COLOR := Color("ef7770")
 const MUTED_COLOR := Color("9aa0a8")
 
+@onready var _empty_sources: Label = %EmptySources
+@onready var _loading_source: Label = %LoadingSource
+@onready var _capacity: Label = %ImportCapacity
 @onready var _phase_label: Label = %PhaseLabel
 @onready var _dialog_panel: PanelContainer = %Dialog
 @onready var _message_label: Label = %MessageLabel
@@ -91,27 +98,20 @@ func _render() -> void:
 	_refresh_button.disabled = phase == "loading"
 	_browse_button.disabled = phase == "loading"
 	var sources: Array = _view.get("sources", [])
+	_empty_sources.visible = sources.is_empty() and phase == "selection"
+	_loading_source.visible = phase == "loading"
+	_capacity.visible = phase == "review"
 	for index: int in sources.size():
 		var source: Dictionary = sources[index] if sources[index] is Dictionary else {}
-		var button := Button.new()
+		var row := source_row_scene.instantiate()
+		var button := row.get_node("Source") as Button
 		button.name = "SaveSource%d" % index
 		button.text = String(source.get("label", "Save %d" % (index + 1)))
 		button.tooltip_text = String(source.get("detail", ""))
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.custom_minimum_size.y = 44.0
-		button.focus_mode = Control.FOCUS_ALL
 		button.disabled = not bool(source.get("valid", false)) or phase == "loading"
-		var detail := _detail_label(String(source.get("detail", "")), button.disabled)
-		var row := VBoxContainer.new()
-		row.add_child(button)
-		if not detail.text.is_empty():
-			row.add_child(detail)
+		_bind_detail(row.get_node("Detail"), String(source.get("detail", "")), button.disabled)
 		_sources_list.add_child(row)
 		button.pressed.connect(_request_source.bind(index))
-	if sources.is_empty() and phase == "selection":
-		_sources_list.add_child(_detail_label("No saved adventures are available.", false))
-	if phase == "loading":
-		_sources_list.add_child(_detail_label("Reading the selected save…", false))
 	if phase == "review":
 		_render_candidates(_view.get("candidates", []))
 		for warning: String in _strings(_view.get("left_behind", [])):
@@ -156,29 +156,21 @@ func _render_candidates(raw_candidates: Variant) -> void:
 			selected = false
 		if selected:
 			_selected_indices.append(index)
-		var row := VBoxContainer.new()
-		row.add_theme_constant_override("separation", 2)
-		var check := CheckBox.new()
+		var row := candidate_row_scene.instantiate()
+		var check := row.get_node("Candidate") as CheckBox
 		check.name = "Candidate%d" % index
 		check.text = String(candidate.get("name", "Character %d" % (index + 1)))
 		check.button_pressed = selected
 		check.disabled = not eligible or _available_slots == 0
-		check.focus_mode = Control.FOCUS_ALL
 		check.toggled.connect(_candidate_toggled.bind(index))
-		row.add_child(check)
 		var detail_text := String(candidate.get("detail", ""))
 		if not eligible and detail_text.is_empty():
 			detail_text = "This character cannot join the selected party."
-		if not detail_text.is_empty():
-			row.add_child(_detail_label(detail_text, not eligible))
+		_bind_detail(row.get_node("Detail"), detail_text, not eligible)
 		_candidate_list.add_child(row)
 		_candidate_checks.append(check)
 		_candidate_details.append(detail_text)
-	var count_label := Label.new()
-	count_label.name = "ImportCapacity"
-	count_label.text = "%d of %d party slots selected" % [_selected_indices.size(), _available_slots]
-	count_label.modulate = MUTED_COLOR
-	_candidate_list.add_child(count_label)
+	_update_capacity()
 
 
 func _candidate_toggled(pressed: bool, index: int) -> void:
@@ -198,9 +190,7 @@ func _candidate_toggled(pressed: bool, index: int) -> void:
 	_selection_limit_message = ""
 	_message_label.text = String(_view.get("message", ""))
 	_message_label.modulate = MUTED_COLOR
-	var capacity := _candidate_list.get_node_or_null("ImportCapacity") as Label
-	if capacity != null:
-		capacity.text = "%d of %d party slots selected" % [_selected_indices.size(), _available_slots]
+	_update_capacity()
 	_update_import_button()
 
 
@@ -260,13 +250,19 @@ func _phase_title(phase: String) -> String:
 
 
 func _detail_label(text: String, is_error: bool) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.modulate = ERROR_COLOR if is_error else MUTED_COLOR
-	label.add_theme_font_size_override("font_size", 13)
+	var label := detail_label_scene.instantiate() as Label
+	_bind_detail(label, text, is_error)
 	return label
+
+
+func _bind_detail(label: Label, text: String, is_error: bool) -> void:
+	label.text = text
+	label.visible = not text.is_empty()
+	label.modulate = ERROR_COLOR if is_error else MUTED_COLOR
+
+
+func _update_capacity() -> void:
+	_capacity.text = "%d of %d party slots selected" % [_selected_indices.size(), _available_slots]
 
 
 func _strings(value: Variant) -> Array[String]:

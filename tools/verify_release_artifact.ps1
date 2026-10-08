@@ -8,6 +8,8 @@ param(
     [string]$ExportLog,
     [Parameter(Mandatory = $true)]
     [string]$ImporterRoot,
+    [Parameter(Mandatory = $true)]
+    [string]$MusicImporterRoot,
     [switch]$LocalTestBuild
 )
 
@@ -140,6 +142,43 @@ foreach ($supportFile in $importerManifest.supportFiles) {
 $importerPrefix = $importerRootPath.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
 $actualImporterFiles = @(Get-ChildItem -LiteralPath $importerRootPath -File -Recurse -Force | ForEach-Object { [IO.Path]::GetFullPath($_.FullName).Substring($importerPrefix.Length).Replace('\', '/') })
 if (@(Compare-Object ($expectedImporterFiles | Sort-Object) ($actualImporterFiles | Sort-Object)).Count -ne 0) { throw "Scenario importer directory contains unexpected or missing files." }
+
+$musicImporterRootPath = (Resolve-Path -LiteralPath $MusicImporterRoot).Path
+if ($Preset -ne "macOS") {
+    $expectedMusicImporterRoot = [IO.Path]::GetFullPath((Join-Path $artifactDirectory "music-importer"))
+    if (-not [IO.Path]::GetFullPath($musicImporterRootPath).Equals($expectedMusicImporterRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Windows/Linux music importer must be packaged beside the native executable." }
+}
+$musicManifestPath = Join-Path $musicImporterRootPath "manifest.json"
+if (-not (Test-Path -LiteralPath $musicManifestPath -PathType Leaf)) { throw "The exported runtime is missing its native music importer manifest." }
+$musicManifest = Get-Content -Raw -LiteralPath $musicManifestPath | ConvertFrom-Json
+$expectedMusicTarget = switch ($Preset) {
+    "Windows Desktop" { "windows" }
+    "Linux" { "linux" }
+    "macOS" { "macos-universal" }
+}
+if ([int]$musicManifest.formatVersion -ne 1 -or [string]$musicManifest.target -cne $expectedMusicTarget -or [string]$musicManifest.dependencyBaseline -cne "2750401336fb7c95f6619657a46a7e798661341c") { throw "Native music importer manifest target, version, or dependency baseline is unsupported." }
+$musicBinaryName = "realmz-music-importer" + $(if ($Preset -eq "Windows Desktop") { ".exe" } else { "" })
+$musicBinaryPath = Join-Path $musicImporterRootPath $musicBinaryName
+if (-not (Test-Path -LiteralPath $musicBinaryPath -PathType Leaf)) { throw "Native music importer executable is missing." }
+if ([string]$musicManifest.converter -cnotmatch '^realmz-music-1:[0-9a-f]{64}$') { throw "Native music importer source identity is malformed." }
+$musicVersionText = (& $musicBinaryPath --version | Out-String).Trim()
+if ($LASTEXITCODE -ne 0) { throw "Native music importer --version failed." }
+$musicIdentity = $musicVersionText | ConvertFrom-Json
+if ([string]$musicIdentity.converter -cne [string]$musicManifest.converter) { throw "Native music importer embedded source identity differs from its manifest." }
+if (-not $musicManifest.files -or $musicManifest.files -isnot [System.Management.Automation.PSCustomObject]) { throw "Native music importer file-hash manifest is missing." }
+$expectedMusicFiles = @()
+foreach ($property in $musicManifest.files.PSObject.Properties) {
+    $relative = [string]$property.Name
+    if ([string]::IsNullOrWhiteSpace($relative) -or [IO.Path]::IsPathRooted($relative) -or $relative.Contains('\') -or @($relative.Split('/')).Contains('..') -or [string]$property.Value -cnotmatch '^[0-9a-f]{64}$') { throw "Native music importer manifest contains an unsafe path or hash." }
+    $filePath = Join-Path $musicImporterRootPath ($relative.Replace('/', [IO.Path]::DirectorySeparatorChar))
+    if (-not (Test-Path -LiteralPath $filePath -PathType Leaf) -or (Get-FileHash -LiteralPath $filePath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$property.Value) { throw "Native music importer file failed its manifest check: $relative" }
+    if ($relative.StartsWith("licenses/", [StringComparison]::Ordinal) -and (Get-Item -LiteralPath $filePath).Length -le 0) { throw "Native music importer contains an empty dependency license: $relative" }
+    $expectedMusicFiles += $relative
+}
+if ($musicBinaryName -notin $expectedMusicFiles -or @($expectedMusicFiles | Where-Object { $_.StartsWith("licenses/", [StringComparison]::Ordinal) }).Count -eq 0) { throw "Native music importer manifest must hash its executable and dependency licenses." }
+$musicPrefix = $musicImporterRootPath.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+$actualMusicFiles = @(Get-ChildItem -LiteralPath $musicImporterRootPath -File -Recurse -Force | Where-Object { [IO.Path]::GetFullPath($_.FullName) -cne [IO.Path]::GetFullPath($musicManifestPath) } | ForEach-Object { [IO.Path]::GetFullPath($_.FullName).Substring($musicPrefix.Length).Replace('\', '/') })
+if (@(Compare-Object ($expectedMusicFiles | Sort-Object) ($actualMusicFiles | Sort-Object)).Count -ne 0) { throw "Native music importer directory contains unexpected or missing files." }
 if ($Preset -eq "macOS") {
     $archive = [System.IO.Compression.ZipFile]::OpenRead($outputPath)
     try {
@@ -148,6 +187,27 @@ if ($Preset -eq "macOS") {
         $appImporterPrefix = $importerManifestEntries[0].FullName.Substring(0, $importerManifestEntries[0].FullName.Length - "build-manifest.json".Length)
         foreach ($relative in $expectedImporterFiles) {
             if (@($archive.Entries | Where-Object { $_.FullName -ceq ($appImporterPrefix + $relative) }).Count -ne 1) { throw "macOS release archive is missing importer file $relative inside Contents/MacOS/importer." }
+        }
+        $musicManifestEntries = @($archive.Entries | Where-Object { $_.FullName -match '(^|/)Realmz Rebuilt\.app/Contents/MacOS/music-importer/manifest\.json$' })
+        if ($musicManifestEntries.Count -ne 1) { throw "macOS release archive must contain one native music importer inside Contents/MacOS/music-importer." }
+        $musicArchivePrefix = $musicManifestEntries[0].FullName.Substring(0, $musicManifestEntries[0].FullName.Length - "manifest.json".Length)
+        $archiveFiles = @($expectedMusicFiles) + @("manifest.json")
+        $actualArchiveMusicFiles = @($archive.Entries | Where-Object { $_.FullName.StartsWith($musicArchivePrefix, [StringComparison]::Ordinal) -and -not $_.FullName.EndsWith("/") } | ForEach-Object { $_.FullName.Substring($musicArchivePrefix.Length) })
+        if (@(Compare-Object ($archiveFiles | Sort-Object) ($actualArchiveMusicFiles | Sort-Object)).Count -ne 0) { throw "macOS release archive contains unexpected or missing native music importer files." }
+        foreach ($relative in $archiveFiles) {
+            $entry = $archive.GetEntry($musicArchivePrefix + $relative)
+            if ($null -eq $entry) { throw "macOS release archive is missing music importer file $relative." }
+            $diskPath = Join-Path $musicImporterRootPath ($relative.Replace('/', [IO.Path]::DirectorySeparatorChar))
+            $expectedHash = if ($relative -eq "manifest.json") {
+                (Get-FileHash -LiteralPath $musicManifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            } else {
+                [string]$musicManifest.files.PSObject.Properties[$relative].Value
+            }
+            $stream = $entry.Open()
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            try { $entryHash = [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant() }
+            finally { $sha.Dispose(); $stream.Dispose() }
+            if ($entry.Length -ne (Get-Item -LiteralPath $diskPath).Length -or $entryHash -cne $expectedHash) { throw "macOS archived music importer file differs from its verified package: $relative" }
         }
     } finally {
         $archive.Dispose()
@@ -185,6 +245,12 @@ $manifest = [ordered]@{
         executable = $importerManifest.executable
         buildIdentity = $importerManifest.buildIdentity
         supportFiles = $importerManifest.supportFiles
+    }
+    musicImporter = [ordered]@{
+        converter = $musicManifest.converter
+        target = $musicManifest.target
+        dependencyBaseline = $musicManifest.dependencyBaseline
+        files = $musicManifest.files
     }
 }
 if ($LocalTestBuild) {

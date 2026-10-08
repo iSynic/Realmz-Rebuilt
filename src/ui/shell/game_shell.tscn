@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/game_shell.gd" id="1_shell"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/screen_navigator.tscn" id="2_navigator"]
@@ -12,6 +12,9 @@
 [ext_resource type="PackedScene" path="res://src/ui/shared/controller/controller_radial_overlay.tscn" id="10_controller_radial"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/controller/controller_qwerty_editor.tscn" id="11_controller_keyboard"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/controller_top_menu_overlay.tscn" id="12_controller_menu"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="13_command"]
+[ext_resource type="PackedScene" path="res://src/ui/exploration/classic_search_command_button.tscn" id="14_search"]
+[ext_resource type="PackedScene" path="res://src/ui/exploration/classic_torch_command_button.tscn" id="15_torch"]
 
 [sub_resource type="StyleBoxFlat" id="FatigueTrackStyle"]
 bg_color = Color(0.025, 0.035, 0.04, 1)
@@ -469,6 +472,30 @@ columns = 2
 theme_override_constants/h_separation = 2
 theme_override_constants/v_separation = 2
 
+[node name="PartyEffectSlot1" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot2" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot3" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot4" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot5" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot6" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot7" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot8" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
 [node name="TorchDock" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -486,3 +513,170 @@ visible = false
 text = "Verify input"
 
 [node name="MusicPlaylistDialog" parent="." instance=ExtResource("7_music")]
+
+[node name="SearchModeCommand" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("14_search")]
+layout_mode = 2
+metadata/shell_command_id = &"search_mode"
+metadata/search_animation = true
+
+[node name="Caption" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/SearchModeCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Search"
+
+
+[node name="AreaSearchCommand" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"area_search"
+command_id = &"area_search"
+
+[node name="Caption" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/AreaSearchCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Area\nSearch"
+
+
+[node name="CampCommand" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"camp"
+command_id = &"camp"
+
+[node name="Caption" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/CampCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Camp"
+
+
+[node name="RestCommand" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"rest"
+command_id = &"rest"
+
+[node name="Caption" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/RestCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Rest"
+
+
+[node name="HealCommand" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"heal"
+command_id = &"heal"
+
+[node name="Caption" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid/HealCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Heal"
+
+
+[node name="ContextualCommand" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"contextual"
+command_id = &"contextual"
+
+[node name="Caption" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid/ContextualCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter"
+
+
+[node name="SettingsCommand" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"settings"
+command_id = &"settings"
+
+[node name="Caption" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid/SettingsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Settings"
+
+
+[node name="MoneyCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"money"
+command_id = &"money"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/MoneyCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Money"
+
+
+[node name="InventoryCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"inventory"
+command_id = &"inventory"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/InventoryCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Items"
+
+
+[node name="SpellsCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"spells"
+command_id = &"spells"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/SpellsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Spells"
+
+
+[node name="MapsCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"maps"
+command_id = &"maps"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/MapsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Maps"
+
+
+[node name="TorchCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/TorchDock" instance=ExtResource("15_torch")]
+layout_mode = 2
+metadata/shell_command_id = &"torch"
+metadata/torch_meter = true
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/TorchDock/TorchCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Torch"
+
+
+[node name="SaveCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"save"
+visible = false
+command_id = &"save"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/SaveCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Save"
+
+
+[node name="EncounterActionCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"encounter_action"
+visible = false
+command_id = &"encounter_action"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterActionCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Action"
+
+
+[node name="EncounterItemsCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"encounter_items"
+visible = false
+command_id = &"encounter_items"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterItemsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Items"
+
+
+[node name="EncounterSkillsCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"encounter_skills"
+visible = false
+command_id = &"encounter_skills"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterSkillsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Skills"
+
+
+[node name="EncounterSpeakCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"encounter_speak"
+visible = false
+command_id = &"encounter_speak"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterSpeakCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Speak"
+
+
+[node name="EncounterStopCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"encounter_stop"
+visible = false
+command_id = &"encounter_stop"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterStopCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Stop"

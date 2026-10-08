@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="1_bitmap_button"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="1_bitmap_button"]
 
 [node name="EncounterActionWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -34,16 +34,14 @@ columns = 1
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="EncounterChoiceDone" type="TextureButton" parent="EncounterActionFooter"]
+[node name="EncounterChoiceDone" parent="EncounterActionFooter" instance=ExtResource("1_bitmap_button")]
 unique_name_in_owner = true
 layout_mode = 2
-script = ExtResource("1_bitmap_button")
 
 [node name="Spacer" type="Control" parent="EncounterActionFooter"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="EncounterChoiceStop" type="TextureButton" parent="EncounterActionFooter"]
+[node name="EncounterChoiceStop" parent="EncounterActionFooter" instance=ExtResource("1_bitmap_button")]
 unique_name_in_owner = true
 layout_mode = 2
-script = ExtResource("1_bitmap_button")

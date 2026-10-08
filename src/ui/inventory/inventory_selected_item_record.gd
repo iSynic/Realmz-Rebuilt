@@ -8,7 +8,7 @@ extends BoxContainer
 
 func set_compact(compact: bool) -> void:
 	vertical = false
-	(get_node("Narrative") as VBoxContainer).custom_minimum_size.x = 350.0
+	UiSizing.minimum_size(get_node("Narrative") as VBoxContainer, Vector2(350.0, 0.0))
 
 
 func empty_label() -> Label:

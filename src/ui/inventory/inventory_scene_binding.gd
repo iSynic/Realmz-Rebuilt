@@ -14,7 +14,7 @@ func appearance_texture(asset_id: String, media: ClassicMediaCatalog) -> Texture
 func bind_label(label: Label, text: String, color: Color = Color.WHITE, size: int = 15) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * text_scale)))
+	UiSizing.font_size(label, &"font_size", size)
 
 
 func add_text_row(parent: Container, scene: PackedScene, text: String, color: Color, size: int = 13) -> Label:

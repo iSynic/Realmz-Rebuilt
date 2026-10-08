@@ -58,21 +58,22 @@ func set_effect_slots(effect_slots: Array[TextureRect]) -> void:
 
 
 func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameView) -> UiLayoutProfile:
-	var density := settings.ui_scale_mode if settings.display_scaling_mode in [PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.DISPLAY_INTEGER_CANVAS] else PresentationSettings.UI_SCALE_100
-	var profile := UiLayoutProfile.for_viewport(shell_size, density, settings.display_scaling_mode)
+	var profile := UiLayoutProfile.for_viewport(shell_size, settings.ui_scale_mode, settings.display_scaling_mode, settings.text_scale)
 	var canvas_rect := profile.application_rect
 	var viewport_size := canvas_rect.size
 	var origin := canvas_rect.position
 	_menu_row.visible = profile.id != UiLayoutProfile.COMPACT
 	_compact_menu.visible = profile.id == UiLayoutProfile.COMPACT
 	profile.menu_height = maxf(profile.menu_height, ceilf(_menu_strip.get_combined_minimum_size().y))
+	_apply_footer(profile, viewport_size, origin, game_view)
+	profile.bottom_height = maxf(profile.bottom_height, ceilf(_bottom_region.get_combined_minimum_size().y))
 	var stage_width := maxf(320.0, viewport_size.x - profile.party_width)
-	var stage_height := maxf(220.0, viewport_size.y - profile.menu_height - profile.bottom_height)
+	var stage_height := maxf(1.0, viewport_size.y - profile.menu_height - profile.bottom_height)
 	var stage_rect := Rect2(origin + Vector2(0.0, profile.menu_height), Vector2(stage_width, stage_height))
 	_apply_stage(profile, viewport_size, origin, stage_rect)
 	var roster_width := GameShellLayoutPolicy.combat_spellbook_roster_width(viewport_size.x, profile.party_width, profile.ui_scale, _party_roster.combat_spellbook_active())
 	_apply_roster(profile, viewport_size, origin, stage_height, roster_width)
-	_apply_footer(profile, viewport_size, origin, stage_rect, game_view)
+	restore_footer_bounds(profile)
 	_navigator.set_layout_profile(profile, viewport_size, origin)
 	workspace_rect = Rect2(stage_rect.position, Vector2(GameShellLayoutPolicy.combat_spellbook_stage_width(stage_rect.size.x, viewport_size.x, roster_width), stage_rect.size.y))
 	return profile
@@ -98,9 +99,9 @@ func _apply_roster(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vec
 	_party_roster.z_index = GameShellLayoutPolicy.party_roster_z_index(_party_roster.combat_spellbook_active())
 
 
-func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, stage_rect: Rect2, game_view: GameView) -> void:
+func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, game_view: GameView) -> void:
 	_bottom_row.vertical = false
-	_facts.columns = 3 if profile.id == UiLayoutProfile.COMPACT else 6
+	_facts.columns = (1 if profile.font_scale > profile.ui_scale else 2) if profile.id == UiLayoutProfile.COMPACT else (3 if profile.font_scale > profile.ui_scale else 6)
 	var command_width := minf(profile.command_width, viewport_size.x * (0.52 if profile.id == UiLayoutProfile.COMPACT else 0.26))
 	_world_command_panel.visible = profile.id != UiLayoutProfile.COMPACT
 	_world_command_panel.theme_type_variation = &"ClassicSharedStone"
@@ -112,15 +113,24 @@ func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vec
 	_command_panel.visible = _navigator.current_screen() != &"spells"
 	_effects_panel.visible = _command_panel.visible and game_view != null and game_view.session_started
 	_torch_dock.visible = _command_panel.visible and _navigator.current_screen() == &"exploration"
-	_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else command_width
+	if profile.id != UiLayoutProfile.COMPACT:
+		_command_panel.custom_minimum_size.x = side_command_width if _world_command_panel.visible else command_width
 	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
 	_command_panel.size_flags_stretch_ratio = 1.0
 	_command_panel.custom_minimum_size.y = 0.0
 	var footer_width := GameShellLayoutPolicy.exploration_footer_width(viewport_size, profile, _navigator.current_screen())
-	_narrative_well.custom_minimum_size.x = minf(620.0 * profile.ui_scale, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - _command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(320.0, footer_width - (command_width if _command_panel.visible else 0.0) - 40.0)
 	_narrative_well.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_narrative_well.size_flags_stretch_ratio = 1.45 if _world_command_panel.visible else 1.0
 	_apply_footer_alignment(profile, command_width)
+	if profile.id != UiLayoutProfile.COMPACT:
+		var sides_width := (_world_command_panel.get_combined_minimum_size().x if _world_command_panel.visible else 0.0) + (_command_panel.get_combined_minimum_size().x if _command_panel.visible else 0.0)
+		var chrome_width := ceilf(_bottom_region.get_theme_stylebox("panel").get_minimum_size().x) + ceilf(_bottom_row.get_theme_constant("separation")) * 2.0
+		_narrative_well.custom_minimum_size.x = maxf(120.0 * profile.ui_scale, minf(620.0 * profile.ui_scale, footer_width - sides_width - chrome_width))
+	if profile.id == UiLayoutProfile.COMPACT:
+		var content_width := _party_effects_row.get_combined_minimum_size().x + _command_panel.get_theme_stylebox("panel").get_minimum_size().x
+		_command_panel.custom_minimum_size.x = maxf(command_width, content_width) if _command_panel.visible else 0.0
+		var chrome_width := _bottom_region.get_theme_stylebox("panel").get_minimum_size().x + _bottom_row.get_theme_constant("separation")
+		_narrative_well.custom_minimum_size.x = maxf(120.0, footer_width - _command_panel.custom_minimum_size.x - chrome_width)
 	restore_footer_bounds(profile)
 
 
@@ -142,7 +152,7 @@ func _apply_footer_alignment(profile: UiLayoutProfile, command_width: float) -> 
 	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_world_command_grid.columns = 4
 	_world_command_lower_grid.columns = 3
-	_command_grid.columns = 2 if _world_command_panel.visible else 4 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
+	_command_grid.columns = 2 if _world_command_panel.visible else 3 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
 	var icon_size := GameShellLayoutPolicy.party_effect_icon_size(profile.bitmap_scale)
 	var slot_size := GameShellLayoutPolicy.party_effect_slot_size(profile.bitmap_scale)
 	for icon: TextureRect in _effect_slots:

@@ -12,15 +12,15 @@ config_version=5
 
 config/name="Realmz Rebuilt"
 config/version="0.1.0"
-config/icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon-256.png"
-config/windows_native_icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon.ico"
-config/macos_native_icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon.icns"
 run/main_scene="res://src/ui/shared/display_compositor.tscn"
 config/use_custom_user_dir=true
 config/custom_user_dir_name="RealmzRemake2"
 config/features=PackedStringArray("4.7", "Mobile")
 boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/show_image=false
+config/icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon-256.png"
+config/macos_native_icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon.icns"
+config/windows_native_icon="res://src/ui/shared/assets/ui/application-icon/realmz-icon.ico"
 
 [display]
 

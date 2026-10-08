@@ -1,6 +1,7 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/party_setup_workspace.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_setup_party_slot.tscn" id="4_slot"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="2_sheet"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/character_creation_appearance_step.tscn" id="3_appearance"]
 
@@ -217,6 +218,24 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 2
+
+[node name="PartySlot1" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartySlots" instance=ExtResource("4_slot")]
+layout_mode = 2
+
+[node name="PartySlot2" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartySlots" instance=ExtResource("4_slot")]
+layout_mode = 2
+
+[node name="PartySlot3" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartySlots" instance=ExtResource("4_slot")]
+layout_mode = 2
+
+[node name="PartySlot4" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartySlots" instance=ExtResource("4_slot")]
+layout_mode = 2
+
+[node name="PartySlot5" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartySlots" instance=ExtResource("4_slot")]
+layout_mode = 2
+
+[node name="PartySlot6" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartySlots" instance=ExtResource("4_slot")]
+layout_mode = 2
 
 [node name="PartySetupOptions" type="VBoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
 unique_name_in_owner = true

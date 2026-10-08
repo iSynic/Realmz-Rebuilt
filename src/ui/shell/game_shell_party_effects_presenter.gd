@@ -37,7 +37,7 @@ func present(game_view: GameView) -> void:
 	_panel.visible = game_view != null and game_view.session_started
 	for slot_index: int in _slots.size():
 		var active := _condition_values.size() > slot_index + 1 and _condition_values[slot_index + 1] != 0
-		_slots[slot_index].texture = ClassicPartyEffects.texture(_media, _texture_cache, slot_index + 1, _frame_index) if active else null
+		UiSizing.artwork(_slots[slot_index], ClassicPartyEffects.texture(_media, _texture_cache, slot_index + 1, _frame_index) if active else null)
 		_slots[slot_index].modulate = Color.WHITE if active else Color(0.35, 0.35, 0.35, 0.35)
 
 
@@ -45,4 +45,4 @@ func _advance_frame() -> void:
 	_frame_index = (_frame_index + 1) % ClassicPartyEffects.FRAME_COUNT
 	for slot_index: int in _slots.size():
 		if _condition_values.size() > slot_index + 1 and _condition_values[slot_index + 1] != 0:
-			_slots[slot_index].texture = ClassicPartyEffects.texture(_media, _texture_cache, slot_index + 1, _frame_index)
+			UiSizing.artwork(_slots[slot_index], ClassicPartyEffects.texture(_media, _texture_cache, slot_index + 1, _frame_index))

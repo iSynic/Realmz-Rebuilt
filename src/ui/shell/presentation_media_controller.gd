@@ -68,5 +68,6 @@ func refresh_music() -> void:
 		ClassicMusicContext.playlist_for(_active_route, _game_view),
 		_shell_presenter.settings,
 		_catalog,
-		_stock_music
+		_stock_music,
+		_game_view.campaign_id if _game_view != null else ""
 	)

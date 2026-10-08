@@ -26,11 +26,11 @@ The Godot-facing Character, Allies, Bestiary, and Character Files workspaces liv
 
 Party assembly and creation live under `src/ui/setup`. `party_assembly_browser.tscn` owns the reusable-character browser and pager while `PartySetupAssemblyController` binds availability, retained rows, and prepared appearance assets. `character_creation_spells_step.tscn` owns the complete Starting Spells workspace; `CharacterCreationSpellsStep` exposes its authored level rail, variable spell-row host, selected-spell detail, effect preview, alternate states, and allowance to `PartySetupCharacterCreationController`. Neither controller constructs a stable hierarchy.
 
-`character_sheet_stat_tabs.tscn` owns the stable three-region Overview, paired Conditions/Saves, paired Modifiers/Abilities, and Lifetime Record compositions. `character_metric_row.tscn` and `character_record_card.tscn` carry variable detached values without hiding the tab hierarchy from the editor.
+`character_sheet_stat_tabs.tscn` owns the stable three-region Overview, paired Conditions/Saves, paired Modifiers/Abilities, and Lifetime Record compositions. Edit its 25 named Overview rows and 12 Lifetime Record cards directly; their instances remain in place across character, tab, and layout changes. `character_metric_row.tscn` and `character_record_card.tscn` also supply templates for variable conditions, traits, and other detached collections.
 
-`character_sheet_inventory_magic_tabs.tscn` owns the Equipment and Spells compositions, including their wide/compact splits, headings, empty states, exact-item hosts, known-spell grid, and fixed scroll case. `character_item_card.tscn` and `character_spell_card.tscn` keep exact media and text structure editable while binding only detached records.
+`character_sheet_inventory_magic_tabs.tscn` owns the Equipment and Spells compositions, including their wide/compact splits, headings, empty states, exact-item hosts, known-spell grid, and five retained Scroll Case cards. `character_item_card.tscn` and `character_spell_card.tscn` keep exact media and text structure editable while binding only detached records.
 
-`character_sheet_identity_tabs.tscn` owns Appearance and Race, Class & Aging. It keeps independent portrait and combat-icon previews, pickers, Apply actions, and Discard action visible in the editor, and keeps authored race, caste, and five-band aging records recognizable without changing their package-backed identities.
+`character_sheet_identity_tabs.tscn` owns Appearance and Race, Class & Aging. It keeps independent portrait and combat-icon previews, pickers, Apply actions, and Discard action visible in the editor. Its eight race facts, nine caste facts, and five age-band cards are named scene instances bound through their detached identities.
 
 ## Bring a party from a saved adventure
 

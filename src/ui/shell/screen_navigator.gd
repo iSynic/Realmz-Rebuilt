@@ -212,6 +212,7 @@ func set_presentation_settings(settings: PresentationSettings) -> void:
 func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> void:
 	if profile == null:
 		return
+	var composition_changed := _layout_profile != profile.id
 	_layout_profile = profile.id
 	content_presenter.set_layout_profile(profile.id)
 	var top := profile.menu_height
@@ -226,7 +227,8 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2, origin
 	if setup_controller.setup_overlay != null:
 		setup_controller.apply_layout(profile, _campaign_layout_rect, _setup_layout_rect)
 	_apply_modal_layouts()
-	refresh_current_workspace()
+	if composition_changed:
+		refresh_current_workspace()
 
 
 static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:

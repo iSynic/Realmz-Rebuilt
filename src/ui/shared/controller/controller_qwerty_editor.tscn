@@ -112,6 +112,136 @@ columns = 10
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 5
 
+[node name="Key01" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "q"
+
+[node name="Key02" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "w"
+
+[node name="Key03" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "e"
+
+[node name="Key04" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "r"
+
+[node name="Key05" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "t"
+
+[node name="Key06" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "y"
+
+[node name="Key07" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "u"
+
+[node name="Key08" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "i"
+
+[node name="Key09" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "o"
+
+[node name="Key10" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "p"
+
+[node name="Key11" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "a"
+
+[node name="Key12" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "s"
+
+[node name="Key13" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "d"
+
+[node name="Key14" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "f"
+
+[node name="Key15" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "g"
+
+[node name="Key16" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "h"
+
+[node name="Key17" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "j"
+
+[node name="Key18" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "k"
+
+[node name="Key19" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "l"
+
+[node name="Key20" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "z"
+
+[node name="Key21" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "x"
+
+[node name="Key22" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "c"
+
+[node name="Key23" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "v"
+
+[node name="Key24" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "b"
+
+[node name="Key25" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "n"
+
+[node name="Key26" type="Button" parent="Card/Content/KeyGrid"]
+custom_minimum_size = Vector2(54, 38)
+layout_mode = 2
+text = "m"
+
 [node name="EditRow" type="HBoxContainer" parent="Card/Content"]
 layout_mode = 2
 

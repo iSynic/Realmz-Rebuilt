@@ -35,141 +35,151 @@ grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBox_dialog")
 z_index = 500
 script = ExtResource("1_dialog")
+developer_preferred_size = Vector2(740, 640)
+developer_window_fraction = Vector2(0.75, 0.9)
+diagnostics_preferred_size = Vector2(520, 240)
 
-[node name="Scroll" type="ScrollContainer" parent="."]
+[node name="Frame" type="VBoxContainer" parent="."]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
 
-[node name="Content" type="VBoxContainer" parent="Scroll"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 6
-
-[node name="Title" type="Label" parent="Scroll/Content"]
+[node name="Title" type="Label" parent="Frame"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 24
 text = "DIAGNOSTICS · F12"
 horizontal_alignment = 1
 
-[node name="Status" type="Label" parent="Scroll/Content"]
+[node name="Status" type="Label" parent="Frame"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Optional map diagnostics are off until enabled here."
 autowrap_mode = 2
 
-[node name="ExplorationHeading" type="Label" parent="Scroll/Content"]
+[node name="Scroll" type="ScrollContainer" parent="Frame"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Frame/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="ExplorationHeading" type="Label" parent="Frame/Scroll/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
 text = "Exploration"
 
-[node name="MapRow" type="HBoxContainer" parent="Scroll/Content"]
+[node name="MapRow" type="HBoxContainer" parent="Frame/Scroll/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="Scroll/Content/MapRow"]
+[node name="Label" type="Label" parent="Frame/Scroll/Content/MapRow"]
 layout_mode = 2
 text = "Map"
 
-[node name="MapSelect" type="OptionButton" parent="Scroll/Content/MapRow"]
+[node name="MapSelect" type="OptionButton" parent="Frame/Scroll/Content/MapRow"]
 unique_name_in_owner = true
+fit_to_longest_item = false
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Coordinates" type="HBoxContainer" parent="Scroll/Content"]
+[node name="Coordinates" type="HBoxContainer" parent="Frame/Scroll/Content"]
 layout_mode = 2
 
-[node name="XLabel" type="Label" parent="Scroll/Content/Coordinates"]
+[node name="XLabel" type="Label" parent="Frame/Scroll/Content/Coordinates"]
 layout_mode = 2
 text = "X"
 
-[node name="WarpX" type="SpinBox" parent="Scroll/Content/Coordinates"]
+[node name="WarpX" type="SpinBox" parent="Frame/Scroll/Content/Coordinates"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 255.0
 update_on_text_changed = true
 
-[node name="YLabel" type="Label" parent="Scroll/Content/Coordinates"]
+[node name="YLabel" type="Label" parent="Frame/Scroll/Content/Coordinates"]
 layout_mode = 2
 text = "Y"
 
-[node name="WarpY" type="SpinBox" parent="Scroll/Content/Coordinates"]
+[node name="WarpY" type="SpinBox" parent="Frame/Scroll/Content/Coordinates"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 255.0
 update_on_text_changed = true
 
-[node name="Warp" type="Button" parent="Scroll/Content"]
+[node name="Warp" type="Button" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Warp to map / X,Y"
 
-[node name="Noclip" type="CheckButton" parent="Scroll/Content"]
+[node name="Noclip" type="CheckButton" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "No clip movement"
 
-[node name="TopologyDebug" type="CheckButton" parent="Scroll/Content"]
+[node name="TopologyDebug" type="CheckButton" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Gold diamonds mark placed Action Points; gold outlines show effective random encounter rectangles."
 text = "Show APs and random rectangles on map"
 
-[node name="PartyHeading" type="Label" parent="Scroll/Content"]
+[node name="PartyHeading" type="Label" parent="Frame/Scroll/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)
 text = "Party and scenarios"
 
-[node name="Restore" type="Button" parent="Scroll/Content"]
+[node name="Restore" type="Button" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Restore party HP / SP and bad conditions"
 
-[node name="ItemGrantHeading" type="Label" parent="Scroll/Content"]
+[node name="ItemGrantHeading" type="Label" parent="Frame/Scroll/Content"]
 layout_mode = 2
 text = "Give item to party member"
 
-[node name="ItemRecipientRow" type="HBoxContainer" parent="Scroll/Content"]
+[node name="ItemRecipientRow" type="HBoxContainer" parent="Frame/Scroll/Content"]
 layout_mode = 2
 
-[node name="ItemRecipientLabel" type="Label" parent="Scroll/Content/ItemRecipientRow"]
+[node name="ItemRecipientLabel" type="Label" parent="Frame/Scroll/Content/ItemRecipientRow"]
 layout_mode = 2
 text = "Recipient"
 
-[node name="ItemRecipient" type="OptionButton" parent="Scroll/Content/ItemRecipientRow"]
+[node name="ItemRecipient" type="OptionButton" parent="Frame/Scroll/Content/ItemRecipientRow"]
 unique_name_in_owner = true
+fit_to_longest_item = false
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ItemSearchRow" type="HBoxContainer" parent="Scroll/Content"]
+[node name="ItemSearchRow" type="HBoxContainer" parent="Frame/Scroll/Content"]
 layout_mode = 2
 
-[node name="ItemSearch" type="LineEdit" parent="Scroll/Content/ItemSearchRow"]
+[node name="ItemSearch" type="LineEdit" parent="Frame/Scroll/Content/ItemSearchRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Classic item ID or title"
 
-[node name="ItemMatchRow" type="HBoxContainer" parent="Scroll/Content"]
+[node name="ItemMatchRow" type="HBoxContainer" parent="Frame/Scroll/Content"]
 layout_mode = 2
 
-[node name="ItemMatches" type="OptionButton" parent="Scroll/Content/ItemMatchRow"]
+[node name="ItemMatches" type="OptionButton" parent="Frame/Scroll/Content/ItemMatchRow"]
 unique_name_in_owner = true
+fit_to_longest_item = false
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="GrantItem" type="Button" parent="Scroll/Content/ItemMatchRow"]
+[node name="GrantItem" type="Button" parent="Frame/Scroll/Content/ItemMatchRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Give item"
 
-[node name="EncounterRow" type="HBoxContainer" parent="Scroll/Content"]
+[node name="EncounterRow" type="HBoxContainer" parent="Frame/Scroll/Content"]
 layout_mode = 2
 
-[node name="EncounterKind" type="OptionButton" parent="Scroll/Content/EncounterRow"]
+[node name="EncounterKind" type="OptionButton" parent="Frame/Scroll/Content/EncounterRow"]
 unique_name_in_owner = true
 layout_mode = 2
 item_count = 2
@@ -178,61 +188,61 @@ popup/item_0/id = 0
 popup/item_1/text = "Complex Encounter"
 popup/item_1/id = 1
 
-[node name="IdLabel" type="Label" parent="Scroll/Content/EncounterRow"]
+[node name="IdLabel" type="Label" parent="Frame/Scroll/Content/EncounterRow"]
 layout_mode = 2
 text = "ID"
 
-[node name="EncounterId" type="SpinBox" parent="Scroll/Content/EncounterRow"]
+[node name="EncounterId" type="SpinBox" parent="Frame/Scroll/Content/EncounterRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 32767.0
 update_on_text_changed = true
 
-[node name="TriggerEncounter" type="Button" parent="Scroll/Content/EncounterRow"]
+[node name="TriggerEncounter" type="Button" parent="Frame/Scroll/Content/EncounterRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Trigger encounter"
 
-[node name="BattleRow" type="HBoxContainer" parent="Scroll/Content"]
+[node name="BattleRow" type="HBoxContainer" parent="Frame/Scroll/Content"]
 layout_mode = 2
 
-[node name="BattleLabel" type="Label" parent="Scroll/Content/BattleRow"]
+[node name="BattleLabel" type="Label" parent="Frame/Scroll/Content/BattleRow"]
 layout_mode = 2
 text = "Battle ID"
 
-[node name="BattleId" type="SpinBox" parent="Scroll/Content/BattleRow"]
+[node name="BattleId" type="SpinBox" parent="Frame/Scroll/Content/BattleRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 max_value = 32767.0
 update_on_text_changed = true
 
-[node name="TriggerBattle" type="Button" parent="Scroll/Content/BattleRow"]
+[node name="TriggerBattle" type="Button" parent="Frame/Scroll/Content/BattleRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Trigger battle"
 
-[node name="WinBattle" type="Button" parent="Scroll/Content"]
+[node name="WinBattle" type="Button" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Win current battle"
 
-[node name="RecentAutoActions" type="MenuButton" parent="Scroll/Content"]
+[node name="RecentAutoActions" type="MenuButton" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="OpenConsole" type="Button" parent="Scroll/Content"]
+[node name="OpenConsole" type="Button" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Open game-action console · ` / ~"
 
-[node name="ConsoleShortcut" type="CheckButton" parent="Scroll/Content"]
+[node name="ConsoleShortcut" type="CheckButton" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Enable ` / ~ console shortcut"
 
-[node name="Close" type="Button" parent="Scroll/Content"]
+[node name="Close" type="Button" parent="Frame"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Close"

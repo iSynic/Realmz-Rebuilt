@@ -1,6 +1,12 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/party_import_from_save_dialog.gd" id="1_script"]
+
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_source_row.tscn" id="2_source"]
+
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_candidate_row.tscn" id="3_candidate"]
+
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_detail_label.tscn" id="4_detail"]
 
 [node name="PartyImportFromSaveDialog" type="Control"]
 layout_mode = 3
@@ -13,6 +19,9 @@ mouse_filter = 0
 z_index = 94
 z_as_relative = false
 script = ExtResource("1_script")
+source_row_scene = ExtResource("2_source")
+candidate_row_scene = ExtResource("3_candidate")
+detail_label_scene = ExtResource("4_detail")
 
 [node name="Backdrop" type="ColorRect" parent="."]
 layout_mode = 1
@@ -85,6 +94,15 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
+[node name="EmptySources" parent="Center/Dialog/Content" instance=ExtResource("4_detail")]
+unique_name_in_owner = true
+text = "No saved adventures are available."
+
+[node name="LoadingSource" parent="Center/Dialog/Content" instance=ExtResource("4_detail")]
+unique_name_in_owner = true
+visible = false
+text = "Reading the selected save…"
+
 [node name="CandidateHeading" type="Label" parent="Center/Dialog/Content"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -105,6 +123,12 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
+
+[node name="ImportCapacity" type="Label" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+modulate = Color(0.603922, 0.627451, 0.658824, 1)
+layout_mode = 2
+text = "0 of 6 party slots selected"
 
 [node name="LeftBehindPanel" type="PanelContainer" parent="Center/Dialog/Content"]
 unique_name_in_owner = true

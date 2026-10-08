@@ -95,6 +95,70 @@ layout_mode = 2
 theme_override_constants/h_separation = 4
 theme_override_constants/v_separation = 4
 
+[node name="Overview" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Overview"
+
+[node name="Conditions" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Conditions & Saves"
+
+[node name="Equipment" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Equipment"
+
+[node name="Abilities" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Abilities"
+
+[node name="Spells" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Spells"
+
+[node name="Appearance" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Appearance"
+
+[node name="Background" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Race, Caste & Aging"
+
+[node name="Record" type="Button" parent="CharacterSheetTabs"]
+layout_mode = 2
+size_flags_horizontal = 0
+toggle_mode = true
+action_mode = 0
+alignment = 1
+text = "Lifetime Record"
+
 [node name="CharacterSheetWorkspace" type="PanelContainer" parent="."]
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
@@ -115,9 +179,3 @@ layout_mode = 2
 
 [node name="CharacterSheetIdentityTabs" parent="CharacterSheetWorkspace/CharacterSheetContent" instance=ExtResource("9_identity_tabs")]
 layout_mode = 2
-
-[node name="DynamicTabContent" type="VBoxContainer" parent="CharacterSheetWorkspace/CharacterSheetContent"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 8

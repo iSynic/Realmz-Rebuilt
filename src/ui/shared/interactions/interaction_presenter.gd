@@ -246,7 +246,7 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 		_add_hint("This package cannot continue because its interaction contract is unavailable.")
 		return
 	_component.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_component.add_theme_constant_override("separation", 8)
+	UiSizing.constant(_component, &"separation", 8)
 	_component.response_body_submitted.connect(_submit_body)
 	_component.presentation_sound_requested.connect(func(sound_id: int) -> void: presentation_sound_requested.emit(sound_id))
 	_component.presentation_status_requested.connect(func(text: String, is_error: bool) -> void: presentation_status_requested.emit(text, is_error))
@@ -263,8 +263,9 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
-	if _component is ThiefEncounterInteraction:
-		_component.set_layout_profile(_application_rect.size.x < 1000.0)
+	UiSizing.bind_added(_component.get_instance_id())
+	var profile := UiSizing.profile_for(self)
+	_component.set_layout_profile(profile.id == UiLayoutProfile.COMPACT if profile != null else _application_rect.size.x < 1000.0)
 	if _component is BattleInteraction:
 		_combat.bind(_component as BattleInteraction, request.body as CombatRequestBody, game_view, media)
 	_apply_classic_region()
@@ -350,10 +351,11 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), maxf(0.0, _application_rect.end.y - outer_stage.position.y))
 	_overlays.set_regions(_application_rect, _stage_rect, _textbox_rect, _side_workspace_rect)
 	_flash.set_regions(_application_rect, _textbox_rect)
-	var compact := _application_rect.size.x < 1000.0
+	var profile := UiSizing.profile_for(self)
+	var compact := profile.id == UiLayoutProfile.COMPACT if profile != null else _application_rect.size.x < 1000.0
 	if _component != null:
 		_component.set_layout_profile(compact)
-	_combat.set_command_layout(LayoutPolicy.combat_command_scale(_combat_rect), compact)
+	_combat.set_command_layout(profile.ui_scale if profile != null else LayoutPolicy.combat_command_scale(_combat_rect), compact)
 	_combat_activity.set_compact(compact)
 	_apply_classic_region()
 	_combat.set_stage_rect(_stage_rect)
@@ -405,9 +407,9 @@ func submit_character_selection(character_ids: Array[String]) -> bool:
 	return true
 
 
-func set_text_scale(value: float) -> void:
-	_heading.add_theme_font_size_override("font_size", int(round(18.0 * value)))
-	_prompt.add_theme_font_size_override("font_size", int(round(18.0 * value)))
+func set_text_scale(_value: float) -> void:
+	UiSizing.font_size(_heading, &"font_size", 18)
+	UiSizing.font_size(_prompt, &"font_size", 18)
 
 
 func set_autojournal_enabled(enabled: bool) -> void:
@@ -606,11 +608,11 @@ func _apply_content_layout() -> void:
 		# Full-stage workspaces are assigned from the stable shell region. Using
 		# this control's content-driven size here would create a minimum-size
 		# feedback loop whenever a route expands to fill the available height.
-		_options.custom_minimum_size.y = maxf(0.0, _application_rect.size.y - 22.0)
+		_options.custom_minimum_size.y = maxf(0.0, _application_rect.size.y - get_theme_stylebox("panel").get_minimum_size().y - _content.get_theme_constant("separation"))
 	elif _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE:
 		_options.custom_minimum_size.y = 0.0
 	else:
-		_options.custom_minimum_size.y = maxf(0.0, size.y - 16.0) if LayoutPolicy.uses_application_modal_region(_request) or LayoutPolicy.is_scrolling_text_request(_request) else 0.0
+		_options.custom_minimum_size.y = maxf(0.0, _stage_rect.size.y - get_theme_stylebox("panel").get_minimum_size().y - _content.get_theme_constant("separation")) if LayoutPolicy.uses_application_modal_region(_request) or LayoutPolicy.is_scrolling_text_request(_request) else 0.0
 
 
 func _add_hint(text: String) -> Label:

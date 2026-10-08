@@ -1,0 +1,106 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/music_assignments_editor.gd" id="1"]
+
+[sub_resource type="ButtonGroup" id="Modes"]
+
+[node name="Assignments" type="HBoxContainer"]
+layout_mode = 2
+script = ExtResource("1")
+theme_override_constants/separation = 12
+
+[node name="Contexts" type="ItemList" parent="."]
+layout_mode = 2
+theme_type_variation = &"SlateList"
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 80)
+size_flags_vertical = 3
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 0.7
+
+[node name="AssignmentScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Options" type="VBoxContainer" parent="AssignmentScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ScopeLabel" type="Label" parent="AssignmentScroll/Options"]
+layout_mode = 2
+text = "Apply assignments to"
+
+[node name="AssignmentScope" type="OptionButton" parent="AssignmentScroll/Options"]
+layout_mode = 2
+unique_name_in_owner = true
+fit_to_longest_item = false
+
+[node name="BehaviorLabel" type="Label" parent="AssignmentScroll/Options"]
+layout_mode = 2
+text = "Playback behavior (all scenarios)"
+
+[node name="Modes" type="HBoxContainer" parent="AssignmentScroll/Options"]
+layout_mode = 2
+
+[node name="ModePlay" type="Button" parent="AssignmentScroll/Options/Modes"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Play"
+toggle_mode = true
+button_group = SubResource("Modes")
+size_flags_horizontal = 3
+
+[node name="ModeContinue" type="Button" parent="AssignmentScroll/Options/Modes"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Continue"
+toggle_mode = true
+button_group = SubResource("Modes")
+size_flags_horizontal = 3
+
+[node name="ModeOff" type="Button" parent="AssignmentScroll/Options/Modes"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Off"
+toggle_mode = true
+button_group = SubResource("Modes")
+size_flags_horizontal = 3
+
+[node name="BehaviorHelp" type="Label" parent="AssignmentScroll/Options"]
+layout_mode = 2
+text = "Continue keeps the playing queue advancing. Off pauses it."
+autowrap_mode = 3
+
+[node name="MusicLabel" type="Label" parent="AssignmentScroll/Options"]
+layout_mode = 2
+text = "Music source"
+
+[node name="AssignmentKind" type="OptionButton" parent="AssignmentScroll/Options"]
+layout_mode = 2
+unique_name_in_owner = true
+item_count = 3
+selected = 0
+popup/item_0/text = "Inherit"
+popup/item_1/text = "Original music"
+popup/item_1/id = 1
+popup/item_2/text = "Playlist"
+popup/item_2/id = 2
+
+[node name="AssignmentPlaylist" type="OptionButton" parent="AssignmentScroll/Options"]
+layout_mode = 2
+unique_name_in_owner = true
+fit_to_longest_item = false
+
+[node name="AssignmentSummary" type="Label" parent="AssignmentScroll/Options"]
+layout_mode = 2
+text = "Effective music: Original music"
+unique_name_in_owner = true
+autowrap_mode = 3
+
+[node name="ScopeHelp" type="Label" parent="AssignmentScroll/Options"]
+layout_mode = 2
+text = "Scenario choices apply across its revisions. Inherit uses global defaults, then original music."
+autowrap_mode = 3

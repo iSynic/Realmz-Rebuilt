@@ -42,7 +42,7 @@ func present_allies(target: Control, view: GameView, media: ClassicMediaCatalog,
 		row.button_pressed = ally.id == selected.id
 		row.icon = _ally_icon_texture(ally, media)
 		row.tooltip_text = "Inspect %s" % ally.name
-		row.add_theme_font_size_override("font_size", int(round(14.0 * text_scale)))
+		UiSizing.font_size(row, &"font_size", 14)
 		row.pressed.connect(_select_ally.bind(ally.id, screen, view, media, text_scale))
 	_bind_ally_record(screen, selected, media, text_scale)
 
@@ -69,7 +69,7 @@ func present_bestiary(target: Control, view: GameView, media: ClassicMediaCatalo
 		row.button_pressed = entry.definition_id == selected.definition_id
 		row.icon = _catalog_icon_texture(entry, media)
 		row.tooltip_text = "Inspect %s" % entry.name
-		row.add_theme_font_size_override("font_size", int(round(14.0 * text_scale)))
+		UiSizing.font_size(row, &"font_size", 14)
 		row.pressed.connect(_select_bestiary.bind(entry.definition_id, screen, view, media, text_scale))
 	_bind_bestiary_record(screen, selected, media, text_scale)
 
@@ -180,7 +180,7 @@ func _bind_facts(screen: CreatureLibraryScreen, records: Array, text_scale: floa
 		if not visible:
 			continue
 		_bind_label(key, str(records[index][0]), MUTED, 13, text_scale)
-		key.custom_minimum_size.x = 104.0
+		UiSizing.minimum_size(key, Vector2(104.0, 0.0))
 		_bind_label(value, str(records[index][1]), TEXT, 13, text_scale)
 
 
@@ -197,7 +197,7 @@ func _bind_states(screen: CreatureLibraryScreen, records: Array, text_scale: flo
 func _bind_label(label: Label, value: String, color: Color, size: int, text_scale: float) -> void:
 	label.text = value
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * text_scale)))
+	UiSizing.font_size(label, &"font_size", size)
 
 
 func _ally_icon_texture(ally: MonsterView, media: ClassicMediaCatalog) -> Texture2D:

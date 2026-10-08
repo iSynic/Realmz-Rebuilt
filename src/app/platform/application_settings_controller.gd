@@ -31,7 +31,8 @@ func _init(
 	held_movement: HeldMovementController,
 	debug_tools: DebugToolsHost,
 	spatial_layout: ApplicationSpatialLayout,
-	display: DisplayCompositor
+	display: DisplayCompositor,
+	game_view: Callable
 ) -> void:
 	_application = application
 	_settings = settings
@@ -46,6 +47,9 @@ func _init(
 	_debug_tools = debug_tools
 	_spatial_layout = spatial_layout
 	_display = display
+	var music_host := ApplicationMusicHost.new(repository.settings_path.get_base_dir().path_join("music"))
+	application.add_child(music_host)
+	music_host.bind(shell.music_workspace, audio.music, game_view)
 	if _display != null:
 		_display.geometry_changed.connect(_update_dungeon_smoothing)
 
@@ -265,7 +269,20 @@ func _apply_window_mode(value: String) -> void:
 
 func _apply_application_theme() -> void:
 	var base_theme := load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme
-	_application.theme = ClassicTypography.themed_copy(base_theme, _settings)
+	var profile := UiSizing.profile_for(_application)
+	_application.theme = ClassicTypography.themed_copy(base_theme, _settings, profile.ui_scale if profile != null else 1.0)
+
+
+func apply_interface_profile(profile: UiLayoutProfile) -> void:
+	var previous := UiSizing.profile_for(_application)
+	_application.set_meta(UiSizing.PROFILE, profile)
+	if previous != null and previous.id == profile.id and previous.ui_scale == profile.ui_scale and previous.font_scale == profile.font_scale and previous.bitmap_scale == profile.bitmap_scale:
+		return
+	_apply_application_theme()
+	UiSizing.apply(_interaction, profile)
+	for child: Node in _application.get_children():
+		if child is Control and child != _interaction and child != _shell and child.has_meta(UiSizing.BASELINE):
+			UiSizing.apply(child as Control, profile)
 
 
 func _on_typography_mode_changed(value: String) -> void:

@@ -288,7 +288,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells", &"system", &"save_load", &"vault"]:
 		_clear(body)
 	if context_actions != null:
-		_clear(context_actions)
+		context_actions.get_node("SpellActionDock").visible = false
 	if (_view == null or not _view.session_started) and screen_id != &"vault":
 		var message_host: Container = body
 		if screen is CharacterScreen:
@@ -325,7 +325,7 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 		&"inventory":
 			_inventory_controller.present(screen as InventoryScreen, _view, _media, _settings.text_scale)
 		&"spells":
-			_spells_controller.present(screen, _view, _media, _settings.text_scale, context_actions)
+			_spells_controller.present(screen, _view, _media, _settings.text_scale)
 		&"services":
 			_services_controller.set_text_scale(_settings.text_scale)
 			_services_controller.present(screen, _view, _media)
@@ -350,8 +350,6 @@ func _add_card(parent: Container, title: String, subtitle: String, detail: Strin
 	subtitle_label.text = subtitle
 	detail_label.text = detail
 	detail_label.visible = not detail.is_empty()
-	for label: Label in [title_label, subtitle_label, detail_label]:
-		label.add_theme_font_size_override("font_size", int(round(float(label.get_theme_font_size("font_size")) * _settings.text_scale)))
 	parent.add_child(panel)
 
 
@@ -359,7 +357,7 @@ func _add_label(parent: Container, text: String, color: Color = Color.WHITE, siz
 	var label := (load(_message_label_scene_path) as PackedScene).instantiate() as Label
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * _settings.text_scale)))
+	UiSizing.font_size(label, &"font_size", size)
 	parent.add_child(label)
 	return label
 

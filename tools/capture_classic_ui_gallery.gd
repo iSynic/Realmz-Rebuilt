@@ -6,26 +6,132 @@ const CHARACTER_VIEW_SCRIPT := preload("res://src/game/characters/character_view
 const PACKAGE_OPERATION_VIEW_SCRIPT := preload("res://src/app/startup/package_operation_view.gd")
 const SAVE_SLOT_PREVIEW_SCRIPT := preload("res://src/playthrough/session/save_slot_preview.gd")
 const APPLICATION_LIFECYCLE_SCRIPT := preload("res://src/app/platform/application_lifecycle.gd")
+const FIXTURE_REQUEST_SCRIPT := preload("res://src/app/platform/runtime_testing_fixture_request.gd")
+const DISPLAY_COMPOSITOR_SCENE := preload("res://src/ui/shared/display_compositor.tscn")
+const SCENE_PREVIEW_REGISTRY_PATH := "res://addons/realmz_builder/scene_previews.json"
+const SIZING_MATRIX_SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(800, 600), Vector2i(1920, 1080), Vector2i(2560, 1392), Vector2i(2560, 1440), Vector2i(3440, 1440), Vector2i(3840, 2160)]
+const SIZING_MATRIX_SURFACES: Array[String] = ["application-shell", "character-sheet", "character-files", "allies", "bestiary", "inventory", "spells", "services", "maps-journal", "system", "campaign-selection", "party-assembly", "party-import-from-save", "character-creation", "shop", "temple", "bank", "treasure", "encounter", "level-up", "pick-lock", "lifecycle-prompts", "scrolling-text", "combat-command-deck", "roster-spellbook"]
 var _application: RealmzApplication
+var _compositor: DisplayCompositor
 var _shell: GameShell
 var _router: ScreenNavigator
 var _interaction: InteractionPresenter
+var _fixture_request: RuntimeTestingFixtureRequest
+var _sizing_matrix := false
+var _raw_scenes := false
+var _stress_roster := false
+var _surface_filters: Array[String] = []
+var _sizing_matrix_surfaces: Dictionary = {}
+var _matrix_metadata: FileAccess
+var _raw_scene_metadata: FileAccess
 
 
 func _initialize() -> void:
+	if not _read_launch_arguments():
+		quit(2)
+		return
 	call_deferred("_capture_gallery")
+
+
+func _read_launch_arguments() -> bool:
+	var arguments := OS.get_cmdline_user_args()
+	var fixture_config_path := ""
+	var surface_list_seen := false
+	var index := 0
+	while index < arguments.size():
+		match arguments[index]:
+			"--fixture-config":
+				if not fixture_config_path.is_empty() or index + 1 >= arguments.size():
+					printerr("FIXTURE_REQUEST_REJECTED: Supply one absolute --fixture-config path.")
+					return false
+				index += 1
+				fixture_config_path = arguments[index]
+			"--sizing-matrix":
+				if _sizing_matrix:
+					printerr("FIXTURE_REQUEST_REJECTED: --sizing-matrix may appear only once.")
+					return false
+				_sizing_matrix = true
+			"--raw-scenes":
+				if _raw_scenes:
+					printerr("FIXTURE_REQUEST_REJECTED: --raw-scenes may appear only once.")
+					return false
+				_raw_scenes = true
+			"--stress-roster":
+				if _stress_roster:
+					printerr("FIXTURE_REQUEST_REJECTED: --stress-roster may appear only once.")
+					return false
+				_stress_roster = true
+			"--surface":
+				if surface_list_seen or index + 1 >= arguments.size():
+					printerr("FIXTURE_REQUEST_REJECTED: Supply one --surface ID[,ID...] list from the registered major surfaces.")
+					return false
+				surface_list_seen = true
+				index += 1
+				for requested_surface: String in arguments[index].split(",", true):
+					var surface_id := requested_surface.strip_edges()
+					if surface_id.is_empty():
+						printerr("FIXTURE_REQUEST_REJECTED: --surface contains an empty major surface ID.")
+						return false
+					if not SIZING_MATRIX_SURFACES.has(surface_id):
+						printerr("FIXTURE_REQUEST_REJECTED: Unknown major surface %s." % surface_id)
+						return false
+					if _surface_filters.has(surface_id):
+						printerr("FIXTURE_REQUEST_REJECTED: Duplicate major surface %s." % surface_id)
+						return false
+					_surface_filters.append(surface_id)
+			_:
+				printerr("FIXTURE_REQUEST_REJECTED: Unknown gallery argument %s." % arguments[index])
+				return false
+		index += 1
+	if fixture_config_path.is_empty() or not fixture_config_path.is_absolute_path() or not OS.is_debug_build():
+		printerr("FIXTURE_REQUEST_REJECTED: A debug build and absolute --fixture-config path are required.")
+		return false
+	if not _surface_filters.is_empty() and not _sizing_matrix:
+		printerr("FIXTURE_REQUEST_REJECTED: --surface requires --sizing-matrix.")
+		return false
+	if _stress_roster and not _surface_filters.is_empty() and not _surface_filters.has("application-shell"):
+		printerr("FIXTURE_REQUEST_REJECTED: --stress-roster can only be paired with --surface application-shell.")
+		return false
+	var config := FileAccess.open(fixture_config_path, FileAccess.READ)
+	if config == null or config.get_length() > 65536:
+		printerr("FIXTURE_REQUEST_REJECTED: Fixture configuration is unavailable or too large.")
+		return false
+	var payload: Variant = JSON.parse_string(config.get_as_text())
+	config.close()
+	_fixture_request = FIXTURE_REQUEST_SCRIPT.decode(payload) as RuntimeTestingFixtureRequest
+	if _fixture_request == null:
+		printerr("FIXTURE_REQUEST_REJECTED: Fixture configuration does not satisfy the isolated launch contract.")
+		return false
+	return true
 
 
 func _capture_gallery() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT_ROOT))
+	if _sizing_matrix:
+		_matrix_metadata = FileAccess.open(ProjectSettings.globalize_path("%s/sizing-matrix.jsonl" % OUTPUT_ROOT), FileAccess.WRITE)
+		assert(_matrix_metadata != null, "Unable to create sizing-matrix metadata.")
+	if _raw_scenes:
+		_raw_scene_metadata = FileAccess.open(ProjectSettings.globalize_path("%s/raw-scenes.jsonl" % OUTPUT_ROOT), FileAccess.WRITE)
+		assert(_raw_scene_metadata != null, "Unable to create raw-scene metadata.")
+	_compositor = DISPLAY_COMPOSITOR_SCENE.instantiate() as DisplayCompositor
+	_compositor.get_node("Content/StartupFrontDoor").free()
+	root.add_child(_compositor)
+	await process_frame
 	_application = load("res://src/ui/shell/realmz_application.tscn").instantiate() as RealmzApplication
-	root.add_child(_application)
+	_application.set_meta(&"runtime_testing_fixture", _fixture_request)
+	_application.set_meta(&"startup_splash_suppressed", true)
+	_application.set_meta(&"startup_front_door_revealed", true)
+	DisplayServer.window_set_title("Realmz Rebuilt — TEST FIXTURE %s — UI Gallery" % _fixture_request.fixture_id.left(8))
+	_compositor.source_viewport().add_child(_application)
 	_shell = _application.get_node("GameShell") as GameShell
 	_router = _shell.get_node("ScreenNavigator") as ScreenNavigator
 	_interaction = _application.get_node("InteractionPanel") as InteractionPresenter
 	var application_deadline := Time.get_ticks_msec() + 30000
 	while not _application.character_files.library_ready() and Time.get_ticks_msec() < application_deadline: await process_frame
 	assert(_application.character_files.library_ready() and _application.character_files.library_content() != null, "UI gallery could not load the built-in Classic definitions.")
+	await _close_prepared_fixture_adventure()
+	if _raw_scenes:
+		await _capture_raw_scenes()
 	await _settle()
 	await _resize(Vector2i(800, 600))
 	await _capture("compact-campaign-800x600")
@@ -38,6 +144,10 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("canonical-package-install-progress-1280x720")
 	_router.setup_controller.campaign_library.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
+	_router.setup_controller.show_party_import({"phase": "selection", "sources": [], "message": "Choose a saved adventure. Its world state stays behind."})
+	await _settle()
+	await _capture("canonical-party-import-from-save-1280x720")
+	_router.setup_controller.close_party_import()
 	var package_step := _application.start_package(FIXTURE_PATH, 1); assert(package_step.state != SessionStep.State.FAILED, "Unable to start the UI gallery fixture: %s" % package_step.error_message)
 	await _settle()
 	await _capture_compact_canonical("compact-party-setup-800x600", "canonical-party-setup-1280x720")
@@ -93,7 +203,7 @@ func _capture_gallery() -> void:
 	_application.session_controller.submit_intent(PartyIntents.create([member]))
 	await _settle()
 	await _resize(Vector2i(1280, 720))
-	_router.open_screen(&"exploration"); await _settle(); await _capture("canonical-explore-1280x720")
+	_router.open_screen(&"exploration"); await _settle()
 	_shell.controller.open_workspace_radial(); await _settle(); await _capture("canonical-controller-workspaces-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_action_radial(); await _settle(); await _capture("canonical-controller-actions-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_top_menu(); _shell.controller.move_top_menu(Vector2i.RIGHT); _shell.controller.move_top_menu(Vector2i.DOWN); await _settle(); await _capture("canonical-controller-top-menu-1280x720"); _shell.controller.back_top_menu(); _shell.controller.back_top_menu(); await _resize(Vector2i(800, 600)); _shell.controller.open_workspace_radial(); await _settle(); await _capture("classic-controller-workspaces-wheel-800x600"); _shell.controller.cancel_radial(); _shell.controller.open_top_menu(); _shell.controller.move_top_menu(Vector2i.DOWN); await _settle(); await _capture("classic-controller-top-menu-800x600"); _shell.controller.back_top_menu(); _shell.controller.back_top_menu(); await _resize(Vector2i(1280, 720))
 	var explore_view := _application.session_controller.view() as GameView
 	explore_view.party_summary.condition_values[ConditionRules.PARTY_SEARCHING] = -1
@@ -135,6 +245,13 @@ func _capture_gallery() -> void:
 		member_state.portrait_id = setup_view.portrait_options[member_index].id if member_index < setup_view.portrait_options.size() else gallery_view.party_members[0].portrait_id
 		member_state.armor = member_index
 		gallery_view.party_members.append(CHARACTER_VIEW_SCRIPT.new(member_state, _application.get("_active_content")))
+	assert(gallery_view.party_members.size() == 6, "The application-shell representative requires the full six-member gallery party.")
+	_router.open_screen(&"exploration")
+	_shell.present(gallery_view)
+	await _settle()
+	if _stress_roster:
+		await _capture_stress_roster(gallery_view)
+	await _capture("canonical-explore-1280x720")
 	if gallery_view.party_members.size() == 6 and gallery_view.party_members[0].items.size() > 1:
 		var right_trade_item: ItemView = gallery_view.party_members[0].items.pop_back()
 		gallery_view.party_members[1].items.append(right_trade_item)
@@ -336,6 +453,9 @@ func _capture_gallery() -> void:
 		_shell.present(gallery_view)
 		await _settle()
 		await _capture_canonical_compact("canonical-allies-populated-1280x720", "classic-allies-populated-800x600")
+	_router.open_screen(&"bestiary")
+	await _settle()
+	await _capture("canonical-bestiary-1280x720")
 	if not gallery_view.party_members.is_empty():
 		var vault_revisions: Array[CharacterVaultRevisionView] = []
 		for index: int in mini(6, gallery_view.party_members.size()):
@@ -450,20 +570,130 @@ func _capture_gallery() -> void:
 	for index: int in range(0, 6):
 		(system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_saves() if index == 0 else (system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_category(SystemPreferencesLayout.PREFERENCE_SECTIONS[index - 1]); await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "accessibility", "controls", "diagnostics"][index])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("classic-music-playlist-800x600"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
-	var settings := PresentationSettings.new()
-	settings.text_scale = 1.5
-	settings.ui_scale_mode = PresentationSettings.UI_SCALE_150
-	_shell.apply_settings(settings)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_150, PresentationSettings.DISPLAY_INTEGER_CANVAS, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.5)
 	_router.open_screen(&"system")
 	await _settle()
 	await _capture("compact-system-ui150-text150-800x600")
-	_shell.apply_settings(PresentationSettings.new()); await _resize(Vector2i(1280, 720)); _router.open_screen(&"exploration")
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_INTEGER_CANVAS, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _resize(Vector2i(1280, 720)); _router.open_screen(&"exploration")
 	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture_canonical_compact("canonical-end-adventure-1280x720", "classic-end-adventure-800x600")
 	await _resize(Vector2i(1280, 720)); _interaction.present(APPLICATION_LIFECYCLE_SCRIPT.quit_application_request(true, false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-quit-800x600")
 	_interaction.present(null); _router.content_presenter.set_save_and_quit_mode(true); await _resize(Vector2i(1280, 720)); _router.open_screen(&"system"); await _settle(); await _capture("canonical-save-and-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-save-and-quit-800x600"); _router.content_presenter.set_save_and_quit_mode(false); _router.open_screen(&"exploration"); _shell.present(gallery_view); await _resize(Vector2i(1920, 1080)); await _capture("fit-explore-1920x1080"); await _resize(Vector2i(3440, 1440)); await _capture("fit-explore-ultrawide-3440x1440"); await _resize(Vector2i(3840, 2160)); await _capture("fit-explore-4k-3840x2160")
 	_application.queue_free()
 	await process_frame
+	if _sizing_matrix:
+		var required_surfaces: Array[String] = _surface_filters.duplicate() if not _surface_filters.is_empty() else SIZING_MATRIX_SURFACES
+		for surface_id: String in required_surfaces:
+			assert(_sizing_matrix_surfaces.has(surface_id), "Sizing matrix did not capture major surface %s." % surface_id)
+		assert(_sizing_matrix_surfaces.size() == required_surfaces.size(), "Sizing matrix captured %d major surfaces; expected exactly %d." % [_sizing_matrix_surfaces.size(), required_surfaces.size()])
+		_matrix_metadata.close()
+	if _raw_scenes:
+		_raw_scene_metadata.close()
 	quit(0)
+
+
+func _close_prepared_fixture_adventure() -> void:
+	if not _application.session_controller.view().session_started:
+		return
+	_application.lifecycle_host.request_end_adventure()
+	await _settle()
+	var response := InteractionResponse.new(
+		APPLICATION_LIFECYCLE_SCRIPT.END_ADVENTURE_REQUEST_ID,
+		InteractionRequest.SESSION_LIFECYCLE,
+		InteractionResponse.LifecycleBody.new(APPLICATION_LIFECYCLE_SCRIPT.END_WITHOUT_SAVING)
+	)
+	_application.lifecycle_host.respond(response)
+	await _settle()
+	assert(not _application.session_controller.view().session_started, "The isolated fixture adventure could not be closed through the application lifecycle.")
+
+
+func _capture_raw_scenes() -> void:
+	await _resize(Vector2i(1280, 720))
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	_application.visible = false
+	var registry: Variant = JSON.parse_string(FileAccess.get_file_as_string(SCENE_PREVIEW_REGISTRY_PATH))
+	assert(registry is Dictionary and registry.get("sceneContracts") is Dictionary and registry.get("scenes") is Array, "Scene preview registry is malformed.")
+	var viewport := _compositor.source_viewport()
+	for entry: Variant in registry["scenes"]:
+		assert(entry is Dictionary and entry.get("id") is String and entry.get("scene") is String, "Scene preview registry has an invalid scene entry.")
+		var surface_id: String = entry["id"]
+		if not _surface_filters.is_empty() and not _surface_filters.has(surface_id):
+			continue
+		var scene_contract: Dictionary = registry["sceneContracts"].get(surface_id, {})
+		var raw_anchors: Variant = scene_contract.get("rawSceneNodes")
+		assert(raw_anchors is Array, "Scene preview registry is missing raw anchors for %s." % surface_id)
+		var packed := load("res://%s" % entry["scene"]) as PackedScene
+		assert(packed != null, "Raw scene is unavailable for %s." % surface_id)
+		var raw_root := packed.instantiate()
+		assert(raw_root is Control, "Raw scene %s has a non-Control root and cannot be mounted in the gallery." % surface_id)
+		var raw_control := raw_root as Control
+		raw_control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		raw_control.theme = _shell.theme
+		raw_control.visible = true
+		viewport.add_child(raw_control)
+		await _settle()
+		var raw_display_adaptations := _apply_raw_display_adaptations(surface_id, raw_control)
+		await _settle()
+		await _save_capture("raw-%s" % surface_id, "")
+		var resolved_anchors: Array[Dictionary] = []
+		for anchor: Variant in raw_anchors:
+			assert(anchor is String, "Raw scene anchor must be a string for %s." % surface_id)
+			var resolved_nodes: Array[Dictionary] = []
+			for node: Node in _resolve_raw_anchor_nodes(raw_control, anchor):
+				resolved_nodes.append({"name": str(node.name), "class": node.get_class(), "relativePath": str(raw_control.get_path_to(node)), "visible": (node as Control).visible if node is Control else true})
+			resolved_anchors.append({"registeredAnchor": anchor, "nodes": resolved_nodes})
+		var actual_window := DisplayServer.window_get_size()
+		_raw_scene_metadata.store_line(JSON.stringify({"surfaceId": surface_id, "scene": entry["scene"], "rawSceneNodes": raw_anchors, "resolvedStableNodes": resolved_anchors, "rawDisplayAdaptations": raw_display_adaptations, "editorLikeDisplay": true, "actualWindow": [actual_window.x, actual_window.y], "boundPreview": false}))
+		raw_control.queue_free()
+		await process_frame
+	_application.visible = true
+	await _settle()
+
+
+func _apply_raw_display_adaptations(surface_id: String, raw_root: Control) -> Array[Dictionary]:
+	var adaptations: Array[Dictionary] = []
+	match surface_id:
+		"application-shell":
+			_set_raw_visibility(raw_root, "StageFrame", true, adaptations)
+			_set_raw_visibility(raw_root, "BottomRegion", true, adaptations)
+			_set_raw_visibility(raw_root, "PartyRoster", true, adaptations)
+			_set_raw_visibility(raw_root, "ScreenNavigator", true, adaptations)
+			_set_raw_visibility(raw_root, "ScreenNavigator/OverlayHost/SplashScreen", false, adaptations)
+		"party-import-from-save":
+			# The production root starts hidden and is shown only after host data is bound.
+			# Expose its authored dialog frame here without populating any party rows.
+			_set_raw_visibility(raw_root, ".", true, adaptations)
+		"lifecycle-prompts":
+			# Show the authored end-adventure variant; response buttons remain unbound.
+			_set_raw_visibility(raw_root, "LifecycleConsequence", true, adaptations)
+			_set_raw_visibility(raw_root, "LifecycleVerticalActions", true, adaptations)
+			_set_raw_visibility(raw_root, "LifecycleActions", false, adaptations)
+	return adaptations
+
+
+func _set_raw_visibility(raw_root: Control, node_path: String, desired: bool, adaptations: Array[Dictionary]) -> void:
+	var node: Node = raw_root if node_path == "." else raw_root.get_node_or_null(node_path)
+	assert(node is Control, "Raw-scene display adaptation target %s is missing for %s." % [node_path, raw_root.name])
+	var control := node as Control
+	var previous := control.visible
+	control.visible = desired
+	adaptations.append({"nodePath": node_path, "visibleBefore": previous, "visibleAfter": desired})
+
+
+func _resolve_raw_anchor_nodes(raw_root: Control, anchor: String) -> Array[Node]:
+	var matches: Array[Node] = []
+	if anchor.ends_with("*"):
+		var prefix := anchor.trim_suffix("*")
+		var candidates: Array[Node] = [raw_root]
+		candidates.append_array(raw_root.find_children("*", "", true, false))
+		for node: Node in candidates:
+			if str(node.name).begins_with(prefix):
+				matches.append(node)
+	else:
+		var found := raw_root.find_child(anchor, true, false)
+		if found != null:
+			matches.append(found)
+	return matches
 
 
 func _capture_compact_canonical(compact_label: String, canonical_label: String) -> void:
@@ -504,10 +734,162 @@ func _settle() -> void:
 
 
 func _capture(label: String) -> void:
+	if _sizing_matrix:
+		var surface_id := _surface_id_for_capture(label)
+		if surface_id.is_empty() or (not _surface_filters.is_empty() and not _surface_filters.has(surface_id)) or _sizing_matrix_surfaces.has(surface_id):
+			return
+		_sizing_matrix_surfaces[surface_id] = true
+		await _capture_sizing_surface(surface_id)
+		return
+	if not _surface_filters.is_empty() and not _surface_filters.has(_surface_id_for_capture(label)):
+		return
+	await _save_capture(label, "")
+
+
+func _surface_id_for_capture(label: String) -> String:
+	var representatives := {
+		"canonical-explore-1280x720": "application-shell",
+		"canonical-character-overview-1280x720": "character-sheet",
+		"canonical-character-files-1280x720": "character-files",
+		"canonical-allies-populated-1280x720": "allies",
+		"canonical-bestiary-1280x720": "bestiary",
+		"wide-dense-inventory-1280x720": "inventory",
+		"wide-spells-1280x720": "spells",
+		"canonical-location-service-1280x720": "services",
+		"wide-journal-1280x720": "maps-journal",
+		"canonical-system-display-1280x720": "system",
+		"canonical-campaign-menu-hover-1280x720": "campaign-selection",
+		"canonical-party-setup-1280x720": "party-assembly",
+		"canonical-party-import-from-save-1280x720": "party-import-from-save",
+		"canonical-character-creator-review-1280x720": "character-creation",
+		"canonical-shop-interaction-1280x720": "shop",
+		"wide-treasure-distribution-1280x720": "treasure",
+		"wide-encounter-1280x720": "encounter",
+		"wide-level-result-1280x720": "level-up",
+		"canonical-end-adventure-1280x720": "lifecycle-prompts",
+		"canonical-scrolling-text-1280x720": "scrolling-text",
+		"canonical-combat-tactical-workspace-1280x720": "combat-command-deck",
+		"canonical-combat-spellbook-1280x720": "roster-spellbook",
+	}
+	if representatives.has(label):
+		return representatives[label]
+	if label.begins_with("wide-interaction-temple-"):
+		return "temple"
+	if label.begins_with("wide-interaction-bank-"):
+		return "bank"
+	if label.begins_with("wide-interaction-pick-lock-"):
+		return "pick-lock"
+	return ""
+
+
+func _capture_sizing_surface(surface_id: String) -> void:
+	var original_size := DisplayServer.window_get_size()
+	var spatial_visibility: Array[bool] = [_application._map_presenter.visible, _application._battlefield_presenter.visible, (_application.get("_dungeon_presenter") as Control).visible]
+	for size: Vector2i in SIZING_MATRIX_SIZES:
+		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+		await _resize(size)
+		await _restore_capture_visibility(spatial_visibility)
+		await _save_capture("%s-%dx%d-auto-responsive-classic" % [surface_id, size.x, size.y], surface_id)
+	if surface_id == "application-shell":
+		await _resize(Vector2i(2560, 1392))
+		for display_mode: String in [PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.DISPLAY_INTEGER_WINDOW, PresentationSettings.DISPLAY_INTEGER_CANVAS, PresentationSettings.DISPLAY_FILL_WINDOW]:
+			for typography: String in [PresentationSettings.TYPOGRAPHY_CLASSIC, PresentationSettings.TYPOGRAPHY_READABLE]:
+				await _apply_sizing_settings(PresentationSettings.UI_SCALE_150, display_mode, typography, 1.5)
+				await _restore_capture_visibility(spatial_visibility)
+				await _save_capture("application-shell-2560x1392-manual150-maxtext-%s-%s" % [display_mode, typography], surface_id)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _resize(original_size)
+	await _restore_capture_visibility(spatial_visibility)
+
+
+func _restore_capture_visibility(spatial_visibility: Array[bool]) -> void:
+	# Gallery-only detached combat views must survive the live session's resize visibility refresh.
+	_application._map_presenter.visible = spatial_visibility[0]
+	_application._battlefield_presenter.visible = spatial_visibility[1]
+	(_application.get("_dungeon_presenter") as Control).visible = spatial_visibility[2]
+	(_application.get("_spatial_layout") as ApplicationSpatialLayout).sync_display_world_region(_compositor, _application.get("_presentation_settings") as PresentationSettings)
+	await _settle()
+
+
+func _capture_stress_roster(gallery_view: GameView) -> void:
+	assert(gallery_view.party_members.size() == 6, "Stress roster capture requires six populated party rows.")
+	var stress_names: Array[String] = ["Alaric Willowmere of Northgate", "Beatrice Ashenford, Warden of the Vale", "Corvin Thistlewick the Far-Seeing", "Drusilla Vexmoor of the Western March", "Elias Greenbriar, Keeper of the Old Road", "Farael Brightforge the Unbroken"]
+	var original_characters: Array[Dictionary] = []
+	for index: int in 6:
+		var character: CharacterView = gallery_view.party_members[index]
+		assert(not character.portrait_id.is_empty(), "Stress roster row %d must retain a source portrait identity." % (index + 1))
+		original_characters.append({"name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health, "spellPoints": character.spell_points, "maximumSpellPoints": character.maximum_spell_points})
+		character.name = stress_names[index]
+		character.current_health = 876543 - index
+		character.maximum_health = 987654 - index
+		character.spell_points = 654321 - index
+		character.maximum_spell_points = 765432 - index
+	var narrative := _shell.find_child("NarrativeText", true, false) as RichTextLabel
+	var old_narrative_text := narrative.text
+	var old_narrative_history := str(_shell.status.get("_narrative_history"))
+	_shell.status.set("_narrative_history", "")
+	narrative.text = ""
+	_shell.status.append_narrative(("Six travelers cross the northern road together, each carrying a separate account of the weather, the pass ahead, and the lights moving along the ridge. ").repeat(4))
+	_shell.present(gallery_view)
+	await _settle()
+	var original_window := DisplayServer.window_get_size()
+	for size: Vector2i in [Vector2i(800, 600), Vector2i(1280, 720), Vector2i(2560, 1392)]:
+		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+		await _resize(size)
+		await _save_capture("stress-roster-%dx%d-default" % [size.x, size.y], "")
+		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.5)
+		await _resize(size)
+		await _save_capture("stress-roster-%dx%d-maxtext" % [size.x, size.y], "")
+	for index: int in 6:
+		var character: CharacterView = gallery_view.party_members[index]
+		var original: Dictionary = original_characters[index]
+		character.name = original["name"]
+		character.current_health = original["currentHealth"]
+		character.maximum_health = original["maximumHealth"]
+		character.spell_points = original["spellPoints"]
+		character.maximum_spell_points = original["maximumSpellPoints"]
+	_shell.status.set("_narrative_history", old_narrative_history)
+	narrative.text = old_narrative_text
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _resize(original_window)
+	_shell.present(gallery_view)
+	await _settle()
+
+
+func _apply_sizing_settings(scale_mode: String, display_mode: String, typography: String, text_scale: float) -> void:
+	var settings := _application.get("_presentation_settings") as PresentationSettings
+	settings.ui_scale_mode = scale_mode
+	settings.display_scaling_mode = display_mode
+	settings.typography_mode = typography
+	settings.text_scale = text_scale
+	_compositor.configure(display_mode, settings.pixel_art_smoothing, settings.crt_enabled, settings.crt_shader, settings.crt_area)
+	_shell.apply_settings(settings)
+	_interaction.set_text_scale(text_scale)
+	var spatial_layout: Object = _application.get("_spatial_layout")
+	spatial_layout.set_world_zoom(settings.world_zoom if display_mode == PresentationSettings.DISPLAY_INTEGER_CANVAS else 1)
+	await _settle()
+
+
+func _save_capture(label: String, surface_id: String) -> void:
 	var viewport_texture := root.get_texture(); assert(viewport_texture != null, "UI gallery requires a graphical display driver."); var image := viewport_texture.get_image(); assert(image != null and not image.is_empty(), "UI gallery could not capture rendered frame %s." % label)
 	var path := "%s/%s.png" % [OUTPUT_ROOT, label]; var error := image.save_png(ProjectSettings.globalize_path(path))
 	assert(error == OK, "Unable to save UI gallery frame %s: %s" % [label, error_string(error)])
-	print("CAPTURED: %s" % path)
+	if label.begins_with("stress-roster-"):
+		var boundaries: Dictionary = {}
+		for control_name: String in ["BottomRegion", "NarrativeWell", "CommandPanel", "PartyEffectsRow", "CommandGrid", "EffectsPanel", "TorchDock"]:
+			var control := _shell.get_node("%" + control_name) as Control
+			var minimum := control.get_combined_minimum_size()
+			boundaries[control_name] = {"minimum": [minimum.x, minimum.y], "position": [control.global_position.x, control.global_position.y], "size": [control.size.x, control.size.y]}
+		print("UI_SIZING_BOUNDARIES: %s • %s" % [label, JSON.stringify(boundaries)])
+	if not surface_id.is_empty():
+		var profile := _shell.get("_profile") as UiLayoutProfile
+		var settings := _application.get("_presentation_settings") as PresentationSettings
+		var actual_window := DisplayServer.window_get_size()
+		var metadata := {"surfaceNames": [surface_id], "capture": label, "actualWindow": [actual_window.x, actual_window.y], "profile": String(profile.id), "effectiveScale": profile.ui_scale, "requestedScale": profile.requested_scale, "fontScale": profile.font_scale, "uiScaleMode": settings.ui_scale_mode, "textScale": settings.text_scale, "typography": settings.typography_mode, "displayMode": settings.display_scaling_mode}
+		_matrix_metadata.store_line(JSON.stringify(metadata))
+		print("CAPTURED: %s • %s • %s" % [path, surface_id, actual_window])
+	else:
+		print("CAPTURED: %s" % path)
 
 
 func _button_named(parent: Node, text: String) -> Button:

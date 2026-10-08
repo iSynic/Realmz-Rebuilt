@@ -14,11 +14,14 @@ func prepare(compact: bool) -> void:
 	money_column().visible = true
 	alternate_state().visible = false
 	money_main().vertical = compact
+	(money_main().get_node("MoneyPartyArea") as Control).size_flags_vertical = Control.SIZE_FILL if compact else Control.SIZE_EXPAND_FILL
+	pool_pane().size_flags_vertical = Control.SIZE_FILL if compact else Control.SIZE_EXPAND_FILL
 	pool_summary().vertical = true
+	(pool_summary().get_node("MoneyPoolValues") as BoxContainer).vertical = not compact
 	exchange_workspace().vertical = compact
 	party_pane().visible = not compact
 	character_picker().visible = compact
-	selected_summary().vertical = compact
+	selected_summary().vertical = false
 	location_services_pane().visible = false
 
 

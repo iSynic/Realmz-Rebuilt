@@ -1,0 +1,51 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="1_script"]
+
+[node name="ClassicBitmapButton" type="TextureButton"]
+custom_minimum_size = Vector2(62, 70)
+texture_filter = 1
+ignore_texture_size = true
+script = ExtResource("1_script")
+
+[node name="CommandMargin" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 4
+theme_override_constants/margin_top = 3
+theme_override_constants/margin_right = 4
+theme_override_constants/margin_bottom = 5
+
+[node name="CommandContent" type="VBoxContainer" parent="CommandMargin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+[node name="IconStage" type="Control" parent="CommandMargin/CommandContent"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 43)
+size_flags_vertical = 3
+mouse_filter = 2
+
+[node name="CaptionBand" type="VBoxContainer" parent="CommandMargin/CommandContent"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 1
+
+[node name="Divider" type="HSeparator" parent="CommandMargin/CommandContent/CaptionBand"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="Caption" type="Label" parent="CommandMargin/CommandContent/CaptionBand"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"ClassicCommandCaption"
+theme_override_colors/font_color = Color(0.905882, 0.780392, 0.337255, 1)
+theme_override_font_sizes/font_size = 15
+text = "Command"
+horizontal_alignment = 1

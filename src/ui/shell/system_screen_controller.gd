@@ -27,20 +27,15 @@ class ControllerAccess:
 		if label != null: label.text = "Live input • %s" % value
 	func bind_binding_list(bindings: VBoxContainer, conflicts: Array[Dictionary], reachable: bool, status: Label) -> void:
 		var rows := bindings.get_node("BindingRows") as VBoxContainer
-		for child: Node in rows.get_children():
-			rows.remove_child(child)
-			child.queue_free()
 		for action_id: StringName in ControllerPreferences.ACTIONS:
-			var button := Button.new()
-			button.name = "ControllerBinding_%s" % String(action_id).trim_prefix("realmz_controller_")
+			var button := rows.get_node("ControllerBinding_%s" % String(action_id).trim_prefix("realmz_controller_")) as Button
+			SystemSignalBinding.clear_pressed(button)
 			button.text = "%s  •  %s" % [_controller_action_label(action_id), _binding_summary(action_id)]
-			button.tooltip_text = "Select, then press the desired controller input. East cancels capture."
 			button.pressed.connect(func() -> void:
 				_owner._controller_capture_action = action_id
 				(bindings.get_node("BindingStatus") as Label).text = "Listening for %s… press East to cancel." % _controller_action_label(action_id)
 				_owner.controller_binding_capture_requested.emit(action_id)
 			)
-			rows.add_child(button)
 		if _owner._controller_capture_action.is_empty():
 			status.text = "Rebind every missing required action before Apply." if not reachable else "%d binding conflict(s) must be resolved." % conflicts.size() if not conflicts.is_empty() else "Draft bindings are ready to apply."
 
@@ -85,6 +80,7 @@ var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _save_and_quit_mode: bool = false
 var _selected_workspace_mode: StringName = &"Display"
 var _workspace: SystemWorkspace
+var _display_settings: PresentationSettings
 var _controller_draft: ControllerPreferences
 var _committed_controller_draft: ControllerPreferences
 var _controller_draft_dirty: bool = false
@@ -157,6 +153,7 @@ func apply_controller_draft() -> bool:
 
 func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
+	_refresh_interface_size_feedback()
 
 
 func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: String = "", active_slot_id: String = "A") -> void:
@@ -204,6 +201,9 @@ func present(target: Control, view: GameView, settings: PresentationSettings, me
 	if _workspace.has_signal("action_requested") and not _workspace.has_meta("system_action_observer"):
 		_workspace.connect("action_requested", func(action_id: StringName, value: Variant) -> void: action_requested.emit(action_id, value))
 		_workspace.set_meta("system_action_observer", true)
+	if not _workspace.has_meta("interface_size_feedback_observer"):
+		_workspace.resized.connect(_refresh_interface_size_feedback)
+		_workspace.set_meta("interface_size_feedback_observer", true)
 	_bind_header(view)
 	_bind_save_workspace(view)
 	_bind_display(settings)
@@ -239,16 +239,16 @@ func _bind_save_workspace(view: GameView) -> void:
 	for slot_index: int in SaveSlotPreview.SCENARIO_SLOTS.length():
 		var slot_id := SaveSlotPreview.SCENARIO_SLOTS.substr(slot_index, 1)
 		var primary := _preview_for_slot(slot_id, SaveSlotPreview.PRIMARY)
-		var button := _workspace.save_slot_row_scene.instantiate() as Button
-		button.name = "SavePreview_%s_primary" % slot_id
+		var button := rows.get_node("SavePreview_%s_primary" % slot_id) as Button
 		button.text = "Slot %s%s  ·  %s" % [slot_id, "  ★" if slot_id == _active_slot_id else "", primary.status_label() if primary != null else "Empty"]
 		button.button_group = group
 		button.button_pressed = _selected_save_key == slot_id + ":primary"
+		SystemSignalBinding.clear_pressed(button)
 		button.pressed.connect(_select_save_key.bind(slot_id + ":primary"))
-		rows.add_child(button)
 		var backup := _preview_for_slot(slot_id, SaveSlotPreview.BACKUP)
 		if backup != null:
-			_add_save_preview_row(rows, group, backup, "   ↳ Backup · %s" % backup.status_label())
+			var backup_row := _add_save_preview_row(rows, group, backup, "   ↳ Backup · %s" % backup.status_label())
+			rows.move_child(backup_row, button.get_index() + 1)
 	for preview: SaveSlotPreview in _save_previews:
 		if preview.slot_id.length() == 1 and SaveSlotPreview.SCENARIO_SLOTS.contains(preview.slot_id):
 			continue
@@ -257,7 +257,7 @@ func _bind_save_workspace(view: GameView) -> void:
 	_refresh_save_detail()
 
 
-func _add_save_preview_row(rows: VBoxContainer, group: ButtonGroup, preview: SaveSlotPreview, label: String) -> void:
+func _add_save_preview_row(rows: VBoxContainer, group: ButtonGroup, preview: SaveSlotPreview, label: String) -> Button:
 	var button := _workspace.save_slot_row_scene.instantiate() as Button
 	button.name = "SavePreview_%s_%s" % [preview.slot_id, String(preview.source)]
 	button.text = label
@@ -265,6 +265,7 @@ func _add_save_preview_row(rows: VBoxContainer, group: ButtonGroup, preview: Sav
 	button.button_pressed = _key(preview) == _selected_save_key
 	button.pressed.connect(_select_save_key.bind(_key(preview)))
 	rows.add_child(button)
+	return button
 
 
 func _preview_for_slot(slot_id: String, source: StringName) -> SaveSlotPreview:
@@ -497,16 +498,12 @@ func _key(preview: SaveSlotPreview) -> String:
 
 
 func _bind_display(settings: PresentationSettings) -> void:
+	_display_settings = settings
 	var root := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs")
 	var scale_root := root.get_node("Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content")
 	var effects_root := root.get_node("Image Effects/VisualEffectsGroup/Content")
 	var world_root := root.get_node("World View/WorldViewGroup/Content")
-	_bind_option(scale_root.get_node("DisplayScalingRow/DisplayScalingPicker") as OptionButton, [
-		{"label": "Responsive (current)", "id": PresentationSettings.DISPLAY_RESPONSIVE},
-		{"label": "Integer: whole window", "id": PresentationSettings.DISPLAY_INTEGER_WINDOW},
-		{"label": "Integer: world canvas", "id": PresentationSettings.DISPLAY_INTEGER_CANVAS},
-		{"label": "Fill window", "id": PresentationSettings.DISPLAY_FILL_WINDOW},
-	], settings.display_scaling_mode, &"display_scaling_mode")
+	_bind_option(scale_root.get_node("DisplayScalingRow/DisplayScalingPicker") as OptionButton, SystemPreferencesLayout.display_mode_options(), settings.display_scaling_mode, &"display_scaling_mode")
 	var zoom_picker := scale_root.get_node("WorldZoomRow/WorldZoomPicker") as OptionButton
 	_bind_option(zoom_picker, [
 		{"label": "1× · 32-pixel tiles", "id": "1"},
@@ -515,6 +512,7 @@ func _bind_display(settings: PresentationSettings) -> void:
 		{"label": "4× · 128-pixel tiles", "id": "4"},
 	], str(settings.world_zoom), &"world_zoom")
 	zoom_picker.disabled = settings.display_scaling_mode != PresentationSettings.DISPLAY_INTEGER_CANVAS
+	zoom_picker.tooltip_text = "Available only with Integer: world canvas. Other modes keep the saved zoom."
 	_bind_option(effects_root.get_node("PixelSmoothingRow/PixelSmoothingPicker") as OptionButton, [
 		{"label": "Off · crisp pixels", "id": PresentationSettings.SMOOTHING_OFF},
 		{"label": "World canvas only", "id": PresentationSettings.SMOOTHING_WORLD},
@@ -529,12 +527,9 @@ func _bind_display(settings: PresentationSettings) -> void:
 		{"label": "World canvas", "id": PresentationSettings.CRT_WORLD},
 		{"label": "Whole window", "id": PresentationSettings.CRT_WINDOW},
 	], settings.crt_area, &"crt_area")
-	_bind_option(scale_root.get_node("InterfaceScaleRow/InterfaceScalePicker") as OptionButton, [
-		{"label": "Fit to window", "id": PresentationSettings.UI_SCALE_AUTO},
-		{"label": "Interface density: 100%", "id": PresentationSettings.UI_SCALE_100},
-		{"label": "Interface density: 125%", "id": PresentationSettings.UI_SCALE_125},
-		{"label": "Interface density: 150%", "id": PresentationSettings.UI_SCALE_150},
-	], settings.ui_scale_mode, &"ui_scale_mode")
+	var interface_size_picker := scale_root.get_node("InterfaceScaleRow/InterfaceScalePicker") as OptionButton
+	_bind_option(interface_size_picker, SystemPreferencesLayout.interface_size_options(), settings.ui_scale_mode, &"ui_scale_mode")
+	interface_size_picker.tooltip_text = "Auto fits the available window. Manual sizes may be limited by the current window."
 	_bind_option(scale_root.get_node("WindowModeRow/WindowModePicker") as OptionButton, [
 		{"label": "Windowed", "id": PresentationSettings.WINDOWED},
 		{"label": "Borderless fullscreen", "id": PresentationSettings.BORDERLESS_FULLSCREEN},
@@ -542,6 +537,13 @@ func _bind_display(settings: PresentationSettings) -> void:
 	_bind_toggle(world_root.get_node("WorldOptions/Dungeon3d") as CheckButton, settings.dungeon_3d, &"dungeon_3d")
 	_bind_toggle(world_root.get_node("WorldOptions/ClassicExplorationVisibility") as CheckButton, settings.classic_exploration_visibility, &"classic_exploration_visibility")
 	_bind_toggle(world_root.get_node("WorldOptions/CustomFogTile") as CheckButton, settings.custom_fog_tile_enabled, &"custom_fog_tile_enabled")
+	_refresh_interface_size_feedback()
+
+
+func _refresh_interface_size_feedback() -> void:
+	if _workspace == null or _display_settings == null:
+		return
+	SystemPreferencesLayout.refresh_interface_size_feedback(_workspace, _display_settings)
 
 
 func _bind_controls(settings: PresentationSettings) -> void:
@@ -674,7 +676,7 @@ func _bind_action(button: Button, action: Callable) -> void:
 static func _bind_label(label: Label, text: String, color: Color, size: int) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", size)
+	UiSizing.font_size(label, &"font_size", size)
 
 
 static func _clear(parent: Node) -> void:

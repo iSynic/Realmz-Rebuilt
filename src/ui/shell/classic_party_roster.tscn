@@ -55,6 +55,84 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 0
 
+[node name="Position1" type="VBoxContainer" parent="RosterColumn/PartyScroll/PartyList"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Member" parent="RosterColumn/PartyScroll/PartyList/Position1" instance=ExtResource("2_member")]
+layout_mode = 2
+
+[node name="Empty" parent="RosterColumn/PartyScroll/PartyList/Position1" instance=ExtResource("3_empty")]
+visible = false
+layout_mode = 2
+text = "Empty position 1"
+
+[node name="Position2" type="VBoxContainer" parent="RosterColumn/PartyScroll/PartyList"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Member" parent="RosterColumn/PartyScroll/PartyList/Position2" instance=ExtResource("2_member")]
+layout_mode = 2
+
+[node name="Empty" parent="RosterColumn/PartyScroll/PartyList/Position2" instance=ExtResource("3_empty")]
+visible = false
+layout_mode = 2
+text = "Empty position 2"
+
+[node name="Position3" type="VBoxContainer" parent="RosterColumn/PartyScroll/PartyList"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Member" parent="RosterColumn/PartyScroll/PartyList/Position3" instance=ExtResource("2_member")]
+layout_mode = 2
+
+[node name="Empty" parent="RosterColumn/PartyScroll/PartyList/Position3" instance=ExtResource("3_empty")]
+visible = false
+layout_mode = 2
+text = "Empty position 3"
+
+[node name="Position4" type="VBoxContainer" parent="RosterColumn/PartyScroll/PartyList"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Member" parent="RosterColumn/PartyScroll/PartyList/Position4" instance=ExtResource("2_member")]
+layout_mode = 2
+
+[node name="Empty" parent="RosterColumn/PartyScroll/PartyList/Position4" instance=ExtResource("3_empty")]
+visible = false
+layout_mode = 2
+text = "Empty position 4"
+
+[node name="Position5" type="VBoxContainer" parent="RosterColumn/PartyScroll/PartyList"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Member" parent="RosterColumn/PartyScroll/PartyList/Position5" instance=ExtResource("2_member")]
+layout_mode = 2
+
+[node name="Empty" parent="RosterColumn/PartyScroll/PartyList/Position5" instance=ExtResource("3_empty")]
+visible = false
+layout_mode = 2
+text = "Empty position 5"
+
+[node name="Position6" type="VBoxContainer" parent="RosterColumn/PartyScroll/PartyList"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Member" parent="RosterColumn/PartyScroll/PartyList/Position6" instance=ExtResource("2_member")]
+layout_mode = 2
+
+[node name="Empty" parent="RosterColumn/PartyScroll/PartyList/Position6" instance=ExtResource("3_empty")]
+visible = false
+layout_mode = 2
+text = "Empty position 6"
+
 [node name="CombatRosterSpellbook" parent="RosterColumn" instance=ExtResource("4_spellbook")]
 layout_mode = 2
 

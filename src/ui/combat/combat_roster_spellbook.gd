@@ -170,7 +170,7 @@ func _refresh_spell_list() -> void:
 			_select_spell.bind(spell_id)
 		)
 		button.custom_minimum_size.y = 21.0
-		button.add_theme_font_size_override("font_size", 14)
+		UiSizing.font_size(button, &"font_size", 14)
 		_spell_buttons[spell_id] = button
 		list.add_child(button)
 	_refresh_power_choices()

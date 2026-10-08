@@ -45,7 +45,7 @@ func build(request: InteractionRequest) -> void:
 				var continue_button := (load(RESPONSE_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button
 				continue_button.name = "AcknowledgeContinue"
 				continue_button.text = "Continue"
-				continue_button.custom_minimum_size = Vector2(140.0, 38.0)
+				UiSizing.minimum_size(continue_button, Vector2(140.0, 38.0))
 				continue_button.theme_type_variation = &"ClassicChoiceButton"
 				continue_button.pressed.connect(submit_acknowledgement)
 				grid.add_child(continue_button)
@@ -95,6 +95,6 @@ func _choice_grid(columns: int, content_width: bool = false) -> GridContainer:
 func _add_choice(parent: Container, label: String, body: InteractionResponse.Body, node_name: String) -> void:
 	var button := add_response_to(parent, label, body)
 	button.name = node_name
-	button.custom_minimum_size = Vector2(140.0, 38.0)
+	UiSizing.minimum_size(button, Vector2(140.0, 38.0))
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.theme_type_variation = &"ClassicChoiceButton"

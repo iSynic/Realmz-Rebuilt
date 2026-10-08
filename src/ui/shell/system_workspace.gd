@@ -24,7 +24,7 @@ func prepare(compact: bool) -> void:
 	(get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions") as BoxContainer).vertical = compact
 	(get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow") as BoxContainer).vertical = compact
 	_apply_compact_rows(self, compact)
-	_clear(save_slot_rows())
+	clear_variable_save_rows()
 	get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/Empty").visible = false
 	get_node("SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty").visible = false
 	save_detail_record().visible = false
@@ -74,8 +74,11 @@ func focus_load_confirmation() -> void:
 		confirm.grab_focus()
 
 
-func _clear(parent: Node) -> void:
+func clear_variable_save_rows() -> void:
+	var parent := save_slot_rows()
 	for child: Node in parent.get_children():
+		if child.has_meta(&"scenario_slot"):
+			continue
 		parent.remove_child(child)
 		child.queue_free()
 

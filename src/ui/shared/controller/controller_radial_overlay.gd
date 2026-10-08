@@ -65,6 +65,7 @@ var _page: int = 0
 var _selected_index: int = 0
 var _open: bool = false
 var _text_scale: float = 1.0
+var _interface_size := 1.0
 var _standalone_workspaces: bool = false
 @onready var _tile_icon_pairs: Array[HBoxContainer] = [
 	%NorthPairedIcons as HBoxContainer, %NorthEastPairedIcons as HBoxContainer,
@@ -270,16 +271,12 @@ func _apply_text_scale() -> void:
 		_scale_label(symbol, 20, scale)
 
 
-func _scale_label(label: Label, base_size: int, scale: float) -> void:
-	label.add_theme_font_size_override("font_size", maxi(1, int(round(float(base_size) * scale))))
+func _scale_label(label: Label, base_size: int, _scale: float) -> void:
+	UiSizing.font_size(label, &"font_size", base_size)
 
 
 func _scale_caption(label: Label) -> void:
-	var font_size := maxi(1, int(round(12.0 * _text_scale)))
-	var font := label.get_theme_font("font")
-	while font != null and font_size > 12 and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > 94.0:
-		font_size -= 1
-	label.add_theme_font_size_override("font_size", font_size)
+	UiSizing.font_size(label, &"font_size", 12)
 
 
 func _select_index(index: int) -> void:
@@ -375,50 +372,49 @@ func _apply_mode_layout() -> void:
 		_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_window_frame.hide()
 		_wheel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-		_wheel.size = Vector2(776, 538)
-		var scale_factor := minf(0.63 + (size.y - 600.0) * 0.00175, size.x / 950.0)
-		var center := Vector2(size.x * 0.36, size.y * (0.32 if size.y <= 600.0 else 0.395))
-		_wheel.scale = Vector2.ONE * scale_factor
-		_wheel.position = center - Vector2(230, 286) * scale_factor
-		$Panel/Wheel/Heading.position = Vector2(12, (size.y * 0.07 - _wheel.position.y) / scale_factor)
-		$Panel/Wheel/Heading.size = Vector2(440, 42)
+		_wheel.size = Vector2(776, 538) * _interface_size
+		var center := Vector2(size.x * 0.36, maxf(size.y * 0.395, 260.0 * _interface_size))
+		_wheel.scale = Vector2.ONE
+		_wheel.position = center - Vector2(230, 286) * _interface_size
+		$Panel/Wheel/Heading.position = Vector2(12.0 * _interface_size, size.y * 0.07 - _wheel.position.y)
+		$Panel/Wheel/Heading.size = Vector2(440, 42) * _interface_size
 		_divider.hide()
 		_detail.hide()
 		_footer.hide()
 		_workspace_hints.show()
-		_workspace_hints.position = Vector2(458, 226)
-		_workspace_hints.size = Vector2(155, 112)
-		_workspace_hints.add_theme_font_size_override("font_size", maxi(12, int(round(18.0 * scale_factor))))
-		$Panel/Wheel/ReasonPanel.position = Vector2(458, 340)
-		$Panel/Wheel/ReasonPanel.size = Vector2(155, 108)
-		_reason_label.custom_minimum_size = Vector2(130, 0)
-		_reason_label.add_theme_font_size_override("font_size", maxi(12, int(round(14.0 * scale_factor))))
-		var center_size := minf(108.0, size.y * 0.16) / scale_factor
-		$Panel/Wheel/Card.position = Vector2(230, 286) - Vector2.ONE * center_size * 0.5
+		_workspace_hints.position = Vector2(458, 226) * _interface_size
+		_workspace_hints.size = Vector2(155, 112) * _interface_size
+		UiSizing.font_size(_workspace_hints, &"font_size", 18)
+		$Panel/Wheel/ReasonPanel.position = Vector2(458, 340) * _interface_size
+		$Panel/Wheel/ReasonPanel.size = Vector2(155, 108) * _interface_size
+		UiSizing.minimum_size(_reason_label, Vector2(130, 0))
+		UiSizing.font_size(_reason_label, &"font_size", 14)
+		var center_size := 108.0 * _interface_size
+		$Panel/Wheel/Card.position = Vector2(230, 286) * _interface_size - Vector2.ONE * center_size * 0.5
 		$Panel/Wheel/Card.size = Vector2.ONE * center_size
 		$Panel/Wheel/Card.add_theme_stylebox_override("panel", _workspace_center_style(center_size * 0.5))
-		_selection_label.custom_minimum_size = Vector2.ONE * (center_size - 16.0)
-		_selection_label.add_theme_font_size_override("font_size", maxi(12, int(round(16.0 / scale_factor))))
+		UiSizing.minimum_size(_selection_label, Vector2.ONE * 92.0)
+		UiSizing.font_size(_selection_label, &"font_size", 16)
 	else:
 		_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_window_frame.show()
 		_wheel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-		_wheel.size = Vector2(776, 538)
+		_wheel.size = Vector2(776, 538) * _interface_size
 		_wheel.scale = Vector2.ONE
-		_wheel.position = size * 0.5 - Vector2(400, 280)
-		$Panel/Wheel/Heading.position = Vector2(12, 4)
-		$Panel/Wheel/Heading.size = Vector2(438, 48)
+		_wheel.position = size * 0.5 - Vector2(400, 280) * _interface_size
+		$Panel/Wheel/Heading.position = Vector2(12, 4) * _interface_size
+		$Panel/Wheel/Heading.size = Vector2(438, 48) * _interface_size
 		_divider.show()
 		_detail.show()
 		_footer.show()
 		_workspace_hints.hide()
-		$Panel/Wheel/ReasonPanel.position = Vector2(480, 330)
-		$Panel/Wheel/ReasonPanel.size = Vector2(290, 108)
-		_reason_label.custom_minimum_size = Vector2(264, 0)
-		$Panel/Wheel/Card.position = Vector2(174, 258)
-		$Panel/Wheel/Card.size = Vector2(112, 56)
+		$Panel/Wheel/ReasonPanel.position = Vector2(480, 330) * _interface_size
+		$Panel/Wheel/ReasonPanel.size = Vector2(290, 108) * _interface_size
+		UiSizing.minimum_size(_reason_label, Vector2(264, 0))
+		$Panel/Wheel/Card.position = Vector2(174, 258) * _interface_size
+		$Panel/Wheel/Card.size = Vector2(112, 56) * _interface_size
 		$Panel/Wheel/Card.remove_theme_stylebox_override("panel")
-		_selection_label.custom_minimum_size = Vector2(96, 40)
+		UiSizing.minimum_size(_selection_label, Vector2(96, 40))
 		_apply_text_scale()
 	queue_redraw()
 
@@ -433,17 +429,18 @@ func _workspace_center_style(radius: float) -> StyleBoxFlat:
 
 
 func _scale_workspace_caption(label: Label) -> void:
-	var font_size := int(round(13.0 / maxf(_wheel.scale.x, 0.1)))
-	var font := label.get_theme_font("font")
-	while font != null and font_size > 13 and font.get_string_size(label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x > 94.0:
-		font_size -= 1
-	label.add_theme_font_size_override("font_size", font_size)
+	UiSizing.font_size(label, &"font_size", 13)
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	_interface_size = profile.ui_scale
+	_apply_mode_layout()
 
 
 func _draw() -> void:
 	if not _standalone_workspaces or _wheel == null:
 		return
-	draw_set_transform(_wheel.position, 0.0, _wheel.scale)
+	draw_set_transform(_wheel.position, 0.0, Vector2.ONE * _interface_size)
 	var center := Vector2(230, 286)
 	var outer_radius := 208.0
 	for index: int in MAX_SECTORS_PER_PAGE:

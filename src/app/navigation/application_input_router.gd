@@ -146,6 +146,10 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 
 func _handle_controller_navigation_action(action_id: StringName) -> bool:
 	var interaction_blocking: bool = _application._interaction_presenter.has_blocking_request()
+	if _music_playlist_owns_controller() and action_id in [&"realmz_controller_section_previous", &"realmz_controller_section_next"]:
+		_application._shell_presenter.controller.cycle_music_tab(-1 if action_id == &"realmz_controller_section_previous" else 1)
+		_mark_handled()
+		return true
 	if _music_playlist_owns_controller() and action_id not in [
 		&"realmz_controller_back",
 		&"realmz_controller_confirm",
@@ -390,7 +394,7 @@ func _stop_controller_movement() -> void:
 func _controller_focus_root() -> Node:
 	var import_root: Node = _application._shell_presenter.navigator.setup_controller.party_import_focus_root()
 	if import_root != null: return import_root
-	var music_root: Control = _application._shell_presenter.controller.music_playlist_focus_root()
+	var music_root: Node = _application._shell_presenter.controller.music_playlist_focus_root()
 	if music_root != null: return music_root
 	var spellbook := _controller_spellbook_root()
 	if spellbook != null: return spellbook

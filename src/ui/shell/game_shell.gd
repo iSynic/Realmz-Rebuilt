@@ -107,7 +107,7 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_cont
 @onready var _smoke_action: Button = %SmokeAction
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
 @onready var _activity_icon: TextureRect = %ActivityIcon
-@onready var _music_dialog: MusicPlaylistDialog = %MusicPlaylistDialog
+@onready var music_workspace: MusicPlaylistDialog = %MusicPlaylistDialog
 @onready var _controller_prompts: ControllerPromptStrip = %ControllerPromptStrip
 @onready var _controller_radial: ControllerRadialOverlay = %ControllerRadialOverlay
 @onready var _controller_keyboard: ControllerQwertyEditor = %ControllerQwertyEditor
@@ -116,6 +116,7 @@ var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
 var _presentation_settings := PresentationSettings.new()
 var _profile: UiLayoutProfile
+var _theme_metrics: Array = []
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
 var _selected_combat_battle_id: String = ""
@@ -151,7 +152,7 @@ var click_to_move_enabled: bool:
 var picture_stage: Control:
 	get: return _picture_stage
 var navigation_overlay_active: bool:
-	get: return (_music_dialog != null and _music_dialog.visible) or _menu_controller.owns_native_menu_input() or _menu_controller.controller_is_open() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
+	get: return (music_workspace != null and music_workspace.visible) or _menu_controller.owns_native_menu_input() or _menu_controller.controller_is_open() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
 
 
 class ControllerAccess:
@@ -164,8 +165,10 @@ class ControllerAccess:
 	func hide_prompts() -> void:
 		_shell._controller_prompts.hide_prompts()
 	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
-	func music_playlist_focus_root() -> Control:
-		return _shell._music_dialog if _shell._music_dialog != null and _shell._music_dialog.visible else null
+	func music_playlist_focus_root() -> Node:
+		return _shell.music_workspace.controller_focus_root() if _shell.music_workspace != null and _shell.music_workspace.visible else null
+	func cycle_music_tab(delta: int) -> void:
+		_shell.music_workspace.controller_cycle_tab(delta)
 	func spellbook_focus_root() -> Control:
 		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
 		if book != null: return book
@@ -313,9 +316,9 @@ func _ready() -> void:
 	_status_controller.initialize(self, _status_label, _narrative, _narrative_well, _package_status, _coordinates_label, _fatigue_label, _fatigue_bar, _light_label, _clock_label, _gold_label, _activity_indicator, _activity_icon, _navigator.setup_controller)
 	_party_effects = GameShellPartyEffectsPresenter.new()
 	_layout_controller.set_effect_slots(_party_effects.initialize(self, _effects_grid, _effects_panel, party_effect_slot_scene))
-	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
-	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
-	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
+	music_workspace.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
+	music_workspace.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
+	music_workspace.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
 	_controller_radial.command_selected.connect(_handle_controller_radial_selection)
 	_navigator.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_navigator.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
@@ -342,12 +345,15 @@ func _ready() -> void:
 	_party_roster.combat_bandage_target_selected.connect(func(character_id: String) -> void: combat_bandage_target_selected.emit(character_id))
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
+	_bottom_region.minimum_size_changed.connect(_queue_footer_bounds)
 	_build_menus()
 	_status_controller.set_status("Choose a validated Realmz campaign")
 	_apply_layout()
 
 
 func _on_tree_node_added(node: Node) -> void:
+	if is_ancestor_of(node) or (get_parent().is_ancestor_of(node) and (node.scene_file_path.begins_with("res://src/ui/shared/interactions/") or node.scene_file_path == "res://src/ui/combat/fast_spell_dock.tscn")):
+		UiSizing.bind_added.call_deferred(node.get_instance_id())
 	if node is ScrollContainer:
 		ClassicScrollArrowController.bind(node as ScrollContainer, SCROLL_ARROW_STEP, SCROLL_ARROW_INITIAL_DELAY, SCROLL_ARROW_REPEAT_INTERVAL)
 
@@ -377,7 +383,6 @@ func present(game_view: GameView) -> void:
 		_status_controller.reset_classic_text()
 	_status_controller.present_world_facts(game_view)
 	_party_effects.present(game_view)
-	_apply_exploration_mode()
 	_status_controller.set_campaign_title(game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id)
 	if (game_view.combat_view == null or game_view.combat_view.outcome != &"active") and not game_view.party_members.any(func(character: CharacterView) -> bool: return character.id == _selected_character_id):
 		_on_character_selected(game_view.party_members[0].id if not game_view.party_members.is_empty() else "")
@@ -447,12 +452,10 @@ func apply_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
 	_presentation_settings = settings
-	var base_theme := load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme
-	theme = ClassicTypography.themed_copy(base_theme, settings)
-	_narrative.add_theme_font_size_override("normal_font_size", int(round(17.0 * settings.text_scale)))
+	UiSizing.font_size(_narrative, &"normal_font_size", 17)
 	_navigator.set_presentation_settings(settings)
-	if _music_dialog != null and _music_dialog.visible:
-		_music_dialog.open(settings, _music_playlist_id, _music_title, _music_playing)
+	if music_workspace != null and music_workspace.visible:
+		music_workspace.open(settings, _music_playlist_id, _music_title, _music_playing)
 	_apply_layout()
 	_build_menus()
 
@@ -461,18 +464,18 @@ func set_music_playback_state(playlist_id: int, title: String, playing: bool) ->
 	_music_playlist_id = playlist_id
 	_music_title = title
 	_music_playing = playing
-	if _music_dialog != null:
-		_music_dialog.set_playback_state(playlist_id, title, playing)
+	if music_workspace != null:
+		music_workspace.set_playback_state(playlist_id, title, playing)
 	_build_menus()
 
 
 func accepts_exploration_input() -> bool:
-	return (_music_dialog == null or not _music_dialog.visible) and _navigator.accepts_exploration_input()
+	return (music_workspace == null or not music_workspace.visible) and _navigator.accepts_exploration_input()
 
 
 func handle_back() -> bool:
-	if _music_dialog != null and _music_dialog.visible:
-		_music_dialog.close()
+	if music_workspace != null and music_workspace.visible:
+		music_workspace.close()
 		return true
 	if accepts_exploration_input():
 		_navigator.open_screen(&"system")
@@ -524,21 +527,21 @@ func show_splash() -> void:
 func _apply_layout() -> void:
 	if not is_node_ready():
 		return
+	var sizing_profile := UiLayoutProfile.for_viewport(size, _presentation_settings.ui_scale_mode, _presentation_settings.display_scaling_mode, _presentation_settings.text_scale)
+	var theme_metrics: Array = [sizing_profile.ui_scale, _presentation_settings.text_scale, _presentation_settings.typography_mode]
+	if _theme_metrics != theme_metrics:
+		_theme_metrics = theme_metrics
+		theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, _presentation_settings, sizing_profile.ui_scale)
+	UiSizing.apply(self, sizing_profile)
 	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
 	_build_menus()
 	_rebuild_command_deck()
+	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
 	layout_changed.emit(_layout_controller.workspace_rect, _profile)
 
 
 func refresh_layout() -> void:
 	_apply_layout()
-
-
-func _apply_exploration_mode() -> void:
-	if not is_node_ready():
-		return
-	_world_command_panel.theme_type_variation = &"ClassicSharedStone"
-	_command_panel.theme_type_variation = &"ClassicSharedStone"
 
 
 func _build_menus() -> void:
@@ -549,6 +552,10 @@ func _build_menus() -> void:
 
 func _rebuild_command_deck() -> void:
 	_command_controller.rebuild()
+	_queue_footer_bounds()
+
+
+func _queue_footer_bounds() -> void:
 	if not _footer_bounds_pending:
 		_footer_bounds_pending = true
 		call_deferred("_restore_footer_bounds")
@@ -557,7 +564,8 @@ func _rebuild_command_deck() -> void:
 func _restore_footer_bounds() -> void:
 	_footer_bounds_pending = false
 	if is_node_ready() and _profile != null:
-		_layout_controller.restore_footer_bounds(_profile)
+		_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
+		layout_changed.emit(_layout_controller.workspace_rect, _profile)
 
 
 func _update_command_availability() -> void:
@@ -604,7 +612,7 @@ func handle_system_action_requested(action_id: StringName, value: Variant) -> vo
 		&"end_adventure": end_adventure_requested.emit()
 		&"campaigns": show_campaign_selection()
 		&"music_toggle": music_enabled_changed.emit(not _presentation_settings.music_enabled)
-		&"music_playlist": _music_dialog.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
+		&"music_playlist": music_workspace.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
 		&"click_to_move_toggle": click_to_move_enabled_changed.emit(not _presentation_settings.click_to_move_enabled)
 		&"quit": quit_requested.emit()
 

@@ -324,5 +324,14 @@ func _apply_launch_volume(settings: RefCounted) -> void:
 func _apply_layout() -> void:
 	if _menu_controller == null or _layout_profile_script == null or _presentation_settings_script == null:
 		return
-	var profile: RefCounted = _layout_profile_script.for_viewport(size, _presentation_settings_script.UI_SCALE_AUTO, _presentation_settings.display_scaling_mode)
+	var profile: RefCounted = _layout_profile_script.for_viewport(size, _presentation_settings.ui_scale_mode, _presentation_settings.display_scaling_mode, _presentation_settings.text_scale)
+	var typography_script := load("res://src/ui/shared/style/classic_typography.gd")
+	theme = typography_script.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres"), _presentation_settings, profile.ui_scale)
+	var sizing_script := load("res://src/ui/shared/style/ui_sizing.gd")
+	if not has_meta(&"sizing_listener"):
+		set_meta(&"sizing_listener", true)
+		get_tree().node_added.connect(func(node: Node) -> void:
+			if is_ancestor_of(node): sizing_script.bind_added.call_deferred(node.get_instance_id())
+		)
+	sizing_script.apply(self, profile)
 	_menu_controller.apply_layout(profile, profile.application_rect, profile.application_rect)

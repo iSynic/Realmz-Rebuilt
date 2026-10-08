@@ -3,7 +3,6 @@
 class_name PartySetupAssemblyController
 extends "res://src/ui/setup/party_setup_controller_component.gd"
 
-const PARTY_SLOT_SCENE_PATH := "res://src/ui/setup/party_setup_party_slot.tscn"
 const ASSEMBLY_BROWSER_SCENE_PATH := "res://src/ui/setup/party_assembly_browser.tscn"
 const STORED_ROW_GAP: float = 2.0
 const BROWSER_SECTION_GAP: float = 6.0
@@ -51,15 +50,12 @@ func refresh_party_list() -> void:
 func _ensure_party_slots() -> void:
 	if _party_slots_owner == party_list and _party_slots.size() == maximum_party_size():
 		return
-	_clear(party_list)
 	_party_slots.clear()
 	_party_slots_owner = party_list
 	for slot_index: int in maximum_party_size():
-		var slot := (load(PARTY_SLOT_SCENE_PATH) as PackedScene).instantiate() as PartySetupPartySlot
-		slot.name = "PartySlot%d" % (slot_index + 1)
+		var slot := party_list.get_node("PartySlot%d" % (slot_index + 1)) as PartySetupPartySlot
 		slot.inspect_requested.connect(inspect_setup_character)
 		slot.remove_requested.connect(_remove_setup_character)
-		party_list.add_child(slot)
 		_party_slots.append(slot)
 
 func render_party_assembly() -> void:

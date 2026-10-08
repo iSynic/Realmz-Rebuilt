@@ -1,4 +1,4 @@
-## Binds variable character-sheet records and media into the authored scene hierarchy.
+## Binds retained character facts and variable records into the authored scene hierarchy.
 
 class_name CharacterSheetSceneBinding
 extends RefCounted
@@ -33,7 +33,7 @@ func configure(next_textures: Dictionary, next_text_scale: float, next_layout_pr
 func bind_label(label: Label, text: String, color: Color = Color.WHITE, font_size: int = 15) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(font_size) * text_scale)))
+	UiSizing.font_size(label, &"font_size", font_size)
 
 
 func bind_existing_label(root: Node, path: NodePath, value: String, color: Color, font_size: int) -> void:
@@ -72,6 +72,26 @@ func bind_metric_region(panel: PanelContainer, metrics: Array[CharacterMetricVie
 	bind_metric_rows(rows, metrics, empty_text)
 
 
+func bind_fixed_metric(panel: PanelContainer, row_name: String, value: int, detail: String = "") -> void:
+	var row := panel.get_node("Content/MetricRows/%s" % row_name) as HBoxContainer
+	var name_label := row.get_node("MetricName") as Label
+	_bind_metric_row(row, metric(name_label.text, value, detail), detail)
+
+
+func bind_record_value(grid: GridContainer, card_name: String, value: int) -> void:
+	var card := grid.get_node(card_name) as PanelContainer
+	bind_label(card.get_node("Content/Subtitle") as Label, str(value), Color("e0e2e5"), 14)
+
+
+func bind_named_metrics(parent: Container, metrics: Array[CharacterMetricView]) -> void:
+	for row: Control in parent.get_children():
+		row.visible = false
+	for value: CharacterMetricView in metrics:
+		var row := parent.get_node(String(value.id)) as HBoxContainer
+		row.visible = true
+		_bind_metric_row(row, value)
+
+
 func bind_metric_rows(parent: Container, metrics: Array[CharacterMetricView], empty_text: String = "") -> void:
 	if metrics.is_empty() and not empty_text.is_empty():
 		var empty_row := metric_row_scene.instantiate() as HBoxContainer
@@ -81,15 +101,18 @@ func bind_metric_rows(parent: Container, metrics: Array[CharacterMetricView], em
 		return
 	for metric: CharacterMetricView in metrics:
 		var row := metric_row_scene.instantiate() as HBoxContainer
-		var name_label := row.get_node("MetricName") as Label
-		var value_label := row.get_node("MetricValue") as Label
-		bind_label(name_label, metric.name, MUTED, 14)
-		bind_label(value_label, _metric_value_text(metric), GOOD if metric.value > 0 else BAD if metric.value < 0 else Color("e0e2e5"), 14)
-		if not metric.detail.is_empty():
-			name_label.tooltip_text = metric.detail
-			value_label.tooltip_text = metric.detail
-			value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if layout_profile == UiLayoutProfile.COMPACT else HORIZONTAL_ALIGNMENT_RIGHT
+		_bind_metric_row(row, metric)
 		parent.add_child(row)
+
+
+func _bind_metric_row(row: HBoxContainer, value: CharacterMetricView, display_text: String = "") -> void:
+	var name_label := row.get_node("MetricName") as Label
+	var value_label := row.get_node("MetricValue") as Label
+	bind_label(name_label, value.name, MUTED, 14)
+	bind_label(value_label, display_text if not display_text.is_empty() else _metric_value_text(value), GOOD if value.value > 0 else BAD if value.value < 0 else Color("e0e2e5"), 14)
+	name_label.tooltip_text = value.detail
+	value_label.tooltip_text = value.detail
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if not value.detail.is_empty() and layout_profile == UiLayoutProfile.COMPACT else HORIZONTAL_ALIGNMENT_RIGHT
 
 
 func bind_item_region(frame: PanelContainer, items: Array[ItemView], empty_text: String) -> void:
@@ -119,12 +142,17 @@ func character_spell_card(spell: SpellView) -> PanelContainer:
 
 func add_record_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
 	var card := record_card_scene.instantiate() as PanelContainer
+	bind_record_card(card, title, subtitle, detail)
+	parent.add_child(card)
+
+
+func bind_record_card(card: PanelContainer, title: String, subtitle: String, detail: String) -> void:
+	card.visible = true
 	bind_label(card.get_node("Content/Title") as Label, title, GOLD, 16)
 	bind_label(card.get_node("Content/Subtitle") as Label, subtitle, Color("e0e2e5"), 14)
 	var detail_label := card.get_node("Content/Detail") as Label
 	detail_label.visible = not detail.is_empty()
 	bind_label(detail_label, detail, MUTED, 13)
-	parent.add_child(card)
 
 
 func metric(metric_name: String, value: int, detail: String = "") -> CharacterMetricView:

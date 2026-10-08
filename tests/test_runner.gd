@@ -11,6 +11,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/core/test_character_creation_session.gd"),
 	preload("res://tests/infrastructure/test_package_repository.gd"),
 	preload("res://tests/infrastructure/test_imported_scenario_library.gd"),
+	preload("res://tests/infrastructure/test_music_library.gd"),
 	preload("res://tests/infrastructure/test_imported_monster_deferrals.gd"),
 	preload("res://tests/infrastructure/test_imported_instruction_preservation.gd"),
 	preload("res://tests/infrastructure/test_package_install_task.gd"),
@@ -20,6 +21,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/presentation/test_dungeon_geometry_projection.gd"),
 	preload("res://tests/presentation/test_allies_workspace.gd"),
 	preload("res://tests/presentation/test_music_system.gd"),
+	preload("res://tests/presentation/test_music_playback.gd"),
 	preload("res://tests/presentation/test_controller_support.gd"),
 	preload("res://tests/presentation/test_classic_ui_shell.gd"),
 	preload("res://tests/presentation/test_classic_ui_system.gd"),
@@ -43,7 +45,7 @@ const SUITES: Array[Script] = [
 const USAGE: String = "Usage: godot --headless --path <project> --script res://tests/test_runner.gd [-- --suite <path-fragment> ...] [--case <test-name-fragment> ...]"
 
 
-func _initialize() -> void: _run()
+func _initialize() -> void: call_deferred("_run")
 
 
 func _run() -> void:

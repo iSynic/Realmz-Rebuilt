@@ -60,14 +60,15 @@ func configure(combatant_icons: Dictionary, command_scale: float = 1.0, compact:
 
 
 func set_command_layout(command_scale: float, compact: bool) -> void:
+	UiSizing.apply_detached(self, BattleCommandScaleController.standalone_profile(command_scale))
 	_compact = compact
 	for panel_name: String in ["ActiveCombatant", "InspectedCombatant"]:
 		var summary_panel := find_child(panel_name, true, false) as Control
 		if summary_panel != null:
-			summary_panel.custom_minimum_size.x = 220.0 if compact else 290.0
+			UiSizing.minimum_size(summary_panel, Vector2(220.0 if compact else 290.0, 0))
 	var actor_label := find_child("ActiveCombatantLabel", true, false) as Label
 	if actor_label != null:
-		actor_label.add_theme_font_size_override("font_size", 9 if compact else 11)
+		UiSizing.font_size(actor_label, &"font_size", 9 if compact else 11)
 	var initiative := find_child("BattleInitiative", true, false)
 	if initiative != null:
 		(initiative.get_node("%Heading") as Label).visible = not compact

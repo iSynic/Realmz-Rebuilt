@@ -16,8 +16,13 @@ func _initialize() -> void:
 		return
 	var session := GameSession.new()
 	var step := session.start(loaded.content, 1)
-	if step.state == SessionStep.State.FAILED or not _assemble_six_character_party(session, loaded.content):
-		printerr("SESSION_REJECTED: a six-character public setup could not be prepared")
+	if step.state == SessionStep.State.FAILED:
+		printerr("SESSION_START_REJECTED code=%s message=%s" % [step.error_code, step.error_message])
+		call_deferred("_quit_cleanly", 1)
+		return
+	var party_error := _assemble_six_character_party(session, loaded.content)
+	if not party_error.is_empty():
+		printerr("SESSION_REJECTED: %s" % party_error)
 		call_deferred("_quit_cleanly", 1)
 		return
 	var pair := _safe_movement_pair(session, loaded.content)
@@ -105,27 +110,13 @@ func _initialize() -> void:
 	call_deferred("_quit_cleanly", 0)
 
 
-func _assemble_six_character_party(session: GameSession, content: RealmzContent) -> bool:
-	var races := content.characters.race_definitions()
-	var castes := content.characters.caste_definitions()
-	if races.is_empty() or castes.is_empty():
-		return false
-	var race: RaceDefinition
-	var caste: CasteDefinition
-	var caster_type := 0
-	for race_candidate: RaceDefinition in races:
-		for caste_candidate: CasteDefinition in castes:
-			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id):
-				continue
-			var rows := caste_candidate.progression.spellcaster_rows()
-			for row_index: int in mini(3, rows.size()):
-				if rows[row_index].y > 0:
-					race = race_candidate; caste = caste_candidate; caster_type = row_index + 1
-					break
-			if caste != null: break
-		if caste != null: break
-	if race == null or caste == null:
-		return false
+func _assemble_six_character_party(session: GameSession, content: RealmzContent) -> String:
+	var definitions := _probe_definitions(content)
+	if definitions.is_empty():
+		return "no eligible race/class pair has a spellcaster progression in %s" % content.campaign_id
+	var race := definitions["race"] as RaceDefinition
+	var caste := definitions["caste"] as CasteDefinition
+	var caster_type := int(definitions["caster_type"])
 	var known_spells: Array[String] = []
 	for spell: SpellDefinition in content.magic.definitions():
 		if int(spell.classic_id / 1000) == caster_type and spell.classic_tier() >= 0:
@@ -140,17 +131,40 @@ func _assemble_six_character_party(session: GameSession, content: RealmzContent)
 		character.set_known_spells(known_spells)
 		character.race_id = race.id
 		character.caste_id = caste.id
-		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, "movement-probe", content.package_hash))
+		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, content.campaign_id, content.package_hash, content.transfer_catalog))
 		if imported.state == SessionStep.State.FAILED:
-			return false
+			return "vault import rejected character=%s code=%s message=%s" % [character.id, imported.error_code, imported.error_message]
 	var started := session.submit_intent(PartyIntents.begin_adventure())
 	for ignored: int in 16:
 		if started.state != SessionStep.State.WAITING_FOR_INTERACTION:
 			break
 		if started.interaction == null or started.interaction.kind != InteractionRequest.ACKNOWLEDGE:
-			return false
+			return "party setup is waiting for unsupported interaction=%s" % ("null" if started.interaction == null else String(started.interaction.kind))
 		started = session.respond(InteractionResponse.acknowledge(started.interaction))
-	return started.state == SessionStep.State.COMPLETED and session.view().party_members.size() == 6
+	if started.state != SessionStep.State.COMPLETED:
+		return "begin adventure rejected state=%s code=%s message=%s" % [SessionStep.State.keys()[started.state], started.error_code, started.error_message]
+	if session.view().party_members.size() != 6:
+		return "party setup completed with %d of 6 members" % session.view().party_members.size()
+	return ""
+
+
+func _probe_definitions(content: RealmzContent) -> Dictionary:
+	var restrictions := content.campaign.restrictions
+	for race_candidate: RaceDefinition in content.characters.race_definitions():
+		if restrictions.banned_races.has(race_candidate.id):
+			continue
+		for caste_candidate: CasteDefinition in content.characters.caste_definitions():
+			if restrictions.banned_castes.has(caste_candidate.id):
+				continue
+			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id):
+				continue
+			if not caste_candidate.eligible_race_ids.is_empty() and not caste_candidate.eligible_race_ids.has(race_candidate.id):
+				continue
+			var rows := caste_candidate.progression.spellcaster_rows()
+			for row_index: int in mini(3, rows.size()):
+				if rows[row_index].y > 0:
+					return {"race": race_candidate, "caste": caste_candidate, "caster_type": row_index + 1}
+	return {}
 
 
 func _safe_movement_pair(session: GameSession, content: RealmzContent) -> Dictionary:

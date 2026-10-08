@@ -1,5 +1,7 @@
 [gd_scene format=3]
 
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_record_card.tscn" id="1_record"]
+
 [node name="CharacterSheetInventoryMagicTabs" type="VBoxContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -117,3 +119,55 @@ theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 [node name="ScrollCards" type="VBoxContainer" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content"]
 layout_mode = 2
 theme_override_constants/separation = 5
+
+[node name="SheetScrollSlot0" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot0/Content" index="0"]
+text = "Slot 1"
+[node name="Subtitle" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot0/Content" index="1"]
+text = "Empty"
+[node name="Detail" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot0/Content" index="2"]
+visible = false
+
+[node name="SheetScrollSlot1" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot1/Content" index="0"]
+text = "Slot 2"
+[node name="Subtitle" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot1/Content" index="1"]
+text = "Empty"
+[node name="Detail" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot1/Content" index="2"]
+visible = false
+
+[node name="SheetScrollSlot2" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot2/Content" index="0"]
+text = "Slot 3"
+[node name="Subtitle" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot2/Content" index="1"]
+text = "Empty"
+[node name="Detail" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot2/Content" index="2"]
+visible = false
+
+[node name="SheetScrollSlot3" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot3/Content" index="0"]
+text = "Slot 4"
+[node name="Subtitle" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot3/Content" index="1"]
+text = "Empty"
+[node name="Detail" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot3/Content" index="2"]
+visible = false
+
+[node name="SheetScrollSlot4" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot4/Content" index="0"]
+text = "Slot 5"
+[node name="Subtitle" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot4/Content" index="1"]
+text = "Empty"
+[node name="Detail" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot4/Content" index="2"]
+visible = false
+
+[node name="Empty" type="Label" parent="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content"]
+visible = false
+layout_mode = 2
+text = "No scroll case slots are available."
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 2

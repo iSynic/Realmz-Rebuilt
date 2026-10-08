@@ -13,7 +13,7 @@ const SURFACE_COLOR := Color("171a1d")
 const SURFACE_DARK := Color("080a0c")
 const EDGE_LIGHT := Color("686b68")
 
-var command_id: StringName
+@export var command_id: StringName
 var visual_asset_id: StringName
 var _native_size := Vector2i(50, 50)
 var _art_scale: int = 1
@@ -24,6 +24,7 @@ var _caption_lines: Array[String] = []
 var _icon_caption_layout: bool = false
 var _physical_pressed: bool = false
 var _visual_pressed: bool = false
+var _interface_size := 1.0
 
 
 func _ready() -> void:
@@ -37,6 +38,13 @@ func _ready() -> void:
 	button_down.connect(func() -> void: _set_physical_pressed(true))
 	button_up.connect(func() -> void: _set_physical_pressed(false))
 	pressed.connect(func() -> void: command_requested.emit(command_id))
+	resized.connect(queue_redraw)
+	get_node("CommandMargin").minimum_size_changed.connect(update_minimum_size)
+
+
+func _get_minimum_size() -> Vector2:
+	var margin := get_node_or_null("CommandMargin") as MarginContainer
+	return margin.get_combined_minimum_size() if margin != null else Vector2.ZERO
 
 
 func _set_physical_pressed(pressed: bool) -> void:
@@ -80,6 +88,7 @@ func configure(definition: Dictionary, art_scale: int = 1) -> void:
 	if not accelerator.is_empty():
 		tooltip_text += " [%s]" % accelerator
 	set_art_scale(art_scale)
+	_bind_caption()
 
 
 func has_visual_art() -> bool:
@@ -95,9 +104,27 @@ func caption_text() -> String:
 
 
 func set_art_scale(value: int) -> void:
-	_art_scale = 2 if value >= 2 else 1
-	custom_minimum_size = Vector2(62.0, 70.0) if _icon_caption_layout else Vector2(maxi(_native_size.x * _art_scale + 6, 62), _native_size.y * _art_scale + 6) if _art_texture != null else Vector2(62.0, 56.0)
+	_art_scale = clampi(value, 1, 3)
+	var profile := UiSizing.profile_for(self)
+	_interface_size = profile.ui_scale if profile != null else 1.0
+	custom_minimum_size = Vector2(62.0, 70.0) * _interface_size if _icon_caption_layout else Vector2(maxi(_native_size.x * _art_scale + 6, 62), _native_size.y * _art_scale + 6) if _art_texture != null else Vector2(62.0, 56.0) * _interface_size
+	var stage := get_node_or_null("CommandMargin/CommandContent/IconStage") as Control
+	if stage != null:
+		stage.custom_minimum_size = Vector2(_native_size * _art_scale)
+		UiSizing.minimum_size(stage, stage.custom_minimum_size / _interface_size)
 	queue_redraw()
+
+
+func _bind_caption() -> void:
+	var caption := get_node("CommandMargin/CommandContent/CaptionBand/Caption") as Label
+	caption.text = "\n".join(_caption_lines)
+	UiSizing.font_size(caption, &"font_size", 17 if _caption_lines.size() > 1 or _art_texture == null else 15)
+	get_node("CommandMargin/CommandContent/CaptionBand").visible = _icon_caption_layout or _art_texture == null
+	get_node("CommandMargin/CommandContent/IconStage").visible = _art_texture != null
+	(get_node("CommandMargin/CommandContent") as VBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER if _art_texture == null else BoxContainer.ALIGNMENT_BEGIN
+	get_node("CommandMargin/CommandContent/CaptionBand/Divider").visible = _art_texture != null
+	if not _icon_caption_layout and _art_texture != null:
+		caption.text = ""
 
 
 func set_visual_pressed(value: bool) -> void:
@@ -105,6 +132,10 @@ func set_visual_pressed(value: bool) -> void:
 		return
 	_visual_pressed = value
 	queue_redraw()
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	set_art_scale(profile.bitmap_scale)
 
 
 func is_visually_pressed() -> bool:
@@ -127,33 +158,13 @@ func _draw() -> void:
 		draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
 		draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
 	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
-	var font := get_theme_font("font", "Button")
-	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
-	var has_multiline_caption := _icon_caption_layout and _caption_lines.size() > 1
-	var caption_size := font_size if not has_multiline_caption else maxi(font_size, get_theme_font_size("font_size", "Button"))
-	var caption_line_height := font.get_height(caption_size) if has_multiline_caption else 0.0
-	var caption_top := size.y - caption_line_height * _caption_lines.size() - 5.0 if has_multiline_caption else size.y - 20.0
 	var displayed_texture := _pressed_art_texture if pressed and _pressed_art_texture != null else _art_texture
 	if displayed_texture != null:
-		var icon_stage := Rect2(Vector2(4.0, 3.0), Vector2(size.x - 8.0, caption_top - 6.0)) if has_multiline_caption else Rect2(Vector2(4.0, 3.0), Vector2(size.x - 8.0, 43.0)) if _icon_caption_layout else Rect2(Vector2.ZERO, size)
-		var effective_scale := maxi(1, mini(_art_scale, mini(floori(icon_stage.size.x / float(_native_size.x)), floori(icon_stage.size.y / float(_native_size.y))))) if _icon_caption_layout else _art_scale
-		var art_size := Vector2(_native_size * effective_scale)
+		var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
+		var icon_stage := Rect2(stage.global_position - global_position, stage.size) if _icon_caption_layout else Rect2(Vector2.ZERO, size)
+		var art_size := Vector2(_native_size * _art_scale)
 		var art_rect := Rect2(Vector2(floorf(icon_stage.position.x + (icon_stage.size.x - art_size.x) * 0.5), floorf(icon_stage.position.y + (icon_stage.size.y - art_size.y) * 0.5)) + pressed_offset, art_size)
 		draw_texture_rect(displayed_texture, art_rect, false)
-	if _icon_caption_layout:
-		draw_line(Vector2(5.0, caption_top - 2.0), Vector2(size.x - 5.0, caption_top - 2.0), Color(0.04, 0.05, 0.055, 0.9), 1.0)
-		var caption_width := size.x - 8.0
-		if has_multiline_caption:
-			for line_index: int in _caption_lines.size():
-				var line := _caption_lines[line_index]
-				var line_size := fitted_caption_font_size(font, line, caption_width, caption_size)
-				var baseline := caption_top + font.get_ascent(line_size) + line_index * caption_line_height
-				draw_string(font, Vector2(4.0, baseline) + pressed_offset, line, HORIZONTAL_ALIGNMENT_CENTER, caption_width, line_size, CAPTION_COLOR)
-		else:
-			var fitted_size := fitted_caption_font_size(font, _label, caption_width, font_size)
-			draw_string(font, Vector2(4.0, size.y - 6.0) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, caption_width, fitted_size, CAPTION_COLOR)
-	elif displayed_texture == null:
-		draw_string(font, Vector2(4.0, size.y * 0.5 + font_size * 0.35) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
 	elif pressed:

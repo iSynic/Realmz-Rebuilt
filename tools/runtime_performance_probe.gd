@@ -35,8 +35,12 @@ func _initialize() -> void:
 	if not loaded.is_ok():
 		printerr("PACKAGE_REJECTED %s: %s" % [loaded.error_code, loaded.error_message]); call_deferred("_quit_cleanly", 1); return
 	var session := GameSession.new()
-	if session.start(loaded.content, 1).state == SessionStep.State.FAILED or not _assemble_party(session, loaded.content):
-		printerr("SESSION_REJECTED"); call_deferred("_quit_cleanly", 1); return
+	var start_step := session.start(loaded.content, 1)
+	if start_step.state == SessionStep.State.FAILED:
+		printerr("SESSION_START_REJECTED code=%s message=%s" % [start_step.error_code, start_step.error_message]); call_deferred("_quit_cleanly", 1); return
+	var party_error := _assemble_party(session, loaded.content)
+	if not party_error.is_empty():
+		printerr("SESSION_REJECTED: %s" % party_error); call_deferred("_quit_cleanly", 1); return
 	var state := session.snapshot().game_state; var map := loaded.content.world.map_by_id(requested_map_id if not requested_map_id.is_empty() else state.party.map_id)
 	var route := _ordinary_route_pair(loaded.content, state, map)
 	if route.is_empty() or not _place_party(session, loaded.content, map.id, route["coordinates"][0], 4096):
@@ -137,7 +141,9 @@ func _initialize() -> void:
 func _measure_vault_import(content: RealmzContent) -> Dictionary:
 	_remove_tree(ProjectSettings.globalize_path(VAULT_PATH))
 	var repository := CHARACTER_VAULT_REPOSITORY.new(VAULT_PATH)
-	var race := content.characters.race_definitions()[0]; var caste := content.characters.caste_definitions()[0]
+	var definitions := _probe_definitions(content)
+	if definitions.is_empty(): return {"p95Ms": -1.0, "cacheSize": 0}
+	var race := definitions["race"] as RaceDefinition; var caste := definitions["caste"] as CasteDefinition
 	var character := CharacterState.new("runtime-performance-character", "Performance", 20, 20); character.race_id = race.id; character.caste_id = caste.id
 	var record := CharacterVaultRecord.new(character.id, content.rules_version, content.campaign_id, content.package_hash, character)
 	if not repository.publish_revision(record): return {"p95Ms": -1.0, "cacheSize": 0}
@@ -148,20 +154,10 @@ func _measure_vault_import(content: RealmzContent) -> Dictionary:
 	return {"p95Ms": _percentile_ms(samples, 0.95), "cacheSize": controller.cached_revision_count()}
 
 
-func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
-	var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
-	if races.is_empty() or castes.is_empty(): return false
-	var race: RaceDefinition; var caste: CasteDefinition; var caster_type := 0
-	for race_candidate: RaceDefinition in races:
-		for caste_candidate: CasteDefinition in castes:
-			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id): continue
-			var rows := caste_candidate.progression.spellcaster_rows()
-			for row_index: int in mini(3, rows.size()):
-				if rows[row_index].y > 0:
-					race = race_candidate; caste = caste_candidate; caster_type = row_index + 1; break
-			if caste != null: break
-		if caste != null: break
-	if race == null or caste == null: return false
+func _assemble_party(session: GameSession, content: RealmzContent) -> String:
+	var definitions := _probe_definitions(content)
+	if definitions.is_empty(): return "no eligible race/class pair has a spellcaster progression in %s" % content.campaign_id
+	var race := definitions["race"] as RaceDefinition; var caste := definitions["caste"] as CasteDefinition; var caster_type := int(definitions["caster_type"])
 	var known_spells: Array[String] = []
 	for spell: SpellDefinition in content.magic.definitions():
 		if int(spell.classic_id / 1000) == caster_type and spell.classic_tier() >= 0:
@@ -169,10 +165,29 @@ func _assemble_party(session: GameSession, content: RealmzContent) -> bool:
 			if known_spells.size() >= 4: break
 	for index: int in 6:
 		var character := CharacterState.new("runtime-performance-%d" % index, "Probe %d" % index, 20, 20); character.race_id = race.id; character.caste_id = caste.id; character.level = 10; character.spellcaster_type = caster_type; character.maximum_spell_points = 100; character.spell_points = 0; character.set_known_spells(known_spells)
-		if session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, "runtime-performance", content.package_hash)).state == SessionStep.State.FAILED: return false
+		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "%064d" % (index + 1), character, content.campaign_id, content.package_hash, content.transfer_catalog))
+		if imported.state == SessionStep.State.FAILED: return "vault import rejected character=%s code=%s message=%s" % [character.id, imported.error_code, imported.error_message]
 	var started := session.submit_intent(PartyIntents.begin_adventure())
-	while started.state == SessionStep.State.WAITING_FOR_INTERACTION and started.interaction != null and started.interaction.kind == InteractionRequest.ACKNOWLEDGE: started = session.respond(InteractionResponse.acknowledge(started.interaction))
-	return started.state == SessionStep.State.COMPLETED
+	while started.state == SessionStep.State.WAITING_FOR_INTERACTION:
+		if started.interaction == null or started.interaction.kind != InteractionRequest.ACKNOWLEDGE: return "party setup is waiting for unsupported interaction=%s" % ("null" if started.interaction == null else String(started.interaction.kind))
+		started = session.respond(InteractionResponse.acknowledge(started.interaction))
+	if started.state != SessionStep.State.COMPLETED: return "begin adventure rejected state=%s code=%s message=%s" % [SessionStep.State.keys()[started.state], started.error_code, started.error_message]
+	if session.view().party_members.size() != 6: return "party setup completed with %d of 6 members" % session.view().party_members.size()
+	return ""
+
+
+func _probe_definitions(content: RealmzContent) -> Dictionary:
+	var restrictions := content.campaign.restrictions
+	for race_candidate: RaceDefinition in content.characters.race_definitions():
+		if restrictions.banned_races.has(race_candidate.id): continue
+		for caste_candidate: CasteDefinition in content.characters.caste_definitions():
+			if restrictions.banned_castes.has(caste_candidate.id): continue
+			if not race_candidate.eligible_caste_ids.is_empty() and not race_candidate.eligible_caste_ids.has(caste_candidate.id): continue
+			if not caste_candidate.eligible_race_ids.is_empty() and not caste_candidate.eligible_race_ids.has(race_candidate.id): continue
+			var rows := caste_candidate.progression.spellcaster_rows()
+			for row_index: int in mini(3, rows.size()):
+				if rows[row_index].y > 0: return {"race": race_candidate, "caste": caste_candidate, "caster_type": row_index + 1}
+	return {}
 
 
 func _noclip_route(map: MapDefinition) -> Dictionary:
@@ -193,14 +208,26 @@ func _noclip_route(map: MapDefinition) -> Dictionary:
 func _ordinary_route_pair(content: RealmzContent, state: GameState, map: MapDefinition) -> Dictionary:
 	if map == null:
 		return {}
+	var visited: Dictionary = {}
 	var seed := Vector2i(-1, -1)
+	var first_search: Dictionary = {}
+	var largest_component_size := 0
 	for cell: MapCell in map.topology.cells():
-		if _safe_route_coordinate(state, map, cell):
-			seed = cell.coordinate
-			break
+		var coordinate := cell.coordinate
+		if visited.has(coordinate) or not _safe_route_coordinate(state, map, cell):
+			continue
+		var candidate_search := _ordinary_route_search(content, state, map, coordinate)
+		var candidate_parents: Dictionary = candidate_search["parents"]
+		visited[coordinate] = true
+		for reached: Vector2i in candidate_parents:
+			visited[reached] = true
+		var component_size := candidate_parents.size() + 1
+		if component_size > largest_component_size:
+			seed = coordinate
+			first_search = candidate_search
+			largest_component_size = component_size
 	if seed.x < 0:
 		return {}
-	var first_search := _ordinary_route_search(content, state, map, seed)
 	var first_end: Vector2i = first_search["farthest"]
 	var second_search := _ordinary_route_search(content, state, map, first_end)
 	var second_end: Vector2i = second_search["farthest"]
@@ -211,7 +238,7 @@ func _ordinary_route_pair(content: RealmzContent, state: GameState, map: MapDefi
 			return {}
 		coordinates.append(parents[coordinates[-1]])
 	coordinates.reverse()
-	if coordinates.size() < 2:
+	if coordinates.size() < 16:
 		return {}
 	var route_directions: Array[Vector2i] = []
 	var minimum := coordinates[0]

@@ -185,9 +185,10 @@ func _apply_trap(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDef
 	else:
 		targets.assign(_state.party.characters())
 	var damage_by_character: Dictionary = {}
-	if thief.low_damage != 0 and thief.high_damage >= thief.low_damage:
+	# Castle gates on nonzero low damage and retains signed randrange endpoints.
+	if thief.low_damage != 0:
 		for target: CharacterState in targets:
-			var damage := _rng.draw_between(thief.low_damage, thief.high_damage, &"classic.thief-trap-damage")
+			var damage := _rng.draw_between_classic(thief.low_damage, thief.high_damage, &"classic.thief-trap-damage")
 			target.current_health = _rules.arithmetic.signed_16(target.current_health - damage)
 			damage_by_character[target.id] = damage
 	var prompts := thief.prompts()

@@ -85,6 +85,27 @@ $controlTypes = @(
 )
 $controlPattern = '\b(?:' + (($controlTypes | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')\.new\s*\('
 $productionFiles = @(Get-ChildItem (Join-Path $repoRoot "src") -Recurse -File -Filter "*.gd")
+$scriptParents = @{}
+foreach ($file in $productionFiles) {
+    $content = [IO.File]::ReadAllText($file.FullName)
+    $classMatch = [regex]::Match($content, '(?m)^class_name\s+([A-Za-z_][A-Za-z0-9_]*)\s*$')
+    $extendsMatch = [regex]::Match($content, '(?m)^extends\s+([A-Za-z_][A-Za-z0-9_.]*)\s*$')
+    if ($classMatch.Success -and $extendsMatch.Success) {
+        $scriptParents[$classMatch.Groups[1].Value] = ($extendsMatch.Groups[1].Value -split '\.')[-1]
+    }
+}
+$controlTypeSet = @{}
+foreach ($type in $controlTypes) { $controlTypeSet[$type] = $true }
+do {
+    $addedControlType = $false
+    foreach ($className in $scriptParents.Keys) {
+        if (-not $controlTypeSet.ContainsKey($className) -and $controlTypeSet.ContainsKey($scriptParents[$className])) {
+            $controlTypeSet[$className] = $true
+            $addedControlType = $true
+        }
+    }
+} while ($addedControlType)
+$controlPattern = '\b(?:' + (($controlTypeSet.Keys | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')\.new\s*\('
 $statementSeparatorLines = 0
 $runtimeControlConstructions = 0
 $runtimeControlRecords = @{}
@@ -223,7 +244,7 @@ foreach ($scene in @(Get-ChildItem (Join-Path $repoRoot "src") -Recurse -File -F
     }
 }
 
-Write-Host "Human-maintainability budget: semicolon-lines=$statementSeparatorLines/$($config.statementSeparatorLines.currentMaximum), runtime-controls=$runtimeControlConstructions raw ($classifiedControlConstructions classified, $unclassifiedControlConstructions unclassified/$($config.runtimeControlConstructions.currentMaximum)), missing-purpose-headers=$missingPurposeHeaders/$($config.missingPurposeHeaders.currentMaximum), legacy-route-scenes=$($config.legacyRouteScenes.Count), spatial-route-markers=$($config.routeMarkerScenes.Count)."
+Write-Host "Human-maintainability budget: semicolon-lines=$statementSeparatorLines/$($config.statementSeparatorLines.currentMaximum), runtime-controls=$runtimeControlConstructions raw ($classifiedControlConstructions classified, $unclassifiedControlConstructions unclassified/$($config.runtimeControlConstructions.currentMaximum), including $($controlTypeSet.Count - $controlTypes.Count) custom Control types), missing-purpose-headers=$missingPurposeHeaders/$($config.missingPurposeHeaders.currentMaximum), legacy-route-scenes=$($config.legacyRouteScenes.Count), spatial-route-markers=$($config.routeMarkerScenes.Count)."
 if ($failures.Count -gt 0) {
     foreach ($failure in $failures) {
         Write-Error $failure

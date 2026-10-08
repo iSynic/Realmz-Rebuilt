@@ -15,7 +15,7 @@ Do not classify spells by their names or duplicate lists of special IDs. `Classi
 ## Where to start
 
 - Open `src/game/magic` for immutable spell lookup and `src/ui/magic` for the complete player-facing spellbook feature. Edit ordinary and Encounter layout in `spells_workspace.tscn`; `spells_screen.tscn` embeds it for the route.
-- Edit the reusable action, Fast Spell, and scroll records in their neighboring `spell_action_dock.tscn`, `fast_spell_row.tscn`, and `spell_scroll_slot_row.tscn` scenes.
+- Edit the reusable action, Fast Spell, and scroll records in their neighboring `spell_action_dock.tscn`, `fast_spell_row.tscn`, and `spell_scroll_slot_row.tscn` scenes. Their fixed instances live in the workspace: ten Fast Spell rows, five Scroll Case rows, and one Encounter action dock. The ordinary route owns its own persistent footer dock.
 - Follow screen binding and presentation-local selection through `SpellsScreenController`; `SpellDetailFormatter` owns the display-only target, power, resistance, save, and scaled-range text. The controller reuses the authored workspace and instantiates only its exported variable record scenes.
 - Follow a submitted `MagicIntents` command through `PlayerIntent`, `GameSession`, and `src/playthrough/magic/field_magic_workflow.gd` or the combat workflow. Rules, target legality, costs, effects, RNG, and saved state never live in the UI.
 

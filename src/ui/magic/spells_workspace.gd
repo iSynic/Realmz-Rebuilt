@@ -3,9 +3,6 @@ class_name SpellsWorkspace
 extends VBoxContainer
 
 @export var known_spell_button_scene: PackedScene
-@export var action_dock_scene: PackedScene
-@export var fast_spell_row_scene: PackedScene
-@export var scroll_slot_row_scene: PackedScene
 
 
 func prepare(compact: bool, encounter_mode: bool = false) -> void:
@@ -17,7 +14,7 @@ func prepare(compact: bool, encounter_mode: bool = false) -> void:
 	(selected_spell_record().get_node("Content/TargetAndFacts") as BoxContainer).vertical = compact
 	(level_rail().get_node("LevelButtons") as GridContainer).columns = 1 if encounter_mode else 2 if compact else 1
 	(power_rail().get_node("PowerButtons") as GridContainer).columns = 2 if compact else 1
-	(get_node("ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList") as Control).custom_minimum_size.y = 90.0 if compact else 210.0
+	UiSizing.minimum_size(get_node("ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/LevelSpellRecords/KnownSpellList") as Control, Vector2(0.0, 90.0 if compact else 210.0))
 	get_node("Sections").visible = true
 	get_node("Sections/WideSections").visible = not compact
 	get_node("Sections/SpellSectionSelector").visible = compact
@@ -26,9 +23,9 @@ func prepare(compact: bool, encounter_mode: bool = false) -> void:
 	for section: Control in [known_section(), fast_section(), scroll_section()]:
 		section.visible = false
 	_clear(known_spell_list())
-	_clear(known_action_host())
-	_clear(fast_spell_rows())
-	_clear(scroll_rows())
+	known_action_host().get_node("SpellActionDock").visible = false
+	for row: Control in fast_spell_rows().get_children() + scroll_rows().get_children():
+		row.visible = false
 	get_node("FastSection/Empty").visible = false
 	get_node("ScrollSection/Empty").visible = false
 

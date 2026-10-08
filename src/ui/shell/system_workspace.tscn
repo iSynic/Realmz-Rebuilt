@@ -109,6 +109,56 @@ horizontal_scroll_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
+
+[node name="SavePreview_A_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot A · Empty"
+metadata/scenario_slot = "A"
+
+[node name="SavePreview_B_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot B · Empty"
+metadata/scenario_slot = "B"
+
+[node name="SavePreview_C_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot C · Empty"
+metadata/scenario_slot = "C"
+
+[node name="SavePreview_D_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot D · Empty"
+metadata/scenario_slot = "D"
+
+[node name="SavePreview_E_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot E · Empty"
+metadata/scenario_slot = "E"
+
+[node name="SavePreview_F_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot F · Empty"
+metadata/scenario_slot = "F"
+
+[node name="SavePreview_G_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot G · Empty"
+metadata/scenario_slot = "G"
+
+[node name="SavePreview_H_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot H · Empty"
+metadata/scenario_slot = "H"
+
+[node name="SavePreview_I_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot I · Empty"
+metadata/scenario_slot = "I"
+
+[node name="SavePreview_J_primary" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows" instance=ExtResource("2_save")]
+layout_mode = 2
+text = "Slot J · Empty"
+metadata/scenario_slot = "J"
 [node name="Empty" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
 visible = false
 layout_mode = 2
@@ -284,7 +334,7 @@ theme_type_variation = &"ClassicHeading"
 text = "Display"
 [node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
-text = "Choose how the application fills the window. World zoom enlarges map and battle tiles while the interface stays put."
+text = "Choose how the application fills the window. World Zoom applies to map and battle tiles only with Integer: world canvas; Interface Size changes text and controls."
 autowrap_mode = 2
 [node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
@@ -367,18 +417,6 @@ size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
-[node name="WorldZoomRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
-layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
-custom_minimum_size = Vector2(230, 0)
-layout_mode = 2
-text = "World zoom"
-[node name="WorldZoomPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowOptionButton"
-fit_to_longest_item = false
-clip_text = true
 [node name="PixelSmoothingRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
 [node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/PixelSmoothingRow"]
@@ -424,8 +462,26 @@ layout_mode = 2
 [node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
-text = "Interface scale"
+text = "Interface Size"
 [node name="InterfaceScalePicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="InterfaceSizeFeedback" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.62, 0.67, 0.68, 1)
+text = "Applied interface size: 100%"
+autowrap_mode = 2
+[node name="WorldZoomRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "World zoom"
+[node name="WorldZoomPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
@@ -817,6 +873,102 @@ text = "Bindings"
 [node name="BindingRows" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content"]
 layout_mode = 2
 theme_override_constants/separation = 3
+
+[node name="ControllerBinding_confirm" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Confirm"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_back" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Back"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_action_radial" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Action Radial"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_workspace_radial" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Workspace Radial"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_top_menu" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Top Menu"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_section_previous" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Section Previous"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_section_next" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Section Next"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_character_previous" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Character Previous"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_character_next" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Character Next"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_inspect" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Inspect"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_system" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "System"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_up" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Up"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_down" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Down"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_left" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Left"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_right" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Right"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_up" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Up"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_down" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Down"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_left" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Left"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_right" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Right"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
 [node name="BindingStatus" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/BindingColumn/Content"]
 layout_mode = 2
 autowrap_mode = 2

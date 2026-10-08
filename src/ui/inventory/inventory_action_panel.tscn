@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/inventory/inventory_action_panel.gd" id="1_panel"]
-[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="2_button"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="2_button"]
 
 [node name="InventoryActionPanel" type="VBoxContainer"]
 theme_override_constants/separation = 4
@@ -21,43 +21,35 @@ theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 5
 columns = 4
 
-[node name="EquippedAction" type="TextureButton" parent="InventoryActionDock"]
+[node name="EquippedAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
 layout_mode = 2
-script = ExtResource("2_button")
 
-[node name="UseAction" type="TextureButton" parent="InventoryActionDock"]
+[node name="UseAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
 layout_mode = 2
-script = ExtResource("2_button")
 
-[node name="IdentifyAction" type="TextureButton" parent="InventoryActionDock"]
+[node name="IdentifyAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
 layout_mode = 2
-script = ExtResource("2_button")
 
-[node name="TradeAction" type="TextureButton" parent="InventoryActionDock"]
+[node name="TradeAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
 layout_mode = 2
-script = ExtResource("2_button")
 
-[node name="JoinAction" type="TextureButton" parent="InventoryActionDock"]
+[node name="JoinAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
 layout_mode = 2
-script = ExtResource("2_button")
 
-[node name="SplitAction" type="TextureButton" parent="InventoryActionDock"]
+[node name="SplitAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
 layout_mode = 2
-script = ExtResource("2_button")
 
-[node name="DropAction" type="TextureButton" parent="InventoryActionDock"]
+[node name="DropAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
 layout_mode = 2
-script = ExtResource("2_button")
 
 [node name="EncounterActionDock" type="GridContainer" parent="."]
 visible = false
 layout_mode = 2
 columns = 1
 
-[node name="EncounterItemChoose" type="TextureButton" parent="EncounterActionDock"]
+[node name="EncounterItemChoose" parent="EncounterActionDock" instance=ExtResource("2_button")]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-script = ExtResource("2_button")
 
 [node name="InventoryOperationStage" type="PanelContainer" parent="."]
 visible = false

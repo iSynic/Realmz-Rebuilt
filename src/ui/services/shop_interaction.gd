@@ -54,9 +54,10 @@ var _identify_button: Button
 var _stock_group := ButtonGroup.new()
 var _inventory_group := ButtonGroup.new()
 var _category_group := ButtonGroup.new()
-var _category_buttons: Dictionary = {}
+var _category_buttons: Array[ClassicBitmapButton] = []
 var _shopper_buttons: Dictionary = {}
 var _detail_popover: CanvasLayer
+var _browser_layout = preload("res://src/ui/services/shop_browser_layout.gd").new()
 var _browser: Control
 var _row_height: float
 var _route_size: Vector2
@@ -78,12 +79,16 @@ func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool) -
 	_compact = compact
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		_browser_layout.dispose_detached()
+
+
 func capture_browser_state() -> Dictionary:
 	if _body == null or _inventory_rows == null or _stock_rows == null:
 		return {}
 	return {"shopId": _body.shop_id, "leftId": _selected_character_id, "rightId": _right_character_id, "category": _selected_category,
-		"tab": (_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab if _compact else 0,
-		"inventoryScroll": (_inventory_rows.get_parent() as ScrollContainer).scroll_vertical, "stockScroll": (_stock_rows.get_parent() as ScrollContainer).scroll_vertical,
+		"layout": _browser_layout.capture_state(self, _compact),
 		"itemOwnerId": _selected_item_owner_id, "instanceId": _selected_item.instance_id if _selected_item != null else "", "stockKey": _selected_stock.stock_key if _selected_stock != null else "", "moneyOpen": _money_workspace_open,
 		"moneyCharacterId": _money_controller.selected_character_id() if _money_workspace_open and _money_controller != null else "", "itemsOpen": _inventory_workspace_open}
 
@@ -100,10 +105,7 @@ func restore_browser_state(state: Dictionary) -> void:
 		_select_item(String(state.itemOwnerId), String(state.instanceId))
 	elif not String(state.get("stockKey", "")).is_empty():
 		_select_stock(String(state.stockKey))
-	if _compact:
-		(_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab = int(state.get("tab", 0))
-	(_inventory_rows.get_parent() as ScrollContainer).set_deferred("scroll_vertical", int(state.get("inventoryScroll", 0)))
-	(_stock_rows.get_parent() as ScrollContainer).set_deferred("scroll_vertical", int(state.get("stockScroll", 0)))
+	_browser_layout.restore_state(_browser, _compact, state.get("layout", {}))
 	if bool(state.get("moneyOpen", false)):
 		_show_workspace(&"money", String(state.get("moneyCharacterId", "")))
 	elif bool(state.get("itemsOpen", false)):
@@ -168,7 +170,7 @@ func build(request: InteractionRequest) -> void:
 	_detail_popover = get_node("ClassicItemDetailPopover") as ClassicItemDetailPopover
 	_detail_popover.configure(_media, get_theme())
 	%ShopFacts.text = "%d gold  •  prices %d%%" % [_body.party_gold, _body.inflation_percent]
-	_select_profile_browser()
+	_browser = _browser_layout.activate(self, _compact, _body.party_gold, _body.inflation_percent)
 	_bind_ledgers()
 	_bind_footer()
 	_bind_category_filters()
@@ -177,23 +179,27 @@ func build(request: InteractionRequest) -> void:
 	_refresh_inspector()
 
 
-func _select_profile_browser() -> void:
-	var wide := %ShopExchangeLedgers as HBoxContainer
-	var compact := %ShopCompactBrowser as PanelContainer
-	if _compact:
-		%ShopCompactWealthActions.visible = true
-		%ShopWealthPanel.visible = false
-		%ShopCompactWealthPanel.visible = true
-		%ShopFacts.text = "Prices %d%%" % _body.inflation_percent
-		(get_node("ShopHeader/Title") as Label).size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		wide.get_parent().remove_child(wide)
-		wide.free()
-		compact.visible = true
-		_browser = compact
-	else:
-		compact.get_parent().remove_child(compact)
-		compact.free()
-		_browser = wide
+func set_layout_profile(compact: bool) -> void:
+	if _body == null or _compact == compact:
+		return
+	var layout_state := _browser_layout.capture_state(self, _compact)
+	_compact = compact
+	_row_height = COMPACT_LEDGER_ROW_HEIGHT if _compact else WIDE_LEDGER_ROW_HEIGHT
+	_route_size = COMPACT_ROUTE_BUTTON_SIZE if _compact else ROUTE_BUTTON_SIZE
+	var visible_rows := COMPACT_VISIBLE_ROWS if _compact else CLASSIC_VISIBLE_ROWS
+	_scroll_height = visible_rows * _row_height + (visible_rows - 1) * LEDGER_ROW_SEPARATION
+	_browser = _browser_layout.activate(self, _compact, _body.party_gold, _body.inflation_percent)
+	_bind_ledgers()
+	_browser_layout.apply_sizes(self, _compact, _route_size, _left_load, _right_load, _buy_button, _sell_button, _identify_button)
+	_refresh_stock()
+	_refresh_inventory()
+	_refresh_inspector()
+	_browser_layout.restore_state(_browser, _compact, layout_state)
+
+
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	if _body != null:
+		_browser_layout.apply_sizes(self, _compact, _route_size, _left_load, _right_load, _buy_button, _sell_button, _identify_button)
 
 
 func _bind_ledgers() -> void:
@@ -202,15 +208,23 @@ func _bind_ledgers() -> void:
 	_stock_heading = _browser.find_child("ShopStockHeading", true, false) as Label
 	var inventory_scroll := _browser.find_child("InventoryScroll", true, false) as ScrollContainer
 	var stock_scroll := _browser.find_child("ShopStockScroll", true, false) as ScrollContainer
-	inventory_scroll.custom_minimum_size.y = _scroll_height
-	stock_scroll.custom_minimum_size.y = _scroll_height
+	var inventory_height := _scroll_height
+	var stock_height := _scroll_height
+	var profile := UiSizing.profile_for(self)
+	if _compact and profile != null and profile.id == UiLayoutProfile.COMPACT:
+		inventory_height = 120.0
+		stock_height = 140.0
+	UiSizing.minimum_size(inventory_scroll, Vector2(0.0, inventory_height))
+	UiSizing.minimum_size(stock_scroll, Vector2(0.0, stock_height))
 	if not _compact:
 		var pack_ledger := _browser.find_child("SelectedInventoryColumn", true, false) as ClassicExchangeLedger
 		var stock_ledger := _browser.find_child("ShopStockColumn", true, false) as ClassicExchangeLedger
 		pack_ledger.configure_drop(&"shop-stock-item", _selected_character_id)
 		stock_ledger.configure_drop(&"shop-inventory-item", "shop")
-		pack_ledger.item_dropped.connect(_drop_on_character)
-		stock_ledger.item_dropped.connect(_drop_on_shop)
+		if not pack_ledger.item_dropped.is_connected(_drop_on_character):
+			pack_ledger.item_dropped.connect(_drop_on_character)
+		if not stock_ledger.item_dropped.is_connected(_drop_on_shop):
+			stock_ledger.item_dropped.connect(_drop_on_shop)
 	_refresh_stock()
 
 
@@ -246,7 +260,7 @@ func _refresh_stock() -> void:
 		button.name = "Stock_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		button.set_meta("operation", "shop-stock:%s" % entry.stock_key)
 		button.text = "%s\n%d gold  •  %d left" % [entry.name, entry.buy_price, entry.quantity]
-		button.custom_minimum_size.y = _row_height
+		UiSizing.minimum_size(button, Vector2(0.0, _row_height))
 		button.button_group = _stock_group
 		button.button_pressed = _selected_stock != null and _selected_stock.stock_key == entry.stock_key
 		button.pressed.connect(_select_stock.bind(entry.stock_key))
@@ -265,7 +279,7 @@ func _bind_footer() -> void:
 	_buy_button = %ShopBuy as Button
 	_sell_button = %ShopSellSelected as Button
 	_identify_button = %ShopIdentify as Button
-	_transaction_presenter.bind_controls(%ShopItemDescription, %ShopTransactionFacts, %ShopItemStats, _buy_button, _sell_button, _identify_button)
+	_transaction_presenter.bind_controls(_browser_layout.description_label, %ShopTransactionFacts, _browser_layout.stats_label, _buy_button, _sell_button, _identify_button)
 	_transaction_presenter.trade_requested.connect(func(body: InteractionResponse.ShopBody) -> void: response_body_submitted.emit(body))
 	_buy_button.pressed.connect(_submit_buy)
 	_sell_button.pressed.connect(_submit_sell)
@@ -283,35 +297,10 @@ func _bind_footer() -> void:
 		pool_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"pool")))
 	if not share_button.disabled:
 		share_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"share")))
-	_configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", func() -> void: _select_category(_selected_category), {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
-	_configure_route_button(%ShopItems, "Items", &"command.inventory", _show_workspace.bind(&"items"), {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
-	_configure_route_button(%ShopMoney, "Money", &"command.money", _show_workspace.bind(&"money"), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
-	_apply_profile_sizes()
-
-
-func _configure_route_button(button: ClassicBitmapButton, caption: String, asset_id: StringName, callback: Callable, art_options: Dictionary = {}) -> void:
-	var definition := {"id": StringName(button.name), "asset_id": asset_id, "tooltip": caption, "label": ""}
-	definition.merge(art_options, true)
-	button.configure(definition, 1)
-	button.custom_minimum_size = _route_size
-	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	button.command_requested.connect(func(_command_id: StringName) -> void: callback.call())
-
-
-func _apply_profile_sizes() -> void:
-	find_child("ShopLeftLoadPanel", true, false).custom_minimum_size.x = 66.0 if _compact else 86.0
-	find_child("ShopSelectedShopperPanel", true, false).custom_minimum_size.x = 64.0 if _compact else 84.0
-	find_child("ShopSelectedShopper", true, false).custom_minimum_size.x = 56.0 if _compact else 76.0
-	find_child("ShopTransactionContainer", true, false).custom_minimum_size.x = 150.0 if _compact else 174.0
-	find_child("ShopTransactionPanel", true, false).custom_minimum_size.x = 142.0 if _compact else 166.0
-	find_child("ShopRouteControls", true, false).custom_minimum_size.x = 190.0 if _compact else 257.0
-	find_child("ShopRightLoadPanel", true, false).custom_minimum_size.x = 58.0 if _compact else 86.0
-	get_node("ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopperPortraitSelector").custom_minimum_size.x = 76.0 if _compact else 96.0
-	_left_load.custom_minimum_size.x = 62.0 if _compact else 78.0
-	_right_load.custom_minimum_size.x = 54.0 if _compact else 78.0
-	for button: Button in [_buy_button, _sell_button, _identify_button]:
-		button.custom_minimum_size = Vector2(44.0, 22.0) if _compact else Vector2(52.0, 24.0)
-	%ShopDone.custom_minimum_size = _route_size
+	_browser_layout.configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", _route_size, func() -> void: _select_category(_selected_category), {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
+	_browser_layout.configure_route_button(%ShopItems, "Items", &"command.inventory", _route_size, _show_workspace.bind(&"items"), {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
+	_browser_layout.configure_route_button(%ShopMoney, "Money", &"command.money", _route_size, _show_workspace.bind(&"money"), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
+	_browser_layout.apply_sizes(self, _compact, _route_size, _left_load, _right_load, _buy_button, _sell_button, _identify_button)
 
 
 func _select_character(character_id: String) -> void:
@@ -356,8 +345,8 @@ func _select_category(category: StringName) -> void:
 	_selected_stock = null
 	_selected_item = null
 	_selected_item_owner_id = ""
-	for id: Variant in _category_buttons:
-		(_category_buttons[id] as BaseButton).set_pressed_no_signal(StringName(id) == category)
+	for button: ClassicBitmapButton in _category_buttons:
+		button.set_pressed_no_signal(StringName(button.get_meta(&"category_id", &"")) == category)
 	_refresh_stock()
 	_refresh_inventory()
 	_update_shopper_buttons()
@@ -399,6 +388,12 @@ func _refresh_inspector() -> void:
 	if _buy_button == null:
 		return
 	_transaction_presenter.render(_game_view, _selected_stock, _selected_item, _selected_item_owner_id, _selected_character_id, _right_character_id)
+	if _browser_layout.description_readout.text != _browser_layout.description_label.text:
+		_browser_layout.description_readout.text = _browser_layout.description_label.text
+		_browser_layout.description_readout.call_deferred("scroll_to_line", 0)
+	if _browser_layout.stats_readout.text != _browser_layout.stats_label.text:
+		_browser_layout.stats_readout.text = _browser_layout.stats_label.text
+		_browser_layout.stats_readout.call_deferred("scroll_to_line", 0)
 	_refresh_shopper_facts()
 
 
@@ -456,24 +451,26 @@ func _character_by_id(character_id: String) -> InteractionRequestValue.ServiceCh
 
 
 func _bind_category_filters() -> void:
-	for filter: Dictionary in STOCK_FILTERS:
-		var category_id := StringName(filter["id"])
-		var definition := ClassicUiAssetCatalog.definition(filter["asset"]).duplicate(true)
-		definition["asset_id"] = filter["asset"]
-		definition["id"] = StringName("shop.category.%s" % category_id)
-		definition["label"] = filter["label"]
-		definition["tooltip"] = "Show %s" % filter.get("tooltip", filter["label"])
-		definition["group"] = &"shop-category"
-		definition["toggle_mode"] = true
-		definition["art_region"] = filter["region"]
-		var button := _browser.find_child("ShopFilter_%s" % category_id, true, false) as ClassicBitmapButton
-		button.configure(definition, 1)
-		button.custom_minimum_size = FILTER_BUTTON_SIZE
-		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		button.button_group = _category_group
-		button.button_pressed = category_id == _selected_category
-		button.command_requested.connect(func(_command_id: StringName) -> void: _select_category(category_id))
-		_category_buttons[category_id] = button
+	for browser: Control in [_browser_layout.wide_browser, _browser_layout.compact_browser]:
+		for filter: Dictionary in STOCK_FILTERS:
+			var category_id := StringName(filter["id"])
+			var definition := ClassicUiAssetCatalog.definition(filter["asset"]).duplicate(true)
+			definition["asset_id"] = filter["asset"]
+			definition["id"] = StringName("shop.category.%s" % category_id)
+			definition["label"] = filter["label"]
+			definition["tooltip"] = "Show %s" % filter.get("tooltip", filter["label"])
+			definition["group"] = &"shop-category"
+			definition["toggle_mode"] = true
+			definition["art_region"] = filter["region"]
+			var button := browser.find_child("ShopFilter_%s" % category_id, true, false) as ClassicBitmapButton
+			button.configure(definition, 1)
+			UiSizing.minimum_size(button, FILTER_BUTTON_SIZE)
+			button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			button.button_group = _category_group
+			button.button_pressed = category_id == _selected_category
+			button.set_meta(&"category_id", category_id)
+			button.command_requested.connect(func(_command_id: StringName) -> void: _select_category(category_id))
+			_category_buttons.append(button)
 
 
 func _populate_shopper_selectors() -> void:
@@ -482,11 +479,10 @@ func _populate_shopper_selectors() -> void:
 	for character: InteractionRequestValue.ServiceCharacter in _characters:
 		buyer_grid.add_child(_shopper_portrait(character, "Buyer"))
 		seller_grid.add_child(_shopper_portrait(character, "Seller"))
-	if _compact:
-		var compact_grid := _browser.find_child("ShopCompactPortraits", true, false) as GridContainer
-		compact_grid.columns = mini(3, _characters.size())
-		for character: InteractionRequestValue.ServiceCharacter in _characters:
-			compact_grid.add_child(_shopper_portrait(character, "Shopper"))
+	var compact_grid := _browser_layout.compact_browser.find_child("ShopCompactPortraits", true, false) as GridContainer
+	compact_grid.columns = maxi(1, mini(3, _characters.size()))
+	for character: InteractionRequestValue.ServiceCharacter in _characters:
+		compact_grid.add_child(_shopper_portrait(character, "Shopper"))
 
 
 func _shopper_portrait(character: InteractionRequestValue.ServiceCharacter, side: String) -> Button:
@@ -527,7 +523,7 @@ func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: I
 	button.name = "%s_%s" % [prefix, item.instance_id.replace(".", "_")]
 	button.set_meta("item_instance_id", item.instance_id)
 	button.text = "%s\n%s" % [item.name, "Equipped" if item.equipped else "Carried"] if not _right_character_id.is_empty() else "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
-	button.custom_minimum_size.y = _row_height
+	UiSizing.minimum_size(button, Vector2(0.0, _row_height))
 	button.button_group = _inventory_group
 	button.button_pressed = _selected_item != null and _selected_item.instance_id == item.instance_id and _selected_item_owner_id == character.id
 	button.pressed.connect(_select_item.bind(character.id, item.instance_id))
@@ -563,6 +559,8 @@ func _refresh_shopper_facts() -> void:
 		_shopper_name.text = ""
 		_selected_portrait.texture = null
 	_right_load.text = ("Shop\nStock %d" if _compact else "Shop Keeper\nStock %d") % _stock.size() if right == null else "Load\n%d / %d\nItems %d" % [right.load, right.maximum_load, right.inventory.size()]
+	var right_load_panel := find_child("ShopRightLoadPanel", true, false) as PanelContainer
+	right_load_panel.visible = not _compact or right != null
 
 
 func _show_workspace(kind: StringName, money_character_id: String = "") -> void:

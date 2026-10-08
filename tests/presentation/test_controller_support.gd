@@ -360,6 +360,13 @@ func _test_qwerty_draft_commit_cancel_and_layout() -> void:
 	assert_true(editor.open_for(field), "activating a LineEdit opens the controller QWERTY editor with its existing draft")
 	await (Engine.get_main_loop() as SceneTree).process_frame
 	var first_key := editor.get_viewport().gui_get_focus_owner()
+	editor.next_page()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_equal([editor.find_child("Key01", true, false), (first_key as Button).text], [first_key, "Q"], "keyboard page changes retain the authored key and bind the current page")
+	editor.cancel()
+	editor.open_for(field)
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	assert_equal((first_key as Button).text, "q", "reopening resets the retained keys to the displayed lowercase page")
 	editor.move_direction(Vector2.DOWN)
 	var moved_key := editor.get_viewport().gui_get_focus_owner()
 	assert_true(moved_key != first_key and editor.is_ancestor_of(moved_key), "directional controller navigation advances between QWERTY keys without escaping the modal: %s -> %s" % [first_key, moved_key])

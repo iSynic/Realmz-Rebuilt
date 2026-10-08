@@ -55,6 +55,27 @@ func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, s
 	_restore_money_workspace = restore_money_workspace
 
 
+func set_layout_profile(compact: bool) -> void:
+	_compact = compact
+	if get_node_or_null("OrdinaryTreasure") == null: return
+	var inspector := %TreasureItemRecord as BoxContainer
+	inspector.vertical = false
+	(%TreasureRecordDetails as BoxContainer).vertical = _compact
+	(%TreasureRecordScroll as ScrollContainer).vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO if _compact else ScrollContainer.SCROLL_MODE_DISABLED
+	UiSizing.minimum_size(inspector, Vector2(0.0, 230.0 if _compact else 260.0))
+	UiSizing.minimum_size(find_child("TreasureItemIdentity", true, false) as Control, Vector2(0.0 if _compact else 360.0, 0.0))
+	UiSizing.minimum_size(find_child("TreasureItemProperties", true, false) as Control, Vector2(0.0 if _compact else 360.0, 0.0))
+	UiSizing.minimum_size(find_child("TreasureCommandPanel", true, false) as Control, Vector2(230.0 if _compact else 300.0, 0.0))
+	UiSizing.minimum_size(self, Vector2(0.0, 500.0 if _compact else 0.0))
+	UiSizing.minimum_size(%TreasurePartyPanel, Vector2(250.0 if _compact else 330.0, 0.0))
+	(%TreasureSelectedItemFacts as GridContainer).columns = 2 if _compact else 4
+	(%TreasureItemGrid as GridContainer).columns = 6 if _compact else 16
+	for button: Button in _recipient_buttons.values():
+		button.text = TreasureDisplayText.recipient(button.get_meta(&"recipient_data") as InteractionRequestValue.RewardCharacter, _compact)
+		UiSizing.minimum_size(button, Vector2(0.0, 68.0 if _compact else 46.0))
+	call_deferred("_update_loot_columns", %TreasureItemScroll, %TreasureItemGrid)
+
+
 func capture_browser_state() -> Dictionary:
 	var scroll := get_node_or_null("%TreasureItemScroll") as ScrollContainer
 	if scroll == null:
@@ -75,7 +96,7 @@ func build(request: InteractionRequest) -> void:
 		add_hint("The treasure request is malformed.")
 		return
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 500.0 if _compact else 0.0)
+	UiSizing.minimum_size(self, Vector2(0.0, 500.0 if _compact else 0.0))
 	_detail_popover = get_node_or_null("ClassicItemDetailPopover") as ClassicItemDetailPopover
 	if _detail_popover == null:
 		_detail_popover = (load(ITEM_DETAIL_POPOVER_SCENE_PATH) as PackedScene).instantiate() as ClassicItemDetailPopover
@@ -156,12 +177,7 @@ func _build_loot_side(body: TreasureRequestBody) -> void:
 
 
 func _build_item_inspector(body: TreasureRequestBody) -> void:
-	var inspector := %TreasureItemRecord as BoxContainer
-	inspector.vertical = _compact
-	inspector.custom_minimum_size.y = 390.0 if _compact else 260.0
-	find_child("TreasureItemIdentity", true, false).custom_minimum_size.x = 0.0 if _compact else 360.0
-	find_child("TreasureItemProperties", true, false).custom_minimum_size.x = 0.0 if _compact else 360.0
-	find_child("TreasureCommandPanel", true, false).custom_minimum_size.x = 0.0 if _compact else 300.0
+	set_layout_profile(_compact)
 	var record_icon := %TreasureRecordIcon as TextureRect
 	_selected_item_name = %TreasureSelectedItemName as Label
 	_selected_item_state = %TreasureSelectedItemState as Label
@@ -230,7 +246,7 @@ func _add_vacant_loot_slot(parent: GridContainer, instance_id: String) -> void:
 
 
 func _build_party_side(body: TreasureRequestBody) -> void:
-	find_child("TreasurePartyPanel", true, false).custom_minimum_size.x = 250.0 if _compact else 330.0
+	UiSizing.minimum_size(find_child("TreasurePartyPanel", true, false) as Control, Vector2(250.0 if _compact else 330.0, 0.0))
 	var rows := %TreasureRecipientRows as VBoxContainer
 	for character: InteractionRequestValue.RewardCharacter in body.characters:
 		_add_recipient_row(rows, character)
@@ -245,7 +261,9 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	var button := row.get_node("TreasureRecipientSelect") as Button
 	button.name = "TreasureRecipient_%s" % character.id
 	button.button_pressed = character.id == _selected_recipient_id
-	button.text = TreasureDisplayText.recipient(character)
+	button.set_meta(&"recipient_data", character)
+	button.text = TreasureDisplayText.recipient(character, _compact)
+	UiSizing.minimum_size(button, Vector2(0.0, 68.0 if _compact else 46.0))
 	button.clip_text = true
 	button.icon = _portrait(character.id)
 	button.disabled = not character.enabled
@@ -357,11 +375,11 @@ func _refresh_item_record(icon: TextureRect) -> void:
 	_selected_item_state.text = TreasureDisplayText.item_state(_selected_item)
 	_selected_item_description.text = _selected_item.description
 	for fact: InteractionRequestValue.RewardFact in _selected_item.facts:
-		var label := _add_muted_label(_selected_item_facts, fact.label, "TreasureFact_%s" % fact.label.to_snake_case())
+		var label := _add_colored_label(_selected_item_facts, fact.label, MUTED, "TreasureFact_%s" % fact.label.to_snake_case())
 		label.add_theme_color_override("font_color", GOLD)
 		label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		label.custom_minimum_size.x = 96.0
-		var value := _add_muted_label(_selected_item_facts, fact.value, "TreasureFactValue_%s" % fact.label.to_snake_case())
+		UiSizing.minimum_size(label, Vector2(96.0, 0.0))
+		var value := _add_colored_label(_selected_item_facts, fact.value, MUTED, "TreasureFactValue_%s" % fact.label.to_snake_case())
 		value.autowrap_mode = TextServer.AUTOWRAP_OFF
 		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if icon != null: icon.texture = _item_texture(_selected_item)
@@ -447,7 +465,7 @@ func _build_recovery_workspace(body: TreasureRequestBody) -> void:
 	var workspace := recovery_workspace_scene.instantiate() as VBoxContainer
 	add_child(workspace)
 	var recovery_card := workspace.get_node("TreasureRecoveryCenter/TreasureRecoveryCard") as PanelContainer
-	recovery_card.custom_minimum_size.x = 620.0 if _compact else 760.0
+	UiSizing.minimum_size(recovery_card, Vector2(620.0 if _compact else 760.0, 0.0))
 	(workspace.get_node("%TreasureWorkspaceSummary") as Label).text = TreasureDisplayText.summary(body)
 	var loot_field := workspace.get_node("%TreasureLootField") as CenterContainer
 	loot_field.custom_minimum_size.y = 104.0 if _compact else 132.0
@@ -643,10 +661,6 @@ func _treasure_wealth_amount(wealth: InteractionRequestValue.Wealth, kind: Strin
 		&"gems": return wealth.gems
 		&"jewelry": return wealth.jewelry
 	return 0
-
-
-func _add_muted_label(parent: Container, text: String, label_name: String) -> Label:
-	return _add_colored_label(parent, text, MUTED, label_name)
 
 
 func _add_colored_label(parent: Container, text: String, color: Color, label_name: String) -> Label:

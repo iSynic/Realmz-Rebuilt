@@ -1,0 +1,177 @@
+# Development and verification
+
+Realmz Rebuilt targets Godot 4.7.1. Install Git LFS before cloning so bundled `.realmz2` packages materialize as real ZIP archives rather than pointer files.
+
+```powershell
+git lfs install
+git clone https://github.com/iSynic/Realmz-Rebuilt.git
+cd Realmz-Rebuilt
+git lfs pull
+```
+
+Open `project.godot` in Godot 4.7.1 and run the main scene. Mobile is the default renderer. Use `--rendering-method gl_compatibility` to exercise the supported OpenGL fallback.
+
+## Find the owner first
+
+Read [the Builder's Manual](builders-manual.md), the nearest feature `README.md`, and the system's entry in [the machine-checked manifest](system-manifest.json).
+
+- `src/game`: definitions, mutable state, pure rules, topology, RNG, detached views
+- `src/playthrough`: `GameSession`, typed commands, workflows, continuations, projection
+- `src/scenarios`: Classic instructions, Safe Scenario Actions, runtime operations, VM frames
+- `src/storage`: package, save, Character Files, and settings repositories
+- `src/ui`: scenes, controllers, renderers, audio, animation, editor previews
+- `src/app`: startup, navigation, session hosting, platform lifecycle, composition
+
+Change a fact in the lowest boundary that owns its meaning. Do not add a forwarding facade, cross-object private call, dictionary command bus, generic source bucket, or second copy of saved truth to avoid following the existing interface.
+
+## Stable contracts
+
+- Preserve package, save, Character Files, opcode, resource, and user-directory identities unless an explicit migration is designed.
+- Keep simulation deterministic and independent of Nodes, wall-clock time, filesystem APIs, and Godot randomness.
+- Keep Providence as the scenario authoring/compiler boundary. Runtime packages are immutable compiled inputs.
+- Resolve application and scenario content by exact resource type and ID, with a scenario-owned exact-key overlay before application fallback.
+- Keep gameplay state out of scenes and presentation state out of saves.
+- Move paired `.uid` files and rewrite resource paths atomically when renaming Godot files.
+
+## UI changes
+
+Stable panels, splits, headings, buttons, details, alternate states, and command regions belong in `.tscn` scenes. Controllers bind detached values, connect signals, toggle modes, and populate exported row or card scenes for variable collections. They do not reconstruct the screen hierarchy. Fixed sets such as keyboard keys, controller bindings, and the seven spell-level filters are authored together in their parent scene and rebound in place. Replacing `Control.new()` with a loop that instantiates fixed scene fragments does not satisfy this contract. Keep phase messages and capacity labels out of disposable record hosts.
+
+Map, battlefield, dungeon, animation, and effect geometry may remain algorithmic when a node tree would obscure the calculation. Their viewport, camera, layers, materials, masks, and surrounding controls remain scene-authored.
+
+Use Realmz Builder to inspect registered scenes with Wide, Compact, Empty, Long Content, Unavailable, and Error data. Verify the canonical 1280x720 composition and optional 800x600 Compact composition. Editor readability complements runtime play; it does not replace it.
+
+For menu and Preferences changes, keep source inspection, focused controller fixtures, rendered GUI inspection, and native retail execution as separate evidence. A controller fixture can prove focus/routing without proving native MenuButton pointer timing or visual fit. Verify all five Game/Adventure/Party/Settings/Help headings, pointer switching and dismissal without gameplay click leakage, the controller radial and `Move To` preview/confirm, the five Preferences categories, separate Save & Load route, and the controller-draft Apply/Discard/Keep Editing guard at canonical and compact layouts. Do not describe a source/test pass as GUI or retail acceptance.
+
+## Classic fidelity
+
+Castle source and controlled Castle runtime fixtures adjudicate Classic-visible differences. Keep source control flow, fixture observation, runtime tests, and ordinary-play evidence distinct. Record a deliberate correction in the fidelity ledger rather than silently changing behavior.
+
+Use targeted archaeology only when a reproduced discrepancy, release blocker, high-risk save/RNG/VM/topology boundary, suspected compiler loss, or certification-campaign ambiguity depends on the answer. Stop when the ordinary behavior is established and the owning public workflow is covered.
+
+The generated [Classic workflow status](classic-application-workflow-status.md) and [gameplay parity status](classic-gameplay-parity-status.md) own their denominators. Edit their source inventories and regenerate them; do not hand-edit generated status.
+
+### Failure-first AP testing
+
+Prioritize AP testing in this order: reported misfires and shared defects; untested high-risk behavior; then meaningful variants across caller contexts and outcomes. Expand representatives across all 13 pinned bundled scenarios. Existing workflow and gameplay inventories remain authoritative denominators; static opcode presence is not runtime coverage.
+
+The coverage unit is behavior, meaningful parameter variant, caller context, and observed outcome. Keep compact [AP recipes](../tests/fixtures/oracle/ap-behavior-recipes.json) with exact package/AP/encounter identities, party and quest preconditions, deterministic baseline, accepted inputs, expected state/continuation/RNG results, evidence mode, and remaining gaps. Inspect referenced result programs and XAPs before selecting a case; an operand is not automatically an XAP identity. Within each priority, prefer uncovered behavior gain for less preparation and replay effort, reuse nearby baselines, and recompute the next selection after each batch.
+
+For a misfire, retain its build, package, baseline, accepted inputs, and first error; reproduce through ordinary application routing and the actual visible control when UI dispatch is involved. Make the narrow owning correction, replay it and relevant neighbors from the same baseline, verify deterministic outcomes, run focused checks, and commit. Direct invocation isolates a callee but does not prove its timed, random, item, or encounter caller. Prefer authored bundled cases; label necessary synthetic gap fixtures separately.
+
+Keep discovery, compiler preservation, semantic runtime, route, and ordinary-play evidence distinct. Only asserted observed outcomes earn coverage credit. Retain failed/unsupported/untested cases and reopen only the claims contradicted by a new failure. Each batch reports repaired and remaining misfires, newly verified contexts/outcomes, the next APs, and repair/replay versus tooling effort, separating initial setup from repeated runs. Large captures and private checkpoints stay outside Git.
+
+Full campaign certification is a separate track: certify AOGM, then War in the Sword Lands, then select each legally available scenario by recomputed unique-feature coverage gain. That order does not gate cross-scenario AP testing. After corpus certification, close unused stock opcodes, spell signatures, and gameplay workflows with synthetic fixtures until every denominator entry has a final disposition.
+
+Use tooling or MCP only for an immediate blocker or credible cumulative savings across identified upcoming cases. Record the expected implementation and verification effort and the expected savings, and prefer existing CLI recipes and checkpoints. Capability-matrix completion is never a bug-closure gate. Preserve read-only live access and use visibly identified isolated fixtures for automated input or direct invocation.
+
+## Risk-tiered verification
+
+Group normal work into three to five related workflows. Give each workflow a focused, verified commit, then run Tier 2 and the aggregate gate once at batch closeout.
+
+Freeze architecture, maintainability, and exact test-source ceilings when the batch begins. Improvements may create headroom, but do not lower a ceiling during feature work, compatibility work, integration, or release preparation. Lower ceilings only in an explicitly scoped architecture/refactor closeout, then rebase dependent work once against that completed baseline.
+
+### Tier 1: focused behavior
+
+Run the affected suite or named cases while iterating:
+
+```powershell
+./tools/run_tests.ps1 -Suite @("tests/integration/test_inventory_session.gd")
+./tools/run_tests.ps1 -Suite @("tests/integration/test_exploration_session.gd") -Case @("fatigue")
+```
+
+Every filter must match. Named cases require an owning suite. A timeout is a diagnostic: narrow or investigate the slow case rather than immediately repeating the same command.
+
+Low-risk path and ownership moves additionally require a stale-path scan, `git diff --check`, the architecture ratchet, a complete Godot editor import, and directly affected suites. They do not require a performance run when no hot loop or runtime construction changes.
+
+### Tier 2: workflow boundary
+
+Run the affected suites plus architecture, evidence, inventory, scope, and whitespace checks:
+
+```powershell
+./tools/verify_workflow.ps1 -Suite @("tests/presentation/test_classic_ui_system.gd")
+```
+
+Regenerate a status report only when its authoritative inventory changed.
+
+### Tier 3: batch closeout
+
+Run the aggregate gate once after the complete batch is assembled:
+
+```powershell
+./tools/verify.ps1
+```
+
+The aggregate gate imports the project, launches the main scene, runs every typed suite, checks teardown, validates architecture and test budgets, verifies packages, media, exports, schemas, fixtures, bundled scenarios, differential evidence, workflow inventories, gameplay parity, local-path hygiene, and `git diff --check`.
+
+Move directly to Tier 3 for package/schema changes; semantic save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat/reward sequencing; and application composition-root changes.
+
+## Test admission
+
+A durable automated check should protect one of these responsibilities:
+
+- architecture or wire-contract invariant;
+- non-obvious source-backed rule;
+- complete public session workflow;
+- general presentation lifecycle/layout invariant;
+- ordinary campaign certification route.
+
+Map a defect to an existing invariant first. Add a regression test when it protects a distinct durable boundary, not merely because a defect was reported. Do not test private helpers or repeat the same fact at every layer. The enforced test-source ceiling is 20 percent of production source, with at most 1,200 substantive lines per suite.
+
+## Performance
+
+Measure the boundary that changed with the existing startup, package, movement, rendered-runtime, dungeon-transition, combat, or navigation probe. Use three warmed before-and-after samples on the same machine and compare medians.
+
+Reject a core transaction/projection regression exceeding both 5 percent and 0.20 ms, a rendered-frame regression exceeding both 5 percent and 0.50 ms, or a startup/package regression exceeding both 5 percent and 100 ms. Existing absolute budgets also remain binding. Explain or remove export-size or peak-memory growth above 5 percent.
+
+Core timing does not prove draw latency, a two-cell loop does not prove traversal, and automated input does not prove perceived responsiveness. Match the evidence to the user-visible claim.
+
+## Runtime testing
+
+Use the developer-only [Runtime Testing Bridge](runtime-testing.md) for game-aware observations, validated checkpoint export, and isolated fixture workflows. Live access is observation-only; automated control requires a fixture. Keep ordinary gameplay, actual UI input, and direct AP/XAP/encounter invocation as separate evidence modes. Local MCP registration and CLI commands belong to `tools/runtime_testing`; neither uses a hosted service or OpenAI API key. An uninstrumented running adventure cannot be attached to or restarted by the bridge.
+
+Controller acceptance uses the bridge's fixture-only `ui` command with `controller-button` and `controller-axis` actions. Send explicit press/release and neutral-axis boundaries, then inspect `focusControlId`, the visible control catalog, and the ordinary semantic observation. Automation proves routing, modal ownership, and deterministic outcomes; physical comfort, platform driver behavior, prompt-family detection, and reconnection still require hands-on records for each device and operating system. Controller `Move To` stages a destination preview and requires explicit confirm. Exploration and battle canvases use right-click for direct legal movement; the persisted `Adventure > Move To` preference enables left-click route preview followed by one destination click. The active route mode is transient, not saved.
+
+## Providence preview requests
+
+Providence may compile an unsaved revision to a temporary `.realmz2` and ask a source checkout of Rebuilt to validate and enter one target without installing the package. The version-one request is strict JSON:
+
+```json
+{
+  "kind": "realmz2.preview-request",
+  "formatVersion": 1,
+  "packagePath": "C:\\absolute\\temporary\\scenario.realmz2",
+  "packageSha256": "64 lowercase hexadecimal characters",
+  "target": {"kind": "action-point", "id": "stable trigger id", "mapId": "land:0", "x": 1, "y": 2},
+  "partyFixture": "classic-six",
+  "rngSeed": 17,
+  "isolatedSession": true,
+  "resultPath": "C:\\absolute\\temporary\\preview-result.json"
+}
+```
+
+For a Simple Encounter, `target` is `{"kind":"simple-encounter","id":0}`; a Complex Encounter uses `{"kind":"complex-encounter","id":0}` and enters the ordinary opcode-5 action surface. A Thief Encounter uses `{"kind":"thief-encounter","id":0,"complexEncounterId":0}` because `Data TD2` behavior belongs to the exact Complex Encounter whose `thiefSuccess` references it; Rebuilt validates both identities and enters the ordinary Complex Thief action. An Extra Action Point program uses `{"kind":"extra-action-point-program","id":80}` with its unsigned `Data ED3` native identity. This target runs the exact `xap:80` program in an explicitly standalone exploration context; it does not reproduce Timed Encounter eligibility, random-rectangle state, a Global hook, an item caller, or another authored call site. Rebuilt admits only exact matching Extra AP ownership, including the preserved `Data ED3:macro:80` provenance form used by older schema-v3 Providence output. A map preview uses `{"kind":"map-location","id":"land:0","mapId":"land:0","x":1,"y":2}`; `id` and `mapId` must be the same canonical map identity, and coordinates are zero-based and map-local. A scrolling preview uses `{"kind":"scrolling-text","id":-200}`, where `id` is the signed identity of an exact scenario-owned `TEXT` resource. A Battle preview uses `{"kind":"battle","id":2}`, where `id` is the nonnegative Classic `Data BD` native identity; it is ready only after the ordinary battle command produces an active combat surface and typed combat request. Treasure and Shop previews use `{"kind":"treasure","id":2}` and `{"kind":"shop","id":2}` with nonnegative `Data TD` and `Data SD` row identities. Treasure rolls and distributes through the ordinary deterministic reward workflow. Direct Shop preview is unrestricted (`[0,0,0,0]`) because opcode-73 acceptance ranges and immediate/contextual sign belong to the caller rather than the Shop definition. Each is ready only when its ordinary typed interaction is active. Unknown kinds, extra fields, mismatched ownership, stale coordinates, application-fallback text, unsupported fixtures, package hash mismatches, and unavailable targets fail explicitly. Run the contract probe with:
+
+```powershell
+godot --headless --path . --script res://tools/development_preview_probe.gd -- C:\absolute\temporary\preview-request.json
+```
+
+The probe writes `realmz2.preview-result` format version 1 to `resultPath`. It loads the ordinary application-plus-scenario package boundary, creates a fresh deterministic in-memory party, and enters the requested target through `GameSession`. It never installs the temporary package or opens saves, settings, recent campaigns, or Character Files. The separate interactive host is responsible only for presenting that already-isolated session.
+
+To open the same isolated target in the production Realmz shell, run the export-excluded developer scene:
+
+```powershell
+godot --path . --scene res://tools/development_preview_host.tscn -- C:\absolute\temporary\preview-request.json
+```
+
+The interactive host uses the same package validator, party fixture, target registry, and result envelope as the headless probe. It starts with default presentation settings and redirects any preview-time save or settings action to scratch paths beside `resultPath`; it does not discover or install campaigns, read Character Files, seed the vault, or change recent-campaign state. The tool scene and its host script are excluded from native exports.
+
+## Before requesting review
+
+- Re-read the nearest feature guidance and update it when ownership or contracts changed.
+- Ensure scenes, controllers, model types, tests, and `system-manifest.json` agree.
+- Keep the worktree free of `.godot`, `dist`, logs, captures, saves, local paths, personal configuration, and unlicensed content.
+- Report the exact checks run and distinguish automated, visual, ordinary-play, and native-platform evidence.
+- Note every required platform or campaign check that remains outstanding.
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for the short public contribution checklist and [the Beta 1 plan](beta-1.md) for release acceptance.

@@ -190,6 +190,9 @@ if (Test-Path -LiteralPath $previewRegistryPath -PathType Leaf) {
         }
     }
     $registeredPreviewIds = @{}
+    if ($null -eq $previewRegistry.sceneContracts) {
+        $failures.Add("Realmz Builder preview registry must distinguish raw scene structure from populated preview anchors.")
+    }
     foreach ($preview in @($previewRegistry.scenes)) {
         $previewId = [string]$preview.id
         $previewScene = [string]$preview.scene
@@ -198,6 +201,17 @@ if (Test-Path -LiteralPath $previewRegistryPath -PathType Leaf) {
             continue
         }
         $registeredPreviewIds[$previewId] = $true
+        $contractProperty = $previewRegistry.sceneContracts.PSObject.Properties[$previewId]
+        if ($null -eq $contractProperty) {
+            $failures.Add("Realmz Builder '$previewId' is missing raw-scene and populated-preview node contracts.")
+        } else {
+            foreach ($phase in @("rawSceneNodes", "populatedPreviewNodes")) {
+                $nodes = @($contractProperty.Value.$phase | ForEach-Object { [string]$_ })
+                if ($nodes.Count -eq 0 -or @($nodes | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -gt 0) {
+                    $failures.Add("Realmz Builder '$previewId' must declare nonblank $phase anchors.")
+                }
+            }
+        }
         foreach ($property in @("scene", "guide", "controller", "view")) {
             $relative = [string]$preview.$property
             if ([string]::IsNullOrWhiteSpace($relative) -or -not (Test-Path -LiteralPath (Join-Path $repoRoot $relative) -PathType Leaf)) {
@@ -214,6 +228,13 @@ if (Test-Path -LiteralPath $previewRegistryPath -PathType Leaf) {
         }
         if ($preview.productionBinding -eq $true) {
             $previewPaths[$previewScene] = $true
+        }
+    }
+    if ($null -ne $previewRegistry.sceneContracts) {
+        foreach ($contractId in @($previewRegistry.sceneContracts.PSObject.Properties.Name)) {
+            if (-not $registeredPreviewIds.ContainsKey([string]$contractId)) {
+                $failures.Add("Realmz Builder scene contract has no registered preview: $contractId")
+            }
         }
     }
 }
@@ -236,6 +257,9 @@ foreach ($surface in @($manifest.majorUiSurfaces)) {
         continue
     }
     $surfaceIds[$id] = $true
+    if ($null -eq $previewRegistry -or -not $previewRegistry.sceneContracts.PSObject.Properties[$id]) {
+        $failures.Add("Major UI surface '$id' has no raw-scene and populated-preview contract.")
+    }
     $scene = [string]$surface.scene
     if ([string]::IsNullOrWhiteSpace($scene)) {
         $surfacesWithoutScene++

@@ -102,6 +102,41 @@ jobs:
           }
           $downloadRoot = Join-Path $env:RUNNER_TEMP 'scenario-importer'
           ./tools/install_scenario_importer.ps1 -Url $env:SCENARIO_IMPORTER_URL -ExpectedSha256 $env:SCENARIO_IMPORTER_SHA256 -DestinationRoot $downloadRoot -ExpectedPlatform '${{ matrix.importerPlatform }}'
+      - name: Build and package native music importer
+        shell: pwsh
+        run: |
+          $buildRoot = Join-Path $env:RUNNER_TEMP 'music-importer-build'
+          $packageRoot = Join-Path $env:RUNNER_TEMP 'music-importer-package'
+          if ('${{ runner.os }}' -eq 'macOS') {
+            $x64 = Join-Path $buildRoot 'x64'
+            $arm64 = Join-Path $buildRoot 'arm64'
+            ./tools/build_music_importer.ps1 -Triplet x64-osx -OutputDirectory $x64
+            ./tools/build_music_importer.ps1 -Triplet arm64-osx -OutputDirectory $arm64
+            ./tools/package_music_importer.ps1 -Target macos-universal -InputDirectory @($x64, $arm64) -OutputDirectory $packageRoot
+          } elseif ('${{ runner.os }}' -eq 'Windows') {
+            $native = Join-Path $buildRoot 'windows'
+            ./tools/build_music_importer.ps1 -Triplet x64-windows-static -OutputDirectory $native
+            ./tools/package_music_importer.ps1 -Target windows -InputDirectory $native -OutputDirectory $packageRoot
+          } else {
+            $native = Join-Path $buildRoot 'linux'
+            ./tools/build_music_importer.ps1 -Triplet x64-linux -OutputDirectory $native
+            ./tools/package_music_importer.ps1 -Target linux -InputDirectory $native -OutputDirectory $packageRoot
+          }
+      - name: Verify native music formats
+        shell: pwsh
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            if ($IsWindows) { choco install ffmpeg --yes --no-progress }
+            elseif ($IsMacOS) { brew install ffmpeg }
+            else { sudo apt-get update; sudo apt-get install -y ffmpeg }
+            if ($LASTEXITCODE -ne 0) { throw 'Could not install the development-only audio fixture tool.' }
+          }
+          $binaryName = 'realmz-music-importer' + $(if ($IsWindows) { '.exe' } else { '' })
+          $helper = Join-Path (Join-Path $env:RUNNER_TEMP 'music-importer-package') $binaryName
+          $ffmpeg = (Get-Command ffmpeg).Source
+          $scratch = Join-Path (Get-Location) 'artifacts/music-importer/native-ci'
+          python tools/music_importer/test_importer.py --helper $helper --ffmpeg $ffmpeg --scratch $scratch
+          if ($LASTEXITCODE -ne 0) { throw 'Native music format verification failed.' }
       - name: Export verified runtime
         shell: pwsh
         run: |
@@ -118,6 +153,7 @@ jobs:
           [IO.File]::WriteAllLines($exportLog, $result.Output, [Text.UTF8Encoding]::new($false))
           if ($result.ExitCode -ne 0) { throw "Godot export failed with exit code $($result.ExitCode)." }
           $importerSource = Join-Path $env:RUNNER_TEMP 'scenario-importer'
+          $musicImporterSource = Join-Path $env:RUNNER_TEMP 'music-importer-package'
           $copyImporter = {
             param([string]$Source, [string]$Destination)
             [IO.Directory]::CreateDirectory($Destination) | Out-Null
@@ -137,19 +173,27 @@ jobs:
             & $copyImporter $importerSource $importerRoot
             chmod 755 (Join-Path $importerRoot 'providence-native-adapter')
             if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS scenario importer executable permissions.' }
+            $musicImporterRoot = Join-Path $app 'Contents/MacOS/music-importer'
+            & $copyImporter $musicImporterSource $musicImporterRoot
+            chmod 755 (Join-Path $musicImporterRoot 'realmz-music-importer')
+            if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS music importer executable permissions.' }
             $repacked = Join-Path $env:RUNNER_TEMP 'Realmz-Rebuilt-with-importer.zip'
             & ditto -c -k --sequesterRsrc --keepParent --zlibCompressionLevel 9 $app $repacked
             if ($LASTEXITCODE -ne 0) { throw 'Could not repackage macOS application with its scenario importer.' }
             Move-Item -LiteralPath $repacked -Destination '${{ matrix.output }}' -Force
           } else {
             $importerRoot = Join-Path (Split-Path '${{ matrix.output }}') 'importer'
+            $musicImporterRoot = Join-Path (Split-Path '${{ matrix.output }}') 'music-importer'
             & $copyImporter $importerSource $importerRoot
+            & $copyImporter $musicImporterSource $musicImporterRoot
             if ('${{ runner.os }}' -eq 'Linux') {
               chmod 755 (Join-Path $importerRoot 'providence-native-adapter')
               if ($LASTEXITCODE -ne 0) { throw 'Could not set Linux scenario importer executable permissions.' }
+              chmod 755 (Join-Path $musicImporterRoot 'realmz-music-importer')
+              if ($LASTEXITCODE -ne 0) { throw 'Could not set Linux music importer executable permissions.' }
             }
           }
-          ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog -ImporterRoot $importerRoot
+          ./tools/verify_release_artifact.ps1 -Preset '${{ matrix.preset }}' -Output '${{ matrix.output }}' -ExportLog $exportLog -ImporterRoot $importerRoot -MusicImporterRoot $musicImporterRoot
       - name: Launch exported Windows runtime
         if: runner.os == 'Windows'
         shell: pwsh
@@ -181,6 +225,8 @@ jobs:
           $binary = Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/Realmz Rebuilt'
           chmod 755 (Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/importer/providence-native-adapter')
           if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS smoke importer executable permissions.' }
+          chmod 755 (Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/music-importer/realmz-music-importer')
+          if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS smoke music importer executable permissions.' }
           chmod +x $binary
           & $binary --headless --quit-after 2 --log-file $log
           $exitCode = $LASTEXITCODE

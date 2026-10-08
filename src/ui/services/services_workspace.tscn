@@ -81,8 +81,9 @@ theme_override_font_sizes/font_size = 12
 text = "Banked  0 gold  •  0 gems  •  0 jewelry"
 autowrap_mode = 2
 
-[node name="MoneyPoolValues" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary"]
+[node name="MoneyPoolValues" type="BoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary"]
 layout_mode = 2
+vertical = true
 theme_override_constants/separation = 6
 
 [node name="Gold" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolValues" instance=ExtResource("2_chip")]

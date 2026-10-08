@@ -11,6 +11,36 @@ const PREFERENCE_SECTIONS: Array[StringName] = [&"Display", &"Audio", &"Accessib
 var _save_mode := false
 
 
+static func interface_size_options() -> Array[Dictionary]:
+	var options: Array[Dictionary] = []
+	for mode: String in PresentationSettings.UI_SCALE_MODES:
+		options.append({"label": "Auto" if mode == PresentationSettings.UI_SCALE_AUTO else "%s%%" % mode, "id": mode})
+	return options
+
+
+static func display_mode_options() -> Array[Dictionary]:
+	return [
+		{"label": "Responsive", "id": PresentationSettings.DISPLAY_RESPONSIVE},
+		{"label": "Integer: whole window", "id": PresentationSettings.DISPLAY_INTEGER_WINDOW},
+		{"label": "Integer: world canvas", "id": PresentationSettings.DISPLAY_INTEGER_CANVAS},
+		{"label": "Fill window", "id": PresentationSettings.DISPLAY_FILL_WINDOW},
+	]
+
+
+static func refresh_interface_size_feedback(workspace: Control, settings: PresentationSettings) -> void:
+	var feedback := workspace.get_node_or_null("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceSizeFeedback") as Label
+	if feedback == null or workspace.get_window() == null:
+		return
+	var output := DisplayScalingPolicy.geometry(workspace.get_window().size, settings.display_scaling_mode)
+	var profile := UiLayoutProfile.for_viewport(Vector2(output["source_size"]), settings.ui_scale_mode, settings.display_scaling_mode)
+	var text := "Applied interface size: %d%%" % roundi(profile.ui_scale * 100.0)
+	if settings.display_scaling_mode in [PresentationSettings.DISPLAY_INTEGER_WINDOW, PresentationSettings.DISPLAY_FILL_WINDOW]:
+		text = "Interface: %d%% logical · %d%% on screen" % [roundi(profile.ui_scale * 100.0), roundi(profile.ui_scale * float(output["scale"]) * 100.0)]
+	if profile.scale_limited:
+		text += " · %s requested, limited by window size" % ("Auto" if settings.ui_scale_mode == PresentationSettings.UI_SCALE_AUTO else "%s%%" % settings.ui_scale_mode)
+	feedback.text = text
+
+
 func _ready() -> void:
 	tabs().tabs_visible = false
 	for category: StringName in PREFERENCE_SECTIONS:
@@ -27,7 +57,7 @@ func prepare(compact: bool) -> void:
 	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow") as BoxContainer).vertical = compact
 	_apply_compact_rows(self, compact)
 	_apply_display_row_density(compact)
-	_clear(save_slot_rows())
+	clear_variable_save_rows()
 	get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/Empty").visible = false
 	get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty").visible = false
 	save_detail_record().visible = false
@@ -181,11 +211,10 @@ func bind_accessibility(settings: PresentationSettings) -> void:
 		var readable_fallback := load(ClassicTypography.READABLE_UI_PATH) as Font
 		if classic_mode and preview_font is FontFile and readable_fallback != null:
 			(preview_font as FontFile).fallbacks = [readable_fallback]
-		var size := int(round((17.0 if classic_mode else 15.0) * scale))
 		sample.add_theme_font_override("font", preview_font)
-		sample.add_theme_font_size_override("font_size", size)
+		UiSizing.font_size(sample, &"font_size", 18)
 		preview_detail.add_theme_font_override("font", preview_font)
-		preview_detail.add_theme_font_size_override("font_size", maxi(12, size - 2))
+		UiSizing.font_size(preview_detail, &"font_size", 16)
 		text_scale_caption.text = "Text size  •  %d%%" % int(round(scale * 100.0))
 		text_scale.tooltip_text = "Text scale %d%%" % int(round(scale * 100.0))
 	update_preview.call(settings.text_scale, settings.typography_mode)
@@ -246,7 +275,7 @@ func _bind_action(button: Button, action: Callable) -> void:
 static func _bind_label(label: Label, text: String, color: Color, size: int) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", size)
+	UiSizing.font_size(label, &"font_size", size)
 
 
 static func _clear_pressed_connections(button: Button) -> void:

@@ -2,13 +2,12 @@
 
 [ext_resource type="Script" path="res://src/ui/inventory/classic_item_detail_popover.gd" id="1_popover"]
 [ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_label.tscn" id="2_label"]
-[ext_resource type="PackedScene" path="res://src/ui/inventory/classic_item_detail_fact_grid.tscn" id="3_facts"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_content_icon.tscn" id="3_icon"]
 
 [node name="ClassicItemDetailPopover" type="CanvasLayer"]
 layer = 90
 script = ExtResource("1_popover")
 detail_label_scene = ExtResource("2_label")
-fact_grid_scene = ExtResource("3_facts")
 
 [node name="ClassicItemDetailPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
@@ -19,6 +18,53 @@ theme_type_variation = &"ClassicTextWell"
 
 [node name="ClassicItemDetailContent" type="VBoxContainer" parent="ClassicItemDetailPanel"]
 unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="ClassicItemDetailHeader" type="HBoxContainer" parent="ClassicItemDetailPanel/ClassicItemDetailContent"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="ClassicItemDetailIcon" parent="ClassicItemDetailPanel/ClassicItemDetailContent/ClassicItemDetailHeader" instance=ExtResource("3_icon")]
+layout_mode = 2
+
+[node name="Identity" type="VBoxContainer" parent="ClassicItemDetailPanel/ClassicItemDetailContent/ClassicItemDetailHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+
+[node name="ClassicItemDetailTitle" parent="ClassicItemDetailPanel/ClassicItemDetailContent/ClassicItemDetailHeader/Identity" instance=ExtResource("2_label")]
+unique_name_in_owner = true
+theme_type_variation = &"ClassicHeading"
+theme_override_colors/font_color = Color(0.898039, 0.768627, 0.360784, 1)
+text = "Item name"
+
+[node name="ClassicItemDetailSubtitle" parent="ClassicItemDetailPanel/ClassicItemDetailContent/ClassicItemDetailHeader/Identity" instance=ExtResource("2_label")]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.560784, 0.811765, 0.819608, 1)
+text = "Item category"
+
+[node name="ClassicItemDetailDescription" parent="ClassicItemDetailPanel/ClassicItemDetailContent" instance=ExtResource("2_label")]
+unique_name_in_owner = true
+theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)
+text = "Item description"
+
+[node name="ClassicItemDetailFacts" type="GridContainer" parent="ClassicItemDetailPanel/ClassicItemDetailContent"]
+layout_mode = 2
+mouse_filter = 2
+columns = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 2
+
+[node name="Properties" type="VBoxContainer" parent="ClassicItemDetailPanel/ClassicItemDetailContent"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 4
+
+[node name="Restrictions" type="VBoxContainer" parent="ClassicItemDetailPanel/ClassicItemDetailContent"]
 layout_mode = 2
 mouse_filter = 2
 theme_override_constants/separation = 4

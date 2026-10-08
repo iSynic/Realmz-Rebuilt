@@ -379,7 +379,7 @@ static func _flat_style(background: Color, border: Color, border_width: int) -> 
 func _bind_label(label: Label, text: String, color: Color = Color.WHITE, size: int = 15) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * _text_scale)))
+	UiSizing.font_size(label, &"font_size", size)
 
 
 static func _clear_pressed_connections(button: Button) -> void:

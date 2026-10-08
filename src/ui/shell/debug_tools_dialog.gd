@@ -9,6 +9,10 @@ signal topology_debug_changed(enabled: bool)
 signal console_requested
 signal console_shortcut_changed(enabled: bool)
 
+@export var developer_preferred_size := Vector2(740.0, 640.0)
+@export var developer_window_fraction := Vector2(0.75, 0.9)
+@export var diagnostics_preferred_size := Vector2(520.0, 240.0)
+
 var _map_select: OptionButton
 var _x: SpinBox
 var _y: SpinBox
@@ -56,7 +60,7 @@ const DEVELOPER_CONTROL_NAMES: Array[StringName] = [
 
 
 func _ready() -> void:
-	_title = $Scroll/Content/Title
+	_title = %Title
 	_map_select = %MapSelect
 	_x = %WarpX
 	_y = %WarpY
@@ -96,6 +100,9 @@ func _ready() -> void:
 	%OpenConsole.pressed.connect(func() -> void: console_requested.emit())
 	_console_shortcut.toggled.connect(func(enabled: bool) -> void: console_shortcut_changed.emit(enabled))
 	%Close.pressed.connect(close_dialog)
+	if is_inside_tree():
+		get_viewport().size_changed.connect(_fit_to_parent.call_deferred)
+		visibility_changed.connect(_fit_to_parent)
 	configure_capabilities(false)
 
 
@@ -107,8 +114,27 @@ func configure_capabilities(developer_tools_enabled: bool) -> void:
 			control.visible = developer_tools_enabled
 	_title.text = "DEBUG TOOLS · F12" if developer_tools_enabled else "DIAGNOSTICS · F12"
 	_status.text = "Debug commands can change this adventure." if developer_tools_enabled else "Optional map diagnostics are off until enabled here."
-	offset_top = -270.0 if developer_tools_enabled else -120.0
-	offset_bottom = 270.0 if developer_tools_enabled else 120.0
+	_fit_to_parent()
+
+
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	_fit_to_parent()
+
+
+func _fit_to_parent() -> void:
+	var parent := get_parent() as Control
+	if parent == null or parent.size.x <= 0.0 or parent.size.y <= 0.0:
+		return
+	var profile := UiSizing.profile_for(self)
+	var interface_scale := profile.ui_scale if profile != null else 1.0
+	var preferred := (developer_preferred_size if _developer_tools_enabled else diagnostics_preferred_size) * interface_scale
+	var desired := parent.size * developer_window_fraction if _developer_tools_enabled else preferred
+	var available := parent.size - Vector2(32.0, 20.0) * interface_scale
+	var modal_size := preferred.max(desired).min(available)
+	offset_left = -modal_size.x * 0.5
+	offset_right = modal_size.x * 0.5
+	offset_top = -modal_size.y * 0.5
+	offset_bottom = modal_size.y * 0.5
 
 
 func _request_warp() -> void:

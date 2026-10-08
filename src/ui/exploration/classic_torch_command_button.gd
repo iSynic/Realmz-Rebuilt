@@ -18,7 +18,7 @@ const SURFACE_DARK := Color("080a0c")
 const EDGE_LIGHT := Color("686b68")
 const DISABLED_OVERLAY := Color(0.04, 0.05, 0.055, 0.64)
 
-var command_id: StringName = &"torch"
+@export var command_id: StringName = &"torch"
 var _flame_frames: Array[Texture2D] = []
 var _body_texture: Texture2D
 var _light_remaining: int
@@ -28,6 +28,7 @@ var _frame_elapsed: float
 
 
 func _ready() -> void:
+	$CommandMargin.minimum_size_changed.connect(update_minimum_size)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	focus_mode = Control.FOCUS_ALL
 	custom_minimum_size = Vector2(62.0, 146.0)
@@ -79,11 +80,6 @@ func _draw() -> void:
 	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	if _has_torch:
 		_draw_torch_art(pressed_offset)
-	var font := get_theme_font("font", "Button")
-	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
-	draw_line(Vector2(5.0, size.y - 20.0), Vector2(size.x - 5.0, size.y - 20.0), Color(0.04, 0.05, 0.055, 0.9), 1.0)
-	var caption_size := ClassicBitmapButton.fitted_caption_font_size(font, "Torch", size.x - 8.0, font_size)
-	draw_string(font, Vector2(4.0, size.y - 6.0) + pressed_offset, "Torch", HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, caption_size, CAPTION_COLOR)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
 	elif pressed:
@@ -94,23 +90,38 @@ func _draw() -> void:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
 
 
+func _get_minimum_size() -> Vector2:
+	var margin := get_node_or_null("CommandMargin") as MarginContainer
+	return margin.get_combined_minimum_size() if margin != null else Vector2.ZERO
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
+	UiSizing.minimum_size(stage, Vector2(32, 110) * profile.bitmap_scale / profile.ui_scale)
+	queue_redraw()
+
+
 func _draw_torch_art(offset: Vector2) -> void:
 	if _body_texture == null:
 		return
 	var segments := _fuel_segment_count()
-	var body_size := _body_texture.get_size()
+	var profile := UiSizing.profile_for(self)
+	var art_scale := profile.bitmap_scale if profile != null else 1
+	var body_size := _body_texture.get_size() * art_scale
+	var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
 	var center_x := floorf((size.x - body_size.x) * 0.5)
-	var base_y := size.y - 24.0
+	var base_y := stage.global_position.y - global_position.y + stage.size.y * 0.75 + 3.5 * art_scale
 	for segment_index: int in segments:
-		draw_texture(_body_texture, Vector2(center_x, base_y - float(segment_index + 1) * 7.0) + offset)
+		draw_texture_rect(_body_texture, Rect2(Vector2(center_x, base_y - float(segment_index + 1) * 7.0 * art_scale) + offset, body_size), false)
 	if _light_remaining <= 0 or _flame_frames.is_empty():
 		return
 	var flame := _flame_frames[_frame_index]
 	if flame == null:
 		return
-	var flame_x := floorf((size.x - flame.get_width()) * 0.5)
-	var flame_y := maxf(3.0, base_y - float(segments) * 7.0 - flame.get_height() + 6.0)
-	draw_texture(flame, Vector2(flame_x, flame_y) + offset)
+	var flame_size := flame.get_size() * art_scale
+	var flame_x := floorf((size.x - flame_size.x) * 0.5)
+	var flame_y := maxf(stage.global_position.y - global_position.y, base_y - float(segments) * 7.0 * art_scale - flame_size.y + 6.0 * art_scale)
+	draw_texture_rect(flame, Rect2(Vector2(flame_x, flame_y) + offset, flame_size), false)
 
 
 func _fuel_segment_count() -> int:

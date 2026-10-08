@@ -17,10 +17,12 @@ static func summary(body: TreasureRequestBody) -> String:
 	return " • ".join(parts)
 
 
-static func recipient(character: InteractionRequestValue.RewardCharacter) -> String:
+static func recipient(character: InteractionRequestValue.RewardCharacter, compact: bool = false) -> String:
 	if character.has_health:
 		return "%s\nStamina %d/%d" % [character.name, character.current_health, character.maximum_health]
 	if character.wealth != null:
+		if compact:
+			return "%s\nItems %d • Move %d\nLoad %d/%d" % [character.name, character.item_count, character.maximum_movement, character.carried_load, character.maximum_load]
 		return "%s\nItems %d • Move %d • Load %d/%d" % [character.name, character.item_count, character.maximum_movement, character.carried_load, character.maximum_load]
 	return character.name
 

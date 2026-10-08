@@ -12,15 +12,15 @@ const GOLD := Color("d5b45d")
 const MUTED := Color("9aa0a8")
 const GOOD := Color("75c889")
 const BAD := Color("ef7770")
-const TABS: Array[Dictionary] = [
-	{"id": &"overview", "label": "Overview"},
-	{"id": &"conditions", "label": "Conditions & Saves"},
-	{"id": &"equipment", "label": "Equipment"},
-	{"id": &"abilities", "label": "Abilities"},
-	{"id": &"spells", "label": "Spells"},
-	{"id": &"appearance", "label": "Appearance"},
-	{"id": &"background", "label": "Race, Caste & Aging"},
-	{"id": &"record", "label": "Lifetime Record"},
+const TAB_DEFINITIONS: Array[Dictionary] = [
+	{"id": &"overview", "button": &"Overview"},
+	{"id": &"conditions", "button": &"Conditions"},
+	{"id": &"equipment", "button": &"Equipment"},
+	{"id": &"abilities", "button": &"Abilities"},
+	{"id": &"spells", "button": &"Spells"},
+	{"id": &"appearance", "button": &"Appearance"},
+	{"id": &"background", "button": &"Background"},
+	{"id": &"record", "button": &"Record"},
 ]
 
 @export var selector_button_scene: PackedScene
@@ -34,7 +34,6 @@ var _selected_character_id: String = ""
 var _active_tab: StringName = &"overview"
 var _textures: Dictionary = {}
 var _text_scale: float = 1.0
-var _content: VBoxContainer
 var _portrait_options: Array[CharacterAppearanceOptionView] = []
 var _combat_icon_options: Array[CharacterAppearanceOptionView] = []
 var _media: ClassicMediaCatalog
@@ -79,10 +78,7 @@ func _rebuild() -> void:
 	var identity := get_node("CharacterIdentity") as PanelContainer
 	var tabs := get_node("CharacterSheetTabs") as HFlowContainer
 	var workspace := get_node("CharacterSheetWorkspace") as PanelContainer
-	_content = get_node("CharacterSheetWorkspace/CharacterSheetContent/DynamicTabContent") as VBoxContainer
 	_scene_binding.clear_children(picker)
-	_scene_binding.clear_children(tabs)
-	_scene_binding.clear_children(_content)
 	_hide_authored_tabs()
 	empty_state.visible = _characters.is_empty()
 	picker.visible = not _characters.is_empty() and _show_character_picker
@@ -90,7 +86,7 @@ func _rebuild() -> void:
 	tabs.visible = not _characters.is_empty()
 	workspace.visible = not _characters.is_empty()
 	if _characters.is_empty():
-		empty_state.add_theme_font_size_override("font_size", int(round(15.0 * _text_scale)))
+		UiSizing.font_size(empty_state, &"font_size", 15)
 		return
 	if _show_character_picker:
 		_build_character_picker()
@@ -153,18 +149,13 @@ func _build_identity(character: CharacterView) -> void:
 
 
 func _build_tabs() -> void:
-	var tabs := get_node("CharacterSheetTabs") as HFlowContainer
-	for tab: Dictionary in TABS:
-		var button := selector_button_scene.instantiate() as Button
-		if button == null:
-			push_error("Character sheet selector scene must instantiate a Button.")
-			return
-		button.custom_minimum_size = Vector2.ZERO
-		button.text = String(tab["label"])
-		button.toggle_mode = true
-		button.button_pressed = StringName(tab["id"]) == _active_tab
-		button.pressed.connect(_select_tab.bind(StringName(tab["id"])))
-		tabs.add_child(button)
+	for tab: Dictionary in TAB_DEFINITIONS:
+		var tab_id := StringName(tab["id"])
+		var button := get_node("CharacterSheetTabs/%s" % String(tab["button"])) as Button
+		button.button_pressed = tab_id == _active_tab
+		var select_tab := _select_tab.bind(tab_id)
+		if not button.pressed.is_connected(select_tab):
+			button.pressed.connect(select_tab)
 
 
 func _build_overview(character: CharacterView) -> void:
@@ -172,23 +163,34 @@ func _build_overview(character: CharacterView) -> void:
 	tab.visible = true
 	var regions := tab.get_node("OverviewRegions") as BoxContainer
 	regions.vertical = _layout_profile == UiLayoutProfile.COMPACT
-	_scene_binding.bind_metric_region(regions.get_node("OverviewAttributes") as PanelContainer, [
-		_scene_binding.metric("Brawn", character.brawn), _scene_binding.metric("Knowledge", character.knowledge), _scene_binding.metric("Judgment", character.judgment),
-		_scene_binding.metric("Agility", character.agility), _scene_binding.metric("Vitality", character.vitality), _scene_binding.metric("Luck", character.luck),
-	])
-	_scene_binding.bind_metric_region(regions.get_node("OverviewCombat") as PanelContainer, [
-		_scene_binding.metric("Attack Bonus", character.attack_bonus), _scene_binding.metric("Defense Bonus", character.defense_bonus), _scene_binding.metric("Base To Hit", character.to_hit), _scene_binding.metric("Armor", character.armor),
-		_scene_binding.metric("Dodge", character.dodge), _scene_binding.metric("Missile", character.missile),
-		_scene_binding.metric("Two-Hand", character.two_hand), _scene_binding.metric("Hand-to-Hand", character.hand_to_hand), _scene_binding.metric("Damage Bonus", character.damage_bonus),
-		_scene_binding.metric("Magic Resistance", character.magic_resistance),
-	])
+	var attributes := regions.get_node("OverviewAttributes") as PanelContainer
+	_scene_binding.bind_fixed_metric(attributes, "Brawn", character.brawn)
+	_scene_binding.bind_fixed_metric(attributes, "Knowledge", character.knowledge)
+	_scene_binding.bind_fixed_metric(attributes, "Judgment", character.judgment)
+	_scene_binding.bind_fixed_metric(attributes, "Agility", character.agility)
+	_scene_binding.bind_fixed_metric(attributes, "Vitality", character.vitality)
+	_scene_binding.bind_fixed_metric(attributes, "Luck", character.luck)
+	var combat := regions.get_node("OverviewCombat") as PanelContainer
+	_scene_binding.bind_fixed_metric(combat, "AttackBonus", character.attack_bonus)
+	_scene_binding.bind_fixed_metric(combat, "DefenseBonus", character.defense_bonus)
+	_scene_binding.bind_fixed_metric(combat, "BaseToHit", character.to_hit)
+	_scene_binding.bind_fixed_metric(combat, "Armor", character.armor)
+	_scene_binding.bind_fixed_metric(combat, "Dodge", character.dodge)
+	_scene_binding.bind_fixed_metric(combat, "Missile", character.missile)
+	_scene_binding.bind_fixed_metric(combat, "TwoHand", character.two_hand)
+	_scene_binding.bind_fixed_metric(combat, "HandToHand", character.hand_to_hand)
+	_scene_binding.bind_fixed_metric(combat, "DamageBonus", character.damage_bonus)
+	_scene_binding.bind_fixed_metric(combat, "MagicResistance", character.magic_resistance)
 	var status := regions.get_node("OverviewStatus") as PanelContainer
-	_scene_binding.bind_metric_region(status, [
-		_scene_binding.metric("Stamina", character.current_health, "%d / %d" % [character.current_health, character.maximum_health]), _scene_binding.metric("Spell Points", character.spell_points, "%d / %d" % [character.spell_points, character.maximum_spell_points]),
-		_scene_binding.metric("Load", character.carried_load, "%d / %d" % [character.carried_load, character.maximum_load]), _scene_binding.metric("Movement", character.movement, "%d / %d" % [character.movement, character.maximum_movement]),
-		_scene_binding.metric("Attacks / Round", 0, character.attacks_per_round), _scene_binding.metric("Experience", character.experience),
-		_scene_binding.metric("Gold", character.gold), _scene_binding.metric("Gems", character.gems), _scene_binding.metric("Jewelry", character.jewelry),
-	])
+	_scene_binding.bind_fixed_metric(status, "Stamina", character.current_health, "%d / %d" % [character.current_health, character.maximum_health])
+	_scene_binding.bind_fixed_metric(status, "SpellPoints", character.spell_points, "%d / %d" % [character.spell_points, character.maximum_spell_points])
+	_scene_binding.bind_fixed_metric(status, "Load", character.carried_load, "%d / %d" % [character.carried_load, character.maximum_load])
+	_scene_binding.bind_fixed_metric(status, "Movement", character.movement, "%d / %d" % [character.movement, character.maximum_movement])
+	_scene_binding.bind_fixed_metric(status, "AttacksPerRound", 0, character.attacks_per_round)
+	_scene_binding.bind_fixed_metric(status, "Experience", character.experience)
+	_scene_binding.bind_fixed_metric(status, "Gold", character.gold)
+	_scene_binding.bind_fixed_metric(status, "Gems", character.gems)
+	_scene_binding.bind_fixed_metric(status, "Jewelry", character.jewelry)
 	var condition_rows := status.get_node("Content/ConditionRows") as VBoxContainer
 	_scene_binding.clear_children(condition_rows)
 	_scene_binding.bind_metric_rows(condition_rows, character.conditions, "No active conditions.")
@@ -200,7 +202,7 @@ func _build_conditions(character: CharacterView) -> void:
 	var regions := tab.get_node("ConditionSaveRegions") as BoxContainer
 	regions.vertical = _layout_profile == UiLayoutProfile.COMPACT
 	_scene_binding.bind_metric_region(regions.get_node("ConditionsRegion") as PanelContainer, character.conditions, "No active conditions.")
-	_scene_binding.bind_metric_region(regions.get_node("SavingThrowsRegion") as PanelContainer, character.saving_throws)
+	_scene_binding.bind_named_metrics(regions.get_node("SavingThrowsRegion/Content/MetricRows") as GridContainer, character.saving_throws)
 
 
 func _build_equipment(character: CharacterView) -> void:
@@ -248,12 +250,12 @@ func _build_spells(character: CharacterView) -> void:
 	var scrolls := regions.get_node("ScrollCaseRegion/Content") as VBoxContainer
 	_scene_binding.bind_label(scrolls.get_node("Header/Detail") as Label, "%d fixed Classic slots" % character.scrolls.size(), MUTED, 13)
 	var scroll_cards := scrolls.get_node("ScrollCards") as VBoxContainer
-	_scene_binding.clear_children(scroll_cards)
-	if character.scrolls.is_empty():
-		_scene_binding.add_record_card(scroll_cards, "No scroll case slots are available.", "", "")
+	for card: Control in scroll_cards.get_children():
+		card.visible = false
+	scrolls.get_node("Empty").visible = character.scrolls.is_empty()
 	for scroll: SpellScrollView in character.scrolls:
 		var empty := scroll.spell_id.is_empty()
-		_scene_binding.add_record_card(scroll_cards, "Slot %d" % (scroll.slot_index + 1), "Empty" if empty else scroll.spell_name, "" if empty else "Power %d" % scroll.power)
+		_scene_binding.bind_record_card(scroll_cards.get_node("SheetScrollSlot%d" % scroll.slot_index) as PanelContainer, "Slot %d" % (scroll.slot_index + 1), "Empty" if empty else scroll.spell_name, "" if empty else "Power %d" % scroll.power)
 
 
 func _build_appearance(character: CharacterView) -> void:
@@ -344,14 +346,15 @@ func _build_background(character: CharacterView) -> void:
 	var aging := tab.get_node("AgingRegion") as VBoxContainer
 	_scene_binding.bind_label(aging.get_node("Header/Detail") as Label, "Age %d • current band highlighted" % character.age_years, MUTED, 13)
 	var bands := aging.get_node("AgeBands") as GridContainer
-	_scene_binding.clear_children(bands)
+	for card: Control in bands.get_children():
+		card.visible = false
 	bands.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 5
 	for band: CharacterAgeBandView in character.age_bands:
 		var changes: Array[String] = []
 		for change: CharacterMetricView in band.changes:
 			if change.value != 0:
 				changes.append("%s %+d" % [change.name, change.value])
-		_scene_binding.add_record_card(bands, "%s%s" % ["Current • " if band.active else "", band.name], "Ages %d–%d" % [band.minimum_age, band.maximum_age], "No changes" if changes.is_empty() else " • ".join(changes))
+		_scene_binding.bind_record_card(bands.get_node("AgeBand%d" % band.group) as PanelContainer, "%s%s" % ["Current • " if band.active else "", band.name], "Ages %d–%d" % [band.minimum_age, band.maximum_age], "No changes" if changes.is_empty() else " • ".join(changes))
 
 
 func _bind_background_region(frame: PanelContainer, kind: String, title: String, description: String, metrics: Array[CharacterMetricView]) -> void:
@@ -360,8 +363,7 @@ func _bind_background_region(frame: PanelContainer, kind: String, title: String,
 	_scene_binding.bind_label(column.get_node("Header/Kind") as Label, kind, MUTED, 13)
 	_scene_binding.bind_label(column.get_node("Description") as Label, description if not description.is_empty() else "No %s description is present in this package." % kind.to_lower(), MUTED, 13)
 	var rows := column.get_node("MetricRows") as VBoxContainer
-	_scene_binding.clear_children(rows)
-	_scene_binding.bind_metric_rows(rows, metrics)
+	_scene_binding.bind_named_metrics(rows, metrics)
 
 
 func _build_record(character: CharacterView) -> void:
@@ -370,11 +372,20 @@ func _build_record(character: CharacterView) -> void:
 	var panel := tab.get_node("LifetimeRecord") as PanelContainer
 	_scene_binding.bind_existing_label(self, "CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetStatTabs/RecordTab/LifetimeRecord/Content/Header/Prestige", "Prestige %d" % character.prestige, MUTED, 13)
 	var grid := panel.get_node("Content/RecordCards") as GridContainer
-	_scene_binding.clear_children(grid)
 	grid.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 4
 	var record := character.lifetime_record
-	for metric: Dictionary in [{"name": "Damage given", "value": record.damage_given}, {"name": "Damage taken", "value": record.damage_taken}, {"name": "Hits given", "value": record.hits_given}, {"name": "Hits taken", "value": record.hits_taken}, {"name": "Enemy misses", "value": record.enemy_misses}, {"name": "Attacks missed", "value": record.attacks_missed}, {"name": "Kills", "value": record.kills}, {"name": "Deaths", "value": record.deaths}, {"name": "Knockouts", "value": record.knockouts}, {"name": "Spells cast", "value": record.spells_cast}, {"name": "Destroyed", "value": record.destroyed}, {"name": "Turned", "value": record.turns}]:
-		_scene_binding.add_record_card(grid, metric["name"], str(metric["value"]), "Lifetime Classic counter")
+	_scene_binding.bind_record_value(grid, "DamageGiven", record.damage_given)
+	_scene_binding.bind_record_value(grid, "DamageTaken", record.damage_taken)
+	_scene_binding.bind_record_value(grid, "HitsGiven", record.hits_given)
+	_scene_binding.bind_record_value(grid, "HitsTaken", record.hits_taken)
+	_scene_binding.bind_record_value(grid, "EnemyMisses", record.enemy_misses)
+	_scene_binding.bind_record_value(grid, "AttacksMissed", record.attacks_missed)
+	_scene_binding.bind_record_value(grid, "Kills", record.kills)
+	_scene_binding.bind_record_value(grid, "Deaths", record.deaths)
+	_scene_binding.bind_record_value(grid, "Knockouts", record.knockouts)
+	_scene_binding.bind_record_value(grid, "SpellsCast", record.spells_cast)
+	_scene_binding.bind_record_value(grid, "Destroyed", record.destroyed)
+	_scene_binding.bind_record_value(grid, "Turned", record.turns)
 	var penalty := panel.get_node("Content/PrestigePenalty") as Label
 	_scene_binding.bind_label(penalty, "Prestige penalty %d" % character.prestige_penalty, BAD if character.prestige_penalty > 0 else MUTED, 13)
 
@@ -404,7 +415,7 @@ func _selected_character() -> CharacterView:
 
 
 func _tab_exists(tab_id: StringName) -> bool:
-	for tab: Dictionary in TABS:
+	for tab: Dictionary in TAB_DEFINITIONS:
 		if StringName(tab["id"]) == tab_id:
 			return true
 	return false

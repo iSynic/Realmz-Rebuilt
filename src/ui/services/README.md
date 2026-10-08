@@ -9,7 +9,7 @@ This folder is the Godot-facing home of every place where the party exchanges we
 - `services_screen_controller.gd`: detached wealth binding, typed route commands, and held-arrow repeat; a completed transaction rebinds the same scene-owned controls.
 - `shop_interaction.tscn`: Shop stock/pack exchange and compact alternative.
 - `temple_interaction.tscn`: character and service selection with purchase actions.
-- `bank_interaction.tscn`: bank account, party pool, and personal denomination transfers.
+- `bank_interaction.tscn`: the shared Party Wealth workspace bound to bank or pooled-departure requests, with their exact Pool/Share/Swap/Done responses.
 - `treasure_distribution_interaction.tscn`: loot field, recipients, item inspection, Castle-shaped Money/Pool/Share actions, lore, and completion confirmation.
 - Treasure's Money button opens `services_workspace.tscn` with Treasure-owned pool, recipient, and transfer data; its changing controls stay hidden.
 

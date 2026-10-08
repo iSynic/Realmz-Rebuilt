@@ -17,11 +17,11 @@ func prepare_normal_layout(compact: bool, encounter: bool = false) -> void:
 	item_inspector_panel().visible = true
 	alternate_content().visible = false
 	split.vertical = false
-	split.custom_minimum_size.y = 282.0 if compact else 395.0
+	UiSizing.minimum_size(split, Vector2(0.0, 282.0 if compact else 395.0))
 	split.size_flags_vertical = Control.SIZE_FILL if encounter else Control.SIZE_EXPAND_FILL
-	item_browser_panel().custom_minimum_size = Vector2(390.0 if compact else 620.0, 282.0 if compact else 370.0)
-	command_rail_panel().custom_minimum_size = Vector2(285.0 if compact else 400.0, 282.0 if compact else 370.0)
-	item_inspector_panel().custom_minimum_size.y = 190.0 if compact and encounter else 130.0 if compact else 180.0
+	UiSizing.minimum_size(item_browser_panel(), Vector2(390.0 if compact else 620.0, 282.0 if compact else 370.0))
+	UiSizing.minimum_size(command_rail_panel(), Vector2(285.0 if compact else 400.0, 282.0 if compact else 370.0))
+	UiSizing.minimum_size(item_inspector_panel(), Vector2(0.0, 190.0 if compact and encounter else 130.0 if compact else 180.0))
 	item_inspector_panel().size_flags_vertical = Control.SIZE_EXPAND_FILL if compact and encounter else Control.SIZE_FILL
 	command_rail_content().set_item_actions(item_inspector_content().item_actions())
 
@@ -40,10 +40,15 @@ func clear_rendered_content() -> void:
 	command_rail_content().clear_dynamic_content()
 	item_inspector_content().clear_dynamic_content()
 	_clear_children(alternate_content())
+	item_detail_popover().clear_hover()
 	for child: Node in get_children():
-		if child not in [main_split(), item_inspector_panel(), alternate_content()]:
+		if child not in [main_split(), item_inspector_panel(), alternate_content(), item_detail_popover()]:
 			remove_child(child)
 			child.queue_free()
+
+
+func item_detail_popover() -> ClassicItemDetailPopover:
+	return get_node("InventoryItemDetailPopover") as ClassicItemDetailPopover
 
 
 func main_split() -> BoxContainer:

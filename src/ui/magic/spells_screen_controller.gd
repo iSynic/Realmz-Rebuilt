@@ -115,10 +115,11 @@ func navigate_section(section_name: StringName, delta: int = 0) -> bool:
 	return true
 
 
-func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float, fixed_actions: Container = null) -> void:
+func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
 	if target == null or view == null:
 		return
 	var screen := target as SpellsScreen
+	var fixed_actions := screen.context_action_control() if screen != null else null
 	var workspace: SpellsWorkspace
 	if screen != null:
 		if _controller_focus_root != screen.controller_focus_root():
@@ -136,6 +137,8 @@ func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_s
 	_encounter_spell_ids.clear()
 	_text_scale = maxf(0.1, text_scale)
 	workspace.prepare(_compact)
+	if fixed_actions != null:
+		fixed_actions.get_node("SpellActionDock").visible = false
 	if view.party_members.is_empty():
 		workspace.show_empty("No spellbooks", "The party has no characters.")
 		SpellsWorkspace.link_controller_focus(_controller_focus_root)
@@ -248,18 +251,15 @@ func _bind_known_spells(workspace: SpellsWorkspace, character: CharacterView, fi
 	_bind_level_rail(workspace, available_levels, spell)
 	_bind_spell_list(workspace, character, spell)
 	_bind_spell_detail(workspace, character, spell)
-	var action_dock := _bind_spell_action_dock(workspace, character, spell)
-	if fixed_actions != null:
-		fixed_actions.add_child(action_dock)
-	else:
-		workspace.known_action_host().add_child(action_dock)
+	var action_host := fixed_actions if fixed_actions != null else workspace.known_action_host()
+	_bind_spell_action_dock(action_host.get_node("SpellActionDock") as HBoxContainer, character, spell)
 
 
 func _bind_level_rail(workspace: SpellsWorkspace, available_levels: Array[int], spell: SpellView) -> void:
 	var panel := workspace.get_node("ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail") as PanelContainer
-	panel.custom_minimum_size.x = 78.0 if _compact else 92.0
+	UiSizing.minimum_size(panel, Vector2(78.0 if _compact else 92.0, 0.0))
 	var rail := workspace.level_rail()
-	rail.add_theme_constant_override("separation", 2 if _compact else 3)
+	UiSizing.constant(rail, &"separation", 2 if _compact else 3)
 	(rail.get_node("SpellLevelHeading") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
 	for level: int in range(1, 8):
 		var button := rail.get_node("LevelButtons/SpellLevel%d" % level) as Button
@@ -273,7 +273,7 @@ func _bind_level_rail(workspace: SpellsWorkspace, available_levels: Array[int], 
 			"No known level %d spells" % level
 		)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size = Vector2(31.0 if _compact else 88.0, 24.0)
+		UiSizing.minimum_size(button, Vector2(31.0 if _compact else 88.0, 24.0))
 		if _compact:
 			button.text = str(level)
 	(rail.get_node("PowerDivider") as HSeparator).visible = not _encounter_mode
@@ -302,8 +302,8 @@ func _bind_spell_list(workspace: SpellsWorkspace, character: CharacterView, sele
 		)
 		button.clip_text = true
 		button.set_meta(&"focus_key", "spells:known:selected" if candidate.id == selected.id else "spells:known:%s:%s" % [character.id, candidate.id])
-		button.custom_minimum_size.y = 21.0
-		button.add_theme_font_size_override("font_size", int(round(14.0 * _text_scale)))
+		UiSizing.minimum_size(button, Vector2(0.0, 21.0))
+		UiSizing.font_size(button, &"font_size", 14)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		if _view.character_spellcasting_blocked:
 			# Keep the record browsable while making the unavailable casting state
@@ -387,26 +387,25 @@ func _bind_power_rail(column: VBoxContainer, spell: SpellView) -> void:
 		button.pressed.connect(_select_power.bind(power))
 
 
-func _bind_spell_action_dock(workspace: SpellsWorkspace, character: CharacterView, spell: SpellView) -> BoxContainer:
-	var row := workspace.action_dock_scene.instantiate() as HBoxContainer
+func _bind_spell_action_dock(row: HBoxContainer, character: CharacterView, spell: SpellView) -> void:
+	row.visible = true
 	var cast := row.get_node("SpellCastAction") as ClassicBitmapButton
 	if _encounter_mode:
 		cast.name = "EncounterSpellChoose"
 		_bind_bitmap_action(cast, &"spells.action.cast", "Use %s in this encounter" % spell.name, ActionAvailabilityView.new(&"encounter_spell", true, ""), func() -> void: encounter_spell_selected.emit(character.id, spell.classic_id))
 		row.get_node("MakeScrollAction").visible = false
-		return row
+		return
 	_bind_bitmap_action(cast, &"spells.action.cast", "Cast %s at power %d" % [spell.name, _selected_power], spell.field_cast, func() -> void:
 		intent_submitted.emit(MagicIntents.cast(spell.id, character.id, "", _selected_power))
 	)
 	var make_scroll := row.get_node("MakeScrollAction") as Button
 	make_scroll.text = "Scroll" if _compact else "Make Scroll"
-	make_scroll.custom_minimum_size.x = 60.0 if _compact else 74.0
+	UiSizing.minimum_size(make_scroll, Vector2(60.0 if _compact else 74.0, 0.0))
 	make_scroll.disabled = spell.make_scroll == null or not spell.make_scroll.enabled or not DetailFormatter.available_scroll_powers(spell).has(_selected_power)
 	make_scroll.tooltip_text = "Unavailable at this power" if make_scroll.disabled and spell.make_scroll != null and spell.make_scroll.enabled else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if make_scroll.disabled else "Scribe at power %d for %d SP" % [_selected_power, absi(spell.cost * 2 * _selected_power)]
 	_clear_pressed_connections(make_scroll)
 	if not make_scroll.disabled:
 		make_scroll.pressed.connect(func() -> void: intent_submitted.emit(MagicIntents.make_scroll(spell.id, character.id, _selected_power)))
-	return row
 
 
 func _available_levels(character: CharacterView) -> Array[int]:
@@ -466,14 +465,14 @@ func _bind_fast_spells(workspace: SpellsWorkspace, character: CharacterView) -> 
 
 
 func _bind_fast_spell_row(workspace: SpellsWorkspace, character: CharacterView, binding: FastSpellBindingView) -> void:
-	var panel := workspace.fast_spell_row_scene.instantiate() as PanelContainer
+	var panel := workspace.fast_spell_rows().get_node("FastSpellSlot%d" % binding.slot_index) as PanelContainer
+	panel.visible = true
 	var row := panel.get_node("Content") as BoxContainer
 	row.vertical = _compact
 	var label := row.get_node("Slot") as Label
 	_bind_label(label, "Slot %s" % binding.shortcut_label, GOLD, 13)
-	label.custom_minimum_size.x = 0.0 if _compact else 52.0
-	var picker := row.get_node("Picker") as OptionButton
-	picker.name = "FastSpellPicker%d" % binding.slot_index
+	UiSizing.minimum_size(label, Vector2(0.0 if _compact else 52.0, 0.0))
+	var picker := row.get_node("FastSpellPicker%d" % binding.slot_index) as OptionButton
 	_clear_option_button(picker)
 	picker.add_item("Choose a spell")
 	picker.set_item_metadata(0, {})
@@ -489,7 +488,6 @@ func _bind_fast_spell_row(workspace: SpellsWorkspace, character: CharacterView, 
 	var availability := _view.availability(&"set_fast_spell")
 	var clear_availability := availability if not binding.spell_id.is_empty() else ActionAvailabilityView.new(&"set_fast_spell", false, "This slot is already empty.")
 	_bind_button(row.get_node("Clear") as Button, "Clear", clear_availability, _clear_fast_spell.bind(character.id, binding.slot_index))
-	workspace.fast_spell_rows().add_child(panel)
 
 
 func _bind_scrolls(workspace: SpellsWorkspace, character: CharacterView) -> void:
@@ -506,18 +504,16 @@ func _bind_scrolls(workspace: SpellsWorkspace, character: CharacterView) -> void
 		_bind_label(empty, "This character has no Classic scroll slots.", MUTED, 15)
 		return
 	for scroll: SpellScrollView in character.scrolls:
-		var panel := workspace.scroll_slot_row_scene.instantiate() as PanelContainer
+		var panel := workspace.scroll_rows().get_node("ScrollCaseSlot%d" % scroll.slot_index) as PanelContainer
+		panel.visible = true
 		var row := panel.get_node("Content") as BoxContainer
 		row.vertical = _compact
 		var text := "Slot %d  •  %s%s" % [scroll.slot_index + 1, scroll.spell_name, "" if scroll.power == 0 else "  •  Power %d" % scroll.power]
 		_bind_label(row.get_node("Record") as Label, text, MUTED if scroll.power == 0 else TEXT, 14)
-		var use := row.get_node("Use") as Button
-		use.name = "UseScroll%d" % scroll.slot_index
+		var use := row.get_node("UseScroll%d" % scroll.slot_index) as Button
 		_bind_button(use, "Use", scroll.use, func() -> void: intent_submitted.emit(MagicIntents.use_scroll(character.id, scroll.slot_index)))
-		var discard := row.get_node("Discard") as Button
-		discard.name = "DiscardScroll%d" % scroll.slot_index
+		var discard := row.get_node("DiscardScroll%d" % scroll.slot_index) as Button
 		_bind_button(discard, "Discard", scroll.discard, func() -> void: intent_submitted.emit(MagicIntents.use_scroll(character.id, scroll.slot_index)))
-		workspace.scroll_rows().add_child(panel)
 
 
 func _select_character(character_id: String) -> void:
@@ -594,7 +590,7 @@ func _clear_fast_spell(character_id: String, slot_index: int) -> void:
 
 func _bind_button(button: Button, label: String, availability: ActionAvailabilityView, callback: Callable) -> void:
 	button.text = label
-	button.custom_minimum_size = Vector2(74.0, 34.0)
+	UiSizing.minimum_size(button, Vector2(74.0, 34.0))
 	button.disabled = availability == null or not availability.enabled
 	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else label
 	_clear_pressed_connections(button)
@@ -603,20 +599,25 @@ func _bind_button(button: Button, label: String, availability: ActionAvailabilit
 
 
 func _bind_bitmap_action(button: ClassicBitmapButton, asset_id: StringName, tooltip: String, availability: ActionAvailabilityView, callback: Callable) -> void:
+	var previous: Callable = button.get_meta(&"spell_action_callback", Callable())
+	if not previous.is_null() and button.pressed.is_connected(previous):
+		button.pressed.disconnect(previous)
+	button.remove_meta(&"spell_action_callback")
 	button.configure({"id": asset_id, "asset_id": asset_id, "tooltip": tooltip, "accelerator": ""}, 1)
 	button.disabled = availability == null or not availability.enabled
 	button.tooltip_text = "Unavailable" if availability == null else availability.reason if button.disabled else tooltip
 	if not button.disabled:
 		button.pressed.connect(callback)
+		button.set_meta(&"spell_action_callback", callback)
 
 
 func _bind_label(label: Label, text: String, color: Color = Color.WHITE, size: int = 15) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", int(round(float(size) * _text_scale)))
+	UiSizing.font_size(label, &"font_size", size)
 
 
-static func _clear_pressed_connections(button: Button) -> void:
+static func _clear_pressed_connections(button: BaseButton) -> void:
 	for connection: Dictionary in button.pressed.get_connections():
 		button.pressed.disconnect(connection["callable"] as Callable)
 

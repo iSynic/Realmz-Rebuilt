@@ -7,10 +7,8 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("aeb6ba")
-const ITEM_DETAIL_HEADER_SCENE_PATH := "res://src/ui/inventory/classic_item_detail_header.tscn"
 
 @export var detail_label_scene: PackedScene
-@export var fact_grid_scene: PackedScene
 
 var modifier_active := false:
 	set(value):
@@ -29,6 +27,12 @@ func configure(media: ClassicMediaCatalog, ui_theme: Theme = null) -> void:
 	_panel.theme = ui_theme
 	_content = %ClassicItemDetailContent
 	set_process(true)
+
+
+func clear_hover() -> void:
+	_hovered_source = null
+	_hovered_detail = {}
+	modifier_active = false
 
 
 func bind_hover(source: Control, detail: Dictionary) -> void:
@@ -74,37 +78,36 @@ func _refresh_visibility() -> void:
 
 
 func _render_detail() -> void:
-	for child: Node in _content.get_children():
-		_content.remove_child(child)
-		child.free()
-	var header := (load(ITEM_DETAIL_HEADER_SCENE_PATH) as PackedScene).instantiate() as HBoxContainer
-	_content.add_child(header)
+	var header := _content.get_node("ClassicItemDetailHeader") as HBoxContainer
+	var fact_grid := _content.get_node("ClassicItemDetailFacts") as GridContainer
+	var properties := _content.get_node("Properties") as VBoxContainer
+	var restrictions := _content.get_node("Restrictions") as VBoxContainer
+	for host: Node in [fact_grid, properties, restrictions]:
+		for child: Node in host.get_children():
+			host.remove_child(child)
+			child.free()
 	var icon := header.get_node("ClassicItemDetailIcon") as ClassicContentIcon
 	icon.configure(String(_hovered_detail.get("iconResourceType", "cicn")), int(_hovered_detail.get("iconId", 0)), _media, 48.0, String(_hovered_detail.get("title", "Item")))
-	var identity := header.get_node("Identity") as VBoxContainer
-	var title := _label(String(_hovered_detail.get("title", "Item")), GOLD, &"ClassicHeading")
-	title.name = "ClassicItemDetailTitle"
-	identity.add_child(title)
-	var subtitle := String(_hovered_detail.get("subtitle", ""))
-	if not subtitle.is_empty():
-		identity.add_child(_label(subtitle, CYAN))
-	var description := String(_hovered_detail.get("description", ""))
-	if not description.is_empty():
-		var description_label := _label(description, TEXT)
-		description_label.name = "ClassicItemDetailDescription"
-		_content.add_child(description_label)
+	%ClassicItemDetailTitle.text = String(_hovered_detail.get("title", "Item"))
+	_bind_optional_text(%ClassicItemDetailSubtitle, String(_hovered_detail.get("subtitle", "")))
+	_bind_optional_text(%ClassicItemDetailDescription, String(_hovered_detail.get("description", "")))
 	var facts: Array = _hovered_detail.get("facts", [])
-	if not facts.is_empty():
-		var fact_grid := fact_grid_scene.instantiate() as GridContainer
-		_content.add_child(fact_grid)
-		for fact: Variant in facts:
-			if fact is Dictionary:
-				fact_grid.add_child(_label(String(fact.get("label", "")), GOLD))
-				fact_grid.add_child(_label(String(fact.get("value", "")), TEXT))
+	fact_grid.visible = not facts.is_empty()
+	for fact: Variant in facts:
+		if fact is Dictionary:
+			fact_grid.add_child(_label(String(fact.get("label", "")), GOLD))
+			fact_grid.add_child(_label(String(fact.get("value", "")), TEXT))
 	for line: Variant in _hovered_detail.get("properties", []):
-		_content.add_child(_label(String(line), CYAN))
+		properties.add_child(_label(String(line), CYAN))
 	for line: Variant in _hovered_detail.get("restrictions", []):
-		_content.add_child(_label(String(line), MUTED))
+		restrictions.add_child(_label(String(line), MUTED))
+	properties.visible = properties.get_child_count() > 0
+	restrictions.visible = restrictions.get_child_count() > 0
+
+
+func _bind_optional_text(label: Label, text: String) -> void:
+	label.text = text
+	label.visible = not text.is_empty()
 
 
 func _place_panel() -> void:
@@ -119,10 +122,8 @@ func _place_panel() -> void:
 	_panel.position = Vector2(clampf(desired.x, 8.0, maxf(8.0, viewport_size.x - panel_size.x - 8.0)), clampf(desired.y, 8.0, maxf(8.0, viewport_size.y - panel_size.y - 8.0)))
 
 
-func _label(text: String, color: Color, variation: StringName = &"") -> Label:
+func _label(text: String, color: Color) -> Label:
 	var label := detail_label_scene.instantiate() as Label
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	if not variation.is_empty():
-		label.theme_type_variation = variation
 	return label

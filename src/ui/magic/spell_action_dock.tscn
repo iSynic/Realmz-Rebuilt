@@ -1,14 +1,13 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://src/ui/shared/style/classic_bitmap_button.gd" id="1_button"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="1_button"]
 
 [node name="SpellActionDock" type="HBoxContainer"]
 theme_override_constants/separation = 5
 
-[node name="SpellCastAction" type="TextureButton" parent="."]
+[node name="SpellCastAction" parent="." instance=ExtResource("1_button")]
 layout_mode = 2
 size_flags_horizontal = 3
-script = ExtResource("1_button")
 
 [node name="MakeScrollAction" type="Button" parent="."]
 custom_minimum_size = Vector2(74, 34)

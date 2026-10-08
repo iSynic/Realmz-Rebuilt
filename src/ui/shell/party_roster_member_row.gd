@@ -12,6 +12,7 @@ var _condition_icon_labels: Array[String] = []
 
 func _ready() -> void:
 	$Character/Details/Record.minimum_size_changed.connect(_update_height)
+	resized.connect(_apply_layout)
 	_apply_layout()
 
 
@@ -107,11 +108,39 @@ func _render_condition_icons() -> void:
 
 func _apply_layout() -> void:
 	$Character/Details/Record/IdentityCell/Identity.vertical = _compact_layout
-	$Character/Details/Record/Vitals.columns = 1 if _compact_layout else 2
-	$Character/Details/Record/Actions.columns = 1 if _compact_layout else 2
+	var profile := UiSizing.profile_for(self)
+	var available := size.x - 50.0 * (profile.bitmap_scale if profile != null else 1) - 12.0 * (profile.ui_scale if profile != null else 1.0)
+	for grid: GridContainer in [$Character/Details/Record/Vitals, $Character/Details/Record/Actions]:
+		grid.columns = 1 if _compact_layout or _natural_grid_width(grid) > available else 2
 	_render_condition_icons()
 	_update_height()
 
 
+func _natural_grid_width(grid: GridContainer) -> float:
+	var width := 0.0
+	for cell: PanelContainer in grid.get_children():
+		var fields := cell.get_child(0) as HBoxContainer
+		var value := fields.get_node("Value") as Label
+		width += value.get_theme_font("font").get_string_size(value.text, HORIZONTAL_ALIGNMENT_LEFT, -1, value.get_theme_font_size("font_size")).x + (fields.get_node("Caption") as Label).get_combined_minimum_size().x + fields.get_theme_constant("separation") + cell.get_theme_stylebox("panel").get_minimum_size().x
+	return width
+
+
 func _update_height() -> void:
-	custom_minimum_size.y = maxf(76.0, $Character/Details/Record.get_combined_minimum_size().y + 2.0)
+	var profile := UiSizing.profile_for(self)
+	var scale := profile.ui_scale if profile != null else 1.0
+	custom_minimum_size.y = maxf(76.0 * scale, $Character/Details/Record.get_combined_minimum_size().y + 2.0 * scale)
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	var button := character_button()
+	var native := button.get_meta("native_portrait") as Texture2D if button.has_meta("native_portrait") else null
+	if native != null:
+		var image := native.get_image()
+		image.resize(image.get_width() * profile.bitmap_scale, image.get_height() * profile.bitmap_scale, Image.INTERPOLATE_NEAREST)
+		button.icon = ImageTexture.create_from_image(image)
+	var portrait_width := 50.0 * profile.bitmap_scale
+	$Character/Details.offset_left = portrait_width + 6.0 * profile.ui_scale
+	$Character/PortraitDivider.offset_left = portrait_width + 2.0 * profile.ui_scale
+	$Character/PortraitDivider.offset_right = portrait_width + 3.0 * profile.ui_scale
+	$Character/CombatAuto.offset_right = portrait_width
+	_apply_layout()

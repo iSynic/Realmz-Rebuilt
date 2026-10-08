@@ -8,15 +8,38 @@ script = ExtResource("1_interaction")
 
 [node name="LifecycleConsequence" type="Label" parent="."]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 autowrap_mode = 2
+text = "Save first, or end this adventure without saving."
 
 [node name="LifecycleVerticalActions" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 6
+
+[node name="LifecycleSaveAction" type="Button" parent="LifecycleVerticalActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Save and return"
+theme_type_variation = &"ClassicChoiceButton"
+
+[node name="LifecycleDiscardAction" type="Button" parent="LifecycleVerticalActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Return without saving"
+theme_type_variation = &"ClassicChoiceButton"
+
+[node name="LifecycleCancelAction" type="Button" parent="LifecycleVerticalActions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cancel"
+theme_type_variation = &"ClassicChoiceButton"
 
 [node name="LifecycleActions" type="HBoxContainer" parent="."]
 unique_name_in_owner = true

@@ -414,7 +414,7 @@ func _clear_pressed_connections(button: Button) -> void:
 func _bind_label(label: Label, text: String, color: Color, size: int) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
-	label.add_theme_font_size_override("font_size", size)
+	UiSizing.font_size(label, &"font_size", size)
 
 
 func _valid_draft(current_ids: Array[String], characters_by_id: Dictionary) -> bool:

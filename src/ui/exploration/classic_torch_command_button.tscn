@@ -1,0 +1,18 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="1_control"]
+[ext_resource type="Script" path="res://src/ui/exploration/classic_torch_command_button.gd" id="2_script"]
+
+[node name="ClassicTorchCommandButton" instance=ExtResource("1_control")]
+custom_minimum_size = Vector2(62, 146)
+script = ExtResource("2_script")
+command_id = &"torch"
+
+[node name="IconStage" parent="CommandMargin/CommandContent" index="0"]
+custom_minimum_size = Vector2(0, 110)
+
+[node name="Caption" parent="CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Torch"
+
+[editable path="CommandMargin/CommandContent"]
+[editable path="CommandMargin/CommandContent/CaptionBand"]

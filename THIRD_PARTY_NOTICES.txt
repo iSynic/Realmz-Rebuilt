@@ -191,6 +191,16 @@ It is used under this project's non-commercial Realmz artwork license.
 Per-frame hashes and preserved timing are recorded in
 src/ui/shared/assets/ui/intro/intro-animation.json.
 
+Custom music import helper
+
+The separately packaged music-importer executable uses libopenmpt, libsndfile,
+and their codec dependencies from the exact baseline pinned in
+tools/music_importer/vcpkg.json. Every distribution includes the dependency
+copyright and license texts in music-importer/licenses. The helper is separate
+from the immutable Realmz stock music bank. Source and reproducible build and
+relinking instructions are provided in docs/custom-music.md and
+tools/build_music_importer.ps1; FFmpeg is not a runtime dependency.
+
 Optional display shaders
 
 CRT-Pi by davej is copyright 2015-2016 and licensed under GPL version 2 or

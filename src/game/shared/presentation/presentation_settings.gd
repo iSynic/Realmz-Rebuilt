@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 20
+const SCHEMA_VERSION: int = 21
 const INDOOR_PARTY_ICON_COUNT: int = 120
 const DEFAULT_INDOOR_PARTY_ICON: int = 72
 const MUSIC_SLOT_COUNT: int = 20
@@ -15,6 +15,13 @@ const UI_SCALE_AUTO: String = "auto"
 const UI_SCALE_100: String = "100"
 const UI_SCALE_125: String = "125"
 const UI_SCALE_150: String = "150"
+const UI_SCALE_175: String = "175"
+const UI_SCALE_200: String = "200"
+const UI_SCALE_225: String = "225"
+const UI_SCALE_250: String = "250"
+const UI_SCALE_275: String = "275"
+const UI_SCALE_300: String = "300"
+const UI_SCALE_MODES: Array[String] = [UI_SCALE_AUTO, UI_SCALE_100, UI_SCALE_125, UI_SCALE_150, UI_SCALE_175, UI_SCALE_200, UI_SCALE_225, UI_SCALE_250, UI_SCALE_275, UI_SCALE_300]
 const DISPLAY_RESPONSIVE: String = "responsive"
 const DISPLAY_INTEGER_WINDOW: String = "integer-window"
 const DISPLAY_INTEGER_CANVAS: String = "integer-canvas"
@@ -43,7 +50,7 @@ var reduced_sound: bool = false
 var auto_switch_to_melee: bool = true
 var dungeon_3d: bool = true
 var ui_scale_mode: String = UI_SCALE_AUTO
-var display_scaling_mode: String = DISPLAY_RESPONSIVE
+var display_scaling_mode: String = DISPLAY_INTEGER_CANVAS
 var world_zoom: int = 1
 var pixel_art_smoothing: String = SMOOTHING_OFF
 var crt_enabled: bool = false
@@ -137,7 +144,7 @@ static func _base_fields_are_valid(data: Dictionary) -> bool:
 static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -> bool:
 	if schema_version >= 2 and not data.get("dungeon3d") is bool:
 		return false
-	if schema_version >= 3 and not _window_fields_are_valid(data):
+	if schema_version >= 3 and not _window_fields_are_valid(data, schema_version):
 		return false
 	if schema_version >= 4 and not data.get("autoSwitchToMelee") is bool:
 		return false
@@ -180,10 +187,13 @@ static func _indoor_icon_is_valid(value: Variant) -> bool:
 	return (value is int or value is float) and float(int(value)) == float(value) and int(value) >= 0 and int(value) < INDOOR_PARTY_ICON_COUNT
 
 
-static func _window_fields_are_valid(data: Dictionary) -> bool:
+static func _window_fields_are_valid(data: Dictionary, schema_version: int) -> bool:
 	if not data.get("uiScaleMode") is String or not data.get("windowMode") is String:
 		return false
-	return data["uiScaleMode"] in [UI_SCALE_AUTO, UI_SCALE_100, UI_SCALE_125, UI_SCALE_150] and data["windowMode"] in [WINDOWED, BORDERLESS_FULLSCREEN]
+	var modes: Array[String] = [UI_SCALE_AUTO, UI_SCALE_100, UI_SCALE_125, UI_SCALE_150]
+	if schema_version >= 21:
+		modes = UI_SCALE_MODES
+	return data["uiScaleMode"] in modes and data["windowMode"] in [WINDOWED, BORDERLESS_FULLSCREEN]
 
 
 static func _scaling_fields_are_valid(data: Dictionary) -> bool:
@@ -228,6 +238,7 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.auto_switch_to_melee = bool(data.get("autoSwitchToMelee", true))
 	settings.dungeon_3d = bool(data.get("dungeon3d", true))
 	settings.ui_scale_mode = String(data.get("uiScaleMode", UI_SCALE_AUTO))
+	settings.display_scaling_mode = DISPLAY_RESPONSIVE
 	if int(data["schemaVersion"]) >= 17:
 		settings.display_scaling_mode = String(data["displayScalingMode"])
 		settings.world_zoom = int(data["worldZoom"])

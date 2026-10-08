@@ -38,7 +38,7 @@ static func _configure(surface: Node, surface_id: String, profile: String) -> vo
 	var compact := profile == "Compact"
 	match surface_id:
 		"temple": surface.call("configure", null, compact)
-		"bank": surface.call("configure", compact)
+		"bank": surface.call("configure", compact, null, SCREEN_FIXTURES.game_view(profile))
 		"pick-lock", "scrolling-text": surface.call("configure", null)
 		"level-up": surface.call("configure", null, null)
 		"encounter": surface.call("configure", null, null, compact)

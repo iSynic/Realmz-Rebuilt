@@ -13,8 +13,8 @@ const READABLE_BOLD_PATH := "res://src/ui/shared/assets/fonts/AlegreyaSans-Bold.
 const READABLE_NARRATIVE_PATH := "res://src/ui/shared/assets/fonts/Alegreya-Variable.ttf"
 
 
-static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Theme:
-	var result := base_theme.duplicate(true) as Theme
+static func themed_copy(base_theme: Theme, settings: PresentationSettings, interface_size: float = 1.0) -> Theme:
+	var result := base_theme.duplicate() as Theme
 	result.add_type(&"ClassicTheldrowLineEdit")
 	result.set_type_variation(&"ClassicTheldrowLineEdit", &"LineEdit")
 	result.add_type(&"ClassicTheldrowOptionButton")
@@ -24,7 +24,9 @@ static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Th
 	result.add_type(&"ClassicUnidentifiedItem")
 	result.set_type_variation(&"ClassicUnidentifiedItem", &"Label")
 	var classic_mode := settings.typography_mode == PresentationSettings.TYPOGRAPHY_CLASSIC
-	result.default_font_size = int(round((17.0 if classic_mode else 15.0) * settings.text_scale))
+	var font_scale := interface_size * settings.text_scale
+	result.default_font_size = int(round((17.0 if classic_mode else 15.0) * font_scale))
+	_scale_theme(result, interface_size, font_scale)
 	if not classic_mode:
 		return result
 	var readable_ui := load(READABLE_UI_PATH) as Font
@@ -45,6 +47,7 @@ static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Th
 	result.set_font(&"font", &"BattleCommandButton", ornament)
 	result.set_font(&"font", &"ClassicChoiceButton", ornament)
 	result.set_font(&"font", &"ClassicHeading", ornament)
+	result.set_font(&"font", &"ClassicCommandCaption", ornament)
 	result.set_font(&"normal_font", &"ClassicNarrative", _with_fallback(THELDROW_PATH, readable_narrative))
 	result.set_font(&"font", &"MenuButton", body)
 	result.set_font(&"font", &"PopupMenu", body)
@@ -60,11 +63,34 @@ static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Th
 	return result
 
 
+static func _scale_theme(theme: Theme, interface_size: float, font_scale: float) -> void:
+	var scaled_styles: Dictionary = {}
+	for type_name: StringName in theme.get_type_list():
+		for key: StringName in theme.get_font_size_list(type_name):
+			theme.set_font_size(key, type_name, maxi(1, roundi(theme.get_font_size(key, type_name) * font_scale)))
+		for key: StringName in theme.get_constant_list(type_name):
+			theme.set_constant(key, type_name, roundi(theme.get_constant(key, type_name) * interface_size))
+		for key: StringName in theme.get_icon_list(type_name):
+			var image := theme.get_icon(key, type_name).get_image()
+			var scale := clampi(roundi(interface_size), 1, 3)
+			image.resize(image.get_width() * scale, image.get_height() * scale, Image.INTERPOLATE_NEAREST)
+			theme.set_icon(key, type_name, ImageTexture.create_from_image(image))
+		for key: StringName in theme.get_stylebox_list(type_name):
+			var style := theme.get_stylebox(key, type_name)
+			if not scaled_styles.has(style):
+				var scaled := style.duplicate() as StyleBox
+				for side: int in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+					scaled.set_content_margin(side, scaled.get_content_margin(side) * interface_size)
+				scaled_styles[style] = scaled
+			theme.set_stylebox(key, type_name, scaled_styles[style])
+
+
 static func _with_fallback(path: String, fallback: Font) -> Font:
 	var source := load(path) as Font
 	if source == null:
 		return fallback
-	var result := source.duplicate(true) as Font
+	var result := FontVariation.new()
+	result.base_font = source
 	var fallbacks: Array[Font] = []
 	if fallback != null:
 		fallbacks.append(fallback)

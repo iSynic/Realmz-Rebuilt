@@ -1,0 +1,17 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_detail_label.tscn" id="1_detail"]
+
+[node name="PartyImportSourceRow" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="Source" type="Button" parent="."]
+layout_mode = 2
+text = "Saved adventure"
+alignment = 0
+custom_minimum_size = Vector2(0, 44)
+
+[node name="Detail" parent="." instance=ExtResource("1_detail")]
+text = "Record details"

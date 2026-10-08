@@ -28,7 +28,7 @@ func prepare(compact: bool) -> void:
 	var acquired_maps := get_node("MapsNotesTabs/Maps/AcquiredMapsWorkspace") as BoxContainer
 	var map_browser := get_node("MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser") as PanelContainer
 	acquired_maps.vertical = false
-	map_browser.custom_minimum_size.x = 218.0 if compact else 0.0
+	UiSizing.minimum_size(map_browser, Vector2(218.0 if compact else 0.0, 0.0))
 	map_browser.size_flags_stretch_ratio = 1.0
 	var journal := get_node("MapsNotesTabs/Journal/JournalWorkspace") as BoxContainer
 	journal.vertical = false

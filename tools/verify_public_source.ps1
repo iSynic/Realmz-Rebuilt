@@ -21,7 +21,7 @@ foreach ($path in $tracked) {
     foreach ($prefix in @(".godot/", ".references/", ".ua/", ".understand/", "addons/godot_mcp/", "artifacts/", "dist/", "docs/codemap/", "release-evidence/", "test-results/")) {
         if ($normalized.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) { throw "Forbidden generated/internal path is tracked: $normalized" }
     }
-    if ($normalized -in @("docs/architecture-migration.md", "docs/development.md", "docs/human-centered-architecture.md", "docs/roadmap.md")) { throw "Internal process document is tracked: $normalized" }
+    if ($normalized -in @("docs/architecture-migration.md", "docs/human-centered-architecture.md", "docs/roadmap.md")) { throw "Internal process document is tracked: $normalized" }
 }
 
 $projectSettings = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "project.godot")

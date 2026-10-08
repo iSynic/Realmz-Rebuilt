@@ -1,5 +1,8 @@
 [gd_scene format=3]
 
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_record_card.tscn" id="1_record"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_metric_row.tscn" id="2_metric"]
+
 [node name="CharacterSheetIdentityTabs" type="VBoxContainer"]
 size_flags_horizontal = 3
 size_flags_vertical = 3
@@ -151,6 +154,62 @@ theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 autowrap_mode = 2
 [node name="MetricRows" type="VBoxContainer" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content"]
 layout_mode = 2
+
+[node name="base-movement" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/base-movement" index="0"]
+text = "Base Movement"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/base-movement" index="1"]
+text = "—"
+
+[node name="magic-resistance" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/magic-resistance" index="0"]
+text = "Magic Resistance"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/magic-resistance" index="1"]
+text = "—"
+
+[node name="two-hand" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/two-hand" index="0"]
+text = "Two-Hand Bonus"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/two-hand" index="1"]
+text = "—"
+
+[node name="missile" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/missile" index="0"]
+text = "Missile Bonus"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/missile" index="1"]
+text = "—"
+
+[node name="base-attacks" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/base-attacks" index="0"]
+text = "Base Attacks"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/base-attacks" index="1"]
+text = "—"
+
+[node name="maximum-attacks" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/maximum-attacks" index="0"]
+text = "Maximum Attacks"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/maximum-attacks" index="1"]
+text = "—"
+
+[node name="maximum-age" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/maximum-age" index="0"]
+text = "Maximum Age"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/maximum-age" index="1"]
+text = "—"
+
+[node name="regeneration" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/regeneration" index="0"]
+text = "Regenerates"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/RaceRegion/Content/MetricRows/regeneration" index="1"]
+text = "—"
 [node name="CasteRegion" type="PanelContainer" parent="BackgroundTab/RaceClassRegions"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -175,6 +234,69 @@ autowrap_mode = 2
 [node name="MetricRows" type="VBoxContainer" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content"]
 layout_mode = 2
 
+[node name="minimum-age-group" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/minimum-age-group" index="0"]
+text = "Minimum Age Group"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/minimum-age-group" index="1"]
+text = "—"
+
+[node name="movement-bonus" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/movement-bonus" index="0"]
+text = "Movement Bonus"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/movement-bonus" index="1"]
+text = "—"
+
+[node name="magic-resistance-multiplier" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/magic-resistance-multiplier" index="0"]
+text = "Magic Resistance Multiplier"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/magic-resistance-multiplier" index="1"]
+text = "—"
+
+[node name="two-hand" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/two-hand" index="0"]
+text = "Two-Hand Bonus"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/two-hand" index="1"]
+text = "—"
+
+[node name="maximum-stamina-bonus" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/maximum-stamina-bonus" index="0"]
+text = "Maximum Stamina Bonus"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/maximum-stamina-bonus" index="1"]
+text = "—"
+
+[node name="bonus-attacks" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/bonus-attacks" index="0"]
+text = "Bonus Attacks"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/bonus-attacks" index="1"]
+text = "—"
+
+[node name="maximum-attacks" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/maximum-attacks" index="0"]
+text = "Maximum Attacks"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/maximum-attacks" index="1"]
+text = "—"
+
+[node name="missile-use" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/missile-use" index="0"]
+text = "Can Use Missile Weapons"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/missile-use" index="1"]
+text = "—"
+
+[node name="missile-bonus" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows" instance=ExtResource("2_metric")]
+layout_mode = 2
+[node name="MetricName" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/missile-bonus" index="0"]
+text = "Receives Missile Bonus"
+[node name="MetricValue" parent="BackgroundTab/RaceClassRegions/CasteRegion/Content/MetricRows/missile-bonus" index="1"]
+text = "—"
+
 [node name="AgingRegion" type="VBoxContainer" parent="BackgroundTab"]
 layout_mode = 2
 [node name="Header" type="HBoxContainer" parent="BackgroundTab/AgingRegion"]
@@ -190,3 +312,48 @@ theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 [node name="AgeBands" type="GridContainer" parent="BackgroundTab/AgingRegion"]
 layout_mode = 2
 columns = 5
+
+[node name="AgeBand1" parent="BackgroundTab/AgingRegion/AgeBands" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand1/Content" index="0"]
+text = "Youth"
+[node name="Subtitle" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand1/Content" index="1"]
+text = "Ages —"
+[node name="Detail" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand1/Content" index="2"]
+text = "Race adjustments"
+
+[node name="AgeBand2" parent="BackgroundTab/AgingRegion/AgeBands" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand2/Content" index="0"]
+text = "Young"
+[node name="Subtitle" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand2/Content" index="1"]
+text = "Ages —"
+[node name="Detail" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand2/Content" index="2"]
+text = "Race adjustments"
+
+[node name="AgeBand3" parent="BackgroundTab/AgingRegion/AgeBands" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand3/Content" index="0"]
+text = "Prime"
+[node name="Subtitle" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand3/Content" index="1"]
+text = "Ages —"
+[node name="Detail" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand3/Content" index="2"]
+text = "Race adjustments"
+
+[node name="AgeBand4" parent="BackgroundTab/AgingRegion/AgeBands" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand4/Content" index="0"]
+text = "Adult"
+[node name="Subtitle" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand4/Content" index="1"]
+text = "Ages —"
+[node name="Detail" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand4/Content" index="2"]
+text = "Race adjustments"
+
+[node name="AgeBand5" parent="BackgroundTab/AgingRegion/AgeBands" instance=ExtResource("1_record")]
+layout_mode = 2
+[node name="Title" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand5/Content" index="0"]
+text = "Senior"
+[node name="Subtitle" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand5/Content" index="1"]
+text = "Ages —"
+[node name="Detail" parent="BackgroundTab/AgingRegion/AgeBands/AgeBand5/Content" index="2"]
+text = "Race adjustments"

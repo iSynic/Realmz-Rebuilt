@@ -103,7 +103,7 @@ static func _create_workspace_component(kind: StringName, game_view: GameView, m
 		&"shop_action", &"temple_action": return _create_service_component(kind, game_view, media, compact)
 		&"bank_action", &"pooled_wealth_departure":
 			var bank := (load(BANK_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BankInteraction
-			bank.configure(compact)
+			bank.configure(compact, media, game_view)
 			return bank
 	return null
 
