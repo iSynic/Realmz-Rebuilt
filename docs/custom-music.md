@@ -20,7 +20,7 @@ Windows verification and release jobs use the `windows-2022` runner image to ret
 ./tools/package_music_importer.ps1 -Target macos-universal -InputDirectory build/music-x64,build/music-arm64 -OutputDirectory build/music-universal
 ```
 
-Run only the command for the matching build host; macOS runs both architecture builds and packaging. Windows/Linux packaging uses `-Target windows` or `linux` with one input directory. Output directories for packaging must be new. The source hash covers CMake, the dependency manifest, and helper sources. Each helper reports it through `--version`; packaging records exact executable and license hashes in `manifest.json`.
+Run only the command for the matching build host; macOS runs both architecture builds and packaging. Windows/Linux packaging uses `-Target windows` or `linux` with one input directory. Output directories for packaging must be new. The source hash covers CMake, the dependency manifest, and helper sources. Each helper reports it through `--version`; packaging records exact executable and license hashes in `manifest.json`. Universal packages retain the union of both architectures' notices, including host build-tool notices, and reject conflicting bytes at a shared license path.
 
 Distribute the `music-importer` directory beside the game executable, or under `Realmz Rebuilt.app/Contents/MacOS/` on macOS. CI and tagged-release workflows build and package it. Static codec libraries eliminate external codec-tool installation; FFmpeg is used only to generate development fixtures. Retain dependency copyright files and make the pinned library source/build recipe available with source distribution, including the LGPL dependencies' relinking terms.
 

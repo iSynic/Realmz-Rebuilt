@@ -40,14 +40,16 @@ if ($Target -eq "macos-universal") {
         throw "Music helper build target does not match $Target packaging."
     }
 }
-$referenceLicenses = @($builds[0].LicenseFiles | ForEach-Object { $_.FullName.Substring($builds[0].LicenseRoot.Length + 1).Replace('\', '/') })
-foreach ($build in $builds | Select-Object -Skip 1) {
-    $licenseNames = @($build.LicenseFiles | ForEach-Object { $_.FullName.Substring($build.LicenseRoot.Length + 1).Replace('\', '/') })
-    if (@(Compare-Object ($referenceLicenses | Sort-Object) ($licenseNames | Sort-Object)).Count -ne 0) { throw "macOS architecture builds contain different dependency license files." }
-    foreach ($relative in $referenceLicenses) {
-        $leftHash = (Get-FileHash -LiteralPath (Join-Path $builds[0].LicenseRoot $relative) -Algorithm SHA256).Hash
-        $rightHash = (Get-FileHash -LiteralPath (Join-Path $build.LicenseRoot $relative) -Algorithm SHA256).Hash
-        if ($leftHash -cne $rightHash) { throw "macOS architecture builds contain different dependency license content: $relative" }
+$licenseSources = [System.Collections.Generic.Dictionary[string, object]]::new([StringComparer]::Ordinal)
+foreach ($build in $builds) {
+    foreach ($file in $build.LicenseFiles) {
+        $relative = $file.FullName.Substring($build.LicenseRoot.Length + 1).Replace('\', '/')
+        $hash = (Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash
+        if ($licenseSources.ContainsKey($relative)) {
+            if ($licenseSources[$relative].Hash -cne $hash) { throw "Architecture builds contain different dependency license content: $relative" }
+        } else {
+            $licenseSources.Add($relative, [pscustomobject]@{ Path = $file.FullName; Hash = $hash })
+        }
     }
 }
 $output = [IO.Path]::GetFullPath($OutputDirectory)
@@ -55,10 +57,10 @@ if (Test-Path -LiteralPath $output) { throw "Music importer package output alrea
 [IO.Directory]::CreateDirectory($output) | Out-Null
 $licenses = Join-Path $output "licenses"
 [IO.Directory]::CreateDirectory($licenses) | Out-Null
-foreach ($relative in $referenceLicenses) {
+foreach ($relative in ($licenseSources.Keys | Sort-Object)) {
     $destination = Join-Path $licenses ($relative.Replace('/', [IO.Path]::DirectorySeparatorChar))
     [IO.Directory]::CreateDirectory((Split-Path -Parent $destination)) | Out-Null
-    Copy-Item -LiteralPath (Join-Path $builds[0].LicenseRoot $relative) -Destination $destination
+    Copy-Item -LiteralPath $licenseSources[$relative].Path -Destination $destination
 }
 $binaryOutput = Join-Path $output $binaryName
 if ($Target -eq "macos-universal") {
