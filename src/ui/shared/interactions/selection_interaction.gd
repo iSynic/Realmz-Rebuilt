@@ -25,6 +25,12 @@ func configure(media: ClassicMediaCatalog, game_view: GameView = null) -> void:
 	_game_view = game_view
 
 
+func set_layout_profile(compact: bool) -> void:
+	(%AllySelectionColumns as BoxContainer).vertical = compact
+	(%AllyCandidateGrid as GridContainer).columns = 1 if compact else 2
+	(%AllyDecision as Control).size_flags_vertical = Control.SIZE_SHRINK_END if compact else Control.SIZE_EXPAND_FILL
+
+
 func build(request: InteractionRequest) -> void:
 	_checks.clear()
 	(%CharacterSelectionMode as Control).visible = request.kind == &"character_selection"

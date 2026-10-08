@@ -96,6 +96,8 @@ func _show_next() -> void:
 		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
 			dismiss()
 	)
+	_panel.minimum_size_changed.connect(_apply_layout, CONNECT_DEFERRED)
+	UiSizing.bind_added(_layer.get_instance_id())
 	_present_next()
 	_apply_layout()
 
@@ -131,8 +133,10 @@ func _apply_layout() -> void:
 	_shield.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	_shield.position = _application_rect.position
 	_shield.size = _application_rect.size
-	var region := InteractionLayoutPolicy.classic_flash_modal_rect(_application_rect, _textbox_rect)
+	var profile := UiSizing.profile_for(_presenter)
+	var content := _label.get_parent() as Control
+	var region := InteractionLayoutPolicy.classic_flash_modal_rect(_application_rect, _textbox_rect, profile.ui_scale if profile != null else 1.0, content.get_combined_minimum_size() + _panel.get_theme_stylebox("panel").get_minimum_size())
 	_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_panel.custom_minimum_size = region.size
+	_panel.custom_minimum_size = Vector2.ZERO
 	_panel.position = region.position
 	_panel.size = region.size

@@ -83,6 +83,7 @@ var controller: ControllerAccess:
 
 
 func _ready() -> void:
+	_scroll.minimum_size_changed.connect(_apply_classic_region, CONNECT_DEFERRED)
 	_combat = CombatInteractionController.new()
 	_combat.configure(get_parent(), fast_spell_dock_scene)
 	_combat.response_body_submitted.connect(_submit_body)
@@ -522,9 +523,8 @@ func _clear_options() -> void:
 func _apply_classic_region() -> void:
 	if not is_inside_tree():
 		return
-	# Lifecycle dialogs are content-sized. Release any height retained from a
-	# previously mounted application modal before assigning their compact frame.
-	if _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE:
+	# Floating application dialogs fill their own frame, never the battlefield.
+	if LayoutPolicy.uses_application_modal_region(_request):
 		_options.custom_minimum_size.y = 0.0
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	if _playback_masked:
@@ -534,12 +534,14 @@ func _apply_classic_region() -> void:
 	elif LayoutPolicy.uses_classic_click_modal(_request):
 		theme_type_variation = &"ClassicInset"
 		_content.custom_minimum_size.x = 0.0
-		var region := LayoutPolicy.classic_click_modal_rect(_application_rect, _textbox_rect)
+		var profile := UiSizing.profile_for(self)
+		var region := LayoutPolicy.classic_click_modal_rect(_application_rect, _textbox_rect, profile.ui_scale if profile != null else 1.0, _content.get_combined_minimum_size() + get_theme_stylebox("panel").get_minimum_size())
 		position = region.position
 		size = region.size
 	elif LayoutPolicy.uses_floating_choice_modal(_request):
 		theme_type_variation = &"ClassicInset"
-		var region := LayoutPolicy.floating_choice_rect(_stage_rect, _textbox_rect, _content.get_combined_minimum_size() + Vector2(16.0, 16.0))
+		var profile := UiSizing.profile_for(self)
+		var region := LayoutPolicy.floating_choice_rect(_stage_rect, _textbox_rect, _content.get_combined_minimum_size() + get_theme_stylebox("panel").get_minimum_size(), profile.ui_scale if profile != null else 1.0)
 		position = region.position
 		size = region.size
 	elif LayoutPolicy.uses_textbox_region(_request, _passive_text):
@@ -557,11 +559,12 @@ func _apply_classic_region() -> void:
 	else:
 		theme_type_variation = &"ClassicInset"
 		var modal_region := _application_rect if LayoutPolicy.uses_application_modal_region(_request) else _stage_rect
-		var desired := LayoutPolicy.preferred_modal_size(_request, modal_region.size)
+		var profile := UiSizing.profile_for(self)
+		var desired := LayoutPolicy.preferred_modal_size(_request, modal_region.size, profile.ui_scale if profile != null else 1.0)
 		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
-			desired.y = minf(maxf(280.0, _content.get_combined_minimum_size().y + 16.0), modal_region.size.y - 4.0)
-		position = modal_region.position + (modal_region.size - desired) * 0.5
+			desired.y = minf(maxf(280.0 * (profile.ui_scale if profile != null else 1.0), _content.get_combined_minimum_size().y + get_theme_stylebox("panel").get_minimum_size().y), modal_region.size.y - 4.0)
 		size = desired
+		position = modal_region.position + (modal_region.size - size) * 0.5
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
 	var modal_surface := encounter_surface or LayoutPolicy.uses_floating_choice_modal(_request) or not LayoutPolicy.uses_textbox_region(_request)
 	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface and not LayoutPolicy.uses_floating_choice_modal(_request))
@@ -589,6 +592,7 @@ func _apply_content_layout() -> void:
 	var encounter_textbox := _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION
 	_content.custom_minimum_size.x = 0.0 if LayoutPolicy.uses_classic_click_modal(_request) else 280.0
 	_scroll.vertical_scroll_mode = LayoutPolicy.interaction_vertical_scroll_mode(_request)
+	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL if LayoutPolicy.uses_application_modal_region(_request) else Control.SIZE_FILL
 	_content.vertical = not split_textbox
 	_prompt.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if encounter_textbox else Control.SIZE_EXPAND_FILL
 	_options.size_flags_stretch_ratio = 2.0 if encounter_textbox else 1.0
@@ -609,10 +613,10 @@ func _apply_content_layout() -> void:
 		# this control's content-driven size here would create a minimum-size
 		# feedback loop whenever a route expands to fill the available height.
 		_options.custom_minimum_size.y = maxf(0.0, _application_rect.size.y - get_theme_stylebox("panel").get_minimum_size().y - _content.get_theme_constant("separation"))
-	elif _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE:
+	elif LayoutPolicy.uses_application_modal_region(_request):
 		_options.custom_minimum_size.y = 0.0
 	else:
-		_options.custom_minimum_size.y = maxf(0.0, _stage_rect.size.y - get_theme_stylebox("panel").get_minimum_size().y - _content.get_theme_constant("separation")) if LayoutPolicy.uses_application_modal_region(_request) or LayoutPolicy.is_scrolling_text_request(_request) else 0.0
+		_options.custom_minimum_size.y = maxf(0.0, _stage_rect.size.y - get_theme_stylebox("panel").get_minimum_size().y - _content.get_theme_constant("separation")) if LayoutPolicy.is_scrolling_text_request(_request) else 0.0
 
 
 func _add_hint(text: String) -> Label:

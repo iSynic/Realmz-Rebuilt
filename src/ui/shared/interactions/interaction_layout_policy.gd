@@ -12,7 +12,8 @@ static func textbox_theme_variation(request: InteractionRequest = null) -> Strin
 	return &"ClassicOpenRight" if request != null and request.kind == InteractionRequest.COMBAT else &"ClassicTextboxOverlay"
 
 
-static func preferred_modal_size(request: InteractionRequest, available_size: Vector2) -> Vector2:
+static func preferred_modal_size(request: InteractionRequest, available_size: Vector2, interface_scale: float = 1.0) -> Vector2:
+	var available := available_size / interface_scale
 	var preferred := Vector2(700.0, 520.0)
 	var minimum := Vector2(300.0, 260.0)
 	if request != null:
@@ -25,26 +26,26 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 				preferred = Vector2(720.0, 260.0)
 				minimum = Vector2(520.0, 180.0)
 			InteractionRequest.THIEF_ENCOUNTER:
-				preferred = Vector2(760.0, minf(410.0, available_size.y - 20.0))
+				preferred = Vector2(760.0, minf(410.0, available.y - 20.0))
 				minimum = Vector2(560.0, 310.0)
 			InteractionRequest.LEVEL_UP:
 				var body := request.body as LevelUpRequestBody
-				preferred = Vector2(1080.0, minf(760.0, available_size.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
+				preferred = Vector2(1080.0, minf(760.0, available.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
 			InteractionRequest.ALLY_SELECTION:
 				preferred = Vector2(820.0, 500.0)
-	var desired := Vector2(minf(preferred.x, available_size.x - 20.0), minf(preferred.y, available_size.y - 20.0))
-	return Vector2(maxf(minimum.x, desired.x), maxf(minimum.y, desired.y))
+	var desired := preferred.min(available - Vector2(20.0, 20.0))
+	return desired.max(minimum).min(available) * interface_scale
 
 
-static func floating_choice_rect(stage_rect: Rect2, textbox_rect: Rect2, minimum: Vector2) -> Rect2:
-	var available_width := minf(maxf(300.0, stage_rect.size.x - 20.0), maxf(300.0, textbox_rect.size.x))
+static func floating_choice_rect(stage_rect: Rect2, textbox_rect: Rect2, minimum: Vector2, interface_scale: float = 1.0) -> Rect2:
+	var available_width := minf(maxf(300.0 * interface_scale, stage_rect.size.x - 20.0 * interface_scale), maxf(300.0 * interface_scale, textbox_rect.size.x))
 	var modal_size := Vector2(
-		minf(maxf(520.0, minimum.x), available_width),
-		minf(maxf(116.0, minimum.y), maxf(116.0, stage_rect.size.y - 20.0))
+		minf(maxf(520.0 * interface_scale, minimum.x), available_width),
+		minf(maxf(116.0 * interface_scale, minimum.y), maxf(116.0 * interface_scale, stage_rect.size.y - 20.0 * interface_scale))
 	)
 	var centered_x := textbox_rect.position.x + (textbox_rect.size.x - modal_size.x) * 0.5
-	var attached_y := textbox_rect.position.y - modal_size.y - 4.0
-	return Rect2(Vector2(clampf(centered_x, maxf(0.0, stage_rect.position.x - 10.0), stage_rect.end.x - modal_size.x - 10.0), maxf(stage_rect.position.y + 10.0, attached_y)), modal_size)
+	var attached_y := textbox_rect.position.y - modal_size.y - 4.0 * interface_scale
+	return Rect2(Vector2(clampf(centered_x, maxf(0.0, stage_rect.position.x - 10.0 * interface_scale), stage_rect.end.x - modal_size.x - 10.0 * interface_scale), maxf(stage_rect.position.y + 10.0 * interface_scale, attached_y)), modal_size)
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
@@ -58,32 +59,34 @@ static func uses_classic_click_modal(request: InteractionRequest) -> bool:
 	return body != null and body.presentation == &"classic-click-modal"
 
 
-static func classic_click_modal_rect(application_rect: Rect2, textbox_rect: Rect2) -> Rect2:
-	var desired := Vector2(minf(174.0, application_rect.size.x - 40.0), minf(60.0, application_rect.size.y - 40.0))
-	var preferred_y := textbox_rect.position.y - desired.y - 12.0
+static func classic_click_modal_rect(application_rect: Rect2, textbox_rect: Rect2, interface_scale: float = 1.0, minimum: Vector2 = Vector2.ZERO) -> Rect2:
+	var desired := Vector2(174.0, 60.0).max(minimum / interface_scale) * interface_scale
+	desired = desired.min(application_rect.size - Vector2(40.0, 40.0) * interface_scale)
+	var preferred_y := textbox_rect.position.y - desired.y - 12.0 * interface_scale
 	return Rect2(
 		Vector2(
 			application_rect.position.x + (application_rect.size.x - desired.x) * 0.5,
-			clampf(preferred_y, application_rect.position.y + 20.0, application_rect.end.y - desired.y - 20.0)
+			clampf(preferred_y, application_rect.position.y + 20.0 * interface_scale, application_rect.end.y - desired.y - 20.0 * interface_scale)
 		),
 		desired
 	)
 
 
-static func classic_flash_modal_rect(application_rect: Rect2, textbox_rect: Rect2) -> Rect2:
-	var desired := Vector2(minf(520.0, application_rect.size.x - 40.0), minf(118.0, application_rect.size.y - 40.0))
-	var preferred_y := textbox_rect.position.y - desired.y - 12.0
+static func classic_flash_modal_rect(application_rect: Rect2, textbox_rect: Rect2, interface_scale: float = 1.0, minimum: Vector2 = Vector2.ZERO) -> Rect2:
+	var desired := Vector2(520.0, 118.0).max(minimum / interface_scale) * interface_scale
+	desired = desired.min(application_rect.size - Vector2(40.0, 40.0) * interface_scale)
+	var preferred_y := textbox_rect.position.y - desired.y - 12.0 * interface_scale
 	return Rect2(
 		Vector2(
 			application_rect.position.x + (application_rect.size.x - desired.x) * 0.5,
-			clampf(preferred_y, application_rect.position.y + 20.0, application_rect.end.y - desired.y - 20.0)
+			clampf(preferred_y, application_rect.position.y + 20.0 * interface_scale, application_rect.end.y - desired.y - 20.0 * interface_scale)
 		),
 		desired
 	)
 
 
 static func interaction_vertical_scroll_mode(request: InteractionRequest) -> int:
-	return ScrollContainer.SCROLL_MODE_DISABLED if request != null and (uses_application_workspace(request) or is_scrolling_text_request(request) or request.kind in [InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.COMBAT]) else ScrollContainer.SCROLL_MODE_AUTO
+	return ScrollContainer.SCROLL_MODE_DISABLED if request != null and (uses_application_workspace(request) or uses_application_modal_region(request) or is_scrolling_text_request(request) or request.kind == InteractionRequest.COMBAT) else ScrollContainer.SCROLL_MODE_AUTO
 
 
 static func combat_command_scale(combat_rect: Rect2) -> float:

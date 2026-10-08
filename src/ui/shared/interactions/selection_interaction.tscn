@@ -6,6 +6,7 @@
 
 [node name="SelectionInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 6
 script = ExtResource("1_selection")
 ally_candidate_scene = ExtResource("2_candidate")
@@ -104,7 +105,7 @@ theme_override_font_sizes/font_size = 15
 text = "Keep up to 1"
 horizontal_alignment = 2
 
-[node name="AllySelectionColumns" type="HBoxContainer" parent="AllySelectionMode"]
+[node name="AllySelectionColumns" type="BoxContainer" parent="AllySelectionMode"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -129,6 +130,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.878, 0.737, 0.325, 1)
 theme_override_font_sizes/font_size = 16
 text = "Choose who continues with the party"
+autowrap_mode = 2
 
 [node name="AllyCandidateScroll" type="ScrollContainer" parent="AllySelectionMode/AllySelectionColumns/AllyCandidates/CandidateContent"]
 layout_mode = 2
