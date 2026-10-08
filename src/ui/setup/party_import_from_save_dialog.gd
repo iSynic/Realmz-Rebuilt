@@ -49,10 +49,11 @@ var _selection_limit_message: String = ""
 func _ready() -> void:
 	_cancel_button.pressed.connect(_cancel)
 	_selection_cancel_button.pressed.connect(_cancel)
-	_browse_button.pressed.connect(_external_dialog.popup_centered)
+	_browse_button.pressed.connect(_open_external_save_picker)
 	_refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
 	_import_button.pressed.connect(_submit_selected)
 	_external_dialog.file_selected.connect(func(path: String) -> void: external_source_requested.emit(path))
+	get_viewport().size_changed.connect(_refresh_visible_geometry)
 	visible = false
 
 
@@ -60,8 +61,7 @@ func show_party_import(view: Dictionary) -> void:
 	_view = view.duplicate(true)
 	_available_slots = maxi(0, int(_view.get("available_slots", 0)))
 	_selection_limit_message = ""
-	var stage_size := get_viewport_rect().size
-	_dialog_panel.custom_minimum_size = Vector2(minf(1040.0, maxf(760.0, stage_size.x - 48.0)), minf(640.0, maxf(520.0, stage_size.y - 48.0)))
+	_update_dialog_size()
 	_render()
 	visible = true
 	_grab_initial_focus()
@@ -71,6 +71,34 @@ func close_party_import() -> void:
 	visible = false
 	if _external_dialog.visible:
 		_external_dialog.hide()
+
+
+func _open_external_save_picker() -> void:
+	_external_dialog.popup_centered(_fit_scaled_size(Vector2(900.0, 620.0)))
+
+
+func _fit_scaled_size(preferred: Vector2) -> Vector2i:
+	var profile := UiSizing.profile_for(self)
+	var scale := profile.ui_scale if profile != null else 1.0
+	var viewport_size := get_viewport_rect().size
+	var margin := 48.0 * scale
+	var available := Vector2(maxf(1.0, viewport_size.x - margin), maxf(1.0, viewport_size.y - margin))
+	var target := (preferred * scale).min(available)
+	return Vector2i(maxi(1, roundi(target.x)), maxi(1, roundi(target.y)))
+
+
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	_update_dialog_size()
+
+
+func _update_dialog_size() -> void:
+	if _dialog_panel != null:
+		_dialog_panel.custom_minimum_size = _fit_scaled_size(Vector2(1040.0, 640.0))
+
+
+func _refresh_visible_geometry() -> void:
+	if visible:
+		_update_dialog_size()
 
 
 func focus_root() -> Node:

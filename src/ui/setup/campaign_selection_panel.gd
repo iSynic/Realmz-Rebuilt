@@ -24,6 +24,7 @@ func _ready() -> void:
 	%CloseScenarioDetails.pressed.connect(close_details)
 	%ScenarioBack.pressed.connect(func() -> void: back_requested.emit())
 	get_viewport().gui_focus_changed.connect(_keep_details_focus)
+	get_viewport().size_changed.connect(_refresh_details_geometry)
 
 func present_campaign(campaign: CampaignPackageView, running: bool, selected: bool, pending_revision: String = "") -> void:
 	_campaign = campaign
@@ -109,9 +110,28 @@ func _choose_revision(index: int) -> void:
 func _open_details() -> void:
 	%ScenarioDetails.position = Vector2.ZERO
 	%ScenarioDetails.size = get_viewport_rect().size
-	%Panel.custom_minimum_size = Vector2(minf(560, get_viewport_rect().size.x - 32), minf(440, get_viewport_rect().size.y - 32))
 	%ScenarioDetails.show()
+	_update_details_size()
 	%CloseScenarioDetails.grab_focus()
+
+
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	_update_details_size()
+
+
+func _update_details_size() -> void:
+	if not is_node_ready():
+		return
+	var profile := UiSizing.profile_for(self)
+	var scale := profile.ui_scale if profile != null else 1.0
+	var available := (get_viewport_rect().size - Vector2(32.0, 32.0) * scale).max(Vector2.ONE)
+	%Panel.custom_minimum_size = (Vector2(560.0, 440.0) * scale).min(available)
+
+
+func _refresh_details_geometry() -> void:
+	if is_node_ready() and %ScenarioDetails.visible:
+		%ScenarioDetails.size = get_viewport_rect().size
+		_update_details_size()
 
 func close_details() -> void:
 	%ScenarioDetails.hide()

@@ -28,4 +28,9 @@ func _update_input_shield() -> void:
 func present(campaign_id: String, display_name: String) -> void:
 	_campaign_id = campaign_id
 	dialog_text = "Remove %s and all its versions from Imported Scenarios?\n\nSaved adventures and their packages will be kept.\nAn already open adventure is unaffected.\nImport the scenario again to restore it to the list." % display_name
-	popup_centered(Vector2i(440, 220))
+	var profile := UiSizing.profile_for(get_parent())
+	var scale := profile.ui_scale if profile != null else 1.0
+	var visible_size := get_parent().get_viewport().get_visible_rect().size
+	var available := (visible_size - Vector2(32.0, 32.0) * scale).max(Vector2.ONE)
+	var requested := (Vector2(440.0, 220.0) * scale).min(available)
+	popup_centered(Vector2i(maxi(1, roundi(requested.x)), maxi(1, roundi(requested.y))))
