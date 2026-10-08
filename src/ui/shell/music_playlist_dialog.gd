@@ -212,7 +212,7 @@ func _preview() -> void:
 func _open_import() -> void:
 	var browser := %MusicFiles as FileDialog
 	browser.popup_centered_ratio(0.88)
-	browser.get_vbox().grab_focus()
+	browser.get_line_edit().grab_focus()
 
 
 func _changed() -> void:
