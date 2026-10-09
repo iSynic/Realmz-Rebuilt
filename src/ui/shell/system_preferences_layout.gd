@@ -163,6 +163,11 @@ func bind_audio(settings: PresentationSettings) -> void:
 	_bind_volume_row(root.get_node("SoundVolumeRow") as BoxContainer, "Sound effects", settings.sound_volume, &"sound_volume")
 	_bind_volume_row(root.get_node("MusicVolumeRow") as BoxContainer, "Music", settings.music_volume, &"music_volume")
 	_bind_toggle(root.get_node("MusicEnabled") as CheckButton, settings.music_enabled, &"music_enabled")
+	_bind_option(root.get_node("MusicTransitionRow/MusicTransition") as OptionButton, [
+		{"label": "Restart current song", "id": PresentationSettings.MUSIC_RESTART_SONG},
+		{"label": "Restart playlist", "id": PresentationSettings.MUSIC_RESTART_PLAYLIST},
+		{"label": "Resume where it stopped", "id": PresentationSettings.MUSIC_RESUME},
+	], settings.music_transition, &"music_transition")
 	_bind_toggle(root.get_node("ReducedSound") as CheckButton, settings.reduced_sound, &"reduced_sound")
 	_bind_action(root.get_node("OpenMusicPlaylist") as Button, func() -> void: action_requested.emit(&"music_playlist", null))
 

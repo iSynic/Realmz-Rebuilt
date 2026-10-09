@@ -3,13 +3,17 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 21
+const SCHEMA_VERSION: int = 22
 const INDOOR_PARTY_ICON_COUNT: int = 120
 const DEFAULT_INDOOR_PARTY_ICON: int = 72
 const MUSIC_SLOT_COUNT: int = 20
 const MUSIC_OFF: int = 0
 const MUSIC_PLAY: int = 1
 const MUSIC_CONTINUE: int = 2
+const MUSIC_RESTART_SONG: String = "restart-song"
+const MUSIC_RESTART_PLAYLIST: String = "restart-playlist"
+const MUSIC_RESUME: String = "resume"
+const MUSIC_TRANSITIONS: Array[String] = [MUSIC_RESTART_SONG, MUSIC_RESTART_PLAYLIST, MUSIC_RESUME]
 
 const UI_SCALE_AUTO: String = "auto"
 const UI_SCALE_100: String = "100"
@@ -42,6 +46,7 @@ var master_volume: float = 1.0
 var sound_volume: float = 1.0
 var music_volume: float = 0.8
 var music_enabled: bool = true
+var music_transition: String = MUSIC_RESTART_SONG
 var music_playlist_modes: Array[int] = _default_music_modes()
 var topology_debug: bool = false
 var text_scale: float = 1.0
@@ -82,6 +87,7 @@ func to_data() -> Dictionary:
 		"soundVolume": sound_volume,
 		"musicVolume": music_volume,
 		"musicEnabled": music_enabled,
+		"musicTransition": music_transition,
 		"musicPlaylistModes": music_playlist_modes.duplicate(),
 		"topologyDebug": topology_debug,
 		"textScale": text_scale,
@@ -180,6 +186,8 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 20 and not _indoor_icon_is_valid(data.get("indoorPartyIcon")):
 		return false
+	if schema_version >= 22 and (not data.get("musicTransition") is String or data["musicTransition"] not in MUSIC_TRANSITIONS):
+		return false
 	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
 
 
@@ -230,6 +238,8 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.sound_volume = float(data.get("soundVolume", 1.0))
 	settings.music_volume = float(data.get("musicVolume", 0.8))
 	settings.music_enabled = bool(data.get("musicEnabled", true))
+	if int(data["schemaVersion"]) >= 22:
+		settings.music_transition = data["musicTransition"]
 	settings.music_playlist_modes = _music_modes_from_data(data.get("musicPlaylistModes", []))
 	settings.topology_debug = data["topologyDebug"]
 	settings.text_scale = data["textScale"]

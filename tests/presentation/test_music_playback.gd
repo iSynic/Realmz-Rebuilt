@@ -3,6 +3,7 @@ extends RealmzTestCase
 
 func run() -> void:
 	_test_resolution_and_queue()
+	await _test_transitions()
 	await _test_playback()
 
 
@@ -54,12 +55,63 @@ func _test_resolution_and_queue() -> void:
 	for index: int in 3:
 		order.append(queue.current())
 		queue.advance()
+	var shuffled_first := order[0]
+	var shuffled_state := random.state
+	queue.enter_context(PresentationSettings.MUSIC_RESTART_SONG)
+	assert_true(queue.exhausted, "an exhausted no-repeat playlist has no current song to restart")
+	queue.enter_context(PresentationSettings.MUSIC_RESTART_PLAYLIST)
+	assert_equal([queue.exhausted, queue.current(), random.state], [false, shuffled_first, shuffled_state], "playlist restart replays the retained shuffled order without another shuffle draw")
 	order.sort()
 	assert_equal(order, playlist.tracks, "shuffle traverses every track once before exhaustion")
 	playlist.tracks.assign(["a"])
 	var before := random.state
 	queue.configure(playlist)
 	assert_equal(random.state, before, "a one-track shuffle consumes no random draw")
+
+
+func _test_transitions() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var stream := AudioStreamWAV.new()
+	stream.mix_rate = 8000
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	var samples := PackedByteArray()
+	samples.resize(160000)
+	stream.data = samples
+	for transition: String in PresentationSettings.MUSIC_TRANSITIONS:
+		var presenter := ClassicAudioPresenter.new()
+		tree.root.add_child(presenter)
+		var channel := presenter.get_node("ClassicMusicChannel") as AudioStreamPlayer
+		var settings := PresentationSettings.new()
+		settings.music_transition = transition
+		var stock := ClassicMusicCatalog.new()
+		presenter.music.set_library(_library(), func(_id: String) -> AudioStream: return stream)
+		presenter.present_music_context(1, settings, null, stock, "one")
+		channel.finished.emit()
+		channel.seek(2.0)
+		await tree.process_frame
+		presenter.present_music_context(11, settings, null, stock, "one")
+		presenter.present_music_context(1, settings, null, stock, "one")
+		var expected := "A" if transition == PresentationSettings.MUSIC_RESTART_PLAYLIST else "B"
+		assert_equal(presenter.current_music_title, expected, "return from Battle applies the selected playlist/song identity policy")
+		assert_true(channel.get_playback_position() >= 1.9 if transition == PresentationSettings.MUSIC_RESUME else channel.get_playback_position() < 0.3, "return from Battle applies the selected playback-position policy")
+		channel.seek(3.0)
+		await tree.process_frame
+		presenter.present_music_context(1, settings, null, stock, "one")
+		assert_true(channel.get_playback_position() >= 2.9, "ordinary view refresh never restarts music")
+		presenter.music.preview("c")
+		presenter.music.end_preview()
+		assert_true(presenter.current_music_title == expected and channel.get_playback_position() >= 2.9, "preview restores the exact interrupted song and position under every policy")
+		settings.set_music_mode(11, PresentationSettings.MUSIC_CONTINUE)
+		presenter.present_music_context(11, settings, null, stock, "one")
+		presenter.present_music_context(1, settings, null, stock, "one")
+		assert_true(channel.get_playback_position() >= 2.9, "Continue preserves uninterrupted playback through both context boundaries")
+		settings.set_music_mode(11, PresentationSettings.MUSIC_OFF)
+		presenter.present_music_context(11, settings, null, stock, "one")
+		presenter.present_music_context(1, settings, null, stock, "one")
+		assert_equal(presenter.current_music_title, expected, "return from an Off context applies the same queue policy")
+		assert_true(channel.get_playback_position() >= 2.9 if transition == PresentationSettings.MUSIC_RESUME else channel.get_playback_position() < 0.3, "return from Off applies the selected playback-position policy")
+		presenter.free()
+	await tree.process_frame
 
 
 func _test_playback() -> void:
@@ -76,6 +128,7 @@ func _test_playback() -> void:
 	var library := _library()
 	var playlist := library.resolve("one", 1)
 	var settings := PresentationSettings.new()
+	settings.music_transition = PresentationSettings.MUSIC_RESUME
 	var stock := ClassicMusicCatalog.new()
 	presenter.music.set_library(library, func(_id: String) -> AudioStream: return stream)
 	presenter.present_music_context(1, settings, null, stock, "one")

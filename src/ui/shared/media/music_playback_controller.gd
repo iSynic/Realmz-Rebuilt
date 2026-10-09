@@ -17,6 +17,7 @@ var _active: String = ""
 var _preview: bool = false
 var _campaign: String = ""
 var _context: int = 0
+var _transition_pending: bool = false
 var _settings: PresentationSettings
 var _media: ClassicMediaCatalog
 var _stock: ClassicMusicCatalog
@@ -54,6 +55,7 @@ func set_library(library: MusicLibraryView, loader: Callable, changed_tracks: Ar
 
 
 func present(context: int, settings: PresentationSettings, media: ClassicMediaCatalog, stock: ClassicMusicCatalog, campaign: String) -> void:
+	_transition_pending = _transition_pending or campaign != _campaign or context != _context
 	_campaign = campaign
 	_context = context
 	_settings = settings
@@ -70,6 +72,8 @@ func refresh() -> void:
 		_preview = false
 	if _preview:
 		return
+	var entering := _transition_pending
+	_transition_pending = false
 	if _settings == null or not _settings.music_enabled or _context <= 0:
 		stop()
 		return
@@ -84,6 +88,7 @@ func refresh() -> void:
 		return
 	var key := JSON.stringify([_campaign, _context])
 	if key != _active:
+		entering = true
 		_suspend()
 		_active = key
 	if not _queues.has(key):
@@ -93,6 +98,8 @@ func refresh() -> void:
 	if changed:
 		_player.stop()
 		_fallbacks.erase(key)
+	if entering and not _player.playing:
+		_queues[key].enter_context(_settings.music_transition)
 	_resolve_original(key)
 	if not _player.playing:
 		_start()

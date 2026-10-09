@@ -1,6 +1,7 @@
 extends RealmzTestCase
 
 func run() -> void:
+	_test_music_transition_preference()
 	_test_indoor_icon_preference()
 	_test_immediate_single_target_action_preference()
 	await _test_music_system()
@@ -22,7 +23,7 @@ func _test_immediate_single_target_action_preference() -> void:
 	assert_false(settings.immediate_single_target_actions, "immediate single-target actions default off")
 	settings.immediate_single_target_actions = true
 	var serialized := settings.to_data()
-	assert_equal(serialized["schemaVersion"], 21, "presentation settings serialize with schema twenty-one")
+	assert_equal(serialized["schemaVersion"], 22, "presentation settings serialize with schema twenty-two")
 	assert_true(serialized["immediateSingleTargetActions"], "the preference uses its stable serialized key")
 	var restored := PresentationSettings.from_data(serialized)
 	assert_true(restored != null and restored.immediate_single_target_actions, "schema-nineteen preference round-trips through serialization")
@@ -48,6 +49,19 @@ func _test_immediate_single_target_action_preference() -> void:
 	var malformed := serialized.duplicate(true)
 	malformed["immediateSingleTargetActions"] = 1
 	assert_equal(PresentationSettings.from_data(malformed), null, "schema-nineteen settings reject a nonboolean preference")
+
+func _test_music_transition_preference() -> void:
+	var data := PresentationSettings.new().to_data()
+	assert_equal(data["musicTransition"], PresentationSettings.MUSIC_RESTART_SONG, "new preferences restart the current song on music transitions")
+	for value: Variant in ["restart-song", "restart-playlist", "resume", "", "unknown", 1, true, null]:
+		data["musicTransition"] = value
+		var restored := PresentationSettings.from_data(data)
+		assert_true(restored != null and restored.music_transition == value if value is String and value in PresentationSettings.MUSIC_TRANSITIONS else restored == null, "the codec admits exactly the three music-transition modes")
+	data.erase("musicTransition")
+	assert_equal(PresentationSettings.from_data(data), null, "current settings require an explicit music-transition policy")
+	data["schemaVersion"] = 21
+	assert_equal(PresentationSettings.from_data(data).music_transition, PresentationSettings.MUSIC_RESTART_SONG, "older preferences inherit song restart without discarding other settings")
+
 
 func _test_music_system() -> void:
 	var application_media := ApplicationMediaCatalog.new(); var stock_media := ClassicMediaCatalog.new(null, application_media); var snow_asset := stock_media.tileset_by_id("landlook-10"); assert_true(application_media.is_valid() and [0, 3, 4, 5, 9, 10].all(func(landlook: int) -> bool: return stock_media.tileset_by_id("landlook-%d" % landlook) != null) and snow_asset.region_for(155).has_area() and application_media.image_texture(snow_asset) == stock_media.image_texture(snow_asset), "the effective application fallback uses every exported stock landlook texture needed by exploration and active-landlook combat")

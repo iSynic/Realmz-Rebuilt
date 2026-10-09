@@ -666,6 +666,19 @@ autowrap_mode = 2
 layout_mode = 2
 text = "Reduce Classic modal sounds"
 autowrap_mode = 2
+[node name="MusicTransitionRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MusicTransitionRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "On music transitions"
+autowrap_mode = 2
+[node name="MusicTransition" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content/MusicTransitionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+text = "Restart current song"
+tooltip_text = "When returning to music after another context: restart the current song, restart its playlist, or resume at the exact position. Continue keeps music playing."
 [node name="OpenMusicPlaylist" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/AudioSettingsScroll/AudioSettingsPanel/Content"]
 layout_mode = 2
 text = "Open Music Playlist…"

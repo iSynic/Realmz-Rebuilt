@@ -22,6 +22,7 @@ signal master_volume_changed(value: float)
 signal sound_volume_changed(value: float)
 signal music_volume_changed(value: float)
 signal music_enabled_changed(enabled: bool)
+signal music_transition_changed(value: String)
 signal music_playlist_mode_changed(playlist_id: int, mode: int)
 signal text_scale_changed(value: float)
 signal typography_mode_changed(value: String)
@@ -625,6 +626,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"sound_volume": sound_volume_changed.emit(float(value))
 		&"music_volume": music_volume_changed.emit(float(value))
 		&"music_enabled": music_enabled_changed.emit(bool(value))
+		&"music_transition": music_transition_changed.emit(String(value))
 		&"text_scale": text_scale_changed.emit(float(value))
 		&"typography_mode": typography_mode_changed.emit(String(value))
 		&"ui_scale_mode": ui_scale_mode_changed.emit(String(value))
@@ -663,9 +665,8 @@ func _on_character_selected(character_id: String) -> void:
 
 func _on_character_activated(character_id: String) -> void:
 	_on_character_selected(character_id)
-	if _navigator.current_screen() == &"inventory":
-		return
-	_navigator.open_screen(&"character")
+	if _navigator.current_screen() != &"inventory":
+		_navigator.open_screen(&"character")
 
 
 func _on_combat_auto_changed(character_id: String, enabled: bool) -> void:

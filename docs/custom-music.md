@@ -4,7 +4,13 @@ Open Music from Settings or Preferences to import MP3, Ogg Vorbis, WAV, FLAC, AI
 
 Create a playlist, add tracks, reorder them, and choose ordered or shuffled playback with Repeat All, Repeat One, or no repeat. Assign it to Outdoor, Battle, Shop, or another context globally or for the current scenario. Inherit uses the global choice; Original music explicitly uses the authored or stock track. Apply saves playlists and assignments; Done saves and closes; Cancel discards that draft. Imports, removals, volume, and Play/Continue/Off apply immediately.
 
-Continue leaves the current queue advancing. Off suspends it. Returning to a context resumes its queue during this application session. Preview temporarily suspends normal music; Stop preview restores it. Repair cache reimports a track's managed original. Import errors and unavailable-track diagnostics remain in the Library panel.
+In Preferences → Audio & Pacing, choose what happens when you return to music after a transition:
+
+- **Restart current song** is the default. Keep your place in the playlist and replay that song from the beginning.
+- **Restart playlist** returns to the first track in its current order. Shuffled playlists keep their shuffled order.
+- **Resume where it stopped** restores the current song at the exact playback position.
+
+Each scenario and music context retains its own queue during this application session. Continue keeps the current music playing through transitions; Off suspends it. A finished playlist with no repeat stays silent unless Restart playlist is selected. Preview temporarily suspends normal music; Stop preview restores its exact position. Changing the transition preference does not interrupt the song already playing. Repair cache reimports a track's managed original. Import errors and unavailable-track diagnostics remain in the Library panel.
 
 Scenario-owned tracker music is prepared automatically through the same bundled decoder when its original music is selected. The first preparation runs in the background; later playback reuses a hash-validated cache stored separately from the player library. Scenario tracks retain their authored Custom slot, title, and looping. Preparation does not modify packages, saves, or playlist assignments, and completion respects the currently selected music context, Off, Continue, and preview. Unavailable or unsupported scenario music reports a diagnostic in Music.
 

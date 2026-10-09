@@ -64,6 +64,11 @@ func bind() -> void:
 	_shell.sound_volume_changed.connect(_on_sound_volume_changed)
 	_shell.music_volume_changed.connect(_on_music_volume_changed)
 	_shell.music_enabled_changed.connect(_on_music_enabled_changed)
+	_shell.music_transition_changed.connect(func(value: String) -> void:
+		if value in PresentationSettings.MUSIC_TRANSITIONS:
+			_settings.music_transition = value
+			_save()
+	)
 	_shell.music_playlist_mode_changed.connect(_on_music_playlist_mode_changed)
 	_shell.text_scale_changed.connect(_on_text_scale_changed)
 	_shell.typography_mode_changed.connect(_on_typography_mode_changed)

@@ -41,6 +41,14 @@ func count() -> int:
 	return _tracks.size()
 
 
+func enter_context(transition: String) -> void:
+	if transition == PresentationSettings.MUSIC_RESTART_PLAYLIST:
+		_cursor = 0
+		exhausted = false
+	if transition != PresentationSettings.MUSIC_RESUME:
+		position = 0.0
+
+
 func retry_unavailable(changed_tracks: Array[String]) -> bool:
 	if not changed_tracks.any(func(id: String) -> bool: return id in _tracks):
 		return false
