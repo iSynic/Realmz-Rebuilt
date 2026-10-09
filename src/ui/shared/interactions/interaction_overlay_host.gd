@@ -141,6 +141,7 @@ func show_encounter_dock(workspace: Control) -> void:
 		return
 	_encounter_dock_panel = _encounter_dock_scene.instantiate() as PanelContainer
 	_encounter_dock_panel.z_index = _presenter.z_index + 1
+	_encounter_dock_panel.minimum_size_changed.connect(_apply_encounter_dock_layout, CONNECT_DEFERRED)
 	_presenter.get_parent().add_child(_encounter_dock_panel)
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -219,14 +220,16 @@ func _apply_side_workspace_layout() -> void:
 func _apply_encounter_dock_layout() -> void:
 	if _encounter_dock_panel == null:
 		return
-	var compact := _application_rect.size.x <= 800.0
+	var profile := UiSizing.profile_for(_presenter)
 	var strip := _encounter_dock_panel.find_child("EncounterCommandStrip", true, false) as GridContainer
 	if strip != null:
-		strip.columns = 3 if compact else 6
-	var required_height := _encounter_dock_panel.get_combined_minimum_size().y
-	var dock_height := clampf(required_height, 58.0, minf(172.0 if compact else 84.0, _stage_rect.size.y * (0.65 if compact else 0.22)))
-	_encounter_dock_panel.position = Vector2(_textbox_rect.position.x, maxf(_stage_rect.position.y, _textbox_rect.position.y - dock_height - 6.0))
-	_encounter_dock_panel.size = Vector2(_textbox_rect.size.x, dock_height)
+		var single_row_width := _encounter_dock_panel.get_combined_minimum_size().x - strip.get_combined_minimum_size().x + 5.0 * strip.get_theme_constant(&"h_separation")
+		for command: Control in strip.get_children():
+			single_row_width += command.get_combined_minimum_size().x
+		strip.columns = 6 if single_row_width <= _textbox_rect.size.x else 3
+	_encounter_dock_panel.size = Vector2(_textbox_rect.size.x, 0.0)
+	var gap := 6.0 * (profile.ui_scale if profile != null else 1.0)
+	_encounter_dock_panel.position = Vector2(_textbox_rect.position.x, maxf(_stage_rect.position.y, _textbox_rect.position.y - _encounter_dock_panel.size.y - gap))
 
 
 func _apply_application_workspace_layout() -> void:

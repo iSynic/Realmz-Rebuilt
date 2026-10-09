@@ -5,6 +5,42 @@ const FIXTURE_PATH := "res://tests/fixtures/packages/realmz2-synthetic-fixture.r
 func instantiate_ui_scene(path: String) -> Node: return (load(path) as PackedScene).instantiate()
 
 
+func _test_encounter_dock_scaling() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var host := Control.new()
+	tree.root.add_child(host)
+	var presenter := instantiate_ui_scene("res://src/ui/shared/interactions/interaction_presenter.tscn") as InteractionPresenter
+	host.add_child(presenter)
+	var request := ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION)
+	var dock_id := 0
+	for sample: Array in [[Vector2(1280, 720), "auto", 1.0], [Vector2(2560, 1440), "auto", 1.0], [Vector2(3840, 2160), "auto", 1.0], [Vector2(800, 600), "auto", 1.5], [Vector2(2560, 1440), "300", 1.5], [Vector2(1280, 720), "auto", 1.0]]:
+		host.size = sample[0]
+		var settings := PresentationSettings.new()
+		settings.text_scale = sample[2]
+		var profile := UiLayoutProfile.for_viewport(host.size, sample[1], PresentationSettings.DISPLAY_RESPONSIVE, settings.text_scale)
+		host.theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, settings, profile.ui_scale)
+		UiSizing.apply(host, profile)
+		var compact := profile.id == UiLayoutProfile.COMPACT
+		var textbox := Rect2(10.0 * profile.ui_scale if compact else host.size.x * 0.25, host.size.y * 0.75, host.size.x * (0.38 if compact else 0.5), host.size.y * 0.25)
+		presenter.set_classic_regions(Rect2(8, 40, host.size.x - 368, textbox.position.y - 40), textbox, Rect2(0, textbox.position.y, host.size.x, textbox.size.y))
+		if dock_id == 0:
+			presenter.present(request)
+			UiSizing.apply(host, profile)
+		for frame: int in 4:
+			await tree.process_frame
+		var dock := host.find_child("EncounterCommandDock", true, false) as Control
+		if dock_id == 0: dock_id = dock.get_instance_id()
+		assert_equal(dock.get_instance_id(), dock_id, "live scaling retains the encounter dock and its active request")
+		assert_true(dock.get_rect().end.y <= textbox.position.y - 5.0 * profile.ui_scale and dock.position.y >= 40.0, "the settled encounter dock remains completely above narration at %s" % str(sample))
+		assert_true(is_equal_approx(dock.position.x, textbox.position.x) and is_equal_approx(dock.size.x, textbox.size.x), "the encounter dock stays aligned with the narrative well")
+		var strip := dock.find_child("EncounterCommandStrip", true, false) as GridContainer
+		assert_equal(strip.columns, 3 if host.size.x == 800.0 else 6, "encounter commands wrap only where the narrative well is too narrow for one row")
+		for command: Control in strip.get_children():
+			assert_true(dock.get_global_rect().encloses(command.get_global_rect()), "every encounter command stays inside the scaled dock")
+	host.free()
+	await tree.process_frame
+
+
 func _fixture_request(id: String, kind: StringName, overrides: Dictionary = {}) -> InteractionRequest:
 	var payload := ClassicUiFixtureGallery.payload_for(kind)
 	payload.merge(overrides, true)
