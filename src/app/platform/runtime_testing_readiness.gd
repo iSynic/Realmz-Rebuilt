@@ -9,6 +9,7 @@ static func fields(application: RealmzApplication, session: GameSessionControlle
 		"explorationInput": application.accepts_exploration_input(),
 		"routeInput": application.accepts_route_input(),
 		"combatPlayback": presentation.is_combat_playback_active(),
+		"combatResolution": session.is_busy(),
 		"hostInteraction": lifecycle.has_active_interaction(),
 		"committedRevision": session.view().revision,
 		"presentedRevision": presentation_state["presentedRevision"],

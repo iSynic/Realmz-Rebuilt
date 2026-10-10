@@ -7,6 +7,7 @@ enum EventKind {
 	PASSIVE,
 	MOVEMENT,
 	HEADING,
+	STATIONARY,
 }
 
 
@@ -20,6 +21,7 @@ static func can_reuse(previous: GameView, context: SessionWorkflowContext, pendi
 		return false
 	var moved_count := 0
 	var heading_change_count := 0
+	var stationary_count := 0
 	for event: DomainEvent in events:
 		match _event_kind(previous, context, current_map, event):
 			EventKind.MOVEMENT:
@@ -30,7 +32,9 @@ static func can_reuse(previous: GameView, context: SessionWorkflowContext, pendi
 					return false
 			EventKind.INVALID:
 				return false
-	return moved_count == 1 or moved_count == 0 and heading_change_count == 1 and previous.party_coordinate == context.state.party.coordinate
+			EventKind.STATIONARY:
+				stationary_count += 1
+	return moved_count == 1 or moved_count == 0 and (heading_change_count == 1 or stationary_count == 1) and previous.party_coordinate == context.state.party.coordinate
 
 
 static func _event_kind(previous: GameView, context: SessionWorkflowContext, current_map: MapDefinition, event: DomainEvent) -> EventKind:
@@ -41,8 +45,12 @@ static func _event_kind(previous: GameView, context: SessionWorkflowContext, cur
 			return EventKind.HEADING if _heading_event_is_valid(context, current_map, event) else EventKind.INVALID
 		&"time_advanced":
 			return EventKind.PASSIVE
+		&"movement_blocked":
+			return EventKind.STATIONARY
+		&"search_mode_changed":
+			return EventKind.STATIONARY if String(event.payload.get("source", "")) == "classic" and bool(event.payload.get("searching", false)) == context.state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING) else EventKind.INVALID
 		&"sound_requested":
-			return EventKind.PASSIVE if String(event.payload.get("source", "")) == "classic-map-movement" and not bool(event.payload.get("waitForCompletion", true)) and not event.payload.has("stopExisting") else EventKind.INVALID
+			return EventKind.PASSIVE if String(event.payload.get("source", "")) in ["classic-map-movement", "classic-search-mode", "classic-boat-collision"] and not bool(event.payload.get("waitForCompletion", true)) and not event.payload.has("stopExisting") else EventKind.INVALID
 		&"fatigue_changed":
 			return EventKind.PASSIVE if String(event.payload.get("source", "")) == "classic" and String(event.payload.get("reason", "")) == "hour-boundary" and int(event.payload.get("current", -1)) == context.state.party.fatigue else EventKind.INVALID
 		&"spell_points_recovered", &"health_recovered":
@@ -61,12 +69,19 @@ static func _event_kind(previous: GameView, context: SessionWorkflowContext, cur
 		&"rest_ration_consumed":
 			var valid := String(event.payload.get("source", "")) == "classic-half-day" and not String(event.payload.get("characterId", "")).is_empty() and not String(event.payload.get("instanceId", "")).is_empty()
 			return EventKind.PASSIVE if valid else EventKind.INVALID
-		&"random_encounter_checked":
+		&"random_encounter_checked", &"random_region_triggered":
+			# These checks publish no mutation; a fired door or battle rejects reuse separately.
+			return EventKind.PASSIVE
+		&"random_door_checked":
 			return EventKind.PASSIVE if not bool(event.payload.get("triggered", false)) else EventKind.INVALID
-		&"movement_secret_search_completed":
+		&"timed_encounter_advanced":
+			return EventKind.PASSIVE if String(event.payload.get("source", "")) == "classic-midnight" else EventKind.INVALID
+		&"timed_encounter_checked":
+			return EventKind.PASSIVE if not bool(event.payload.get("eligible", true)) else EventKind.INVALID
+		&"movement_secret_search_completed", &"search_completed":
 			var coordinate := Vector2i(int(event.payload.get("x", -100000)), int(event.payload.get("y", -100000)))
 			var valid := String(event.payload.get("mapId", "")) == context.state.party.map_id and coordinate == context.state.party.coordinate and (event.payload.get("discoveredSecrets", []) as Array).is_empty()
-			return EventKind.PASSIVE if valid else EventKind.INVALID
+			return (EventKind.STATIONARY if event.kind == &"search_completed" else EventKind.PASSIVE) if valid else EventKind.INVALID
 		_:
 			return EventKind.INVALID
 

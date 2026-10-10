@@ -108,6 +108,9 @@ func cancel_creation(active_content: RealmzContent) -> void:
 
 
 func publish_campaign_character(active_content: RealmzContent, character_id: String) -> bool:
+	if (_session.is_busy() or _session.resolution_failed):
+		_shell.status.set_status("Combat resolution failed. Load a saved adventure or return to the main menu." if _session.resolution_failed else "Wait for combat resolution before publishing a character.", true)
+		return false
 	var character_name := _vault.publish_from_snapshot(_session.session().snapshot(), active_content, character_id)
 	if character_name.is_empty():
 		_shell.status.set_status("Vault publication failed • %s" % _vault.last_error(), true)

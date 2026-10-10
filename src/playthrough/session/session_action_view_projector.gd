@@ -88,7 +88,7 @@ static func _populate_exploration_actions(context: SessionWorkflowContext, resul
 		if member.items.any(func(item: ItemView) -> bool: return item.actions != null and item.actions.use.enabled):
 			field_item_available = true
 			break
-	var combat_item_available := battle_active and not context.rules.combat_flow.magic.character_item_spell_options(state, context.content, result.combat_view.active_actor_id).is_empty()
+	var combat_item_available := not blocked_by_interaction and battle_active and not context.rules.combat_flow.magic.character_item_spell_options(state, context.content, result.combat_view.active_actor_id).is_empty()
 	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "")
 	var search_reason := ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "Search is replaced by scroll scribing while camped." if state.party_camping else ""
 	result.set_action_availability(&"search", search_reason.is_empty(), search_reason)
@@ -122,7 +122,7 @@ static func _populate_magic_actions(context: SessionWorkflowContext, result: Gam
 				field_spell_reason = spell.field_cast.reason
 		if field_spell_available:
 			break
-	var combat_spell_available := battle_active and not context.rules.combat_flow.magic.selection().character_spell_options(context.state, context.content, result.combat_view.active_actor_id).is_empty()
+	var combat_spell_available := not blocked_by_interaction and battle_active and not context.rules.combat_flow.magic.selection().character_spell_options(context.state, context.content, result.combat_view.active_actor_id).is_empty()
 	var cast_enabled := not blocked_by_interaction and (combat_spell_available or not battle_active and field_spell_available)
 	var cast_reason := ordinary_reason
 	if cast_reason.is_empty() and battle_active:
@@ -275,6 +275,8 @@ static func _populate_scroll_actions(context: SessionWorkflowContext, member_vie
 
 
 static func _populate_fast_spell_actions(context: SessionWorkflowContext, member_view: CharacterView, character: CharacterState, battle_active: bool) -> void:
+	var combat_options: Array[CombatSpellOptionView] = []
+	var combat_options_prepared := false
 	for fast_spell: FastSpellBindingView in member_view.fast_spells:
 		if fast_spell.spell_id.is_empty():
 			continue
@@ -283,8 +285,11 @@ static func _populate_fast_spell_actions(context: SessionWorkflowContext, member
 			fast_spell.activation = ActionAvailabilityView.new(&"cast_spell", false, "The stored spell is unavailable to this character.")
 			continue
 		if battle_active:
+			if not combat_options_prepared:
+				combat_options = context.rules.combat_flow.magic.selection().character_spell_options(context.state, context.content, character.id)
+				combat_options_prepared = true
 			var option_available := false
-			for option: CombatSpellOptionView in context.rules.combat_flow.magic.selection().character_spell_options(context.state, context.content, character.id):
+			for option: CombatSpellOptionView in combat_options:
 				if option.spell_id == bound_spell.id and option.power == fast_spell.power:
 					option_available = true
 					break
@@ -330,9 +335,8 @@ static func populate_spell_affordability(context: SessionWorkflowContext, result
 				member_view.fast_spells[fast_index] = replacement
 
 
-static func populate_inventory_item_actions(context: SessionWorkflowContext, result: GameView) -> void:
+static func populate_inventory_item_actions(context: SessionWorkflowContext, result: GameView, character_filter: Dictionary = {}) -> void:
 	var state := context.state
-	var content := context.content
 	var rules := context.rules
 	var context_reason := ""
 	var battle_active := result.combat_view != null and result.combat_view.outcome == &"active"
@@ -342,22 +346,25 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 	elif result.party_setup_available:
 		context_reason = "Begin the adventure before changing carried equipment."
 	var party := state.party.characters()
-	var definitions := content.items.definitions()
+	var definitions := context.content.items.definitions()
 	for member_view: CharacterView in result.party_members:
+		if not character_filter.is_empty() and not character_filter.has(member_view.id): continue
 		var character := state.party.character_by_id(member_view.id)
 		if character == null:
 			continue
-		var race := content.characters.race_by_id(character.race_id)
-		var caste := content.characters.caste_by_id(character.caste_id)
+		var race := context.content.characters.race_by_id(character.race_id)
+		var caste := context.content.characters.caste_by_id(character.caste_id)
 		var identify_cast := _inventory_identify_cast(context, character)
 		var combat_item_options: Array[CombatItemOptionView] = []
 		var combat_scroll_options: Array[CombatSpellOptionView] = []
+		var combat_item_reason := ""
 		if battle_active and character.id == active_actor_id:
-			combat_item_options = context.rules.combat_flow.magic.character_item_spell_options(state, content, active_actor_id)
-			combat_scroll_options = context.rules.combat_flow.magic.selection().character_scroll_options(state, content, active_actor_id)
+			combat_item_options = context.rules.combat_flow.magic.character_item_spell_options(state, context.content, active_actor_id)
+			combat_scroll_options = context.rules.combat_flow.magic.selection().character_scroll_options(state, context.content, active_actor_id)
+			if combat_item_options.is_empty(): combat_item_reason = context.rules.combat_flow.magic.character_item_spell_unavailable_reason(state, context.content, active_actor_id)
 		for item_view: ItemView in member_view.items:
 			var instance := ProjectionPolicy.item_instance(character, item_view.instance_id)
-			var definition: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
+			var definition: ItemDefinition = null if instance == null else context.content.items.item_by_id(instance.definition_id)
 			var actions := InventoryItemActionsView.new()
 			item_view.actions = actions
 			if result.pending_interaction != null and result.pending_interaction.kind == InteractionRequest.SHOP:
@@ -376,7 +383,7 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			var join_probe := rules.inventory.classic_join_probe(character, instance, definition)
 			var use_probe := FieldItemWorkflow.field_item_use_probe(context, character, instance, definition)
 			if battle_active:
-				var combat_probes := _inventory_combat_probes(context, character, instance, definition, item_view.instance_id, active_actor_id, combat_item_options, combat_scroll_options, equip_probe, unequip_probe, drop_probe)
+				var combat_probes := _inventory_combat_probes(context, character, instance, definition, item_view.instance_id, active_actor_id, combat_item_options, combat_scroll_options, equip_probe, unequip_probe, drop_probe, combat_item_reason)
 				equip_probe = combat_probes["equip"]
 				unequip_probe = combat_probes["unequip"]
 				drop_probe = combat_probes["drop"]
@@ -390,7 +397,7 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			actions.trade = trade["availability"]
 
 
-static func _inventory_combat_probes(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, item_instance_id: String, active_actor_id: String, combat_item_options: Array[CombatItemOptionView], combat_scroll_options: Array[CombatSpellOptionView], equip_probe: InventoryActionProbe, unequip_probe: InventoryActionProbe, drop_probe: InventoryActionProbe) -> Dictionary:
+static func _inventory_combat_probes(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, item_instance_id: String, active_actor_id: String, combat_item_options: Array[CombatItemOptionView], combat_scroll_options: Array[CombatSpellOptionView], equip_probe: InventoryActionProbe, unequip_probe: InventoryActionProbe, drop_probe: InventoryActionProbe, combat_item_reason: String) -> Dictionary:
 	var state := context.state
 	var content := context.content
 	var result: Dictionary = {}
@@ -400,7 +407,7 @@ static func _inventory_combat_probes(context: SessionWorkflowContext, character:
 		result["drop"] = InventoryActionProbe.block("Only the active character may drop items in combat.")
 		result["use"] = InventoryActionProbe.block("Only the active character may use items in combat.")
 		return result
-	var use_reason := context.rules.combat_flow.magic.character_item_spell_unavailable_reason(state, content, active_actor_id)
+	var use_reason := combat_item_reason
 	var use_enabled := false
 	for option: CombatItemOptionView in combat_item_options:
 		if option.item_instance_id == item_instance_id:

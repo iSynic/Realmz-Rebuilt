@@ -8,10 +8,11 @@ const HARMFUL_CONDITIONS: Array[int] = [ConditionRules.RUNS_AWAY, ConditionRules
 func choose_monster_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> Dictionary:
 	if monster.conditions.is_active(ConditionRules.RUNS_AWAY):
 		return {"action": &"retreat"}
+	var decision := CombatDecisionContext.new()
 	var adjacent := not _hostile_adjacent_ids_for_monster(state, monster).is_empty()
 	var choices: Array[Dictionary] = []
-	_append_positive_choice(choices, _advance_plan(state, content, monster, definition, adjacent))
-	var spell_plan := best_monster_spell_plan(state, content, monster, definition)
+	_append_positive_choice(choices, _advance_plan(state, content, monster, definition, adjacent, decision))
+	var spell_plan := best_monster_spell_plan(state, content, monster, definition, decision)
 	var cast_score := int(spell_plan.get("score", -1)) + definition.cast_percent
 	if not spell_plan.is_empty() and cast_score > 0:
 		choices.append({"action": &"cast", "score": cast_score, "spellPlan": spell_plan})
@@ -23,7 +24,7 @@ func choose_monster_plan(state: GameState, content: RealmzContent, monster: Mons
 	return selected
 
 
-func _advance_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, adjacent: bool) -> Dictionary:
+func _advance_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, adjacent: bool, decision: CombatDecisionContext) -> Dictionary:
 	var actions: CombatMonsterActions = _context.automation().monster_actions()
 	if adjacent and actions.attack_limit(monster, definition) > 0:
 		return {"action": &"advance", "score": 560}
@@ -42,26 +43,28 @@ func _advance_plan(state: GameState, content: RealmzContent, monster: MonsterSta
 	var pursuit_goals := CombatPursuitGoals.new(_context)
 	var profiles := pursuit_goals.monster_profiles(state, content, monster, definition)
 	for target_id: String in targets:
-		var anchors := pursuit_goals.firing_anchors(state, content, monster.id, target_id, profiles)
+		var anchors := pursuit_goals.firing_anchors(state, content, monster.id, target_id, profiles, decision)
 		if actions.attack_limit(monster, definition) > 0 and anchors.has(field.actors.actor_position(monster.id)):
 			anchors.clear()
 		var step := _context.battlefield.probe_path_step_toward_actors(field, terrain, monster.id, [target_id], movement, [], [], anchors, actions.attack_limit(monster, definition) > 0)
 		if step.allowed:
-			return {"action": &"advance", "score": 100, "targetId": target_id}
+			return {"action": &"advance", "score": 100, "targetId": target_id, "pursuitPlan": CombatPursuitPlan.new(field, monster.id, target_id, movement, actions.attack_limit(monster, definition) > 0, step)}
 	return {}
 
 
-func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition) -> Dictionary:
+func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, decision: CombatDecisionContext = null) -> Dictionary:
 	if state.monster_spellcasting_blocked or state.combat.actor_statuses.was_attacked(monster.id) or definition.magic_attack_count <= 0:
 		return {}
 	for condition: int in [ConditionRules.STUPID, ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS]:
 		if monster.conditions.is_active(condition):
 			return {}
 	var best: Dictionary = {}
-	var actors_by_cell := _actors_by_cell(state.combat.battlefield)
-	var area_placement_cache: Dictionary = {}
-	var area_center_cache: Dictionary = {}
+	if decision == null: decision = CombatDecisionContext.new()
+	var actors_by_cell := decision.occupied(state.combat.battlefield)
+	var area_placement_cache := decision.placements()
+	var area_center_cache := decision.area_centers
 	var scored_spells: Dictionary = {}
+	var protection_threats := decision.threats(state, content, monster.traitor)
 	for slot: int in 10:
 		var spell := content.magic.spell_by_id(definition.spell_id_at(slot))
 		if spell == null or not _context.automation().monster_spell_unavailable_reason(spell).is_empty():
@@ -70,6 +73,7 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 		# always retained the earliest slot; repetition must not multiply work.
 		if scored_spells.has(spell.id): continue
 		scored_spells[spell.id] = true
+		if (spell.target_type in [5, 9] or spell.cannot == 4) and not protection_threats.supports(ClassicSpellConditionRules.combat_condition_effect_index(spell)): continue
 		if spell.target_type != 12 and not _auto_group_target_is_safe(spell):
 			continue
 		if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not state.combat.spell_runtime.can_queue_persistent_field():
@@ -234,6 +238,7 @@ func _monster_group_spell_power_plan(state: GameState, content: RealmzContent, m
 	var expected := expected_spell_effect(spell, power)
 	if condition_index >= 0:
 		expected = maxi(1, _maximum_condition_duration(spell, power))
+		if is_beneficial and not is_harmful and CombatProtectionThreats.is_ward(condition_index): expected = mini(3, expected)
 	var score := 340 + (effective_target_balance if spell.target_type == 12 else effective_target_count) * maxi(1, expected) * 5 - spell.cost * power * 3
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": target_ids, "score": score}
 
@@ -335,7 +340,8 @@ func _monster_target_score(state: GameState, target_id: String, spell: SpellDefi
 		return _condition_cure_score(state, target_id, cure_index)
 	if effect_index >= 0:
 		if spell.target_type == 5 or spell.cannot == 4:
-			return 520 + _maximum_condition_duration(spell, power) * 8
+			var duration := _maximum_condition_duration(spell, power)
+			return 520 + (mini(3, duration) if CombatProtectionThreats.is_ward(effect_index) else duration) * 8
 		return 420 + expected * 5 + _lethal_bonus(state, target_id, expected) + _maximum_condition_duration(spell, power) * 4
 	if healing:
 		var missing := _target_missing_health(state, target_id)

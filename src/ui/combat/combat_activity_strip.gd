@@ -2,7 +2,10 @@
 class_name CombatActivityStrip
 extends HBoxContainer
 
-const MAX_LINES := 80
+const MAX_LINES := 2000
+const VISIBLE_LINES := 80
+
+signal review_requested
 
 @onready var _actor_icon: TextureRect = %ActorIcon
 @onready var _actor_name: Label = %ActorName
@@ -19,6 +22,14 @@ var _lines: Array[String] = []
 var _last_frame_id := 0
 var _actor_id := ""
 var _target_id := ""
+
+
+func _ready() -> void:
+	%ReviewLog.pressed.connect(func() -> void: review_requested.emit())
+
+
+func has_battle() -> bool:
+	return not _battle_id.is_empty()
 
 
 func begin_battle(battle_id: String) -> void:
@@ -59,24 +70,29 @@ func set_status(text: String) -> void:
 
 
 func show_frame(frame: CombatPlaybackFrame) -> void:
-	if frame == null:
+	if frame == null or frame.get_instance_id() == _last_frame_id:
 		return
 	if not frame.actor_id.is_empty():
 		_actor_id = frame.actor_id
 	if frame.kind == &"actor_cue":
 		_target_id = ""
+	elif frame.kind == &"group_result":
+		_target_id = ""
 	elif not frame.target_id.is_empty() and frame.target_id != _actor_id:
 		_target_id = frame.target_id
 	_render_previews(frame)
-	if frame.get_instance_id() == _last_frame_id:
-		return
 	_last_frame_id = frame.get_instance_id()
 	var line := _frame_line(frame)
-	if not line.is_empty():
-		_lines.append(line)
-		if _lines.size() > MAX_LINES:
-			_lines.pop_front()
-		_render_log()
+	var entries: Array[String] = []
+	if frame.kind == &"group_result":
+		for child: CombatPlaybackFrame in frame.group_frames:
+			entries.append(_frame_line(child))
+	elif not line.is_empty():
+		entries.append(line)
+	for entry: String in entries:
+		_lines.append(entry)
+		if _lines.size() > MAX_LINES: _lines.pop_front()
+	if not entries.is_empty(): _render_log()
 
 
 func lines() -> Array[String]:
@@ -139,5 +155,5 @@ func _bind_preview(combatant_id: String, icon: TextureRect, name_label: Label, v
 
 
 func _render_log() -> void:
-	_log.text = "\n".join(_lines)
+	_log.text = "\n".join(_lines.slice(maxi(0, _lines.size() - VISIBLE_LINES)))
 	_log.scroll_to_line(maxi(0, _log.get_line_count() - 1))

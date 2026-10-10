@@ -729,8 +729,8 @@ text = "100% is the designed combat pace. This control applies consistently to e
 autowrap_mode = 2
 [node name="HurrySpellResolution" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content"]
 layout_mode = 2
-text = "Hurry Spell Resolution"
-tooltip_text = "Show one shared effect for eligible area spells while preserving each target's result."
+text = "Condense Multi-Target Playback"
+tooltip_text = "Show one shared animation for eligible multi-target spells and attacks. Every target result remains in the combat log."
 autowrap_mode = 2
 [node name="MovementSpeedRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2

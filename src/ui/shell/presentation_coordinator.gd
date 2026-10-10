@@ -8,6 +8,7 @@ signal spatial_visibility_changed
 
 
 var _session_controller: GameSessionController
+var _host_interaction: InteractionRequest
 var _map_presenter: ClassicMapPresenter
 var _battlefield_presenter: ClassicBattlefieldPresenter
 var _dungeon_presenter: DungeonMap3DPresenter
@@ -27,6 +28,9 @@ var drawn_revision: int = -1
 var _draw_ack_generation: int = 0
 var _pending_route: StringName = &""
 var _combat_inventory_targeting_return := false
+var _playback_draw := CombatPlaybackDrawGate.new()
+var combat_log_open: bool:
+	get: return _interaction_presenter != null and _interaction_presenter.combat_log.is_open()
 var runtime_observation: Dictionary:
 	get:
 		var frame := _combat_playback.current_frame() if is_combat_playback_active() else null
@@ -54,7 +58,6 @@ func bind(
 	assert(dungeon_presenter != null, "Presentation requires an explicit topology-derived dungeon presenter")
 	assert(interaction_presenter != null, "Presentation requires an explicit interaction presenter")
 	assert(shell_presenter != null, "Presentation requires an explicit Classic shell presenter")
-	assert(audio_presenter != null, "Presentation requires an explicit audio presenter")
 	assert(media_controller != null, "Presentation requires an explicit media controller")
 	_session_controller = session_controller
 	_map_presenter = map_presenter
@@ -70,8 +73,10 @@ func bind(
 	_combat_playback.sound_requested.connect(_on_combat_playback_sound_requested)
 	_combat_playback.playback_finished.connect(_on_combat_playback_finished)
 	_session_controller.step_committed.connect(_on_step_committed)
+	_interaction_presenter.combat_mount_completed.connect(func() -> void: _queue_draw_ack(_presented_view.revision))
 	_shell_presenter.play_stage_visibility_changed.connect(_set_play_stage_visible)
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
+	_shell_presenter.combat_log_requested.connect(_interaction_presenter.combat_log.open)
 	_interaction_presenter.combat.spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 		_interaction_presenter.combat.set_spellbook_open(true)
 		_shell_presenter.roster.present_combat_spellbook(actor_id, options)
@@ -84,9 +89,7 @@ func bind(
 	)
 	_shell_presenter.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: _interaction_presenter.combat.cast_spell(option))
 	_shell_presenter.combat_spellbook_back_requested.connect(func() -> void: _interaction_presenter.combat.close_spellbook())
-	_interaction_presenter.combat.bandage_selection_changed.connect(func(target_ids: Array[String]) -> void:
-		_shell_presenter.roster.set_combat_bandage_targets(target_ids)
-	)
+	_interaction_presenter.combat.bandage_selection_changed.connect(_shell_presenter.roster.set_combat_bandage_targets)
 	_shell_presenter.combat_bandage_target_selected.connect(func(character_id: String) -> void:
 		if _interaction_presenter.combat.bandage != null:
 			_interaction_presenter.combat.bandage.select(character_id)
@@ -104,7 +107,9 @@ func _process(delta: float) -> void:
 	if _combat_playback == null or not _combat_playback.is_active():
 		set_process(false)
 		return
-	_combat_playback.advance(delta, _audio_presenter.is_blocking())
+	if _interaction_presenter.combat_log.is_open():
+		return
+	_playback_draw.advance(_combat_playback, delta, _audio_presenter.is_blocking(), get_tree())
 
 
 func _on_step_committed(step: SessionStep) -> void:
@@ -113,9 +118,12 @@ func _on_step_committed(step: SessionStep) -> void:
 	if _combat_playback != null and _combat_playback.begin(_presented_view, step.events, game_view, _reduced_motion):
 		_deferred_step = step
 		_deferred_view = game_view
+		var previous_route := _active_route
 		_active_route = GameShellRoutePolicy.playback_base_route(_active_route, _combat_playback.base_view)
-		_present_view(_combat_playback.base_view, false)
-		_interaction_presenter.present_combat_playback_mask(_combat_playback.current_frame())
+		if _combat_playback.base_view != _presented_view or _active_route != previous_route:
+			_present_view(_combat_playback.base_view, false)
+		if _host_interaction == null:
+			_interaction_presenter.present_combat_playback_mask(_combat_playback.current_frame(), _combat_playback.base_view, _combat_playback.final_view, _media_controller.catalog())
 		set_process(true)
 		return
 	_present_committed_step(step, game_view, true)
@@ -132,7 +140,7 @@ func _present_committed_step(step: SessionStep, game_view: GameView, include_aud
 	var announce_round := _presented_view != null and _presented_view.combat_view != null and game_view.combat_view != null and game_view.combat_view.outcome == &"active" and game_view.combat_view.round_number > _presented_view.combat_view.round_number
 	_present_view(game_view, false, false)
 	_shell_presenter.status.present_step(step, game_view, _shell_presenter.picture_stage)
-	_shell_presenter.present_media_events(step.events, _media_controller.catalog())
+	_shell_presenter.present_media_events(step.events.filter(func(event: DomainEvent) -> bool: return event.kind != &"character_effect_requested"), _media_controller.catalog())
 	if include_audio:
 		_audio_presenter.present_events(step.events, _media_controller.catalog())
 	var passive_classic_text := ""
@@ -167,6 +175,7 @@ func _on_combat_playback_sound_requested(event: DomainEvent) -> void:
 
 func _on_combat_playback_finished() -> void:
 	set_process(false)
+	_playback_draw.reset()
 	_battlefield_presenter.clear_playback_frame()
 	var step := _deferred_step
 	var game_view := _deferred_view
@@ -305,7 +314,11 @@ func is_combat_playback_active() -> bool:
 
 
 func skip_combat_playback() -> bool:
-	return _combat_playback != null and _combat_playback.skip()
+	if _combat_playback == null or not _combat_playback.is_active():
+		return false
+	_audio_presenter.skip_effects()
+	_shell_presenter.roster.cancel_character_effects()
+	return _combat_playback.skip()
 
 
 func refresh() -> void:
@@ -324,7 +337,10 @@ func refresh_spatial_projection() -> void:
 
 
 func present_host_interaction(request: InteractionRequest) -> void:
+	_host_interaction = request
+	_interaction_presenter.combat_log.close()
 	_present_request(request, _session_controller.view(), request)
+	_shell_presenter.refresh_layout()
 
 
 func dismiss_host_interaction() -> void:
@@ -348,7 +364,8 @@ func _present_current_view(include_interaction: bool = true) -> void:
 		var frame := _combat_playback.current_frame()
 		if frame != null:
 			_battlefield_presenter.present_playback_frame(frame)
-		_interaction_presenter.present_combat_playback_mask(frame)
+		if _host_interaction == null:
+			_interaction_presenter.present_combat_playback_mask(frame, _combat_playback.base_view, _combat_playback.final_view, _media_controller.catalog())
 		return
 	var game_view := _session_controller.view()
 	_present_view(game_view, include_interaction)
@@ -359,7 +376,7 @@ func _present_view(game_view: GameView, include_interaction: bool = true, refres
 	if previous == null or previous.domain_revisions.exploration != game_view.domain_revisions.exploration:
 		_map_presenter.present(game_view)
 		_dungeon_presenter.present(game_view)
-	if previous == null or previous.domain_revisions.combat != game_view.domain_revisions.combat:
+	if previous == null or previous.domain_revisions.combat != game_view.domain_revisions.combat or previous.combat_view != game_view.combat_view:
 		_battlefield_presenter.present(game_view)
 	_shell_presenter.present(game_view)
 	_sync_dungeon_view(game_view)
@@ -382,7 +399,7 @@ func _acknowledge_after_draw(revision: int, generation: int) -> void:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	else:
 		await RenderingServer.frame_post_draw
-	if generation == _draw_ack_generation and _presented_view != null and _presented_view.revision == revision and not is_combat_playback_active():
+	if generation == _draw_ack_generation and _presented_view != null and _presented_view.revision == revision and not is_combat_playback_active() and not _interaction_presenter.combat_mount_pending:
 		drawn_revision = revision
 
 
@@ -422,6 +439,9 @@ static func should_show_battle_stage(active_route: StringName, game_view: GameVi
 
 
 func _present_interaction(game_view: GameView) -> void:
+	if _host_interaction != null:
+		_present_request(_host_interaction, game_view, _host_interaction)
+		return
 	if GameShellRoutePolicy.combat_inventory_owns_interaction(_active_route, game_view):
 		# Inventory owns the application surface while a battle is paused for
 		# browsing. Session updates still re-present the detached view, but must
@@ -430,6 +450,9 @@ func _present_interaction(game_view: GameView) -> void:
 		return
 	_present_request(game_view.active_interaction_request(), game_view, game_view.pending_interaction)
 func _present_request(request: InteractionRequest, game_view: GameView, character_selection_request: InteractionRequest) -> void:
+	if _host_interaction != null:
+		request = _host_interaction
+		character_selection_request = _host_interaction
 	var enables_spatial_cursor := request == null
 	if not enables_spatial_cursor:
 		_map_presenter.set_movement_cursor_enabled(false)

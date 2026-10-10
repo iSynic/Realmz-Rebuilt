@@ -52,8 +52,11 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.turns.active_actor_id() == actor_id and state.combat.turns.round_number == starting_round:
 		operation_count += 1
 		actor = state.party.character_by_id(actor_id)
-		var pursuit := plan_pursuit_step(state, content, actor, visited_anchors)
-		var choice: Dictionary = _ai_scoring.choose_party_action(state, content, actor, rng, pursuit)
+		var decision := CombatDecisionContext.new()
+		var choice := _ai_scoring.forced_party_action(state, actor, decision)
+		if choice.is_empty():
+			var pursuit := plan_pursuit_step(state, content, actor, visited_anchors, decision)
+			choice = _ai_scoring.choose_party_action(state, content, actor, rng, pursuit, decision)
 		var result := _execute_auto_choice(state, content, actor, choice, rng, visited_anchors)
 		if result == null or not result.ok:
 			_context.processing_auto = previous_processing
@@ -142,7 +145,7 @@ func auto_move_toward_target(state: GameState, content: RealmzContent, actor: Ch
 	return _context.reactions().move_character(state, content, actor.id, plan["coordinate"], rng)
 
 
-func plan_pursuit_step(state: GameState, content: RealmzContent, actor: CharacterState, visited_anchors: Array[Vector2i] = []) -> Dictionary:
+func plan_pursuit_step(state: GameState, content: RealmzContent, actor: CharacterState, visited_anchors: Array[Vector2i] = [], decision: CombatDecisionContext = null) -> Dictionary:
 	var combat := state.combat
 	if actor.movement <= 0:
 		return {}
@@ -160,7 +163,7 @@ func plan_pursuit_step(state: GameState, content: RealmzContent, actor: Characte
 		candidates.assign([target_id])
 	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
 	var pursuit_goals := CombatPursuitGoals.new(_context)
-	var profiles := pursuit_goals.character_profiles(state, content, actor)
+	var profiles := pursuit_goals.character_profiles(state, content, actor, decision)
 	var swappable_ids: Array[String] = []
 	if combat.battlefield.actors.actor_size(actor.id) == 0:
 		for character: CharacterState in state.party.characters():
@@ -171,7 +174,7 @@ func plan_pursuit_step(state: GameState, content: RealmzContent, actor: Characte
 				swappable_ids.append(monster.id)
 	for candidate_id: String in candidates:
 		if actor.attacks_remaining >= 2 and _context.battlefield.are_adjacent(combat.battlefield, actor.id, candidate_id): continue
-		var firing_anchors := pursuit_goals.firing_anchors(state, content, actor.id, candidate_id, profiles)
+		var firing_anchors := pursuit_goals.firing_anchors(state, content, actor.id, candidate_id, profiles, decision)
 		if firing_anchors.has(combat.battlefield.actors.actor_position(actor.id)): continue
 		var path_probe := _direct_auto_swap_probe(combat.battlefield, actor.id, candidate_id, actor.movement, swappable_ids, visited_anchors) if firing_anchors.is_empty() and actor.attacks_remaining >= 2 else null
 		if path_probe == null:

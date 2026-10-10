@@ -10,7 +10,7 @@ theme_override_constants/separation = 3
 size_flags_horizontal = 3
 
 [node name="TreasureRecipientDrop" type="MenuButton" parent="."]
-custom_minimum_size = Vector2(58, 46)
+custom_minimum_size = Vector2(58, 28)
 layout_mode = 2
 theme_type_variation = &"ClassicTreasureDropButton"
 flat = false

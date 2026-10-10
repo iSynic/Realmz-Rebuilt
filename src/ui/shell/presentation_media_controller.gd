@@ -30,6 +30,9 @@ func bind(
 	_battlefield_presenter = battlefield_presenter
 	_shell_presenter = shell_presenter
 	_audio_presenter = audio_presenter
+	_audio_presenter.character_effect_requested.connect(func(event: DomainEvent) -> void:
+		_shell_presenter.present_media_events([event], _catalog)
+	)
 
 
 func set_package_media(media: MediaSource) -> void:

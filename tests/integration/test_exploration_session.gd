@@ -50,6 +50,9 @@ func run() -> void:
 	for action_id: Variant in full_open_view.action_availability:
 		var action := StringName(action_id)
 		assert_equal([open_view.availability(action).enabled, open_view.availability(action).reason], [full_open_view.availability(action).enabled, full_open_view.availability(action).reason], "incremental and full projections agree on %s availability" % action)
+	_test_passive_random_region_projection(content)
+	_test_stationary_projection(content)
+	_test_navigation_discovery_reuse(content)
 	_test_boat_movement(content); _test_special_dungeon_bits(content); _test_location_notes(content)
 	var diagonal_session := GameSession.new(); assert_equal(diagonal_session.start(content, 1).state, SessionStep.State.COMPLETED, "a dedicated land-diagonal session starts")
 	_begin_fixture_adventure(diagonal_session, content)
@@ -314,6 +317,10 @@ func _test_location_notes(content: RealmzContent) -> void:
 	assert_true(_has_event(created, &"location_note_updated"), "location-note creation publishes one explicit domain event")
 	assert_equal(session.view().current_location_note.text, "The road narrows beside the old stones.", "the current-location view reflects the committed note")
 	assert_equal(session.view().location_notes.size(), 1, "the detached journal list exposes the committed note")
+	var retained_preview := session.view().location_notes[0].preview_map
+	session.submit_intent(ExplorationIntents.set_location_note("Edited road note."))
+	assert_true(session.view().location_notes[0].preview_map == retained_preview and session.view().location_notes[0].text == "Edited road note.", "editing note text retains unchanged detached terrain while refreshing the note")
+	session.submit_intent(ExplorationIntents.set_location_note("The road narrows beside the old stones."))
 	assert_equal([session.view().location_notes[0].record_ordinal, session.view().location_notes[0].level_type], [0, &"land"], "the first land note preserves Castle's separate source-record order")
 	assert_equal([session.rng_trace().size(), session._context.state.clock.total_minutes()], [rng_before, clock_before], "editing a location note consumes no gameplay RNG or time")
 	var unchanged := session.submit_intent(ExplorationIntents.set_location_note("The road narrows beside the old stones."))
@@ -699,9 +706,81 @@ func _classic_backout_content(source_content: RealmzContent, encounter_kind: Str
 	return RealmzContent.new("classic-backout", "0".repeat(64), "classic-backout-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new([program], []), messages, [trigger], simple, source_content.characters.race_definitions(), source_content.characters.caste_definitions(), [], [], [], [], [], [], complex)
 
 
-func _open_movement_content(source_content: RealmzContent, uses_los: bool = false) -> RealmzContent:
+func _test_navigation_discovery_reuse(source_content: RealmzContent) -> void:
+	var content := _open_movement_content(source_content)
+	var session := GameSession.new()
+	session.start(content, 1)
+	_begin_fixture_adventure(session, content)
+	var saved := save_round_trip(session.snapshot())
+	var topology := content.world.map_by_id("open").topology
+	var revealed: Array[Vector2i] = []
+	for cell: MapCell in topology.cells():
+		revealed.append(cell.coordinate)
+	for pass_index: int in 3:
+		var before := save_data(session.snapshot())
+		var rng_before := session.rng_trace()
+		for destination: Vector2i in revealed + [Vector2i(-1, 0)]:
+			var state := session._context.state
+			assert_equal(session.navigation.exploration_route(destination), topology.find_revealed_path(state.party.coordinate, destination, state.world, &"land", false, revealed), "retained discovery preserves exact route scoring across movement and replacement")
+		assert_equal([save_data(session.snapshot()), session.rng_trace()], [before, rng_before], "route previews preserve the complete snapshot and RNG trace")
+		if pass_index == 0:
+			session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
+		elif pass_index == 1:
+			session.restore(content, saved)
+
+
+func _test_stationary_projection(source_content: RealmzContent) -> void:
+	var content := _open_movement_content(source_content)
+	var session := GameSession.new()
+	session.start(content, 1)
+	_begin_fixture_adventure(session, content)
+	_restore_fixture_position(session, content, "open", Vector2i.ZERO)
+	for intent: PlayerIntent in [ExplorationIntents.move(Vector2i.LEFT), ExplorationIntents.toggle_search(), ExplorationIntents.search()]:
+		var previous := session.view()
+		var step := session.submit_intent(intent)
+		var incremental := session.view(step.events)
+		assert_true(incremental.map_view.presentation_delta != null and incremental.party_coordinate == previous.party_coordinate, "safe stationary exploration retains a zero-shift map delta")
+		var restored := GameSession.new()
+		restored.restore(content, save_round_trip(session.snapshot()))
+		var complete := restored.view()
+		assert_equal([incremental.party_summary.searching, incremental.party_summary.condition_values, incremental.party_fatigue, incremental.realmz_minute], [complete.party_summary.searching, complete.party_summary.condition_values, complete.party_fatigue, complete.realmz_minute], "stationary incremental party facts match a fresh restored projection")
+		assert_equal(incremental.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]), complete.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]), "stationary map facts match a fresh restored projection")
+		for action_id: Variant in complete.action_availability:
+			assert_equal([incremental.availability(action_id).enabled, incremental.availability(action_id).reason], [complete.availability(action_id).enabled, complete.availability(action_id).reason], "stationary command availability matches complete projection")
+
+
+func _test_passive_random_region_projection(source_content: RealmzContent) -> void:
+	var content := _open_movement_content(source_content, false, true)
+	var session := GameSession.new()
+	session.start(content, 1)
+	_begin_fixture_adventure(session, content)
+	session.view()
+	var fired := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
+	var fired_view := session.view(fired.events)
+	assert_true(_has_event(fired, &"random_door_triggered") and fired_view.map_view.presentation_delta == null, "a fired one-shot random door still rebuilds the authoritative view")
+	for direction: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT]:
+		var previous := session.view()
+		var checked := session.submit_intent(ExplorationIntents.move(direction))
+		var incremental := session.view(checked.events)
+		assert_true(_has_event(checked, &"random_region_triggered") and not _has_event(checked, &"random_door_triggered") and incremental.map_view.presentation_delta != null, "a triggered rectangle with consumed doors retains incremental movement")
+		assert_equal(incremental.domain_revisions.party_roster, previous.domain_revisions.party_roster, "passive random checks retain unchanged roster identity")
+		var restored := GameSession.new()
+		restored.restore(content, save_round_trip(session.snapshot()))
+		var complete := restored.view()
+		assert_equal(incremental.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]), complete.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]), "passive random movement matches the complete restored map")
+		assert_equal([incremental.party_coordinate, incremental.party_summary.condition_values, incremental.party_members[0].current_health], [complete.party_coordinate, complete.party_summary.condition_values, complete.party_members[0].current_health], "passive random movement preserves detached party facts")
+
+
+func _open_movement_content(source_content: RealmzContent, uses_los: bool = false, random_checks: bool = false) -> RealmzContent:
 	var cells: Array[MapCell] = []
 	var empty_ids: Array[String] = []
+	var region_ids: Array[String] = []
+	var regions: Array[RandomEncounterRegion] = []
+	var programs: Array[ScenarioProgramDefinition] = []
+	if random_checks:
+		region_ids.append("open:rect:0")
+		regions.append(RandomEncounterRegion.new("open:rect:0", Rect2i(0, 0, 3, 3), 10000, 0, 0, [42, 0, 0], [100, 0, 0], true, 0, 0, 0))
+		programs.append(ScenarioProgramDefinition.new("xap:42", &"extra-action-point", "open:rect:0", []))
 	var empty_features: Array[MapFeature] = []
 	var open_edges := {
 		&"north": MapEdge.new(&"open", true, false),
@@ -712,10 +791,10 @@ func _open_movement_content(source_content: RealmzContent, uses_los: bool = fals
 	for y: int in 3:
 		for x: int in 3:
 			var coordinate := Vector2i(x, y)
-			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, true, false, false, 151, 1, "fixture.tileset", empty_ids, empty_ids, open_edges, empty_features))
-	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells), false, uses_los)
+			cells.append(MapCell.new("open:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, true, false, false, 151, 1, "fixture.tileset", empty_ids, region_ids, open_edges, empty_features))
+	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells), false, uses_los, -1, regions)
 	var maps: Array[MapDefinition] = [map]
-	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
+	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 
 
 func _test_attempted_land_move_search(source_content: RealmzContent) -> void:

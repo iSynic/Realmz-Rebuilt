@@ -31,6 +31,7 @@ func act(params: Dictionary) -> Dictionary:
 
 
 func respond(params: Dictionary) -> Dictionary:
+	if _session.is_busy(): return _observer.rejected("input_blocked", "A combat transaction is pending.")
 	if not RuntimeTestingFixtureRequest.exact_fields(params, ["response"]) or not RuntimeTestingFixtureRequest.exact_fields(params["response"], ["requestId", "kind", "body"]):
 		return _observer.rejected("invalid_params", "A response requires requestId, kind, and its typed body.")
 	var value: Dictionary = params["response"]
@@ -45,6 +46,8 @@ func respond(params: Dictionary) -> Dictionary:
 		return _observer.rejected("invalid_response", "The typed interaction body is invalid.")
 	var revision_before := _observer.revision
 	_application.submit_response(response)
+	if _session.is_busy():
+		return _observer.accepted({"mode": "ordinary-gameplay", "pending": true, "gameRevision": _session.view().revision})
 	if _observer.revision == revision_before:
 		return _observer.rejected("input_not_committed", "The application did not commit a session response.")
 	return step_result(_observer.last_step, "ordinary-gameplay")

@@ -36,6 +36,8 @@ func apply(workspace_rect: Rect2, profile: UiLayoutProfile) -> void:
 	world_rect = content_rect
 	_place_presenter(_map, content_rect, _world_zoom)
 	_place_presenter(_battlefield, content_rect, _world_zoom)
+	# Partial edge tiles cover the exact canvas even when zoom does not divide its size.
+	_battlefield.size = content_rect.size / float(_world_zoom)
 	if _dungeon != null:
 		_dungeon.position = content_rect.position
 		_dungeon.size = content_rect.size

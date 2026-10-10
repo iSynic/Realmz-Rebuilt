@@ -127,8 +127,8 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	return CombatSpellCastProbe.permitted()
 
 
-func character_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatSpellOptionView]:
-	var result: Array[CombatSpellOptionView] = []
+func character_spell_admissions(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatSpellAdmission]:
+	var result: Array[CombatSpellAdmission] = []
 	var turn_probe := _probe_character_turn(state, content, caster_id)
 	if not turn_probe.allowed: return result
 	var caster := state.party.character_by_id(caster_id)
@@ -140,25 +140,34 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 		if spell == null: continue
 		for power_level: int in range(1, 8):
 			if not _probe_spell_rules(state, content, combat, caster, spell, power_level).allowed: continue
-			if spell.target_type == 0:
-				if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actors.actor_position(caster_id), [], power_level))
-				else: result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
-				continue
-			if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
-				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actors.actor_position(caster_id), [Vector2i.ZERO]))
-				continue
-			if spell.target_type in [9, 10, 12]:
-				result.append(CombatSpellOptionView.new(spell, power_level, null, group_spell_target_label(spell.target_type), &"automatic"))
-				continue
-			if spell.target_type in [3, 4]:
-				var shape := _context.spell_areas.shape_for(spell, power_level)
-				var offsets := _context.spell_areas.pattern(shape)
-				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actors.actor_position(caster_id), offsets, 1, [], [], _context.spell_areas.rotation_patterns(spell, power_level)))
-				continue
-			if spell.target_type in [5, 7]:
-				result.append(CombatSpellOptionView.new(spell, power_level, spell_target_view(state, content, caster_id), "Party" if spell.target_type == 7 else "Self", &"automatic"))
-				continue
-			result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose combatant"))
+			result.append(CombatSpellAdmission.new(spell, power_level))
+	return result
+
+
+func character_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatSpellOptionView]:
+	var result: Array[CombatSpellOptionView] = []
+	for admission: CombatSpellAdmission in character_spell_admissions(state, content, caster_id):
+		var spell := admission.spell
+		var power_level := admission.power
+		if spell.target_type == 0:
+			if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actors.actor_position(caster_id), [], power_level))
+			else: result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
+			continue
+		if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
+			result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actors.actor_position(caster_id), [Vector2i.ZERO]))
+			continue
+		if spell.target_type in [9, 10, 12]:
+			result.append(CombatSpellOptionView.new(spell, power_level, null, group_spell_target_label(spell.target_type), &"automatic"))
+			continue
+		if spell.target_type in [3, 4]:
+			var shape := _context.spell_areas.shape_for(spell, power_level)
+			var offsets := _context.spell_areas.pattern(shape)
+			result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actors.actor_position(caster_id), offsets, 1, [], [], _context.spell_areas.rotation_patterns(spell, power_level)))
+			continue
+		if spell.target_type in [5, 7]:
+			result.append(CombatSpellOptionView.new(spell, power_level, spell_target_view(state, content, caster_id), "Party" if spell.target_type == 7 else "Self", &"automatic"))
+			continue
+		result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose combatant"))
 	return result
 
 

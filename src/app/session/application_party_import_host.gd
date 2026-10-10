@@ -118,6 +118,9 @@ func poll() -> void:
 
 
 func _review_current_setup(source_state: GameState) -> void:
+	if (_session.is_busy() or _session.resolution_failed):
+		_show_error("Combat resolution failed. Load a saved adventure or return to the main menu." if _session.resolution_failed else "Wait for combat resolution before importing a party.")
+		return
 	var content := _destination.call() as RealmzContent
 	var snapshot := _session.session().snapshot()
 	if content == null or snapshot == null or not _session.view().party_setup_available:

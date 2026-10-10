@@ -11,6 +11,9 @@ var _step_count: int = 0
 var revision: int = 0
 var last_step: SessionStep
 var _submitted: Dictionary = {}
+var _rng_trace: Array = []
+var _scenario_trace: Array = []
+var _nearby_targets: Array[Dictionary] = []
 
 
 func _init(session: GameSessionController, content: Callable, readiness: Callable) -> void:
@@ -20,9 +23,11 @@ func _init(session: GameSessionController, content: Callable, readiness: Callabl
 	_session.step_committed.connect(record_step)
 	_session.intent_submitted.connect(_record_intent)
 	_session.response_submitted.connect(_record_response)
+	_capture_committed_facts()
 
 
 func record_step(step: SessionStep) -> void:
+	_capture_committed_facts()
 	revision += 1
 	last_step = step
 	_step_count += 1
@@ -41,8 +46,9 @@ func observe(params: Dictionary) -> Dictionary:
 	var view := _session.view()
 	var content: RealmzContent = _content.call()
 	var pending := view.active_interaction_request()
-	var random_trace: Array = _session.session().rng_trace()
-	var scenario_trace: Array = _session.session().scenario_trace()
+	if not (_session.is_busy() or _session.resolution_failed): _capture_committed_facts()
+	var random_trace := _rng_trace
+	var scenario_trace := _scenario_trace
 	var limit := RECENT_LIMIT if params.is_empty() else 4096
 	var state := {"campaignId": view.campaign_id, "packageHash": content.package_hash if content != null else "", "rulesVersion": view.rules_version, "sessionStarted": view.session_started, "partySetupAvailable": view.party_setup_available, "location": {"mapId": view.party_map_id, "x": view.party_coordinate.x, "y": view.party_coordinate.y}, "clock": {"day": view.realmz_day, "hour": view.realmz_hour, "minute": view.realmz_minute}, "fatigue": view.party_fatigue, "pooledGold": view.pooled_gold, "party": _party(view), "pendingInteraction": pending.to_data() if pending != null else null, "actions": _actions(view), "readiness": _readiness.call(), "recentSteps": _recent.duplicate(true), "recentStepsOmitted": maxi(0, _step_count - RECENT_LIMIT), "rngTrace": random_trace.slice(maxi(0, random_trace.size() - RECENT_LIMIT)), "scenarioTrace": scenario_trace.slice(maxi(0, scenario_trace.size() - RECENT_LIMIT)), "traceScope": "bounded-recent-diagnostics"}
 	state["gameRevision"] = view.revision
@@ -51,17 +57,24 @@ func observe(params: Dictionary) -> Dictionary:
 	state["traceLimitReached"] = random_trace.size() >= 4096 or scenario_trace.size() >= 4096
 	state["traceScope"] = "bounded-recent-diagnostics" if params.is_empty() else "complete-unless-trace-limit-reached"
 	state["services"] = _services(view)
-	state["nearbyTargets"] = _targets(view, content)
+	state["nearbyTargets"] = _nearby_targets.duplicate(true)
 	if not params.is_empty():
-		var snapshot := _session.session().snapshot()
+		var snapshot := _session.session().snapshot() if not (_session.is_busy() or _session.resolution_failed) else null
 		state["checkpointState"] = {"rng": snapshot.rng_state.to_data(), "gameState": snapshot.game_state.to_data()} if snapshot != null else null
 	return accepted(state)
+
+
+func _capture_committed_facts() -> void:
+	if (_session.is_busy() or _session.resolution_failed): return
+	_rng_trace = _session.session().rng_trace()
+	_scenario_trace = _session.session().scenario_trace()
+	_nearby_targets = _targets(_session.view(), _content.call())
 
 
 func checkpoint(params: Dictionary) -> Dictionary:
 	if not params.is_empty():
 		return rejected("invalid_params", "Checkpoint export accepts an empty parameter object.")
-	var snapshot := _session.session().snapshot()
+	var snapshot := _session.session().snapshot() if not (_session.is_busy() or _session.resolution_failed) else null
 	if snapshot == null:
 		return rejected("snapshot_unavailable", "There is no safely snapshotable adventure at this boundary; observation remains available.")
 	var envelope := SaveEnvelope.from_snapshot(snapshot).to_data()

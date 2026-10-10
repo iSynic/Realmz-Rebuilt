@@ -12,8 +12,12 @@ func _init(context: CombatContext) -> void:
 	_monster = CombatMonsterActionPlanner.new(context)
 
 
-func choose_party_action(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, pursuit: Dictionary = {}) -> Dictionary:
-	return _party.choose_party_action(state, content, actor, rng, pursuit)
+func choose_party_action(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, pursuit: Dictionary = {}, decision: CombatDecisionContext = null) -> Dictionary:
+	return _party.choose_party_action(state, content, actor, rng, pursuit, decision)
+
+
+func forced_party_action(state: GameState, actor: CharacterState, decision: CombatDecisionContext) -> Dictionary:
+	return _party.forced_action(state, actor, decision)
 
 
 func choose_monster_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> Dictionary:

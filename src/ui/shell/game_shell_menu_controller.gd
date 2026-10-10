@@ -76,6 +76,7 @@ static func _menu_catalog(game_view: GameView, settings: PresentationSettings, m
 			{"label": "Bestiary", "route": &"bestiary"},
 			{"label": "Maps and Notes", "route": &"journal"},
 			{"label": "Acquired Maps", "route": &"journal"},
+			{"label": "Combat Log…", "system": &"combat_log", "disabled_reason": "" if game_view != null and game_view.combat_view != null else "Available during combat"},
 		]},
 		{"node": "PartyMenu", "heading": "Party", "entries": [
 			{"label": "Party Order", "route": &"character"}, {"label": "Character Sheets", "route": &"character"},

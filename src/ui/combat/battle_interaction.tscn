@@ -148,6 +148,12 @@ layout_mode = 2
 theme_type_variation = &"BattleCommandButton"
 text = "Move To"
 
+[node name="CombatLog" type="Button" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf/BattleInspectionCommandsInset/BattleInspectionCommands/SecondaryCenter/BattleInspectionSecondary"]
+layout_mode = 2
+theme_type_variation = &"BattleCommandButton"
+text = "Combat Log"
+tooltip_text = "Review combat history. Controller: Top Menu."
+
 [node name="BattlePrimaryCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)

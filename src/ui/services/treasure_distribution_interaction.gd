@@ -75,8 +75,6 @@ func set_layout_profile(compact: bool) -> void:
 	(%TreasureItemGrid as GridContainer).columns = 6 if _compact else 16
 	for button: Button in _recipient_buttons.values():
 		(button.get_parent() as BoxContainer).vertical = _compact
-		button.text = TreasureDisplayText.recipient(button.get_meta(&"recipient_data") as InteractionRequestValue.RewardCharacter, _compact)
-		UiSizing.minimum_size(button, Vector2(0.0, 68.0 if _compact else 46.0))
 	call_deferred("_update_loot_columns", %TreasureItemScroll, %TreasureItemGrid)
 
 
@@ -257,9 +255,7 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	var button := row.get_node("TreasureRecipientSelect") as Button
 	button.name = "TreasureRecipient_%s" % character.id
 	button.button_pressed = character.id == _selected_recipient_id
-	button.set_meta(&"recipient_data", character)
-	button.text = TreasureDisplayText.recipient(character, _compact)
-	UiSizing.minimum_size(button, Vector2(0.0, 68.0 if _compact else 46.0))
+	button.text = TreasureDisplayText.recipient(character)
 	button.icon = _portrait(character.id)
 	button.disabled = not character.enabled
 	button.tooltip_text = character.name if character.reason.is_empty() else "%s: %s" % [character.name, character.reason]

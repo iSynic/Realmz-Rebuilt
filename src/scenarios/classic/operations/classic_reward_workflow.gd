@@ -186,7 +186,6 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 	var has_pending_items := not pending_items.is_empty()
 	return InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {
 		"mode": "ordinary",
-		"prompt": "Distribute the treasure, then choose Done.",
 		"origin": String(reward.origin),
 		"sourceId": reward.source_id,
 		"experiencePool": reward.experience_pool,

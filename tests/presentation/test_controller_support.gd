@@ -104,10 +104,7 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	right.axis_value = 0.16
 	owner.handle_input(right)
 	assert_equal(released, [&"realmz_controller_right"], "crossing the hysteresis release boundary emits one release edge")
-	var dpad_right := InputEventJoypadButton.new()
-	dpad_right.device = 2
-	dpad_right.button_index = JOY_BUTTON_DPAD_RIGHT
-	dpad_right.pressed = true
+	var dpad_right := _pad_button(2, JOY_BUTTON_DPAD_RIGHT, true)
 	owner.handle_input(dpad_right)
 	right.axis_value = 0.3
 	owner.handle_input(right)
@@ -122,10 +119,7 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	other_noise.axis = JOY_AXIS_LEFT_Y
 	other_noise.axis_value = 0.1
 	assert_false(owner.handle_input(other_noise), "noise from another pad cannot steal active ownership")
-	var south := InputEventJoypadButton.new()
-	south.device = 3
-	south.button_index = JOY_BUTTON_A
-	south.pressed = true
+	var south := _pad_button(3, JOY_BUTTON_A, true)
 	assert_true(owner.handle_input(south) and owner.active_device() == 3, "a deliberate button press transfers single-pad ownership")
 	var held_axis := InputEventJoypadMotion.new()
 	held_axis.device = 3
@@ -151,17 +145,11 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 	owner.binding_captured.connect(func(_action_id: StringName, descriptor: Dictionary) -> void: captured.append(descriptor))
 	owner.binding_capture_cancelled.connect(func() -> void: capture_cancelled[0] = true)
 	assert_true(owner.begin_binding_capture(&"realmz_controller_confirm"), "binding capture claims one named controller action")
-	var capture_button := InputEventJoypadButton.new()
-	capture_button.device = 3
-	capture_button.button_index = JOY_BUTTON_MISC1
-	capture_button.pressed = true
+	var capture_button := _pad_button(3, JOY_BUTTON_MISC1, true)
 	owner.handle_input(capture_button)
 	assert_true(captured.size() == 1 and captured[0]["action"] == "realmz_controller_confirm" and captured[0]["code"] == JOY_BUTTON_MISC1, "binding capture returns one primitive physical descriptor without normal dispatch")
 	owner.begin_binding_capture(&"realmz_controller_confirm")
-	var cancel_capture := InputEventJoypadButton.new()
-	cancel_capture.device = 3
-	cancel_capture.button_index = JOY_BUTTON_B
-	cancel_capture.pressed = true
+	var cancel_capture := _pad_button(3, JOY_BUTTON_B, true)
 	owner.handle_input(cancel_capture)
 	assert_true(capture_cancelled[0], "East cancels binding capture without replacing the draft")
 	owner.free()
@@ -297,24 +285,28 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 
 func _test_persistent_auto_continuation() -> void:
 	var current: Array[GameView] = [_auto_view(10, 1, "hero")]; var blocker: Array[StringName] = [&""]; var submissions: Array[Dictionary] = []; var failures: Array[String] = []; var fail_submit: Array[bool] = [false]; var coordinator: RefCounted = PERSISTENT_AUTO_COORDINATOR.new(); var coordinator_ref: WeakRef = weakref(coordinator)
-	coordinator.configure(func() -> GameView: return current[0], func() -> int: return 41, func() -> StringName: return blocker[0], func(response: InteractionResponse) -> SessionStep:
-		var body := response.body as InteractionResponse.CombatBody; submissions.append({"actor": body.actor_id, "round": current[0].combat_view.round_number, "revision": current[0].revision})
-		if fail_submit[0]: return SessionStep.failed(current[0].revision, &"fixture-auto-failure", "Auto activation failed visibly.")
-		current[0] = _auto_view(current[0].revision + 1, current[0].combat_view.round_number + 1, "hero" if submissions.size() < 3 else "manual")
-		(coordinator_ref.get_ref() as RefCounted).call("request"); return SessionStep.completed(current[0].revision), func(step: SessionStep) -> void: failures.append(step.error_message if step != null else "missing step"))
+	var pending_id: Array[int] = [0]
+	coordinator.configure(func() -> GameView: return current[0], func() -> int: return 41, func() -> StringName: return blocker[0], func(response: InteractionResponse) -> CombatSubmission:
+		var body := response.body as InteractionResponse.CombatBody; submissions.append({"actor": body.actor_id, "round": current[0].combat_view.round_number, "revision": current[0].revision}); pending_id[0] = submissions.size()
+		(coordinator_ref.get_ref() as RefCounted).call("request"); return CombatSubmission.queued(pending_id[0]), func(step: SessionStep) -> void: failures.append(step.error_message if step != null else "missing step"))
+	var complete := func() -> void:
+		if pending_id[0] == 0: return
+		var id := pending_id[0]; pending_id[0] = 0
+		if not fail_submit[0]: current[0] = _auto_view(current[0].revision + 1, current[0].combat_view.round_number + 1, "hero" if submissions.size() < 3 else "manual")
+		coordinator.complete(id, SessionStep.failed(current[0].revision, &"fixture-auto-failure", "Auto activation failed visibly.") if fail_submit[0] else SessionStep.completed(current[0].revision))
 	coordinator.request(); assert_true(submissions.is_empty(), "requesting Auto never dispatches synchronously")
 	for _frame: int in 8:
-		var before := submissions.size(); coordinator.poll(); assert_true(submissions.size() - before <= 1, "one host poll dispatches at most one activation, including reentrant requests"); await (Engine.get_main_loop() as SceneTree).process_frame
+		var before := submissions.size(); coordinator.poll(); coordinator.poll(); assert_true(submissions.size() - before <= 1, "pending asynchronous work suppresses duplicate dispatch, including reentrant requests"); await (Engine.get_main_loop() as SceneTree).process_frame; complete.call()
 	assert_equal(submissions, [{"actor": "hero", "round": 1, "revision": 10}, {"actor": "hero", "round": 2, "revision": 11}, {"actor": "hero", "round": 3, "revision": 12}], "the application-owned continuation commits one rendered Auto activation per round and yields to a manual actor")
 	current[0] = _auto_view(20, 4, "hero"); blocker[0] = &"controller-suspended"; coordinator.request(); coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal([submissions.size(), coordinator.observation()["blocker"]], [3, "controller-suspended"], "controller suspension retains the pending Auto activation without running it")
-	blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame; await (Engine.get_main_loop() as SceneTree).process_frame
+	blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame; complete.call()
 	assert_equal(submissions.size(), 4, "explicit acknowledgement wakes the retained Auto continuation")
 	current[0] = _auto_view(30, 5, "hero"); blocker[0] = &"presentation-awaiting-draw"; coordinator.request(); current[0] = _auto_view(31, 5, "manual"); blocker[0] = &""; coordinator.poll(); await (Engine.get_main_loop() as SceneTree).process_frame
 	assert_equal(submissions.size(), 4, "a session revision change discards stale continuation work before it can submit")
 	assert_true(failures.is_empty(), "successful persistent Auto never enters the failure latch")
-	current[0] = _auto_view(40, 6, "hero"); fail_submit[0] = true; coordinator.request(); coordinator.poll(); coordinator.request(); coordinator.poll(); assert_equal([submissions.size(), failures, coordinator.observation()["failedRevision"]], [5, ["Auto activation failed visibly."], 40], "a failed Auto response reports once and suppresses retries for the failed revision")
-	current[0] = _auto_view(41, 6, "hero"); fail_submit[0] = false; coordinator.request(); coordinator.poll(); assert_equal(submissions.size(), 6, "a later committed revision can explicitly re-arm Auto after the failed revision")
+	current[0] = _auto_view(40, 6, "hero"); fail_submit[0] = true; coordinator.request(); coordinator.poll(); complete.call(); coordinator.request(); coordinator.poll(); assert_equal([submissions.size(), failures, coordinator.observation()["failedRevision"]], [5, ["Auto activation failed visibly."], 40], "a failed Auto response reports once and suppresses retries for the failed revision")
+	current[0] = _auto_view(41, 6, "hero"); fail_submit[0] = false; coordinator.request(); coordinator.poll(); complete.call(); assert_equal(submissions.size(), 6, "a later committed revision can explicitly re-arm Auto after the failed revision")
 	var completed := _auto_view(42, 7, "hero"); completed.combat_view.outcome = &"victory"; current[0] = completed
 	var terminal_observation: Dictionary = coordinator.observation(); assert_equal([terminal_observation["active"], terminal_observation["outcome"], terminal_observation["actor"], terminal_observation["round"]], [false, "victory", "", -1], "terminal combat observations expose the outcome without misreporting the final actor and round as a pending Auto activation")
 	coordinator.invalidate(); current.clear(); coordinator = null
@@ -436,3 +428,11 @@ func _test_controller_settings_draft_and_embedded_file_dialog() -> void:
 	assert_true(dialog != null and not dialog.use_native_dialog, "scenario installation uses Godot's embedded controller-focusable file dialog")
 	campaign_panel.free()
 	screen.free()
+
+
+func _pad_button(device: int, code: JoyButton, pressed: bool) -> InputEventJoypadButton:
+	var event := InputEventJoypadButton.new()
+	event.device = device
+	event.button_index = code
+	event.pressed = pressed
+	return event

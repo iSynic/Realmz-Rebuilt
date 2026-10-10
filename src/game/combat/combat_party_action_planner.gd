@@ -3,26 +3,16 @@
 class_name CombatPartyActionPlanner
 extends CombatAiScoringSupport
 
-func choose_party_action(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, pursuit: Dictionary = {}) -> Dictionary:
+func choose_party_action(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, pursuit: Dictionary = {}, decision: CombatDecisionContext = null) -> Dictionary:
+	if decision == null: decision = CombatDecisionContext.new()
 	var choices: Array[Dictionary] = []
-	if _context.actions().probe_bandage(state, actor.id).allowed:
-		var bandage: Dictionary = {}
-		var critical_bandage: Dictionary = {}
-		for target_id: String in _context.actions().bandage_candidate_ids(state):
-			var target := state.party.character_by_id(target_id)
-			var candidate := {"action": &"bandage", "targetId": target_id, "score": 1100 - (target.current_health if target != null else 0)}
-			bandage = _prefer(bandage, candidate)
-			if target != null and target.current_health <= -7:
-				critical_bandage = _prefer(critical_bandage, candidate)
-		# Castle bandages before attacking. Rebuilt reserves that certainty for a
-		# bleeding ally near death and retains weighted choices for milder wounds.
-		if not critical_bandage.is_empty():
-			return critical_bandage
-		_append_positive_choice(choices, bandage)
+	var forced := forced_action(state, actor, decision)
+	if not forced.is_empty(): return forced
+	_append_positive_choice(choices, decision.bandage_choice)
 	if _context.actions().probe_turn_undead(state, content, actor.id).allowed:
 		choices.append({"action": &"turn_undead", "score": 760})
-	_append_positive_choice(choices, _best_party_spell(state, content, actor))
-	_append_positive_choice(choices, _best_weapon_ability(state, content, actor))
+	_append_positive_choice(choices, _best_party_spell(state, content, actor, decision))
+	_append_positive_choice(choices, _best_weapon_ability(state, content, actor, decision))
 	var adjacent_ids := _hostile_adjacent_ids(state, actor.id)
 	if not adjacent_ids.is_empty() and actor.attacks_remaining >= 2:
 		var melee: Dictionary = {}
@@ -35,15 +25,29 @@ func choose_party_action(state: GameState, content: RealmzContent, actor: Charac
 	return {"action": &"defend", "score": 0} if selected.is_empty() else selected
 
 
-func _best_party_spell(state: GameState, content: RealmzContent, actor: CharacterState, supplied_options: Array[CombatSpellOptionView] = [], item_instance_id: String = "") -> Dictionary:
+func forced_action(state: GameState, actor: CharacterState, decision: CombatDecisionContext) -> Dictionary:
+	if not decision.bandage_checked:
+		decision.bandage_checked = true
+		if _context.actions().probe_bandage(state, actor.id).allowed:
+			for target_id: String in _context.actions().bandage_candidate_ids(state):
+				var target := state.party.character_by_id(target_id)
+				decision.bandage_choice = _prefer(decision.bandage_choice, {"action": &"bandage", "targetId": target_id, "score": 1100 - (target.current_health if target != null else 0)})
+	var target := state.party.character_by_id(String(decision.bandage_choice.get("targetId", "")))
+	# Castle bandages before attacking. Rebuilt reserves that certainty for a
+	# bleeding ally near death and retains weighted choices for milder wounds.
+	return decision.bandage_choice if target != null and target.current_health <= -7 else {}
+
+
+func _best_party_spell(state: GameState, content: RealmzContent, actor: CharacterState, decision: CombatDecisionContext, supplied_options: Array[CombatSpellAdmission] = [], item_instance_id: String = "") -> Dictionary:
 	var best: Dictionary = {}
-	var actors_by_cell := _actors_by_cell(state.combat.battlefield)
-	var area_placement_cache: Dictionary = {}
-	var area_center_cache: Dictionary = {}
-	var summon_coordinate_cache: Dictionary = {}
-	var ray_actor_cache: Dictionary = {}
-	var options: Array[CombatSpellOptionView] = supplied_options if not supplied_options.is_empty() else _context.magic_flow().selection().character_spell_options(state, content, actor.id)
-	for option: CombatSpellOptionView in options:
+	var actors_by_cell := decision.occupied(state.combat.battlefield)
+	var area_placement_cache := decision.placements(item_instance_id)
+	var area_center_cache := decision.area_centers
+	var summon_coordinate_cache := decision.summon_coordinates(item_instance_id)
+	var ray_actor_cache := decision.ray_actors
+	var protection_threats := decision.threats(state, content, actor.traitor)
+	var options: Array[CombatSpellAdmission] = supplied_options if not supplied_options.is_empty() else decision.character_spells(_context.magic_flow().selection(), state, content, actor.id)
+	for option: CombatSpellAdmission in options:
 		var spell := content.magic.spell_by_id(option.spell_id)
 		if spell == null or not _auto_group_target_is_safe(spell):
 			continue
@@ -69,7 +73,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 		elif ClassicSpellConditionRules.combat_condition_effect_index(spell) >= 0 and spell.target_type in [3, 4]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache, ray_actor_cache))
 		elif ClassicSpellConditionRules.combat_condition_effect_index(spell) >= 0 or spell.target_type == 5 and ClassicSpellConditionRules.combat_persistent_field_condition_index(spell) >= 0:
-			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power, item_instance_id))
+			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power, item_instance_id, protection_threats))
 		elif _context.automation().is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
 		elif ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell):
@@ -81,7 +85,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 	return best
 
 
-func _best_weapon_ability(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
+func _best_weapon_ability(state: GameState, content: RealmzContent, actor: CharacterState, decision: CombatDecisionContext) -> Dictionary:
 	var equipped := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if not equipped.valid or equipped.melee_weapon == null: return {}
 	var best: Dictionary = {}
@@ -91,8 +95,8 @@ func _best_weapon_ability(state: GameState, content: RealmzContent, actor: Chara
 		seen[item_option.item_instance_id] = true
 		var spell := content.magic.spell_by_id(item_option.spell_id)
 		if spell == null: continue
-		var option := CombatSpellOptionView.new(spell, 7 if item_option.target_mode == &"random_power" else item_option.power, null, "", item_option.target_mode, item_option.area_shape, item_option.default_target_coordinate, item_option.area_offsets, item_option.maximum_targets, item_option.target_candidates, item_option.legal_target_coordinates, item_option.area_rotation_offsets)
-		var candidate := _best_party_spell(state, content, actor, [option], item_option.item_instance_id)
+		var option := CombatSpellAdmission.new(spell, 7 if item_option.target_mode == &"random_power" else item_option.power, item_option.area_offsets, item_option.area_rotation_offsets)
+		var candidate := _best_party_spell(state, content, actor, decision, [option], item_option.item_instance_id)
 		if candidate.is_empty(): continue
 		candidate["action"] = &"use_item"
 		candidate["itemInstanceId"] = item_option.item_instance_id
@@ -113,7 +117,7 @@ func _best_charm(state: GameState, content: RealmzContent, actor: CharacterState
 	return best
 
 
-func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
+func _best_polymorph(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellAdmission, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary) -> Dictionary:
 	if spell.target_type == 4:
 		return _best_area(state, content, actor, spell, option, 10, actors_by_cell, area_placement_cache, area_center_cache, -1, true)
 	var best: Dictionary = {}
@@ -212,11 +216,14 @@ func _best_condition_cure(state: GameState, content: RealmzContent, actor: Chara
 	return result
 
 
-func _best_condition_effect(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, item_instance_id: String = "") -> Dictionary:
+func _best_condition_effect(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, item_instance_id: String = "", protection_threats: CombatProtectionThreats = null) -> Dictionary:
 	var condition_index := ClassicSpellConditionRules.combat_condition_effect_index(spell)
 	if condition_index < 0:
 		condition_index = ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
 	var friendly := spell.target_type == 5 or spell.cannot == 4
+	if friendly:
+		if protection_threats == null: protection_threats = CombatProtectionThreats.new(state, content, actor.traitor)
+		if not protection_threats.supports(condition_index): return {}
 	var candidate_ids: Array[String] = [actor.id]
 	if spell.target_type != 5:
 		candidate_ids = _friendly_actor_ids(state, actor) if friendly else _opposed_actor_ids(state, actor)
@@ -241,7 +248,9 @@ func _best_condition_effect(state: GameState, content: RealmzContent, actor: Cha
 		probe_targets.assign(selected)
 	if not _probe_source_targets(state, content, actor.id, item_instance_id, probe_target, spell.id, power, INVALID_COORDINATE, 0, probe_targets).allowed:
 		return {}
+	# Ward strength is boolean; other conditions may use duration as potency.
 	var duration_score := _maximum_condition_duration(spell, power)
+	if friendly and CombatProtectionThreats.is_ward(condition_index): duration_score = mini(3, duration_score)
 	var score := (520 if friendly else 420) + selected.size() * duration_score * (8 if friendly else 4) - absi(spell.cost * power) * 3
 	var result := {"action": &"cast_spell", "spellId": spell.id, "power": power, "score": score}
 	if spell.target_type == 0:
@@ -326,7 +335,7 @@ func _best_party_spell_point_drain_ray(state: GameState, content: RealmzContent,
 	return best
 
 
-func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, ray_actor_cache: Dictionary) -> Dictionary:
+func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellAdmission, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, ray_actor_cache: Dictionary) -> Dictionary:
 	var expected := expected_spell_effect(spell, option.power)
 	var condition_index := ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
 	if absi(spell.special) == 28:
@@ -377,10 +386,10 @@ func _best_party_ray(state: GameState, content: RealmzContent, actor: CharacterS
 	return best
 
 
-func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, condition_index: int = -1, monster_targets_only: bool = false) -> Dictionary:
+func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellAdmission, expected: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary, area_center_cache: Dictionary, condition_index: int = -1, monster_targets_only: bool = false) -> Dictionary:
 	var maximum_range := absi(spell.range_min + spell.range_max * option.power)
 	var best: Dictionary = {}
-	var rotations: Array = option.area_rotation_offsets if not option.area_rotation_offsets.is_empty() else [option.area_offsets]
+	var rotations: Array = option.rotations(_context.spell_areas)
 	for rotation: int in rotations.size():
 		var offsets: Array[Vector2i] = []
 		offsets.assign(rotations[rotation])

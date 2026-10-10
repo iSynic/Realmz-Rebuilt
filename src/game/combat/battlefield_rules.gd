@@ -165,8 +165,12 @@ func _sample_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTer
 	var step := Vector2(destination - origin) * 32.0 / 128.0
 	# FD-COMBAT-008 retains Castle's 128 center-offset samples but removes the
 	# animation-delay term from the divisor. Presentation speed cannot alter AI.
+	var previous_cell := Vector2i(-100_000, -100_000)
 	for _sample: int in 128:
 		var coordinate := Vector2i(floori((part.x + 16.0) / 32.0), floori((part.y + 16.0) / 32.0))
+		part += step
+		if coordinate == previous_cell: continue
+		previous_cell = coordinate
 		if not BattlefieldGrid.contains(coordinate):
 			return false
 		# Castle's field contains actor IDs, so occupied cells do not expose their
@@ -175,7 +179,6 @@ func _sample_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTer
 			var terrain := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate))
 			if terrain == null or terrain.blocks_los:
 				return false
-		part += step
 	return true
 
 
@@ -192,8 +195,12 @@ func ray_actor_ids(battlefield: BattlefieldState, terrain_set: BattleTerrainSetD
 				occupied_cells[coordinate] = actor_id
 	var part := Vector2(origin * 32)
 	var step := Vector2(destination - origin) * 32.0 / 128.0
+	var previous_cell := Vector2i(-100_000, -100_000)
 	for _sample: int in 128:
 		var coordinate := Vector2i(floori((part.x + 16.0) / 32.0), floori((part.y + 16.0) / 32.0))
+		part += step
+		if coordinate == previous_cell: continue
+		previous_cell = coordinate
 		if not BattlefieldGrid.contains(coordinate):
 			break
 		var actor_id := String(occupied_cells.get(coordinate, ""))
@@ -207,7 +214,6 @@ func ray_actor_ids(battlefield: BattlefieldState, terrain_set: BattleTerrainSetD
 			var terrain := terrain_set.tile_by_id(battlefield.terrain.tile_at(coordinate))
 			if terrain == null or terrain.blocks_los:
 				break
-		part += step
 	return result
 
 

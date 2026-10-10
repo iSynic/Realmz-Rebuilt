@@ -189,8 +189,6 @@ static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefiniti
 		return
 	cell_cache.clear()
 	cell_cache[&"signature"] = signature
-	for cell: MapCell in map.topology.cells():
-		cell_cache[cell.coordinate] = build_cell_view(context, map, cell, true)
 
 
 static func _cached_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool, cell_cache: Dictionary) -> MapCellView:

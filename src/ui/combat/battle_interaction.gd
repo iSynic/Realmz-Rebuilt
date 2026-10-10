@@ -7,6 +7,7 @@ extends InteractionComponent
 
 signal combat_items_requested
 signal move_to_requested
+signal combat_log_requested
 signal combat_inventory_targeting_started
 signal weapon_aim_requested(mode: StringName, preparation: StringName)
 signal weapon_ability_prepared(instance_id: String)
@@ -22,6 +23,7 @@ const TURN_COMMAND_COLOR := Color("8fe080")
 const InitiativePanelBuilder := preload("res://src/ui/combat/battle_initiative_panel_builder.gd")
 const ControllerCommandCatalog := preload("res://src/ui/combat/battle_controller_command_catalog.gd")
 const CombatantFacts := preload("res://src/ui/combat/battle_combatant_facts.gd")
+const PlaybackFacts := preload("res://src/ui/combat/battle_playback_facts.gd")
 
 @export var initiative_entry_scene: PackedScene
 
@@ -51,16 +53,17 @@ var _inspected_icon: TextureRect
 var _command_scaling := BattleCommandScaleController.new()
 var _compact := false
 var _equipped_weapon_id := ""
+var command_availability := BattleCommandAvailability.new()
 
 
-func configure(combatant_icons: Dictionary, command_scale: float = 1.0, compact: bool = false, equipped_weapon_id: String = "") -> void:
+func configure(combatant_icons: Dictionary, command_scale: float = 1.0, compact: bool = false, equipped_weapon_id: String = "", apply_sizing: bool = true) -> void:
 	_combatant_icons = combatant_icons.duplicate()
 	_equipped_weapon_id = equipped_weapon_id
-	set_command_layout(command_scale, compact)
+	set_command_layout(command_scale, compact, apply_sizing)
 
 
-func set_command_layout(command_scale: float, compact: bool) -> void:
-	UiSizing.apply_detached(self, BattleCommandScaleController.standalone_profile(command_scale))
+func set_command_layout(command_scale: float, compact: bool, apply_sizing: bool = true) -> void:
+	if apply_sizing: UiSizing.apply_detached(self, BattleCommandScaleController.standalone_profile(command_scale))
 	_compact = compact
 	for panel_name: String in ["ActiveCombatant", "InspectedCombatant"]:
 		var summary_panel := find_child(panel_name, true, false) as Control
@@ -420,6 +423,8 @@ func _perform_presentation_action(action: StringName) -> void:
 		return
 	if action == &"reveal_friends":
 		reveal_friends_requested.emit()
+	if action == &"combat_log":
+		combat_log_requested.emit()
 
 
 func _refresh_inspected_label() -> void:
@@ -466,24 +471,11 @@ func accepts_spatial_input() -> bool:
 
 
 func playback_combatant_facts() -> Dictionary:
-	var facts: Dictionary = {}
-	for combatant: InteractionRequestValue.Combatant in _combatants:
-		facts[combatant.id] = {
-			"name": combatant.name,
-			"maximumHealth": combatant.maximum_health,
-			"currentHealth": combatant.current_health,
-			"armor": combatant.armor,
-			"weapon": combatant.weapon,
-			"weaponCharges": combatant.weapon_charges if combatant.has_weapon_charges else -1,
-			"attacks": combatant.attacks,
-			"conditions": combatant.conditions.duplicate(),
-			"icon": _combatant_icons.get(combatant.id) as Texture2D,
-		}
-	return facts
+	return PlaybackFacts.from_combatants(_combatants, _combatant_icons)
 
 
 func controller_actions() -> Array[ControllerRadialEntry]:
-	return ControllerCommandCatalog.entries(_controller_command_buttons, _fast_spells)
+	return ControllerCommandCatalog.entries(_controller_command_buttons, _fast_spells, command_availability.pending)
 
 
 func activate_controller_action(action_id: StringName) -> bool:
@@ -501,6 +493,7 @@ func activate_controller_action(action_id: StringName) -> bool:
 
 func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids: Array[String], spell_panel: Control, scroll_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	_controller_command_buttons.clear()
+	command_availability.clear()
 	var scaled_panels: Array[Control] = [find_child("BattleInspectionCommandsInset", true, false), %BattlePrimaryCommandsInset, find_child("BattleTurnCommandsInset", true, false)]
 	var scaled_columns: Array[VBoxContainer] = [find_child("BattleInspectionCommands", true, false), %BattlePrimaryCommands, %BattleTurnCommands]
 	var scaled_rows: Array[HBoxContainer] = [%BattleInspectionPrimary, %BattleInspectionSecondary, %BattlePrimaryPrimary, %BattlePrimarySecondary, %BattleTurnPrimary, %BattleTurnSecondary]
@@ -510,6 +503,7 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	_bind_presentation_button(inspection_rows[0].get_node("Center") as Button, "Center", &"center_active")
 	_bind_presentation_button(inspection_rows[0].get_node("Next") as Button, "Next", &"inspect_next")
 	_bind_presentation_button(inspection_rows[1].get_node("RevealFriends") as Button, "Reveal Friends", &"reveal_friends")
+	_bind_presentation_button(inspection_rows[1].get_node("CombatLog") as Button, "Combat Log", &"combat_log")
 	var move_to := inspection_rows[1].get_node("MoveTo") as Button
 	_bind_fixed_presentation_action(move_to, "MoveTo", "Move To", body.movement_remaining > 0, "No movement remains.")
 	move_to.pressed.connect(func() -> void: move_to_requested.emit())
@@ -629,6 +623,7 @@ func _bind_fixed_response(button: Button, command_name: String, label: String, b
 
 
 func _name_command(button: Button, command_name: String) -> void:
+	command_availability.register_button(button)
 	button.name = "CombatCommand%s" % command_name
 	if not _controller_command_buttons.has(button):
 		_controller_command_buttons.append(button)

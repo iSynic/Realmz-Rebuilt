@@ -4,6 +4,11 @@ class_name SessionNavigationQueries
 extends RefCounted
 
 var _context: SessionContext
+var _discovery_map: MapDefinition
+var _discovery_exploration: WorldExplorationState
+var _discovery_revision: int = -1
+var _discovery_origin: Vector2i
+var _revealed_coordinates: Array[Vector2i] = []
 
 
 func _init(context: SessionContext) -> void:
@@ -18,18 +23,33 @@ func exploration_route(destination: Vector2i) -> Array[Vector2i]:
 	var map := _context.content.world.map_by_id(state.party.map_id)
 	if map == null or not map.topology.contains(state.party.coordinate) or not map.topology.contains(destination):
 		return empty_route
-	var revealed := state.world.exploration.seen_coordinates(map.id)
+	if map.level_type == &"land" and not map.topology.probe_land_entry(destination, state.world, state.party_in_boat).allowed:
+		return empty_route
+	return map.topology.find_revealed_path(state.party.coordinate, destination, state.world, map.level_type, state.party_in_boat, _revealed_for(map))
+
+
+func _revealed_for(map: MapDefinition) -> Array[Vector2i]:
+	var state := _context.state
+	var exploration := state.world.exploration
+	if _discovery_map == map and _discovery_exploration == exploration and _discovery_revision == exploration.revision() and _discovery_origin == state.party.coordinate:
+		return _revealed_coordinates
+	var revealed := exploration.seen_coordinates(map.id)
 	if not map.uses_los:
 		var known: Dictionary = {}
 		for coordinate: Vector2i in revealed: known[coordinate] = true
-		var visited := state.world.exploration.visited_coordinates(map.id)
+		var visited := exploration.visited_coordinates(map.id)
 		visited.append(state.party.coordinate)
 		for coordinate: Vector2i in visited:
 			var window := MapTopology.classic_exploration_window(coordinate, Vector2i(map.topology.width, map.topology.height)) if map.level_type == &"land" else Rect2i(coordinate - Vector2i.ONE, Vector2i(3, 3))
 			for y: int in range(window.position.y, window.end.y):
 				for x: int in range(window.position.x, window.end.x): known[Vector2i(x, y)] = true
 		revealed.assign(known.keys())
-	return map.topology.find_revealed_path(state.party.coordinate, destination, state.world, map.level_type, state.party_in_boat, revealed)
+	_discovery_map = map
+	_discovery_exploration = exploration
+	_discovery_revision = exploration.revision()
+	_discovery_origin = state.party.coordinate
+	_revealed_coordinates = revealed
+	return _revealed_coordinates
 
 
 func combat_reachability() -> BattlefieldReachability:

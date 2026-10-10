@@ -41,6 +41,7 @@ signal immediate_single_target_actions_changed(enabled: bool)
 signal click_to_move_enabled_changed(enabled: bool)
 signal classic_keyboard_shortcuts_changed(enabled: bool)
 signal exploration_move_to_requested
+signal combat_log_requested
 signal exploration_speed_changed(percent: int)
 signal combat_playback_speed_changed(percent: int)
 signal hurry_spell_resolution_changed(enabled: bool)
@@ -378,7 +379,7 @@ func present(game_view: GameView) -> void:
 		_navigator.present(game_view)
 		_set_play_regions_visible(false)
 		_build_menus()
-		_update_command_availability()
+		_command_controller.update_availability()
 		return
 	if previous_campaign_id != game_view.campaign_id:
 		_status_controller.reset_classic_text()
@@ -422,7 +423,7 @@ func _present_ordinary_exploration_shell(game_view: GameView, party_update: bool
 		var affected_character_ids: Array[String] = game_view.change_set.affected_character_ids()
 		if not affected_character_ids.is_empty():
 			_party_roster.present_ordinary_exploration(game_view, _selected_character_id, affected_character_ids)
-		_update_command_availability()
+		_command_controller.update_availability()
 func set_package_media(media: ClassicMediaCatalog) -> void:
 	if _media == media:
 		return
@@ -569,10 +570,6 @@ func _restore_footer_bounds() -> void:
 		layout_changed.emit(_layout_controller.workspace_rect, _profile)
 
 
-func _update_command_availability() -> void:
-	_command_controller.update_availability()
-
-
 func _presentation_command_definition(definition: Dictionary) -> Dictionary:
 	return _command_controller.presentation_definition(definition)
 
@@ -615,6 +612,7 @@ func handle_system_action_requested(action_id: StringName, value: Variant) -> vo
 		&"music_toggle": music_enabled_changed.emit(not _presentation_settings.music_enabled)
 		&"music_playlist": music_workspace.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
 		&"click_to_move_toggle": click_to_move_enabled_changed.emit(not _presentation_settings.click_to_move_enabled)
+		&"combat_log": combat_log_requested.emit()
 		&"quit": quit_requested.emit()
 
 

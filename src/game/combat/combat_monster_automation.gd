@@ -145,7 +145,7 @@ func _prepare_active_monster_turn(turns: CombatTurnSequenceState, monster: Monst
 func _process_selected_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent], selected_plan: Dictionary) -> int:
 	match active_turn.action:
 		&"advance":
-			return _advance_then_retry_cast(state, content, monster, definition, active_turn, rng, events)
+			return _advance_then_retry_cast(state, content, monster, definition, active_turn, rng, events, selected_plan.get("pursuitPlan"))
 		&"missile":
 			return _process_missile_action(state, content, monster, definition, active_turn, rng, events)
 		&"cast":
@@ -179,8 +179,8 @@ func _process_cast_action(state: GameState, content: RealmzContent, monster: Mon
 	return _advance_then_retry_cast(state, content, monster, definition, active_turn, rng, events)
 
 
-func _advance_then_retry_cast(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	var result := process_monster_advance(state, content, monster, definition, active_turn, rng, events)
+func _advance_then_retry_cast(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent], pursuit: CombatPursuitPlan = null) -> int:
+	var result := process_monster_advance(state, content, monster, definition, active_turn, rng, events, pursuit)
 	if result == MONSTER_ATTACK_COMPLETED and monster_can_retry_cast(state, monster, definition, active_turn):
 		var retry_result := process_monster_cast(state, content, monster, definition, active_turn, rng, events)
 		# A second failed cast has exhausted this activation's cast fallback chain.
@@ -418,13 +418,14 @@ static func is_source_backed_combat_healing_spell(spell: SpellDefinition) -> boo
 	return ClassicSpellConditionRules.is_combat_healing_spell(spell)
 
 
-func process_monster_advance(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+func process_monster_advance(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent], pursuit: CombatPursuitPlan = null) -> int:
 	var combat := state.combat
 	var terrain_set := _monster_actions.battle_terrain_set(content, combat.battlefield)
 	if terrain_set == null:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "missing-battle-terrain"}))
 		active_turn.movement_remaining = 0
 		return MONSTER_ATTACK_COMPLETED
+	if pursuit != null and not _context.reactions().guarding_hostiles(state, monster.id).is_empty(): pursuit = null
 	var contact_result := _begin_monster_contact(state, content, monster, rng, events)
 	if contact_result == REACTION_WAITING:
 		return MONSTER_ATTACK_WAITING
@@ -445,7 +446,9 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "no-opposed-target"}))
 			return MONSTER_ATTACK_COMPLETED
 		var origin := combat.battlefield.actors.actor_position(monster.id)
-		var probe := _probe_monster_advance_step(state, content, monster, definition, terrain_set, active_turn, visited_anchors)
+		var probe := pursuit.initial_step(combat.battlefield, monster.id, active_turn.target_id, active_turn.movement_remaining, active_turn.attack_index < _monster_actions.attack_limit(monster, definition), visited_anchors) if pursuit != null else null
+		pursuit = null
+		if probe == null: probe = _probe_monster_advance_step(state, content, monster, definition, terrain_set, active_turn, visited_anchors)
 		if not probe.allowed:
 			active_turn.target_id = ""
 			monster.target_id = ""

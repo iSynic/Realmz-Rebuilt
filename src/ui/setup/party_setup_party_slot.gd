@@ -59,8 +59,8 @@ func configure(slot_index: int, character: CharacterView, portrait: Texture2D, c
 	(get_node("Row/Actions") as BoxContainer).vertical = compact
 	name = ("PartySlot%d" if character != null else "EmptyPartySlot%d") % (slot_index + 1)
 	_character_id = character.id if character != null else ""
-	_portrait.texture = portrait
-	custom_minimum_size.y = 44.0 if character == null else 64.0
+	UiSizing.artwork(_portrait, portrait)
+	UiSizing.minimum_size(self, Vector2(0.0, 44.0 if character == null else CharacterRow.ROW_HEIGHT))
 	_portrait.tooltip_text = "%s's portrait" % character.name if character != null else ""
 	if character == null:
 		_summary.text = "%d. Empty position" % (slot_index + 1)

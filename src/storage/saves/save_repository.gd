@@ -48,18 +48,9 @@ func set_active_slot(campaign_id: String, slot_id: String) -> bool:
 	file.flush()
 	file.close()
 	var backup := path + ".bak"
-	if FileAccess.file_exists(backup) and not _delete_file(backup):
-		_delete_file(temporary)
-		return _fail("Could not rotate the active save slot pointer.")
-	if FileAccess.file_exists(path) and DirAccess.rename_absolute(ProjectSettings.globalize_path(path), ProjectSettings.globalize_path(backup)) != OK:
-		_delete_file(temporary)
-		return _fail("Could not rotate the active save slot pointer.")
-	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(path)) != OK:
-		if FileAccess.file_exists(backup):
-			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(path))
-		_delete_file(temporary)
-		return _fail("Could not install the active save slot.")
-	_delete_file(backup)
+	var replace_error := _replace_with_backup(temporary, path, backup, false)
+	if not replace_error.is_empty():
+		return _fail("Could not install the active save slot: %s" % replace_error)
 	return true
 
 
@@ -91,24 +82,46 @@ func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot, previ
 	if verified == null or verified.campaign_id != envelope.campaign_id or verified.package_hash != envelope.package_hash:
 		_delete_file(temp_path)
 		return _fail("Temporary save verification failed.")
-	if FileAccess.file_exists(backup_path) and not _delete_file(backup_path):
-		_delete_file(temp_path)
-		return _fail("Could not rotate the previous save backup.")
-	var absolute_slot := ProjectSettings.globalize_path(slot_path)
-	var absolute_backup := ProjectSettings.globalize_path(backup_path)
-	var absolute_temp := ProjectSettings.globalize_path(temp_path)
-	if FileAccess.file_exists(slot_path):
-		var backup_error := DirAccess.rename_absolute(absolute_slot, absolute_backup)
-		if backup_error != OK:
-			_delete_file(temp_path)
-			return _fail("Could not move the current save to its backup (error %d)." % backup_error)
-	var replace_error := DirAccess.rename_absolute(absolute_temp, absolute_slot)
-	if replace_error != OK:
-		if FileAccess.file_exists(backup_path):
-			DirAccess.rename_absolute(absolute_backup, absolute_slot)
-		_delete_file(temp_path)
-		return _fail("Could not atomically install the verified save (error %d)." % replace_error)
+	var replace_error := _replace_with_backup(temp_path, slot_path, backup_path)
+	if not replace_error.is_empty():
+		return _fail("Could not atomically install the verified save: %s" % replace_error)
 	return true
+
+
+func _replace_with_backup(temporary: String, primary: String, backup: String, retain_backup: bool = true) -> String:
+	var staged_backup := backup + ".rotation"
+	if FileAccess.file_exists(staged_backup) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(staged_backup)):
+		_delete_file(temporary)
+		return "A prior backup rotation is still present; refusing to overwrite it."
+	var staged_previous_backup := false
+	if FileAccess.file_exists(backup):
+		var stage_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(staged_backup))
+		if stage_error != OK:
+			_delete_file(temporary)
+			return "Could not preserve the previous backup (error %d)." % stage_error
+		staged_previous_backup = true
+	var moved_primary := false
+	if FileAccess.file_exists(primary):
+		var backup_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(primary), ProjectSettings.globalize_path(backup))
+		if backup_error != OK:
+			if staged_previous_backup:
+				DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
+			_delete_file(temporary)
+			return "Could not move the current file to its backup (error %d)." % backup_error
+		moved_primary = true
+	var install_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(primary))
+	if install_error != OK:
+		if moved_primary:
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(primary))
+		if staged_previous_backup:
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
+		_delete_file(temporary)
+		return "Could not install the verified file (error %d)." % install_error
+	if not retain_backup:
+		_delete_file(backup)
+	if staged_previous_backup:
+		_delete_file(staged_backup)
+	return ""
 
 
 func load(campaign_id: String, slot_id: String, expected_package_hash: String) -> SaveEnvelope:

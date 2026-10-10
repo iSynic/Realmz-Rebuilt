@@ -45,7 +45,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	character_id = revision.character_id
 	revision_hash = revision.revision_hash
 	import_enabled = enabled
-	custom_minimum_size.y = ROW_HEIGHT
+	UiSizing.minimum_size(self, Vector2(0.0, ROW_HEIGHT))
 	add_theme_stylebox_override("panel", row_style())
 	mouse_default_cursor_shape = Control.CURSOR_DRAG if enabled else Control.CURSOR_FORBIDDEN
 	tooltip_text = "Add %s to the party. You can also drag this character into an empty party position." % revision.name if enabled else reason
@@ -57,7 +57,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	_drag_label = revision.name
 	_drag_portrait = portrait
 	_prepare_drag_cursor(revision.revision_hash, portrait)
-	_portrait_view.texture = portrait
+	UiSizing.artwork(_portrait_view, portrait)
 	_portrait_view.tooltip_text = "%s's portrait" % revision.name
 	_summary.text = "%s\nL%d • %s / %s" % [revision.name, revision.level, race_name, caste_name]
 	tooltip_text += "\n" + summary_text(revision.name, revision.level, race_name, caste_name, revision.character)

@@ -35,6 +35,7 @@ var _topology_debug: CheckButton
 var _status: Label
 var _auto_log: MenuButton
 var _console_shortcut: CheckButton
+var _open_console: Button
 var _title: Label
 var _developer_tools_enabled: bool = false
 
@@ -54,8 +55,6 @@ const DEVELOPER_CONTROL_NAMES: Array[StringName] = [
 	&"BattleRow",
 	&"WinBattle",
 	&"RecentAutoActions",
-	&"OpenConsole",
-	&"ConsoleShortcut",
 ]
 
 
@@ -81,6 +80,7 @@ func _ready() -> void:
 	_status = %Status
 	_auto_log = %RecentAutoActions
 	_console_shortcut = %ConsoleShortcut
+	_open_console = %OpenConsole
 	for input: SpinBox in [_x, _y, _encounter_id, _battle_id]:
 		input.get_line_edit().select_all_on_focus = true
 	_encounter_kind.set_item_metadata(0, &"simple")
@@ -97,8 +97,14 @@ func _ready() -> void:
 	_trigger_encounter.pressed.connect(_request_encounter)
 	_trigger_battle.pressed.connect(_request_battle)
 	_win_battle.pressed.connect(func() -> void: command_requested.emit(SessionDebugCommand.win_battle()))
-	%OpenConsole.pressed.connect(func() -> void: console_requested.emit())
-	_console_shortcut.toggled.connect(func(enabled: bool) -> void: console_shortcut_changed.emit(enabled))
+	_open_console.pressed.connect(func() -> void:
+		if not _open_console.disabled:
+			console_requested.emit()
+	)
+	_console_shortcut.toggled.connect(func(enabled: bool) -> void:
+		set_console_recording(enabled)
+		console_shortcut_changed.emit(enabled)
+	)
 	%Close.pressed.connect(close_dialog)
 	if is_inside_tree():
 		get_viewport().size_changed.connect(_fit_to_parent.call_deferred)
@@ -112,6 +118,11 @@ func configure_capabilities(developer_tools_enabled: bool) -> void:
 		var control := find_child(String(node_name), true, false) as Control
 		if control != null:
 			control.visible = developer_tools_enabled
+	_open_console.visible = true
+	_console_shortcut.visible = true
+	_console_shortcut.text = "Record game actions · ` / ~"
+	_open_console.text = "Open game-action console"
+	set_console_recording(_console_shortcut.button_pressed)
 	_title.text = "DEBUG TOOLS · F12" if developer_tools_enabled else "DIAGNOSTICS · F12"
 	_status.text = "Debug commands can change this adventure." if developer_tools_enabled else "Optional map diagnostics are off until enabled here."
 	_fit_to_parent()
@@ -127,7 +138,7 @@ func _fit_to_parent() -> void:
 		return
 	var profile := UiSizing.profile_for(self)
 	var interface_scale := profile.ui_scale if profile != null else 1.0
-	var preferred := (developer_preferred_size if _developer_tools_enabled else diagnostics_preferred_size) * interface_scale
+	var preferred := (developer_preferred_size if _developer_tools_enabled else Vector2(520.0, 300.0)) * interface_scale
 	var desired := parent.size * developer_window_fraction if _developer_tools_enabled else preferred
 	var available := parent.size - Vector2(32.0, 20.0) * interface_scale
 	var modal_size := preferred.max(desired).min(available)
@@ -180,11 +191,12 @@ func _update_item_grant_enabled() -> void:
 
 
 func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions: Array[String] = [], console_shortcut_enabled: bool = false, topology_debug: bool = false, item_records: Array[Dictionary] = []) -> void:
+	set_console_recording(console_shortcut_enabled)
 	if not _developer_tools_enabled:
 		_topology_debug.set_pressed_no_signal(topology_debug)
 		_status.text = "AP and random-rectangle overlay enabled." if topology_debug else "Optional map diagnostics are off until enabled here."
 		show()
-		_topology_debug.grab_focus()
+		_console_shortcut.grab_focus()
 		return
 	var selected_map := "" if view == null else view.party_map_id
 	_map_select.clear()
@@ -223,6 +235,14 @@ func present(view: GameView, maps: Array[Dictionary], noclip: bool, auto_actions
 	show()
 	_x.get_line_edit().grab_focus()
 	_x.get_line_edit().select_all()
+	set_console_recording(console_shortcut_enabled)
+
+
+func set_console_recording(enabled: bool) -> void:
+	if _console_shortcut != null:
+		_console_shortcut.set_pressed_no_signal(enabled)
+	if _open_console != null:
+		_open_console.disabled = not enabled
 
 
 func set_topology_debug(enabled: bool) -> void:

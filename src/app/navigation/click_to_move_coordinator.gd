@@ -11,6 +11,7 @@ var _map: ClassicMapPresenter
 var _battlefield: ClassicBattlefieldPresenter
 var _held: HeldMovementController
 var _allows_exploration: Callable
+var _allows_exploration_task: Callable
 var _is_first_person: Callable
 var _submit_intent: Callable
 var _submit_response: Callable
@@ -28,8 +29,10 @@ var _map_id := ""
 var _remaining := 0.0
 var _submitting := false
 var _preview: MovementRoutePreview
+var _awaiting_combat := false
+var _pending_destination := Vector2i(-1, -1)
 
-func _init(session: GameSessionController, presentation: PresentationCoordinator, shell: GameShell, map: ClassicMapPresenter, battlefield: ClassicBattlefieldPresenter, held: HeldMovementController, allows_exploration: Callable, is_first_person: Callable, submit_intent: Callable, submit_response: Callable) -> void:
+func _init(session: GameSessionController, presentation: PresentationCoordinator, shell: GameShell, map: ClassicMapPresenter, battlefield: ClassicBattlefieldPresenter, held: HeldMovementController, allows_exploration: Callable, allows_exploration_task: Callable, is_first_person: Callable, submit_intent: Callable, submit_response: Callable) -> void:
 	_session = session
 	_presentation = presentation
 	_shell = shell
@@ -37,6 +40,7 @@ func _init(session: GameSessionController, presentation: PresentationCoordinator
 	_battlefield = battlefield
 	_held = held
 	_allows_exploration = allows_exploration
+	_allows_exploration_task = allows_exploration_task
 	_is_first_person = is_first_person
 	_submit_intent = submit_intent
 	_submit_response = submit_response
@@ -55,9 +59,15 @@ func _init(session: GameSessionController, presentation: PresentationCoordinator
 	_session.response_submitted.connect(func(_response: InteractionResponse) -> void:
 		if not _submitting: cancel()
 	)
+	_session.combat_work_completed.connect(func(job: CombatSessionJob) -> void:
+		if not _awaiting_combat: return
+		_awaiting_combat = false
+		_acknowledge(job.step, _pending_destination, true)
+	)
 	_shell.route_changed.connect(func(_route: StringName) -> void: cancel())
 
 func poll(delta: float) -> void:
+	if (_session.is_busy() or _session.resolution_failed) or _presentation.combat_log_open: return
 	var view := _session.view()
 	# Playback temporarily removes the command surface; it is not a new task.
 	var awaiting_combat_draw := _presentation.is_combat_playback_active() or _presentation.drawn_revision != view.revision
@@ -65,8 +75,9 @@ func poll(delta: float) -> void:
 		if not _shell.navigation_overlay_active and _shell.navigator.current_screen() == &"combat" and _route_is_current(view, view.combat_view != null, false):
 			return
 	var combat := not _shell.navigation_overlay_active and _combat_available(view)
-	var exploring: bool = not _shell.navigation_overlay_active and _allows_exploration.call() and not _is_first_person.call()
-	_map.movement_preview.set_available(exploring, Input.is_physical_key_pressed(KEY_SHIFT), _shell.click_to_move_enabled)
+	var exploring: bool = not _shell.navigation_overlay_active and _allows_exploration_task.call() and not _is_first_person.call()
+	var exploration_ready: bool = exploring and _allows_exploration.call()
+	_map.movement_preview.set_available(exploration_ready, Input.is_physical_key_pressed(KEY_SHIFT), _shell.click_to_move_enabled)
 	_battlefield.movement_preview.set_available(combat, Input.is_physical_key_pressed(KEY_SHIFT), _shell.click_to_move_enabled)
 	_refresh_reachability(view, combat and _battlefield.movement_preview.enabled)
 	if _path.is_empty(): return
@@ -74,11 +85,14 @@ func poll(delta: float) -> void:
 		cancel("Move To stopped • the active task or route changed.")
 		return
 	if _presentation.is_combat_playback_active() or _presentation.drawn_revision != view.revision: return
+	# Ordered sound and character-effect pauses retain the selected destination.
+	if not combat and not exploration_ready: return
 	_remaining -= delta
 	if _remaining > 0.0: return
 	_step(view, combat)
 
 func cancel(message: String = "") -> void:
+	_awaiting_combat = false
 	var was_active := not _path.is_empty()
 	_path.clear()
 	_preview = null
@@ -114,6 +128,7 @@ func handle_controller(action: StringName, direction: Vector2i) -> bool:
 	return true
 
 func _combat_available(view: GameView) -> bool:
+	if (_session.is_busy() or _session.resolution_failed): return false
 	if view == null or view.combat_view == null or view.combat_view.outcome != &"active": return false
 	if combat_input_available.is_valid() and not combat_input_available.call(): return false
 	var request := view.active_interaction_request()
@@ -124,7 +139,7 @@ func _refresh_reachability(view: GameView, combat: bool) -> void:
 		_cached_revision = -1
 		_reachability = null
 		return
-	var session_id := _session.session().get_instance_id()
+	var session_id := _session.session_identity()
 	if _cached_revision == view.revision and _cached_session == session_id: return
 	_cached_revision = view.revision
 	_cached_session = session_id
@@ -132,7 +147,7 @@ func _refresh_reachability(view: GameView, combat: bool) -> void:
 	if combat and _path.is_empty(): _hover(_battlefield.movement_preview, _battlefield.movement_preview.destination)
 
 func _hover(preview: MovementRoutePreview, coordinate: Vector2i) -> void:
-	if not _path.is_empty(): return
+	if (_session.is_busy() or _session.resolution_failed) or not _path.is_empty(): return
 	var path: Array[Vector2i] = []
 	var affordable: Array[Vector2i] = []
 	var message := "Choose a revealed destination • Escape cancels"
@@ -158,7 +173,7 @@ func _choose(preview: MovementRoutePreview, coordinate: Vector2i) -> void:
 	_held.stop()
 	_path = path
 	_preview = preview
-	_route_session = _session.session().get_instance_id()
+	_route_session = _session.session_identity()
 	_expected_revision = view.revision
 	_map_id = view.party_map_id
 	_battle_id = view.combat_view.battle_id if combat else ""
@@ -168,7 +183,7 @@ func _choose(preview: MovementRoutePreview, coordinate: Vector2i) -> void:
 	preview.show_preview(_path, "Following route • Escape cancels")
 
 func _route_is_current(view: GameView, combat: bool, exploring: bool) -> bool:
-	if _route_session != _session.session().get_instance_id() or view.revision != _expected_revision: return false
+	if _route_session != _session.session_identity() or view.revision != _expected_revision: return false
 	if _battle_id.is_empty(): return exploring and view.party_map_id == _map_id and view.combat_view == null
 	return combat and view.combat_view.battle_id == _battle_id and view.combat_view.active_actor_id == _actor_id and view.combat_view.round_number == _round
 
@@ -196,6 +211,10 @@ func _step(view: GameView, combat: bool) -> void:
 		var direction := destination - view.party_coordinate
 		step = _submit_intent.call(ExplorationIntents.overhead_dungeon_move(direction) if view.map_view.level_type == &"dungeon" else ExplorationIntents.move(direction))
 	_submitting = false
+	if combat and step == null and (_session.is_busy() or _session.resolution_failed):
+		_awaiting_combat = true
+		_pending_destination = destination
+		return
 	_acknowledge(step, destination, combat)
 
 func _acknowledge(step: SessionStep, destination: Vector2i, combat: bool) -> void:
@@ -210,7 +229,7 @@ func _acknowledge(step: SessionStep, destination: Vector2i, combat: bool) -> voi
 		return
 	_path.pop_front()
 	_expected_revision = view.revision
-	_remaining = _held.interval_seconds()
+	_remaining = 0.0 if combat else _held.interval_seconds()
 	if _path.is_empty():
 		cancel()
 		_shell.status.set_status("Destination reached.")

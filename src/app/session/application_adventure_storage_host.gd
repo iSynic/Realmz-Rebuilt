@@ -8,6 +8,7 @@ var _shell: GameShell
 var _load_committed_operation: Callable
 var _map_preview_operation: Callable
 var party_import: ApplicationPartyImportHost
+var _deferred_load: Dictionary = {}
 
 
 func _init(
@@ -38,6 +39,9 @@ func _init(
 
 
 func save(content: RealmzContent, slot_id: String) -> bool:
+	if _session.is_busy() or _session.resolution_failed:
+		_shell.status.set_status("Combat resolution failed. Load a saved adventure or return to the main menu." if _session.resolution_failed else "Save unavailable while combat is resolving.", true)
+		return false
 	if content == null:
 		_shell.status.set_status("Save failed • no package loaded", true)
 		return false
@@ -62,6 +66,10 @@ func save(content: RealmzContent, slot_id: String) -> bool:
 
 
 func load(content: RealmzContent, slot_id: String, backup: bool = false, replacement_slot: String = "") -> SessionStep:
+	if _session.is_busy():
+		_deferred_load = {"content": content, "slot": slot_id, "backup": backup, "replacement": replacement_slot}
+		_shell.status.set_status("Loading after this activation.")
+		return null
 	if content == null:
 		_shell.status.set_status("Load failed • no package loaded", true)
 		return SessionStep.failed(0, "no_package_loaded", "Load a package before restoring a save.")
@@ -70,6 +78,7 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 		_shell.status.set_status("Load failed • %s" % _repository_host.last_error(), true)
 		return SessionStep.failed(_session.view().revision, "save_load_failed", _repository_host.last_error())
 	var resolved_slot := slot_id
+	var previous_slot := ""
 	if slot_id in ["quick", "quick-2"]:
 		# This copies supported v5 records to A–J slots; it never migrates an older save schema.
 		var validation := GameSession.new().restore(content, envelope)
@@ -85,12 +94,23 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 			refresh(content, resolved_slot)
 			_shell.status.set_status(message, true)
 			return SessionStep.failed(_session.view().revision, "save_slot_assignment_failed", message)
+	elif resolved_slot.length() == 1 and SaveRepository.CLASSIC_SLOTS.contains(resolved_slot):
+		var validation := GameSession.new().restore(content, envelope)
+		if validation.state == SessionStep.State.FAILED:
+			_shell.status.set_status("Load failed • %s" % validation.error_message, true)
+			return validation
+		previous_slot = _repository_host.active_slot(content)
+		if not _repository_host.set_active_slot(content, resolved_slot):
+			var message := "Could not remember Slot %s as the Quick Save target. The current adventure is unchanged. %s" % [resolved_slot, _repository_host.last_error()]
+			_shell.status.set_status("Load failed • %s" % message, true)
+			return SessionStep.failed(_session.view().revision, "save_slot_assignment_failed", message)
 	var step := _session.restore(content, envelope)
 	if step.state != SessionStep.State.FAILED:
-		if resolved_slot.length() == 1 and SaveRepository.CLASSIC_SLOTS.contains(resolved_slot) and resolved_slot == slot_id:
-			_repository_host.set_active_slot(content, resolved_slot)
 		_load_committed_operation.call()
 		refresh(content, resolved_slot)
+	elif not previous_slot.is_empty() and not _repository_host.set_active_slot(content, previous_slot):
+		_shell.status.set_status("Load failed • %s; previous Quick Save target could not be restored." % step.error_message, true)
+		return step
 	var status := "Loaded %s %s" % ["backup" if backup else "save", slot_id] if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
 	if step.state != SessionStep.State.FAILED and resolved_slot != slot_id:
 		status = "Loaded into Slot %s • Quick Save uses %s • earlier save preserved" % [resolved_slot, resolved_slot]
@@ -99,6 +119,9 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 
 
 func update_save(content: RealmzContent, slot_id: String, backup: bool = false) -> bool:
+	if _session.is_busy():
+		_shell.status.set_status("Save updating is unavailable while combat is resolving.", true)
+		return false
 	var updated_slot := _repository_host.update_save(content, slot_id, backup)
 	if updated_slot.is_empty():
 		_shell.status.set_status("Save update failed • %s" % _repository_host.last_error(), true)
@@ -109,6 +132,13 @@ func update_save(content: RealmzContent, slot_id: String, backup: bool = false) 
 	_shell.status.set_status("Updated copy %s verified • original unchanged" % updated_slot)
 	_shell.status.show_activity_indicator(&"save")
 	return true
+
+
+func poll() -> void:
+	if _session.is_busy() or _deferred_load.is_empty(): return
+	var request := _deferred_load
+	_deferred_load = {}
+	self.load(request["content"], request["slot"], request["backup"], request["replacement"])
 
 
 func refresh(content: RealmzContent, selected_slot_id: String = "") -> void:

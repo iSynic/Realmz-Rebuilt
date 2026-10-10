@@ -2,12 +2,13 @@ extends SceneTree
 
 const PERFORMANCE_PACKAGE_LOADER := preload("res://tools/performance_package_loader.gd")
 const DEFAULT_BATTLE_ID := 46
+const Evidence := preload("res://tools/combat_probe_evidence.gd")
 
 
 func _initialize() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	if arguments.size() < 1 or arguments.size() > 2:
-		printerr("Usage: godot --headless --path <project> --script res://tools/combat_performance_probe.gd -- <package.realmz2> [classic-battle-id]")
+	if arguments.size() < 1 or arguments.size() > 3:
+		printerr("Usage: godot --headless --path <project> --script res://tools/combat_performance_probe.gd -- <package.realmz2> [classic-battle-id] [new-absolute-evidence-directory]")
 		call_deferred("_quit_cleanly", 2)
 		return
 	var loaded := PERFORMANCE_PACKAGE_LOADER.load_scenario(arguments[0])
@@ -17,7 +18,7 @@ func _initialize() -> void:
 		return
 	var content: RealmzContent = loaded.content
 	var package_media: PackageMediaCatalog = loaded.media
-	var battle_id := int(arguments[1]) if arguments.size() == 2 else DEFAULT_BATTLE_ID
+	var battle_id := int(arguments[1]) if arguments.size() >= 2 else DEFAULT_BATTLE_ID
 	var battle := content.combat.battle_by_classic_id(battle_id)
 	if battle == null:
 		printerr("BATTLE_REJECTED: Classic battle %d is unavailable" % battle_id)
@@ -29,7 +30,7 @@ func _initialize() -> void:
 		call_deferred("_quit_cleanly", 1)
 		return
 	var rules := RealmzRules.new()
-	var rng := RealmzRng.new(17)
+	var rng := RealmzRng.for_oracle(17)
 	var setup_started := Time.get_ticks_usec()
 	var setup := rules.combat_flow.start_battle(state, content, battle, rng)
 	var setup_us := Time.get_ticks_usec() - setup_started
@@ -61,10 +62,12 @@ func _initialize() -> void:
 	state.combat = CombatState.from_data(combat_data)
 	var monster_phase_state := GameState.from_data(state.to_data())
 	var warm_monster_phase_state := GameState.from_data(state.to_data())
-	var monster_phase_rng := RealmzRng.new()
+	var initial_state := state.to_data()
+	var evidence := {"initial": Evidence.outcome(state, rng, setup.events)}
+	var monster_phase_rng := RealmzRng.for_oracle()
 	var monster_phase_rng_start := rng.snapshot()
 	monster_phase_rng.restore(monster_phase_rng_start)
-	var warm_monster_phase_rng := RealmzRng.new()
+	var warm_monster_phase_rng := RealmzRng.for_oracle()
 	warm_monster_phase_rng.restore(monster_phase_rng_start)
 	var previous_view := _combat_view(state, content, rules, 1)
 	var view_started := Time.get_ticks_usec()
@@ -102,10 +105,12 @@ func _initialize() -> void:
 	rules.battlefield.probe_path_step_toward_actors(warm_monster_phase_state.combat.battlefield, terrain_set, monster_ids[0], character_ids, 16)
 	var warm_monster_phase_started := Time.get_ticks_usec()
 	var warm_monster_phase: CombatFlowResult = null
+	var warm_monster_events: Array[DomainEvent] = []
 	for character_id: String in character_ids:
 		warm_monster_phase = rules.combat_flow.submit_action(warm_monster_phase_state, content, character_id, &"finish", "", warm_monster_phase_rng)
 		if not warm_monster_phase.ok:
 			break
+		warm_monster_events.append_array(warm_monster_phase.events)
 	var warm_monster_phase_us := Time.get_ticks_usec() - warm_monster_phase_started
 	if warm_monster_phase == null or not warm_monster_phase.ok:
 		printerr("WARM_MONSTER_PHASE_REJECTED %s: %s" % [warm_monster_phase.error_code, warm_monster_phase.error_message])
@@ -137,7 +142,30 @@ func _initialize() -> void:
 	var batch_media_started := Time.get_ticks_usec()
 	package_media.read_bytes_batch(combat_assets)
 	var batch_media_us := Time.get_ticks_usec() - batch_media_started
+	evidence["auto"] = Evidence.outcome(state, rng, auto.events)
+	evidence["monster-cold"] = Evidence.outcome(monster_phase_state, monster_phase_rng, monster_phase_events)
+	evidence["monster-warm"] = Evidence.outcome(warm_monster_phase_state, warm_monster_phase_rng, warm_monster_events)
+	evidence["identity"] = {"campaignId": content.campaign_id, "packageHash": content.package_hash, "battleClassicId": battle_id, "seed": 17}
+	if CanonicalJson.encode(evidence["monster-cold"]) != CanonicalJson.encode(evidence["monster-warm"]):
+		printerr("EVIDENCE_REJECTED: warm and cold monster outcomes differ.")
+		call_deferred("_quit_cleanly", 1)
+		return
+	var phases := Evidence.decision_phases(initial_state, content, monster_phase_rng_start)
+	var auto_queries := Evidence.query_counts(initial_state, content, monster_phase_rng_start, [character_ids[0]], true, evidence["auto"])
+	var monster_queries := Evidence.query_counts(initial_state, content, monster_phase_rng_start, character_ids, false, evidence["monster-cold"])
+	if not auto_queries.get("exactOutcomeMatches", false) or not monster_queries.get("exactOutcomeMatches", false):
+		printerr("EVIDENCE_REJECTED: counted and ordinary outcomes differ.")
+		call_deferred("_quit_cleanly", 1)
+		return
+	if arguments.size() == 3 and not Evidence.write_evidence(arguments[2], evidence):
+		call_deferred("_quit_cleanly", 1)
+		return
 	print(CanonicalJson.encode({
+		"isolatedFirstDecision": phases,
+		"autoQueries": auto_queries,
+		"monsterQueries": monster_queries,
+		"autoOutcomeSha256": CanonicalJson.encode(evidence["auto"]).sha256_text(),
+		"monsterOutcomeSha256": CanonicalJson.encode(evidence["monster-cold"]).sha256_text(),
 		"autoEventCount": auto.events.size(),
 		"autoEventKinds": auto.events.map(func(event: DomainEvent) -> String: return String(event.kind)),
 		"autoMs": _milliseconds(auto_us),

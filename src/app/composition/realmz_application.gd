@@ -6,7 +6,6 @@ extends Control
 ## Composes the application and translates host input into typed game operations.
 
 const DEVELOPMENT_PREVIEW_HOST_PATH := "res://tools/development_preview_application_host.gd"
-const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_auto_coordinator.gd")
 const RUNTIME_TESTING_READINESS := preload("res://src/app/platform/runtime_testing_readiness.gd")
 const IMPORTED_SCENARIO_WORKFLOW := preload("res://src/app/composition/imported_scenario_workflow.gd")
 const CAMPAIGN_CATALOG_WORKFLOW := preload("res://src/app/composition/campaign_catalog_workflow.gd")
@@ -35,8 +34,7 @@ var _pending_package_path: String = ""
 var _last_package_operation_key: String = ""
 var _pending_prepared_package: PreparedPackage
 var _held_movement: HeldMovementController
-var _queued_combat_auto_changes: Dictionary = {}
-var _persistent_auto = PERSISTENT_AUTO_COORDINATOR.new()
+var _combat_host := ApplicationCombatHost.new()
 var _quit_operation: Callable
 var debug_tools: DebugToolsHost
 var _input_router: ApplicationInputRouter
@@ -65,16 +63,16 @@ func _ready() -> void:
 	_bind_combat_and_interactions()
 	_bind_shell_and_settings()
 	_dungeon_presenter.pointer_input_gate = func() -> bool: return accepts_exploration_input() and not _shell_presenter.navigation_overlay_active
-	click_to_move = ClickToMoveCoordinator.new(session_controller, presentation_coordinator, _shell_presenter, _map_presenter, _battlefield_presenter, _held_movement, accepts_exploration_input, func() -> bool: return _dungeon_presenter.is_active(), submit_intent, func(response: InteractionResponse) -> SessionStep:
+	click_to_move = ClickToMoveCoordinator.new(session_controller, presentation_coordinator, _shell_presenter, _map_presenter, _battlefield_presenter, _held_movement, accepts_exploration_input, has_exploration_task, func() -> bool: return _dungeon_presenter.is_active(), submit_intent, func(response: InteractionResponse) -> SessionStep:
 		response.body = ApplicationCombatPolicy.body_with_preferences(response.body as InteractionResponse.CombatBody, _presentation_settings)
 		return submit_response(response)
 	)
-	click_to_move.combat_input_available = func() -> bool: return not lifecycle_host.has_active_interaction() and _interaction_presenter.combat.accepts_spatial_input()
+	click_to_move.combat_input_available = func() -> bool: return not session_controller.is_busy() and not lifecycle_host.has_active_interaction() and not debug_tools.is_open() and _interaction_presenter.combat.accepts_spatial_input()
 	if RuntimeTestingHost.live_requested() or has_meta(&"runtime_testing_fixture"):
 		_runtime_testing_host = RuntimeTestingHost.new()
 		add_child(_runtime_testing_host)
 		var fixture_request := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
-		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return RUNTIME_TESTING_READINESS.fields(self, session_controller, presentation_coordinator, lifecycle_host, _persistent_auto, _battlefield_presenter), self, fixture_request)
+		var status := _runtime_testing_host.bind(session_controller, func() -> RealmzContent: return _active_content, func() -> Dictionary: return RUNTIME_TESTING_READINESS.fields(self, session_controller, presentation_coordinator, lifecycle_host, _combat_host.continuation, _battlefield_presenter), self, fixture_request)
 		if status != OK:
 			printerr("Runtime testing endpoint unavailable: %s" % error_string(status))
 	_finish_startup()
@@ -113,28 +111,16 @@ func _build_dependencies() -> void:
 		_shell_presenter,
 		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null
 	)
-	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _shell_presenter, func() -> void: _queued_combat_auto_changes.clear(), _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content)
+	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _shell_presenter, _combat_host.invalidate, _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content)
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
 	lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, func(slot_id: String) -> bool: return adventure_storage.save(_active_content, slot_id), func() -> void: adventure_storage.refresh(_active_content), _present_step_status, _complete_closed_session, _quit_application)
-	_persistent_auto.configure(
-		func() -> GameView: return session_controller.view(),
-		func() -> int: return session_controller.session().get_instance_id(),
-		func() -> StringName:
-			if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active(): return &"combat-playback"
-			if presentation_coordinator.drawn_revision != session_controller.view().revision: return &"presentation-awaiting-draw"
-			if not _queued_combat_auto_changes.is_empty(): return &"queued-auto-change"
-			if lifecycle_host.has_active_interaction(): return &"lifecycle-dialog"
-			if _controller_resume_required: return &"controller-suspended"
-			if _interaction_presenter.controller.blocks_automatic_progress(): return &"interaction-overlay"
-			return &"",
-		submit_response,
-		func(step: SessionStep) -> void:
-			var detail := step.error_message if step != null and not step.error_message.is_empty() else "The automatic activation did not commit."
-			_shell_presenter.status.set_status("Party Auto paused • %s" % detail, true),
-		func(reason: String) -> void:
-			abort_full_party_auto(false)
-			_shell_presenter.status.set_status(reason, true),
-	)
+	_combat_host.configure(session_controller, presentation_coordinator, _shell_presenter, _interaction_presenter.combat, func() -> StringName:
+		if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active(): return &"combat-playback"
+		if presentation_coordinator.drawn_revision != session_controller.view().revision: return &"presentation-awaiting-draw"
+		if lifecycle_host.has_active_interaction(): return &"lifecycle-dialog"
+		if _controller_resume_required: return &"controller-suspended"
+		if _interaction_presenter.controller.blocks_automatic_progress(): return &"interaction-overlay"
+		return &"", _present_step_status, lifecycle_host.has_active_interaction)
 
 
 func _bind_debug_and_movement() -> void:
@@ -162,7 +148,7 @@ func _bind_debug_and_movement() -> void:
 	_controller_input.input_resumed.connect(func() -> void:
 		_controller_resume_required = false
 		_shell_presenter.status.set_status("Controller input restored.")
-		_persistent_auto.request()
+		_combat_host.continuation.request()
 	)
 	_controller_input.binding_captured.connect(func(action_id: StringName, descriptor: Dictionary) -> void: _shell_presenter.controller.receive_binding(action_id, descriptor))
 	_controller_input.binding_capture_cancelled.connect(_shell_presenter.controller.cancel_binding_capture)
@@ -288,9 +274,12 @@ func _finish_startup() -> void:
 
 
 func _process(_delta: float) -> void:
+	session_controller.poll_combat_work()
 	if adventure_storage != null and adventure_storage.party_import != null: adventure_storage.party_import.poll()
+	lifecycle_host.poll()
+	adventure_storage.poll()
 	if click_to_move != null: click_to_move.poll(_delta)
-	_persistent_auto.poll()
+	_combat_host.poll()
 	var library_completed := character_files.poll_library_load(_active_content)
 	if library_completed and _pending_prepared_package != null:
 		var pending := _pending_prepared_package
@@ -341,6 +330,7 @@ func _process(_delta: float) -> void:
 
 func _exit_tree() -> void:
 	_trace_shutdown("application tree exit started")
+	_combat_host.release()
 	if _held_movement != null:
 		_held_movement.stop()
 	if _package_host != null:
@@ -354,7 +344,7 @@ func _on_smoke_action_pressed() -> void:
 		_status_label.text = "MCP input verified • no package loaded"
 		return
 	var step := submit_intent(ExplorationIntents.search())
-	if step.state == SessionStep.State.FAILED:
+	if step == null or step.state == SessionStep.State.FAILED:
 		return
 	var roll: int = step.events[0].payload.get("roll", 0)
 	var current_view := session_controller.view()
@@ -406,8 +396,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int, sou
 		presentation_coordinator.refresh()
 		_present_package_failure(step.error_message, step.error_code, source_path)
 		return step
-	_persistent_auto.invalidate()
-	_queued_combat_auto_changes.clear()
+	_combat_host.invalidate()
 	_active_content = prepared.content
 	_package_host.promote(prepared)
 	if _presentation_settings.last_campaign_id != _active_content.campaign_id: _presentation_settings.last_campaign_id = _active_content.campaign_id
@@ -448,12 +437,15 @@ func accepts_route_input() -> bool:
 
 
 func accepts_exploration_input() -> bool:
-	if lifecycle_host.has_active_interaction() or presentation_coordinator == null or _interaction_presenter == null or _shell_presenter == null:
-		return false
-	if presentation_coordinator.is_combat_playback_active() or _interaction_presenter.has_blocking_request():
+	return has_exploration_task() and (_audio_presenter == null or not _audio_presenter.is_input_blocking())
+
+
+func has_exploration_task() -> bool:
+	if session_controller.is_busy(): return false
+	if lifecycle_host.has_active_interaction() or debug_tools != null and debug_tools.is_open() or presentation_coordinator == null or _interaction_presenter == null or _shell_presenter == null:
 		return false
 	var view := session_controller.view()
-	return view != null and view.session_started and view.pending_interaction == null and _shell_presenter.accepts_exploration_input()
+	return not presentation_coordinator.is_combat_playback_active() and not _interaction_presenter.has_blocking_request() and view != null and view.session_started and view.pending_interaction == null and _shell_presenter.accepts_exploration_input()
 
 
 func handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
@@ -536,21 +528,16 @@ func submit_movement(direction: Vector2i) -> bool:
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	if session_controller.view().party_setup_available and _package_host.operation_view().is_running():
 		return SessionStep.failed(session_controller.view().revision, &"campaign_preparing", "Wait for scenario preparation to finish.")
-	if intent != null and intent.kind == PlayerIntent.Kind.SET_COMBAT_AUTO:
-		_persistent_auto.reset_progress()
 	if character_files.creator_active():
 		return character_files.submit_creator_intent(intent)
 	var debug_step := debug_tools.noclip_step(intent) if debug_tools != null else null
 	if debug_step != null:
 		_present_step_status(debug_step)
 		return debug_step
-	var queued_auto := ApplicationCombatPolicy.auto_change_to_queue(intent, presentation_coordinator != null and presentation_coordinator.is_combat_playback_active())
-	if not queued_auto.is_empty():
-		_queued_combat_auto_changes[String(queued_auto["characterId"])] = bool(queued_auto["enabled"])
-		_shell_presenter.status.set_status("Manual control queued after this Auto activation." if not bool(queued_auto["enabled"]) else "Auto queued after this activation.")
-		if not bool(queued_auto["enabled"]):
-			presentation_coordinator.skip_combat_playback()
-		return SessionStep.completed(session_controller.view().revision)
+	if _combat_host.queue_auto(intent): return null
+	if _combat_host.resolves_combat() and intent != null:
+		var submission := _combat_host.enqueue_intent(intent)
+		return submission.rejection
 	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 		var vault_import := intent.payload as PartyIntentPayloads.VaultImport
 		var import_intent := character_files.vault_import_intent(vault_import.character_id, vault_import.revision_hash)
@@ -585,9 +572,11 @@ func submit_response(response: InteractionResponse) -> SessionStep:
 			presentation_coordinator.refresh()
 			return null
 		var direct_step := submit_intent(direct_intent)
-		if direct_step.state == SessionStep.State.COMPLETED and direct_step.events.is_empty() and session_controller.view().pending_interaction == null:
+		if direct_step != null and direct_step.state == SessionStep.State.COMPLETED and direct_step.events.is_empty() and session_controller.view().pending_interaction == null:
 			_shell_presenter.status.set_status("")
 		return direct_step
+	if _combat_host.resolves_combat():
+		return _combat_host.enqueue_response(response).rejection
 	var step := session_controller.respond(response)
 	_present_step_status(step)
 	if step.state != SessionStep.State.FAILED and session_controller.view().journal_entries.size() > journal_count_before:
@@ -598,20 +587,12 @@ func submit_response(response: InteractionResponse) -> SessionStep:
 
 
 func abort_full_party_auto(skip_playback: bool) -> bool:
-	var character_ids := ApplicationCombatPolicy.auto_abort_ids(session_controller.view(), _queued_combat_auto_changes)
-	if character_ids.is_empty():
-		return false
-	for character_id: String in character_ids:
-		_queued_combat_auto_changes[character_id] = false
-	_shell_presenter.status.set_status("Full-party Auto cancelled. Manual control resumes at the next activation.")
-	if skip_playback:
-		presentation_coordinator.skip_combat_playback()
-	else:
-		_flush_queued_combat_auto_changes()
-	return true
+	return _combat_host.abort_auto(skip_playback)
 
 
 func _quit_application() -> void:
+	_combat_host.invalidate()
+	session_controller.shutdown_worker()
 	_trace_shutdown("quit accepted; closing package workers")
 	if _package_host != null:
 		_package_host.close()
@@ -626,8 +607,7 @@ func _trace_shutdown(stage: String) -> void:
 
 
 func _complete_closed_session() -> void:
-	_persistent_auto.invalidate()
-	_queued_combat_auto_changes.clear()
+	_combat_host.invalidate()
 	_active_content = null
 	presentation_media.set_package_media(character_files.library_media())
 	adventure_storage.refresh(_active_content)
@@ -640,21 +620,11 @@ func _complete_closed_session() -> void:
 func _on_playback_step_settled(step: SessionStep) -> void:
 	if lifecycle_host.playback_step_settled(step):
 		return
-	_flush_queued_combat_auto_changes()
-	_persistent_auto.request()
-
-
-func _flush_queued_combat_auto_changes() -> void:
-	var changes := _queued_combat_auto_changes.duplicate()
-	_queued_combat_auto_changes.clear()
-	var character_ids: Array[String] = []
-	character_ids.assign(changes.keys())
-	character_ids.sort()
-	for character_id: String in character_ids:
-		submit_intent(CombatIntents.set_auto(character_id, bool(changes[character_id])))
+	_combat_host.continuation.request()
 
 
 func _present_step_status(step: SessionStep) -> void:
+	if step == null: return
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Action failed • %s" % step.error_message
 		_shell_presenter.status.set_status(_status_label.text, true)

@@ -15,6 +15,10 @@ var _last_blocker: StringName = &""
 var _progress := preload("res://src/app/session/auto_progress_monitor.gd").new()
 var _pause: Callable
 var _observed_session := 0
+var _job_id := 0
+var _dispatch_generation := 0
+var _dispatch_session := 0
+var _dispatch_revision := -1
 
 
 func configure(view: Callable, session_identity: Callable, blocker: Callable, submit: Callable, report_failure: Callable, pause: Callable = Callable()) -> void:
@@ -62,13 +66,25 @@ func poll() -> void:
 		return
 	_running = true
 	_requested = false
-	var generation := _generation
-	var step := _submit.call(response) as SessionStep
-	_running = false
-	if generation != _generation or int(_session_identity.call()) != session_identity:
-		return
-	if step == null or step.state == SessionStep.State.FAILED:
+	_dispatch_generation = _generation
+	_dispatch_session = session_identity
+	_dispatch_revision = revision
+	var submission := _submit.call(response) as CombatSubmission
+	if submission == null or not submission.accepted():
+		_running = false
 		_failed_revision = revision
+		_report_failure.call(submission.rejection if submission != null else null)
+		return
+	_job_id = submission.job_id
+
+
+func complete(job_id: int, step: SessionStep) -> void:
+	if not _running or job_id != _job_id: return
+	_running = false
+	_job_id = 0
+	if _dispatch_generation != _generation or int(_session_identity.call()) != _dispatch_session: return
+	if step == null or step.state == SessionStep.State.FAILED:
+		_failed_revision = _dispatch_revision
 		_report_failure.call(step)
 		return
 	_failed_revision = -1
@@ -78,6 +94,7 @@ func poll() -> void:
 
 func invalidate() -> void:
 	_generation += 1
+	_job_id = 0
 	_requested = false
 	_running = false
 	_failed_revision = -1

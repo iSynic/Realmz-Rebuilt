@@ -19,7 +19,7 @@ func handle_input(event: InputEvent) -> void:
 		return
 	if _application._shell_presenter.controller.handle_top_menu_input(event):
 		return
-	if _handle_debug_or_acknowledgement_input(event):
+	if ApplicationLogInput.handle_input(_application, event):
 		return
 	var focus: Control = _application.get_viewport().gui_get_focus_owner()
 	if event is InputEventKey and (focus is LineEdit or focus is TextEdit):
@@ -75,6 +75,8 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 	if _top_menu_is_open():
 		_handle_top_menu_action(action_id)
 		return
+	if _handle_controller_log_or_diagnostics(action_id, _controller_scroll_direction(action_id) if _controller_scroll_direction(action_id) != Vector2i.ZERO else direction_action):
+		return
 	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
 		if action_id == &"realmz_controller_back":
 			if _application.click_to_move != null: _application.click_to_move.cancel("Move To cancelled.")
@@ -111,6 +113,8 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 
 
 func handle_controller_direction(direction: Vector2i, repeated: bool = false) -> void:
+	if _handle_controller_log_or_diagnostics(&"", direction):
+		return
 	if _application._shell_presenter.controller.handle_navigation_modal_controller(&"", true, direction):
 		_mark_handled()
 		return
@@ -142,6 +146,14 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 		_mark_handled()
 		return
 	_handle_controller_direction(direction, repeated)
+
+
+func _handle_controller_log_or_diagnostics(action_id: StringName, direction: Vector2i) -> bool:
+	if ApplicationLogInput.handle_controller(_application, action_id, direction):
+		_stop_controller_movement()
+		_mark_handled()
+		return true
+	return false
 
 
 func _handle_controller_navigation_action(action_id: StringName) -> bool:
@@ -467,18 +479,6 @@ func _controller_scroll_direction(action_id: StringName) -> Vector2i:
 		&"realmz_controller_scroll_left": return Vector2i.LEFT
 		&"realmz_controller_scroll_right": return Vector2i.RIGHT
 	return Vector2i.ZERO
-
-
-func _handle_debug_or_acknowledgement_input(event: InputEvent) -> bool:
-	if _application.debug_tools != null and _application.debug_tools.handle_input(event):
-		_mark_handled()
-		return true
-	if _application.debug_tools != null and _application.debug_tools.is_open():
-		return true
-	if _application._interaction_presenter != null and _application._interaction_presenter.handle_global_pointer_acknowledgement(event):
-		_mark_handled()
-		return true
-	return false
 
 
 func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: InputEventKey) -> bool:

@@ -13,6 +13,7 @@ signal targeting_rotate_requested
 signal combatant_focus_requested(combatant_id: String, play_sound: bool)
 signal reveal_friends_requested
 signal move_to_requested
+signal combat_log_requested
 signal spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
 signal spellbook_closed
 signal items_requested
@@ -26,6 +27,8 @@ var bandage: BattleBandagePanel
 var _dock: FastSpellDock
 var _dock_host: Node
 var _dock_scene: PackedScene
+var _dock_frames: Callable
+var command_deck_cache := BattleCommandDeckCache.new()
 var _stage_rect := Rect2()
 var _spellbook_open := false
 var _weapon_aim_body: CombatRequestBody
@@ -34,6 +37,12 @@ var _weapon_preparation: StringName
 var _weapon_ability_body: CombatRequestBody
 var _weapon_ability_id := ""
 var inspector: CombatInspectionCard
+var resolution_pending := false:
+	set(pending):
+		resolution_pending = pending
+		if _component != null: _component.command_availability.set_pending(pending)
+		if pending and _dock != null: _dock.set_held(false)
+		if pending: command_deck_cache.prepare.call_deferred(_dock_host)
 
 
 func configure(dock_host: Node, dock_scene: PackedScene) -> void:
@@ -66,12 +75,16 @@ func bind(component: BattleInteraction, body: CombatRequestBody, game_view: Game
 	_component.combatant_focus_requested.connect(func(combatant_id: String, play_sound: bool) -> void: combatant_focus_requested.emit(combatant_id, play_sound))
 	_component.reveal_friends_requested.connect(func() -> void: reveal_friends_requested.emit())
 	_component.move_to_requested.connect(func() -> void: move_to_requested.emit())
+	_component.combat_log_requested.connect(func() -> void: combat_log_requested.emit())
 	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: spellbook_requested.emit(actor_id, options))
 	_component.combat_spellbook_closed.connect(func() -> void: spellbook_closed.emit())
 	_component.combat_items_requested.connect(func() -> void: items_requested.emit())
 	_component.combat_inventory_targeting_started.connect(func() -> void: inventory_targeting_started.emit())
 	_component.bandage_selection_changed.connect(func(target_ids: Array[String]) -> void: bandage_selection_changed.emit(target_ids))
-	_mount_fast_spell_dock(body, InteractionComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells) if body != null else {})
+	_mount_fast_spell_dock(body, {})
+	if body != null: _dock_frames = func() -> void: _dock.configure(body.fast_spells, InteractionComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells))
+	_component.command_availability.set_pending(resolution_pending)
+	command_deck_cache.prepare.call_deferred(_dock_host)
 	var previous := _weapon_aim_body
 	var mode := _weapon_aim_mode
 	var preparation := _weapon_preparation
@@ -110,12 +123,15 @@ func clear(preserve_weapon_aim: bool = false) -> void:
 		inspector.dismiss()
 		inspector.queue_free()
 	inspector = null
-	_spellbook_open = false
-	spellbook_closed.emit()
+	if _spellbook_open:
+		_spellbook_open = false
+		spellbook_closed.emit()
 	_close_fast_spell_dock()
 
 
 func release() -> void:
+	command_deck_cache.release()
+	_dock_frames = Callable()
 	var no_bandage_targets: Array[String] = []
 	bandage_selection_changed.emit(no_bandage_targets)
 	bandage = null
@@ -147,22 +163,25 @@ func set_command_layout(scale: float, compact: bool) -> void:
 
 
 func submit_body(body: InteractionResponse.CombatBody) -> bool:
-	if _component == null:
+	if _component == null or resolution_pending:
 		return false
 	response_body_submitted.emit(body)
 	return true
 
 
 func accepts_spatial_input() -> bool:
-	return _component != null and _component.accepts_spatial_input() and (inspector == null or not inspector.visible)
+	return not resolution_pending and _component != null and _component.accepts_spatial_input() and (inspector == null or not inspector.visible)
 
 
 func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
-	return _component != null and _component.handle_fast_spell(slot_index, use_spell)
+	return not resolution_pending and _component != null and _component.handle_fast_spell(slot_index, use_spell)
 
 
 func set_fast_spell_dock_held(held: bool) -> bool:
-	return _dock != null and _dock.set_held(held)
+	if held and not resolution_pending and _dock != null and _dock_frames.is_valid():
+		_dock_frames.call()
+		_dock_frames = Callable()
+	return _dock != null and _dock.set_held(held and not resolution_pending)
 
 
 func activate_fast_spell_from_dock(slot_index: int) -> bool:
@@ -191,12 +210,12 @@ func targeting_cancelled() -> void:
 
 
 func cast_spell(option: InteractionRequestValue.CastOption) -> void:
-	if _component != null:
+	if not resolution_pending and _component != null:
 		_component.cast_spell_option(option)
 
 
 func open_item_from_inventory(instance_id: String, open_scrolls: bool = false) -> bool:
-	return _component != null and _component.open_item_from_inventory(instance_id, open_scrolls)
+	return not resolution_pending and _component != null and _component.open_item_from_inventory(instance_id, open_scrolls)
 
 
 func close_spellbook() -> void:
@@ -234,6 +253,7 @@ func _mount_fast_spell_dock(body: CombatRequestBody, animation_frames: Dictionar
 
 
 func _close_fast_spell_dock() -> void:
+	_dock_frames = Callable()
 	if _dock == null:
 		return
 	var parent := _dock.get_parent()

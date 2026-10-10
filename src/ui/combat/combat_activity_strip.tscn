@@ -68,12 +68,22 @@ scroll_following = true
 selection_enabled = true
 theme_override_font_sizes/normal_font_size = 14
 
-[node name="CombatPlaybackStatus" type="Label" parent="LogPanel/Content"]
+[node name="StatusRow" type="HBoxContainer" parent="LogPanel/Content"]
+layout_mode = 2
+
+[node name="ReviewLog" type="Button" parent="LogPanel/Content/StatusRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Combat Log"
+tooltip_text = "Review combat history. Controller: Top Menu."
+
+[node name="CombatPlaybackStatus" type="Label" parent="LogPanel/Content/StatusRow"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
 theme_override_font_sizes/font_size = 11
 text_overrun_behavior = 3
+size_flags_horizontal = 3
 
 [node name="TargetPreview" type="PanelContainer" parent="."]
 unique_name_in_owner = true

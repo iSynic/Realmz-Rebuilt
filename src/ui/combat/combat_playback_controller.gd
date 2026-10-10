@@ -9,8 +9,8 @@ signal playback_finished
 
 const SOUND_FRAME_SECONDS: float = 0.01
 const CUE_SECONDS: float = 0.28
-const MOVE_START_SECONDS: float = 0.12
-const MOVE_END_SECONDS: float = 0.14
+const MOVE_START_SECONDS: float = 0.08
+const MOVE_END_SECONDS: float = 0.02
 const ATTACK_SECONDS: float = 0.18
 const PROJECTILE_SECONDS: float = 0.24
 const SPELL_CAST_SECONDS: float = 0.24
@@ -42,6 +42,7 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"combat_persistent_field_created",
 	&"combat_persistent_field_expired",
 	&"combat_monster_action_unavailable",
+	&"combat_summoned",
 	&"sound_requested",
 ]
 
@@ -59,6 +60,8 @@ var _hurry_spell_resolution: bool = false
 var _visible_fields: Array[PersistentCombatFieldView] = []
 var _hurry_cast_key: String = ""
 var _visible_health: Dictionary = {}
+var _summoned_monsters: Dictionary = {}
+var _summoned_sizes: Dictionary = {}
 var _backdrops := ClassicCombatBackdrop.new()
 
 
@@ -66,12 +69,12 @@ func begin(previous: GameView, events: Array[DomainEvent], final: GameView, redu
 	reset()
 	previous_view = previous
 	final_view = final
-	base_view = _choose_base_view(previous, final)
+	base_view = CombatPlaybackViews.base_for(previous, final, events)
 	if base_view == null or not _has_playback_event(events):
 		return false
 	if reduced_motion:
 		for event: DomainEvent in events:
-			if event.kind == &"sound_requested":
+			if event.kind in [&"sound_requested", &"character_effect_requested"]:
 				var sound_frame := CombatPlaybackFrame.new(&"sound", SOUND_FRAME_SECONDS)
 				sound_frame.sound_event = event
 				_frames.append(sound_frame)
@@ -99,6 +102,8 @@ func reset() -> void:
 	_visible_fields.clear()
 	_hurry_cast_key = ""
 	_visible_health.clear()
+	_summoned_monsters.clear()
+	_summoned_sizes.clear()
 	_backdrops.seed(base_view)
 
 
@@ -150,8 +155,10 @@ func advance(delta_seconds: float, sound_is_blocking: bool = false) -> void:
 		return
 	if sound_is_blocking and not _frame_started:
 		return
+	var just_started := false
 	if not _frame_started:
 		_frame_started = true
+		just_started = true
 		frame.progress = 0.0
 		frame_changed.emit(frame)
 		if frame.sound_event != null:
@@ -160,7 +167,8 @@ func advance(delta_seconds: float, sound_is_blocking: bool = false) -> void:
 		return
 	_elapsed_seconds += maxf(delta_seconds, 0.0)
 	frame.progress = 1.0 if frame.duration_seconds <= 0.0 else clampf(_elapsed_seconds / frame.duration_seconds, 0.0, 1.0)
-	frame_changed.emit(frame)
+	if not just_started or frame.progress > 0.0:
+		frame_changed.emit(frame)
 	if _elapsed_seconds < frame.duration_seconds:
 		return
 	_frame_index += 1
@@ -173,11 +181,6 @@ func advance(delta_seconds: float, sound_is_blocking: bool = false) -> void:
 func skip() -> bool:
 	if not _active:
 		return false
-	var first_unplayed := _frame_index + 1 if _frame_started else _frame_index
-	for index: int in range(maxi(first_unplayed, 0), _frames.size()):
-		var frame := _frames[index]
-		if frame.sound_event != null:
-			sound_requested.emit(frame.sound_event)
 	_finish()
 	return true
 
@@ -196,21 +199,18 @@ func _has_playback_event(events: Array[DomainEvent]) -> bool:
 	return false
 
 
-func _choose_base_view(previous: GameView, final: GameView) -> GameView:
-	if previous != null and previous.combat_view != null and previous.combat_view.battlefield != null:
-		return previous
-	if final != null and final.combat_view != null and final.combat_view.battlefield != null:
-		return final
-	return null
-
-
 func _build_frames(events: Array[DomainEvent]) -> Array[String]:
+	var committed_events := events
+	if _hurry_spell_resolution:
+		events = CombatPlaybackCondense.project(events)
 	var positions := _positions_for(base_view)
 	var hidden: Array[String] = []
 	_visible_fields = base_view.combat_view.persistent_fields.duplicate() if base_view != null and base_view.combat_view != null else []
 	_visible_health.clear()
+	_summoned_monsters.clear()
+	_summoned_sizes.clear()
 	_backdrops.seed(base_view)
-	if base_view == final_view: _backdrops.rewind(events)
+	if base_view == final_view: _backdrops.rewind(committed_events)
 	if base_view != null:
 		for character: CharacterView in base_view.party_members:
 			_visible_health[character.id] = character.current_health
@@ -244,7 +244,7 @@ func _build_frames(events: Array[DomainEvent]) -> Array[String]:
 
 func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	match event.kind:
-		&"sound_requested":
+		&"sound_requested", &"character_effect_requested":
 			var sound_frame := _new_frame(&"sound", SOUND_FRAME_SECONDS, positions, hidden)
 			sound_frame.sound_event = event
 			_frames.append(sound_frame)
@@ -258,6 +258,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 		&"combat_spell_cast": _append_spell_cast(event, positions, hidden)
 		&"combat_spell_projectile": _append_spell_projectile(event, positions, hidden)
 		&"combat_spell_resolved": _append_spell_result(event, positions, hidden)
+		&"combat_multi_spell_resolved", &"combat_multi_attack_resolved": _append_multi_result(event, positions, hidden)
 		&"combat_turn_undead_resolved": _append_turn_undead_result(event, positions, hidden)
 		&"combatant_bandaged": _append_simple_result(event, positions, hidden, &"healing", "Bandaged")
 		&"combatant_bleeding_progressed": _append_bleeding_result(event, positions, hidden, false)
@@ -267,6 +268,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 		&"combatant_fumbled": _append_simple_result(event, positions, hidden, &"fumble", "Fumble")
 		&"combat_attack_blocked": _append_simple_result(event, positions, hidden, &"blocked", "Blocked")
 		&"combatant_retreated": _append_retreat(event, positions, hidden)
+		&"combat_summoned": _append_summon(event, positions, hidden)
 		&"combat_persistent_field_created", &"combat_persistent_field_expired": _append_field_change(event, positions, hidden)
 		&"combat_monster_action_unavailable":
 			var frame := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
@@ -313,6 +315,29 @@ func _append_battle_cue(event: DomainEvent, positions: Dictionary, hidden: Array
 	var cue := _new_frame(&"battle_cue", CUE_SECONDS, positions, hidden)
 	cue.display_text = "Battle begins" if event.kind == &"battle_started" else String(event.payload.get("outcome", "Battle complete")).replace("_", " ").capitalize()
 	_frames.append(cue)
+
+
+func _append_summon(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var monster_id := String(event.payload.get("monsterId", ""))
+	if monster_id.is_empty():
+		return
+	var coordinate := _payload_coordinate(event.payload.get("coordinate"))
+	if coordinate.x < 0:
+		return
+	positions[monster_id] = coordinate
+	if final_view != null and final_view.combat_view != null:
+		for monster: MonsterView in final_view.combat_view.monsters:
+			if monster.id == monster_id:
+				_summoned_monsters[monster_id] = monster
+				_visible_health[monster_id] = monster.maximum_health
+				break
+	_summoned_sizes[monster_id] = int(event.payload.get("size", 0))
+	var frame := _new_frame(&"summon", SPELL_EFFECT_SECONDS, positions, hidden)
+	frame.actor_id = String(event.payload.get("actorId", ""))
+	frame.target_id = monster_id
+	frame.to_coordinate = coordinate
+	frame.display_text = "Summoned"
+	_frames.append(frame)
 
 
 func _append_retreat(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
@@ -443,6 +468,39 @@ func _append_spell_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 	_append_result(event, positions, hidden)
 
 
+func _append_multi_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var initial_hidden := hidden.duplicate()
+	var animations: Array[CombatPlaybackFrame] = []
+	var results: Array[CombatPlaybackFrame] = []
+	var defeats: Array[CombatPlaybackFrame] = []
+	var spell_group := event.kind == &"combat_multi_spell_resolved"
+	var payloads: Array = event.payload.get("results", [])
+	for payload_value: Variant in payloads:
+		var payload := payload_value as Dictionary
+		var original := DomainEvent.new(&"combat_spell_resolved" if spell_group else &"combat_attack_resolved", payload)
+		_backdrops.observe_action(original)
+		var first_frame := _frames.size()
+		if spell_group: _append_spell_result(original, positions, hidden)
+		else: _append_attack(original, positions, hidden)
+		for index: int in range(first_frame, _frames.size()):
+			var frame := _frames[index]
+			if frame.kind == &"result": results.append(frame)
+			elif frame.kind == &"defeat": defeats.append(frame)
+			elif results.size() == 0: animations.append(frame)
+		_frames.resize(first_frame)
+		_backdrops.apply_result(payload)
+	_frames.append_array(animations)
+	var result := _new_frame(&"group_result", RESULT_SECONDS, positions, initial_hidden)
+	result.actor_id = String(event.payload.get("actorId", ""))
+	result.display_text = "%d targets" % results.size()
+	result.group_frames = results
+	_frames.append(result)
+	if not defeats.is_empty():
+		var defeat := _new_frame(&"group_defeat", DEFEAT_SECONDS, positions, hidden)
+		defeat.group_frames = defeats
+		_frames.append(defeat)
+
+
 func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	var result_kind := StringName(event.payload.get("result", "resisted"))
 	var text := "Resist" if result_kind == &"resisted" else "Destroyed" if result_kind == &"destroyed" else "Turned"
@@ -505,9 +563,9 @@ func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 	var result := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
 	result.actor_id = String(event.payload.get("actorId", ""))
 	result.target_id = target_id
-	result.result_kind = _result_kind(event.payload)
+	result.result_kind = CombatPlaybackResultText.kind(event.payload)
 	result.display_amount = int(event.payload.get("healing", 0)) if result.result_kind == &"healing" else int(event.payload.get("damage", 0))
-	result.display_text = _result_text(result.result_kind, result.display_amount, event.payload)
+	result.display_text = CombatPlaybackResultText.text_for(result.result_kind, result.display_amount, event.payload)
 	result.effect_resource_id = int(event.payload.get("classicResultEffectResourceId", 0))
 	_frames.append(result)
 	if defeated and not result.target_id.is_empty():
@@ -546,6 +604,8 @@ func _assign_camera_focus_ids() -> void:
 	var latest_focus_id := ""
 	for frame: CombatPlaybackFrame in _frames:
 		var frame_focus_id := frame.actor_id if not frame.actor_id.is_empty() else frame.target_id
+		if frame.kind in [&"result", &"spell_effect", &"backdrop_effect", &"defeat"] and not frame.target_id.is_empty():
+			frame_focus_id = frame.target_id
 		if not frame_focus_id.is_empty():
 			latest_focus_id = frame_focus_id
 		frame.camera_focus_id = latest_focus_id
@@ -561,6 +621,8 @@ func _assign_camera_focus_ids() -> void:
 func _new_frame(kind: StringName, duration: float, positions: Dictionary, hidden: Array[String]) -> CombatPlaybackFrame:
 	var frame := CombatPlaybackFrame.new(kind, duration * 100.0 / float(_speed_percent))
 	frame.combatant_positions = positions.duplicate(true)
+	frame.summoned_monsters = _summoned_monsters.duplicate()
+	frame.summoned_sizes = _summoned_sizes.duplicate()
 	frame.hidden_combatant_ids = hidden.duplicate()
 	frame.persistent_fields = _visible_fields.duplicate()
 	frame.combatant_health = _visible_health.duplicate()
@@ -606,78 +668,3 @@ static func _payload_coordinate(value: Variant) -> Vector2i:
 	if value is Array and value.size() == 2:
 		return Vector2i(int(value[0]), int(value[1]))
 	return Vector2i(-1, -1)
-
-
-static func _result_kind(payload: Dictionary) -> StringName:
-	if bool(payload.get("fumble", false)):
-		return &"fumble"
-	if bool(payload.get("blocked", false)):
-		return &"blocked"
-	if bool(payload.get("immune", false)):
-		return &"immune"
-	if bool(payload.get("resisted", false)):
-		return &"resisted"
-	if bool(payload.get("saved", false)):
-		return &"saved"
-	if not bool(payload.get("hit", true)):
-		return &"miss"
-	if int(payload.get("healing", 0)) > 0:
-		return &"healing"
-	if int(payload.get("damage", 0)) > 0:
-		return &"damage"
-	if payload.has("appliedCondition") or payload.has("partyCondition"):
-		return &"condition"
-	if int(payload.get("clearedConditionCount", 0)) > 0 or payload.has("clearedCondition"):
-		return &"condition_cleared"
-	if int(payload.get("spellPointDelta", 0)) != 0:
-		return &"spell_points"
-	if bool(payload.get("allegianceChanged", false)) or payload.has("traitorAfter"):
-		return &"allegiance"
-	if payload.has("transformedDefinitionAfter"):
-		return &"transformed"
-	if not String(payload.get("specialResult", "")).is_empty():
-		return StringName(payload.get("specialResult"))
-	if int(payload.get("duration", 0)) > 0:
-		return &"affected"
-	return &"no_effect"
-
-
-static func _result_text(result_kind: StringName, amount: int, payload: Dictionary = {}) -> String:
-	if result_kind == &"condition" or result_kind == &"condition_cleared":
-		var prefix := "Condition applied" if result_kind == &"condition" else "Condition cleared"
-		var character_key := "appliedCondition" if result_kind == &"condition" else "clearedCondition"
-		if payload.has(character_key):
-			var index := int(payload[character_key])
-			var name := CharacterView.CONDITION_NAMES[index] if index >= 0 and index < CharacterView.CONDITION_NAMES.size() else "Classic condition %d" % (index + 1)
-			return "%s: %s" % [prefix, name]
-		if result_kind == &"condition" and payload.has("partyCondition"):
-			var index := int(payload["partyCondition"])
-			var name := "Torch Lit" if index == ConditionRules.PARTY_TORCH_LIT else ClassicPartyEffects.NAMES[index - 1] if index > 0 and index <= ClassicPartyEffects.NAMES.size() else "Party condition %d" % (index + 1)
-			return "%s: %s" % [prefix, name]
-		return prefix
-	match result_kind:
-		&"miss":
-			return "Miss"
-		&"blocked":
-			return "Blocked"
-		&"immune":
-			return "Immune"
-		&"resisted":
-			return "Resist"
-		&"saved":
-			return "Saved"
-		&"fumble":
-			return "Fumble"
-		&"healing":
-			return "+%d" % amount
-		&"damage":
-			return str(amount)
-		&"spell_points":
-			return "Spell points changed"
-		&"allegiance":
-			return "Allegiance changed"
-		&"transformed":
-			return "Transformed"
-		&"affected":
-			return "Affected"
-	return "No effect"

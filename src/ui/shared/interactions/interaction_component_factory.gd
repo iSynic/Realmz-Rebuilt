@@ -42,7 +42,7 @@ static func create(
 			return _create_party_component(request.kind, game_view, media, compact, treasure_recipient_id, treasure_slot_order, treasure_money_workspace_open)
 		&"complex_encounter", &"thief_encounter", &"pick_lock", &"shop_action", &"temple_action", &"bank_action", &"pooled_wealth_departure":
 			return _create_workspace_component(request.kind, game_view, media, compact)
-		&"combat_action": return _create_combat_component(game_view, media, compact, combat_rect)
+		&"combat_action": return create_combat_component(game_view, media, compact, combat_rect)
 		&"session_lifecycle": return (load(LIFECYCLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as InteractionComponent
 	return null
 
@@ -118,8 +118,8 @@ static func _create_service_component(kind: StringName, game_view: GameView, med
 	return temple
 
 
-static func _create_combat_component(game_view: GameView, media: ClassicMediaCatalog, compact: bool, combat_rect: Rect2) -> BattleInteraction:
-	var battle := (load(BATTLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BattleInteraction
+static func create_combat_component(game_view: GameView, media: ClassicMediaCatalog, compact: bool, combat_rect: Rect2, prepared: BattleInteraction = null) -> BattleInteraction:
+	var battle := prepared if prepared != null else (load(BATTLE_INTERACTION_SCENE_PATH) as PackedScene).instantiate() as BattleInteraction
 	var weapon_id := ""
 	if game_view != null and game_view.combat_view != null:
 		for character: CharacterView in game_view.party_members:
@@ -127,7 +127,7 @@ static func _create_combat_component(game_view: GameView, media: ClassicMediaCat
 			for item: ItemView in character.items:
 				if item.equipped and item.item_type == 2:
 					weapon_id = item.instance_id
-	battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect), compact, weapon_id)
+	battle.configure(_combatant_icon_textures(game_view, media), LayoutPolicy.combat_command_scale(combat_rect), compact, weapon_id, false)
 	return battle
 
 

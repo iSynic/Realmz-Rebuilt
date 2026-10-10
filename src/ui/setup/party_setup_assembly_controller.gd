@@ -179,7 +179,8 @@ func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevis
 func _stored_character_page_size(item_count: int) -> int:
 	if creator_scroll == null or creator_scroll.size.y <= 0.0:
 		return 6 if layout_profile == UiLayoutProfile.COMPACT else 9
-	return stored_character_page_size_for_height(creator_scroll.size.y, item_count)
+	var profile := UiSizing.profile_for(creator_scroll)
+	return stored_character_page_size_for_height(creator_scroll.size.y / (profile.ui_scale if profile != null else 1.0), item_count)
 
 
 static func stored_character_page_size_for_height(available_height: float, item_count: int) -> int:

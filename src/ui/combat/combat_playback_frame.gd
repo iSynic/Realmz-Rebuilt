@@ -12,6 +12,8 @@ var camera_focus_id: String = ""
 var from_coordinate := Vector2i(-1, -1)
 var to_coordinate := Vector2i(-1, -1)
 var combatant_positions: Dictionary = {}
+var summoned_monsters: Dictionary = {}
+var summoned_sizes: Dictionary = {}
 var hidden_combatant_ids: Array[String] = []
 var persistent_fields: Array[PersistentCombatFieldView] = []
 var combatant_health: Dictionary = {}
@@ -25,6 +27,7 @@ var effect_resource_id: int = 0
 var battle_tile_id: int = 0
 var sound_event: DomainEvent
 var automatic: bool = false
+var group_frames: Array[CombatPlaybackFrame] = []
 
 
 func _init(frame_kind: StringName, frame_duration_seconds: float) -> void:

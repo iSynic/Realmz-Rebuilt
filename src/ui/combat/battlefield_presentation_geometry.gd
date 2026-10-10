@@ -4,7 +4,6 @@ class_name BattlefieldPresentationGeometry
 extends RefCounted
 
 const NATIVE_CELL_SIZE := 32.0
-const HEADER_HEIGHT := 38.0
 
 
 static func actor_position(combat: CombatView, party_members: Array[CharacterView], actor_id: String) -> Vector2i:
@@ -59,8 +58,8 @@ static func click_direction_for_point(active_cell: Rect2, point: Vector2) -> Vec
 
 static func viewport_cells_for(control_size: Vector2) -> Vector2i:
 	return Vector2i(
-		mini(BattlefieldGrid.SIZE, maxi(1, floori(control_size.x / NATIVE_CELL_SIZE))),
-		mini(BattlefieldGrid.SIZE, maxi(1, floori((control_size.y - HEADER_HEIGHT) / NATIVE_CELL_SIZE)))
+		mini(BattlefieldGrid.SIZE, maxi(1, ceili(control_size.x / NATIVE_CELL_SIZE))),
+		mini(BattlefieldGrid.SIZE, maxi(1, ceili(control_size.y / NATIVE_CELL_SIZE)))
 	)
 
 
@@ -92,13 +91,12 @@ static func coordinate_is_at_viewport_edge(coordinate: Vector2i, camera: Vector2
 
 static func battlefield_draw_origin(control_size: Vector2, visible_cells: Vector2i) -> Vector2:
 	var pixel_size := Vector2(visible_cells) * NATIVE_CELL_SIZE
-	return Vector2(
-		floorf((control_size.x - pixel_size.x) * 0.5),
-		HEADER_HEIGHT + floorf(maxf(control_size.y - HEADER_HEIGHT - pixel_size.y, 0.0) * 0.5)
-	)
+	return ((control_size - pixel_size) * 0.5).floor()
 
 
 static func coordinate_for_point(local_position: Vector2, camera: Vector2i, visible_cells: Vector2i, control_size: Vector2) -> Vector2i:
+	if not Rect2(Vector2.ZERO, control_size).has_point(local_position):
+		return Vector2i(-1, -1)
 	var relative := local_position - battlefield_draw_origin(control_size, visible_cells)
 	if relative.x < 0.0 or relative.y < 0.0:
 		return Vector2i(-1, -1)
@@ -114,7 +112,7 @@ static func coordinate_is_visible(coordinate: Vector2i, camera: Vector2i, visibl
 
 static func targeting_edge_direction(local_position: Vector2, control_size: Vector2, edge_width: float = 24.0) -> Vector2i:
 	var visible_cells := viewport_cells_for(control_size)
-	var stage := Rect2(battlefield_draw_origin(control_size, visible_cells), Vector2(visible_cells) * NATIVE_CELL_SIZE)
+	var stage := Rect2(battlefield_draw_origin(control_size, visible_cells), Vector2(visible_cells) * NATIVE_CELL_SIZE).intersection(Rect2(Vector2.ZERO, control_size))
 	if not stage.has_point(local_position):
 		return Vector2i.ZERO
 	var right := stage.position.x + stage.size.x
@@ -127,12 +125,13 @@ static func cell_rect(coordinate: Vector2i, camera: Vector2i, draw_origin: Vecto
 	return Rect2(draw_origin + Vector2(coordinate - camera) * NATIVE_CELL_SIZE, Vector2.ONE * NATIVE_CELL_SIZE)
 
 
-static func offscreen_indicator_rect(coordinate: Vector2i, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2, indicator_size: Vector2) -> Rect2:
+static func offscreen_indicator_rect(coordinate: Vector2i, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2, indicator_size: Vector2, control_size: Vector2) -> Rect2:
 	if coordinate.x < 0 or coordinate.y < 0 or coordinate_is_visible(coordinate, camera, visible_cells):
 		return Rect2()
-	var stage_center := draw_origin + Vector2(visible_cells) * NATIVE_CELL_SIZE * 0.5
+	var stage := Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE).intersection(Rect2(Vector2.ZERO, control_size))
+	var stage_center := stage.get_center()
 	var target_offset := cell_rect(coordinate, camera, draw_origin).get_center() - stage_center
-	var center_limit := (Vector2(visible_cells) * NATIVE_CELL_SIZE - indicator_size) * 0.5 - Vector2(4.0, 4.0)
+	var center_limit := (stage.size - indicator_size) * 0.5 - Vector2(4.0, 4.0)
 	if center_limit.x <= 0.0 or center_limit.y <= 0.0 or target_offset == Vector2.ZERO:
 		return Rect2()
 	var x_scale := INF if is_zero_approx(target_offset.x) else center_limit.x / absf(target_offset.x)

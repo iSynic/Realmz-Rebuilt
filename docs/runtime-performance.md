@@ -151,9 +151,43 @@ The final presentation-function split used three committed-parent and three chan
 
 The ordered-equipment pass used six alternating immediate-parent and six changed War Battle 46 samples after adding an empty-loadout fast path. Median combat-view construction changed from 1.305 ms to 1.465 ms, checkpoint serialization from 0.354 ms to 0.354 ms, battle setup from 57.147 ms to 56.125 ms, Auto activation from 30.215 ms to 27.969 ms, complete monster phase from 3.790 ms to 3.295 ms, and warm monster phase from 3.360 ms to 3.451 ms. Each affected delta remained below its absolute rejection floor or improved. The separate spell-option probe varied from 2.320 ms to 2.839 ms despite not traversing equipment projection; it remains timing noise to remeasure with the spell workflow rather than evidence for this equipment boundary. Every sample retained 23 ordered Auto events, 286 RNG draws, and the same setup and monster-phase event sequences.
 
+### Complete combat comparison receipts
+
+`combat_performance_probe.gd` accepts a third positional argument naming a new absolute evidence directory. It writes package/battle identity, complete initial state, and separate Auto, cold-monster and warm-monster outcomes. Each outcome includes the full state, ordered event payloads, final RNG state and unlimited tagged draw trace. Existing directories are rejected. Retain these payload-bearing receipts outside Git and compare every file across revisions; hashes in the console report summarize the complete Auto and monster outcomes.
+
+The ordinary transaction timings finish before additional diagnostics run. `isolatedFirstDecision` measures admission, pursuit and scoring on a detached copy of the first character's prepared activation; these samples overlap in work and must not be added together or described as a profile of the whole activation. A separate query-counting replay records route, repeated identical route and LOS query counts, and rejects any difference from the ordinary full outcome. Cold and warm monster-phase outcomes must also agree exactly. None of these headless measurements establishes native rendering or input latency.
+
+## Combat worker and decision reuse acceptance
+
+The 2026-10-10 comparison uses Godot 4.7.1 on Windows, the pinned bundled AOGM and Bywater packages, seed 17, and the probe's six synthetic characters. Each fixture has seven alternating baseline/optimized pairs, with variant order reversed on every other pair. Baseline is the measurement-only commit `8f015fa8`; the optimized implementation includes decision-local admission/geometry reuse, guarded first-step reuse, floored-circle row bounds, and consecutive-cell reuse within the unchanged 128 sight/ray samples. Other verification processes do not run concurrently with these measurements.
+
+| Fixture | Auto before / after | Enemy phase before / after | Warm enemy phase before / after |
+|---|---:|---:|---:|
+| AOGM 46 | 31.307 / 26.516 ms | 8.116 / 8.173 ms | 7.987 / 8.561 ms |
+| Bywater 53, 46 monsters | 178.249 / 144.939 ms | 354.911 / 319.311 ms | 347.973 / 313.009 ms |
+| Bywater 178, 12 monsters | 137.689 / 64.849 ms | 383.916 / 339.435 ms | 342.326 / 325.444 ms |
+
+All values are sample medians. Both heavy fixtures improve in every measured transaction column. The small fixture's largest regression is 7.19 percent, below the agreed 10-percent limit. These are machine-specific compute measurements, excluding rendering and animation. The earlier decision-reuse-only candidates did not consistently meet this CPU gate; the final geometry changes are part of acceptance, not an optional follow-up.
+
+All 105 paired receipt files match byte-for-byte: identity, complete initial state, Auto result, cold enemy result, and warm enemy result for each pair. Outcomes include ordered event payloads, complete final state and RNG state, and unlimited tagged RNG traces. Each counted replay also matches its ordinary outcome, and cold/warm outcomes agree. Dense enemy route queries fall from 277 to 249, including repeated identical queries from 31 to 3; the caster fixture falls from 85 to 79 and six repeats to zero. Remaining repeats can follow intervening reactions and are not reused without proof of unchanged inputs. The circle-row arithmetic was separately compared with the prior floored-distance predicate across 4,101,248 bounded coordinate/range combinations.
+
+`combat_worker_performance_probe.gd` separately constructs the real application in a validated, visibly labelled isolated fixture. It prepares the six pinned Classic starters and uses direct battle setup, then ordinary application Auto responses. Seven submissions at each of 1280x720 and 800x600 compare full synchronous and worker save envelopes, ordered events and available RNG/VM traces; acceptance is never counted as completion. The probe rejects duplicate submissions and live session reads, verifies one publication, and sends Escape through viewport input. Escape timing runs through the next rendered frame; its frame budget covers the pending decision and queued six-character return to manual control. Lifecycle cancellation/deferral, visible modal retention, incomplete-result quarantine/recovery, and joined shutdown are checked separately.
+
+The combat coordinator prepares at most one unbound command deck across idle main-thread frames. At a manual worker completion, mounting, request binding and final sizing follow the committed battlefield/roster update in separate frames; obsolete generations cancel and commands remain unavailable until mounting finishes. Shared sizing avoids repeating unchanged overrides, and hidden Fast Spell animation frames wait until the dock opens. A two-stage candidate still recorded a 57.272 ms return-to-manual frame; the final three-stage mount provides additional headroom without moving scene operations onto the worker.
+
+Final native captures use the same Windows host with an NVIDIA RTX 3080. Each row includes seven measured worker activations per size, full outcome comparisons, Escape through viewport input, and the completed return to manual controls. Maximum frame gaps include the publication and deferred deck mount; the limits are 100 ms for acknowledgement through the next draw and 50 ms for the measured frame gap.
+
+| Fixture / renderer | Maximum frame, 1280x720 / 800x600 | Escape acknowledgement, 1280x720 / 800x600 |
+|---|---:|---:|
+| Bywater 53 / Mobile | 37.341 / 30.084 ms | 4.295 / 2.768 ms |
+| Bywater 53 / OpenGL Compatibility | 31.026 / 31.479 ms | 3.758 / 4.221 ms |
+| Bywater 178 / Mobile | 33.741 / 28.867 ms | 3.939 / 4.414 ms |
+
+All three native runs pass. Separate continuous Auto runs keep the battle state between twelve party activations and reach round three, rejecting more than one party Auto activation in any committed job. The dense fixture records 54 attacks, five spell casts and 375 movements; the caster fixture records 37 attacks, six casts, 88 movements and one bandage. These counts include both sides and retain ordered event payloads in the private receipts. Reduced Motion accelerates only these continuous checks. Each run also cancels an initial in-flight roster enable through viewport Escape before its flag is committed and compares the complete result with sequential enable/disable commands. Accepted quit precedes a queued Auto activation; lifecycle prompts, incomplete-job quarantine and joined shutdown pass. Canonical and compact screenshots were inspected independently of the timing assertions.
+
 ## Verification boundary
 
-Focused startup, package/prewarm, vault, session, presentation, architecture, and aggregate checks own deterministic correctness. The native rendered probe owns the frame measurements above. Godot MCP Pro was not available in the active tool surface for this run, so these results do not claim the separately required MCP-controlled playable walkthrough; that limitation remains explicit rather than treating headless or debug travel as ordinary-play certification.
+Focused startup, package/prewarm, vault, session, presentation, architecture, and aggregate checks own deterministic correctness. Native rendered probes own the frame measurements above. Direct battle fixtures and bounded Auto continuations do not establish ordinary campaign reachability, full battle or campaign certification, or physical-controller acceptance.
 
 ## Shared-resource library revalidation
 

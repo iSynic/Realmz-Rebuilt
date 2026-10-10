@@ -9,10 +9,10 @@ class ControllerAccess:
 	var _presenter: Variant
 
 	func _init(presenter: Variant) -> void: _presenter = presenter
-	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter._flash.is_open() and _presenter._component != null else []
-	func activate_action(action_id: StringName) -> bool: return not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
+	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null else []
+	func activate_action(action_id: StringName) -> bool: return not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
 	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
-	func blocks_automatic_progress() -> bool: return _presenter._playback_masked or _presenter._flash.is_open()
+	func blocks_automatic_progress() -> bool: return _presenter.combat_mount_pending or _presenter._playback_masked or _presenter._flash.is_open() or _presenter.combat_log.is_open()
 	func focus_root() -> Control: return _presenter._overlays.controller_focus_root()
 	func spellbook_focus_root() -> Control:
 		var encounter := _presenter._component as EncounterInteraction
@@ -27,6 +27,7 @@ class ControllerAccess:
 
 const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 const ComponentFactory := preload("res://src/ui/shared/interactions/interaction_component_factory.gd")
+const PlaybackFacts := preload("res://src/ui/combat/battle_playback_facts.gd")
 
 @export var classic_flash_overlay_scene: PackedScene
 @export var modal_shield_scene: PackedScene
@@ -38,6 +39,7 @@ const ComponentFactory := preload("res://src/ui/shared/interactions/interaction_
 @export var fast_spell_dock_scene: PackedScene
 
 signal response_submitted(response: InteractionResponse)
+signal combat_mount_completed
 signal presentation_sound_requested(sound_id: int)
 signal presentation_status_requested(text: String, is_error: bool)
 
@@ -47,6 +49,7 @@ var combat: CombatInteractionController:
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
 @onready var _options: VBoxContainer = %InteractionOptions
+@onready var _text := InteractionTextPresenter.new(_heading, _prompt, _options, hint_scene)
 @onready var _content: BoxContainer = $InteractionScroll/InteractionContent
 @onready var _prompt_column: VBoxContainer = %PromptColumn
 @onready var _scroll: ScrollContainer = $InteractionScroll
@@ -62,6 +65,8 @@ var combat: CombatInteractionController:
 var _request: InteractionRequest
 var _owns_classic_acknowledgement_cursor: bool = false
 var _pending_treasure_transfer: Dictionary = {}
+var combat_mount_pending := false
+var _mount_generation := 0
 var _component: InteractionComponent
 var _stage_rect := Rect2(0.0, 28.0, 992.0, 502.0)
 var _textbox_rect := Rect2(8.0, 530.0, 984.0, 182.0)
@@ -71,6 +76,7 @@ var _side_workspace_rect := Rect2(928.0, 28.0, 352.0, 502.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
 var _playback_combatant_facts: Dictionary = {}
+var _playback_battle_id := ""
 var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _treasure_slot_order: Array[String] = []
@@ -78,6 +84,7 @@ var _treasure_money_workspace_open := false
 var _overlays: InteractionOverlayHost
 var _combat: CombatInteractionController
 var _flash: InteractionFlashController
+var combat_log := CombatLogReview.new()
 var controller: ControllerAccess:
 	get: return ControllerAccess.new(self)
 
@@ -88,6 +95,8 @@ func _ready() -> void:
 	_combat.configure(get_parent(), fast_spell_dock_scene)
 	_combat.response_body_submitted.connect(_submit_body)
 	_combat.layout_changed.connect(_apply_classic_region)
+	combat_log.bind(_combat_activity, get_parent())
+	_combat.combat_log_requested.connect(combat_log.open)
 	_overlays = InteractionOverlayHost.new()
 	_overlays.configure(self, modal_shield_scene, treasure_completion_modal_scene, side_workspace_scene, encounter_dock_scene, application_workspace_scene)
 	_overlays.set_regions(_application_rect, _stage_rect, _textbox_rect, _side_workspace_rect)
@@ -129,6 +138,7 @@ func submit_classic_acknowledgement() -> bool:
 
 
 func _exit_tree() -> void:
+	combat_log.release()
 	_set_classic_acknowledgement_cursor(false)
 	if _overlays != null:
 		_overlays.release()
@@ -159,23 +169,54 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	if not _begin_request(request):
 		return
+	if request != null and request.kind == InteractionRequest.COMBAT and game_view != null and game_view.combat_view != null and game_view.combat_view.auto_character_ids.has((request.body as CombatRequestBody).actor_id):
+		var body := request.body as CombatRequestBody
+		_combat_activity.begin_battle(body.battle_id)
+		_combat_activity.set_facts(PlaybackFacts.from_view(game_view, media))
+		_combat_activity.set_turn_actor(body.actor_id)
+		_scroll.visible = false
+		_combat_activity.visible = true
+		_combat_activity.set_compact(_combat_rect.size.x < 1000.0)
+		_apply_classic_region()
+		return
 	if request == null and game_view != null and game_view.combat_view == null:
 		_combat_activity.begin_battle("")
-	_present_request_text(request, classic_text_context)
+	_text.present(request, classic_text_context)
+	if request.kind == InteractionRequest.COMBAT and _combat.resolution_pending:
+		combat_mount_pending = true
+		_mount_combat_after_commit(request, game_view, media, _mount_generation)
+		return
 	_mount_request_component(request, game_view, media)
 	if _component is BattleInteraction:
 		var body := request.body as CombatRequestBody
 		_combat_activity.begin_battle(body.battle_id)
 		_combat_activity.set_facts((_component as BattleInteraction).playback_combatant_facts())
 		_combat_activity.set_turn_actor(body.actor_id)
-		if game_view != null and game_view.combat_view != null and game_view.combat_view.auto_character_ids.has(body.actor_id):
-			_scroll.visible = false
-			_combat_activity.visible = true
-			_combat_activity.set_compact(_combat_rect.size.x < 1000.0)
 	if _component is ShopInteraction:
 		(_component as ShopInteraction).restore_browser_state(shop_state)
 	elif _component is TreasureDistributionInteraction:
 		(_component as TreasureDistributionInteraction).restore_browser_state(treasure_state)
+
+
+func _mount_combat_after_commit(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog, generation: int) -> void:
+	await get_tree().process_frame
+	if not is_inside_tree() or generation != _mount_generation: return
+	_build_request_component(request, game_view, media, false)
+	_options.visible = false
+	await get_tree().process_frame
+	if not is_inside_tree() or generation != _mount_generation: return
+	if _component != null: _component.build(request)
+	await get_tree().process_frame
+	if not is_inside_tree() or generation != _mount_generation: return
+	_finish_request_component(request, game_view, media)
+	_options.visible = true
+	if _component is BattleInteraction:
+		var body := request.body as CombatRequestBody
+		_combat_activity.begin_battle(body.battle_id)
+		_combat_activity.set_facts((_component as BattleInteraction).playback_combatant_facts())
+		_combat_activity.set_turn_actor(body.actor_id)
+	combat_mount_pending = false
+	combat_mount_completed.emit()
 
 
 func _begin_request(request: InteractionRequest) -> bool:
@@ -190,6 +231,7 @@ func _begin_request(request: InteractionRequest) -> bool:
 			_treasure_money_workspace_open = false
 	_request = request
 	_playback_combatant_facts.clear()
+	_playback_battle_id = ""
 	_playback_result_cue.visible = false
 	_combat_activity.visible = false
 	_scroll.visible = true
@@ -206,45 +248,24 @@ func _begin_request(request: InteractionRequest) -> bool:
 	_stage_opaque_backing.visible = full_stage
 	_stage_backing.visible = full_stage
 	if request == null:
-		_set_heading("")
+		_text.set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
 		return false
 	return true
 
 
-func _present_request_text(request: InteractionRequest, classic_text_context: String) -> void:
-	_set_heading(ComponentFactory.heading_for_kind(request.kind))
-	if request.kind == InteractionRequest.SESSION_LIFECYCLE:
-		_set_heading("")
-	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as CharacterSelectionRequestBody).spell_context != null:
-		_set_heading("Spell Target")
-	_prompt.text = ComponentFactory.prompt_for(request, classic_text_context)
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER if LayoutPolicy.uses_classic_click_modal(request) or LayoutPolicy.uses_floating_choice_modal(request) else HORIZONTAL_ALIGNMENT_LEFT
-	_prompt.visible = not _prompt.text.is_empty()
-	if LayoutPolicy.uses_application_workspace(request):
-		_set_heading("")
-		_prompt.text = ""
-		_prompt.visible = false
-	if request.kind in [InteractionRequest.AGE_UPDATE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP, InteractionRequest.PICK_LOCK]:
-		_set_heading("")
-		_prompt.text = ""
-		_prompt.visible = false
-	if LayoutPolicy.is_player_map_request(request) or LayoutPolicy.is_scrolling_text_request(request):
-		_prompt.text = ""
-		_prompt.visible = false
-	if request.kind == &"combat_action":
-		_set_heading("")
-		_prompt.text = ""
-		_prompt.visible = false
-
-
 func _mount_request_component(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> void:
+	_build_request_component(request, game_view, media)
+	_finish_request_component(request, game_view, media)
+
+
+func _build_request_component(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog, build_content: bool = true) -> void:
 	_component = _create_component(request, game_view, media)
 	if _component == null:
-		_set_heading("Unsupported Interaction")
+		_text.set_heading("Unsupported Interaction")
 		_prompt.text = "Unsupported Realmz interaction: %s" % String(request.kind)
-		_add_hint("This package cannot continue because its interaction contract is unavailable.")
+		_text.add_hint("This package cannot continue because its interaction contract is unavailable.")
 		return
 	_component.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UiSizing.constant(_component, &"separation", 8)
@@ -263,7 +284,11 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 		treasure.money_workspace_visibility_changed.connect(func(open: bool) -> void: _treasure_money_workspace_open = open)
 	_options.add_child(_component)
 	_options.visible = true
-	_component.build(request)
+	if build_content: _component.build(request)
+
+
+func _finish_request_component(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> void:
+	if _component == null: return
 	UiSizing.bind_added(_component.get_instance_id())
 	var profile := UiSizing.profile_for(self)
 	_component.set_layout_profile(profile.id == UiLayoutProfile.COMPACT if profile != null else _application_rect.size.x < 1000.0)
@@ -273,13 +298,25 @@ func _mount_request_component(request: InteractionRequest, game_view: GameView, 
 	call_deferred("_prepare_interaction_focus")
 
 
-func present_combat_playback_mask(frame: CombatPlaybackFrame = null) -> void:
+func present_combat_playback_mask(frame: CombatPlaybackFrame = null, base_view: GameView = null, final_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
+	var playback_facts := PlaybackFacts.from_view(base_view, media)
+	playback_facts.merge(PlaybackFacts.from_view(final_view, media), true)
+	var battle_id := ""
 	if _component is BattleInteraction:
-		_playback_combatant_facts = (_component as BattleInteraction).playback_combatant_facts()
+		playback_facts.merge((_component as BattleInteraction).playback_combatant_facts(), true)
 		var body := _request.body as CombatRequestBody if _request != null else null
 		if body != null:
-			_combat_activity.begin_battle(body.battle_id)
-		_combat_activity.set_facts(_playback_combatant_facts)
+			battle_id = body.battle_id
+	if battle_id.is_empty() and final_view != null and final_view.combat_view != null:
+		battle_id = final_view.combat_view.battle_id
+	if battle_id.is_empty() and base_view != null and base_view.combat_view != null:
+		battle_id = base_view.combat_view.battle_id
+	if not battle_id.is_empty() and battle_id != _playback_battle_id:
+		_playback_combatant_facts.clear()
+		_playback_battle_id = battle_id
+		_combat_activity.begin_battle(battle_id)
+	_playback_combatant_facts.merge(playback_facts, true)
+	_combat_activity.set_facts(_playback_combatant_facts)
 	_request = null
 	_set_classic_acknowledgement_cursor(false)
 	_passive_text = false
@@ -287,7 +324,7 @@ func present_combat_playback_mask(frame: CombatPlaybackFrame = null) -> void:
 	_scroll.scroll_horizontal = 0
 	_scroll.scroll_vertical = 0
 	_clear_options()
-	_set_heading("")
+	_text.set_heading("")
 	_prompt.text = ""
 	_prompt.visible = false
 	_stage_opaque_backing.visible = false
@@ -376,7 +413,7 @@ func present_passive_classic_text(text: String) -> void:
 		return
 	_playback_masked = false
 	_clear_options()
-	_set_heading("")
+	_text.set_heading("")
 	_prompt.text = text
 	_prompt.visible = not text.is_empty()
 	_passive_text = not text.is_empty()
@@ -395,7 +432,7 @@ func has_blocking_request() -> bool:
 
 
 func handle_back_request() -> bool:
-	return not _playback_masked and _request != null and _component != null and _component.handle_back()
+	return not combat_mount_pending and not _playback_masked and _request != null and _component != null and _component.handle_back()
 
 
 func submit_character_selection(character_ids: Array[String]) -> bool:
@@ -418,11 +455,13 @@ func set_autojournal_enabled(enabled: bool) -> void:
 
 
 func _create_component(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
+	if request.kind == InteractionRequest.COMBAT:
+		return ComponentFactory.create_combat_component(game_view, media, _application_rect.size.x < 1000.0, _combat_rect, _combat.command_deck_cache.take())
 	return ComponentFactory.create(request, game_view, media, _application_rect.size.x < 1000.0, _autojournal_enabled, _treasure_recipient_id, _treasure_slot_order, _treasure_money_workspace_open, _combat_rect)
 
 
 func _submit_body(body: InteractionResponse.Body) -> void:
-	if _request == null:
+	if _request == null or combat_mount_pending:
 		return
 	var retain_shop_workspace := _component is ShopInteraction and body is InteractionResponse.ShopBody and (bool((_component as ShopInteraction).capture_browser_state().get("moneyOpen", false)) or bool((_component as ShopInteraction).capture_browser_state().get("itemsOpen", false)))
 	if not retain_shop_workspace:
@@ -508,6 +547,8 @@ func _update_treasure_slot_order(request: InteractionRequest) -> void:
 
 
 func _clear_options() -> void:
+	_mount_generation += 1
+	combat_mount_pending = false
 	_combat.clear(_request != null and _request.kind == InteractionRequest.COMBAT)
 	_overlays.close_side_workspace()
 	_overlays.close_encounter_dock()
@@ -623,15 +664,8 @@ func _apply_content_layout() -> void:
 		_options.custom_minimum_size.y = maxf(0.0, _stage_rect.size.y - get_theme_stylebox("panel").get_minimum_size().y - _content.get_theme_constant("separation")) if LayoutPolicy.is_scrolling_text_request(_request) else 0.0
 
 
-func _add_hint(text: String) -> Label:
-	_options.visible = true
-	var label := hint_scene.instantiate() as Label
-	label.text = text
-	_options.add_child(label)
-	return label
-
-
 func _prepare_interaction_focus() -> void:
+	if combat_mount_pending: return
 	_scroll.scroll_horizontal = 0
 	_scroll.scroll_vertical = 0
 	var preferred := _component.preferred_initial_focus() if _component != null else null
@@ -646,11 +680,6 @@ func _claim_modal_layer() -> void:
 	var parent := get_parent()
 	if parent != null and get_index() != parent.get_child_count() - 1:
 		parent.move_child(self, parent.get_child_count() - 1)
-
-
-func _set_heading(value: String) -> void:
-	_heading.text = value
-	_heading.visible = not value.is_empty()
 
 
 static func _first_focusable(parent: Node) -> Control:

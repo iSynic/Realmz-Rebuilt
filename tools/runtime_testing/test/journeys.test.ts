@@ -18,7 +18,7 @@ afterEach(async () => {
   await Promise.all(homes.splice(0).map((home) => fs.rm(home, { recursive: true, force: true })));
 });
 
-function observation(options: { pending?: Record<string, unknown> | null; controls?: Array<Record<string, unknown>>; traceLimitReached?: boolean; drawIndex?: number; visualReady?: boolean; semanticReady?: boolean; ready?: boolean; failure?: Record<string, unknown> | null } = {}): Record<string, unknown> {
+function observation(options: { pending?: Record<string, unknown> | null; controls?: Array<Record<string, unknown>>; traceLimitReached?: boolean; drawIndex?: number; visualReady?: boolean; combatResolution?: boolean; semanticReady?: boolean; ready?: boolean; failure?: Record<string, unknown> | null } = {}): Record<string, unknown> {
   return {
     campaignId: "fixture-campaign",
     packageHash: "package-hash",
@@ -33,7 +33,7 @@ function observation(options: { pending?: Record<string, unknown> | null; contro
     pendingInteraction: options.pending ?? null,
     actions: [],
     controls: options.controls ?? [],
-    readiness: { fixtureReady: options.ready ?? true, fixtureError: null, combatPlayback: false, hostInteraction: false, explorationInput: true, visualReady: options.visualReady ?? true, ...(options.semanticReady === undefined ? {} : { semanticReady: options.semanticReady }) },
+    readiness: { fixtureReady: options.ready ?? true, fixtureError: null, combatPlayback: false, combatResolution: options.combatResolution ?? false, hostInteraction: false, explorationInput: true, visualReady: options.visualReady ?? true, ...(options.semanticReady === undefined ? {} : { semanticReady: options.semanticReady }) },
     rngTrace: options.drawIndex === undefined ? [] : [{ drawIndex: options.drawIndex, tag: "test", range: 1, raw: 1, result: 1 }],
     scenarioTrace: [],
     traceLimitReached: options.traceLimitReached ?? false,
@@ -41,7 +41,7 @@ function observation(options: { pending?: Record<string, unknown> | null; contro
   };
 }
 
-async function setupFakeSession(options: { pending?: Record<string, unknown> | null; controls?: Array<Record<string, unknown>>; traceLimitReached?: boolean; drawIndex?: number; captureBytes?: number; semanticReady?: boolean; semanticReadySequence?: boolean[]; failedCommand?: string; ready?: boolean; executionFailure?: Record<string, unknown> } = {}) {
+async function setupFakeSession(options: { pending?: Record<string, unknown> | null; controls?: Array<Record<string, unknown>>; traceLimitReached?: boolean; drawIndex?: number; captureBytes?: number; combatResolutionAfterCommand?: boolean; semanticReady?: boolean; semanticReadySequence?: boolean[]; failedCommand?: string; ready?: boolean; executionFailure?: Record<string, unknown> } = {}) {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), "realmz-journey-test-"));
   homes.push(home);
   const sessionId = `journey-${randomBytes(4).toString("hex")}`;
@@ -55,7 +55,7 @@ async function setupFakeSession(options: { pending?: Record<string, unknown> | n
       if (command === "observe") {
         const semanticReady = options.semanticReadySequence?.[Math.min(observations++, options.semanticReadySequence.length - 1)] ?? options.semanticReady;
         const failure = actions > 0 ? options.executionFailure ?? undefined : undefined;
-        return { revision: actions, result: observation({ ...options, failure, semanticReady, drawIndex: options.drawIndex === undefined ? undefined : options.drawIndex + actions }) };
+        return { revision: actions, result: observation({ ...options, failure, semanticReady, combatResolution: actions > 0 && options.combatResolutionAfterCommand === true, drawIndex: options.drawIndex === undefined ? undefined : options.drawIndex + actions }) };
       }
       if (command === "capture") return { revision: actions, result: { mode: "rendered-observation", path: "C:/private/capture.png", sha256: "capture-hash", bytes: options.captureBytes ?? 64, width: 1280, height: 720 } };
       if (command === options.failedCommand) throw new Error("mock command failure after request acceptance");
@@ -119,6 +119,14 @@ test("journey retains an accepted reply when post-command readiness times out", 
   assert.equal(evidence.steps[0]?.reply.ok, true);
   assert.ok(evidence.steps[0]?.after);
   assert.match(evidence.steps[0]?.capture?.unavailableReason ?? "", /deadline|visual|cancellation|budget/i);
+});
+
+test("journey cannot certify the retained drawn view while combat is resolving", async () => {
+  const setup = await setupFakeSession({ combatResolutionAfterCommand: true, semanticReady: true });
+  const job = await makeJob(setup.home, setup.descriptor.sessionId, { name: "combat-pending", sessionId: setup.descriptor.sessionId, steps: [actStep], limits: { timeoutMs: 2_000, maxActions: 1 } });
+  await runJourneyJob(job.id, setup.home);
+  const status = JourneyStatusSchema.parse(JSON.parse(await fs.readFile(job.statusPath, "utf8")));
+  assert.equal(status.failure?.code, "timeout");
 });
 
 test("journey captures a screenshot when expectation verification fails", async () => {

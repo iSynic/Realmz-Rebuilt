@@ -6,6 +6,7 @@ const DEFAULT_MAP_VIEW_SIZE: Vector2i = Vector2i(25, 25)
 const ProjectionPolicy := preload("res://src/playthrough/session/session_view_projection_policy.gd")
 const ActionViewProjector := preload("res://src/playthrough/session/session_action_view_projector.gd")
 const OrdinaryProjectionPolicy := preload("res://src/playthrough/session/session_ordinary_projection_policy.gd")
+const MapPreviewCache := preload("res://src/playthrough/world/session_map_preview_cache.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
@@ -23,6 +24,8 @@ var _map_projection_size: Vector2i = DEFAULT_MAP_VIEW_SIZE
 var _equipment_by_character_id: Dictionary = {}
 var _map_window_cache: Dictionary = {}
 var _map_cell_cache: Dictionary = {}
+var _map_previews := MapPreviewCache.new()
+var _bestiary_monster_set: int = -1
 
 
 func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool, events: Array[DomainEvent] = []) -> GameView:
@@ -31,7 +34,10 @@ func project(context: SessionWorkflowContext, pending_interaction: InteractionRe
 	if not started:
 		_cached_view = GameView.new(revision, false, null)
 		return _cached_view
-	if OrdinaryProjectionPolicy.can_reuse(_cached_view, context, pending_interaction, events):
+	if _cached_view != null and _cached_view.revision == revision - 1 and SessionCombatProjection.can_reuse(_cached_view, context, pending_interaction, events):
+		_cached_view = SessionCombatProjection.project(_cached_view, context, pending_interaction, revision, _complete_combat_view(context, pending_interaction))
+		return _cached_view
+	if _cached_view != null and _cached_view.revision == revision - 1 and OrdinaryProjectionPolicy.can_reuse(_cached_view, context, pending_interaction, events):
 		_cached_view = _project_ordinary_movement(context, revision, events)
 		return _cached_view
 	_cached_view = _project_complete(context, pending_interaction, revision)
@@ -144,8 +150,12 @@ func _populate_complete_collections(context: SessionWorkflowContext, result: Gam
 	var content := context.content
 	for ally: MonsterState in state.party.allies():
 		result.party_allies.append(MonsterView.new(ally, content.combat.monster_by_id(ally.definition_id), content))
-	for definition: MonsterDefinition in content.combat.bestiary_definitions_for_set(state.monster_set):
-		result.bestiary_entries.append(MonsterCatalogEntryView.new(definition, content))
+	if _cached_view != null and _bestiary_monster_set == state.monster_set:
+		result.bestiary_entries.assign(_cached_view.bestiary_entries)
+	else:
+		for definition: MonsterDefinition in content.combat.bestiary_definitions_for_set(state.monster_set):
+			result.bestiary_entries.append(MonsterCatalogEntryView.new(definition, content))
+		_bestiary_monster_set = state.monster_set
 	if state.combat != null and _can_reuse_static_map_projections(state):
 		_reuse_static_map_projections(result, _cached_view)
 	else:
@@ -159,10 +169,14 @@ func _populate_complete_collections(context: SessionWorkflowContext, result: Gam
 			result.race_options.append(DefinitionOptionView.from_race(race, content.transfer_catalog.is_scenario_owned(&"races", race.id)))
 		for caste: CasteDefinition in content.characters.caste_definitions():
 			result.caste_options.append(DefinitionOptionView.from_caste(caste, content.transfer_catalog.is_scenario_owned(&"castes", caste.id)))
-	for portrait: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
-		result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
-	for icon: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
-		result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
+	if _cached_view != null:
+		result.portrait_options.assign(_cached_view.portrait_options)
+		result.combat_icon_options.assign(_cached_view.combat_icon_options)
+	else:
+		for portrait: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
+			result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
+		for icon: CharacterAppearanceDefinition in content.characters.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
+			result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
 
 
 static func _populate_complete_actions(context: SessionWorkflowContext, result: GameView) -> void:
@@ -189,6 +203,7 @@ func clear() -> void:
 	_equipment_by_character_id.clear()
 	_map_window_cache.clear()
 	_map_cell_cache.clear()
+	_map_previews = MapPreviewCache.new()
 
 
 func set_map_projection_size(requested_size: Vector2i) -> bool:
@@ -196,7 +211,10 @@ func set_map_projection_size(requested_size: Vector2i) -> bool:
 	if normalized == _map_projection_size:
 		return false
 	_map_projection_size = normalized
-	clear()
+	_cached_map_revision = -1
+	_cached_map_view = null
+	_cached_view = null
+	_map_window_cache.clear()
 	return true
 
 
@@ -263,8 +281,9 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 		_populate_ordinary_action_availability(result, _cached_view, inventory_refresh, not magic_affordability_ids.is_empty())
 	else:
 		result.action_availability = _cached_view.action_availability.duplicate()
-	result.domain_revisions = _ordinary_domain_revisions(revision, refresh_party, inventory_refresh, magic_character_ids)
-	result.change_set = _ordinary_change_set(refresh_party, inventory_refresh, magic_character_ids, status_character_ids)
+	var summary_changed := result.party_summary.searching != _cached_view.party_summary.searching
+	result.domain_revisions = _ordinary_domain_revisions(revision, refresh_party or summary_changed, inventory_refresh, magic_character_ids)
+	result.change_set = _ordinary_change_set(refresh_party or summary_changed, inventory_refresh, magic_character_ids, status_character_ids)
 	result.projection_timings_usec = {
 		"partyStatus": party_done - projection_started,
 		"mapWindow": map_done - party_done,
@@ -516,7 +535,7 @@ static func _ordinary_party_summary(context: SessionWorkflowContext, previous: P
 	result.light_remaining = context.state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT)
 	result.condition_values = context.state.party.conditions.values()
 	result.camping = previous.camping
-	result.searching = previous.searching
+	result.searching = context.state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
 	result.in_boat = previous.in_boat
 	return result
 
@@ -532,12 +551,13 @@ static func _reuse_static_map_projections(result: GameView, previous: GameView) 
 	result.current_location_note = previous.current_location_note
 
 
-static func _populate_movement_map_views(context: SessionWorkflowContext, result: GameView) -> void:
+func _populate_movement_map_views(context: SessionWorkflowContext, result: GameView) -> void:
 	var content := context.content
 	var state := context.state
+	_map_previews.prepare(context)
 	for definition: PlayerMapDefinition in content.world.player_maps():
 		var acquired := state.world.exploration.has_map(definition.id)
-		var player_map_view := SessionMapViewBuilder.build_player_map_view(context, definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
+		var player_map_view := _map_previews.player_map(context, definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
 		result.player_map_menu_entries.append(player_map_view)
 		if acquired:
 			result.acquired_player_maps.append(player_map_view)
@@ -549,7 +569,7 @@ static func _populate_movement_map_views(context: SessionWorkflowContext, result
 	for note: LocationNoteState in state.world.exploration.location_notes_for_kind(current_map.level_type):
 		var note_map := content.world.map_by_id(note.map_id)
 		if note_map != null:
-			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate, SessionMapViewBuilder.build_location_note_map_view(context, note_map, note)))
+			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate, _map_previews.location_note(context, note_map, note)))
 
 
 static func _populate_ordinary_movement_map_views(context: SessionWorkflowContext, result: GameView, previous: GameView) -> void:
@@ -560,7 +580,7 @@ static func _populate_ordinary_movement_map_views(context: SessionWorkflowContex
 			continue
 		var source_map := context.content.world.map_by_id(definition.map_id) if not definition.map_id.is_empty() else null
 		var show_party := SessionMapViewBuilder.player_map_shows_party(definition, source_map, state.party.map_id, state.party.coordinate)
-		var refreshed := PlayerMapView.new(definition, previous_map.cells, show_party, state.party.coordinate, previous_map.acquired)
+		var refreshed := PlayerMapView.new(definition, previous_map.cells, show_party if previous_map.acquired else false, state.party.coordinate if previous_map.acquired else Vector2i.ZERO, previous_map.acquired)
 		result.player_map_menu_entries.append(refreshed)
 		if refreshed.acquired:
 			result.acquired_player_maps.append(refreshed)

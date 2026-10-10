@@ -14,6 +14,8 @@ var _quit_operation: Callable
 var _interaction: InteractionRequest
 var _save_and_quit_pending := false
 var _close_waits_for_playback := false
+var _deferred_end: StringName = &""
+var _deferred_quit: StringName = &""
 
 
 func bind(
@@ -40,6 +42,18 @@ func bind(
 
 func has_active_interaction() -> bool:
 	return _interaction != null
+
+
+func poll() -> void:
+	if _session_controller.is_busy(): return
+	if not _deferred_end.is_empty():
+		var action := _deferred_end
+		_deferred_end = &""
+		_respond_end_adventure(action)
+	if not _deferred_quit.is_empty():
+		var action := _deferred_quit
+		_deferred_quit = &""
+		_respond_quit(action)
 
 
 static func response_owner(has_host_interaction: bool, standalone_creator_active: bool) -> StringName:
@@ -72,7 +86,7 @@ func request_end_adventure() -> void:
 		_shell.show_splash()
 		return
 	var pending := view.active_interaction_request()
-	if pending != null and pending.kind != InteractionRequest.COMBAT:
+	if pending != null and pending.kind != InteractionRequest.COMBAT and not _session_controller.resolution_failed:
 		_shell.status.set_status("Resolve the current interaction before ending the adventure.", true)
 		return
 	if _interaction != null:
@@ -133,6 +147,11 @@ func playback_step_settled(step: SessionStep) -> bool:
 
 
 func _respond_end_adventure(action: StringName) -> void:
+	if _session_controller.is_busy() and action != ApplicationLifecycle.CANCEL:
+		_deferred_end = action
+		_shell.status.set_status("Returning to the main menu after this activation.")
+		return
+	_deferred_end = &""
 	var result := ApplicationLifecycle.execute_end_adventure(
 		action,
 		func() -> bool: return bool(_save_operation.call("quick")),
@@ -141,7 +160,7 @@ func _respond_end_adventure(action: StringName) -> void:
 	var state := StringName(result.get("state", &"invalid"))
 	if state == &"cancelled":
 		_interaction = null
-		_presentation.refresh()
+		_presentation.dismiss_host_interaction()
 		_shell.status.set_status("Adventure continues.")
 	elif state == &"save-failed":
 		_presentation.present_host_interaction(_interaction)
@@ -150,6 +169,7 @@ func _respond_end_adventure(action: StringName) -> void:
 		_represent_error("End Adventure failed • %s" % (failed_step.error_message if failed_step != null else "The session close operation is unavailable."))
 	elif state == &"pending":
 		_interaction = null
+		_presentation.dismiss_host_interaction()
 		_present_step_operation.call(result.get("step"))
 	elif state == &"closed":
 		_complete_closed_session()
@@ -158,6 +178,11 @@ func _respond_end_adventure(action: StringName) -> void:
 
 
 func _respond_quit(action: StringName) -> void:
+	if _session_controller.is_busy() and action != ApplicationLifecycle.CANCEL:
+		_deferred_quit = action
+		_shell.status.set_status("Quitting after this activation.")
+		return
+	_deferred_quit = &""
 	if action == ApplicationLifecycle.SAVE_AND_QUIT:
 		_interaction = null
 		_presentation.dismiss_host_interaction()

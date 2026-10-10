@@ -548,3 +548,12 @@ Each entry must include:
 - Restore the original `PICT 302` crops and native allegiance/helpless rules. Explicit interaction lifetimes replace incidental persistence of immediate-mode pixels. Retain Rebuilt's existing focus and target outlines as additional cues; physical targeting never adopts spell targeting's all-combatant backdrops. No always-on marking preference is introduced.
 - Event-local flags change at the corresponding committed presentation cue. Sprite/backdrop clipping uses the complete native footprint and never modifies terrain, actor placement, movement costs, RNG, packages, or saves.
 - Evidence is pinned Castle source control flow, focused Rebuilt regression coverage, and isolated native renderer captures, not a controlled Castle runtime comparison or a complete gameplay certification.
+
+
+## Complete action cues during accelerated playback
+
+- Deviation ID: `presentation-complete-action-cues` (presentation only).
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `misc.c::sound` rotates channels and sends flush/quiet before replacement; positive requests overlap and negative requests wait. `resolvespell.c:384-406` places the recipient's sound before its effect and finishes that effect before the next recipient. This is source evidence, not a controlled Castle runtime comparison.
+- Problem: accelerated playback can reuse a still-playing channel, and submitting an entire scenario spell's sound batch at once discards the original effect intervals. An offscreen Auto target can also die before entering the camera.
+- Rebuilt preserves four-channel overlap and explicit interruption, but waits for a busy channel before reuse. Queued character effects preserve their portrait interval between sound requests. Combat results/effects focus their recipient, and each visual frame receives a draw boundary before elapsed time advances. These choices do not change simulation timing, outcomes, event serialization, RNG, saves, or packages.
+- Verification: existing combat-flow, UI shell/system, media/music, and Builder suites plus an isolated native playback probe. The probe covers a captured opening formation whose final view has already removed the target, visible lethal result followed by defeat, a deliberately oversized initial frame delta, six Magic Darts sound/effect pairs from Trouble land 9 AP 96, and a six-cue burst. Seeded before/after state, serialized event, and RNG comparisons remain distinct from ordinary-route campaign proof.

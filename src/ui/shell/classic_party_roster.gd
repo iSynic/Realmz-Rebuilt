@@ -41,6 +41,7 @@ var _owns_bandage_cursor: bool = false
 var _compact_layout: bool = false
 var _controls_ready: bool = false
 var _position_index := 0
+var _playback_health: Dictionary = {}
 
 
 func _exit_tree() -> void:
@@ -67,12 +68,24 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 
 
 func present(view: GameView, selected_character_id: String = "") -> void:
+	_playback_health.clear()
 	_ensure_controls()
+	var retained_effects: Dictionary = {}
+	if _current_view != null and view != null and view.session_started:
+		for index: int in mini(_current_view.party_members.size(), view.party_members.size()):
+			var previous: CharacterView = _current_view.party_members[index]
+			var next: CharacterView = view.party_members[index]
+			var record := _party_list.get_node("Position%d/Member" % (index + 1)) as PartyRosterMemberRow
+			var row := record.character_button()
+			var previous_shade := 2 if previous.current_health <= CLASSIC_DEATH_HEALTH else 1 if previous.current_health < 1 else 0
+			var next_shade := 2 if next.current_health <= CLASSIC_DEATH_HEALTH else 1 if next.current_health < 1 else 0
+			if previous.id == next.id and previous.portrait_id == next.portrait_id and previous_shade == next_shade and row.has_meta("effect_tween"):
+				retained_effects[next.id] = row.get_meta("native_portrait", row.icon)
 	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_combat_spellbook_active = false
 	_current_view = view
 	_selected_character_id = selected_character_id
-	_clear_party()
+	_clear_party(retained_effects)
 	if view == null or not view.session_started:
 		_heading.text = "Party"
 		_add_empty("No active party")
@@ -84,6 +97,12 @@ func present(view: GameView, selected_character_id: String = "") -> void:
 		auto_character_ids.assign(view.combat_view.auto_character_ids)
 	for character: CharacterView in view.party_members:
 		_add_character(character, combat_active, auto_character_ids)
+		if retained_effects.has(character.id):
+			var row := _character_row(character.id)
+			row.set_meta("native_portrait", retained_effects[character.id])
+			var profile := UiSizing.profile_for(row)
+			if profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(profile)
+			else: row.icon = retained_effects[character.id]
 	for index: int in maxi(0, 6 - view.party_members.size()):
 		_add_empty("Empty position %d" % (view.party_members.size() + index + 1))
 
@@ -127,9 +146,12 @@ func present_playback_health(health_by_id: Dictionary) -> void:
 	if _current_view == null or _combat_spellbook_active:
 		return
 	for character: CharacterView in _current_view.party_members:
+		var health := int(health_by_id.get(character.id, character.current_health))
+		if _playback_health.get(character.id) == health: continue
 		var row := _character_row(character.id)
 		if row != null:
-			_bind_character_text(row, character, int(health_by_id.get(character.id, character.current_health)))
+			_playback_health[character.id] = health
+			_bind_character_text(row, character, health)
 
 
 func close_combat_spellbook() -> void:
@@ -415,14 +437,23 @@ func play_character_effect(character_id: String, first_resource_id: int, frame_c
 	var row := _character_row(character_id)
 	if row == null:
 		return
-	var base_icon := row.get_meta("native_portrait", row.icon) as Texture2D
+	var base_icon := row.get_meta("effect_base_portrait", row.get_meta("native_portrait", row.icon)) as Texture2D
 	if row.has_meta("effect_tween"): (row.get_meta("effect_tween") as Tween).kill()
 	var tween := row.create_tween()
 	row.set_meta("effect_tween", tween)
+	row.set_meta("effect_base_portrait", base_icon)
 	for frame_index: int in frame_count:
 		tween.tween_callback(_set_character_effect_frame.bind(row, base_icon, first_resource_id + frame_index))
-		tween.tween_interval(0.055)
-	tween.tween_callback(_restore_character_effect.bind(row, base_icon))
+		tween.tween_interval(ClassicAudioPresenter.CHARACTER_EFFECT_FRAME_SECONDS)
+	tween.tween_callback(_set_character_effect_frame.bind(row, base_icon, 0))
+
+
+func cancel_character_effects() -> void:
+	for node: Node in _party_list.find_children("*", "Button", true, false):
+		var row := node as Button
+		if row.has_meta("effect_tween"):
+			(row.get_meta("effect_tween") as Tween).kill()
+			_set_character_effect_frame(row, row.get_meta("effect_base_portrait") as Texture2D, 0)
 
 
 func _character_row(character_id: String) -> Button:
@@ -435,6 +466,14 @@ func _character_row(character_id: String) -> Button:
 func _set_character_effect_frame(row: Button, base_icon: Texture2D, resource_id: int) -> void:
 	if not is_instance_valid(row):
 		return
+	if resource_id == 0:
+		row.remove_meta("effect_tween")
+		row.remove_meta("effect_base_portrait")
+		row.set_meta("native_portrait", base_icon)
+		var restored_profile := UiSizing.profile_for(row)
+		if restored_profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(restored_profile)
+		else: row.icon = base_icon
+		return
 	var image := Image.create(CLASSIC_PORTRAIT_STAGE_SIZE.x, CLASSIC_PORTRAIT_STAGE_SIZE.y, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
 	_blend_centered(image, base_icon)
@@ -443,14 +482,6 @@ func _set_character_effect_frame(row: Button, base_icon: Texture2D, resource_id:
 	var profile := UiSizing.profile_for(row)
 	if profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(profile)
 	else: row.icon = row.get_meta("native_portrait") as Texture2D
-
-
-static func _restore_character_effect(row: Button, base_icon: Texture2D) -> void:
-	if is_instance_valid(row):
-		row.set_meta("native_portrait", base_icon)
-		var profile := UiSizing.profile_for(row)
-		if profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(profile)
-		else: row.icon = base_icon
 
 
 func _add_empty(text: String) -> void:
@@ -517,16 +548,17 @@ func _condition_summary(values: Array[int]) -> String:
 	return "\n".join(active)
 
 
-func _clear_party() -> void:
+func _clear_party(retained_effects: Dictionary = {}) -> void:
 	_position_index = 0
 	for position: Node in _party_list.get_children():
 		var record := position.get_node("Member") as PartyRosterMemberRow
 		record.hide()
 		position.get_node("Empty").hide()
 		var button := record.character_button()
-		if button.has_meta("effect_tween"):
+		if button.has_meta("effect_tween") and not retained_effects.has(String(button.get_meta("character_id", ""))):
 			(button.get_meta("effect_tween") as Tween).kill()
 			button.remove_meta("effect_tween")
+			button.remove_meta("effect_base_portrait")
 		button.remove_meta("native_portrait")
 		for connection: Dictionary in button.pressed.get_connections():
 			button.pressed.disconnect(connection["callable"])

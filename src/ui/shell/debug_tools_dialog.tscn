@@ -37,7 +37,7 @@ z_index = 500
 script = ExtResource("1_dialog")
 developer_preferred_size = Vector2(740, 640)
 developer_window_fraction = Vector2(0.75, 0.9)
-diagnostics_preferred_size = Vector2(520, 240)
+diagnostics_preferred_size = Vector2(520, 320)
 
 [node name="Frame" type="VBoxContainer" parent="."]
 layout_mode = 2

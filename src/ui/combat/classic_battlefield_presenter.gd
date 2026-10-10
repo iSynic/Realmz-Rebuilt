@@ -5,14 +5,13 @@ extends Control
 
 
 const NATIVE_CELL_SIZE: float = BattlefieldPresentationGeometry.NATIVE_CELL_SIZE
-const HEADER_HEIGHT: float = BattlefieldPresentationGeometry.HEADER_HEIGHT
-const SURROUND_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-exploration-surround-tile.png"
 const TARGET_EDGE_DWELL_SECONDS := 0.35
 const TARGET_EDGE_STEP_SECONDS := 0.12
 
 var _view: GameView
 var _media: ClassicMediaCatalog
 var _textures := BattlefieldTextureCache.new()
+var _terrain_cache := BattlefieldTerrainCache.new()
 var interaction: BattlefieldInteractionController = BattlefieldInteractionController.new()
 var _render_camera_top_left := Vector2i(-1, -1)
 var _render_camera_focus_id: String = ""
@@ -26,13 +25,13 @@ var _target_edge_elapsed := 0.0
 ## Keep that detached presentation state instead of collapsing -1 and 0 into one bool.
 var _monster_facing_lr: Dictionary = {}
 var last_playback_media_diagnostic: Dictionary = {}
-var _surround_texture: Texture2D = load(SURROUND_TEXTURE_PATH) as Texture2D
 var movement_preview: MovementRoutePreview:
 	get: return get_node_or_null("MovementPreview") as MovementRoutePreview
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	clip_contents = true
 	set_process(true)
 	resized.connect(queue_redraw)
 	interaction.redraw_requested.connect(queue_redraw)
@@ -57,6 +56,8 @@ func present(game_view: GameView) -> void:
 
 
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
+	if frame != null and frame == _playback_frame and frame.kind not in [&"move_start", &"projectile", &"spell_projectile"]:
+		return
 	_targeting_camera_manually_panned = false
 	_target_edge_direction = Vector2i.ZERO
 	_target_edge_elapsed = 0.0
@@ -81,6 +82,7 @@ func playback_frame() -> CombatPlaybackFrame:
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_textures.set_media_catalog(media)
+	_terrain_cache = BattlefieldTerrainCache.new()
 	queue_redraw()
 
 
@@ -142,8 +144,6 @@ func _draw() -> void:
 	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.018, 0.022, 0.026), true)
-	if _surround_texture != null:
-		draw_texture_rect(_surround_texture, Rect2(Vector2.ZERO, size), true, Color(0.34, 0.35, 0.36, 0.72))
 	var combat := _view.combat_view
 	var battlefield := combat.battlefield
 	var focus_id := BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, interaction.focused_combatant_id, combat.active_actor_id)
@@ -165,17 +165,20 @@ func _draw() -> void:
 	var draw_origin := BattlefieldPresentationGeometry.battlefield_draw_origin(size, visible_cells)
 	if movement_preview != null:
 		movement_preview.configure_geometry(draw_origin, camera, visible_cells, NATIVE_CELL_SIZE)
-	_draw_header(combat)
-	for y: int in visible_cells.y:
-		for x: int in visible_cells.x:
-			var coordinate := camera + Vector2i(x, y)
-			var rect := Rect2(draw_origin + Vector2(x, y) * NATIVE_CELL_SIZE, Vector2.ONE * NATIVE_CELL_SIZE)
-			_draw_terrain_cell(battlefield.terrain_at(coordinate), rect)
+	var terrain_texture := _terrain_cache.texture_for(battlefield, _textures, camera, visible_cells)
+	if terrain_texture != null:
+		draw_texture(terrain_texture, draw_origin)
+	else:
+		for y: int in visible_cells.y:
+			for x: int in visible_cells.x:
+				var coordinate := camera + Vector2i(x, y)
+				var rect := Rect2(draw_origin + Vector2(x, y) * NATIVE_CELL_SIZE, Vector2.ONE * NATIVE_CELL_SIZE)
+				_draw_terrain_cell(battlefield.terrain_at(coordinate), rect)
 	_draw_persistent_fields(combat, camera, visible_cells, draw_origin)
 	_draw_revealed_relationships(combat, camera, visible_cells, draw_origin)
 	_draw_movement_options(combat, camera, visible_cells, draw_origin)
 	_draw_targeting_preview(combat, camera, visible_cells, draw_origin)
-	_actor_clip = Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE)
+	_actor_clip = Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE).intersection(Rect2(Vector2.ZERO, size))
 	_draw_characters(combat, camera, visible_cells, draw_origin)
 	_draw_monsters(combat, camera, visible_cells, draw_origin)
 	_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
@@ -184,26 +187,19 @@ func _draw() -> void:
 		draw_string(get_theme_font(&"font", &"Label"), Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
 
 
-func _draw_header(combat: CombatView) -> void:
-	var current_actor_name := BattlefieldPresentationGeometry.actor_name(combat, _view.party_members, combat.active_actor_id)
-	var native_battle_id := combat.battle_id.trim_prefix("classic.battle.")
-	var battle_label := "Battle %s" % native_battle_id if combat.battle_id.begins_with("classic.battle.") and native_battle_id.is_valid_int() else "Battle"
-	var title := "%s • Round %d • %s" % [battle_label, combat.round_number, current_actor_name]
-	var facts := "%d attack%s • %d movement • %s" % [combat.attack_units_remaining, "" if combat.attack_units_remaining == 1 else "s", combat.movement_remaining, String(combat.weapon_mode).capitalize()]
-	draw_string(get_theme_font(&"font", &"Label"), Vector2(8.0, 17.0), title, HORIZONTAL_ALIGNMENT_LEFT, maxf(size.x - 250.0, 120.0), 16, Color(0.86, 0.75, 0.42))
-	draw_string(get_theme_font(&"font", &"Label"), Vector2(size.x - 242.0, 17.0), facts, HORIZONTAL_ALIGNMENT_RIGHT, 234.0, 12, Color(0.73, 0.76, 0.80))
-
-
 func _draw_tactical_legend() -> void:
+	if interaction.reveal_friends or interaction.movement_costs_visible:
+		var legend_width := 392.0 if interaction.reveal_friends else 258.0
+		draw_rect(Rect2(Vector2(4.0, 4.0), Vector2(minf(legend_width, size.x - 8.0), 22.0)), Color(0.02, 0.025, 0.03, 0.86), true)
 	if interaction.reveal_friends:
 		var x := 8.0
 		for entry: Array in [["Hostile", Color(0.95, 0.22, 0.18)], ["Friendly", Color(0.18, 0.90, 0.38)], ["Helpless", Color(0.20, 0.42, 1.0)]]:
-			draw_line(Vector2(x, 29.0), Vector2(x + 18.0, 29.0), entry[1], 2.0)
-			draw_string(get_theme_font(&"font", &"Label"), Vector2(x + 23.0, 33.0), String(entry[0]), HORIZONTAL_ALIGNMENT_LEFT, 58.0, 10, Color(0.82, 0.84, 0.84))
+			draw_line(Vector2(x, 16.0), Vector2(x + 18.0, 16.0), entry[1], 2.0)
+			draw_string(get_theme_font(&"font", &"Label"), Vector2(x + 23.0, 20.0), String(entry[0]), HORIZONTAL_ALIGNMENT_LEFT, 58.0, 10, Color(0.82, 0.84, 0.84))
 			x += 86.0
-		draw_string(get_theme_font(&"font", &"Label"), Vector2(x, 33.0), "Click board to dismiss", HORIZONTAL_ALIGNMENT_LEFT, 126.0, 10, Color(0.63, 0.67, 0.69))
+		draw_string(get_theme_font(&"font", &"Label"), Vector2(x, 20.0), "Click board to dismiss", HORIZONTAL_ALIGNMENT_LEFT, 126.0, 10, Color(0.63, 0.67, 0.69))
 	elif interaction.movement_costs_visible:
-		draw_string(get_theme_font(&"font", &"Label"), Vector2(8.0, 33.0), "Movement cost aid • release Shift to hide", HORIZONTAL_ALIGNMENT_LEFT, 250.0, 10, Color(0.94, 0.82, 0.38))
+		draw_string(get_theme_font(&"font", &"Label"), Vector2(8.0, 20.0), "Movement cost aid • release Shift to hide", HORIZONTAL_ALIGNMENT_LEFT, 250.0, 10, Color(0.94, 0.82, 0.38))
 
 
 func _draw_terrain_cell(tile_id: int, rect: Rect2) -> void:
@@ -340,11 +336,19 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 	var target_ids: Dictionary = {}
 	for target: MonsterView in combat.targets:
 		target_ids[target.id] = true
-	for monster: MonsterView in combat.monsters:
+	var monsters: Array[MonsterView] = combat.monsters.duplicate()
+	if _playback_frame != null:
+		for monster_id: String in _playback_frame.summoned_monsters:
+			if not monsters.any(func(candidate: MonsterView) -> bool: return candidate.id == monster_id):
+				monsters.append(_playback_frame.summoned_monsters[monster_id])
+	for monster: MonsterView in monsters:
 		if _playback_hides(monster.id):
 			continue
-		var footprint := combat.battlefield.monster_footprint(monster.id)
 		var source_anchor := combat.battlefield.monster_position(monster.id)
+		var footprint := combat.battlefield.monster_footprint(monster.id)
+		if footprint.is_empty() and _playback_frame != null and _playback_frame.summoned_sizes.has(monster.id):
+			source_anchor = _playback_frame.position_for(monster.id)
+			footprint = BattlefieldGrid.footprint_cells(source_anchor, int(_playback_frame.summoned_sizes[monster.id]))
 		var effective_anchor := _effective_actor_position(combat, monster.id)
 		if source_anchor.x >= 0 and effective_anchor.x >= 0 and source_anchor != effective_anchor:
 			var offset := effective_anchor - source_anchor
@@ -443,22 +447,19 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 			_draw_spell_projectile(actor_rect, target_rect)
 		&"spell_cast", &"spell_effect":
 			_draw_spell_effect(actor_rect, target_rect)
+		&"group_result", &"group_defeat":
+			var group_frame := _playback_frame
+			for child: CombatPlaybackFrame in group_frame.group_frames:
+				_playback_frame = child
+				_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
+			_playback_frame = group_frame
 		&"result":
 			_draw_result(target_rect if target_rect.has_area() or not _playback_frame.target_id.is_empty() else actor_rect, combat, camera, visible_cells, draw_origin)
 		&"defeat":
 			var resource_id := _playback_frame.effect_resource_id
 			var coordinate := _effective_actor_position(combat, _playback_frame.target_id)
 			if resource_id > 0 and coordinate.x >= 0:
-				var asset := _media.asset_by_resource("cicn", resource_id) if _media != null else null
-				var texture := _textures.actor_texture(asset)
-				last_playback_media_diagnostic = _media.resolution_diagnostic("cicn", resource_id, "classic-combat-defeat", "decoded" if texture != null else "decode-failed") if _media != null else {"resourceType": "cicn", "resourceId": resource_id, "status": "catalog-unavailable"}
-				if texture != null:
-					var marker_size := texture.get_size()
-					var anchor_rect := BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin)
-					var marker_rect := Rect2(anchor_rect.position - marker_size + Vector2.ONE * NATIVE_CELL_SIZE, marker_size)
-					var visible_rect := marker_rect.intersection(Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE))
-					if visible_rect.has_area():
-						draw_texture_rect_region(texture, visible_rect, ClassicCombatBackdrop.clipped_source(marker_rect, Rect2(Vector2.ZERO, marker_size), visible_rect))
+				last_playback_media_diagnostic = CombatDefeatArt.draw(self, _media, _textures, resource_id, coordinate, camera, visible_cells, draw_origin)
 		&"retreat":
 			_draw_result(target_rect if target_rect.has_area() else actor_rect, combat, camera, visible_cells, draw_origin)
 
@@ -466,7 +467,7 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 func _draw_centered_cue(text: String) -> void:
 	if text.is_empty():
 		return
-	var cue_rect := Rect2(Vector2(size.x * 0.5 - 110.0, HEADER_HEIGHT + 8.0), Vector2(220.0, 34.0))
+	var cue_rect := Rect2(Vector2(size.x * 0.5 - 110.0, 8.0), Vector2(220.0, 34.0))
 	draw_rect(cue_rect, Color(0.02, 0.025, 0.03, 0.86), true)
 	draw_rect(cue_rect, Color(0.86, 0.72, 0.30, 0.95), false, 2.0)
 	draw_string(get_theme_font(&"font", &"Label"), cue_rect.position + Vector2(4.0, 23.0), text, HORIZONTAL_ALIGNMENT_CENTER, cue_rect.size.x - 8.0, 16, Color(1.0, 0.90, 0.56))
@@ -523,7 +524,7 @@ func _draw_result(target_rect: Rect2, combat: CombatView, camera: Vector2i, visi
 		return
 	if not target_rect.has_area():
 		var target_coordinate := _effective_actor_position(combat, _playback_frame.target_id)
-		var badge := BattlefieldPresentationGeometry.offscreen_indicator_rect(target_coordinate, camera, visible_cells, draw_origin, Vector2(160.0, 28.0))
+		var badge := BattlefieldPresentationGeometry.offscreen_indicator_rect(target_coordinate, camera, visible_cells, draw_origin, Vector2(160.0, 28.0), size)
 		if not badge.has_area():
 			return
 		var target_name := BattlefieldPresentationGeometry.actor_name(combat, _view.party_members, _playback_frame.target_id).left(15)
@@ -639,6 +640,8 @@ func _combatant_rect(combat: CombatView, actor_id: String, camera: Vector2i, vis
 		for index: int in footprint.size():
 			footprint[index] += offset
 		return BattlefieldPresentationGeometry.footprint_rect(footprint, camera, draw_origin)
+	if _playback_frame != null and _playback_frame.summoned_sizes.has(actor_id):
+		return BattlefieldPresentationGeometry.footprint_rect(BattlefieldGrid.footprint_cells(coordinate, int(_playback_frame.summoned_sizes[actor_id])), camera, draw_origin)
 	return _playback_actor_rect(actor_id, coordinate, camera, draw_origin)
 
 

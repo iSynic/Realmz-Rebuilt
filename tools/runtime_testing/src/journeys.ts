@@ -196,7 +196,7 @@ function readiness(result: Record<string, unknown>, command: JourneyStep["comman
   const r = readinessFields(result, stepIndex);
   if (r.fixtureReady !== undefined && r.fixtureReady !== true) failure("fixture_not_ready", "fixture is not ready", "readiness", stepIndex);
   if (r.fixtureError !== null && r.fixtureError !== undefined) failure("fixture_error", JSON.stringify(r.fixtureError), "readiness", stepIndex);
-  if (r.combatPlayback === true || r.hostInteraction === true) failure("input_blocked", "presentation playback or a host interaction owns the boundary", command, stepIndex);
+  if (r.combatResolution === true || r.combatPlayback === true || r.hostInteraction === true) failure("input_blocked", "combat resolution, playback or a host interaction owns the boundary", command, stepIndex);
   if (explicitSemanticReady(result, r) === false) failure("input_blocked", "the engine has not reached its semantic input boundary", command, stepIndex);
   const pending = result.pendingInteraction;
   if ((command === "act" || command === "invoke") && pending !== null && pending !== undefined) failure("unexpected_pending", "a pending interaction must be answered before this command", command, stepIndex);
@@ -216,7 +216,7 @@ function postCommandReady(result: Record<string, unknown>, stepIndex: number): b
   const r = readinessFields(result, stepIndex);
   if (r.fixtureReady !== undefined && r.fixtureReady !== true) return false;
   if (r.fixtureError !== null && r.fixtureError !== undefined) failure("fixture_error", JSON.stringify(r.fixtureError), "readiness", stepIndex);
-  if (r.combatPlayback === true || r.hostInteraction === true) return false;
+  if (r.combatResolution === true || r.combatPlayback === true || r.hostInteraction === true) return false;
   const semantic = explicitSemanticReady(result, r);
   if (semantic !== undefined) return semantic;
   // Older Rebuilt observations have no semanticReady field. Their rendered

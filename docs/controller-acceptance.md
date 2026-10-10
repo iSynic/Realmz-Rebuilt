@@ -4,6 +4,8 @@ Realmz Rebuilt provides a controller-owned route through startup, workspaces, te
 
 ## Implemented contract
 
+During combat, the configured Top Menu binding (View/Create/Minus by default) opens Combat Log during manual targeting, playback, or Auto. D-pad/left stick and right-stick vertical input scroll history; horizontal directions choose Copy all or Close, South activates the focused control, and East returns to the unchanged combat task. The View action wheel also includes Combat Log during manual activations. Review pauses playback, Auto, and Move To; it does not submit a combat response.
+
 - `ApplicationInputRouter` gives each controller event one active owner: capture or text editing, modal, radial, playback, targeting, focused workspace, or exploration.
 - Controller input is normalized through named actions, dead zones, hysteresis, repeats, active-device tracking, disconnect suspension, and neutral-input acknowledgement. Application focus loss creates a controller suspension only when a pad has deliberately claimed ownership; keyboard/mouse-only play cannot block party Auto behind a controller acknowledgement. A neutral active-pad suspension accepts a consumed controller button, keyboard press, or pointer press as its explicit acknowledgement.
 - Every application workspace uses explicit focus navigation, active-root containment, semantic record restoration with next-then-previous fallback, nested-scroll retention, focus inspection, and readable disabled reasons. Deferred refreshes do not steal focus from a newer menu or modal owner.

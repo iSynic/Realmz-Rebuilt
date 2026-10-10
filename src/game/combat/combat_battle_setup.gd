@@ -136,7 +136,7 @@ func _commit(assembly: BattleAssembly, state: GameState, content: RealmzContent,
 		character.attacks_remaining = 0
 		character.movement = character.maximum_movement
 	state.combat = combat
-	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 10049, "waitForCompletion": false, "source": "classic-battle-entry"}), DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": assembly.battlefield.rolled_distance, "direction": assembly.battlefield.direction_degrees, "mapId": assembly.battlefield.map_id, "surprise": surprise, "turnOrder": combat.turns.turn_order(), "participantCharacterIds": assembly.inputs.party_characters.map(func(character: CharacterState) -> String: return character.id), "consumedAllyIds": assembly.consumed_ally_ids})]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 10049, "waitForCompletion": false, "source": "classic-battle-entry"}), BattleStartedEvent.new({"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": assembly.battlefield.rolled_distance, "direction": assembly.battlefield.direction_degrees, "mapId": assembly.battlefield.map_id, "surprise": surprise, "turnOrder": combat.turns.turn_order(), "participantCharacterIds": assembly.inputs.party_characters.map(func(character: CharacterState) -> String: return character.id), "consumedAllyIds": assembly.consumed_ally_ids}, state, content)]
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
 

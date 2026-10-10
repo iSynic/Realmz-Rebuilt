@@ -63,7 +63,7 @@ func diagnostics() -> Variant:
 			continue
 		var path := "%s/%s/%s%s" % [_root_path, character_id, revision_hash, RECORD_EXTENSION]
 		var value: Variant = _read_record_data(path)
-		var record := CharacterVaultRecord.from_data(value)
+		var record := _validated_record(value)
 		var format_version: Variant = value.get("formatVersion") if value is Dictionary else null
 		if record != null and record.character_id == character_id and record.revision_hash == revision_hash:
 			result.valid_current_count += 1
@@ -122,7 +122,7 @@ func publish_revision(record: CharacterVaultRecord) -> bool:
 		return _fail("A valid character record is required.")
 	if record.rules_version.is_empty() or record.source_package_hash.length() != 64:
 		return _fail("Character provenance is incomplete.")
-	record.revision_hash = _revision_hash(record)
+	record.revision_hash = _revision_hash(record.to_data())
 	var directory_path := "%s/%s" % [_root_path, record.character_id]
 	var create_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(directory_path))
 	if create_error != OK:
@@ -140,19 +140,9 @@ func publish_revision(record: CharacterVaultRecord) -> bool:
 	if verified == null or verified.revision_hash != record.revision_hash:
 		_delete_file(temp_path)
 		return _fail("Character revision verification failed.")
-	if FileAccess.file_exists(backup_path):
-		_delete_file(backup_path)
-	if FileAccess.file_exists(record_path):
-		var backup_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(record_path), ProjectSettings.globalize_path(backup_path))
-		if backup_error != OK:
-			_delete_file(temp_path)
-			return _fail("Could not rotate the character revision backup (error %d)." % backup_error)
-	var replace_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temp_path), ProjectSettings.globalize_path(record_path))
-	if replace_error != OK:
-		if FileAccess.file_exists(backup_path):
-			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup_path), ProjectSettings.globalize_path(record_path))
-		_delete_file(temp_path)
-		return _fail("Could not install the character revision (error %d)." % replace_error)
+	var replace_error := _replace_with_backup(temp_path, record_path, backup_path)
+	if not replace_error.is_empty():
+		return _fail("Could not install the character revision: %s" % replace_error)
 	return _write_current_hash(record.character_id, record.revision_hash)
 
 
@@ -313,20 +303,44 @@ func _write_current_hash(character_id: String, revision_hash: String) -> bool:
 	file.store_string(CanonicalJson.encode({"characterId": character_id, "revisionHash": revision_hash}))
 	file.flush()
 	file.close()
-	if FileAccess.file_exists(backup_path):
-		_delete_file(backup_path)
-	if FileAccess.file_exists(index_path):
-		var backup_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(index_path), ProjectSettings.globalize_path(backup_path))
-		if backup_error != OK:
-			_delete_file(temp_path)
-			return _fail("Could not rotate the current character revision backup (error %d)." % backup_error)
-	var error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temp_path), ProjectSettings.globalize_path(index_path))
-	if error != OK:
-		if FileAccess.file_exists(backup_path):
-			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup_path), ProjectSettings.globalize_path(index_path))
-		_delete_file(temp_path)
-		return _fail("Could not install the current character revision index (error %d)." % error)
+	var replace_error := _replace_with_backup(temp_path, index_path, backup_path)
+	if not replace_error.is_empty():
+		return _fail("Could not install the current character revision index: %s" % replace_error)
 	return true
+
+
+func _replace_with_backup(temporary: String, primary: String, backup: String) -> String:
+	var staged_backup := backup + ".rotation"
+	if FileAccess.file_exists(staged_backup) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(staged_backup)):
+		_delete_file(temporary)
+		return "A prior backup rotation is still present; refusing to overwrite it."
+	var staged_previous_backup := false
+	if FileAccess.file_exists(backup):
+		var stage_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(staged_backup))
+		if stage_error != OK:
+			_delete_file(temporary)
+			return "Could not preserve the previous backup (error %d)." % stage_error
+		staged_previous_backup = true
+	var moved_primary := false
+	if FileAccess.file_exists(primary):
+		var backup_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(primary), ProjectSettings.globalize_path(backup))
+		if backup_error != OK:
+			if staged_previous_backup:
+				DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
+			_delete_file(temporary)
+			return "Could not move the current file to its backup (error %d)." % backup_error
+		moved_primary = true
+	var install_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(primary))
+	if install_error != OK:
+		if moved_primary:
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(primary))
+		if staged_previous_backup:
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
+		_delete_file(temporary)
+		return "Could not install the verified file (error %d)." % install_error
+	if staged_previous_backup:
+		_delete_file(staged_backup)
+	return ""
 
 
 func _read_current_hash(character_id: String) -> String:
@@ -344,7 +358,14 @@ func _read_current_hash(character_id: String) -> String:
 
 
 func _read_record(path: String) -> CharacterVaultRecord:
-	return CharacterVaultRecord.from_data(_read_record_data(path))
+	return _validated_record(_read_record_data(path))
+
+
+func _validated_record(value: Variant) -> CharacterVaultRecord:
+	var record := CharacterVaultRecord.from_data(value)
+	if record == null or record.revision_hash != _revision_hash(value):
+		return null
+	return record
 
 
 func _read_record_data(path: String) -> Variant:
@@ -374,8 +395,8 @@ func _append_revision_records(directory_path: String, character_id: String, reco
 	directory.list_dir_end()
 
 
-func _revision_hash(record: CharacterVaultRecord) -> String:
-	var data := record.to_data()
+func _revision_hash(envelope: Dictionary) -> String:
+	var data := envelope.duplicate()
 	data["revisionHash"] = ""
 	var context := HashingContext.new()
 	context.start(HashingContext.HASH_SHA256)

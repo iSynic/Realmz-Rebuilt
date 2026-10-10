@@ -3,14 +3,11 @@ class_name CombatPursuitGoals
 extends CombatAiScoringSupport
 
 
-func character_profiles(state: GameState, content: RealmzContent, actor: CharacterState) -> Array[Dictionary]:
+func character_profiles(state: GameState, content: RealmzContent, actor: CharacterState, decision: CombatDecisionContext = null) -> Array[Dictionary]:
 	var profiles: Array[Dictionary] = []
-	for spell_id: String in actor.known_spells():
-		for power: int in range(1, 8):
-			var candidates: Array[Dictionary] = []
-			_append_profile(candidates, content.magic.spell_by_id(spell_id), power)
-			if not candidates.is_empty() and _context.magic_flow().selection().probe_character_spell_choice(state, content, actor.id, spell_id, power).allowed:
-				profiles.append_array(candidates)
+	if decision == null: decision = CombatDecisionContext.new()
+	for admission: CombatSpellAdmission in decision.character_spells(_context.magic_flow().selection(), state, content, actor.id):
+		_append_profile(profiles, admission.spell, admission.power)
 	var equipped := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if equipped.valid and equipped.melee_weapon != null:
 		var probe: CombatSpellCastProbe = _context.magic_flow().probe_character_item_spell(state, content, actor.id, "", equipped.melee_weapon_instance_id)
@@ -48,12 +45,12 @@ func monster_profiles(state: GameState, content: RealmzContent, actor: MonsterSt
 	return profiles
 
 
-func firing_anchors(state: GameState, content: RealmzContent, actor_id: String, target_id: String, profiles: Array[Dictionary]) -> Array[Vector2i]:
+func firing_anchors(state: GameState, content: RealmzContent, actor_id: String, target_id: String, profiles: Array[Dictionary], decision: CombatDecisionContext = null) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var field := state.combat.battlefield
 	var terrain := CombatMonsterActions.battle_terrain_set(content, field)
 	if terrain == null or not field.actors.has_actor(target_id): return result
-	var occupied := _actors_by_cell(field)
+	var occupied := decision.occupied(field) if decision != null else _actors_by_cell(field)
 	var origin := field.actors.actor_position(actor_id)
 	var unique: Dictionary = {}
 	var footprints: Dictionary = {}
@@ -69,11 +66,14 @@ func firing_anchors(state: GameState, content: RealmzContent, actor_id: String, 
 	for geometry: Dictionary in geometries:
 		var profile: Dictionary = geometry["profile"]
 		var radius: int = geometry["radius"]
+		var distance_limit := (radius + 1) * (radius + 1)
 		for center: Vector2i in geometry["centers"]:
-			for y: int in range(maxi(0, center.y - radius - 1), mini(BattlefieldGrid.SIZE, center.y + radius + 2)):
-				for x: int in range(maxi(0, center.x - radius - 1), mini(BattlefieldGrid.SIZE, center.x + radius + 2)):
+			for y: int in range(maxi(0, center.y - radius), mini(BattlefieldGrid.SIZE, center.y + radius + 1)):
+				# floor(distance) <= radius is distance squared < (radius + 1) squared.
+				var half_width := ceili(sqrt(float(distance_limit - (y - center.y) * (y - center.y)))) - 1
+				for x: int in range(maxi(0, center.x - half_width), mini(BattlefieldGrid.SIZE, center.x + half_width + 1)):
 					var anchor := Vector2i(x, y)
-					if unique.has(anchor) or floori(Vector2(center - anchor).length()) > radius: continue
+					if unique.has(anchor): continue
 					if not _position_is_safe(state, terrain, actor_id, anchor, center, profile, occupied, footprints): continue
 					if geometry["los"] and not _context.battlefield.has_line_of_sight_to_coordinate(field, terrain, actor_id, center, anchor, occupied): continue
 					unique[anchor] = true

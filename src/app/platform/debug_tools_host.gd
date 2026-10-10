@@ -4,7 +4,7 @@ class_name DebugToolsHost
 extends Node
 
 const DEBUG_TOOLS_DIALOG_SCENE_PATH := "res://src/ui/shell/debug_tools_dialog.tscn"
-const DEBUG_ACTION_CONSOLE_SCENE_PATH := "res://src/ui/shell/debug_action_console.tscn"
+const ACTION_LOG_VIEW_SCENE_PATH := "res://src/ui/shared/action_log_view.tscn"
 
 signal status_changed(message: String, failed: bool)
 signal topology_debug_changed(enabled: bool)
@@ -12,7 +12,7 @@ signal topology_debug_changed(enabled: bool)
 var _controller: GameSessionController
 var _content_provider: Callable
 var _dialog: DebugToolsDialog
-var _console: PanelContainer
+var _console: ActionLogView
 var _noclip: bool = false
 var _recent_auto_actions: Array[String] = []
 var _action_lines: Array[String] = []
@@ -21,6 +21,7 @@ var _topology_debug: bool = false
 var _developer_tools_enabled: bool = false
 var _default_overlay: Control
 var _f12_down: bool = false
+var _focus := ControllerFocusNavigator.new()
 
 
 func bind(controller: GameSessionController, overlay: Control, content_provider: Callable) -> void:
@@ -35,20 +36,16 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 		_topology_debug = enabled
 		topology_debug_changed.emit(enabled)
 	)
+	_dialog.console_requested.connect(_open_console)
+	_dialog.console_shortcut_changed.connect(_set_console_recording)
 	if not _developer_tools_enabled:
 		return
-	_console = (load(DEBUG_ACTION_CONSOLE_SCENE_PATH) as PackedScene).instantiate() as DebugActionConsole
-	overlay.add_child(_console)
 	_controller.step_committed.connect(_record_step)
 	_dialog.command_requested.connect(_submit)
 	_dialog.noclip_changed.connect(func(enabled: bool) -> void:
 		_noclip = enabled
 		_dialog.show_result("No clip enabled." if enabled else "No clip disabled.", false)
 	)
-	_dialog.console_requested.connect(_open_console)
-	_dialog.console_shortcut_changed.connect(func(enabled: bool) -> void: _console_shortcut_enabled = enabled)
-	_console.close_requested.connect(_console.close_console)
-	_console.clear_requested.connect(_clear_console)
 
 
 func attach_overlay(overlay: Control) -> void:
@@ -84,10 +81,12 @@ func handle_input(event: InputEvent) -> bool:
 		_f12_down = true
 		_toggle_dialog()
 		return true
-	if _developer_tools_enabled and _console_shortcut_enabled and event.is_action_pressed(&"realmz_debug_console"):
+	if _console_shortcut_enabled and event.is_action_pressed(&"realmz_debug_console"):
 		if _console.visible: _console.close_console()
 		else: _open_console()
 		return true
+	if _console != null and _console.visible:
+		return _console.handle_input(event)
 	if not event.is_action_pressed(&"realmz_debug_tools"):
 		return false
 	_toggle_dialog()
@@ -124,6 +123,28 @@ static func _is_f12_key(event: InputEventKey) -> bool:
 
 func is_open() -> bool:
 	return _dialog != null and (_dialog.visible or _console != null and _console.visible)
+
+
+func controller_focus_root() -> Control:
+	if _console != null and _console.visible:
+		return _console
+	return _dialog if _dialog != null and _dialog.visible else null
+
+
+func handle_controller(action_id: StringName, direction: Vector2i) -> bool:
+	if _console != null and _console.visible:
+		return _console.handle_controller(action_id, direction)
+	if _dialog == null or not _dialog.visible:
+		return false
+	if action_id == &"realmz_controller_back":
+		_dialog.close_dialog()
+		return true
+	if action_id == &"realmz_controller_confirm":
+		_focus.activate_focused(_dialog)
+		return true
+	if direction != Vector2i.ZERO:
+		_focus.move(_dialog, direction)
+	return true
 
 
 func set_topology_debug(enabled: bool) -> void:
@@ -183,25 +204,58 @@ func _item_records() -> Array[Dictionary]:
 
 
 func _record_step(step: SessionStep) -> void:
+	if not _console_shortcut_enabled and not _developer_tools_enabled:
+		return
 	var view := _controller.view()
 	var content: RealmzContent = _content_provider.call() if _content_provider.is_valid() else null
-	_action_lines.append_array(action_lines(step.events, view, content))
-	while _action_lines.size() > 2000:
-		_action_lines.pop_front()
-	_recent_auto_actions.append_array(auto_action_lines(step.events, view, content))
-	while _recent_auto_actions.size() > 40:
-		_recent_auto_actions.pop_front()
-	if _dialog != null and _dialog.visible:
-		_dialog.set_auto_actions(_recent_auto_actions)
-	if _console != null and _console.visible:
-		_console.set_lines(_action_lines)
+	if _developer_tools_enabled:
+		_recent_auto_actions.append_array(auto_action_lines(step.events, view, content))
+		while _recent_auto_actions.size() > 40:
+			_recent_auto_actions.pop_front()
+		if _dialog != null and _dialog.visible:
+			_dialog.set_auto_actions(_recent_auto_actions)
+	if _console_shortcut_enabled:
+		_action_lines.append_array(action_lines(step.events, view, content))
+		while _action_lines.size() > 2000:
+			_action_lines.pop_front()
+		if _console != null and _console.visible:
+			_console.set_lines(_action_lines)
 
 
 func _open_console() -> void:
-	if not _developer_tools_enabled or _console == null:
+	if not _console_shortcut_enabled:
 		return
+	_ensure_console()
 	_dialog.close_dialog()
-	_console.present(_action_lines)
+	_console.present(_action_lines, "Game-action console", true)
+
+
+func _set_console_recording(enabled: bool) -> void:
+	_console_shortcut_enabled = enabled
+	if _dialog != null:
+		_dialog.set_console_recording(enabled)
+	if enabled:
+		_ensure_console()
+		if not _controller.step_committed.is_connected(_record_step):
+			_controller.step_committed.connect(_record_step)
+	else:
+		_action_lines.clear()
+		if _console != null:
+			_console.close_console()
+			_console.set_lines(_action_lines)
+		if not _developer_tools_enabled and _controller.step_committed.is_connected(_record_step):
+			_controller.step_committed.disconnect(_record_step)
+
+
+func _ensure_console() -> void:
+	if _console != null:
+		return
+	_console = (load(ACTION_LOG_VIEW_SCENE_PATH) as PackedScene).instantiate() as ActionLogView
+	var overlay := _dialog.get_parent() as Control if _dialog != null else _default_overlay
+	var console_overlay := overlay if overlay != null else _default_overlay
+	console_overlay.add_child(_console)
+	_console.close_requested.connect(_console.close_console)
+	_console.clear_requested.connect(_clear_console)
 
 
 static func action_lines(events: Array[DomainEvent], view: GameView = null, content: RealmzContent = null) -> Array[String]:

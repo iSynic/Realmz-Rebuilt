@@ -22,6 +22,7 @@ const MESH_CACHE_CAPACITY := 24
 const VIEW_CUE_SCENE_PATH := "res://src/ui/exploration/dungeon/dungeon_view_cue.tscn"
 
 var _enabled: bool = false
+var _latest_map_view: MapView
 var _projection: DungeonGeometryProjection
 var _previous_projection: DungeonGeometryProjection
 var _viewport: SubViewport
@@ -111,10 +112,22 @@ func _exit_tree() -> void:
 
 
 func set_enabled(enabled: bool, view_toggle_available: bool = false) -> void:
+	var was_enabled := _enabled
 	_enabled = enabled
 	if _view_cue != null:
 		_view_cue.text = "Space  ·  2D view" if view_toggle_available else "3D view only"
 		_layout_internal_view()
+	if was_enabled and not enabled:
+		_previous_projection = null
+		_projection = null
+		if _active_tween != null and _active_tween.is_valid():
+			_active_tween.kill()
+			_active_tween = null
+	elif enabled and not was_enabled:
+		_previous_projection = null
+		_prepare_projection(_latest_map_view)
+		_rebuild_geometry(_latest_map_view)
+		_snap_camera_to_projection()
 	_update_visibility()
 
 
@@ -162,22 +175,32 @@ func set_navigation_cursor_enabled(enabled: bool) -> void:
 
 
 func present(game_view: GameView) -> void:
+	_latest_map_view = game_view.map_view if game_view != null and game_view.session_started else null
+	if not _enabled:
+		_previous_projection = null
+		_projection = null
+		if _active_tween != null and _active_tween.is_valid():
+			_active_tween.kill()
+			_active_tween = null
+		if _latest_map_view == null:
+			_clear_retained_geometry()
+		_update_visibility()
+		return
 	_previous_projection = _projection
-	_projection = null
-	if game_view != null and game_view.session_started:
-		var source_key := _projection_source_key(game_view.map_view)
-		_projection = DungeonGeometryProjection.from_map_view(game_view.map_view, _projection_geometry_cache.get(source_key) as DungeonGeometryProjection)
-		if _projection != null:
-			_store_projection_geometry(source_key, _projection)
-	_rebuild_geometry(game_view.map_view if game_view != null else null)
+	_prepare_projection(_latest_map_view)
+	_rebuild_geometry(_latest_map_view)
 	_update_visibility()
 	_animate_authoritative_change()
 
 
-func _projection_source_key(map_view: MapView) -> String:
+func _prepare_projection(map_view: MapView) -> void:
+	_projection = null
 	if map_view == null:
-		return ""
-	return "%s:%d" % [map_view.map_id, DungeonGeometryProjection.geometry_source_id_for(map_view)]
+		return
+	var source_key := "%s:%d" % [map_view.map_id, DungeonGeometryProjection.geometry_source_id_for(map_view)]
+	_projection = DungeonGeometryProjection.from_map_view(map_view, _projection_geometry_cache.get(source_key) as DungeonGeometryProjection)
+	if _projection != null:
+		_store_projection_geometry(source_key, _projection)
 
 
 func _store_projection_geometry(source_key: String, projection: DungeonGeometryProjection) -> void:
