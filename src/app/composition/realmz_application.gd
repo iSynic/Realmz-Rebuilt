@@ -43,6 +43,7 @@ var _controller_resume_required: bool = false
 var _settings_controller: ApplicationSettingsController
 var lifecycle_host := ApplicationLifecycleHost.new()
 var character_files: ApplicationCharacterFilesHost
+var character_art: ApplicationCharacterArtHost
 var adventure_storage: ApplicationAdventureStorageHost
 var _spatial_layout: ApplicationSpatialLayout
 var _runtime_testing_host: RuntimeTestingHost
@@ -61,6 +62,7 @@ func _ready() -> void:
 	_build_dependencies()
 	_bind_debug_and_movement()
 	_bind_combat_and_interactions()
+	character_art.bind(_shell_presenter.character_art, presentation_media)
 	_bind_shell_and_settings()
 	_dungeon_presenter.pointer_input_gate = func() -> bool: return accepts_exploration_input() and not _shell_presenter.navigation_overlay_active
 	click_to_move = ClickToMoveCoordinator.new(session_controller, presentation_coordinator, _shell_presenter, _map_presenter, _battlefield_presenter, _held_movement, accepts_exploration_input, has_exploration_task, func() -> bool: return _dungeon_presenter.is_active(), submit_intent, func(response: InteractionResponse) -> SessionStep:
@@ -103,15 +105,17 @@ func _build_dependencies() -> void:
 	debug_tools = DebugToolsHost.new()
 	add_child(debug_tools)
 	debug_tools.bind(session_controller, self, func() -> RealmzContent: return _active_content)
+	character_art = ApplicationCharacterArtHost.new(CharacterArtRepository.new(scratch_root.path_join("character-art"))) if not scratch_root.is_empty() else ApplicationCharacterArtHost.new()
 	character_files = ApplicationCharacterFilesHost.new(
 		_package_host,
 		session_controller,
 		presentation_coordinator,
 		presentation_media,
 		_shell_presenter,
-		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null
+		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null,
+		character_art
 	)
-	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _shell_presenter, _combat_host.invalidate, _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content)
+	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, _shell_presenter, _combat_host.invalidate, _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content, character_art)
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, session_controller, presentation_coordinator)
 	lifecycle_host.bind(session_controller, presentation_coordinator, _shell_presenter, _held_movement, func(slot_id: String) -> bool: return adventure_storage.save(_active_content, slot_id), func() -> void: adventure_storage.refresh(_active_content), _present_step_status, _complete_closed_session, _quit_application)
 	_combat_host.configure(session_controller, presentation_coordinator, _shell_presenter, _interaction_presenter.combat, func() -> StringName:

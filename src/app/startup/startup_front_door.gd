@@ -39,6 +39,7 @@ const ACTION_QUIT: StringName = &"quit"
 
 var _menu_controller: RefCounted
 var _presentation_settings: RefCounted
+var _font_host: RefCounted
 var _layout_profile_script: Script
 var _presentation_settings_script: Script
 var _application_script_prime: Script
@@ -158,10 +159,11 @@ func _initialize_after_first_draw() -> void:
 	var base_theme := load(BASE_THEME_PATH) as Theme
 	_stone_texture.texture = load(STONE_TEXTURE_PATH) as Texture2D
 	_presentation_settings = settings_repository_script.new().load_settings()
+	_font_host = (load("res://src/app/platform/application_font_host.gd") as Script).new()
 	var display := get_viewport().get_parent() as DisplayCompositor
 	if display != null:
 		display.configure(_presentation_settings.display_scaling_mode, _presentation_settings.pixel_art_smoothing, _presentation_settings.crt_enabled, _presentation_settings.crt_shader, _presentation_settings.crt_area)
-	theme = typography_script.themed_copy(base_theme, _presentation_settings)
+	theme = typography_script.themed_copy(base_theme, _presentation_settings, 1.0, _font_host.get("resolver"))
 	_apply_launch_volume(_presentation_settings)
 	_menu_controller = controller_script.new()
 	_menu_controller.attach(_overlay_host)
@@ -324,9 +326,9 @@ func _apply_launch_volume(settings: RefCounted) -> void:
 func _apply_layout() -> void:
 	if _menu_controller == null or _layout_profile_script == null or _presentation_settings_script == null:
 		return
-	var profile: RefCounted = _layout_profile_script.for_viewport(size, _presentation_settings.ui_scale_mode, _presentation_settings.display_scaling_mode, _presentation_settings.text_scale)
+	var profile: RefCounted = _layout_profile_script.for_viewport(size, _presentation_settings.ui_scale_mode, _presentation_settings.display_scaling_mode, _presentation_settings.interface_text_scale, _presentation_settings.narrative_text_scale)
 	var typography_script := load("res://src/ui/shared/style/classic_typography.gd")
-	theme = typography_script.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres"), _presentation_settings, profile.ui_scale)
+	theme = typography_script.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres"), _presentation_settings, profile.ui_scale, _font_host.get("resolver"))
 	var sizing_script := load("res://src/ui/shared/style/ui_sizing.gd")
 	if not has_meta(&"sizing_listener"):
 		set_meta(&"sizing_listener", true)

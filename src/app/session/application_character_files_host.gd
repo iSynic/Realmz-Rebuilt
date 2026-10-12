@@ -12,6 +12,7 @@ var _creator := CharacterCreationHostController.new()
 var _library_content: RealmzContent
 var _library_media: MediaSource
 var _library_load_complete := false
+var _art_host: ApplicationCharacterArtHost
 
 
 func _init(
@@ -20,7 +21,8 @@ func _init(
 	presentation: PresentationCoordinator,
 	presentation_media: PresentationMediaController,
 	shell: GameShell,
-	vault: CharacterVaultController = null
+	vault: CharacterVaultController = null,
+	art_host: ApplicationCharacterArtHost = null
 ) -> void:
 	_package_host = package_host
 	_session = session
@@ -28,6 +30,7 @@ func _init(
 	_presentation_media = presentation_media
 	_shell = shell
 	_vault = vault if vault != null else CharacterVaultController.new()
+	_art_host = art_host
 
 
 func begin_library_load() -> void:
@@ -121,6 +124,9 @@ func publish_campaign_character(active_content: RealmzContent, character_id: Str
 
 
 func vault_import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
+	if _art_host != null and not _art_host.install_bundle(_vault.artwork_bundle(character_id, revision_hash)):
+		_shell.status.set_status("Character artwork could not be installed • %s" % _art_host.last_error, true)
+		return null
 	return _vault.import_intent(character_id, revision_hash)
 
 
@@ -131,7 +137,13 @@ func vault_error() -> String:
 func refresh_vault_views(active_content: RealmzContent) -> void:
 	if _library_content != null:
 		_vault.configure_rule_sources(_library_content, _package_host.saved_party_catalog.discover())
-	_shell.navigator.set_vault_revisions(_vault.revisions(active_content, _library_content), _vault.unavailable_notice())
+	var revisions := _vault.revisions(active_content, _library_content)
+	if _art_host != null:
+		for bundle: CharacterArtBundle in _vault.artwork_bundles():
+			if not _art_host.install_bundle(bundle):
+				_shell.status.set_status("Character artwork could not be installed • %s" % _art_host.last_error, true)
+				break
+	_shell.navigator.set_vault_revisions(revisions, _vault.unavailable_notice())
 
 
 func archive_character(active_content: RealmzContent, character_id: String) -> void:

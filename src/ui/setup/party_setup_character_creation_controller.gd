@@ -176,7 +176,7 @@ func _build_creator_review() -> void:
 		characters,
 		character.id,
 		_appearance_textures,
-		settings.text_scale if settings != null else 1.0,
+		settings.interface_text_scale if settings != null else 1.0,
 		&"overview",
 		view.portrait_options,
 		view.combat_icon_options,

@@ -8,6 +8,7 @@ const FORMAT_VERSION: int = 5
 const MAX_MAP_PREVIEW_BYTES: int = 256 * 1024
 
 var map_preview_jpeg: PackedByteArray = PackedByteArray()
+var character_art := CharacterArtBundle.new()
 
 
 func _init(campaign: String, package_identity: String, rules: String, revision: int, state: GameState, random_state: RealmzRngState, vm_state: ScenarioVmSnapshot = null, action_state: ScenarioActionState = null, pending_continuation: SessionContinuation = null, pending_battle_return: SessionContinuation = null, pending_session_interaction: InteractionRequest = null) -> void:
@@ -33,6 +34,8 @@ func to_data() -> Dictionary:
 	}
 	if not map_preview_jpeg.is_empty():
 		data["mapPreviewJpeg"] = Marshalls.raw_to_base64(map_preview_jpeg)
+	if not character_art.assets().is_empty():
+		data["characterArt"] = character_art.to_data()
 	return data
 
 
@@ -42,12 +45,14 @@ static func from_snapshot(snapshot: SessionSnapshot, preview_jpeg: PackedByteArr
 	var envelope := SaveEnvelope.new(snapshot.campaign_id, snapshot.package_hash, snapshot.rules_version, snapshot.view_revision, snapshot.game_state, snapshot.rng_state, snapshot.scenario_vm, snapshot.scenario_action_state, snapshot.continuation, snapshot.battle_return_continuation, snapshot.session_interaction)
 	envelope.deviation_ids = snapshot.deviation_ids.duplicate()
 	envelope.map_preview_jpeg = preview_jpeg.duplicate()
+	if snapshot is SaveEnvelope:
+		envelope.character_art = CharacterArtBundle.from_data((snapshot as SaveEnvelope).character_art.to_data())
 	return envelope
 
 
 static func from_data(data: Variant) -> SaveEnvelope:
 	var fields: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "battleReturnContinuation", "sessionInteraction"]
-	if not data is Dictionary or data.size() != fields.size() + (1 if data.has("mapPreviewJpeg") else 0):
+	if not data is Dictionary or data.size() != fields.size() + (1 if data.has("mapPreviewJpeg") else 0) + (1 if data.has("characterArt") else 0):
 		return null
 	for field: String in fields:
 		if not data.has(field):
@@ -95,6 +100,9 @@ static func from_data(data: Variant) -> SaveEnvelope:
 	var envelope := SaveEnvelope.new(data["campaignId"], data["packageHash"], data["rulesVersion"], revision, state, random_state, vm_state, action_state, typed_continuation, typed_battle_return, session_request)
 	envelope.deviation_ids = deviations
 	envelope.map_preview_jpeg = preview_jpeg
+	envelope.character_art = CharacterArtBundle.from_data(data.get("characterArt", []))
+	if envelope.character_art == null or not envelope.character_art.matches_characters(CharacterArtBundle.snapshot_characters(envelope)):
+		return null
 	return envelope
 
 

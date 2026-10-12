@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 22
+const SCHEMA_VERSION: int = 26
 const INDOOR_PARTY_ICON_COUNT: int = 120
 const DEFAULT_INDOOR_PARTY_ICON: int = 72
 const MUSIC_SLOT_COUNT: int = 20
@@ -39,8 +39,10 @@ const CRT_WORLD: String = "world"
 const CRT_WINDOW: String = "window"
 const WINDOWED: String = "windowed"
 const BORDERLESS_FULLSCREEN: String = "borderless-fullscreen"
-const TYPOGRAPHY_CLASSIC: String = "classic"
-const TYPOGRAPHY_READABLE: String = "readable"
+const MENU_VISIBLE: String = "visible"
+const MENU_HOVER: String = "hover"
+const MENU_HIDDEN: String = "hidden"
+const MENU_MODES: Array[String] = [MENU_VISIBLE, MENU_HOVER, MENU_HIDDEN]
 
 var master_volume: float = 1.0
 var sound_volume: float = 1.0
@@ -49,14 +51,15 @@ var music_enabled: bool = true
 var music_transition: String = MUSIC_RESTART_SONG
 var music_playlist_modes: Array[int] = _default_music_modes()
 var topology_debug: bool = false
-var text_scale: float = 1.0
+var interface_text_scale: float = 1.0
+var narrative_text_scale: float = 1.0
 var reduced_motion: bool = false
 var reduced_sound: bool = false
 var auto_switch_to_melee: bool = true
 var dungeon_3d: bool = true
 var ui_scale_mode: String = UI_SCALE_AUTO
 var display_scaling_mode: String = DISPLAY_INTEGER_CANVAS
-var world_zoom: int = 1
+var world_zoom: int = 0
 var pixel_art_smoothing: String = SMOOTHING_OFF
 var crt_enabled: bool = false
 var crt_shader: String = CRT_PI
@@ -74,7 +77,11 @@ var custom_fog_tile_enabled: bool = false
 var indoor_party_icon: int = DEFAULT_INDOOR_PARTY_ICON
 # FD-SYSTEM-002: new players enable Auto Note; Castle's PRFN 128 defaults it off.
 var autojournal_enabled: bool = true
-var typography_mode: String = TYPOGRAPHY_CLASSIC
+var interface_font: String = ""
+var narrative_font: String = ""
+var menu_visibility: String = MENU_VISIBLE
+var show_overworld_command_titles: bool = true
+var integer_fit_hidden_commands: bool = false
 var last_campaign_id: String = ""
 var controller := ControllerPreferences.new()
 
@@ -90,7 +97,8 @@ func to_data() -> Dictionary:
 		"musicTransition": music_transition,
 		"musicPlaylistModes": music_playlist_modes.duplicate(),
 		"topologyDebug": topology_debug,
-		"textScale": text_scale,
+		"interfaceTextScale": interface_text_scale,
+		"narrativeTextScale": narrative_text_scale,
 		"reducedMotion": reduced_motion,
 		"reducedSound": reduced_sound,
 		"autoSwitchToMelee": auto_switch_to_melee,
@@ -114,7 +122,11 @@ func to_data() -> Dictionary:
 		"customFogTileEnabled": custom_fog_tile_enabled,
 		"indoorPartyIcon": indoor_party_icon,
 		"autojournalEnabled": autojournal_enabled,
-		"typographyMode": typography_mode,
+		"interfaceFont": interface_font,
+		"narrativeFont": narrative_font,
+		"menuVisibility": menu_visibility,
+		"showOverworldCommandTitles": show_overworld_command_titles,
+		"integerFitHiddenCommands": integer_fit_hidden_commands,
 		"lastCampaignId": last_campaign_id,
 		"controller": controller.to_data(),
 	}
@@ -124,7 +136,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	if not data is Dictionary:
 		return null
 	var schema_version := _schema_version_from_data(data)
-	if schema_version == 0 or not _base_fields_are_valid(data) or not _versioned_fields_are_valid(data, schema_version):
+	if schema_version == 0 or not _base_fields_are_valid(data, schema_version) or not _versioned_fields_are_valid(data, schema_version):
 		return null
 	return _settings_from_valid_data(data)
 
@@ -137,14 +149,19 @@ static func _schema_version_from_data(data: Dictionary) -> int:
 	return version if data.get("kind") == "realmz2.presentation-settings" and version >= 1 and version <= SCHEMA_VERSION else 0
 
 
-static func _base_fields_are_valid(data: Dictionary) -> bool:
-	if not data.get("masterVolume") is float or not data.get("textScale") is float:
+static func _base_fields_are_valid(data: Dictionary, schema_version: int) -> bool:
+	if not data.get("masterVolume") is float:
 		return false
 	if not data.get("topologyDebug") is bool or not data.get("reducedMotion") is bool:
 		return false
 	var volume: float = data["masterVolume"]
-	var scale: float = data["textScale"]
-	return volume >= 0.0 and volume <= 1.0 and scale >= 0.8 and scale <= 1.5
+	if schema_version < 25:
+		return volume >= 0.0 and volume <= 1.0 and _font_scale_is_valid(data.get("textScale"), 0.8)
+	return volume >= 0.0 and volume <= 1.0 and _font_scale_is_valid(data.get("interfaceTextScale")) and _font_scale_is_valid(data.get("narrativeTextScale"))
+
+
+static func _font_scale_is_valid(value: Variant, minimum: float = 0.5) -> bool:
+	return value is float and value >= minimum and value <= 1.5
 
 
 static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -> bool:
@@ -158,7 +175,7 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 6 and (not data.get("showExplorationMinimap") is bool or not data.get("autojournalEnabled") is bool):
 		return false
-	if schema_version >= 7 and (not data.get("typographyMode") is String or data["typographyMode"] not in [TYPOGRAPHY_CLASSIC, TYPOGRAPHY_READABLE]):
+	if schema_version >= 7 and schema_version < 25 and data.get("typographyMode") not in ["classic", "readable"]:
 		return false
 	if schema_version >= 8 and not _music_fields_are_valid(data):
 		return false
@@ -174,7 +191,7 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 16 and not data.get("hurrySpellResolution") is bool:
 		return false
-	if schema_version >= 17 and not _scaling_fields_are_valid(data):
+	if schema_version >= 17 and not _scaling_fields_are_valid(data, schema_version):
 		return false
 	if schema_version >= 18 and (not data.get("crtEnabled") is bool or data.get("crtShader") not in [CRT_PI, CRT_LOTTES] or data.get("crtArea") not in [CRT_WORLD, CRT_WINDOW]):
 		return false
@@ -188,7 +205,33 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 22 and (not data.get("musicTransition") is String or data["musicTransition"] not in MUSIC_TRANSITIONS):
 		return false
+	if schema_version >= 23 and (not font_choice_is_valid(data.get("interfaceFont")) or not font_choice_is_valid(data.get("narrativeFont")) or data.get("menuVisibility") not in MENU_MODES):
+		return false
+	if schema_version >= 24 and (not data.get("showOverworldCommandTitles") is bool or not data.get("integerFitHiddenCommands") is bool):
+		return false
 	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
+
+
+static func font_choice_is_valid(value: Variant) -> bool:
+	if not value is String or value.length() > 512:
+		return false
+	if value.is_empty():
+		return true
+	var separator: int = value.find(":")
+	if separator < 1 or separator == value.length() - 1:
+		return false
+	var source: String = value.left(separator)
+	var identity: String = value.substr(separator + 1)
+	if source == "system":
+		return identity == identity.strip_edges() and not identity.contains("\n") and not identity.contains("\r")
+	if source == "bundled":
+		return identity in ["theldrow", "black-chancery", "chicago", "inter", "alegreya-sans", "alegreya-sans-bold", "alegreya"]
+	if source != "imported" or identity.length() != 64:
+		return false
+	for character: String in identity:
+		if not character in "0123456789abcdef":
+			return false
+	return true
 
 
 static func _indoor_icon_is_valid(value: Variant) -> bool:
@@ -204,9 +247,9 @@ static func _window_fields_are_valid(data: Dictionary, schema_version: int) -> b
 	return data["uiScaleMode"] in modes and data["windowMode"] in [WINDOWED, BORDERLESS_FULLSCREEN]
 
 
-static func _scaling_fields_are_valid(data: Dictionary) -> bool:
+static func _scaling_fields_are_valid(data: Dictionary, schema_version: int) -> bool:
 	var zoom: Variant = data.get("worldZoom")
-	return data.get("displayScalingMode") in [DISPLAY_RESPONSIVE, DISPLAY_INTEGER_WINDOW, DISPLAY_INTEGER_CANVAS, DISPLAY_FILL_WINDOW] and (zoom is int or zoom is float) and float(int(zoom)) == float(zoom) and int(zoom) in [1, 2, 3, 4] and data.get("pixelArtSmoothing") in [SMOOTHING_OFF, SMOOTHING_WORLD, SMOOTHING_WINDOW]
+	return data.get("displayScalingMode") in [DISPLAY_RESPONSIVE, DISPLAY_INTEGER_WINDOW, DISPLAY_INTEGER_CANVAS, DISPLAY_FILL_WINDOW] and (zoom is int or zoom is float) and float(int(zoom)) == float(zoom) and int(zoom) >= (0 if schema_version >= 26 else 1) and int(zoom) <= 4 and data.get("pixelArtSmoothing") in [SMOOTHING_OFF, SMOOTHING_WORLD, SMOOTHING_WINDOW]
 
 
 static func _music_fields_are_valid(data: Dictionary) -> bool:
@@ -242,13 +285,15 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 		settings.music_transition = data["musicTransition"]
 	settings.music_playlist_modes = _music_modes_from_data(data.get("musicPlaylistModes", []))
 	settings.topology_debug = data["topologyDebug"]
-	settings.text_scale = data["textScale"]
+	settings.interface_text_scale = data["interfaceTextScale"] if int(data["schemaVersion"]) >= 25 else data["textScale"]
+	settings.narrative_text_scale = data["narrativeTextScale"] if int(data["schemaVersion"]) >= 25 else data["textScale"]
 	settings.reduced_motion = data["reducedMotion"]
 	settings.reduced_sound = bool(data.get("reducedSound", false))
 	settings.auto_switch_to_melee = bool(data.get("autoSwitchToMelee", true))
 	settings.dungeon_3d = bool(data.get("dungeon3d", true))
 	settings.ui_scale_mode = String(data.get("uiScaleMode", UI_SCALE_AUTO))
 	settings.display_scaling_mode = DISPLAY_RESPONSIVE
+	settings.world_zoom = 1
 	if int(data["schemaVersion"]) >= 17:
 		settings.display_scaling_mode = String(data["displayScalingMode"])
 		settings.world_zoom = int(data["worldZoom"])
@@ -271,7 +316,18 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	if int(data["schemaVersion"]) >= 20:
 		settings.indoor_party_icon = int(data["indoorPartyIcon"])
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))
-	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
+	if int(data["schemaVersion"]) >= 23:
+		settings.interface_font = data["interfaceFont"]
+		settings.narrative_font = data["narrativeFont"]
+		settings.menu_visibility = data["menuVisibility"]
+	if int(data["schemaVersion"]) < 25 and data.get("typographyMode") == "readable":
+		if settings.interface_font.is_empty():
+			settings.interface_font = "bundled:alegreya-sans"
+		if settings.narrative_font.is_empty():
+			settings.narrative_font = "bundled:alegreya"
+	if int(data["schemaVersion"]) >= 24:
+		settings.show_overworld_command_titles = data["showOverworldCommandTitles"]
+		settings.integer_fit_hidden_commands = data["integerFitHiddenCommands"]
 	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
 	settings.controller = ControllerPreferences.from_data(data["controller"]) if data.has("controller") else ControllerPreferences.new()
 	if int(data.get("schemaVersion", 1)) == 14:

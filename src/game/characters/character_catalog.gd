@@ -49,6 +49,13 @@ func appearance_by_id(definition_id: String) -> CharacterAppearanceDefinition:
 	return local if local != null else _application_appearance_options.get(definition_id) as CharacterAppearanceDefinition
 
 
+func appearance_is_available(id: String, kind: StringName) -> bool:
+	if CharacterArtIdentity.is_imported(id):
+		return CharacterArtIdentity.is_valid(id, String(kind))
+	var definition := appearance_by_id(id)
+	return definition != null and definition.kind == kind
+
+
 func appearance_by_resource(kind: StringName, classic_resource_id: int) -> CharacterAppearanceDefinition:
 	var key := _appearance_resource_key(kind, classic_resource_id)
 	var local := _appearance_by_resource.get(key) as CharacterAppearanceDefinition

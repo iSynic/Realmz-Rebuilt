@@ -14,6 +14,7 @@ var source_package_hash: String
 var publication_metadata: Dictionary = {}
 var state: CharacterState
 var source_revision: String
+var character_art := CharacterArtBundle.new()
 
 
 func _init(id: String, rules: String, campaign: String, package_hash: String, character_state: CharacterState, source: String = "") -> void:
@@ -26,7 +27,7 @@ func _init(id: String, rules: String, campaign: String, package_hash: String, ch
 
 
 func to_data() -> Dictionary:
-	return {
+	var data := {
 		"format": FORMAT,
 		"formatVersion": FORMAT_VERSION,
 		"characterId": character_id,
@@ -38,6 +39,9 @@ func to_data() -> Dictionary:
 		"sourceRevision": source_revision,
 		"state": CharacterStateCodec.encode(state),
 	}
+	if not character_art.assets().is_empty():
+		data["characterArt"] = character_art.to_data()
+	return data
 
 
 static func from_data(value: Variant) -> CharacterVaultRecord:
@@ -56,4 +60,7 @@ static func from_data(value: Variant) -> CharacterVaultRecord:
 	var result := CharacterVaultRecord.new(value["characterId"], value["rulesVersion"], value["sourceCampaignId"], value["sourcePackageHash"], state, value["sourceRevision"])
 	result.revision_hash = value["revisionHash"]
 	result.publication_metadata = value["publication"].duplicate(true)
+	result.character_art = CharacterArtBundle.from_data(value.get("characterArt", []))
+	if result.character_art == null or not result.character_art.matches_characters([state]):
+		return null
 	return result

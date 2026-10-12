@@ -72,6 +72,10 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 	var direction_action := _controller_direction(action_id)
 	if _update_controller_direction(action_id, direction_action, pressed):
 		return
+	if _navigation_workspace_owns_controller():
+		if pressed: _handle_navigation_workspace_controller(action_id, _combined_controller_direction() if direction_action != Vector2i.ZERO else Vector2i.ZERO)
+		_mark_handled()
+		return
 	if _top_menu_is_open():
 		_handle_top_menu_action(action_id)
 		return
@@ -113,6 +117,10 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 
 
 func handle_controller_direction(direction: Vector2i, repeated: bool = false) -> void:
+	if _navigation_workspace_owns_controller():
+		_handle_navigation_workspace_controller(&"", direction)
+		_mark_handled()
+		return
 	if _handle_controller_log_or_diagnostics(&"", direction):
 		return
 	if _application._shell_presenter.controller.handle_navigation_modal_controller(&"", true, direction):
@@ -158,24 +166,6 @@ func _handle_controller_log_or_diagnostics(action_id: StringName, direction: Vec
 
 func _handle_controller_navigation_action(action_id: StringName) -> bool:
 	var interaction_blocking: bool = _application._interaction_presenter.has_blocking_request()
-	if _music_playlist_owns_controller() and action_id in [&"realmz_controller_section_previous", &"realmz_controller_section_next"]:
-		_application._shell_presenter.controller.cycle_music_tab(-1 if action_id == &"realmz_controller_section_previous" else 1)
-		_mark_handled()
-		return true
-	if _music_playlist_owns_controller() and action_id not in [
-		&"realmz_controller_back",
-		&"realmz_controller_confirm",
-		&"realmz_controller_up",
-		&"realmz_controller_down",
-		&"realmz_controller_left",
-		&"realmz_controller_right",
-		&"realmz_controller_scroll_up",
-		&"realmz_controller_scroll_down",
-		&"realmz_controller_scroll_left",
-		&"realmz_controller_scroll_right",
-	]:
-		_mark_handled()
-		return true
 	if _handle_radial_or_top_menu_action(action_id, interaction_blocking):
 		return true
 	if _handle_back_or_confirm_action(action_id):
@@ -406,7 +396,7 @@ func _stop_controller_movement() -> void:
 func _controller_focus_root() -> Node:
 	var import_root: Node = _application._shell_presenter.navigator.setup_controller.party_import_focus_root()
 	if import_root != null: return import_root
-	var music_root: Node = _application._shell_presenter.controller.music_playlist_focus_root()
+	var music_root: Node = _application._shell_presenter.controller.navigation_workspace_focus_root()
 	if music_root != null: return music_root
 	var spellbook := _controller_spellbook_root()
 	if spellbook != null: return spellbook
@@ -414,7 +404,7 @@ func _controller_focus_root() -> Node:
 
 
 func _controller_spellbook_root() -> Control:
-	if _application.accepts_exploration_input() or _application.lifecycle_host.has_active_interaction() or _music_playlist_owns_controller():
+	if _application.accepts_exploration_input() or _application.lifecycle_host.has_active_interaction() or _navigation_workspace_owns_controller():
 		return null
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
 	if pending != null and pending.kind != InteractionRequest.COMBAT:
@@ -454,8 +444,22 @@ func _handle_controller_spellbook(action_id: StringName, direction: Vector2i) ->
 	return true
 
 
-func _music_playlist_owns_controller() -> bool:
-	return _application._shell_presenter.controller.music_playlist_focus_root() != null
+func _handle_navigation_workspace_controller(action_id: StringName, direction: Vector2i) -> void:
+	_stop_controller_movement()
+	if _application._shell_presenter.controller.text_editor_is_open():
+		ApplicationControllerTextInput.handle(_application._shell_presenter.controller, action_id, direction)
+	elif direction != Vector2i.ZERO:
+		_focus.move(_controller_focus_root(), direction)
+	elif action_id in [&"realmz_controller_confirm", &"realmz_controller_back"]:
+		_handle_back_or_confirm_action(action_id)
+	elif action_id in [&"realmz_controller_section_previous", &"realmz_controller_section_next"]:
+		_application._shell_presenter.controller.cycle_navigation_workspace_tab(-1 if action_id == &"realmz_controller_section_previous" else 1)
+	else:
+		_focus.scroll_active(_controller_focus_root(), _controller_scroll_direction(action_id))
+
+
+func _navigation_workspace_owns_controller() -> bool:
+	return _application._shell_presenter.controller.navigation_workspace_focus_root() != null
 
 
 func _top_menu_is_open() -> bool:
@@ -602,7 +606,7 @@ func _handle_classic_keyboard_input(event: InputEventKey, pending: InteractionRe
 	if event == null or not shell.settings.classic_keyboard_shortcuts or shell.controller.radial_is_open():
 		return false
 	var root := _controller_focus_root() as Control
-	if root == null or _music_playlist_owns_controller(): return false
+	if root == null or _navigation_workspace_owns_controller(): return false
 	if ClassicKeyboardShortcuts.visible_button(shell, &"cast") != null and _application._battlefield_presenter.interaction.targeting == null:
 		var action := ClassicKeyboardShortcuts.action(event, "spells")
 		if not action.is_empty():

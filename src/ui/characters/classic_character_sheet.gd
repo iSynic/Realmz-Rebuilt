@@ -37,6 +37,7 @@ var _text_scale: float = 1.0
 var _portrait_options: Array[CharacterAppearanceOptionView] = []
 var _combat_icon_options: Array[CharacterAppearanceOptionView] = []
 var _media: ClassicMediaCatalog
+var character_art_dialog: CharacterArtDialog
 var _appearance_availability: ActionAvailabilityView = ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
 var _draft_portrait_id: String = ""
 var _draft_combat_icon_id: String = ""
@@ -52,6 +53,9 @@ func present(characters: Array[CharacterView], initial_character_id: String = ""
 	_portrait_options = portrait_options.duplicate()
 	_combat_icon_options = combat_icon_options.duplicate()
 	_media = media
+	if _media != null:
+		_portrait_options.append_array(_media.imported_appearance_options(CharacterAppearanceDefinition.PORTRAIT))
+		_combat_icon_options.append_array(_media.imported_appearance_options(CharacterAppearanceDefinition.COMBAT_ICON))
 	_layout_profile = layout_profile
 	_show_character_picker = show_character_picker
 	_appearance_availability = appearance_availability if appearance_availability != null else ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
@@ -260,6 +264,10 @@ func _build_spells(character: CharacterView) -> void:
 
 func _build_appearance(character: CharacterView) -> void:
 	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetIdentityTabs/AppearanceTab") as VBoxContainer
+	var art_button := tab.get_node("ImportCharacterArt") as Button
+	art_button.visible = character_art_dialog != null and _appearance_availability.enabled
+	if not art_button.pressed.is_connected(_open_character_art):
+		art_button.pressed.connect(_open_character_art)
 	tab.visible = true
 	(tab.get_node("AppearanceRegions") as BoxContainer).vertical = _layout_profile == UiLayoutProfile.COMPACT
 	_bind_appearance_region(tab.get_node("AppearanceRegions/PortraitAppearanceRegion") as PanelContainer, character, CharacterAppearanceDefinition.PORTRAIT, _portrait_options, _draft_portrait_id, "Portrait")
@@ -278,7 +286,7 @@ func _build_appearance(character: CharacterView) -> void:
 func _bind_appearance_region(frame: PanelContainer, character: CharacterView, kind: StringName, options: Array[CharacterAppearanceOptionView], selected_id: String, title: String) -> void:
 	var column := frame.get_node("Content") as VBoxContainer
 	var role_name := "Portrait" if kind == CharacterAppearanceDefinition.PORTRAIT else "CombatIcon"
-	_scene_binding.bind_label(column.get_node("Header/Count") as Label, "%d package choices" % options.size(), MUTED, 13)
+	_scene_binding.bind_label(column.get_node("Header/Count") as Label, "%d choices" % options.size(), MUTED, 13)
 	_scene_binding.bind_appearance_media(column.get_node("PreviewCenter/PreviewMedia") as PanelContainer, selected_id, character.name.left(1) if kind == CharacterAppearanceDefinition.PORTRAIT else "⚔", "%s preview" % title)
 	var picker := column.get_node("%sPicker" % role_name) as OptionButton
 	_scene_binding.clear_option_button(picker)
@@ -298,7 +306,7 @@ func _bind_appearance_region(frame: PanelContainer, character: CharacterView, ki
 			selected_index = index
 	picker.select(selected_index)
 	picker.disabled = not _appearance_availability.enabled or options.is_empty()
-	picker.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Browse all %d package-backed %s choices; Castle recommendations appear first." % [options.size(), title.to_lower()]
+	picker.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Browse %d Classic and imported %s choices; Castle recommendations appear first." % [options.size(), title.to_lower()]
 	if not picker.disabled:
 		picker.item_selected.connect(_select_appearance_option.bind(picker, kind))
 	var apply := column.get_node("Apply%s" % role_name) as Button
@@ -323,6 +331,27 @@ func _select_appearance_option(index: int, picker: OptionButton, kind: StringNam
 
 func _apply_appearance(kind: StringName, appearance_id: String) -> void:
 	appearance_change_requested.emit(_selected_character_id, kind, appearance_id)
+
+
+func _open_character_art() -> void:
+	var character := _selected_character()
+	if character_art_dialog == null or character == null:
+		return
+	character_art_dialog.open_library(character.race_name, _select_imported_art)
+
+
+func _select_imported_art(id: String, kind: String) -> void:
+	if _media == null:
+		return
+	if kind == "portrait":
+		_draft_portrait_id = id
+		_portrait_options = _portrait_options.filter(func(option: CharacterAppearanceOptionView) -> bool: return not CharacterArtIdentity.is_imported(option.id))
+		_portrait_options.append_array(_media.imported_appearance_options(CharacterAppearanceDefinition.PORTRAIT))
+	else:
+		_draft_combat_icon_id = id
+		_combat_icon_options = _combat_icon_options.filter(func(option: CharacterAppearanceOptionView) -> bool: return not CharacterArtIdentity.is_imported(option.id))
+		_combat_icon_options.append_array(_media.imported_appearance_options(CharacterAppearanceDefinition.COMBAT_ICON))
+	_rebuild()
 
 
 func _discard_appearance_draft() -> void:

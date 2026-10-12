@@ -334,7 +334,7 @@ theme_type_variation = &"ClassicHeading"
 text = "Display"
 [node name="Description" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
-text = "Choose how the application fills the window. World Zoom applies to map and battle tiles only with Integer: world canvas; Interface Size changes text and controls."
+text = "Choose window, interface, and world scaling."
 autowrap_mode = 2
 [node name="Divider" type="HSeparator" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
@@ -487,6 +487,27 @@ size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
+[node name="MenuVisibilityRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/MenuVisibilityRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Top menu"
+
+[node name="MenuVisibilityPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/MenuVisibilityRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+
+[node name="MenuVisibilityHelp" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content"]
+layout_mode = 2
+text = "Restore a hidden menu through bottom Settings."
+tooltip_text = "Show on hover reveals the menu at the top edge. Hidden modes reclaim menu space without a Menu button. F10 and controller access remain available."
+autowrap_mode = 2
+
 [node name="WindowModeRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
 [node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
@@ -513,6 +534,20 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Use alternative fog-of-war tile"
+autowrap_mode = 2
+
+[node name="OverworldCommandTitles" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Show overworld command titles"
+tooltip_text = "Show captions on Search, Area Search, Camp, and Rest. Tooltips and controller labels remain available when captions are hidden."
+autowrap_mode = 2
+
+[node name="FitHiddenCommandArt" type="CheckButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Fit hidden command art to button"
+tooltip_text = "When titles are hidden, use the largest whole-number art scale from 1× to 3× that fits each button."
 autowrap_mode = 2
 
 [node name="IndoorPartyIcon" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content"]
@@ -781,30 +816,77 @@ autowrap_mode = 2
 layout_mode = 2
 text = "Reduced motion settles combat feedback in one presentation frame without skipping committed events."
 autowrap_mode = 2
-[node name="TextScaleRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
+[node name="InterfaceFontRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
 layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextScaleRow"]
+
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/InterfaceFontRow"]
 custom_minimum_size = Vector2(230, 0)
 layout_mode = 2
-text = "Text size"
-[node name="TextScaleSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextScaleRow"]
+text = "Interface font"
+
+[node name="ChooseFont" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/InterfaceFontRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-min_value = 0.8
-max_value = 1.5
-step = 0.1
-[node name="TypographyRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
-layout_mode = 2
-[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TypographyRow"]
-custom_minimum_size = Vector2(230, 0)
-layout_mode = 2
-text = "Typography"
-[node name="TypographyPicker" type="OptionButton" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TypographyRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowOptionButton"
-fit_to_longest_item = false
+text = "Classic fonts"
 clip_text = true
+
+[node name="InterfaceTextScaleRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/InterfaceTextScaleRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Interface size"
+[node name="TextScaleSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/InterfaceTextScaleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.5
+max_value = 1.5
+step = 0.05
+value = 1.0
+
+[node name="SizeValue" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/InterfaceTextScaleRow"]
+custom_minimum_size = Vector2(52, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
+[node name="NarrativeFontRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/NarrativeFontRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Narrative font"
+
+[node name="ChooseFont" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/NarrativeFontRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Classic fonts"
+clip_text = true
+
+[node name="NarrativeTextScaleRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/NarrativeTextScaleRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Narrative size"
+[node name="TextScaleSlider" type="HSlider" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/NarrativeTextScaleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.5
+max_value = 1.5
+step = 0.05
+value = 1.0
+
+[node name="SizeValue" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/NarrativeTextScaleRow"]
+custom_minimum_size = Vector2(52, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
+[node name="FontStatus" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+layout_mode = 2
+autowrap_mode = 2
 
 [node name="TextPreview" type="PanelContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2
@@ -827,7 +909,8 @@ autowrap_mode = 2
 
 [node name="PreviewDetail" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content/TextPreview/Content"]
 layout_mode = 2
-text = "This sample follows the selected font and text size."
+theme_type_variation = &"ClassicNarrativeText"
+text = "The road bends through the forest, and distant bells carry on the wind."
 autowrap_mode = 2
 
 [node name="Controls" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs"]

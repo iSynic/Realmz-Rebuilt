@@ -9,6 +9,8 @@ var _shell_presenter: GameShell
 var _audio_presenter: ClassicAudioPresenter
 var _package_media: MediaSource
 var _character_media: MediaSource
+var _imported_character_media: MediaSource
+var _imported_art_options: Array[CharacterAppearanceOptionView] = []
 var _application_media := ApplicationMediaCatalog.new()
 var _stock_music := ClassicMusicCatalog.new()
 var _catalog: ClassicMediaCatalog
@@ -37,7 +39,7 @@ func bind(
 
 func set_package_media(media: MediaSource) -> void:
 	_package_media = media
-	_catalog = ClassicMediaCatalog.new(media, _application_media, _character_media)
+	_catalog = ClassicMediaCatalog.new(media, _application_media, _character_media, _imported_character_media, _imported_art_options)
 	_map_presenter.set_media_catalog(_catalog)
 	_battlefield_presenter.set_media_catalog(_catalog)
 	_shell_presenter.set_package_media(_catalog)
@@ -47,6 +49,15 @@ func set_package_media(media: MediaSource) -> void:
 func set_application_character_media(media: MediaSource) -> void:
 	_character_media = media
 	set_package_media(_package_media)
+
+
+func set_imported_character_art(media: MediaSource, options: Array[CharacterAppearanceOptionView]) -> void:
+	_imported_character_media = media
+	_imported_art_options = options.duplicate()
+	if _catalog != null:
+		_catalog.replace_imported_art(media, options)
+	else:
+		set_package_media(_package_media)
 
 
 func catalog() -> ClassicMediaCatalog:

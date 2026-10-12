@@ -51,6 +51,26 @@ static func inspect(root: Control) -> Array[Dictionary]:
 			ancestor = ancestor.get_parent()
 		if horizontal or vertical:
 			failures.append({"control": str(root.get_path_to(control)), "horizontal": horizontal, "vertical": vertical, "rect": [rect.position.x, rect.position.y, rect.size.x, rect.size.y]})
+	failures.append_array(_inspect_tabs(root))
+	return failures
+
+
+static func _inspect_tabs(root: Control) -> Array[Dictionary]:
+	var failures: Array[Dictionary] = []
+	var containers := root.find_children("*", "TabContainer", true, false)
+	if root is TabContainer: containers.append(root)
+	for node: Node in containers:
+		var tabs := node as TabContainer
+		var bar := tabs.get_tab_bar()
+		if not tabs.tabs_visible or not bar.is_visible_in_tree() or tabs.get_tab_count() == 0:
+			continue
+		var rect := bar.get_global_rect()
+		var content := tabs.get_current_tab_control()
+		var wrong_font := bar.get_theme_font_size(&"font_size") != tabs.get_theme_font_size(&"font_size")
+		var clipped := bar.get_combined_minimum_size().y > rect.size.y + 1.0
+		var overlap := content != null and rect.intersects(content.get_global_rect().grow(-1.0))
+		if wrong_font or clipped or overlap:
+			failures.append({"control": str(root.get_path_to(tabs)) + "/TabBar", "font": wrong_font, "clipped": clipped, "overlap": overlap, "rect": [rect.position.x, rect.position.y, rect.size.x, rect.size.y]})
 	return failures
 
 

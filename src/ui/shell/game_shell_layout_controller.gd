@@ -4,6 +4,7 @@ extends RefCounted
 
 var workspace_rect: Rect2
 var _menu_strip: PanelContainer
+var _menu_display_height: float
 var _menu_row: HBoxContainer
 var _compact_menu: MenuButton
 var _stage_frame: NinePatchRect
@@ -58,13 +59,14 @@ func set_effect_slots(effect_slots: Array[TextureRect]) -> void:
 
 
 func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameView) -> UiLayoutProfile:
-	var profile := UiLayoutProfile.for_viewport(shell_size, settings.ui_scale_mode, settings.display_scaling_mode, settings.text_scale)
+	var profile := UiLayoutProfile.for_viewport(shell_size, settings.ui_scale_mode, settings.display_scaling_mode, settings.interface_text_scale, settings.narrative_text_scale)
 	var canvas_rect := profile.application_rect
 	var viewport_size := canvas_rect.size
 	var origin := canvas_rect.position
 	_menu_row.visible = profile.id != UiLayoutProfile.COMPACT
 	_compact_menu.visible = profile.id == UiLayoutProfile.COMPACT
-	profile.menu_height = maxf(profile.menu_height, ceilf(_menu_strip.get_combined_minimum_size().y))
+	_menu_display_height = maxf(profile.menu_height, ceilf(_menu_strip.get_combined_minimum_size().y))
+	profile.menu_height = _menu_display_height if settings.menu_visibility == PresentationSettings.MENU_VISIBLE else 0.0
 	_apply_footer(profile, viewport_size, origin, game_view)
 	profile.bottom_height = maxf(profile.bottom_height, ceilf(_bottom_region.get_combined_minimum_size().y))
 	if game_view != null and game_view.combat_view != null:
@@ -73,7 +75,7 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	var stage_height := maxf(1.0, viewport_size.y - profile.menu_height - profile.bottom_height)
 	var stage_rect := Rect2(origin + Vector2(0.0, profile.menu_height), Vector2(stage_width, stage_height))
 	_apply_stage(profile, viewport_size, origin, stage_rect)
-	var roster_width := GameShellLayoutPolicy.combat_spellbook_roster_width(viewport_size.x, profile.party_width, profile.ui_scale, _party_roster.combat_spellbook_active(), settings.text_scale)
+	var roster_width := GameShellLayoutPolicy.combat_spellbook_roster_width(viewport_size.x, profile.party_width, profile.ui_scale, _party_roster.combat_spellbook_active(), settings.interface_text_scale)
 	_apply_roster(profile, viewport_size, origin, stage_height, roster_width)
 	restore_footer_bounds(profile)
 	_navigator.set_layout_profile(profile, viewport_size, origin)
@@ -84,7 +86,7 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 func _apply_stage(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, stage_rect: Rect2) -> void:
 	_menu_strip.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_menu_strip.position = origin
-	_menu_strip.size = Vector2(viewport_size.x, profile.menu_height)
+	_menu_strip.size = Vector2(viewport_size.x, _menu_display_height)
 	_stage_frame.position = stage_rect.position
 	_stage_frame.size = stage_rect.size
 	_activity_indicator.position = stage_rect.position + Vector2(10.0, 10.0)

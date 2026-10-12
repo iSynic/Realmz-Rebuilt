@@ -1,0 +1,342 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/character_art_dialog.gd" id="1"]
+
+[node name="CharacterArtDialog" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+z_index = 120
+script = ExtResource("1")
+
+[node name="ModalVeil" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.62)
+
+[node name="ArtWindow" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 60.0
+offset_top = 35.0
+offset_right = 1220.0
+offset_bottom = 685.0
+
+[node name="Content" type="VBoxContainer" parent="ArtWindow"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Title" type="Label" parent="ArtWindow/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_font_sizes/font_size = 20
+text = "Character artwork"
+
+[node name="ArtBody" type="BoxContainer" parent="ArtWindow/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="LibraryPanel" type="PanelContainer" parent="ArtWindow/Content/ArtBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(235, 0)
+layout_mode = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="LibraryContent" type="VBoxContainer" parent="ArtWindow/Content/ArtBody/LibraryPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="LibraryHeading" type="Label" parent="ArtWindow/Content/ArtBody/LibraryPanel/LibraryContent"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Artwork library"
+
+[node name="LibraryEntries" type="ItemList" parent="ArtWindow/Content/ArtBody/LibraryPanel/LibraryContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"SlateList"
+icon_mode = 1
+fixed_icon_size = Vector2i(44, 44)
+
+[node name="EditPanel" type="PanelContainer" parent="ArtWindow/Content/ArtBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="EditScroll" type="ScrollContainer" parent="ArtWindow/Content/ArtBody/EditPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="EditContent" type="VBoxContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll"]
+size_flags_horizontal = 3
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="SourceRow" type="HBoxContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="ChooseSource" type="Button" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SourceRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 34)
+layout_mode = 2
+text = "Choose image…"
+
+[node name="SourceName" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SourceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "No image selected"
+text_overrun_behavior = 3
+
+[node name="SourceDimensions" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SourceRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Source dimensions unavailable"
+
+[node name="SettingsRow" type="GridContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/separation = 8
+
+[node name="KindLabel" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SettingsRow"]
+layout_mode = 2
+text = "Artwork"
+
+[node name="ArtKind" type="OptionButton" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SettingsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 30)
+layout_mode = 2
+item_count = 2
+selected = 0
+popup/item_0/text = "Portrait"
+popup/item_0/id = 0
+popup/item_1/text = "Combat icon"
+popup/item_1/id = 1
+
+[node name="ModeLabel" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SettingsRow"]
+layout_mode = 2
+text = "Method"
+
+[node name="ArtMode" type="OptionButton" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SettingsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(105, 30)
+layout_mode = 2
+item_count = 3
+selected = 0
+popup/item_0/text = "Fit"
+popup/item_0/id = 0
+popup/item_1/text = "Crop"
+popup/item_1/id = 1
+popup/item_2/text = "Resize"
+popup/item_2/id = 2
+
+[node name="FilterLabel" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SettingsRow"]
+layout_mode = 2
+text = "Filter"
+
+[node name="ArtFilter" type="OptionButton" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/SettingsRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(115, 30)
+layout_mode = 2
+item_count = 2
+selected = 0
+popup/item_0/text = "Nearest (pixel art)"
+popup/item_0/id = 0
+popup/item_1/text = "Lanczos (smooth)"
+popup/item_1/id = 1
+
+[node name="CropControls" type="HBoxContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="CropXLabel" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/CropControls"]
+layout_mode = 2
+text = "X"
+
+[node name="CropX" type="SpinBox" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/CropControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+step = 1.0
+rounded = true
+
+[node name="CropYLabel" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/CropControls"]
+layout_mode = 2
+text = "Y"
+
+[node name="CropY" type="SpinBox" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/CropControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 0)
+layout_mode = 2
+step = 1.0
+rounded = true
+
+[node name="CropSizeLabel" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/CropControls"]
+layout_mode = 2
+text = "Square size"
+
+[node name="CropSize" type="SpinBox" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/CropControls"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 0)
+layout_mode = 2
+step = 1.0
+rounded = true
+
+[node name="CropHelp" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Fit preserves proportions with transparent padding."
+autowrap_mode = 2
+
+[node name="PreviewHeading" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Result preview"
+
+[node name="PreviewRow" type="HBoxContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 9
+
+[node name="NativePreviewPanel" type="PanelContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow"]
+custom_minimum_size = Vector2(145, 150)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="NativePreviewContent" type="VBoxContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow/NativePreviewPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="NativePreview" type="TextureRect" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow/NativePreviewPanel/NativePreviewContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+
+[node name="NativeSize" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow/NativePreviewPanel/NativePreviewContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Native 1× result"
+horizontal_alignment = 1
+
+[node name="EnlargedPreviewPanel" type="PanelContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow"]
+custom_minimum_size = Vector2(225, 150)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="EnlargedPreviewContent" type="VBoxContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow/EnlargedPreviewPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="EnlargedPreview" type="TextureRect" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow/EnlargedPreviewPanel/EnlargedPreviewContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(176, 176)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+texture_filter = 1
+
+[node name="EnlargedCaption" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/PreviewRow/EnlargedPreviewPanel/EnlargedPreviewContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "4× enlargement · nearest pixels"
+horizontal_alignment = 1
+
+[node name="PreviewError" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.76, 0.45, 1)
+autowrap_mode = 2
+
+[node name="ImportFields" type="HBoxContainer" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="GroupLabel" type="Label" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/ImportFields"]
+layout_mode = 2
+text = "Group"
+tooltip_text = "Race or library group; artwork metadata only"
+
+[node name="GroupName" type="LineEdit" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/ImportFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Race / library group"
+max_length = 128
+
+[node name="ArtworkLabel" type="LineEdit" parent="ArtWindow/Content/ArtBody/EditPanel/EditScroll/EditContent/ImportFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Artwork name"
+max_length = 128
+
+[node name="Actions" type="HBoxContainer" parent="ArtWindow/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChooseSourceFooter" type="Label" parent="ArtWindow/Content/Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Choose an image, preview the result, then import it into this library."
+autowrap_mode = 2
+
+[node name="ImportArt" type="Button" parent="ArtWindow/Content/Actions"]
+unique_name_in_owner = true
+disabled = true
+custom_minimum_size = Vector2(110, 36)
+layout_mode = 2
+text = "Import"
+
+[node name="CancelArt" type="Button" parent="ArtWindow/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(90, 36)
+layout_mode = 2
+text = "Cancel"
+
+[node name="DoneArt" type="Button" parent="ArtWindow/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(85, 36)
+layout_mode = 2
+text = "Done"
+
+[node name="SourceFiles" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Choose character artwork"
+initial_position = 2
+size = Vector2i(900, 560)
+exclusive = false
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.png ; PNG images", "*.webp ; WebP images", "*.jpg, *.jpeg ; JPEG images")
+use_native_dialog = false

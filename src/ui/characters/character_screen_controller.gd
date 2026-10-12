@@ -29,6 +29,7 @@ var _vault_back_label: String = "Back"
 var _vault_media: ClassicMediaCatalog
 var _vault_show_history: bool = false
 var _layout_profile: StringName = UiLayoutProfile.WIDE
+var character_art_dialog: CharacterArtDialog
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -305,9 +306,10 @@ func present(screen: CharacterScreen, view: GameView, appearance_textures: Dicti
 	if _party_order_open:
 		_render_party_order(screen, view)
 	var sheet := screen.character_sheet()
+	sheet.character_art_dialog = character_art_dialog
 	sheet.visible = true
 	sheet.name = "ClassicCharacterSheet"
-	sheet.present(view.party_members, _selected_character_id, appearance_textures, settings.text_scale, _selected_tab, view.portrait_options, view.combat_icon_options, view.availability(&"change_character_appearance"), media, _layout_profile)
+	sheet.present(view.party_members, _selected_character_id, appearance_textures, settings.interface_text_scale, _selected_tab, view.portrait_options, view.combat_icon_options, view.availability(&"change_character_appearance"), media, _layout_profile)
 	_selected_character_id = sheet.selected_character_id()
 	if not sheet.character_selected.is_connected(_on_sheet_character_selected):
 		sheet.character_selected.connect(_on_sheet_character_selected)

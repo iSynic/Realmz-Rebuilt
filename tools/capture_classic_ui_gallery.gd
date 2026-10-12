@@ -592,11 +592,11 @@ func _capture_gallery() -> void:
 	for index: int in range(0, 6):
 		(system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_saves() if index == 0 else (system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_category(SystemPreferencesLayout.PREFERENCE_SECTIONS[index - 1]); await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "accessibility", "controls", "diagnostics"][index])
 	system_tabs.current_tab = 2; await _settle(); (_router.find_child("OpenMusicPlaylist", true, false) as Button).pressed.emit(); await _settle(); await _capture("classic-music-playlist-800x600"); (_shell.find_child("MusicDone", true, false) as Button).pressed.emit(); await _settle()
-	await _apply_sizing_settings(PresentationSettings.UI_SCALE_150, PresentationSettings.DISPLAY_INTEGER_CANVAS, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.5)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_150, PresentationSettings.DISPLAY_INTEGER_CANVAS, "classic", 1.5)
 	_router.open_screen(&"system")
 	await _settle()
 	await _capture("compact-system-ui150-text150-800x600")
-	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_INTEGER_CANVAS, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_INTEGER_CANVAS, "classic", 1.0)
 	await _resize(Vector2i(1280, 720)); _router.open_screen(&"exploration")
 	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture_canonical_compact("canonical-end-adventure-1280x720", "classic-end-adventure-800x600")
 	await _resize(Vector2i(1280, 720)); _interaction.present(APPLICATION_LIFECYCLE_SCRIPT.quit_application_request(true, false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-quit-800x600")
@@ -635,7 +635,7 @@ func _close_prepared_fixture_adventure() -> void:
 
 func _capture_raw_scenes() -> void:
 	await _resize(Vector2i(1280, 720))
-	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 	_application.visible = false
 	var registry: Variant = JSON.parse_string(FileAccess.get_file_as_string(SCENE_PREVIEW_REGISTRY_PATH))
 	assert(registry is Dictionary and registry.get("sceneContracts") is Dictionary and registry.get("scenes") is Array, "Scene preview registry is malformed.")
@@ -784,7 +784,7 @@ func _capture_scaling_audit(state: String) -> void:
 	for setting: Array in ScalingAudit.SETTINGS:
 		var dimensions: Vector2i = setting[0]
 		await _resize(dimensions)
-		await _apply_sizing_settings(setting[1], setting[3], PresentationSettings.TYPOGRAPHY_CLASSIC, setting[2])
+		await _apply_sizing_settings(setting[1], setting[3], "classic", setting[2])
 		await _restore_capture_visibility(visibility)
 		var failures := ScalingAudit.inspect(_application)
 		var profile := _shell.get("_profile") as UiLayoutProfile
@@ -796,7 +796,7 @@ func _capture_scaling_audit(state: String) -> void:
 		_audit_metadata.flush()
 		if not failures.is_empty(): _audit_failures += 1
 		print("SCALING %s: %s (%d bounds failures)" % ["PASS" if failures.is_empty() else "FAIL", label, failures.size()])
-	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 	await _resize(original_size)
 	await _restore_capture_visibility(visibility)
 
@@ -841,18 +841,18 @@ func _capture_sizing_surface(surface_id: String) -> void:
 	var original_size := DisplayServer.window_get_size()
 	var spatial_visibility: Array[bool] = [_application._map_presenter.visible, _application._battlefield_presenter.visible, (_application.get("_dungeon_presenter") as Control).visible]
 	for size: Vector2i in SIZING_MATRIX_SIZES:
-		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 		await _resize(size)
 		await _restore_capture_visibility(spatial_visibility)
 		await _save_capture("%s-%dx%d-auto-responsive-classic" % [surface_id, size.x, size.y], surface_id)
 	if surface_id == "application-shell":
 		await _resize(Vector2i(2560, 1392))
 		for display_mode: String in [PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.DISPLAY_INTEGER_WINDOW, PresentationSettings.DISPLAY_INTEGER_CANVAS, PresentationSettings.DISPLAY_FILL_WINDOW]:
-			for typography: String in [PresentationSettings.TYPOGRAPHY_CLASSIC, PresentationSettings.TYPOGRAPHY_READABLE]:
+			for typography: String in ["classic", "readable"]:
 				await _apply_sizing_settings(PresentationSettings.UI_SCALE_150, display_mode, typography, 1.5)
 				await _restore_capture_visibility(spatial_visibility)
 				await _save_capture("application-shell-2560x1392-manual150-maxtext-%s-%s" % [display_mode, typography], surface_id)
-	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 	await _resize(original_size)
 	await _restore_capture_visibility(spatial_visibility)
 
@@ -889,10 +889,10 @@ func _capture_stress_roster(gallery_view: GameView) -> void:
 	await _settle()
 	var original_window := DisplayServer.window_get_size()
 	for size: Vector2i in [Vector2i(800, 600), Vector2i(1280, 720), Vector2i(2560, 1392)]:
-		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 		await _resize(size)
 		await _save_capture("stress-roster-%dx%d-default" % [size.x, size.y], "")
-		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.5)
+		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.5)
 		await _resize(size)
 		await _save_capture("stress-roster-%dx%d-maxtext" % [size.x, size.y], "")
 	for index: int in 6:
@@ -905,7 +905,7 @@ func _capture_stress_roster(gallery_view: GameView) -> void:
 		character.maximum_spell_points = original["maximumSpellPoints"]
 	_shell.status.set("_narrative_history", old_narrative_history)
 	narrative.text = old_narrative_text
-	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.TYPOGRAPHY_CLASSIC, 1.0)
+	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 	await _resize(original_window)
 	_shell.present(gallery_view)
 	await _settle()
@@ -915,8 +915,10 @@ func _apply_sizing_settings(scale_mode: String, display_mode: String, typography
 	var settings := _application.get("_presentation_settings") as PresentationSettings
 	settings.ui_scale_mode = scale_mode
 	settings.display_scaling_mode = display_mode
-	settings.typography_mode = typography
-	settings.text_scale = text_scale
+	settings.interface_font = "bundled:alegreya-sans" if typography == "readable" else ""
+	settings.narrative_font = "bundled:alegreya" if typography == "readable" else ""
+	settings.interface_text_scale = text_scale
+	settings.narrative_text_scale = text_scale
 	_compositor.configure(display_mode, settings.pixel_art_smoothing, settings.crt_enabled, settings.crt_shader, settings.crt_area)
 	_shell.apply_settings(settings)
 	_interaction.set_text_scale(text_scale)
@@ -940,7 +942,7 @@ func _save_capture(label: String, surface_id: String) -> void:
 		var profile := _shell.get("_profile") as UiLayoutProfile
 		var settings := _application.get("_presentation_settings") as PresentationSettings
 		var actual_window := DisplayServer.window_get_size()
-		var metadata := {"surfaceNames": [surface_id], "capture": label, "actualWindow": [actual_window.x, actual_window.y], "profile": String(profile.id), "effectiveScale": profile.ui_scale, "requestedScale": profile.requested_scale, "fontScale": profile.font_scale, "uiScaleMode": settings.ui_scale_mode, "textScale": settings.text_scale, "typography": settings.typography_mode, "displayMode": settings.display_scaling_mode}
+		var metadata := {"surfaceNames": [surface_id], "capture": label, "actualWindow": [actual_window.x, actual_window.y], "profile": String(profile.id), "effectiveScale": profile.ui_scale, "requestedScale": profile.requested_scale, "fontScale": profile.font_scale, "uiScaleMode": settings.ui_scale_mode, "textScale": settings.interface_text_scale, "interfaceFont": settings.interface_font, "narrativeFont": settings.narrative_font, "narrativeTextScale": settings.narrative_text_scale, "displayMode": settings.display_scaling_mode}
 		_matrix_metadata.store_line(JSON.stringify(metadata))
 		print("CAPTURED: %s • %s • %s" % [path, surface_id, actual_window])
 	else:

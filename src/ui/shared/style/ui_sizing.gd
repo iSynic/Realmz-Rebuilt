@@ -7,6 +7,7 @@ const BASELINE := &"ui_sizing_baseline"
 
 
 static func apply(root: Control, profile: UiLayoutProfile) -> void:
+	if _engine_owned(root): return
 	root.set_meta(PROFILE, profile)
 	_apply_branch(root, profile)
 
@@ -28,17 +29,32 @@ static func profile_for(node: Node) -> UiLayoutProfile:
 static func bind_added(instance_id: int) -> void:
 	if not is_instance_id_valid(instance_id): return
 	var node := instance_from_id(instance_id) as Node
-	if node == null: return
+	if node == null or _engine_owned(node): return
 	var profile := profile_for(node)
 	if profile != null:
 		_apply_branch(node, profile, true)
+
+
+static func _engine_owned(node: Node) -> bool:
+	var current := node
+	while current.get_parent() != null:
+		var parent := current.get_parent()
+		if not current in parent.get_children():
+			return true
+		current = parent
+	return false
 
 
 static func font_size(control: Control, key: StringName, baseline: int) -> void:
 	var metrics := _baseline(control)
 	(metrics["fonts"] as Dictionary)[key] = baseline
 	var profile := profile_for(control)
-	_set_font_size(control, key, maxi(1, roundi(baseline * (profile.font_scale if profile != null else 1.0))))
+	_set_font_size(control, key, maxi(1, roundi(baseline * _font_scale(control, profile))))
+
+
+static func _font_scale(control: Control, profile: UiLayoutProfile) -> float:
+	if profile == null: return 1.0
+	return profile.narrative_font_scale if control.theme_type_variation in [&"ClassicNarrative", &"ClassicNarrativeText"] else profile.font_scale
 
 
 static func minimum_size(control: Control, baseline: Vector2) -> void:
@@ -65,7 +81,7 @@ static func _apply_branch(node: Node, profile: UiLayoutProfile, added_only: bool
 		var control := node as Control
 		if control.has_meta(PROFILE): control.set_meta(PROFILE, profile)
 		var metrics := _baseline(control)
-		var scale_key := Vector3(profile.ui_scale, profile.font_scale, profile.bitmap_scale)
+		var scale_key := Vector4(profile.ui_scale, profile.font_scale, profile.narrative_font_scale, profile.bitmap_scale)
 		if not added_only or control is TextureRect or metrics.get("applied_profile") != scale_key:
 			control.custom_minimum_size = Vector2(metrics["minimum"]) * profile.ui_scale
 			if control is TextureRect:
@@ -75,7 +91,7 @@ static func _apply_branch(node: Node, profile: UiLayoutProfile, added_only: bool
 					control.custom_minimum_size = authored * profile.bitmap_scale
 					_scale_artwork(image, metrics, profile.bitmap_scale)
 			for key: StringName in metrics["fonts"]:
-				_set_font_size(control, key, maxi(1, roundi(int(metrics["fonts"][key]) * profile.font_scale)))
+				_set_font_size(control, key, maxi(1, roundi(int(metrics["fonts"][key]) * _font_scale(control, profile))))
 			for key: StringName in metrics["constants"]:
 				_set_constant(control, key, roundi(int(metrics["constants"][key]) * profile.ui_scale))
 			for key: StringName in metrics["styles"]:

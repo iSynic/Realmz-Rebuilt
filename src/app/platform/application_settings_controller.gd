@@ -16,6 +16,7 @@ var _held_movement: HeldMovementController
 var _debug_tools: DebugToolsHost
 var _spatial_layout: ApplicationSpatialLayout
 var _display: DisplayCompositor
+var _fonts: ApplicationFontHost
 
 
 func _init(
@@ -40,6 +41,7 @@ func _init(
 	_shell = shell
 	_map = map
 	_interaction = interaction
+	shell.menu_input_blocked = func() -> bool: return debug_tools.is_open() or (application as RealmzApplication).lifecycle_host.has_active_interaction()
 	_audio = audio
 	_presentation = presentation
 	_dungeon = dungeon
@@ -47,6 +49,10 @@ func _init(
 	_debug_tools = debug_tools
 	_spatial_layout = spatial_layout
 	_display = display
+	_fonts = ApplicationFontHost.new(repository.settings_path.get_base_dir().path_join("fonts"))
+	shell.font_resolver = _fonts.resolver
+	_fonts.bind(shell.font_picker)
+	shell.navigator.content_presenter.system_preferences.font_resolver = _fonts.resolver
 	var music_host := ApplicationMusicHost.new(repository.settings_path.get_base_dir().path_join("music"))
 	application.add_child(music_host)
 	music_host.bind(shell.music_workspace, audio.music, game_view)
@@ -70,8 +76,9 @@ func bind() -> void:
 			_save()
 	)
 	_shell.music_playlist_mode_changed.connect(_on_music_playlist_mode_changed)
-	_shell.text_scale_changed.connect(_on_text_scale_changed)
-	_shell.typography_mode_changed.connect(_on_typography_mode_changed)
+	_shell.interface_text_scale_changed.connect(_on_text_scale_changed.bind(false))
+	_shell.narrative_text_scale_changed.connect(_on_text_scale_changed.bind(true))
+	ApplicationShellPreferences.bind(_shell, _settings, _save, _on_fonts_changed)
 	_shell.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
 	_shell.display_scaling_mode_changed.connect(_on_display_scaling_mode_changed)
 	_shell.world_zoom_changed.connect(_on_world_zoom_changed)
@@ -112,7 +119,7 @@ func apply_initial_settings() -> void:
 	_presentation.set_hurry_spell_resolution(_settings.hurry_spell_resolution)
 	_presentation.set_exploration_speed_percent(_settings.exploration_speed_percent)
 	_apply_application_theme()
-	_interaction.set_text_scale(_settings.text_scale)
+	_interaction.set_text_scale(_settings.interface_text_scale)
 	_interaction.set_autojournal_enabled(_settings.autojournal_enabled)
 	_map.set_travel_preview_visible(_settings.show_exploration_minimap)
 	_map.set_classic_exploration_visibility(_settings.classic_exploration_visibility)
@@ -186,10 +193,13 @@ func _on_music_playlist_mode_changed(playlist_id: int, mode: int) -> void:
 	_presentation.refresh_music()
 
 
-func _on_text_scale_changed(value: float) -> void:
-	_settings.text_scale = value
+func _on_text_scale_changed(value: float, narrative: bool) -> void:
+	if narrative:
+		_settings.narrative_text_scale = clampf(value, 0.5, 1.5)
+	else:
+		_settings.interface_text_scale = clampf(value, 0.5, 1.5)
+		_interaction.set_text_scale(_settings.interface_text_scale)
 	_apply_application_theme()
-	_interaction.set_text_scale(value)
 	_shell.apply_settings(_settings)
 	_save()
 
@@ -210,7 +220,7 @@ func _on_display_scaling_mode_changed(value: String) -> void:
 
 
 func _on_world_zoom_changed(value: int) -> void:
-	if value not in [1, 2, 3, 4]:
+	if value not in [0, 1, 2, 3, 4]:
 		return
 	_settings.world_zoom = value
 	_apply_scaling()
@@ -278,13 +288,13 @@ func _apply_window_mode(value: String) -> void:
 func _apply_application_theme() -> void:
 	var base_theme := load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme
 	var profile := UiSizing.profile_for(_application)
-	_application.theme = ClassicTypography.themed_copy(base_theme, _settings, profile.ui_scale if profile != null else 1.0)
+	_application.theme = ClassicTypography.themed_copy(base_theme, _settings, profile.ui_scale if profile != null else 1.0, _fonts.resolver)
 
 
 func apply_interface_profile(profile: UiLayoutProfile) -> void:
 	var previous := UiSizing.profile_for(_application)
 	_application.set_meta(UiSizing.PROFILE, profile)
-	if previous != null and previous.id == profile.id and previous.ui_scale == profile.ui_scale and previous.font_scale == profile.font_scale and previous.bitmap_scale == profile.bitmap_scale:
+	if previous != null and previous.id == profile.id and previous.ui_scale == profile.ui_scale and previous.font_scale == profile.font_scale and previous.narrative_font_scale == profile.narrative_font_scale and previous.bitmap_scale == profile.bitmap_scale:
 		return
 	_apply_application_theme()
 	UiSizing.apply(_interaction, profile)
@@ -293,10 +303,7 @@ func apply_interface_profile(profile: UiLayoutProfile) -> void:
 			UiSizing.apply(child as Control, profile)
 
 
-func _on_typography_mode_changed(value: String) -> void:
-	if value not in [PresentationSettings.TYPOGRAPHY_CLASSIC, PresentationSettings.TYPOGRAPHY_READABLE]:
-		return
-	_settings.typography_mode = value
+func _on_fonts_changed() -> void:
 	_apply_application_theme()
 	_shell.apply_settings(_settings)
 	_save()

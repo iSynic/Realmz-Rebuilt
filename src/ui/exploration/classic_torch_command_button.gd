@@ -25,6 +25,8 @@ var _light_remaining: int
 var _has_torch: bool
 var _frame_index: int
 var _frame_elapsed: float
+var _show_command_title: bool = true
+var _fit_hidden_art: bool = false
 
 
 func _ready() -> void:
@@ -54,6 +56,18 @@ func sync_status(light_remaining: int, has_torch: bool, can_activate: bool, reas
 		_frame_index = 0
 		_frame_elapsed = 0.0
 	set_process(_has_torch and _light_remaining > 0)
+	queue_redraw()
+
+
+func set_command_title_visible(visible: bool, fit_art_to_button: bool = false) -> void:
+	_show_command_title = visible
+	_fit_hidden_art = fit_art_to_button
+	var caption := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Caption") as Label
+	var divider := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Divider") as Control
+	if caption != null:
+		caption.modulate.a = 1.0 if visible else 0.0
+	if divider != null:
+		divider.modulate.a = 1.0 if visible else 0.0
 	queue_redraw()
 
 
@@ -106,11 +120,12 @@ func _draw_torch_art(offset: Vector2) -> void:
 		return
 	var segments := _fuel_segment_count()
 	var profile := UiSizing.profile_for(self)
-	var art_scale := profile.bitmap_scale if profile != null else 1
+	var art_scale := _fitted_art_scale() if not _show_command_title and _fit_hidden_art else profile.bitmap_scale if profile != null else 1
 	var body_size := _body_texture.get_size() * art_scale
 	var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
+	var stage_top := stage.global_position.y - global_position.y if _show_command_title else floorf((size.y - 110.0 * art_scale) * 0.5)
 	var center_x := floorf((size.x - body_size.x) * 0.5)
-	var base_y := stage.global_position.y - global_position.y + stage.size.y * 0.75 + 3.5 * art_scale
+	var base_y := stage_top + 110.0 * 0.75 * art_scale + 3.5 * art_scale if not _show_command_title else stage_top + stage.size.y * 0.75 + 3.5 * art_scale
 	for segment_index: int in segments:
 		draw_texture_rect(_body_texture, Rect2(Vector2(center_x, base_y - float(segment_index + 1) * 7.0 * art_scale) + offset, body_size), false)
 	if _light_remaining <= 0 or _flame_frames.is_empty():
@@ -120,8 +135,13 @@ func _draw_torch_art(offset: Vector2) -> void:
 		return
 	var flame_size := flame.get_size() * art_scale
 	var flame_x := floorf((size.x - flame_size.x) * 0.5)
-	var flame_y := maxf(stage.global_position.y - global_position.y, base_y - float(segments) * 7.0 * art_scale - flame_size.y + 6.0 * art_scale)
+	var flame_y := maxf(stage_top, base_y - float(segments) * 7.0 * art_scale - flame_size.y + 6.0 * art_scale)
 	draw_texture_rect(flame, Rect2(Vector2(flame_x, flame_y) + offset, flame_size), false)
+
+
+func _fitted_art_scale() -> int:
+	var available := size - Vector2(8.0, 8.0)
+	return clampi(floori(minf(available.x / 32.0, available.y / 110.0)), 1, 3)
 
 
 func _fuel_segment_count() -> int:

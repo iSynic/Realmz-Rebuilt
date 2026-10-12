@@ -10,6 +10,7 @@ var _shell: GameShell
 var _session: GameSessionController
 var _presentation: PresentationCoordinator
 var _world_zoom: int = 1
+var _requested_world_zoom: int = 1
 var world_rect: Rect2
 
 
@@ -34,6 +35,7 @@ func _init(
 func apply(workspace_rect: Rect2, profile: UiLayoutProfile) -> void:
 	var content_rect := workspace_rect.grow(-8.0)
 	world_rect = content_rect
+	_world_zoom = resolved_world_zoom(content_rect.size, _requested_world_zoom)
 	_place_presenter(_map, content_rect, _world_zoom)
 	_place_presenter(_battlefield, content_rect, _world_zoom)
 	# Partial edge tiles cover the exact canvas even when zoom does not divide its size.
@@ -56,7 +58,7 @@ func apply(workspace_rect: Rect2, profile: UiLayoutProfile) -> void:
 func sync_display_world_region(display: DisplayCompositor, settings: PresentationSettings) -> void:
 	if display == null: return
 	var world_visible := _map.visible or _battlefield.visible or _dungeon.visible
-	var zoom := settings.world_zoom if settings.display_scaling_mode == PresentationSettings.DISPLAY_INTEGER_CANVAS and not _dungeon.visible else 1
+	var zoom := _world_zoom if settings.display_scaling_mode == PresentationSettings.DISPLAY_INTEGER_CANVAS and not _dungeon.visible else 1
 	display.set_world_region(world_rect if world_visible else Rect2(), zoom)
 
 
@@ -70,7 +72,15 @@ static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) ->
 
 
 func set_world_zoom(zoom: int) -> void:
-	_world_zoom = clampi(zoom, 1, 4)
+	_requested_world_zoom = clampi(zoom, 0, 4)
+	_world_zoom = resolved_world_zoom(world_rect.size, _requested_world_zoom)
+
+
+static func resolved_world_zoom(stage_size: Vector2, requested_zoom: int) -> int:
+	if requested_zoom > 0:
+		return clampi(requested_zoom, 1, 4)
+	# Keep Castle's complete 15-by-13 current window at the largest fitting tile scale.
+	return clampi(floori(minf(stage_size.x / 480.0, stage_size.y / 416.0)), 1, 4)
 
 
 static func _place_presenter(presenter: Control, content_rect: Rect2, zoom: int = 1) -> void:

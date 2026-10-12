@@ -25,6 +25,8 @@ var _icon_caption_layout: bool = false
 var _physical_pressed: bool = false
 var _visual_pressed: bool = false
 var _interface_size := 1.0
+var _show_command_title: bool = true
+var _fit_hidden_art: bool = false
 
 
 func _ready() -> void:
@@ -104,6 +106,18 @@ func caption_text() -> String:
 	return _label
 
 
+func set_command_title_visible(visible: bool, fit_art_to_button: bool = false) -> void:
+	_show_command_title = visible
+	_fit_hidden_art = fit_art_to_button
+	var caption := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Caption") as Label
+	var divider := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Divider") as Control
+	if caption != null:
+		caption.modulate.a = 1.0 if visible else 0.0
+	if divider != null:
+		divider.modulate.a = 1.0 if visible else 0.0
+	queue_redraw()
+
+
 func set_art_scale(value: int) -> void:
 	_art_scale = clampi(value, 1, 3)
 	var profile := UiSizing.profile_for(self)
@@ -162,8 +176,9 @@ func _draw() -> void:
 	var displayed_texture := _pressed_art_texture if pressed and _pressed_art_texture != null else _art_texture
 	if displayed_texture != null:
 		var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
-		var icon_stage := Rect2(stage.global_position - global_position, stage.size) if _icon_caption_layout else Rect2(Vector2.ZERO, size)
-		var art_size := Vector2(_native_size * _art_scale)
+		var icon_stage := Rect2(Vector2.ZERO, size) if _icon_caption_layout and not _show_command_title else Rect2(stage.global_position - global_position, stage.size) if _icon_caption_layout else Rect2(Vector2.ZERO, size)
+		var art_scale := _fitted_art_scale() if not _show_command_title and _fit_hidden_art else _art_scale
+		var art_size := Vector2(_native_size * art_scale)
 		var art_rect := Rect2(Vector2(floorf(icon_stage.position.x + (icon_stage.size.x - art_size.x) * 0.5), floorf(icon_stage.position.y + (icon_stage.size.y - art_size.y) * 0.5)) + pressed_offset, art_size)
 		draw_texture_rect(displayed_texture, art_rect, false)
 	if disabled:
@@ -174,6 +189,13 @@ func _draw() -> void:
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
 	elif is_hovered() and not disabled:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
+
+
+func _fitted_art_scale() -> int:
+	if _native_size.x <= 0 or _native_size.y <= 0:
+		return 1
+	var available := size - Vector2(8.0, 8.0)
+	return clampi(floori(minf(available.x / float(_native_size.x), available.y / float(_native_size.y))), 1, 3)
 
 
 static func fitted_caption_font_size(font: Font, caption: String, available_width: float, requested_size: int) -> int:

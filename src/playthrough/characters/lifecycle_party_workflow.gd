@@ -284,22 +284,21 @@ static func change_character_appearance(context: SessionWorkflowContext, payload
 		return SessionWorkflowResult.failed(&"unknown_party_member", "The selected character is not in the active party.")
 	if payload.appearance_kind not in [CharacterAppearanceDefinition.PORTRAIT, CharacterAppearanceDefinition.COMBAT_ICON]:
 		return SessionWorkflowResult.failed(&"invalid_appearance_kind", "Choose either a portrait or a combat icon.")
-	var appearance := context.content.characters.appearance_by_id(payload.appearance_id)
-	if appearance == null or appearance.kind != payload.appearance_kind:
+	if not context.content.characters.appearance_is_available(payload.appearance_id, payload.appearance_kind):
 		return SessionWorkflowResult.failed(&"invalid_character_appearance", "The selected appearance is unavailable for that role.")
 	var previous_id := character.portrait_id if payload.appearance_kind == CharacterAppearanceDefinition.PORTRAIT else character.combat_icon_id
-	if previous_id == appearance.id:
+	if previous_id == payload.appearance_id:
 		return SessionWorkflowResult.failed(&"appearance_unchanged", "Choose a different appearance before applying the change.")
 	if payload.appearance_kind == CharacterAppearanceDefinition.PORTRAIT:
-		character.portrait_id = appearance.id
+		character.portrait_id = payload.appearance_id
 	else:
-		character.combat_icon_id = appearance.id
+		character.combat_icon_id = payload.appearance_id
 	return SessionWorkflowResult.completed([DomainEvent.new(&"character_appearance_changed", {
 		"characterId": character.id,
 		"appearanceKind": String(payload.appearance_kind),
 		"previousAppearanceId": previous_id,
-		"appearanceId": appearance.id,
-		"source": "classic-character-menu",
+		"appearanceId": payload.appearance_id,
+		"source": "imported-character-art" if CharacterArtIdentity.is_imported(payload.appearance_id) else "classic-character-menu",
 	})])
 
 
@@ -377,12 +376,15 @@ static func _resolved_character_appearance(context: SessionWorkflowContext, spec
 		return {"portraitId": spec.portrait_id, "combatIconId": spec.combat_icon_id}
 	var default_portrait_resource := 257 if race.default_icon_set == 0 else 251 + race.default_icon_set * 6
 	var portrait := context.content.characters.appearance_by_id(spec.portrait_id) if not spec.portrait_id.is_empty() else context.content.characters.appearance_by_resource(CharacterAppearanceDefinition.PORTRAIT, default_portrait_resource)
-	if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
+	var portrait_id := spec.portrait_id if not spec.portrait_id.is_empty() else portrait.id if portrait != null else ""
+	if not context.content.characters.appearance_is_available(portrait_id, CharacterAppearanceDefinition.PORTRAIT):
 		return {}
-	var icon := context.content.characters.appearance_by_id(spec.combat_icon_id) if not spec.combat_icon_id.is_empty() else context.content.characters.appearance_by_resource(CharacterAppearanceDefinition.COMBAT_ICON, 9000 - 257 + portrait.classic_resource_id)
-	if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
+	var icon_resource := 9000 - 257 + (portrait.classic_resource_id if portrait != null else default_portrait_resource)
+	var icon := context.content.characters.appearance_by_id(spec.combat_icon_id) if not spec.combat_icon_id.is_empty() else context.content.characters.appearance_by_resource(CharacterAppearanceDefinition.COMBAT_ICON, icon_resource)
+	var icon_id := spec.combat_icon_id if not spec.combat_icon_id.is_empty() else icon.id if icon != null else ""
+	if not context.content.characters.appearance_is_available(icon_id, CharacterAppearanceDefinition.COMBAT_ICON):
 		return {}
-	return {"portraitId": portrait.id, "combatIconId": icon.id}
+	return {"portraitId": portrait_id, "combatIconId": icon_id}
 
 
 static func _next_party_character_id(state: GameState) -> String:

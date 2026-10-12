@@ -76,10 +76,8 @@ static func magic_error(context: SessionWorkflowContext, imported: CharacterStat
 
 static func appearance_error(context: SessionWorkflowContext, imported: CharacterState) -> SessionWorkflowResult:
 	if context.content.characters.has_complete_appearance_catalog():
-		var portrait := context.content.characters.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
-		if (portrait != null and portrait.kind != CharacterAppearanceDefinition.PORTRAIT) or (not imported.portrait_id.is_empty() and portrait == null):
+		if not imported.portrait_id.is_empty() and not context.content.characters.appearance_is_available(imported.portrait_id, CharacterAppearanceDefinition.PORTRAIT):
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character uses a portrait unavailable in this campaign package.")
-		var combat_icon := context.content.characters.appearance_by_id(imported.combat_icon_id) if not imported.combat_icon_id.is_empty() else null
-		if (combat_icon != null and combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON) or (not imported.combat_icon_id.is_empty() and combat_icon == null):
+		if not imported.combat_icon_id.is_empty() and not context.content.characters.appearance_is_available(imported.combat_icon_id, CharacterAppearanceDefinition.COMBAT_ICON):
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character uses a combat icon unavailable in this campaign package.")
 	return null

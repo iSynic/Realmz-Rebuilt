@@ -1,0 +1,42 @@
+## Relays typed presentation changes from Preferences to the application host.
+class_name GameShellPreferenceSignals
+extends RefCounted
+
+
+static func emit_change(shell: GameShell, setting_id: StringName, value: Variant) -> void:
+	match setting_id:
+		&"topology_debug": shell.topology_debug_changed.emit(bool(value))
+		&"dungeon_3d": shell.dungeon_3d_changed.emit(bool(value))
+		&"master_volume": shell.master_volume_changed.emit(float(value))
+		&"sound_volume": shell.sound_volume_changed.emit(float(value))
+		&"music_volume": shell.music_volume_changed.emit(float(value))
+		&"music_enabled": shell.music_enabled_changed.emit(bool(value))
+		&"music_transition": shell.music_transition_changed.emit(String(value))
+		&"interface_text_scale": shell.interface_text_scale_changed.emit(float(value))
+		&"narrative_text_scale": shell.narrative_text_scale_changed.emit(float(value))
+		&"menu_visibility": shell.menu_visibility_changed.emit(String(value))
+		&"show_overworld_command_titles": shell.show_overworld_command_titles_changed.emit(bool(value))
+		&"integer_fit_hidden_commands": shell.integer_fit_hidden_commands_changed.emit(bool(value))
+		&"ui_scale_mode": shell.ui_scale_mode_changed.emit(String(value))
+		&"display_scaling_mode": shell.display_scaling_mode_changed.emit(String(value))
+		&"world_zoom": shell.world_zoom_changed.emit(int(value))
+		&"pixel_art_smoothing": shell.pixel_art_smoothing_changed.emit(String(value))
+		&"crt_enabled": shell.crt_enabled_changed.emit(bool(value))
+		&"crt_shader": shell.crt_shader_changed.emit(String(value))
+		&"crt_area": shell.crt_area_changed.emit(String(value))
+		&"window_mode": shell.window_mode_changed.emit(String(value))
+		&"reduced_motion": shell.reduced_motion_changed.emit(bool(value))
+		&"reduced_sound": shell.reduced_sound_changed.emit(bool(value))
+		&"auto_switch_to_melee": shell.auto_switch_to_melee_changed.emit(bool(value))
+		&"immediate_single_target_actions": shell.immediate_single_target_actions_changed.emit(bool(value))
+		&"click_to_move_enabled": shell.click_to_move_enabled_changed.emit(bool(value))
+		&"classic_keyboard_shortcuts": shell.classic_keyboard_shortcuts_changed.emit(bool(value))
+		&"exploration_speed_percent": shell.exploration_speed_changed.emit(int(value))
+		&"combat_playback_speed_percent": shell.combat_playback_speed_changed.emit(int(value))
+		&"hurry_spell_resolution": shell.hurry_spell_resolution_changed.emit(bool(value))
+		&"show_exploration_minimap": shell.exploration_minimap_changed.emit(bool(value))
+		&"classic_exploration_visibility": shell.classic_exploration_visibility_changed.emit(bool(value))
+		&"custom_fog_tile_enabled": shell.custom_fog_tile_changed.emit(bool(value))
+		&"indoor_party_icon": shell.indoor_party_icon_changed.emit(int(value))
+		&"autojournal_enabled": shell.autojournal_changed.emit(bool(value))
+		&"controller_preferences": shell.controller_preferences_changed.emit(value as ControllerPreferences)

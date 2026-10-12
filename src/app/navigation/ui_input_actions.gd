@@ -20,6 +20,7 @@ const DEFINITIONS: Array[Dictionary] = [
 	{"id": &"realmz_target", "keys": [KEY_T]},
 	{"id": &"realmz_confirm_target", "keys": [KEY_SPACE]},
 	{"id": &"realmz_back", "keys": [KEY_ESCAPE]},
+	{"id": &"realmz_top_menu", "keys": [KEY_F10]},
 	{"id": &"realmz_debug_tools", "keys": [KEY_F12]},
 	{"id": &"realmz_debug_console", "keys": [KEY_QUOTELEFT]},
 	{"id": &"ui_screen_explore", "keys": [KEY_1], "alt": true},

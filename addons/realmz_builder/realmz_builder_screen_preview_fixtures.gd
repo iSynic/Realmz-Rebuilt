@@ -14,6 +14,7 @@ const SUPPORTED_SURFACES: Array[String] = [
 	"bestiary",
 	"maps-journal",
 	"system",
+	"font-picker",
 	"application-shell",
 	"campaign-selection",
 	"party-assembly",
@@ -46,6 +47,7 @@ static func bind(surface: Node, surface_id: String, profile: String) -> bool:
 		"bestiary": _bind_creature_screen(surface as CreatureLibraryScreen, view, profile, compact, false)
 		"maps-journal": _bind_journal_screen(surface as JournalScreen, view, compact)
 		"system": _bind_system_screen(surface as SystemScreen, view, profile, compact)
+		"font-picker": (surface as FontPickerDialog).open(&"interface", PresentationSettings.new())
 		"application-shell": _bind_application_shell(surface as GameShell, view)
 		"campaign-selection": _bind_campaign_selection(surface as CampaignSelectionPanel, view, profile)
 		"party-assembly": _bind_party_setup(surface as PartySetupWorkspace, view, profile, false)

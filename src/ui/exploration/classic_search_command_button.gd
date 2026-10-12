@@ -23,6 +23,8 @@ var _atlas: Texture2D
 var _searching: bool
 var _frame_index: int
 var _frame_elapsed: float
+var _show_command_title: bool = true
+var _fit_hidden_art: bool = false
 
 
 func _ready() -> void:
@@ -40,6 +42,7 @@ func _ready() -> void:
 	pressed.connect(func() -> void: command_requested.emit(command_id))
 	set_process(false)
 	get_node("CommandMargin").minimum_size_changed.connect(update_minimum_size)
+	get_node("CommandMargin/CommandContent/IconStage").item_rect_changed.connect(queue_redraw)
 
 
 func apply_ui_sizing(profile: UiLayoutProfile) -> void:
@@ -52,11 +55,31 @@ func sync_status(searching: bool, can_activate: bool, reason: String = "") -> vo
 	_searching = searching
 	disabled = not can_activate
 	set_pressed_no_signal(searching)
+	var caption := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Caption") as Label
+	if caption != null:
+		caption.text = "Stop Search" if searching else "Search"
 	tooltip_text = reason if not reason.is_empty() else "Stop searching" if searching else "Search continuously"
 	if not searching:
 		_frame_index = 0
 		_frame_elapsed = 0.0
 	set_process(searching)
+	queue_redraw()
+
+
+func caption_text() -> String:
+	var caption := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Caption") as Label
+	return caption.text if caption != null else "Search"
+
+
+func set_command_title_visible(visible: bool, fit_art_to_button: bool = false) -> void:
+	_show_command_title = visible
+	_fit_hidden_art = fit_art_to_button
+	var caption := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Caption") as Label
+	var divider := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Divider") as Control
+	if caption != null:
+		caption.modulate.a = 1.0 if visible or _atlas == null else 0.0
+	if divider != null:
+		divider.modulate.a = 1.0 if visible or _atlas == null else 0.0
 	queue_redraw()
 
 
@@ -88,11 +111,12 @@ func _draw() -> void:
 	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	if _atlas != null:
 		var profile := UiSizing.profile_for(self)
-		var art_scale := profile.bitmap_scale if profile != null else 1
+		var art_scale := _fitted_art_scale() if not _show_command_title and _fit_hidden_art else profile.bitmap_scale if profile != null else 1
 		var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
 		var frame_size := FRAME_SIZE * art_scale
 		var frame_rect := Rect2(Vector2(float(_frame_index) * FRAME_SIZE.x, FRAME_ROW_Y), FRAME_SIZE)
-		var destination := Rect2((stage.global_position - global_position + (stage.size - frame_size) * 0.5).floor() + pressed_offset, frame_size)
+		var target_rect := Rect2(Vector2.ZERO, size) if not _show_command_title else Rect2(stage.global_position - global_position, stage.size)
+		var destination := Rect2((target_rect.position + (target_rect.size - frame_size) * 0.5).floor() + pressed_offset, frame_size)
 		draw_texture_rect_region(_atlas, destination, frame_rect)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
@@ -102,6 +126,11 @@ func _draw() -> void:
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
 	elif is_hovered() and not disabled:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
+
+
+func _fitted_art_scale() -> int:
+	var available := size - Vector2(8.0, 8.0)
+	return clampi(floori(minf(available.x / FRAME_SIZE.x, available.y / FRAME_SIZE.y)), 1, 3)
 
 
 func _get_minimum_size() -> Vector2:

@@ -123,6 +123,11 @@ autowrap_mode = 2
 layout_mode = 2
 text = "Discard Appearance Changes"
 
+[node name="ImportCharacterArt" type="Button" parent="AppearanceTab"]
+visible = false
+layout_mode = 2
+text = "Import / Browse Character Art…"
+
 [node name="BackgroundTab" type="VBoxContainer" parent="."]
 visible = false
 layout_mode = 2

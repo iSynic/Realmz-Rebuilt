@@ -24,8 +24,12 @@ signal music_volume_changed(value: float)
 signal music_enabled_changed(enabled: bool)
 signal music_transition_changed(value: String)
 signal music_playlist_mode_changed(playlist_id: int, mode: int)
-signal text_scale_changed(value: float)
-signal typography_mode_changed(value: String)
+signal interface_text_scale_changed(value: float)
+signal narrative_text_scale_changed(value: float)
+signal font_choice_changed(role: StringName, identity: String)
+signal menu_visibility_changed(value: String)
+signal show_overworld_command_titles_changed(enabled: bool)
+signal integer_fit_hidden_commands_changed(enabled: bool)
 signal ui_scale_mode_changed(value: String)
 signal display_scaling_mode_changed(value: String)
 signal world_zoom_changed(value: int)
@@ -110,6 +114,8 @@ const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_cont
 @onready var _activity_indicator: PanelContainer = %ActivityIndicator
 @onready var _activity_icon: TextureRect = %ActivityIcon
 @onready var music_workspace: MusicPlaylistDialog = %MusicPlaylistDialog
+@onready var font_picker: FontPickerDialog = %FontPickerDialog
+@onready var character_art: CharacterArtDialog = %CharacterArtDialog
 @onready var _controller_prompts: ControllerPromptStrip = %ControllerPromptStrip
 @onready var _controller_radial: ControllerRadialOverlay = %ControllerRadialOverlay
 @onready var _controller_keyboard: ControllerQwertyEditor = %ControllerQwertyEditor
@@ -119,6 +125,8 @@ var last_picture_media_diagnostic: Dictionary = {}
 var _presentation_settings := PresentationSettings.new()
 var _profile: UiLayoutProfile
 var _theme_metrics: Array = []
+var font_resolver := FontResolver.new()
+var menu_input_blocked: Callable
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
 var _selected_combat_battle_id: String = ""
@@ -154,7 +162,7 @@ var click_to_move_enabled: bool:
 var picture_stage: Control:
 	get: return _picture_stage
 var navigation_overlay_active: bool:
-	get: return (music_workspace != null and music_workspace.visible) or _menu_controller.owns_native_menu_input() or _menu_controller.controller_is_open() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
+	get: return character_art.visible or font_picker.visible or (music_workspace != null and music_workspace.visible) or _menu_controller.owns_native_menu_input() or _menu_controller.controller_is_open() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
 
 
 class ControllerAccess:
@@ -167,10 +175,12 @@ class ControllerAccess:
 	func hide_prompts() -> void:
 		_shell._controller_prompts.hide_prompts()
 	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
-	func music_playlist_focus_root() -> Node:
+	func navigation_workspace_focus_root() -> Node:
+		if _shell.character_art.visible: return _shell.character_art.controller_focus_root()
+		if _shell.font_picker.visible: return _shell.font_picker.controller_focus_root()
 		return _shell.music_workspace.controller_focus_root() if _shell.music_workspace != null and _shell.music_workspace.visible else null
-	func cycle_music_tab(delta: int) -> void:
-		_shell.music_workspace.controller_cycle_tab(delta)
+	func cycle_navigation_workspace_tab(delta: int) -> void:
+		if _shell.music_workspace.visible: _shell.music_workspace.controller_cycle_tab(delta)
 	func spellbook_focus_root() -> Control:
 		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
 		if book != null: return book
@@ -202,7 +212,20 @@ class ControllerAccess:
 	func selected_top_menu_label() -> String: return _shell._menu_controller.controller_selected_label()
 	func close_top_menu_for_pointer() -> void: _shell._menu_controller.controller_pointer_takeover()
 	func handle_top_menu_input(event: InputEvent) -> bool: return _shell._menu_controller.handle_host_input(event)
-	func handle_navigation_modal_input(event: InputEvent) -> bool: return _shell._navigator.draft_dialog.handle_input(event)
+	func handle_navigation_modal_input(event: InputEvent) -> bool:
+		if _shell.character_art.visible and not _shell._controller_keyboard.is_open():
+			if event.is_action_pressed(&"realmz_back"):
+				_shell.character_art.dismiss()
+				_shell.get_viewport().set_input_as_handled()
+				return true
+			return true
+		if _shell.font_picker.visible and not _shell._controller_keyboard.is_open():
+			if event.is_action_pressed(&"realmz_back"):
+				_shell.font_picker.close()
+				_shell.get_viewport().set_input_as_handled()
+				return true
+			return true
+		return _shell._navigator.draft_dialog.handle_input(event)
 	func handle_navigation_modal_controller(action: StringName, pressed: bool, direction: Vector2i = Vector2i.ZERO) -> bool: return _shell._navigator.draft_dialog.handle_controller(action, pressed, direction)
 	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
 	func open_text_editor(focus_scope: Node = null) -> bool:
@@ -321,6 +344,9 @@ func _ready() -> void:
 	music_workspace.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
 	music_workspace.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	music_workspace.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
+	font_picker.applied.connect(func(role: StringName, identity: String) -> void: font_choice_changed.emit(role, identity))
+	_navigator.setup_controller.set_character_art_dialog(character_art)
+	_navigator.content_presenter.characters.character_art_dialog = character_art
 	_controller_radial.command_selected.connect(_handle_controller_radial_selection)
 	_navigator.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_navigator.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
@@ -476,6 +502,9 @@ func accepts_exploration_input() -> bool:
 
 
 func handle_back() -> bool:
+	if character_art.visible:
+		character_art.dismiss()
+		return true
 	if music_workspace != null and music_workspace.visible:
 		music_workspace.close()
 		return true
@@ -529,11 +558,11 @@ func show_splash() -> void:
 func _apply_layout() -> void:
 	if not is_node_ready():
 		return
-	var sizing_profile := UiLayoutProfile.for_viewport(size, _presentation_settings.ui_scale_mode, _presentation_settings.display_scaling_mode, _presentation_settings.text_scale)
-	var theme_metrics: Array = [sizing_profile.ui_scale, _presentation_settings.text_scale, _presentation_settings.typography_mode]
+	var sizing_profile := UiLayoutProfile.for_viewport(size, _presentation_settings.ui_scale_mode, _presentation_settings.display_scaling_mode, _presentation_settings.interface_text_scale, _presentation_settings.narrative_text_scale)
+	var theme_metrics: Array = [sizing_profile.ui_scale, _presentation_settings.interface_text_scale, _presentation_settings.narrative_text_scale, _presentation_settings.interface_font, _presentation_settings.narrative_font]
 	if _theme_metrics != theme_metrics:
 		_theme_metrics = theme_metrics
-		theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, _presentation_settings, sizing_profile.ui_scale)
+		theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, _presentation_settings, sizing_profile.ui_scale, font_resolver)
 	UiSizing.apply(self, sizing_profile)
 	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
 	_build_menus()
@@ -611,45 +640,16 @@ func handle_system_action_requested(action_id: StringName, value: Variant) -> vo
 		&"campaigns": show_campaign_selection()
 		&"music_toggle": music_enabled_changed.emit(not _presentation_settings.music_enabled)
 		&"music_playlist": music_workspace.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
+		&"choose_interface_font": font_picker.open(&"interface", _presentation_settings)
+		&"character_art": character_art.open_library()
+		&"choose_narrative_font": font_picker.open(&"narrative", _presentation_settings)
 		&"click_to_move_toggle": click_to_move_enabled_changed.emit(not _presentation_settings.click_to_move_enabled)
 		&"combat_log": combat_log_requested.emit()
 		&"quit": quit_requested.emit()
 
 
 func _on_presentation_setting_changed(setting_id: StringName, value: Variant) -> void:
-	match setting_id:
-		&"topology_debug": topology_debug_changed.emit(bool(value))
-		&"dungeon_3d": dungeon_3d_changed.emit(bool(value))
-		&"master_volume": master_volume_changed.emit(float(value))
-		&"sound_volume": sound_volume_changed.emit(float(value))
-		&"music_volume": music_volume_changed.emit(float(value))
-		&"music_enabled": music_enabled_changed.emit(bool(value))
-		&"music_transition": music_transition_changed.emit(String(value))
-		&"text_scale": text_scale_changed.emit(float(value))
-		&"typography_mode": typography_mode_changed.emit(String(value))
-		&"ui_scale_mode": ui_scale_mode_changed.emit(String(value))
-		&"display_scaling_mode": display_scaling_mode_changed.emit(String(value))
-		&"world_zoom": world_zoom_changed.emit(int(value))
-		&"pixel_art_smoothing": pixel_art_smoothing_changed.emit(String(value))
-		&"crt_enabled": crt_enabled_changed.emit(bool(value))
-		&"crt_shader": crt_shader_changed.emit(String(value))
-		&"crt_area": crt_area_changed.emit(String(value))
-		&"window_mode": window_mode_changed.emit(String(value))
-		&"reduced_motion": reduced_motion_changed.emit(bool(value))
-		&"reduced_sound": reduced_sound_changed.emit(bool(value))
-		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
-		&"immediate_single_target_actions": immediate_single_target_actions_changed.emit(bool(value))
-		&"click_to_move_enabled": click_to_move_enabled_changed.emit(bool(value))
-		&"classic_keyboard_shortcuts": classic_keyboard_shortcuts_changed.emit(bool(value))
-		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
-		&"combat_playback_speed_percent": combat_playback_speed_changed.emit(int(value))
-		&"hurry_spell_resolution": hurry_spell_resolution_changed.emit(bool(value))
-		&"show_exploration_minimap": exploration_minimap_changed.emit(bool(value))
-		&"classic_exploration_visibility": classic_exploration_visibility_changed.emit(bool(value))
-		&"custom_fog_tile_enabled": custom_fog_tile_changed.emit(bool(value))
-		&"indoor_party_icon": indoor_party_icon_changed.emit(int(value))
-		&"autojournal_enabled": autojournal_changed.emit(bool(value))
-		&"controller_preferences": controller_preferences_changed.emit(value as ControllerPreferences)
+	GameShellPreferenceSignals.emit_change(self, setting_id, value)
 
 
 func _on_character_selected(character_id: String) -> void:

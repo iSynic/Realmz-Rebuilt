@@ -32,6 +32,8 @@ var system_preferences: SystemScreenController:
 	get: return _system_controller
 var _system_route: StringName = &"system"
 var _character_controller := CharacterScreenController.new()
+var characters: CharacterScreenController:
+	get: return _character_controller
 var _inventory_controller := InventoryScreenController.new()
 var _services_controller := ServicesScreenController.new()
 var _maps_journal_controller := MapsJournalScreenController.new()
@@ -317,20 +319,20 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 		&"character":
 			_character_controller.present(screen as CharacterScreen, _view, appearance_textures, _settings, _media)
 		&"allies":
-			_creature_library_controller.present_allies(screen, _view, _media, _settings.text_scale)
+			_creature_library_controller.present_allies(screen, _view, _media, _settings.interface_text_scale)
 		&"bestiary":
-			_creature_library_controller.present_bestiary(screen, _view, _media, _settings.text_scale)
+			_creature_library_controller.present_bestiary(screen, _view, _media, _settings.interface_text_scale)
 		&"vault":
-			_character_controller.present_vault(screen, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
+			_character_controller.present_vault(screen, _view, appearance_textures, _settings.interface_text_scale, vault_back_label, _media)
 		&"inventory":
-			_inventory_controller.present(screen as InventoryScreen, _view, _media, _settings.text_scale)
+			_inventory_controller.present(screen as InventoryScreen, _view, _media, _settings.interface_text_scale)
 		&"spells":
-			_spells_controller.present(screen, _view, _media, _settings.text_scale)
+			_spells_controller.present(screen, _view, _media, _settings.interface_text_scale)
 		&"services":
-			_services_controller.set_text_scale(_settings.text_scale)
+			_services_controller.set_text_scale(_settings.interface_text_scale)
 			_services_controller.present(screen, _view, _media)
 		&"journal":
-			_maps_journal_controller.set_text_scale(_settings.text_scale)
+			_maps_journal_controller.set_text_scale(_settings.interface_text_scale)
 			_maps_journal_controller.present(screen, _view, _media)
 		&"system", &"save_load":
 			_system_controller.present(screen, _view, _settings, _media)

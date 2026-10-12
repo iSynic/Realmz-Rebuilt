@@ -63,6 +63,12 @@ func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot, previ
 	var envelope := SaveEnvelope.from_snapshot(snapshot, preview_jpeg)
 	if envelope == null:
 		return _fail("The session snapshot could not be encoded.")
+	var selected_characters := CharacterArtBundle.snapshot_characters(envelope)
+	if not envelope.character_art.matches_characters(selected_characters):
+		var art_repository := CharacterArtRepository.new(_root_path.get_base_dir().path_join("character-art"))
+		envelope.character_art = art_repository.selected(selected_characters)
+		if envelope.character_art == null:
+			return _fail(art_repository.last_error)
 	if not _safe_component(campaign_id) or not _safe_component(slot_id):
 		return _fail("Campaign and slot IDs must be portable path components.")
 	var campaign_path := "%s/%s" % [_root_path, campaign_id]

@@ -1,0 +1,154 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/font_picker_dialog.gd" id="1"]
+
+[node name="FontPickerDialog" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+z_index = 120
+script = ExtResource("1")
+
+[node name="ModalVeil" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.6)
+
+[node name="FontPickerWindow" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 80.0
+offset_top = 50.0
+offset_right = 1200.0
+offset_bottom = 670.0
+
+[node name="Content" type="VBoxContainer" parent="FontPickerWindow"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FontPickerTitle" type="Label" parent="FontPickerWindow/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_font_sizes/font_size = 22
+text = "Choose Interface font"
+
+[node name="FontSearch" type="LineEdit" parent="FontPickerWindow/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"SlateLineEdit"
+placeholder_text = "Search fonts…"
+max_length = 256
+
+[node name="Body" type="HBoxContainer" parent="FontPickerWindow/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="FontChoices" type="ItemList" parent="FontPickerWindow/Content/Body"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(270, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"SlateList"
+allow_reselect = true
+
+[node name="PreviewPanel" type="PanelContainer" parent="FontPickerWindow/Content/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInset"
+
+[node name="PreviewScroll" type="ScrollContainer" parent="FontPickerWindow/Content/Body/PreviewPanel"]
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Preview" type="VBoxContainer" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="FontFamily" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Classic fonts"
+autowrap_mode = 2
+
+[node name="FontIdentitySample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Alexandria the Wayfarer\nHuman / Enchanter"
+autowrap_mode = 2
+
+[node name="FontNumberSample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "HP 12345 / 12345\nSP 9876 / 9876\nArmor −12"
+autowrap_mode = 2
+
+[node name="FontNarrativeSample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Beyond the old gate, the road winds toward Bywater."
+autowrap_mode = 2
+
+[node name="FontUnavailable" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.76, 0.45, 1)
+autowrap_mode = 2
+
+[node name="FontImportStatus" type="Label" parent="FontPickerWindow/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="FontPickerWindow/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ImportFont" type="Button" parent="FontPickerWindow/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Import TTF/OTF…"
+
+[node name="FontCancel" type="Button" parent="FontPickerWindow/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Cancel"
+
+[node name="FontApply" type="Button" parent="FontPickerWindow/Content/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Apply"
+
+[node name="FontFiles" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Import a font"
+initial_position = 2
+size = Vector2i(900, 560)
+exclusive = false
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.ttf ; TrueType fonts", "*.otf ; OpenType fonts")
+use_native_dialog = false

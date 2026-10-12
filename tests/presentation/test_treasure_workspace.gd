@@ -35,8 +35,8 @@ func _test_populated_treasure_scaling() -> void:
 	for setting: Array in [[Vector2i(1280, 720), "auto", 1.0], [Vector2i(1920, 1080), "auto", 1.0], [Vector2i(2560, 1440), "auto", 1.0], [Vector2i(3840, 2160), "auto", 1.0], [Vector2i(800, 600), "auto", 1.5], [Vector2i(1280, 720), "auto", 1.5], [Vector2i(2560, 1440), "300", 1.5], [Vector2i(1280, 720), "auto", 1.0]]:
 		viewport.size = setting[0]
 		host.size = viewport.size
-		settings.text_scale = setting[2]
-		profile = UiLayoutProfile.for_viewport(Vector2(viewport.size), setting[1], PresentationSettings.DISPLAY_RESPONSIVE, settings.text_scale)
+		settings.interface_text_scale = setting[2]
+		profile = UiLayoutProfile.for_viewport(Vector2(viewport.size), setting[1], PresentationSettings.DISPLAY_RESPONSIVE, settings.interface_text_scale)
 		host.theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres"), settings, profile.ui_scale)
 		UiSizing.apply(host, profile)
 		var stage := Rect2(0, profile.menu_height, viewport.size.x - profile.party_width, viewport.size.y - profile.bottom_height - profile.menu_height)

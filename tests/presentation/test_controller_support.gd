@@ -3,6 +3,7 @@ extends RealmzTestCase
 const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_auto_coordinator.gd")
 
 class RouterOverlayAccess extends RefCounted:
+	func navigation_workspace_focus_root() -> Node: return null
 	func text_editor_is_open() -> bool: return false
 	func radial_is_open() -> bool: return false
 	func handle_navigation_modal_controller(_action: StringName, _pressed: bool, _direction: Vector2i = Vector2i.ZERO) -> bool: return false
@@ -64,10 +65,10 @@ func _test_controller_preferences_round_trip_and_migration() -> void:
 	var restored := PresentationSettings.from_data(settings.to_data())
 	assert_not_null(restored, "schema-sixteen controller preferences decode")
 	assert_equal([restored.master_volume, restored.controller.prompt_family, restored.controller.left_stick_dead_zone, restored.controller.repeat_initial_ms], [0.35, ControllerPreferences.PROMPT_PLAYSTATION, 0.3, 425], "controller tuning round-trips without changing existing presentation values")
-	var legacy := settings.to_data(); legacy["schemaVersion"] = 13; legacy.erase("controller"); var migrated := PresentationSettings.from_data(legacy)
+	var legacy := settings.to_data(); legacy["schemaVersion"] = 13; legacy["textScale"] = 1.0; legacy["typographyMode"] = "classic"; legacy.erase("controller"); var migrated := PresentationSettings.from_data(legacy)
 	assert_not_null(migrated, "schema-thirteen presentation settings migrate")
 	assert_equal([migrated.master_volume, migrated.controller.prompt_family, migrated.controller.left_stick_dead_zone, migrated.controller.repeat_initial_ms, migrated.controller.repeat_interval_ms], [0.35, ControllerPreferences.PROMPT_AUTO, 0.25, 350, 100], "legacy values survive while controller support receives stable defaults")
-	var schema_fourteen := settings.to_data(); schema_fourteen["schemaVersion"] = 14; schema_fourteen["controller"]["bindings"] = (schema_fourteen["controller"]["bindings"] as Array).filter(func(binding: Dictionary) -> bool: return binding["action"] != "realmz_controller_top_menu"); var top_menu_migrated := PresentationSettings.from_data(schema_fourteen)
+	var schema_fourteen := settings.to_data(); schema_fourteen["schemaVersion"] = 14; schema_fourteen["textScale"] = 1.0; schema_fourteen["typographyMode"] = "classic"; schema_fourteen["controller"]["bindings"] = (schema_fourteen["controller"]["bindings"] as Array).filter(func(binding: Dictionary) -> bool: return binding["action"] != "realmz_controller_top_menu"); var top_menu_migrated := PresentationSettings.from_data(schema_fourteen)
 	assert_true(top_menu_migrated.controller.bindings.any(func(binding: Dictionary) -> bool: return binding["action"] == "realmz_controller_top_menu" and binding["code"] == JOY_BUTTON_BACK), "schema-fourteen settings add View/Create/Minus when that physical button is unused")
 	schema_fourteen["controller"]["bindings"].append({"action": "realmz_controller_inspect", "kind": "button", "code": JOY_BUTTON_BACK, "direction": 0}); var occupied_migration := PresentationSettings.from_data(schema_fourteen)
 	assert_false(occupied_migration.controller.bindings.any(func(binding: Dictionary) -> bool: return binding["action"] == "realmz_controller_top_menu"), "schema-fourteen migration leaves Top Menu unbound when View/Create/Minus is already assigned")

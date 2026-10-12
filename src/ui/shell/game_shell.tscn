@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/game_shell.gd" id="1_shell"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/screen_navigator.tscn" id="2_navigator"]
@@ -15,6 +15,8 @@
 [ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="13_command"]
 [ext_resource type="PackedScene" path="res://src/ui/exploration/classic_search_command_button.tscn" id="14_search"]
 [ext_resource type="PackedScene" path="res://src/ui/exploration/classic_torch_command_button.tscn" id="15_torch"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/font_picker_dialog.tscn" id="16_fonts"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/character_art_dialog.tscn" id="17_character_art"]
 
 [sub_resource type="StyleBoxFlat" id="FatigueTrackStyle"]
 bg_color = Color(0.025, 0.035, 0.04, 1)
@@ -51,7 +53,7 @@ z_index = 95
 
 [node name="ControllerQwertyEditor" parent="." instance=ExtResource("11_controller_keyboard")]
 unique_name_in_owner = true
-z_index = 96
+z_index = 130
 
 [node name="ControllerTopMenuOverlay" parent="." instance=ExtResource("12_controller_menu")]
 unique_name_in_owner = true
@@ -146,7 +148,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "Realmz"
+text = "Realmz Menu"
 
 [node name="ControllerPromptStrip" parent="." instance=ExtResource("9_controller_prompt")]
 unique_name_in_owner = true
@@ -679,3 +681,7 @@ command_id = &"encounter_stop"
 
 [node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterStopCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
 text = "Encounter Stop"
+
+[node name="FontPickerDialog" parent="." instance=ExtResource("16_fonts")]
+
+[node name="CharacterArtDialog" parent="." instance=ExtResource("17_character_art")]

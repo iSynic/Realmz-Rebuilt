@@ -83,12 +83,10 @@ static func party_appearance_is_valid(content: RealmzContent, state: GameState) 
 		return true
 	for character: CharacterState in state.party.characters():
 		if not character.portrait_id.is_empty():
-			var portrait := content.characters.appearance_by_id(character.portrait_id)
-			if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
+			if not content.characters.appearance_is_available(character.portrait_id, CharacterAppearanceDefinition.PORTRAIT):
 				return false
 		if not character.combat_icon_id.is_empty():
-			var icon := content.characters.appearance_by_id(character.combat_icon_id)
-			if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
+			if not content.characters.appearance_is_available(character.combat_icon_id, CharacterAppearanceDefinition.COMBAT_ICON):
 				return false
 	return true
 

@@ -7,7 +7,7 @@
     {"root": "src/game", "featureDirectories": ["characters", "inventory", "magic", "economy", "world", "combat", "scenario", "shared"]},
     {"root": "src/playthrough", "featureDirectories": ["characters", "inventory", "magic", "economy", "world", "combat", "scenario", "session"]},
     {"root": "src/scenarios", "featureDirectories": ["classic", "actions", "runtime", "vm"]},
-    {"root": "src/storage", "featureDirectories": ["packages", "saves", "characters", "settings"]},
+    {"root": "src/storage", "featureDirectories": ["packages", "saves", "characters", "character_art", "settings"]},
     {"root": "src/ui", "featureDirectories": ["shell", "exploration", "combat", "characters", "inventory", "magic", "services", "journal", "setup", "shared"]}
   ],
   "systems": [

@@ -56,7 +56,7 @@ func prepare(compact: bool) -> void:
 	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns") as BoxContainer).vertical = false
 	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow") as BoxContainer).vertical = compact
 	_apply_compact_rows(self, compact)
-	_apply_display_row_density(compact)
+	_apply_preference_row_density(compact)
 	clear_variable_save_rows()
 	get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/Empty").visible = false
 	get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty").visible = false
@@ -135,15 +135,18 @@ func _current_category() -> StringName:
 	return PREFERENCE_SECTIONS[index] if index >= 0 and index < PREFERENCE_SECTIONS.size() else &"Display"
 
 
-func _apply_display_row_density(compact: bool) -> void:
-	var tabs_root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs")
-	for row: Node in tabs_root.find_children("*", "BoxContainer", true, false):
+func _apply_preference_row_density(compact: bool) -> void:
+	var display := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display")
+	var accessibility := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility")
+	for row: Node in find_children("*", "BoxContainer", true, false):
 		if not row.is_in_group(&"system_setting_rows"):
 			continue
-		(row as BoxContainer).vertical = false
 		var caption := row.get_child(0) as Label
-		if caption != null:
-			caption.custom_minimum_size.x = 128.0 if compact else 230.0
+		if caption == null or not (display.is_ancestor_of(row) or accessibility.is_ancestor_of(row)):
+			continue
+		(row as BoxContainer).vertical = false
+		caption.custom_minimum_size.x = 156.0 if compact else 230.0
+		caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 func bind_indoor_icon(index: int, media: ClassicMediaCatalog) -> void:
@@ -170,6 +173,20 @@ func bind_audio(settings: PresentationSettings) -> void:
 	], settings.music_transition, &"music_transition")
 	_bind_toggle(root.get_node("ReducedSound") as CheckButton, settings.reduced_sound, &"reduced_sound")
 	_bind_action(root.get_node("OpenMusicPlaylist") as Button, func() -> void: action_requested.emit(&"music_playlist", null))
+
+
+func bind_command_titles(settings: PresentationSettings) -> void:
+	var world := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions")
+	var titles := world.get_node("OverworldCommandTitles") as CheckButton
+	var fit := world.get_node("FitHiddenCommandArt") as CheckButton
+	SystemSignalBinding.clear_toggled(titles)
+	titles.button_pressed = settings.show_overworld_command_titles
+	titles.toggled.connect(func(value: bool) -> void:
+		fit.disabled = value
+		setting_changed.emit(&"show_overworld_command_titles", value)
+	)
+	_bind_toggle(fit, settings.integer_fit_hidden_commands, &"integer_fit_hidden_commands")
+	fit.disabled = settings.show_overworld_command_titles
 
 
 func bind_pacing(settings: PresentationSettings) -> void:
@@ -201,41 +218,49 @@ func bind_pacing(settings: PresentationSettings) -> void:
 	)
 
 
-func bind_accessibility(settings: PresentationSettings) -> void:
-	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content")
-	_bind_toggle(root.get_node("ReducedMotion") as CheckButton, settings.reduced_motion, &"reduced_motion")
-	var text_scale := root.get_node("TextScaleRow/TextScaleSlider") as HSlider
-	var text_scale_caption := root.get_node("TextScaleRow/Caption") as Label
-	var typography_picker := root.get_node("TypographyRow/TypographyPicker") as OptionButton
-	var sample := root.get_node("TextPreview/Content/Sample") as Label
-	var preview_detail := root.get_node("TextPreview/Content/PreviewDetail") as Label
-	var update_preview := func(scale: float, typography_mode: String) -> void:
-		var classic_mode := typography_mode == PresentationSettings.TYPOGRAPHY_CLASSIC
-		var font_path := ClassicTypography.THELDROW_PATH if classic_mode else ClassicTypography.READABLE_UI_PATH
-		var preview_font := load(font_path) as Font
-		var readable_fallback := load(ClassicTypography.READABLE_UI_PATH) as Font
-		if classic_mode and preview_font is FontFile and readable_fallback != null:
-			(preview_font as FontFile).fallbacks = [readable_fallback]
-		sample.add_theme_font_override("font", preview_font)
-		UiSizing.font_size(sample, &"font_size", 18)
-		preview_detail.add_theme_font_override("font", preview_font)
-		UiSizing.font_size(preview_detail, &"font_size", 16)
-		text_scale_caption.text = "Text size  •  %d%%" % int(round(scale * 100.0))
-		text_scale.tooltip_text = "Text scale %d%%" % int(round(scale * 100.0))
-	update_preview.call(settings.text_scale, settings.typography_mode)
-	_clear_value_changed_connections(text_scale)
-	text_scale.value = settings.text_scale
-	text_scale.value_changed.connect(func(value: float) -> void:
-		update_preview.call(value, String(typography_picker.get_item_metadata(typography_picker.selected)))
-		setting_changed.emit(&"text_scale", value)
-	)
-	var text_preview_values: Array[Dictionary] = [
-		{"label": "Classic Realmz fonts", "id": PresentationSettings.TYPOGRAPHY_CLASSIC},
-		{"label": "Readable modern fonts", "id": PresentationSettings.TYPOGRAPHY_READABLE},
+static func menu_visibility_options() -> Array[Dictionary]:
+	return [
+		{"label": "Always visible", "id": PresentationSettings.MENU_VISIBLE},
+		{"label": "Show on hover", "id": PresentationSettings.MENU_HOVER},
+		{"label": "Hidden", "id": PresentationSettings.MENU_HIDDEN},
 	]
-	_bind_option(typography_picker, text_preview_values, settings.typography_mode, &"typography_mode", func(index: int) -> void:
-		update_preview.call(settings.text_scale, String(typography_picker.get_item_metadata(index)))
-	)
+
+
+func bind_accessibility(settings: PresentationSettings, fonts: FontResolver) -> void:
+	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content")
+	_bind_font_choices(root, settings, fonts)
+	_bind_toggle(root.get_node("ReducedMotion") as CheckButton, settings.reduced_motion, &"reduced_motion")
+	var preview := ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, settings, 1.0, fonts)
+	var sample := root.get_node("TextPreview/Content/Sample") as Label
+	var narrative := root.get_node("TextPreview/Content/PreviewDetail") as Label
+	sample.add_theme_font_override(&"font", preview.default_font)
+	narrative.add_theme_font_override(&"font", preview.get_font(&"normal_font", &"ClassicNarrative"))
+	UiSizing.font_size(sample, &"font_size", 18)
+	UiSizing.font_size(narrative, &"font_size", 16)
+	for role: String in ["Interface", "Narrative"]:
+		var slider := root.get_node("%sTextScaleRow/TextScaleSlider" % role) as HSlider
+		var percentage := root.get_node("%sTextScaleRow/SizeValue" % role) as Label
+		var scale := settings.interface_text_scale if role == "Interface" else settings.narrative_text_scale
+		var update_caption := func(value: float) -> void:
+			percentage.text = "%d%%" % roundi(value * 100.0)
+			slider.tooltip_text = "%s text size: %d%%" % [role, roundi(value * 100.0)]
+		_clear_value_changed_connections(slider)
+		slider.value = scale
+		update_caption.call(scale)
+		slider.value_changed.connect(func(value: float) -> void:
+			update_caption.call(value)
+			setting_changed.emit(StringName(role.to_lower() + "_text_scale"), value)
+		)
+
+
+func _bind_font_choices(root: Node, settings: PresentationSettings, fonts: FontResolver) -> void:
+	for role: String in ["interface", "narrative"]:
+		var identity := settings.interface_font if role == "interface" else settings.narrative_font
+		var button := root.get_node("%sFontRow/ChooseFont" % role.capitalize()) as Button
+		button.text = fonts.label(identity)
+		button.tooltip_text = "%s\nChoose from bundled, installed, or imported fonts." % fonts.label(identity)
+		_bind_action(button, func() -> void: action_requested.emit(StringName("choose_%s_font" % role), null))
+	(root.get_node("FontStatus") as Label).text = "\n".join(PackedStringArray([fonts.unavailable_message(settings.interface_font), fonts.unavailable_message(settings.narrative_font)])) .strip_edges()
 
 
 func _bind_volume_row(row: BoxContainer, title: String, value: float, setting_id: StringName) -> void:

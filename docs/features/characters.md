@@ -32,6 +32,12 @@ Party assembly and creation live under `src/ui/setup`. `party_assembly_browser.t
 
 `character_sheet_identity_tabs.tscn` owns Appearance and Race, Class & Aging. It keeps independent portrait and combat-icon previews, pickers, Apply actions, and Discard action visible in the editor. Its eight race facts, nine caste facts, and five age-band cards are named scene instances bound through their detached identities.
 
+## Import character artwork
+
+Choose **Import / Browse Character Art…** in character creation's Appearance step or an active character's Appearance tab. Name a race or library group and the artwork, choose a PNG, JPEG or WebP, then preview a portrait at 44×44 or combat icon at 32×32. **Fit** preserves proportions with transparent padding, **Crop** selects an integer square, and **Resize** fills the square. Nearest-neighbor sampling keeps pixel-art edges; Lanczos is an explicit smooth alternative. The native preview and 4× nearest preview show the prepared result before Import. Imported originals are retained in the managed library.
+
+Group names organize choices and do not define gameplay races. In an active adventure, library selection remains an Appearance draft until the ordinary Apply action. Selected artwork travels with Character Files and saves. `CharacterArtIdentity` owns the pure identity syntax, `src/storage/character_art` owns image preparation and portable validation, and `ApplicationCharacterArtHost` supplies detached media/options to the scene-authored modal. See [ADR 0021](../adr/0021-portable-character-art.md).
+
 ## Bring a party from a saved adventure
 
 During new-adventure party setup, choose **Import Party from Save**, select a validated save, and review the characters that can join. The review shows available party slots, any incompatible characters, and possessions that cannot transfer. Select eligible characters and choose **Import**; **Cancel** returns to setup without changing either party. **Browse** can select an external save, and **Refresh** updates the available saves after installing the exact required scenario revision.

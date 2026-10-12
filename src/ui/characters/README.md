@@ -6,6 +6,7 @@ This folder is the Godot-facing home of the Character, Allies, Bestiary, and Cha
 
 - `character_screen.tscn`: the party Character route and Party Order editor.
 - `classic_character_sheet.tscn`: the shared eight-tab character record used by Character, Character Files, party inspection, and creation review.
+- `character_art_dialog.tscn`: the shared artwork library/import modal, with native and 4× result previews, explicit crop/scaling choices and persistent exits. The app supplies image decoding and storage; group names remain artwork metadata.
 - `character_sheet_stat_tabs.tscn`: edit the named Overview facts under `OverviewTab/OverviewRegions` and Lifetime Record cards under `RecordTab/LifetimeRecord/Content/RecordCards`. These fixed rows survive character, tab, and layout changes; only their detached values are rebound.
 - `creature_library_workspace.tscn`: the shared Allies and Bestiary list-and-detail body.
 - `vault_screen.tscn`: the Character Files library, history, and immutable inspection surface.

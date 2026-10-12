@@ -21,6 +21,7 @@ func run() -> void:
 	var malformed_roots: Array[Dictionary] = []
 	malformed_roots.append({"name": "unknown field", "data": valid_root.merged({"unexpected": true})})
 	malformed_roots.append({"name": "invalid JPEG preview", "data": valid_root.merged({"mapPreviewJpeg": "bm90IGEganBlZw=="})})
+	malformed_roots.append({"name": "invalid imported artwork", "data": valid_root.merged({"characterArt": [{"id": "character-art:portrait:" + "0".repeat(64), "kind": "portrait", "group": "Fixture", "label": "Invalid PNG", "png": "YmFk"}]})})
 	var missing_field := valid_root.duplicate(true)
 	missing_field.erase("rulesVersion")
 	malformed_roots.append({"name": "missing required field", "data": missing_field})

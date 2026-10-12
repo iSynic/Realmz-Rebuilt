@@ -81,6 +81,7 @@ var _save_and_quit_mode: bool = false
 var _selected_workspace_mode: StringName = &"Display"
 var _workspace: SystemWorkspace
 var _display_settings: PresentationSettings
+var font_resolver := FontResolver.new()
 var _controller_draft: ControllerPreferences
 var _committed_controller_draft: ControllerPreferences
 var _controller_draft_dirty: bool = false
@@ -210,7 +211,7 @@ func present(target: Control, view: GameView, settings: PresentationSettings, me
 	_workspace.call("bind_indoor_icon", settings.indoor_party_icon, media)
 	_workspace.call("bind_audio", settings)
 	_workspace.call("bind_pacing", settings)
-	_workspace.call("bind_accessibility", settings)
+	_workspace.call("bind_accessibility", settings, font_resolver)
 	_bind_controls(settings)
 	_bind_diagnostics(settings)
 	if _selected_workspace_mode == &"Save & Load":
@@ -503,16 +504,18 @@ func _bind_display(settings: PresentationSettings) -> void:
 	var scale_root := root.get_node("Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content")
 	var effects_root := root.get_node("Image Effects/VisualEffectsGroup/Content")
 	var world_root := root.get_node("World View/WorldViewGroup/Content")
+	_bind_option(scale_root.get_node("MenuVisibilityRow/MenuVisibilityPicker") as OptionButton, SystemPreferencesLayout.menu_visibility_options(), settings.menu_visibility, &"menu_visibility")
 	_bind_option(scale_root.get_node("DisplayScalingRow/DisplayScalingPicker") as OptionButton, SystemPreferencesLayout.display_mode_options(), settings.display_scaling_mode, &"display_scaling_mode")
 	var zoom_picker := scale_root.get_node("WorldZoomRow/WorldZoomPicker") as OptionButton
 	_bind_option(zoom_picker, [
+		{"label": "Auto · fits the world stage", "id": "0"},
 		{"label": "1× · 32-pixel tiles", "id": "1"},
 		{"label": "2× · 64-pixel tiles", "id": "2"},
 		{"label": "3× · 96-pixel tiles", "id": "3"},
 		{"label": "4× · 128-pixel tiles", "id": "4"},
 	], str(settings.world_zoom), &"world_zoom")
 	zoom_picker.disabled = settings.display_scaling_mode != PresentationSettings.DISPLAY_INTEGER_CANVAS
-	zoom_picker.tooltip_text = "Available only with Integer: world canvas. Other modes keep the saved zoom."
+	zoom_picker.tooltip_text = "Auto chooses the largest 1×–4× scale that fits the Classic world view. Available only with Integer: world canvas."
 	_bind_option(effects_root.get_node("PixelSmoothingRow/PixelSmoothingPicker") as OptionButton, [
 		{"label": "Off · crisp pixels", "id": PresentationSettings.SMOOTHING_OFF},
 		{"label": "World canvas only", "id": PresentationSettings.SMOOTHING_WORLD},
@@ -537,6 +540,7 @@ func _bind_display(settings: PresentationSettings) -> void:
 	_bind_toggle(world_root.get_node("WorldOptions/Dungeon3d") as CheckButton, settings.dungeon_3d, &"dungeon_3d")
 	_bind_toggle(world_root.get_node("WorldOptions/ClassicExplorationVisibility") as CheckButton, settings.classic_exploration_visibility, &"classic_exploration_visibility")
 	_bind_toggle(world_root.get_node("WorldOptions/CustomFogTile") as CheckButton, settings.custom_fog_tile_enabled, &"custom_fog_tile_enabled")
+	(_workspace as SystemPreferencesLayout).bind_command_titles(settings)
 	_refresh_interface_size_feedback()
 
 

@@ -14,14 +14,16 @@ var _source_content: RealmzContent
 var _review: PartyTransferReview
 var _task := PackageReadTask.new()
 var _open := false
+var _art_host: ApplicationCharacterArtHost
 
 
-func _init(saves: SaveHostController, packages: PackageHostController, session: GameSessionController, shell: GameShell, destination: Callable) -> void:
+func _init(saves: SaveHostController, packages: PackageHostController, session: GameSessionController, shell: GameShell, destination: Callable, art_host: ApplicationCharacterArtHost = null) -> void:
 	_saves = saves
 	_packages = packages
 	_session = session
 	_setup = shell.navigator.setup_controller
 	_destination = destination
+	_art_host = art_host
 	shell.tree_exiting.connect(cancel)
 	var owner: WeakRef = weakref(self)
 	_setup.party_import_source_requested.connect(func(index: int) -> void:
@@ -162,6 +164,9 @@ func import_selected(indices: Array[int]) -> void:
 	# Source order remains stable even when selection gestures arrive out of order.
 	seen.sort()
 	for index: int in seen: members.append(_review.candidates[index].character)
+	if _art_host != null and not _art_host.install_save_art(current.envelope):
+		_setup.show_party_import({"phase": "error", "message": _art_host.last_error})
+		return
 	var step := _session.submit_intent(PartyIntents.import_saved_party(members, _review))
 	if step.state == SessionStep.State.FAILED:
 		_show_error(step.error_message)

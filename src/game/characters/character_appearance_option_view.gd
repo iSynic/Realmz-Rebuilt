@@ -8,6 +8,7 @@ var label: String
 var kind: StringName
 var classic_resource_id: int
 var recommended_race_ids: Array[String] = []
+var art_group: String = ""
 
 
 func _init(definition: CharacterAppearanceDefinition) -> void:

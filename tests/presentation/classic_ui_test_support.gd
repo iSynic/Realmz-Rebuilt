@@ -16,8 +16,8 @@ func _test_encounter_dock_scaling() -> void:
 	for sample: Array in [[Vector2(1280, 720), "auto", 1.0], [Vector2(2560, 1440), "auto", 1.0], [Vector2(3840, 2160), "auto", 1.0], [Vector2(800, 600), "auto", 1.5], [Vector2(2560, 1440), "300", 1.5], [Vector2(1280, 720), "auto", 1.0]]:
 		host.size = sample[0]
 		var settings := PresentationSettings.new()
-		settings.text_scale = sample[2]
-		var profile := UiLayoutProfile.for_viewport(host.size, sample[1], PresentationSettings.DISPLAY_RESPONSIVE, settings.text_scale)
+		settings.interface_text_scale = sample[2]
+		var profile := UiLayoutProfile.for_viewport(host.size, sample[1], PresentationSettings.DISPLAY_RESPONSIVE, settings.interface_text_scale)
 		host.theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, settings, profile.ui_scale)
 		UiSizing.apply(host, profile)
 		var compact := profile.id == UiLayoutProfile.COMPACT

@@ -9,6 +9,7 @@ var _load_committed_operation: Callable
 var _map_preview_operation: Callable
 var party_import: ApplicationPartyImportHost
 var _deferred_load: Dictionary = {}
+var _art_host: ApplicationCharacterArtHost
 
 
 func _init(
@@ -19,15 +20,17 @@ func _init(
 		map_preview_operation: Callable = Callable(),
 		packages: PackageHostController = null,
 		character_files: ApplicationCharacterFilesHost = null,
-		destination: Callable = Callable()
+		destination: Callable = Callable(),
+		art_host: ApplicationCharacterArtHost = null
 ) -> void:
 	_repository_host = repository_host
 	_session = session
 	_shell = shell
 	_load_committed_operation = load_committed_operation
 	_map_preview_operation = map_preview_operation
+	_art_host = art_host
 	if packages != null and character_files != null:
-		party_import = ApplicationPartyImportHost.new(repository_host, packages, session, shell, destination)
+		party_import = ApplicationPartyImportHost.new(repository_host, packages, session, shell, destination, art_host)
 		var import_owner: WeakRef = weakref(party_import)
 		var library_owner: WeakRef = weakref(character_files)
 		shell.navigator.setup_controller.party_import_requested.connect(func() -> void:
@@ -77,6 +80,14 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 	if envelope == null:
 		_shell.status.set_status("Load failed • %s" % _repository_host.last_error(), true)
 		return SessionStep.failed(_session.view().revision, "save_load_failed", _repository_host.last_error())
+	if _art_host != null:
+		var validation := GameSession.new().restore(content, envelope)
+		if validation.state == SessionStep.State.FAILED:
+			_shell.status.set_status("Load failed • %s" % validation.error_message, true)
+			return validation
+		if not _art_host.install_save_art(envelope):
+			_shell.status.set_status("Load failed • %s" % _art_host.last_error, true)
+			return SessionStep.failed(_session.view().revision, "character_art_install_failed", _art_host.last_error)
 	var resolved_slot := slot_id
 	var previous_slot := ""
 	if slot_id in ["quick", "quick-2"]:

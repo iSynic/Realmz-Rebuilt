@@ -59,6 +59,8 @@ static func _prepare_character(original: CharacterState, source: RealmzContent, 
 	for id: String in [character.portrait_id, character.combat_icon_id]:
 		if id.is_empty():
 			continue
+		if CharacterArtIdentity.is_valid(id, "portrait") or CharacterArtIdentity.is_valid(id, "combat-icon"):
+			continue
 		var appearance := source.characters.appearance_by_id(id)
 		var target := destination.content.characters.appearance_by_id(id)
 		if appearance == null or target == null or appearance.kind != target.kind or appearance.classic_resource_id != target.classic_resource_id or not _media_matches(source, destination.content, "cicn", appearance.classic_resource_id):

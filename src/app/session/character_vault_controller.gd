@@ -160,6 +160,20 @@ func cached_revision_count() -> int:
 	return _validated_records.size()
 
 
+func artwork_bundles() -> Array[CharacterArtBundle]:
+	var result: Array[CharacterArtBundle] = []
+	for record: CharacterVaultRecord in _validated_records.values():
+		result.append(record.character_art)
+	return result
+
+
+func artwork_bundle(character_id: String, revision_hash: String) -> CharacterArtBundle:
+	var record := _validated_records.get(_cache_key(character_id, revision_hash)) as CharacterVaultRecord
+	if record == null:
+		record = _repository.load_revision(character_id, revision_hash)
+	return record.character_art if record != null else null
+
+
 func last_error() -> String:
 	return _operation_error if not _operation_error.is_empty() else _repository.last_error
 

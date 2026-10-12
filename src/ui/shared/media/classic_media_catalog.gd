@@ -6,15 +6,19 @@ extends MediaSource
 var package_media: MediaSource
 var character_media: MediaSource
 var application_media: ApplicationMediaCatalog
+var imported_character_media: MediaSource
+var imported_art_options: Array[CharacterAppearanceOptionView] = []
 var _image_textures: Dictionary = {}
 var _audio_streams: Dictionary = {}
 var _map_atlases: Dictionary = {}
 
 
-func _init(package_catalog: MediaSource, application_catalog: ApplicationMediaCatalog, character_catalog: MediaSource = null) -> void:
+func _init(package_catalog: MediaSource, application_catalog: ApplicationMediaCatalog, character_catalog: MediaSource = null, imported_art: MediaSource = null, art_options: Array[CharacterAppearanceOptionView] = []) -> void:
 	package_media = package_catalog
 	application_media = application_catalog
 	character_media = character_catalog
+	imported_character_media = imported_art
+	imported_art_options = art_options.duplicate()
 
 
 func assets() -> Array[MediaAsset]:
@@ -34,7 +38,22 @@ func assets() -> Array[MediaAsset]:
 		for asset: MediaAsset in application_media.assets():
 			if not occupied_resource_keys.has(_resource_key(asset.resource_type, asset.resource_id)):
 				result.append(asset)
+	if imported_character_media != null:
+		result.append_array(imported_character_media.assets())
 	return result
+
+
+func imported_appearance_options(kind: StringName) -> Array[CharacterAppearanceOptionView]:
+	var result: Array[CharacterAppearanceOptionView] = []
+	for option: CharacterAppearanceOptionView in imported_art_options:
+		if option.kind == kind:
+			result.append(option)
+	return result
+
+
+func replace_imported_art(media: MediaSource, options: Array[CharacterAppearanceOptionView]) -> void:
+	imported_character_media = media
+	imported_art_options = options.duplicate()
 
 
 func assets_of_kind(kind: String) -> Array[MediaAsset]:
@@ -47,6 +66,8 @@ func assets_of_kind(kind: String) -> Array[MediaAsset]:
 
 
 func asset_by_id(asset_id: String) -> MediaAsset:
+	if CharacterArtIdentity.is_imported(asset_id):
+		return imported_character_media.asset_by_id(asset_id) if imported_character_media != null else null
 	var landlook_resource_id := _landlook_resource_id(asset_id)
 	if landlook_resource_id >= 0:
 		if package_media != null:
@@ -201,6 +222,8 @@ func resolution_diagnostic(resource_type: String, resource_id: int, presentation
 
 
 func read_bytes(asset: MediaAsset) -> PackedByteArray:
+	if imported_character_media != null and imported_character_media.owns_asset(asset):
+		return imported_character_media.read_bytes(asset)
 	if package_media != null and package_media.owns_asset(asset):
 		return package_media.read_bytes(asset)
 	if character_media != null and character_media.owns_asset(asset):
@@ -214,7 +237,9 @@ func read_bytes_batch(requested_assets: Array[MediaAsset]) -> Dictionary:
 	var result: Dictionary = {}
 	var package_assets: Array[MediaAsset] = []
 	for asset: MediaAsset in requested_assets:
-		if package_media != null and package_media.owns_asset(asset):
+		if imported_character_media != null and imported_character_media.owns_asset(asset):
+			result[asset.id] = imported_character_media.read_bytes(asset)
+		elif package_media != null and package_media.owns_asset(asset):
 			package_assets.append(asset)
 		elif character_media != null and character_media.owns_asset(asset):
 			var bytes := character_media.read_bytes(asset)

@@ -406,6 +406,7 @@ text = "Journal entry 0"
 [node name="Divider" type="HSeparator" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
 layout_mode = 2
 [node name="JournalEntryText" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Record"]
+theme_type_variation = &"ClassicNarrativeText"
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_colors/font_color = Color(0.878431, 0.886275, 0.898039, 1)

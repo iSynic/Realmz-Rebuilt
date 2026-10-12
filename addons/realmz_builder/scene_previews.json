@@ -3,6 +3,7 @@
   "profiles": ["Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error"],
   "sceneContracts": {
     "application-shell": {"rawSceneNodes":["ControllerRadialOverlay","Key01","Key26"],"populatedPreviewNodes":["PackageStatus"]},
+    "font-picker": {"rawSceneNodes":["FontSearch","FontChoices","FontApply","FontCancel","ImportFont"],"populatedPreviewNodes":["FontIdentitySample","FontNumberSample","FontNarrativeSample"]},
     "character-sheet": {"rawSceneNodes":["PartyOrderArea","Brawn","Knowledge","Judgment","Agility","Vitality","Luck","AttackBonus","DefenseBonus","BaseToHit","Armor","Dodge","Missile","TwoHand","HandToHand","DamageBonus","MagicResistance","Stamina","SpellPoints","Load","Movement","AttacksPerRound","Experience","Gold","Gems","Jewelry","DamageGiven","DamageTaken","HitsGiven","HitsTaken","EnemyMisses","AttacksMissed","Kills","Deaths","Knockouts","SpellsCast","Destroyed","Turned","SheetScrollSlot0","SheetScrollSlot1","SheetScrollSlot2","SheetScrollSlot3","SheetScrollSlot4","AgeBand1","AgeBand2","AgeBand3","AgeBand4","AgeBand5","save-0","save-1","save-2","save-3","save-4","save-5","save-6","save-7","base-movement","magic-resistance","two-hand","missile","base-attacks","maximum-attacks","maximum-age","regeneration","minimum-age-group","movement-bonus","magic-resistance-multiplier","maximum-stamina-bonus","bonus-attacks","missile-use","missile-bonus"],"populatedPreviewNodes":["ClassicCharacterSheet"]},
     "character-files": {"rawSceneNodes":["VaultHeaderArea"],"populatedPreviewNodes":["VaultHeaderArea"]},
     "allies": {"rawSceneNodes":["CreatureColumns"],"populatedPreviewNodes":["CreatureColumns"]},
@@ -29,6 +30,7 @@
     "roster-spellbook": {"rawSceneNodes":["Member"],"populatedPreviewNodes":["Member"]}
   },
   "scenes": [
+    {"id":"font-picker","scene":"src/ui/shell/font_picker_dialog.tscn","guide":"docs/features/application-host.md","controller":"src/ui/shell/font_picker_dialog.gd","view":"src/game/shared/presentation/presentation_settings.gd","tests":["tests/presentation/test_realmz_builder_previews.gd"],"productionBinding":true},
     {"id":"application-shell","scene":"src/ui/shell/game_shell.tscn","guide":"docs/features/shell-and-routing.md","controller":"src/ui/shell/game_shell.gd","view":"src/playthrough/session/game_view.gd","tests":["tests/presentation/test_realmz_builder_previews.gd"],"productionBinding":true},
     {"id":"character-sheet","scene":"src/ui/characters/character_screen.tscn","guide":"docs/features/characters.md","controller":"src/ui/characters/character_screen_controller.gd","view":"src/game/characters/character_view.gd","tests":["tests/presentation/test_realmz_builder_previews.gd"],"productionBinding":true},
     {"id":"character-files","scene":"src/ui/characters/vault_screen.tscn","guide":"docs/features/persistence.md","controller":"src/ui/characters/character_screen_controller.gd","view":"src/app/session/character_vault_revision_view.gd","tests":["tests/presentation/test_realmz_builder_previews.gd"],"productionBinding":true},

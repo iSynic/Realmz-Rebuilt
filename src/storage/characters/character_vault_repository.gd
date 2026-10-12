@@ -122,6 +122,11 @@ func publish_revision(record: CharacterVaultRecord) -> bool:
 		return _fail("A valid character record is required.")
 	if record.rules_version.is_empty() or record.source_package_hash.length() != 64:
 		return _fail("Character provenance is incomplete.")
+	if not record.character_art.matches_characters([record.state]):
+		var art_repository := CharacterArtRepository.new(_root_path.get_base_dir().path_join("character-art"))
+		record.character_art = art_repository.selected([record.state])
+		if record.character_art == null:
+			return _fail(art_repository.last_error)
 	record.revision_hash = _revision_hash(record.to_data())
 	var directory_path := "%s/%s" % [_root_path, record.character_id]
 	var create_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(directory_path))
@@ -281,11 +286,9 @@ func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) 
 		elif binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
 			result.reasons.append("Fast Spell '%s' uses an invalid power." % binding.spell_id)
 	if content.characters.has_complete_appearance_catalog():
-		var portrait := content.characters.appearance_by_id(record.state.portrait_id) if not record.state.portrait_id.is_empty() else null
-		if not record.state.portrait_id.is_empty() and (portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT):
+		if not record.state.portrait_id.is_empty() and not content.characters.appearance_is_available(record.state.portrait_id, CharacterAppearanceDefinition.PORTRAIT):
 			result.reasons.append("Portrait '%s' is not defined by this campaign package." % record.state.portrait_id)
-		var combat_icon := content.characters.appearance_by_id(record.state.combat_icon_id) if not record.state.combat_icon_id.is_empty() else null
-		if not record.state.combat_icon_id.is_empty() and (combat_icon == null or combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON):
+		if not record.state.combat_icon_id.is_empty() and not content.characters.appearance_is_available(record.state.combat_icon_id, CharacterAppearanceDefinition.COMBAT_ICON):
 			result.reasons.append("Combat icon '%s' is not defined by this campaign package." % record.state.combat_icon_id)
 	if record.state.level < 1:
 		result.reasons.append("Character level is below the Classic minimum.")

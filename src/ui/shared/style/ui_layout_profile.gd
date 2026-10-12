@@ -13,6 +13,7 @@ var id: StringName
 var ui_scale: float
 var requested_scale: float
 var font_scale: float
+var narrative_font_scale: float
 var scale_limited: bool
 var party_width: float
 var context_width: float
@@ -30,6 +31,7 @@ func _init(profile_id: StringName, scale: float, party: float, bottom: float, co
 	ui_scale = scale
 	requested_scale = scale
 	font_scale = scale
+	narrative_font_scale = scale
 	party_width = party
 	context_width = 0.0
 	context_is_drawer = false
@@ -40,7 +42,7 @@ func _init(profile_id: StringName, scale: float, party: float, bottom: float, co
 	bitmap_scale = art_scale
 
 
-static func for_viewport(size: Vector2, scale_mode: String, display_mode: String = PresentationSettings.DISPLAY_INTEGER_CANVAS, text_scale: float = 1.0) -> UiLayoutProfile:
+static func for_viewport(size: Vector2, scale_mode: String, display_mode: String = PresentationSettings.DISPLAY_INTEGER_CANVAS, text_scale: float = 1.0, narrative_text_scale: float = 1.0) -> UiLayoutProfile:
 	var canvas_rect := UiLayoutProfile.application_rect_for(size, display_mode)
 	var canvas_size := canvas_rect.size
 	var requested := UiLayoutProfile.scale_for(canvas_size, scale_mode)
@@ -56,6 +58,7 @@ static func for_viewport(size: Vector2, scale_mode: String, display_mode: String
 		profile = UiLayoutProfile.new(WIDE, scale, 352.0 * scale, 190.0 * scale, 288.0 * scale, art_scale)
 	profile.requested_scale = requested
 	profile.font_scale = scale * text_scale
+	profile.narrative_font_scale = scale * narrative_text_scale
 	profile.scale_limited = scale < requested
 	profile.application_rect = canvas_rect
 	return profile

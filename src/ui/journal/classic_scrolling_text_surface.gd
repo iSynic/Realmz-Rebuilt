@@ -25,6 +25,11 @@ var _text: RichTextLabel
 var _dragging: bool = false
 var _last_drag_y: float = 0.0
 var _fonts: Dictionary = {}
+var _display_text: String
+var _style_bytes := PackedByteArray()
+var _theme_refresh_pending := false
+var _narrative_override: Font
+var _narrative_scale: float = 1.0
 
 
 func configure(media: ClassicMediaCatalog, text_node_name: StringName = &"ClassicScrollingText") -> void:
@@ -59,6 +64,11 @@ func present_asset(asset: MediaAsset, unavailable_text: String = "Scrolling text
 func present_text(text: String, style_bytes: PackedByteArray = PackedByteArray()) -> void:
 	if _text == null:
 		return
+	_display_text = text
+	_style_bytes = style_bytes
+	_narrative_override = get_theme_font(&"normal_font", &"ClassicNarrative") if get_theme_constant(&"custom_font_selected", &"ClassicNarrative") == 1 else null
+	var profile := UiSizing.profile_for(self)
+	_narrative_scale = profile.narrative_font_scale if profile != null else 1.0
 	_text.clear()
 	var runs := decode_style_runs(style_bytes, text.length())
 	if runs.is_empty():
@@ -167,7 +177,7 @@ func _push_style(run: Dictionary) -> int:
 		depth += 1
 	_text.push_color(run["color"] as Color)
 	depth += 1
-	_text.push_font_size(classic_font_size(font_id, int(run["size"])))
+	_text.push_font_size(maxi(1, roundi(classic_font_size(font_id, int(run["size"])) * _narrative_scale)))
 	depth += 1
 	var face: int = int(run["face"])
 	if face & 1:
@@ -183,6 +193,8 @@ func _push_style(run: Dictionary) -> int:
 
 
 func _font_for_role(role: StringName) -> Font:
+	if get_theme_constant(&"custom_font_selected", &"ClassicNarrative") == 1:
+		return get_theme_font(&"normal_font", &"ClassicNarrative")
 	if _fonts.has(role):
 		return _fonts[role] as Font
 	var path := ClassicTypography.THELDROW_PATH
@@ -198,6 +210,32 @@ func _font_for_role(role: StringName) -> Font:
 		source = load(ClassicTypography.THELDROW_PATH) as Font
 	_fonts[role] = source
 	return source
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED and _text != null and not _theme_refresh_pending:
+		var chosen := get_theme_font(&"normal_font", &"ClassicNarrative") if get_theme_constant(&"custom_font_selected", &"ClassicNarrative") == 1 else null
+		if chosen == _narrative_override:
+			return
+		_theme_refresh_pending = true
+		_refresh_text_theme.call_deferred()
+
+
+func _refresh_text_theme() -> void:
+	_theme_refresh_pending = false
+	if not is_inside_tree():
+		return
+	var scroll := _text.get_v_scroll_bar().value
+	present_text(_display_text, _style_bytes)
+	await get_tree().process_frame
+	if is_inside_tree():
+		_text.get_v_scroll_bar().value = scroll
+
+
+func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	if _text != null and profile.narrative_font_scale != _narrative_scale and not _theme_refresh_pending:
+		_theme_refresh_pending = true
+		_refresh_text_theme.call_deferred()
 
 
 func _background_texture() -> Texture2D:

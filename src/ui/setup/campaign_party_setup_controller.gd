@@ -197,6 +197,10 @@ func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
 	_campaign_library.set_media_catalog(next_media)
 	_appearance_textures.clear()
 
+
+func set_character_art_dialog(dialog: CharacterArtDialog) -> void:
+	_state.character_art_dialog = dialog
+
 func present_party_setup_status(text: String, is_error: bool = false) -> void:
 	if view == null or not view.party_setup_available or setup_mode != &"assembly":
 		return

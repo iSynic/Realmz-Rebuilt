@@ -66,6 +66,9 @@ func rebuild() -> void:
 				_configured_definitions[command_id] = definition.duplicate(true)
 			else:
 				bitmap.set_art_scale(owner._profile.bitmap_scale)
+		if button.has_method("set_command_title_visible"):
+			var show_command_title: bool = context != &"exploration" or owner._presentation_settings.show_overworld_command_titles
+			button.call("set_command_title_visible", show_command_title, owner._presentation_settings.integer_fit_hidden_commands)
 		var group := StringName(definition.get("group", &"party"))
 		var target_grid: Control = owner._command_grid
 		if command_id == &"torch" and owner._torch_dock.visible:
@@ -102,9 +105,10 @@ func update_availability() -> void:
 			button.call("sync_status", 0 if summary == null else summary.light_remaining, false if summary == null else summary.has_classic_torch, reason.is_empty(), reason)
 		else:
 			button.disabled = not reason.is_empty()
-			button.tooltip_text = reason if not reason.is_empty() else "Break camp" if command_id == &"camp" and owner._current_view.party_summary != null and owner._current_view.party_summary.camping else String(definition.get("tooltip", ""))
 			if button is ClassicBitmapButton:
 				(button as ClassicBitmapButton).set_visual_pressed(_is_visually_pressed(command_id))
+		button.set_meta("command_unavailable_reason", reason)
+		button.tooltip_text = String(definition["label"])
 		button.queue_redraw()
 
 
@@ -144,7 +148,7 @@ func controller_entries() -> Array[ControllerRadialEntry]:
 		var button := _buttons.get(command_id) as BaseButton
 		var reason := ""
 		if button != null and button.disabled:
-			reason = button.tooltip_text
+			reason = String(button.get_meta("command_unavailable_reason", ""))
 		elif button == null and String(command_id).begins_with("encounter_"):
 			reason = "Choose from the active encounter response controls."
 		result.append(ControllerRadialEntry.new(command_id, String(definition["label"]), reason.is_empty(), reason, controller_icon(command_id), _fallback_symbol(command_id)))

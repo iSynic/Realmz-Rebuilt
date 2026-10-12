@@ -17,10 +17,15 @@ var _native_open_menu: MenuButton
 var _pointer_activation_pending: MenuButton
 var _switching_pointer_heading: bool = false
 var _pointer_close_generation: int = 0
+var _visibility: GameShellMenuVisibility
 
 
 func _init(owner: Control) -> void:
 	_owner_ref = weakref(owner)
+	_visibility = GameShellMenuVisibility.new(owner as GameShell)
+	owner.get_window().mouse_exited.connect(_schedule_pointer_close)
+	(owner.get_node("%MenuStrip") as Control).mouse_exited.connect(_schedule_pointer_close)
+	(owner.get_node("%MenuStrip") as Control).mouse_entered.connect(_cancel_pointer_close)
 	var window := owner.get_window()
 	if window != null and not window.focus_exited.is_connected(_on_window_focus_exited):
 		window.focus_exited.connect(_on_window_focus_exited, CONNECT_DEFERRED)
@@ -34,6 +39,7 @@ func rebuild(game_view: GameView, settings: PresentationSettings, music_title: S
 	var owner = _owner()
 	if owner == null or not owner.is_node_ready():
 		return
+	_visibility.apply(settings)
 	var retained_heading: String = String(_current_controller_menu().name) if _controller_active and _current_controller_menu() != null else ""
 	var retained_entry := _controller_selected_identity()
 	var contextual_definition: Dictionary = owner._command_controller.presentation_definition(ClassicCommandCatalog.command(&"contextual"))
@@ -94,6 +100,7 @@ static func _menu_catalog(game_view: GameView, settings: PresentationSettings, m
 			{"label": "Now Playing: %s" % (music_title if music_playing else "Nothing"), "disabled_reason": "Current music title"},
 			{"label": "Stop Music" if settings.music_enabled else "Play Music", "system": &"music_toggle"},
 			{"label": "Playlist…", "system": &"music_playlist"},
+			{"label": "Character Art…", "system": &"character_art", "disabled_reason": "Finish the battle before importing artwork." if game_view != null and game_view.combat_view != null and game_view.combat_view.outcome == &"active" else ""},
 		]},
 		{"node": "HelpMenu", "heading": "Help", "entries": [
 			{"label": "About Realmz Rebuilt", "route": &"system", "section": &"Diagnostics"},
@@ -219,7 +226,7 @@ func _cancel_pointer_close() -> void:
 
 
 func _schedule_pointer_close() -> void:
-	if not _pointer_open or _controller_active:
+	if not (_pointer_open or _visibility.owns_reveal()) or _controller_active:
 		return
 	_pointer_close_generation += 1
 	_close_pointer_menu_after_grace(_pointer_close_generation)
@@ -230,7 +237,7 @@ func _close_pointer_menu_after_grace(generation: int) -> void:
 	if owner == null:
 		return
 	await owner.get_tree().create_timer(0.15).timeout
-	if generation == _pointer_close_generation and _pointer_open and not _controller_active:
+	if generation == _pointer_close_generation and (_pointer_open or _visibility.owns_reveal()) and not _controller_active:
 		_close_pointer_menu()
 
 
@@ -243,6 +250,8 @@ func _close_pointer_menu() -> void:
 	_pointer_activation_pending = null
 	if menu != null and is_instance_valid(menu):
 		menu.get_popup().hide()
+	if not _controller_active:
+		_visibility.dismiss()
 
 
 func _on_window_focus_exited() -> void:
@@ -274,12 +283,15 @@ func _on_item_pressed(item_id: int, menu: MenuButton) -> void:
 
 
 func controller_open() -> bool:
+	if not _visibility.reveal():
+		return false
 	var menus := _controller_menus()
 	if menus.is_empty():
 		return false
 	var owner = _owner()
 	var focused: Control = owner.get_viewport().gui_get_focus_owner() if owner != null else null
 	_close_pointer_menu()
+	_visibility.reveal()
 	_controller_restore_focus = weakref(focused) if focused != null else null
 	_controller_active = true
 	_controller_popup_open = false
@@ -298,12 +310,32 @@ func controller_is_open() -> bool:
 
 ## Lets the application input router keep native menu events out of gameplay.
 func owns_native_menu_input() -> bool:
-	return _native_open_menu != null
+	return _native_open_menu != null or _visibility.owns_reveal()
 
 
 ## Returns true when a raw host event belongs to either top-menu interaction.
 ## The host should stop gameplay routing but leave the event available to GUI controls.
 func handle_host_input(event: InputEvent) -> bool:
+	if (InputMap.has_action(&"realmz_top_menu") and event.is_action_pressed(&"realmz_top_menu")) or (event is InputEventKey and event.pressed and not event.echo and event.physical_keycode == KEY_F10):
+		if _controller_active:
+			controller_back()
+		else:
+			controller_open()
+		_owner().get_viewport().set_input_as_handled()
+		return true
+	if event is InputEventMouseMotion and not _controller_active:
+		if _visibility.handle_pointer(event):
+			_cancel_pointer_close()
+		elif _native_open_menu == null:
+			_schedule_pointer_close()
+	if _visibility.owns_reveal() and event.is_action_pressed(&"realmz_back") and _native_open_menu == null and not _controller_active:
+		_close_pointer_menu()
+		_owner().get_viewport().set_input_as_handled()
+		return true
+	if _visibility.owns_reveal() and event is InputEventMouseButton and event.pressed and _native_open_menu == null and not _controller_active and not _pointer_is_over_heading(event.position):
+		_close_pointer_menu()
+		_owner().get_viewport().set_input_as_handled()
+		return true
 	if _native_open_menu != null:
 		if event is InputEventMouseButton and event.pressed:
 			var popup := _native_open_menu.get_popup()
@@ -312,7 +344,7 @@ func handle_host_input(event: InputEvent) -> bool:
 				_owner().get_viewport().set_input_as_handled()
 		return true
 	if not _controller_active:
-		return false
+		return _visibility.owns_reveal()
 	if event is InputEventKey:
 		var key := event as InputEventKey
 		if key.pressed:
@@ -405,6 +437,7 @@ func controller_back() -> bool:
 		return true
 	_controller_active = false
 	_controller_overlay().close()
+	_visibility.dismiss()
 	var restore: Control = _controller_restore_focus.get_ref() if _controller_restore_focus != null else null
 	_controller_restore_focus = null
 	if restore != null and restore.is_inside_tree() and restore.is_visible_in_tree():

@@ -105,6 +105,7 @@ var view: GameView
 var vault_revisions: Array[CharacterVaultRevisionView] = []
 var vault_notice: String = ""
 var media: ClassicMediaCatalog
+var character_art_dialog: CharacterArtDialog
 var settings: PresentationSettings = PresentationSettings.new()
 var layout_profile: StringName = UiLayoutProfile.WIDE
 var standalone_character_creation_available: bool = false

@@ -35,12 +35,15 @@ func build() -> void:
 	owner.ensure_appearance_textures(selected_asset_ids)
 	var step := owner.appearance_step_scene.instantiate() as CharacterCreationAppearanceStep
 	owner.creator_page.add_child(step)
+	var import_button := step.get_node("%ImportCharacterArt") as Button
+	import_button.visible = owner.character_art_dialog != null
+	import_button.pressed.connect(_open_character_art)
 	owner.portrait_preview = step.get_node("%PortraitPreview") as TextureRect
 	owner.combat_icon_preview = step.get_node("%CombatIconPreview") as TextureRect
 	owner.portrait_option = step.get_node("%PortraitOption") as OptionButton
 	owner.combat_icon_option = step.get_node("%CombatIconOption") as OptionButton
-	var portrait_options := _sorted_options(owner, owner.view.portrait_options if owner.view != null else [])
-	var combat_options := _sorted_options(owner, owner.view.combat_icon_options if owner.view != null else [])
+	var portrait_options := _sorted_options(owner, _options(true))
+	var combat_options := _sorted_options(owner, _options(false))
 	_populate_option_control(owner, owner.portrait_option, portrait_options, true)
 	_populate_option_control(owner, owner.combat_icon_option, combat_options, false)
 	_bind_strip(step, owner, owner.portrait_option, portrait_options, true)
@@ -112,6 +115,19 @@ func _rows(owner, options: Array[CharacterAppearanceOptionView]) -> Array[Dictio
 			else:
 				ordered_races.append(race)
 	var assigned: Dictionary = {}
+	var art_groups: Dictionary = {}
+	for option: CharacterAppearanceOptionView in options:
+		if not option.art_group.is_empty():
+			if not art_groups.has(option.art_group):
+				art_groups[option.art_group] = []
+			(art_groups[option.art_group] as Array).append(option)
+			assigned[option.id] = true
+	var group_names := art_groups.keys()
+	group_names.sort()
+	for group_name: String in group_names:
+		var group_options: Array[CharacterAppearanceOptionView] = []
+		group_options.assign(art_groups[group_name])
+		_append_rows(rows, group_name, group_options)
 	for race: DefinitionOptionView in ordered_races:
 		var recommended: Array[CharacterAppearanceOptionView] = []
 		for option: CharacterAppearanceOptionView in options:
@@ -242,9 +258,39 @@ func selected(control: OptionButton, portrait: bool) -> CharacterAppearanceOptio
 
 
 func option_by_id(option_id: String, portrait: bool) -> CharacterAppearanceOptionView:
-	var owner = _owner()
-	var options: Array[CharacterAppearanceOptionView] = owner.view.portrait_options if portrait else owner.view.combat_icon_options
-	for option: CharacterAppearanceOptionView in options:
+	for option: CharacterAppearanceOptionView in _options(portrait):
 		if option.id == option_id:
 			return option
 	return null
+
+
+func _options(portrait: bool) -> Array[CharacterAppearanceOptionView]:
+	var owner = _owner()
+	var options: Array[CharacterAppearanceOptionView] = []
+	if owner.view != null:
+		options.assign(owner.view.portrait_options if portrait else owner.view.combat_icon_options)
+	if owner.media != null:
+		options.append_array(owner.media.imported_appearance_options(CharacterAppearanceDefinition.PORTRAIT if portrait else CharacterAppearanceDefinition.COMBAT_ICON))
+	return options
+
+
+func _open_character_art() -> void:
+	var owner = _owner()
+	var group_name := ""
+	if owner.view != null:
+		for race: DefinitionOptionView in owner.view.race_options:
+			if race.id == owner.selected_race_id:
+				group_name = race.name
+	owner.character_art_dialog.open_library(group_name, _select_imported_art)
+
+
+func _select_imported_art(id: String, kind: String) -> void:
+	var owner = _owner()
+	if kind == "portrait":
+		owner.draft_portrait_id = id
+		_portrait_page = 0
+	else:
+		owner.draft_combat_icon_id = id
+		owner.combat_icon_touched = true
+		_combat_icon_page = 0
+	owner.render_creator_step()
