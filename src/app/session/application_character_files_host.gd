@@ -55,6 +55,8 @@ func poll_library_load(active_content: RealmzContent) -> bool:
 	_library_media = prepared.media
 	_package_host.set_application_content(_library_content, _library_media.assets())
 	_presentation_media.set_application_character_media(_library_media)
+	if _art_host != null:
+		_art_host.set_stock_catalog(_library_content.characters)
 	_presentation_media.set_package_media(_library_media)
 	_vault.seed_classic_starters_if_empty()
 	_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(true)

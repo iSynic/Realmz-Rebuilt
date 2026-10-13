@@ -9,6 +9,10 @@ const ROWS_PER_PAGE: int = 2
 var _owner_ref: WeakRef
 var _portrait_page: int = 0
 var _combat_icon_page: int = 0
+var _selected_art_group := ""
+var _imported_groups_by_kind: Dictionary = {}
+var _retained_imported_options: Dictionary = {}
+var _retained_only_ids: Dictionary = {}
 
 
 func _init(owner: RefCounted) -> void:
@@ -38,16 +42,22 @@ func build() -> void:
 	var import_button := step.get_node("%ImportCharacterArt") as Button
 	import_button.visible = owner.character_art_dialog != null
 	import_button.pressed.connect(_open_character_art)
+	if owner.character_art_dialog != null and not owner.character_art_dialog.dismissed.is_connected(_artwork_library_dismissed):
+		owner.character_art_dialog.dismissed.connect(_artwork_library_dismissed)
 	owner.portrait_preview = step.get_node("%PortraitPreview") as TextureRect
 	owner.combat_icon_preview = step.get_node("%CombatIconPreview") as TextureRect
 	owner.portrait_option = step.get_node("%PortraitOption") as OptionButton
 	owner.combat_icon_option = step.get_node("%CombatIconOption") as OptionButton
+	_imported_groups_by_kind.clear()
+	_retained_only_ids.clear()
 	var portrait_options := _sorted_options(owner, _options(true))
 	var combat_options := _sorted_options(owner, _options(false))
+	_prune_retained_options(owner)
 	_populate_option_control(owner, owner.portrait_option, portrait_options, true)
 	_populate_option_control(owner, owner.combat_icon_option, combat_options, false)
-	_bind_strip(step, owner, owner.portrait_option, portrait_options, true)
-	_bind_strip(step, owner, owner.combat_icon_option, combat_options, false)
+	_bind_group_filter(step, owner, portrait_options, combat_options)
+	_bind_strip(step, owner, owner.portrait_option, _filtered_options(owner, portrait_options), true)
+	_bind_strip(step, owner, owner.combat_icon_option, _filtered_options(owner, combat_options), false)
 	var catalog_error := step.get_node("%AppearanceCatalogError") as Label
 	catalog_error.visible = portrait_options.is_empty() or combat_options.is_empty()
 	_refresh_preview(owner)
@@ -110,37 +120,152 @@ func _rows(owner, options: Array[CharacterAppearanceOptionView]) -> Array[Dictio
 	var ordered_races: Array[DefinitionOptionView] = []
 	if owner.view != null:
 		for race: DefinitionOptionView in owner.view.race_options:
+			if not race.available_for_creation:
+				continue
 			if race.id == owner.selected_race_id:
 				ordered_races.push_front(race)
 			else:
 				ordered_races.append(race)
 	var assigned: Dictionary = {}
-	var art_groups: Dictionary = {}
-	for option: CharacterAppearanceOptionView in options:
-		if not option.art_group.is_empty():
-			if not art_groups.has(option.art_group):
-				art_groups[option.art_group] = []
-			(art_groups[option.art_group] as Array).append(option)
-			assigned[option.id] = true
-	var group_names := art_groups.keys()
-	group_names.sort()
-	for group_name: String in group_names:
-		var group_options: Array[CharacterAppearanceOptionView] = []
-		group_options.assign(art_groups[group_name])
-		_append_rows(rows, group_name, group_options)
+	var grouped_names := _active_imported_group_names()
+	grouped_names.sort()
 	for race: DefinitionOptionView in ordered_races:
-		var recommended: Array[CharacterAppearanceOptionView] = []
+		var race_options: Array[CharacterAppearanceOptionView] = []
 		for option: CharacterAppearanceOptionView in options:
-			if option.is_recommended_for(race.id):
-				recommended.append(option)
+			if option.is_recommended_for(race.id) or _has_imported_group(option.id, race.name):
+				race_options.append(option)
 				assigned[option.id] = true
-		_append_rows(rows, race.name, recommended)
+		_append_rows(rows, race.name, race_options)
+	for group_name: String in grouped_names:
+		if _race_id_for_name(owner, group_name).is_empty():
+			var group_options: Array[CharacterAppearanceOptionView] = []
+			for option: CharacterAppearanceOptionView in options:
+				if _has_imported_group(option.id, group_name):
+					group_options.append(option)
+					assigned[option.id] = true
+			_append_rows(rows, group_name, group_options)
+	_append_retained_rows(rows, options, assigned)
 	var ungrouped: Array[CharacterAppearanceOptionView] = []
 	for option: CharacterAppearanceOptionView in options:
 		if not assigned.has(option.id):
 			ungrouped.append(option)
 	_append_rows(rows, "Classic catalog", ungrouped)
 	return rows
+
+
+func _bind_group_filter(step: CharacterCreationAppearanceStep, owner, portraits: Array[CharacterAppearanceOptionView], icons: Array[CharacterAppearanceOptionView]) -> void:
+	var control := step.get_node("%ArtworkGroupFilter") as OptionButton
+	control.clear()
+	control.add_item("All artwork")
+	control.set_item_metadata(0, "")
+	var group_names := PackedStringArray()
+	if owner.view != null:
+		for race: DefinitionOptionView in owner.view.race_options:
+			if race.available_for_creation and _has_recommended_art(race.id, portraits, icons):
+				_append_group_name(group_names, race.name)
+	for group_name: String in _active_imported_group_names():
+		_append_group_name(group_names, group_name)
+	group_names.sort()
+	for group_name: String in group_names:
+		control.add_item(group_name)
+		control.set_item_metadata(control.item_count - 1, group_name)
+	var selection := _group_item_index(control, _selected_art_group)
+	if selection < 0:
+		_selected_art_group = ""
+		selection = 0
+	control.select(selection)
+	control.item_selected.connect(_select_art_group.bind(control))
+
+
+func _filtered_options(owner, options: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
+	var result: Array[CharacterAppearanceOptionView] = []
+	var race_id := _race_id_for_name(owner, _selected_art_group)
+	for option: CharacterAppearanceOptionView in options:
+		if _selected_art_group.is_empty() or _retained_only_ids.has(option.id) or _has_imported_group(option.id, _selected_art_group) or not race_id.is_empty() and option.is_recommended_for(race_id):
+			result.append(option)
+	return result
+
+
+func _has_recommended_art(race_id: String, portraits: Array[CharacterAppearanceOptionView], icons: Array[CharacterAppearanceOptionView]) -> bool:
+	for option: CharacterAppearanceOptionView in portraits + icons:
+		if option.is_recommended_for(race_id):
+			return true
+	return false
+
+
+func _active_imported_group_names() -> PackedStringArray:
+	var names := PackedStringArray()
+	for by_id: Dictionary in _imported_groups_by_kind.values():
+		for group_list: PackedStringArray in by_id.values():
+			for group_name: String in group_list:
+				_append_group_name(names, group_name)
+	return names
+
+
+func _has_imported_group(option_id: String, group_name: String) -> bool:
+	if group_name.is_empty() or _retained_only_ids.has(option_id):
+		return false
+	for by_id: Dictionary in _imported_groups_by_kind.values():
+		if not by_id.has(option_id):
+			continue
+		for candidate: String in by_id[option_id]:
+			if candidate.nocasecmp_to(group_name) == 0:
+				return true
+	return false
+
+
+func _race_id_for_name(owner, group_name: String) -> String:
+	if owner.view == null or group_name.is_empty():
+		return ""
+	for race: DefinitionOptionView in owner.view.race_options:
+		if race.available_for_creation and race.name.nocasecmp_to(group_name) == 0:
+			return race.id
+	return ""
+
+
+static func _append_group_name(names: PackedStringArray, group_name: String) -> void:
+	if group_name.strip_edges().is_empty():
+		return
+	for existing: String in names:
+		if existing.nocasecmp_to(group_name) == 0:
+			return
+	names.append(group_name)
+
+
+static func _group_item_index(control: OptionButton, group_name: String) -> int:
+	for index: int in control.item_count:
+		if String(control.get_item_metadata(index)).nocasecmp_to(group_name) == 0:
+			return index
+	return -1
+
+
+func _append_retained_rows(rows: Array[Dictionary], options: Array[CharacterAppearanceOptionView], assigned: Dictionary) -> void:
+	var retained: Array[CharacterAppearanceOptionView] = []
+	for option: CharacterAppearanceOptionView in options:
+		if _retained_only_ids.has(option.id):
+			retained.append(option)
+			assigned[option.id] = true
+	_append_rows(rows, "Current selection", retained)
+
+
+func _select_art_group(index: int, control: OptionButton) -> void:
+	_selected_art_group = String(control.get_item_metadata(index))
+	_portrait_page = 0
+	_combat_icon_page = 0
+	_owner().render_creator_step()
+
+
+func _artwork_library_dismissed() -> void:
+	var owner = _owner()
+	if owner != null and owner.setup_mode == &"creator" and owner.creator_step == 2 and owner.setup_overlay != null and owner.setup_overlay.visible:
+		owner.render_creator_step()
+
+
+func _prune_retained_options(owner) -> void:
+	var selected_ids := [owner.draft_portrait_id, owner.draft_combat_icon_id]
+	for option_id: String in _retained_imported_options.keys():
+		if not selected_ids.has(option_id):
+			_retained_imported_options.erase(option_id)
 
 
 static func _append_rows(rows: Array[Dictionary], label: String, options: Array[CharacterAppearanceOptionView]) -> void:
@@ -269,9 +394,39 @@ func _options(portrait: bool) -> Array[CharacterAppearanceOptionView]:
 	var options: Array[CharacterAppearanceOptionView] = []
 	if owner.view != null:
 		options.assign(owner.view.portrait_options if portrait else owner.view.combat_icon_options)
+	var kind := CharacterAppearanceDefinition.PORTRAIT if portrait else CharacterAppearanceDefinition.COMBAT_ICON
+	var imported_groups: Dictionary = {}
 	if owner.media != null:
-		options.append_array(owner.media.imported_appearance_options(CharacterAppearanceDefinition.PORTRAIT if portrait else CharacterAppearanceDefinition.COMBAT_ICON))
+		for option: CharacterAppearanceOptionView in owner.media.imported_appearance_options(kind):
+			if not imported_groups.has(option.id):
+				imported_groups[option.id] = PackedStringArray()
+			var groups: PackedStringArray = imported_groups[option.id]
+			_append_group_name(groups, option.art_group)
+			imported_groups[option.id] = groups
+			if not _contains_option(options, option.id):
+				options.append(option)
+			if option.id == _selected_id(owner, portrait):
+				_retained_imported_options[option.id] = option
+	_imported_groups_by_kind[String(kind)] = imported_groups
+	var selected_id := _selected_id(owner, portrait)
+	if CharacterArtIdentity.is_imported(selected_id) and not _contains_option(options, selected_id):
+		var retained := _retained_imported_options.get(selected_id) as CharacterAppearanceOptionView
+		if retained == null and owner.media != null:
+			var asset: MediaAsset = owner.media.asset_by_id(selected_id)
+			if asset != null:
+				retained = CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new(asset.id, asset.label, StringName(kind), 0))
+		if retained != null:
+			options.append(retained)
+			_retained_only_ids[selected_id] = true
 	return options
+
+
+func _selected_id(owner, portrait: bool) -> String:
+	return owner.draft_portrait_id if portrait else owner.draft_combat_icon_id
+
+
+static func _contains_option(options: Array[CharacterAppearanceOptionView], option_id: String) -> bool:
+	return options.any(func(option: CharacterAppearanceOptionView) -> bool: return option.id == option_id)
 
 
 func _open_character_art() -> void:
@@ -279,6 +434,8 @@ func _open_character_art() -> void:
 	var group_name := ""
 	if owner.view != null:
 		for race: DefinitionOptionView in owner.view.race_options:
+			if not race.available_for_creation:
+				continue
 			if race.id == owner.selected_race_id:
 				group_name = race.name
 	owner.character_art_dialog.open_library(group_name, _select_imported_art)

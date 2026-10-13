@@ -20,6 +20,22 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Import / Browse Character Art…"
 
+[node name="ArtworkGroupRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ArtworkGroupLabel" type="Label" parent="ArtworkGroupRow"]
+layout_mode = 2
+text = "Artwork group"
+vertical_alignment = 1
+
+[node name="ArtworkGroupFilter" type="OptionButton" parent="ArtworkGroupRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+
 [node name="AppearanceRow" type="HBoxContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3

@@ -171,3 +171,9 @@ layout_mode = 2
 text = "No scroll case slots are available."
 theme_override_font_sizes/font_size = 13
 autowrap_mode = 2
+
+[editable path="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot0"]
+[editable path="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot1"]
+[editable path="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot2"]
+[editable path="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot3"]
+[editable path="SpellsTab/CharacterSpellRegions/ScrollCaseRegion/Content/ScrollCards/SheetScrollSlot4"]

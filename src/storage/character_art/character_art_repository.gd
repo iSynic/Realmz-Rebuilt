@@ -4,10 +4,108 @@ extends RefCounted
 
 var _root: String
 var last_error := ""
+var _library: CharacterArtLibraryIndex
+var _stock_groups := PackedStringArray()
 
 
 func _init(root: String = "user://character-art") -> void:
 	_root = root.trim_suffix("/")
+
+
+func set_stock_groups(names: PackedStringArray) -> void:
+	_stock_groups = names.duplicate()
+
+
+func groups() -> Array[Dictionary]:
+	var index := _index()
+	var result: Array[Dictionary] = []
+	var names := _stock_groups.duplicate()
+	if index != null:
+		for name: String in index.group_names():
+			if _matching_name(names, name).is_empty():
+				names.append(name)
+	names.sort()
+	for name: String in names:
+		result.append({"name": name, "builtin": not _matching_name(_stock_groups, name).is_empty()})
+	return result
+
+
+func entries() -> Array[Dictionary]:
+	var index := _index()
+	var result := index.entries() if index != null else [] as Array[Dictionary]
+	for entry: Dictionary in result:
+		var stock := _matching_name(_stock_groups, entry.group)
+		if not stock.is_empty():
+			entry.group = stock
+	result.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return (a.group + a.kind + a.label + a.id).naturalnocasecmp_to(b.group + b.kind + b.label + b.id) < 0)
+	return result
+
+
+func appearance_options() -> Array[CharacterAppearanceOptionView]:
+	var result: Array[CharacterAppearanceOptionView] = []
+	for entry: Dictionary in entries():
+		var option := CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new(entry.id, entry.label, StringName(entry.kind), 0))
+		option.art_group = entry.group
+		result.append(option)
+	return result
+
+
+func create_group(name: String) -> bool:
+	name = name.strip_edges()
+	if not _available_name(name):
+		return false
+	return _index_result(_library.add_group(name))
+
+
+func rename_group(name: String, replacement: String) -> bool:
+	replacement = replacement.strip_edges()
+	if not _editable_group(name):
+		return false
+	if name.nocasecmp_to(replacement) != 0 and not _available_name(replacement):
+		return false
+	return _index_result(_library.rename_group(_stored_group(name), replacement))
+
+
+func remove_group(name: String) -> bool:
+	return _editable_group(name) and _index_result(_library.remove_group(_stored_group(name)))
+
+
+func rename_image(group: String, id: String, label: String) -> bool:
+	if _index() == null:
+		return false
+	return _index_result(_library.rename_image(_stored_group(group), id, label.strip_edges()))
+
+
+func remove_images(group: String, ids: PackedStringArray) -> bool:
+	if _index() == null:
+		return false
+	return _index_result(_library.remove_images(_stored_group(group), ids))
+
+
+func import_batch(batch: CharacterArtImportBatch, group: String) -> bool:
+	last_error = ""
+	if batch == null or batch.ready_count() == 0 or _index() == null:
+		return false
+	var canonical := _stored_group(group)
+	if not _library.group_names().has(canonical) and _matching_name(_stock_groups, canonical).is_empty():
+		last_error = "Choose an existing artwork race before importing."
+		return false
+	if not _index_result(_library.add_entries([])) or not _ensure_directory():
+		return false
+	var bundle := CharacterArtBundle.new()
+	for item: Dictionary in batch.items:
+		if item.id.is_empty() or not item.error.is_empty():
+			continue
+		if not bundle.add(item.id, canonical, item.label, batch.kind, item.png):
+			last_error = "An import preview failed validation. Nothing was added to the library."
+			return false
+		var source := item.source as CharacterArtImage
+		var original := _root.path_join("originals").path_join(_hash(source.source_bytes) + "." + source.source_extension)
+		if not FileAccess.file_exists(original) and not _write_verified_bytes(original, source.source_bytes):
+			return false
+	if not _store_bundle(bundle):
+		return false
+	return _index_result(_library.add_entries(bundle.entries()))
 
 
 func media() -> CharacterArtBundle:
@@ -16,7 +114,7 @@ func media() -> CharacterArtBundle:
 	if directory == null:
 		return result
 	for filename: String in directory.get_files():
-		if not filename.ends_with(".json"):
+		if not filename.ends_with(".json") or filename == "library.json":
 			continue
 		var entry := _read_entry(_root.path_join(filename))
 		if entry == null:
@@ -43,6 +141,10 @@ func selected(characters: Array[CharacterState]) -> CharacterArtBundle:
 			last_error = "Selected character artwork is missing or invalid: %s" % id
 			return null
 		var metadata := entry.entries()[0]
+		for current: Dictionary in entries():
+			if current.id == id:
+				metadata = current
+				break
 		result.add(id, metadata.group, metadata.label, metadata.kind, entry.read_bytes(entry.asset_by_id(id)))
 	return result if result.matches_characters(characters) else null
 
@@ -75,6 +177,20 @@ func install(bundle: CharacterArtBundle) -> bool:
 		return false
 	if bundle.assets().is_empty():
 		return true
+	if _index() == null or not _index_result(_library.add_entries([])):
+		return false
+	var fresh: Array[Dictionary] = []
+	for entry: Dictionary in bundle.entries():
+		if not FileAccess.file_exists(_entry_path(entry.id)):
+			entry.group = _stored_group(entry.group)
+			fresh.append(entry)
+	if not _store_bundle(bundle):
+		return false
+	# Existing payloads keep renamed or removed membership when saves/vaults reinstall them.
+	return _index_result(_library.add_entries(fresh))
+
+
+func _store_bundle(bundle: CharacterArtBundle) -> bool:
 	if not _ensure_directory():
 		return false
 	for record: Dictionary in bundle.to_data():
@@ -93,6 +209,59 @@ func install(bundle: CharacterArtBundle) -> bool:
 			last_error = "Artwork library readback failed."
 			return false
 	return true
+
+
+func _index() -> CharacterArtLibraryIndex:
+	if _library != null:
+		return _library
+	var candidate := CharacterArtLibraryIndex.new(_root.path_join("library.json"))
+	if not candidate.load_entries(media().entries()):
+		last_error = candidate.last_error
+		return null
+	_library = candidate
+	return _library
+
+
+func _index_result(success: bool) -> bool:
+	last_error = _library.last_error
+	return success
+
+
+func _available_name(name: String) -> bool:
+	if _index() == null:
+		return false
+	if not CharacterArtLibraryIndex.valid_name(name):
+		last_error = "Enter an artwork race name of 1–128 characters."
+		return false
+	var names := _stock_groups + _library.group_names()
+	if not _matching_name(names, name).is_empty():
+		last_error = "An artwork race with that name already exists."
+		return false
+	return true
+
+
+func _editable_group(name: String) -> bool:
+	if _index() == null:
+		return false
+	if not _matching_name(_stock_groups, name).is_empty():
+		last_error = "Built-in artwork race names cannot be renamed or removed."
+		return false
+	return true
+
+
+func _stored_group(name: String) -> String:
+	var existing := _matching_name(_library.group_names(), name)
+	if not existing.is_empty():
+		return existing
+	var stock := _matching_name(_stock_groups, name)
+	return stock if not stock.is_empty() else name
+
+
+static func _matching_name(names: PackedStringArray, name: String) -> String:
+	for candidate: String in names:
+		if candidate.nocasecmp_to(name) == 0:
+			return candidate
+	return ""
 
 
 func _entry_path(id: String) -> String:
