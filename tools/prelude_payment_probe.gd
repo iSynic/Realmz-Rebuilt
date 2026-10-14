@@ -1,7 +1,7 @@
 ## Replays Prelude AP 9 at the public session boundary with pinned starter wealth.
 extends SceneTree
 
-const EXPECTED_PACKAGE_HASH := "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439"
+const EXPECTED_PACKAGE_HASH := "a93377fe0e8f029d3451ea593fb6650b7a4c482524f62832adbc3fbc44094c78"
 const BUNDLED_PACKAGE_PATH := "res://src/storage/packages/bundled_campaigns/scenario-prelude-to-pestilence.realmz2"
 
 

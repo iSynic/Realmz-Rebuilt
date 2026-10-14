@@ -16,6 +16,8 @@ func configure(application: RealmzContent, packages: Array[PackageDiscoveryResul
 
 func catalog(record: CharacterVaultRecord, destination: RealmzContent) -> ContentTransferCatalog:
 	last_error = ""
+	if record.source_rules != null:
+		return record.source_rules.catalog()
 	if record.source_package_hash == destination.package_hash and record.source_campaign_id == destination.campaign_id:
 		return destination.transfer_catalog
 	if _application == null:

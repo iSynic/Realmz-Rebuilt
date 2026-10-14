@@ -82,6 +82,23 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	return step
 
 
+func prepare_party(catalog: ScenarioSetupCatalog, initial_seed: int) -> SessionStep:
+	if is_busy(): return _busy_step()
+	var replacement := GameSession.new()
+	var step := replacement.prepare_party(catalog, initial_seed)
+	if step.state != SessionStep.State.FAILED: replace_session(replacement)
+	step_committed.emit(step)
+	return step
+
+
+func activate_prepared_party(content: RealmzContent) -> SessionStep:
+	if is_busy(): return _busy_step()
+	var step := _session.activate_prepared_party(content)
+	_current_view = _session.view(step.events)
+	step_committed.emit(step)
+	return step
+
+
 func restore(content: RealmzContent, envelope: SessionSnapshot) -> SessionStep:
 	if is_busy(): return _busy_step()
 	var replacement := GameSession.new()

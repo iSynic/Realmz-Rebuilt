@@ -6,13 +6,15 @@ extends RefCounted
 var _repository: SaveRepository
 var _half_truth_update: HalfTruthMediaSaveUpdate
 var _shop_update: ShopSaveUpdate
+var _marker_update: MarkerSaveUpdate
 var _last_error := ""
 
 
-func _init(repository: SaveRepository = null, half_truth_update: HalfTruthMediaSaveUpdate = null, shop_update: ShopSaveUpdate = null) -> void:
+func _init(repository: SaveRepository = null, half_truth_update: HalfTruthMediaSaveUpdate = null, shop_update: ShopSaveUpdate = null, marker_update: MarkerSaveUpdate = null) -> void:
 	_repository = repository if repository != null else SaveRepository.new()
 	_half_truth_update = half_truth_update if half_truth_update != null else HalfTruthMediaSaveUpdate.new()
 	_shop_update = shop_update if shop_update != null else ShopSaveUpdate.new()
+	_marker_update = marker_update if marker_update != null else MarkerSaveUpdate.new()
 
 
 func save(content: RealmzContent, slot_id: String, snapshot: SessionSnapshot, preview_jpeg: PackedByteArray = PackedByteArray()) -> bool:
@@ -51,13 +53,29 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false) -> Sess
 	return _repository.load(content.campaign_id, slot_id, content.package_hash)
 
 
+func campaign_previews(campaign_id: String, current_package_hash: String = "") -> Array[SaveSlotPreview]:
+	var result: Array[SaveSlotPreview] = []
+	result.assign(_repository.list_previews(campaign_id, ""))
+	for preview: SaveSlotPreview in result:
+		preview.can_update = preview.can_load and (_half_truth_update.eligible(campaign_id, preview.package_hash, current_package_hash) or _shop_update.eligible(campaign_id, preview.package_hash, current_package_hash) or _marker_update.eligible(campaign_id, preview.package_hash, current_package_hash))
+	return result
+
+
+func remembered_slot(campaign_id: String) -> String:
+	return _repository.active_slot(campaign_id)
+
+
+func saved_campaign_ids() -> Array[String]:
+	return _repository.campaign_ids()
+
+
 func previews(content: RealmzContent) -> Array[SaveSlotPreview]:
 	if content == null:
 		return []
 	var result: Array[SaveSlotPreview] = []
 	result.assign(_repository.list_previews(content.campaign_id, content.package_hash))
 	for preview: SaveSlotPreview in result:
-		preview.can_update = preview.status == SaveSlotPreview.PACKAGE_MISMATCH and (_half_truth_update.eligible(preview.campaign_id, preview.package_hash, content.package_hash) or _shop_update.eligible(preview.campaign_id, preview.package_hash, content.package_hash))
+		preview.can_update = preview.status == SaveSlotPreview.PACKAGE_MISMATCH and (_half_truth_update.eligible(preview.campaign_id, preview.package_hash, content.package_hash) or _shop_update.eligible(preview.campaign_id, preview.package_hash, content.package_hash) or _marker_update.eligible(preview.campaign_id, preview.package_hash, content.package_hash))
 	return result
 
 
@@ -74,19 +92,25 @@ func update_save(content: RealmzContent, slot_id: String, backup: bool = false) 
 	if content == null:
 		return ""
 	var shop_transition := _shop_update.transition(content.campaign_id, content.package_hash)
+	var marker_transition := _marker_update.transition(content.campaign_id, content.package_hash)
 	var media_update := _half_truth_update.eligible(content.campaign_id, HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH, content.package_hash)
-	if shop_transition.is_empty() and not media_update:
+	if shop_transition.is_empty() and marker_transition.is_empty() and not media_update:
 		_last_error = "This campaign revision has no verified save update."
 		return ""
-	var old_hash: String = HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH if media_update else shop_transition.oldPackageHash
+	var old_hash: String = marker_transition.previousPackage.packageHash if not marker_transition.is_empty() else (HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH if media_update else shop_transition.oldPackageHash)
 	var original := _repository.read_for_explicit_update(content.campaign_id, slot_id, old_hash, backup)
 	if original == null:
 		_last_error = _repository.last_error
 		return ""
-	var valid := _half_truth_update.validate_archives(content) if media_update else _shop_update.validate_archives(content)
+	var valid := _marker_update.validate_archives(content) if not marker_transition.is_empty() else (_half_truth_update.validate_archives(content) if media_update else _shop_update.validate_archives(content))
 	if not valid:
-		_last_error = _half_truth_update.last_error if media_update else _shop_update.last_error
+		_last_error = _marker_update.last_error if not marker_transition.is_empty() else (_half_truth_update.last_error if media_update else _shop_update.last_error)
 		return ""
+	var target_slot := _marker_update.updated_slot_id(slot_id, backup, content.package_hash) if not marker_transition.is_empty() else (_half_truth_update.updated_slot_id(slot_id, backup) if media_update else _shop_update.updated_slot_id(slot_id, backup, content.package_hash))
+	return _copy_updated_save(content, original, target_slot)
+
+
+func _copy_updated_save(content: RealmzContent, original: SaveEnvelope, target_slot: String) -> String:
 	var source_data := original.to_data()
 	var updated_data := source_data.duplicate(true)
 	updated_data["packageHash"] = content.package_hash
@@ -103,7 +127,6 @@ func update_save(content: RealmzContent, slot_id: String, backup: bool = false) 
 	if not _same_gameplay_state(updated_data, restored_data):
 		_last_error = "The updated save changed during detached restoration."
 		return ""
-	var target_slot := _half_truth_update.updated_slot_id(slot_id, backup) if media_update else _shop_update.updated_slot_id(slot_id, backup, content.package_hash)
 	if not _repository.save_new_copy(content.campaign_id, target_slot, updated):
 		_last_error = _repository.last_error
 		return ""

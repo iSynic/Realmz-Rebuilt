@@ -26,12 +26,12 @@ func _ready() -> void:
 	get_viewport().gui_focus_changed.connect(_keep_details_focus)
 	get_viewport().size_changed.connect(_refresh_details_geometry)
 
-func present_campaign(campaign: CampaignPackageView, running: bool, selected: bool, pending_revision: String = "") -> void:
+func present_campaign(campaign: CampaignPackageView, running: bool, selected: bool, pending_revision: String = "", setup_ready: bool = false) -> void:
 	_campaign = campaign
 	_running = running
 	%CampaignDockTitle.text = campaign.display_name if campaign != null else "Choose a scenario"
 	%CampaignDockTitle.tooltip_text = %CampaignDockTitle.text
-	%CampaignDockStatus.text = "Preparing scenario..." if running else "Ready to add characters" if selected else campaign.error_message if campaign != null and not campaign.ready else "Select a scenario to add characters."
+	%CampaignDockStatus.text = "Build your party now. Play waits if needed." if running and selected and setup_ready else "Preparing party rules…" if running else "Ready to play" if selected else campaign.error_message if campaign != null and not campaign.ready else "Select a scenario to add characters."
 	%CampaignDockStatus.tooltip_text = %CampaignDockStatus.text
 	%CampaignRevision.clear()
 	%CampaignRevision.visible = campaign != null and campaign.origin == "imported" and campaign.revisions.size() > 1
@@ -51,7 +51,7 @@ func present_campaign(campaign: CampaignPackageView, running: bool, selected: bo
 		if running and not pending_revision.is_empty(): %CampaignDockStatus.text = "Preparing %s..." % %CampaignRevision.get_item_text(%CampaignRevision.selected)
 	%RemoveCampaign.visible = campaign != null and campaign.origin == "imported"
 	%RemoveCampaign.disabled = running
-	%ShowScenarioDetails.disabled = campaign == null or running
+	%ShowScenarioDetails.disabled = campaign == null or running and not setup_ready
 	if campaign != null and not selected:
 		%SelectedScenarioSummary.show()
 		%SelectedScenarioTitle.text = campaign.display_name
@@ -62,9 +62,9 @@ func present_campaign(campaign: CampaignPackageView, running: bool, selected: bo
 		%SelectedScenarioGuidance.text = ""
 		%SelectedScenarioSplash.hide()
 		%SelectedScenarioSplashUnavailable.hide()
-	%MainFilter.disabled = running
-	%ImportedFilter.disabled = running
-	%CampaignSearch.editable = not running
+	%MainFilter.disabled = false
+	%ImportedFilter.disabled = false
+	%CampaignSearch.editable = true
 	_apply_operation_layout(UiSizing.profile_for(self))
 	_filter_rows()
 
@@ -92,8 +92,12 @@ func _filter_rows() -> void:
 	%ImportedScenarioHeading.hide()
 	%MainCampaignRows.visible = _origin == "main"
 	%ImportedCampaignRows.visible = _origin == "imported"
-	%MainFilter.text = "Main %d" % %MainCampaignRows.get_child_count()
-	%ImportedFilter.text = "Imported %d" % %ImportedCampaignRows.get_child_count()
+	var profile := UiSizing.profile_for(self)
+	var compact := profile != null and profile.id == UiLayoutProfile.COMPACT
+	%MainFilter.text = "Main" if compact else "Main %d" % %MainCampaignRows.get_child_count()
+	%ImportedFilter.text = "Import" if compact else "Imported %d" % %ImportedCampaignRows.get_child_count()
+	%MainFilter.tooltip_text = "%d main scenarios" % %MainCampaignRows.get_child_count()
+	%ImportedFilter.tooltip_text = "%d imported scenarios" % %ImportedCampaignRows.get_child_count()
 	var count := 0
 	var query: String = %CampaignSearch.text.strip_edges().to_lower()
 	for rows: VBoxContainer in [%MainCampaignRows, %ImportedCampaignRows]:
@@ -122,10 +126,10 @@ func apply_ui_sizing(profile: UiLayoutProfile) -> void:
 
 
 func _apply_operation_layout(profile: UiLayoutProfile) -> void:
-	var progress_only := _running and profile != null and profile.id == UiLayoutProfile.COMPACT and profile.font_scale > profile.ui_scale
-	get_node("ScenarioPaneContent/LibraryFilters").visible = not progress_only
-	%CampaignSearch.visible = not progress_only
-	%CampaignScroll.visible = not progress_only
+	var compact := profile != null and profile.id == UiLayoutProfile.COMPACT
+	%CampaignDockStatus.visible = not compact or not _running
+	get_node("ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationHeader").visible = not compact or not _running
+	_filter_rows()
 
 
 func _update_details_size() -> void:

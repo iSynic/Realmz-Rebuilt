@@ -1,147 +1,141 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=7 format=3]
 
-[ext_resource type="Script" path="res://src/ui/setup/classic_intro_animation.gd" id="1_intro"]
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-intro-frame.png" id="2_frame"]
+[ext_resource type="Script" path="res://src/ui/setup/main_menu_view.gd" id="1_menu"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/assets/main-menu/weathered-gold-title.png" id="2_title"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/assets/main-menu/backgrounds/plate-05.png" id="3_background"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/main_menu_action.tscn" id="4_action"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_transparent"]
-bg_color = Color(0, 0, 0, 0)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.294, 0.318, 0.341, 1)
-content_margin_left = 24.0
-content_margin_top = 20.0
-content_margin_right = 24.0
-content_margin_bottom = 20.0
+[sub_resource type="Gradient" id="Gradient_readability"]
+offsets = PackedFloat32Array(0, 0.26, 0.55, 1)
+colors = PackedColorArray(0.031373, 0.062745, 0.094118, 0, 0.031373, 0.062745, 0.094118, 0.376471, 0.031373, 0.062745, 0.094118, 0.866667, 0.031373, 0.062745, 0.094118, 0.960784)
 
-[node name="SplashScreen" type="PanelContainer"]
+[sub_resource type="GradientTexture2D" id="GradientTexture_readability"]
+gradient = SubResource("Gradient_readability")
+width = 752
+height = 720
+fill_from = Vector2(1, 0)
+fill_to = Vector2(0, 0)
+
+[node name="MainMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 0
-theme_override_styles/panel = SubResource("StyleBox_transparent")
+script = ExtResource("1_menu")
+background_paths = PackedStringArray("res://src/ui/shared/assets/main-menu/backgrounds/plate-01.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-02.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-03.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-04.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-05.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-06.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-07.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-08.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-09.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-10.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-11.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-12.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-13.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-14.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-15.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-16.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-17.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-18.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-19.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-20.png")
 
-[node name="SplashComposition" type="BoxContainer" parent="."]
+[node name="MenuBackground" type="TextureRect" parent="."]
 unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 18
-
-[node name="SplashIdentityPanel" type="PanelContainer" parent="SplashComposition"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-size_flags_stretch_ratio = 1.65
-theme_type_variation = &"ClassicInset"
-
-[node name="IdentityCenter" type="CenterContainer" parent="SplashComposition/SplashIdentityPanel"]
-layout_mode = 2
-
-[node name="Identity" type="VBoxContainer" parent="SplashComposition/SplashIdentityPanel/IdentityCenter"]
-custom_minimum_size = Vector2(360, 0)
-layout_mode = 2
-theme_override_constants/separation = 10
-
-[node name="SplashTitle" type="Label" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 42
-text = "Realmz Rebuilt"
-horizontal_alignment = 1
-
-[node name="RealmzIntroOrnament" type="NinePatchRect" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(630, 410)
-layout_mode = 2
-size_flags_horizontal = 4
-mouse_filter = 2
 texture_filter = 1
-texture = ExtResource("2_frame")
-patch_margin_left = 90
-patch_margin_top = 90
-patch_margin_right = 90
-patch_margin_bottom = 90
-
-[node name="RealmzIntroAnimation" type="VideoStreamPlayer" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity/RealmzIntroOrnament"]
-unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 55.0
-offset_top = 55.0
-offset_right = -55.0
-offset_bottom = -55.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_intro")
+mouse_filter = 2
+texture = ExtResource("3_background")
+expand_mode = 1
+stretch_mode = 6
 
-[node name="RealmzIntroSoundtrack" type="AudioStreamPlayer" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity/RealmzIntroOrnament/RealmzIntroAnimation"]
+[node name="NextMenuBackground" type="TextureRect" parent="."]
 unique_name_in_owner = true
-volume_db = -80.0
+modulate = Color(1, 1, 1, 0)
+texture_filter = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
 
-[node name="SplashSubtitle" type="Label" parent="SplashComposition/SplashIdentityPanel/IdentityCenter/Identity"]
+[node name="ReadabilityFade" type="TextureRect" parent="."]
 unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
-theme_override_font_sizes/font_size = 20
-text = "Classic Adventures Reconstructed"
-horizontal_alignment = 1
+layout_mode = 0
+offset_right = 752.0
+offset_bottom = 720.0
+mouse_filter = 2
+texture = SubResource("GradientTexture_readability")
+expand_mode = 1
 
-[node name="SplashCommandPanel" type="PanelContainer" parent="SplashComposition"]
-custom_minimum_size = Vector2(320, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-size_flags_stretch_ratio = 0.75
-theme_type_variation = &"ClassicInset"
-
-[node name="CommandCenter" type="CenterContainer" parent="SplashComposition/SplashCommandPanel"]
-layout_mode = 2
-
-[node name="Commands" type="VBoxContainer" parent="SplashComposition/SplashCommandPanel/CommandCenter"]
-custom_minimum_size = Vector2(280, 0)
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="BeginHeading" type="Label" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
-layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 24
-text = "Begin"
-
-[node name="BeginDescription" type="Label" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
-layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
-theme_override_font_sizes/font_size = 15
-text = "Choose an installed adventure or manage reusable adventurers."
-autowrap_mode = 2
-
-[node name="ChooseScenario" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+[node name="MenuTitle" type="TextureRect" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+texture_filter = 2
+layout_mode = 0
+offset_left = 72.0
+offset_top = 64.0
+offset_right = 532.0
+offset_bottom = 232.0
+mouse_filter = 2
+tooltip_text = "Realmz Rebuilt"
+texture = ExtResource("2_title")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MenuCommands" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 72.0
+offset_top = 272.0
+offset_right = 506.0
+offset_bottom = 554.0
+theme_override_constants/separation = 8
+
+[node name="ChooseScenario" parent="MenuCommands" instance=ExtResource("4_action")]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Choose a scenario"
+focus_neighbor_top = NodePath("../Quit")
+focus_neighbor_bottom = NodePath("../LoadAdventure")
 
-[node name="LoadAdventure" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+[node name="LoadAdventure" parent="MenuCommands" instance=ExtResource("4_action")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 text = "Load saved adventure"
+focus_neighbor_top = NodePath("../ChooseScenario")
+focus_neighbor_bottom = NodePath("../CharacterFiles")
 
-[node name="CharacterFiles" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+[node name="CharacterFiles" parent="MenuCommands" instance=ExtResource("4_action")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-tooltip_text = "Review reusable Character Files. Stock Realmz characters can be created without selecting a scenario; scenario-specific races and classes require that scenario."
-text = "Character files"
+text = "Character Files"
+tooltip_text = "Review reusable adventurers, create stock characters, or manage their artwork."
+focus_neighbor_top = NodePath("../LoadAdventure")
+focus_neighbor_bottom = NodePath("../Settings")
 
-[node name="Quit" type="Button" parent="SplashComposition/SplashCommandPanel/CommandCenter/Commands"]
+[node name="Settings" parent="MenuCommands" instance=ExtResource("4_action")]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+text = "Settings"
+focus_neighbor_top = NodePath("../CharacterFiles")
+focus_neighbor_bottom = NodePath("../Quit")
+
+[node name="Quit" parent="MenuCommands" instance=ExtResource("4_action")]
+unique_name_in_owner = true
 layout_mode = 2
 text = "Quit"
+focus_neighbor_top = NodePath("../Settings")
+focus_neighbor_bottom = NodePath("../ChooseScenario")
+
+[node name="MenuInputHint" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 78.0
+offset_top = 660.0
+offset_right = 512.0
+offset_bottom = 684.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.678431, 0.737255, 0.784314, 1)
+theme_override_font_sizes/font_size = 16
+text = "↑ ↓ Navigate   Enter Select"
+
+[node name="BackgroundHold" type="Timer" parent="."]
+unique_name_in_owner = true
+wait_time = 18.0
+one_shot = true

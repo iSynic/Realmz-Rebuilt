@@ -69,6 +69,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 		return MONSTER_ATTACK_FAILED
 	target.lifetime_record.add_projectile_damage_taken(resolution.total_damage, resolution.hit_count, resolution.miss_count)
 	if resolution.total_damage > 0: combat.actor_statuses.mark_attacked(target.id)
+	CombatSpellEventBuilder.append_weapon_projectile(events, monster.id, target.id, projectile_spell, resolution, "classic-monster-projectile")
 	events.append(DomainEvent.new(&"combat_projectile_resolved", {
 		"actorId": monster.id, "targetId": target.id, "targetKind": "character",
 		"itemId": projectile_item.id, "spellId": projectile_spell.id,

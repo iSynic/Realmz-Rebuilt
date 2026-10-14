@@ -11,7 +11,7 @@ static func automatic_route(current_route: StringName, game_view: GameView, cont
 	if game_view.combat_view != null:
 		# The full Inventory workspace is a modal combat surface. Keep it mounted
 		# while the active battle request is rebuilt after an item mutation.
-		return current_route if current_route == &"inventory" else &"combat"
+		return current_route if current_route in [&"inventory", &"system"] else &"combat"
 	if game_view.pending_interaction != null:
 		return &"exploration"
 	if contextual_service_closed and current_route == &"services":
@@ -27,5 +27,5 @@ static func playback_base_route(current_route: StringName, game_view: GameView) 
 	return current_route
 
 
-static func combat_inventory_owns_interaction(active_route: StringName, game_view: GameView) -> bool:
-	return active_route == &"inventory" and game_view != null and game_view.combat_view != null and game_view.combat_view.outcome == &"active"
+static func combat_workspace_owns_interaction(active_route: StringName, game_view: GameView) -> bool:
+	return active_route in [&"inventory", &"system"] and game_view != null and game_view.combat_view != null and game_view.combat_view.outcome == &"active"

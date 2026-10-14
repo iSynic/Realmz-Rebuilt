@@ -253,6 +253,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	if _media == null:
 		queue_redraw()
 		return
+	_present_retained_surface()
 	queue_redraw()
 
 

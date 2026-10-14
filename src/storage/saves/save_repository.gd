@@ -191,6 +191,18 @@ func save_new_copy(campaign_id: String, slot_id: String, envelope: SaveEnvelope)
 	return true
 
 
+func campaign_ids() -> Array[String]:
+	var result: Array[String] = []
+	for campaign_id: String in DirAccess.get_directories_at(_root_path):
+		if not _safe_component(campaign_id): continue
+		for file_name: String in DirAccess.get_files_at(_root_path.path_join(campaign_id)):
+			if file_name.ends_with(".r2save") or file_name.ends_with(".r2save.bak"):
+				result.append(campaign_id)
+				break
+	result.sort()
+	return result
+
+
 func list_previews(campaign_id: String, expected_package_hash: String) -> Array:
 	last_error = ""
 	var previews: Array = []
@@ -323,7 +335,7 @@ func _preview_for_path(path: String, slot_id: String, source: StringName, expect
 	if envelope.campaign_id != expected_campaign_id:
 		status = SaveSlotPreview.CAMPAIGN_MISMATCH
 		error_message = "This save belongs to campaign '%s'." % envelope.campaign_id
-	elif envelope.package_hash != expected_package_hash:
+	elif not expected_package_hash.is_empty() and envelope.package_hash != expected_package_hash:
 		status = SaveSlotPreview.PACKAGE_MISMATCH
 		error_message = "This save was created for a different immutable package revision."
 	var preview := SaveSlotPreview.new(slot_id, source, status)

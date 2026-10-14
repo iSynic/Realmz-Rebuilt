@@ -7,7 +7,7 @@ const InteractionLayoutPolicyScript := preload("res://src/ui/shared/interactions
 
 func run() -> void:
 	await _test_indoor_party_marker()
-	await _test_top_menu_consolidation_and_pointer_ownership()
+	await _test_pause_menu_contracts()
 	_test_startup_party_setup_composition()
 	_test_package_operation_presentation()
 	await _test_primary_workspace_lifecycle()
@@ -50,7 +50,7 @@ func _test_indoor_party_marker() -> void:
 	await (Engine.get_main_loop() as SceneTree).process_frame
 
 
-func _test_top_menu_consolidation_and_pointer_ownership() -> void:
+func _test_pause_menu_contracts() -> void:
 	var host := Control.new()
 	host.size = Vector2(1280.0, 720.0)
 	(Engine.get_main_loop() as SceneTree).root.add_child(host)
@@ -58,39 +58,33 @@ func _test_top_menu_consolidation_and_pointer_ownership() -> void:
 	shell.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.add_child(shell)
 	await (Engine.get_main_loop() as SceneTree).process_frame
-	var row := shell.get_node("MenuStrip/MenuChromeColumn/MenuSurface/MenuRow") as HBoxContainer
-	var headings: Array[MenuButton] = []
-	for child: Node in row.get_children():
-		if child is MenuButton:
-			headings.append(child as MenuButton)
-	assert_equal(headings.map(func(menu: MenuButton) -> String: return menu.text), ["Game", "Adventure", "Party", "Settings", "Help"], "the desktop strip presents exactly the five coordinated headings")
-	var game := headings[0]
-	var settings := headings[3]
-	assert_true(game.get_popup().item_count == 6 and game.get_popup().get_item_text(1) == "Save & Load…" and game.get_popup().is_item_disabled(1) and game.get_popup().get_item_text(2) == "Quicksave A" and game.get_popup().get_item_text(3) == "Quickload A", "Game exposes one quicksave and quickload for the active slot alongside its campaign, save, and exit choices")
-	assert_true(headings[1].get_popup().get_item_text(9) == "Bestiary" and headings[1].get_popup().get_item_text(10) == "Maps and Notes" and headings[2].get_popup().get_item_text(5) == "Current Allies", "Adventure owns Bestiary and Maps while Party owns Current Allies")
-	assert_true(settings.get_popup().get_item_text(0) == "Preferences…" and settings.get_popup().get_item_text(7) == "Playlist…" and headings[1].get_popup().get_item_text(1) == "Move To" and headings[1].get_popup().is_item_checkable(1) and not headings[1].get_popup().is_item_checked(1) and headings[4].get_popup().get_item_text(0) == "About Realmz Rebuilt", "Settings keeps preferences and music, Adventure exposes default-off Move To, and Help keeps About")
-	var menu_controller := shell.get("_menu_controller") as GameShellMenuController
-	var pointer_click := InputEventMouseButton.new()
-	pointer_click.button_index = MOUSE_BUTTON_LEFT
-	pointer_click.pressed = true
-	game.get_popup().emit_signal("about_to_popup")
-	assert_true(menu_controller.owns_native_menu_input() and menu_controller.handle_host_input(InputEventKey.new()), "native dropdown input is held out of gameplay and remains available to GUI controls")
-	pointer_click.position = Vector2(600, 400)
-	assert_true(menu_controller.handle_host_input(pointer_click) and not menu_controller.owns_native_menu_input() and shell.get_viewport().is_input_handled(), "outside dismissal releases dropdown ownership and consumes its click before map input")
-	game.get_popup().emit_signal("popup_hide")
-	assert_false(menu_controller.owns_native_menu_input(), "closing the native dropdown releases gameplay-input ownership")
-	assert_true(shell.controller.open_top_menu() and shell.controller.move_top_menu(Vector2i.DOWN), "the controller opens the same catalog through the scene-owned menu overlay")
-	var overlay := shell.find_child("ControllerTopMenuOverlay", true, false) as ControllerTopMenuOverlay
-	assert_true(overlay.visible and (overlay.find_child("Heading", true, false) as Label).text == "Game", "controller traversal starts on the first consolidated heading")
-	shell.controller.move_top_menu(Vector2i.DOWN)
-	assert_true((overlay.find_child("Reason", true, false) as Label).visible, "disabled Game entries remain selectable with their existing reason")
-	pointer_click.position = game.get_global_rect().get_center()
-	assert_true(menu_controller.handle_host_input(pointer_click) and not shell.controller.top_menu_is_open(), "mouse takeover closes controller menu ownership while suppressing the click from gameplay")
+	var view := GameView.new(1, true, null)
+	view.campaign_id = "pause-contract-fixture"
+	view.campaign_summary = CampaignSummaryView.new()
+	view.campaign_summary.title = "Pause Contract Fixture"
+	view.party_members = [CharacterView.new(CharacterState.new("pause.hero", "Hero", 10, 10))]
+	shell.present(view)
+	assert_true(shell.controller.open_pause() and shell.pause_active and shell.controller.pause_is_open(), "a started adventure opens the scene-authored pause menu")
+	var pause := shell.get_node("PauseMenu") as PauseMenuView
+	assert_equal(pause.find_children("*", "PauseMenuAction", true, false).map(func(node: Node) -> StringName: return (node as PauseMenuAction).action_id).filter(func(id: StringName) -> bool: return id in [&"saves", &"settings", &"help"]), [&"saves", &"settings", &"help"], "Pause provides save, settings, and help destinations")
+	shell.controller.move_pause(Vector2i.DOWN); shell.controller.confirm_pause()
+	var quick_load := pause.find_children("*", "PauseMenuAction", true, false).filter(func(node: Node) -> bool: return (node as PauseMenuAction).action_id == &"quick_load")[0] as PauseMenuAction
+	assert_true(quick_load.button.disabled and quick_load.button.tooltip_text == "No quicksave in slot A.", "an empty active quickslot disables Quickload with its concrete reason")
+	assert_true(shell.controller.back_pause() and shell.controller.pause_is_open() and (pause.find_child("Heading", true, false) as Label).text == "Paused", "Back from Save & Load returns to the parent Pause page")
+	assert_equal(shell.controller.selected_pause_label(), "Resume", "returning to Pause restores its default Resume selection")
+	shell.controller.move_pause(Vector2i.DOWN); shell.controller.move_pause(Vector2i.DOWN)
+	assert_equal(shell.controller.selected_pause_label(), "Settings", "after returning from Save & Load, Down advances to Settings")
+	shell.controller.confirm_pause()
+	assert_equal((pause.find_child("Heading", true, false) as Label).text, "Settings", "confirming Settings opens that Pause page")
+	shell.controller.back_pause()
+	assert_equal(shell.controller.selected_pause_label(), "Resume", "returning from Settings restores its parent Pause selection")
+	for _step: int in 3: shell.controller.move_pause(Vector2i.DOWN)
+	assert_equal(shell.controller.selected_pause_label(), "Help & About", "after returning from Settings, Down advances to Help")
+	shell.controller.confirm_pause()
+	assert_equal((pause.find_child("Heading", true, false) as Label).text, "Help & About", "confirming Help opens that Pause page")
 	host.size = Vector2(800.0, 600.0)
 	await (Engine.get_main_loop() as SceneTree).process_frame
-	var compact := shell.get_node("%CompactMenu") as MenuButton
-	assert_true(compact.visible and compact.get_popup().item_count > 20 and compact.get_popup().get_item_text(0).begins_with("Game — ") and compact.get_popup().get_item_text(6).begins_with("Adventure — "), "the compact menu flattens the same catalog while retaining each destination group")
-	assert_true(not compact.get_popup().exclusive and headings.all(func(menu: MenuButton) -> bool: return not menu.get_popup().exclusive and not menu.switch_on_hover), "embedded dropdowns keep compositor input forwarding available and heading changes remain controller-managed")
+	assert_true(pause.visible and (pause.find_child("Surface", true, false) as Control).get_global_rect().size.x <= 460.0, "Pause fits the compact 4:3 application composition")
 	host.free()
 	await (Engine.get_main_loop() as SceneTree).process_frame
 

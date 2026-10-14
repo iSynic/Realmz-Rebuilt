@@ -1,10 +1,12 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/shared/screen_frame.tscn" id="1_base"]
 [ext_resource type="Script" path="res://src/ui/characters/vault_screen.gd" id="2_screen"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="3_sheet"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/vault_character_card.tscn" id="4_card"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/vault_history_row.tscn" id="5_history"]
+[ext_resource type="Script" path="res://src/ui/characters/vault_archive_confirmation.gd" id="6_archive"]
+[ext_resource type="Script" path="res://src/ui/characters/vault_repair_dialog.gd" id="7_repair"]
 
 [node name="VaultScreen" instance=ExtResource("1_base")]
 route_id = &"vault"
@@ -30,6 +32,12 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 text = "0 available"
+
+[node name="RepairCharacterFiles" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Repair Character Files…"
+tooltip_text = "Review older characters, back up the complete vault, and repair verified source identities while preserving originals."
 
 [node name="VaultListArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
 unique_name_in_owner = true
@@ -106,3 +114,48 @@ layout_mode = 2
 autowrap_mode = 2
 [node name="VaultCharacterSheet" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea" instance=ExtResource("3_sheet")]
 layout_mode = 2
+
+[node name="ArchiveInputShield" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+top_level = true
+layout_mode = 0
+mouse_filter = 0
+z_index = 100
+
+[node name="ArchiveConfirmation" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+script = ExtResource("6_archive")
+title = "Archive character"
+size = Vector2i(480, 180)
+exclusive = false
+dialog_autowrap = true
+ok_button_text = "Archive"
+
+[node name="RepairInputShield" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+top_level = true
+layout_mode = 0
+mouse_filter = 0
+z_index = 101
+
+[node name="RepairDialog" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+script = ExtResource("7_repair")
+title = "Repair Character Files"
+size = Vector2i(640, 420)
+exclusive = false
+ok_button_text = "Back up and repair"
+
+[node name="RepairDetail" type="TextEdit" parent="RepairDialog"]
+unique_name_in_owner = true
+theme_override_colors/font_readonly_color = Color(0.886, 0.886, 0.855, 1)
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 624.0
+offset_bottom = 358.0
+grow_horizontal = 2
+grow_vertical = 2
+editable = false
+wrap_mode = 1

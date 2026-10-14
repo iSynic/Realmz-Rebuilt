@@ -72,6 +72,8 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	var start_coordinate: Vector2i = start_coordinate_value
 	var result := RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], manifest["start"]["mapId"], start_coordinate, world_content.definition, scenario_definition, story_content.messages, world_content.triggers, story_content.simple_encounters, rules_content.races, rules_content.castes, rules_content.items, rules_content.spells, rules_content.monsters, rules_content.battles, rules_content.treasures, rules_content.shops, story_content.complex_encounters, story_content.thief_encounters, story_content.timed_encounters, story_content.option_labels, story_content.campaign, rules_content.appearance_options, rules_content.monster_sets, reference_validator.warnings, allow_deferred, rules_content.media)
 	result.transfer_catalog = PackageTransferCatalog.build(content, application_content)
+	result.application_package_hash = application_content.package_hash if application_content != null else ""
+	result.setup_rules_identity = _setup_rules_identity(content, media_assets, result.application_package_hash)
 	return result
 
 
@@ -100,6 +102,54 @@ func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, 
 		result.message_ids[message.id] = true
 	_normalize_missing_encounter_prompts(result.messages, result.message_ids, result.simple_encounters, result.complex_encounters)
 	return result
+
+
+func assemble_setup(manifest: Dictionary, content: Dictionary, media_assets: Array[MediaAsset], application_content: RealmzContent, application_media: Array[MediaAsset]) -> ScenarioSetupCatalog:
+	clear_error()
+	if application_content == null or application_content.rules_version != manifest["engine"]["rulesVersion"]:
+		_reject("The application character library is required for scenario setup.")
+		return null
+	var decoder := PackageContentDecoder.new(_diagnostic)
+	var campaign := decoder.decode_campaign_definition(content.get("campaign", {}))
+	var races: Variant = decoder.decode_races(content.get("races"))
+	var castes: Variant = decoder.decode_castes(content.get("castes"))
+	var items: Variant = decoder.decode_items(content.get("items"))
+	var spells: Variant = decoder.decode_spells(content.get("spells"))
+	if campaign == null or campaign.id != manifest["campaignId"] or races == null or castes == null or items == null or spells == null:
+		_reject("The scenario character catalog is malformed.")
+		return null
+	var catalogs := _compose_catalogs(races, castes, items, spells, media_assets, application_content, application_media)
+	if catalogs.is_empty(): return null
+	var references := PackageCrossReferenceValidator.new(_diagnostic)
+	if not references.validate_rule_references(catalogs.races, catalogs.castes, catalogs.items, catalogs.spells, [], [], [], [], {}, manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1")): return null
+	var resolver := PackageMediaValidatorResolver.new(_diagnostic)
+	var appearances := resolver.resolve_character_appearance_options(catalogs["media"], catalogs["races"])
+	if not resolver.error_message().is_empty(): return null
+	var sets_value: Variant = decoder.decode_monster_sets(content.get("monsterSets", []))
+	if sets_value == null: return null
+	var sets: Dictionary = sets_value
+	var start: Dictionary = manifest["start"]
+	if not start.get("mapId") is String or _integer(start.get("x")) < 0 or _integer(start.get("y")) < 0:
+		_reject("Manifest start location is malformed.")
+		return null
+	var setup := RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], Vector2i(int(start["x"]), int(start["y"])), null, null, [], [], [], catalogs["races"], catalogs["castes"], catalogs["items"], catalogs["spells"], [], [], [], [], [], [], [], [], campaign, appearances, sets, [], manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1"), catalogs["media"])
+	setup.transfer_catalog = PackageTransferCatalog.build(content, application_content)
+	setup.application_package_hash = application_content.package_hash
+	setup.setup_rules_identity = _setup_rules_identity(content, media_assets, application_content.package_hash)
+	return ScenarioSetupCatalog.new(setup, application_content.package_hash)
+
+
+static func _setup_rules_identity(content: Dictionary, media_assets: Array[MediaAsset], application_hash: String) -> String:
+	var projection := {"application": application_hash}
+	for field: String in ["campaign", "races", "castes", "items", "spells"]:
+		projection[field] = content.get(field)
+	var sets: Array = []
+	for entry: Dictionary in content.get("monsterSets", []): sets.append({"setId": entry.setId, "name": entry.name})
+	projection["monsterSets"] = sets
+	var media: Array = []
+	for asset: MediaAsset in media_assets: media.append([asset.id, asset.path, asset.sha256, asset.kind, asset.mime_type, asset.resource_type, asset.resource_id, asset.width, asset.height, asset.byte_count])
+	projection["media"] = media
+	return CanonicalJson.encode(projection).sha256_text()
 
 
 func _decode_rules_content(decoder: PackageContentDecoder, media_validator: PackageMediaValidatorResolver, content: Dictionary, scenario_media: Array[MediaAsset], trusted_install: bool, application_content: RealmzContent, application_media: Array[MediaAsset], allow_deferred: bool) -> RulesContent:
@@ -189,7 +239,7 @@ func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCross
 	var terrain_by_id: Dictionary = {}
 	for terrain_set: BattleTerrainSetDefinition in terrain_sets:
 		terrain_by_id[terrain_set.id] = terrain_set
-	var maps_value: Variant = decoder.decode_maps(world.get("maps"), trigger_ids, terrain_by_id, not rules.battles.is_empty(), not trusted_install)
+	var maps_value: Variant = decoder.decode_maps(world.get("maps"), trigger_ids, terrain_by_id, not rules.battles.is_empty(), not trusted_install, int(world.get("schemaVersion", 3)))
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value

@@ -140,6 +140,8 @@ func resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: Se
 
 
 func finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+	if result.is_rejection:
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return begin_scenario_handoff(result, events)
 	if result.state == ScenarioVmResult.State.WAITING:

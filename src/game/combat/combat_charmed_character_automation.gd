@@ -86,7 +86,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		failure_result = CombatFlowResult.failed(&"invalid_fumble_state", "Charmed actor '%s' could not commit its fumble." % actor.id)
 		return false
 	var event = _context.actions().events().character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null)
-	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"monster")
+	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"monster", monster_target.id)
 	event.payload["automatic"] = true
 	events.append(event)
 	if resolution.reflected:
@@ -111,7 +111,7 @@ func _resolve_charmed_attack_character(state: GameState, content: RealmzContent,
 		failure_result = CombatFlowResult.failed(&"invalid_fumble_state", "Charmed actor '%s' could not commit its fumble." % actor.id)
 		return false
 	var character_event = _context.actions().events().character_attack_event(actor.id, target.id, &"character", resolution, equipment.melee_weapon != null)
-	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"character")
+	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"character", target.id)
 	character_event.payload["automatic"] = true
 	events.append(character_event)
 	var victim: CharacterState = actor if resolution.reflected else target

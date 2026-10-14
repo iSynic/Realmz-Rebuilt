@@ -1,7 +1,9 @@
 {
   "opcode": 100,
-  "castleSource": "src/realmz_orig/newland.c case 100 and src/realmz_orig/combat.c combat",
-  "runtimeContract": "During an active battle macro, mark every remaining hostile monster defeated, complete the battle as victory, force battle reward mode 5, terminate the macro timeline, and carry Castle's slot-eight sentinel so the issuing action timeline does not continue after rewards.",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "evidenceMode": "source-control-flow",
+  "castleSource": "src/realmz_orig/newland.c:768-774,1508-1510; src/realmz_orig/booty.c:147-154,211-216,330-350; src/realmz_orig/bodycount.c:16-21,175-202",
+  "runtimeContract": "During an active battle macro, preserve monster health and placement through ally selection, complete the battle as victory, force battle reward mode 5, terminate the macro timeline, and carry Castle's slot-eight sentinel so the issuing action timeline does not continue after rewards. Living monsters with negative canSummon are mandatory allies regardless of their battle allegiance; selection retains their health and commits friendly allegiance. Dead mandatory monsters are not revived, and living optional hostile monsters are not recruited. When candidates exist, accepted selection leaves retained allies alive and makes remaining hostiles eligible for experience-only rewards, matching Castle's post-selection roster cleanup. When no candidates exist, bodycount returns before cleanup and living hostiles earn no kill experience.",
   "sourceOrder": "Set the post-battle sentinel to 8, set the killed-enemy count to the enemy count, set reward mode to 5, then jump directly to battle completion without death-macro execution.",
   "determinism": "The operation consumes no RNG. Ordinary experience-only reward construction retains its separately source-proven RNG order and save-owned continuation."
 }

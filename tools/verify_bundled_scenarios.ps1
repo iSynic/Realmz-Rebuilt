@@ -134,6 +134,7 @@ foreach ($scenario in $catalog.scenarios) {
     if ($archiveHash -ne $scenario.archiveSha256) {
         throw "$($scenario.file) archive SHA-256 does not match provenance."
     }
+    $historicalPackage = if ($null -ne $scenario.nativeTileRefresh) { $scenario.nativeTileRefresh.previousPackage } else { $scenario }
     if ($scenario.sourceArchive.archiveSha256 -notmatch '^[0-9a-f]{64}$' -or [long]$scenario.sourceArchive.bytes -le 0 -or $scenario.classicScenarioResourcesSha256 -notmatch '^[0-9a-f]{64}$') {
         throw "$($scenario.file) source or resource provenance is incomplete."
     }
@@ -144,7 +145,7 @@ foreach ($scenario in $catalog.scenarios) {
         }
     }
     $refresh = $scenario.scenarioMediaMigration
-    $refreshCompilerRevision = $scenario.compilerRevision
+    $refreshCompilerRevision = $historicalPackage.compilerRevision
     if ($null -ne $scenario.shopRestoration) {
         $refreshCompilerRevision = $scenario.shopRestoration.previousCompilerRevision
     }
@@ -402,20 +403,20 @@ foreach ($scenario in $catalog.scenarios) {
             if ($scenario.correctionsCatalog -cne "prelude-to-pestilence.corrections.json" -or $correction.formatVersion -ne 1 -or $correction.campaignId -cne $scenario.campaignId -or $correction.sourceRevision -cne "491816ad60037394f92c428e99c004494d3c28b3" -or $correction.sourceFiles[0].file -cne "Data ED3" -or $correction.sourceFiles[0].sha256 -cne "d519b69ee4dee10b4a44f14a25e57076cc1c7d7e5f172de76c9575a320ca7892" -or $expectedCorrection.Count -ne 1 -or $xap97.Count -ne 1 -or $xap97[0].ownerId -cne "Data ED3:macro:97" -or @($xap97[0].instructions).Count -ne 2 -or [int]$xap97[0].instructions[0].opcode -ne 1 -or [int]$xap97[0].instructions[0].id -ne -248 -or [int]$xap97[0].instructions[1].opcode -ne 24) {
                 throw "$($scenario.file) does not retain the source-backed XAP 97 payment-refusal correction."
             }
-            if ($scenario.compilerRevision -cne "f8735f3921d4fd67b6ba56fad065f0eb4728c148" -or $xap149.Count -ne 1 -or $xap149[0].ownerId -cne "Data ED3:macro:149" -or @($xap149[0].instructions).Count -ne 4 -or [int]$xap149[0].instructions[0].opcode -ne 1 -or [int]$xap149[0].instructions[0].id -ne 368 -or [int]$xap149[0].instructions[1].opcode -ne 1 -or [int]$xap149[0].instructions[1].id -ne 369 -or [int]$xap149[0].instructions[2].opcode -ne 7 -or [int]$xap149[0].instructions[2].id -ne 64 -or (@($xap149[0].instructions[2].extraCode) -join ",") -ne "0,9,31,0,0" -or [int]$xap149[0].instructions[3].opcode -ne 24 -or $encounterSevenResult.Count -ne 1 -or @($encounterSevenResult[0].instructions).Count -ne 3 -or [int]$encounterSevenResult[0].instructions[1].opcode -ne 44 -or [int]$encounterSevenResult[0].instructions[1].id -ne 4 -or (@($encounterSevenResult[0].instructions[1].extraCode) -join ",") -ne "4,0,0,0,5") {
+            if ($historicalPackage.compilerRevision -cne "f8735f3921d4fd67b6ba56fad065f0eb4728c148" -or $xap149.Count -ne 1 -or $xap149[0].ownerId -cne "Data ED3:macro:149" -or @($xap149[0].instructions).Count -ne 4 -or [int]$xap149[0].instructions[0].opcode -ne 1 -or [int]$xap149[0].instructions[0].id -ne 368 -or [int]$xap149[0].instructions[1].opcode -ne 1 -or [int]$xap149[0].instructions[1].id -ne 369 -or [int]$xap149[0].instructions[2].opcode -ne 7 -or [int]$xap149[0].instructions[2].id -ne 64 -or (@($xap149[0].instructions[2].extraCode) -join ",") -ne "0,9,31,0,0" -or [int]$xap149[0].instructions[3].opcode -ne 24 -or $encounterSevenResult.Count -ne 1 -or @($encounterSevenResult[0].instructions).Count -ne 3 -or [int]$encounterSevenResult[0].instructions[1].opcode -ne 44 -or [int]$encounterSevenResult[0].instructions[1].id -ne 4 -or (@($encounterSevenResult[0].instructions[1].extraCode) -join ",") -ne "4,0,0,0,5") {
                 throw "$($scenario.file) does not retain the regenerated XAP 149 branch or Simple Encounter 7 opcode 44 context."
             }
             if ($null -eq $regeneration -or $regeneration.operation -cne "regenerate-from-pinned-source" -or $regeneration.compilerRevision -cne "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1" -or $regeneration.sourceTreeSha256 -cne "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2" -or $regeneration.applicationPackageHash -cne $applicationLock.packageHash -or $regeneration.applicationPackageArchiveSha256 -cne $applicationLock.archiveSha256 -or $regeneration.applicationMediaCatalogSha256 -cne $catalog.compiler.applicationMediaCatalogSha256 -or $regeneration.generatedPackage.packageHash -cne $currentRegeneration.previousPackage.packageHash -or $regeneration.generatedPackage.archiveSha256 -cne $currentRegeneration.previousPackage.archiveSha256 -or [long]$regeneration.generatedPackage.bytes -ne [long]$currentRegeneration.previousPackage.bytes) {
                 throw "$($scenario.file) historical compiler regeneration provenance is incomplete."
             }
-            if ($null -eq $currentRegeneration -or $currentRegeneration.operation -cne "regenerate-from-pinned-source" -or $currentRegeneration.compilerRevision -cne $scenario.compilerRevision -or $currentRegeneration.sourceTreeSha256 -cne $regeneration.sourceTreeSha256 -or $currentRegeneration.applicationPackageHash -cne $applicationLock.packageHash -or $currentRegeneration.applicationPackageArchiveSha256 -cne $applicationLock.archiveSha256 -or $currentRegeneration.applicationMediaCatalogSha256 -cne $catalog.compiler.applicationMediaCatalogSha256 -or $currentRegeneration.generatedPackage.packageHash -cne $scenario.packageHash -or $currentRegeneration.generatedPackage.archiveSha256 -cne $scenario.archiveSha256 -or [long]$currentRegeneration.generatedPackage.bytes -ne [long]$scenario.bytes -or $correction.currentCompilerRegeneration.compilerRevision -cne $scenario.compilerRevision -or $correction.currentCompilerRegeneration.generatedPackage.packageHash -cne $scenario.packageHash -or $correction.previousPackageAfter.packageHash -cne $currentRegeneration.previousPackage.packageHash) {
+            if ($null -eq $currentRegeneration -or $currentRegeneration.operation -cne "regenerate-from-pinned-source" -or $currentRegeneration.compilerRevision -cne $historicalPackage.compilerRevision -or $currentRegeneration.sourceTreeSha256 -cne $regeneration.sourceTreeSha256 -or $currentRegeneration.applicationPackageHash -cne $applicationLock.packageHash -or $currentRegeneration.applicationPackageArchiveSha256 -cne $applicationLock.archiveSha256 -or $currentRegeneration.applicationMediaCatalogSha256 -cne $catalog.compiler.applicationMediaCatalogSha256 -or $currentRegeneration.generatedPackage.packageHash -cne $historicalPackage.packageHash -or $currentRegeneration.generatedPackage.archiveSha256 -cne $historicalPackage.archiveSha256 -or [long]$currentRegeneration.generatedPackage.bytes -ne [long]$historicalPackage.bytes -or $correction.currentCompilerRegeneration.compilerRevision -cne $historicalPackage.compilerRevision -or $correction.currentCompilerRegeneration.generatedPackage.packageHash -cne $historicalPackage.packageHash -or $correction.previousPackageAfter.packageHash -cne $currentRegeneration.previousPackage.packageHash) {
                 throw "$($scenario.file) current compiler regeneration provenance is incomplete."
             }
             if ($timedCorrection.Count -ne 1 -or $correction.sourceFiles[1].file -cne "Data TD3" -or $correction.sourceFiles[1].sha256 -cne "a5178ee952195fedd45404a6acf261783f5610afaf0120d3481085d2950dfba0" -or $xap303.Count -ne 1 -or $xap303[0].ownerId -cne "Data ED3:macro:303" -or [int]$xap303[0].instructions[0].id -ne 687 -or $timedZero.Count -ne 1 -or $timedZero[0].programId -cne "xap:303" -or [int]$timedZero[0].classicMacroId -ne 303 -or [int]$timedZero[0].day -ne 0 -or [int]$timedZero[0].requiredQuestId -ne 42) {
                 throw "$($scenario.file) omits the source-owned reschedulable timed row 0 or XAP 303."
             }
-            if ($correction.packageAfter.packageHash -cne $scenario.packageHash -or $correction.packageAfter.archiveSha256 -cne $scenario.archiveSha256 -or [long]$correction.packageAfter.bytes -ne [long]$scenario.bytes) {
-                throw "$($scenario.file) correction catalog does not match the current package identity."
+            if ($correction.packageAfter.packageHash -cne $historicalPackage.packageHash -or $correction.packageAfter.archiveSha256 -cne $historicalPackage.archiveSha256 -or [long]$correction.packageAfter.bytes -ne [long]$historicalPackage.bytes) {
+                throw "$($scenario.file) correction catalog does not match the preserved source package identity."
             }
         }
         if ($scenario.campaignId -eq "scenario-wrath-of-the-mind-lords") {
@@ -445,12 +446,12 @@ foreach ($scenario in $catalog.scenarios) {
             }
             $regenerationValid = $null -ne $regeneration
             $regenerationValid = $regenerationValid -and $regeneration.operation -ceq "regenerate-from-pinned-source"
-            $regenerationValid = $regenerationValid -and $regeneration.compilerRevision -ceq $scenario.compilerRevision
+            $regenerationValid = $regenerationValid -and $regeneration.compilerRevision -ceq $historicalPackage.compilerRevision
             $regenerationValid = $regenerationValid -and $regeneration.applicationPackageHash -ceq $applicationLock.packageHash
             $regenerationValid = $regenerationValid -and $regeneration.applicationMediaCatalogSha256 -ceq $catalog.compiler.applicationMediaCatalogSha256
-            $regenerationValid = $regenerationValid -and $regeneration.generatedPackage.packageHash -ceq $scenario.packageHash
-            $regenerationValid = $regenerationValid -and $regeneration.generatedPackage.archiveSha256 -ceq $scenario.archiveSha256
-            $regenerationValid = $regenerationValid -and ([long]$regeneration.generatedPackage.bytes -eq [long]$scenario.bytes)
+            $regenerationValid = $regenerationValid -and $regeneration.generatedPackage.packageHash -ceq $historicalPackage.packageHash
+            $regenerationValid = $regenerationValid -and $regeneration.generatedPackage.archiveSha256 -ceq $historicalPackage.archiveSha256
+            $regenerationValid = $regenerationValid -and ([long]$regeneration.generatedPackage.bytes -eq [long]$historicalPackage.bytes)
             $regenerationValid = $regenerationValid -and ([int]$expectedCorrection[0].params.changedPlayerMapRecords -eq 4)
             $regenerationValid = $regenerationValid -and ([int]$expectedCorrection[0].params.changedPlayerMapMarkerReferences -eq 13)
             if (-not $regenerationValid) {
@@ -478,6 +479,8 @@ if ($scenarioArchiveBytes -ge $sourceArchiveBytes -or ($scenarioArchiveBytes + $
     throw "The separated application-plus-scenario library did not reduce the previous bundled archive footprint."
 }
 
+& python (Join-Path $PSScriptRoot 'verify_bundled_native_tiles.py')
+if ($LASTEXITCODE -ne 0) { throw 'Bundled native map marker verification failed.' }
 & python (Join-Path $PSScriptRoot 'verify_bundled_shops.py')
 if ($LASTEXITCODE -ne 0) { throw 'Bundled shop preservation verification failed.' }
 Write-Host "Verified the lean 13-scenario bundle, 515 restored scenario CICN descriptors, application ownership, authored player-map names, scrolling-text resources, and designated City of Bywater source snapshot."

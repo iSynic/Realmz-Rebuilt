@@ -608,7 +608,7 @@ func finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
 		collision.mode = &"friendly"
 		collision.destination = pending.destination
 		_context.set_continuation(CombatContinuations.friendly_collision(collision))
-		_context.session_interaction = SessionInteractionFactory.friendly_collision("session.combat-friendly-collision:%d" % _context.next_revision())
+		_context.session_interaction = CombatInteractionRequestBuilder.friendly_collision("session.combat-friendly-collision:%d" % _context.next_revision())
 		return SessionCoordinatorResult.waiting(_context.session_interaction, result.events)
 	if result.completed:
 		return _context.scenario().finish_direct_battle(result.events)

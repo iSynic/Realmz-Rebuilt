@@ -8,6 +8,7 @@ var completed: bool = false
 var events: Array[DomainEvent] = []
 var error_code: StringName = &""
 var error_message: String = ""
+var is_rejection: bool = false
 
 
 static func succeeded(committed_events: Array[DomainEvent], battle_completed: bool = false) -> CombatFlowResult:
@@ -22,4 +23,10 @@ static func failed(code: StringName, message: String) -> CombatFlowResult:
 	result.ok = false
 	result.error_code = code
 	result.error_message = message
+	return result
+
+
+static func rejected(code: StringName, message: String) -> CombatFlowResult:
+	var result := failed(code, message)
+	result.is_rejection = true
 	return result

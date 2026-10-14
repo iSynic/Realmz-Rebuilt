@@ -3,6 +3,29 @@
 class_name SessionScenarioRestoreValidator
 extends RefCounted
 
+static func combat_vm_continuation_is_valid(state: GameState, rules: RealmzRules, snapshot: ScenarioVmSnapshot, depth: int = 0) -> bool:
+	if depth > 32 or snapshot == null:
+		return false
+	var pending := snapshot.pending_continuation
+	var runtime := pending.runtime if pending != null else null
+	if runtime == null:
+		return true
+	var body := runtime.combat()
+	if runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION]:
+		var request := snapshot.pending_request
+		if body == null or body.mode != &"friendly" or request == null or request.to_data() != CombatInteractionRequestBuilder.friendly_collision(request.request_id).to_data():
+			return false
+		var combat := state.combat
+		if combat == null or combat.completed or combat.battle_id != body.battle_id or combat.turns.active_actor_id() != body.actor_id:
+			return false
+		var reaction := combat.pending_reaction
+		return reaction != null and reaction.awaits_friendly_collision_choice() and reaction.mover_id == body.actor_id and reaction.destination == body.destination and rules.combat_flow.reactions.friendly_collision_target_id(state, body.actor_id, body.destination) == reaction.friendly_collision_target_id
+	if runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT]:
+		return state.combat == null or state.combat.pending_reaction == null or not state.combat.pending_reaction.awaits_friendly_collision_choice()
+	var nested := body.macro_vm if body != null else runtime.opcode_death().macro_vm if runtime.opcode_death() != null else null
+	return nested == null or nested.pending_request != null and snapshot.pending_request != null and nested.pending_request.to_data() == snapshot.pending_request.to_data() and combat_vm_continuation_is_valid(state, rules, nested, depth + 1)
+
+
 static func vm_reward_continuation_is_valid(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
 	var snapshot := vm.snapshot()
 	if snapshot.pending_continuation == null:
@@ -177,6 +200,6 @@ static func ready_post_move_continuation_is_valid(content: RealmzContent, state:
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
 	return cell != null and state.party.map_id == map.id and state.party.coordinate == exploration.coordinate \
-		and exploration.trigger_ids == ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, cell, state.world) \
+		and exploration.trigger_ids == ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, map, exploration.coordinate, state.world, exploration.action_point_destination_depth > 0) \
 		and exploration.random_region_ids == state.world.triggers.random_region_ids_at(map, exploration.coordinate) \
 		and exploration.random_region_index == exploration.random_region_ids.size() - 1

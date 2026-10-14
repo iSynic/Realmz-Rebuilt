@@ -13,3 +13,5 @@ save files -> SaveRepository -> SaveSlotPreview -> System screen
 ```
 
 Use `test_save_repository.gd` for file and preview behavior and `test_session_persistence.gd` for full-session restoration.
+
+`MarkerSaveUpdate`, `ShopSaveUpdate`, and `HalfTruthMediaSaveUpdate` validate only their pinned archive transitions. `SaveHostController` creates a separately named copy after unchanged-state detached restoration; ordinary loading still requires the exact package identity. See [the save-update contract](../../../docs/package-and-save-contracts.md) for supported revisions and the retained-original acceptance probe.

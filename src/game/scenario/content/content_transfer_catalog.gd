@@ -32,3 +32,7 @@ func is_scenario_owned(kind: StringName, id: String) -> bool:
 func matches(other: ContentTransferCatalog, kind: StringName, id: String) -> bool:
 	var key := "%s:%s" % [kind, id]
 	return other != null and _fingerprints.has(key) and _fingerprints[key] == other._fingerprints.get(key, "")
+
+
+func fingerprint(kind: StringName, id: String) -> String:
+	return _fingerprints.get("%s:%s" % [kind, id], "")

@@ -1,17 +1,11 @@
 extends RealmzTestCase
 
-const CharacterCreationSessionScript := preload("res://src/playthrough/characters/character_creation_session.gd")
-const CLASSIC_CHARACTER_LIBRARY_PATH: String = ApplicationLibraryIdentity.PATH
-const CLASSIC_CHARACTER_LIBRARY_ID: String = ApplicationLibraryIdentity.CAMPAIGN_ID
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = ApplicationLibraryIdentity.PACKAGE_HASH
-
-
 func run() -> void:
-	var loaded := PackageRepository.new().load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
+	var loaded := PackageRepository.new().load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
 	assert_true(loaded.is_ok(), "the standalone creator test uses the pinned Providence-built stock catalog: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
-	var creator: RefCounted = CharacterCreationSessionScript.new()
+	var creator: RefCounted = CharacterCreationSession.new()
 	assert_equal(creator.start(loaded.content, 7920, "realmz.character.1").state, SessionStep.State.COMPLETED, "the application-owned creator starts without a selected scenario")
 	var view: GameView = creator.view()
 	assert_true(view.party_setup_available and view.party_members.is_empty(), "the stock workshop reuses the typed five-step creator view without assembling a campaign party")
@@ -33,6 +27,6 @@ func run() -> void:
 		assert_equal(completed.id, "realmz.character.1", "the host-owned stable Character File identity replaces the workshop party identity")
 		assert_true(not completed.inventory().is_empty(), "standalone publication retains the ordinary Classic starting inventory transaction"); assert_true(completed.inventory().all(func(item: ItemInstance) -> bool: return item.id.begins_with("realmz.character.1.item.")) and completed.equipment_order.resolved(completed.inventory()).all(func(item_id: String) -> bool: return item_id.begins_with("realmz.character.1.item.")), "standalone publication rebinds every exact item and equipped-order identity to the stable Character File")
 	assert_equal(creator.publication_committed().state, SessionStep.State.COMPLETED, "the host can acknowledge a successful vault write")
-	var unsupported: RefCounted = CharacterCreationSessionScript.new()
+	var unsupported: RefCounted = CharacterCreationSession.new()
 	assert_equal(unsupported.start(loaded.content, 15839, "realmz.character.2").state, SessionStep.State.COMPLETED, "a second workshop starts independently")
 	assert_equal(unsupported.submit_intent(PartyIntents.create([spec])).error_code, &"unsupported_character_intent", "the standalone creator cannot begin an adventure or broaden into campaign ownership")

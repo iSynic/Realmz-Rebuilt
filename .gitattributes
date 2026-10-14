@@ -7,4 +7,5 @@
 *.wav binary
 *.realmz2 filter=lfs diff=lfs merge=lfs -text
 *.r2save binary
+*.bundle binary
 src/ui/shared/assets/fonts/licenses/*.txt binary

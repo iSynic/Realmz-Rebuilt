@@ -19,6 +19,16 @@ static func retreat(kind: StringName, source_kind: StringName, battle_id: String
 	return ScenarioRuntimeContinuation.new(kind, body)
 
 
+static func friendly_collision(source_kind: StringName, battle_id: String, caller: ScenarioBattleCaller, actor_id: String, destination: Vector2i) -> ScenarioRuntimeContinuation:
+	assert(source_kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT])
+	var kind := ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION if source_kind == ScenarioRuntimeContinuation.SAFE_COMBAT else ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION
+	var body := _body(source_kind, battle_id, caller)
+	body.actor_id = actor_id
+	body.mode = &"friendly"
+	body.destination = destination
+	return ScenarioRuntimeContinuation.new(kind, body)
+
+
 static func age_updates(kind: StringName, source_kind: StringName, battle_id: String, caller: ScenarioBattleCaller, updates: Array[AgeUpdateRequestBody], index: int, round_before: int) -> ScenarioRuntimeContinuation:
 	assert(kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE])
 	var body := _body(source_kind, battle_id, caller)

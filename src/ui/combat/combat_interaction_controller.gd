@@ -14,6 +14,7 @@ signal combatant_focus_requested(combatant_id: String, play_sound: bool)
 signal reveal_friends_requested
 signal move_to_requested
 signal combat_log_requested
+signal pause_requested
 signal spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
 signal spellbook_closed
 signal items_requested
@@ -76,6 +77,7 @@ func bind(component: BattleInteraction, body: CombatRequestBody, game_view: Game
 	_component.reveal_friends_requested.connect(func() -> void: reveal_friends_requested.emit())
 	_component.move_to_requested.connect(func() -> void: move_to_requested.emit())
 	_component.combat_log_requested.connect(func() -> void: combat_log_requested.emit())
+	_component.pause_requested.connect(func() -> void: pause_requested.emit())
 	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: spellbook_requested.emit(actor_id, options))
 	_component.combat_spellbook_closed.connect(func() -> void: spellbook_closed.emit())
 	_component.combat_items_requested.connect(func() -> void: items_requested.emit())

@@ -45,7 +45,7 @@ func save(content: RealmzContent, slot_id: String) -> bool:
 	if _session.is_busy() or _session.resolution_failed:
 		_shell.status.set_status("Combat resolution failed. Load a saved adventure or return to the main menu." if _session.resolution_failed else "Save unavailable while combat is resolving.", true)
 		return false
-	if content == null:
+	if content == null or _session.session() == null or _session.session().is_preparing_party():
 		_shell.status.set_status("Save failed • no package loaded", true)
 		return false
 	var resolved_slot := _repository_host.active_slot(content) if slot_id == "quick" else slot_id
@@ -129,20 +129,20 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 	return step
 
 
-func update_save(content: RealmzContent, slot_id: String, backup: bool = false) -> bool:
+func update_save(content: RealmzContent, slot_id: String, backup: bool = false) -> String:
 	if _session.is_busy():
 		_shell.status.set_status("Save updating is unavailable while combat is resolving.", true)
-		return false
+		return ""
 	var updated_slot := _repository_host.update_save(content, slot_id, backup)
 	if updated_slot.is_empty():
 		_shell.status.set_status("Save update failed • %s" % _repository_host.last_error(), true)
-		return false
+		return ""
 	_shell.navigator.content_presenter.set_save_previews(_repository_host.previews(content), updated_slot, _repository_host.active_slot(content))
 	if _shell.navigator.current_screen() == &"save_load":
 		_shell.navigator.refresh_current_workspace()
 	_shell.status.set_status("Updated copy %s verified • original unchanged" % updated_slot)
 	_shell.status.show_activity_indicator(&"save")
-	return true
+	return updated_slot
 
 
 func poll() -> void:

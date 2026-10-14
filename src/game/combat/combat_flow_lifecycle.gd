@@ -214,7 +214,7 @@ func _commit_resumed_age_attack(state: GameState, content: RealmzContent, rng: R
 	var definition := content.combat.monster_by_id(attacker.definition_id) if attacker != null else null
 	var weapon := content.items.item_by_id(attacker.weapon_id) if attacker != null and not attacker.weapon_id.is_empty() else null
 	var resolution := AttackResolution.new(true, result.defeated, result.pending.chance, result.pending.roll, result.pending.damage)
-	_context.actions().events().append_monster_attack_audio(events, attacker, definition, attack_index, weapon, resolution, rng)
+	_context.actions().events().append_monster_attack_audio(events, attacker, definition, attack_index, weapon, resolution, rng, target.id)
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": result.pending.actor_id, "targetId": result.pending.target_id, "action": String(result.pending.action), "attackIndex": attack_index, "hit": true, "damage": result.pending.damage, "defeated": result.defeated, "chance": result.pending.chance, "roll": result.pending.roll})
 	CombatActionEvents.append_helpless_condition_state(event.payload, result.pending.weapon_condition_index, result.pending.weapon_condition_before, result.pending.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(event, true, weapon != null)
@@ -250,10 +250,12 @@ func ally_selection_payload(state: GameState, content: RealmzContent) -> Diction
 		return {}
 	var candidates: Array[Dictionary] = []
 	for monster: MonsterState in state.combat.roster.monsters():
-		if candidates.size() >= 32 or monster.current_health <= 0 or monster.traitor:
+		if candidates.size() >= 32 or monster.current_health <= 0:
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
-		if definition == null or definition.can_summon == 0:
+		# Castle bodycount.c clears mandatory allies' hostility before selection.
+		# Keep this probe read-only; apply_ally_selection commits their allegiance.
+		if definition == null or definition.can_summon == 0 or monster.traitor and definition.can_summon > 0:
 			continue
 		candidates.append({
 			"id": monster.id,
@@ -323,6 +325,12 @@ func apply_ally_selection(state: GameState, content: RealmzContent, selected_val
 		monster.traitor = false
 		retained.append(monster)
 	state.party.set_allies(retained)
+	if state.combat.classic_post_battle_sentinel == 8:
+		# Castle bodycount.c clears the remaining battle roster after retaining
+		# allies; booty(5) then counts still-hostile survivors for experience.
+		for monster: MonsterState in state.combat.roster.monsters():
+			if monster.traitor:
+				monster.current_health = 0
 	return CombatFlowResult.succeeded([DomainEvent.new(&"allies_selected", {"battleId": state.combat.battle_id, "allyIds": selected_ids, "maximum": payload["maximum"]})], true)
 
 
@@ -462,14 +470,10 @@ func finish_if_resolved(state: GameState, content: RealmzContent, events: Array[
 func finish_classic_macro_victory(state: GameState, content: RealmzContent) -> CombatFlowResult:
 	if state == null or content == null or state.combat == null or state.combat.completed:
 		return CombatFlowResult.failed(&"no_active_battle", "Classic opcode 100 requires an active battle macro.")
-	var defeated: Array[String] = []
-	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor:
-			monster.current_health = 0
-			state.combat.battlefield.actors.remove_monster(monster.id)
-			defeated.append(monster.id)
+	# Castle newland.c case 100 changes killmon, not monster stamina. Survivors
+	# must reach bodycount alive before its selection and reward cleanup.
 	state.combat.classic_post_battle_sentinel = 8
-	var events: Array[DomainEvent] = [DomainEvent.new(&"classic_battle_forced_victory", {"battleId": state.combat.battle_id, "monsterIds": defeated, "rewardMode": 5, "postBattleSentinel": 8})]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"classic_battle_forced_victory", {"battleId": state.combat.battle_id, "monsterIds": [], "rewardMode": 5, "postBattleSentinel": 8})]
 	complete_battle(state, content, &"victory", events)
 	return CombatFlowResult.succeeded(events, true)
 

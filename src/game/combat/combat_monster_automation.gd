@@ -327,6 +327,8 @@ func _append_monster_spell_resolution_events(state: GameState, content: RealmzCo
 			state.combat.actor_statuses.mark_attacked(resolved_target_id)
 		CombatSpellEventBuilder.append_projectile(events, monster.id, resolved_target_id, spell, "classic-monster")
 		CombatSpellEventBuilder.append_sound(events, spell.sound_end, "classic-monster-spell-result")
+		if resolution.target_defeated:
+			CombatActionEvents.append_defeat_audio(events, resolved_target_id)
 		var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster", "detectedMagicItemCount": resolution.detected_magic_item_count}
 		if resolution.spell_point_delta != 0 or ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell) or ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell):
 			payload["spellPointDelta"] = resolution.spell_point_delta
@@ -622,7 +624,7 @@ func _resolve_attack_against_character(state: GameState, content: RealmzContent,
 			state.combat.pending_monster_attack = PendingMonsterAttack.new(monster.id, target.id, active_turn.action, resolution.damage, resolution.chance, resolution.roll, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after, resolution.physical_feedback_sound_id)
 			return MONSTER_ATTACK_WAITING
 	_context.actions().events().append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
-	_context.actions().events().append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng)
+	_context.actions().events().append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng, target.id)
 	var attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(attack_event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(attack_event, resolution.hit, weapon != null)
@@ -646,7 +648,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 		_context.actions().events().commit_monster_fumble(monster, events)
 	if resolution.special_handled:
 		_context.actions().events().append_monster_special_events(events, monster.id, target.id, &"monster", resolution)
-	_context.actions().events().append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng)
+	_context.actions().events().append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng, target.id)
 	var monster_attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(monster_attack_event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(monster_attack_event, resolution.hit, weapon != null)

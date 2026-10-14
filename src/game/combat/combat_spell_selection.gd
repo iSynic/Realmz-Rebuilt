@@ -18,6 +18,8 @@ func probe_character_spell_choice(state: GameState, content: RealmzContent, cast
 	var combat := state.combat
 	var caster := state.party.character_by_id(caster_id)
 	var spell := content.magic.spell_by_id(spell_id)
+	if spell == null and caster != null and caster.known_spells().has(spell_id):
+		return CombatSpellCastProbe.fault(&"unknown_spell", "Known spell '%s' has no immutable definition." % spell_id)
 	if caster == null or caster.current_health <= 0 or caster.traitor or spell == null or power_level < 1 or power_level > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, or power is unavailable.")
 	if not caster.known_spells().has(spell.id):
@@ -28,8 +30,10 @@ func probe_character_spell_choice(state: GameState, content: RealmzContent, cast
 
 func _probe_character_turn(state: GameState, content: RealmzContent, caster_id: String) -> CombatSpellCastProbe:
 	if state == null or content == null:
-		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "Spell casting requires an active game session.")
+		return CombatSpellCastProbe.fault(&"invalid_spell_turn", "Spell casting requires an active game session.")
 	var combat := state.combat
+	if combat != null and not combat.completed and combat.battlefield == null:
+		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
 	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "The caster does not own an active combat turn.")
 	if not combat.spell_runtime.pending_death_macro_id().is_empty():
@@ -70,11 +74,11 @@ func _probe_spell_rules(state: GameState, content: RealmzContent, combat: Combat
 		return CombatSpellCastProbe.blocked(&"insufficient_spell_points", "The caster lacks the spell points for this power level.")
 	var cast_level := spell.classic_tier()
 	if cast_level < 0 or cast_level > 6:
-		return CombatSpellCastProbe.blocked(&"invalid_classic_spell_tier", "The spell ID does not encode a valid Classic tier.")
+		return CombatSpellCastProbe.fault(&"invalid_classic_spell_tier", "The spell ID does not encode a valid Classic tier.")
 	if area_target:
 		var shape := _context.spell_areas.shape_for(spell, power_level)
 		if _context.spell_areas.pattern(shape).is_empty():
-			return CombatSpellCastProbe.blocked(&"invalid_spell_area_shape", "The spell references an unavailable Classic Data AD area mask.")
+			return CombatSpellCastProbe.fault(&"invalid_spell_area_shape", "The spell references an unavailable Classic Data AD area mask.")
 	return _context.summoning().probe_choice(state, content, caster.id, spell, power_level) if summon_spell else CombatSpellCastProbe.permitted()
 
 
@@ -116,7 +120,9 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 		var map := content.world.map_by_id(combat.battlefield.map_id)
 		var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 		var maximum_range := absi(spell.range_min + spell.range_max * power_level)
-		if terrain_set == null or not _context.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
+		if terrain_set == null:
+			return CombatSpellCastProbe.fault(&"missing_battle_terrain", "The active battlefield has no validated Classic terrain catalog.")
+		if not _context.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
 			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The area center is outside the Classic spell range or line of sight.")
 	elif not group_target:
 		var effective_target_id := caster_id if spell.target_type in [5, 7] else target_id

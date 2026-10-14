@@ -22,10 +22,21 @@ static func append_cast(events: Array[DomainEvent], actor_id: String, spell: Spe
 	events.append(DomainEvent.new(&"combat_spell_cast", payload))
 
 
-static func append_projectile(events: Array[DomainEvent], actor_id: String, target_id: String, spell: SpellDefinition, source: String) -> void:
+static func append_projectile(events: Array[DomainEvent], actor_id: String, target_id: String, spell: SpellDefinition, source: String, weapon_projectile: bool = false) -> void:
 	if not spell.target_type in [0, 1, 2, 5, 6, 7, 8, 11]:
 		return
-	events.append(DomainEvent.new(&"combat_spell_projectile", {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "classicBattleTileId": 200 + spell.look_start, "source": source}))
+	events.append(DomainEvent.new(&"combat_spell_projectile", {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "classicBattleTileId": 200 + spell.look_start, "weaponProjectile": weapon_projectile, "source": source}))
+
+
+static func append_weapon_projectile(events: Array[DomainEvent], actor_id: String, target_id: String, spell: SpellDefinition, resolution: ProjectileResolution, source: String) -> void:
+	append_sound(events, spell.sound_start, source)
+	append_projectile(events, actor_id, target_id, spell, source, true)
+	for _hit: int in resolution.hit_count:
+		append_sound(events, spell.sound_end, source)
+	if resolution.miss_count > 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 652, "waitForCompletion": false, "source": source}))
+	if resolution.target_defeated:
+		CombatActionEvents.append_defeat_audio(events, target_id)
 
 
 static func append_resolution_effect(payload: Dictionary, spell: SpellDefinition, sequence_index: int, sequence_count: int, target_defeated: bool) -> void:

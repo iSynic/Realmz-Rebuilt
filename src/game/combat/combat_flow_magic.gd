@@ -47,8 +47,10 @@ func cast_macro_spell(state: GameState, content: RealmzContent, source_id: Strin
 
 func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
 	if state == null or content == null:
-		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Item use requires an active game session.")
+		return CombatSpellCastProbe.fault(&"invalid_item_turn", "Item use requires an active game session.")
 	var combat := state.combat
+	if combat != null and not combat.completed and combat.battlefield == null:
+		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
 	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Only the active character may use an item in combat.")
 	if not combat.spell_runtime.pending_death_macro_id().is_empty():
@@ -57,6 +59,10 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 	var instance := inventory_instance(caster, instance_id)
 	var item: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
 	var spell: SpellDefinition = null if item == null else content.magic.spell_by_classic_id(item.special_2)
+	if instance != null and item == null:
+		return CombatSpellCastProbe.fault(&"unknown_item", "Carried item '%s' has no immutable definition." % instance.definition_id)
+	if item != null and item.special_2 > 1100 and spell == null:
+		return CombatSpellCastProbe.fault(&"unknown_spell", "Item '%s' references unavailable spell %d." % [item.id, item.special_2])
 	var use_probe := _context.inventory.classic_spell_item_probe(caster, instance, item, spell, content.characters.race_by_id(caster.race_id) if caster != null else null, content.characters.caste_by_id(caster.caste_id) if caster != null else null, true)
 	if not use_probe.allowed:
 		return CombatSpellCastProbe.blocked(item_use_reason_code(instance, item, spell), use_probe.reason)
@@ -115,7 +121,7 @@ func _probe_item_area_spell(state: GameState, content: RealmzContent, caster: Ch
 		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This Classic area spell does not support the selected orientation.")
 	var shape := _context.spell_areas.shape_for(spell, power_level, rotation)
 	if _context.spell_areas.pattern(shape).is_empty():
-		return CombatSpellCastProbe.blocked(&"invalid_item_area_shape", "The item references an unavailable Classic Data AD area mask.")
+		return CombatSpellCastProbe.fault(&"invalid_item_area_shape", "The item references an unavailable Classic Data AD area mask.")
 	if target_coordinate == INVALID_COORDINATE:
 		return CombatSpellCastProbe.permitted()
 	if not _context.spell_areas.pattern_fits(target_coordinate, shape):
@@ -123,7 +129,9 @@ func _probe_item_area_spell(state: GameState, content: RealmzContent, caster: Ch
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
-	if terrain_set == null or not _context.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
+	if terrain_set == null:
+		return CombatSpellCastProbe.fault(&"missing_battle_terrain", "The active battlefield has no validated Classic terrain catalog.")
+	if not _context.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
 		return CombatSpellCastProbe.blocked(&"item_target_unavailable", "The area center is outside the item's Classic spell range or line of sight.")
 	return CombatSpellCastProbe.permitted()
 
@@ -137,7 +145,7 @@ func _probe_item_group_spell(state: GameState, content: RealmzContent, caster: C
 		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
 			continue
 		if content.combat.monster_by_id(monster.definition_id) == null:
-			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
+			return CombatSpellCastProbe.fault(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
 		group_target_count += 1
 	if group_target_count == 0:
 		return CombatSpellCastProbe.blocked(&"invalid_item_target", "The item spell has no available group target.")
@@ -147,7 +155,7 @@ func _probe_item_group_spell(state: GameState, content: RealmzContent, caster: C
 func use_spell_item(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
 	var probe := probe_character_item_spell(state, content, caster_id, target_id, instance_id, target_coordinate, rotation, target_ids, target_coordinates)
 	if not probe.allowed:
-		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+		return probe.denial_result()
 	var caster := state.party.character_by_id(caster_id)
 	var instance := inventory_instance(caster, instance_id)
 	var item := content.items.item_by_id(instance.definition_id)
@@ -404,7 +412,7 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	var effective_target_id := caster_id if spell != null and spell.target_type == 5 else target_id
 	var probe := _selection.probe_character_spell_cast(state, content, caster_id, effective_target_id, spell_id, power_level, target_coordinate, rotation, target_ids, target_coordinates)
 	if not probe.allowed:
-		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+		return probe.denial_result()
 	var combat := state.combat
 	var caster := state.party.character_by_id(caster_id)
 	spell = content.magic.spell_by_id(spell_id)
@@ -474,8 +482,10 @@ func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: St
 
 func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
 	if state == null or content == null:
-		return CombatSpellCastProbe.blocked(&"invalid_scroll_turn", "Scroll use requires an active game session.")
+		return CombatSpellCastProbe.fault(&"invalid_scroll_turn", "Scroll use requires an active game session.")
 	var combat := state.combat
+	if combat != null and not combat.completed and combat.battlefield == null:
+		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
 	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_turn", "Only the active character may use a scroll in combat.")
 	if not combat.spell_runtime.pending_death_macro_id().is_empty():
@@ -487,6 +497,8 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 		return CombatSpellCastProbe.blocked(&"scroll_case_not_equipped", "Equip a scroll case before using its spells.")
 	var scroll := caster.scroll_at(scroll_slot)
 	var spell := content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+	if scroll != null and not scroll.is_empty() and spell == null:
+		return CombatSpellCastProbe.fault(&"unknown_spell", "Scroll spell '%s' has no immutable definition." % scroll.spell_id)
 	if scroll_slot < 0 or scroll_slot >= 5 or scroll == null or scroll.is_empty() or spell == null or scroll.power < 1 or scroll.power > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_slot", "This scroll slot is empty or invalid.")
 	if not spell.in_combat:
@@ -511,7 +523,7 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This Classic area spell does not support the selected orientation.")
 	var cast_level := spell.classic_tier()
 	if cast_level < 0 or cast_level > 6:
-		return CombatSpellCastProbe.blocked(&"invalid_classic_spell_tier", "The scroll spell ID does not encode a valid Classic tier.")
+		return CombatSpellCastProbe.fault(&"invalid_classic_spell_tier", "The scroll spell ID does not encode a valid Classic tier.")
 	if summon_spell:
 		return _context.summoning().probe_choice(state, content, caster_id, spell, scroll.power) if target_coordinates.is_empty() else _context.summoning().probe_coordinates(state, content, caster_id, spell, scroll.power, target_coordinates)
 	if phase_spell: return CombatSpellCastProbe.permitted() if target_coordinate == INVALID_COORDINATE else _context.phase().probe_destination(state, content, caster_id, spell, scroll.power, target_coordinate)
@@ -546,7 +558,7 @@ func _probe_repeated_scroll_spell(state: GameState, content: RealmzContent, cast
 func _probe_scroll_area_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, target_coordinate: Vector2i, rotation: int) -> CombatSpellCastProbe:
 	var shape := _context.spell_areas.shape_for(spell, power_level, rotation)
 	if _context.spell_areas.pattern(shape).is_empty():
-		return CombatSpellCastProbe.blocked(&"invalid_scroll_area_shape", "The scroll references an unavailable Classic Data AD area mask.")
+		return CombatSpellCastProbe.fault(&"invalid_scroll_area_shape", "The scroll references an unavailable Classic Data AD area mask.")
 	if target_coordinate == INVALID_COORDINATE:
 		return CombatSpellCastProbe.permitted()
 	if not _context.spell_areas.pattern_fits(target_coordinate, shape):
@@ -554,7 +566,9 @@ func _probe_scroll_area_spell(state: GameState, content: RealmzContent, caster: 
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
-	if terrain_set == null or not _context.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
+	if terrain_set == null:
+		return CombatSpellCastProbe.fault(&"missing_battle_terrain", "The active battlefield has no validated Classic terrain catalog.")
+	if not _context.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
 		return CombatSpellCastProbe.blocked(&"scroll_target_unavailable", "The area center is outside the Classic spell range or line of sight.")
 	return CombatSpellCastProbe.permitted()
 
@@ -575,7 +589,7 @@ func _probe_scroll_group_spell(state: GameState, caster: CharacterState, spell: 
 func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
 	var probe := probe_character_scroll_cast(state, content, caster_id, scroll_slot, target_id, target_coordinate, rotation, target_ids, target_coordinates)
 	if not probe.allowed:
-		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+		return probe.denial_result()
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
 	var caster := state.party.character_by_id(caster_id)

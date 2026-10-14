@@ -16,7 +16,7 @@ Shortcuts respect the same availability, costs, confirmations, and target rules 
 
 Fast Spell slots retain their existing 1–0 bindings; Ctrl/Command invokes the binding. Alt exposes the combat Fast Spell dock. F12 opens retail Diagnostics. Escape remains the safety hatch for party Auto and returns manual control at the next activation boundary.
 
-F10 opens the top menu, including when its strip is hidden. Bottom Settings can change its visibility, and existing controller access remains available; locked dialogs retain input priority. During combat the controller's Top Menu binding continues to open Combat Log, while F10 opens the application hierarchy.
+Escape opens Pause after local Cancel/Back handling; Start, F10, and the visible Pause control also open it. The configurable View/Create/Minus binding is an alternate Pause shortcut. Locked dialogs retain input priority. Combat Log stays in the battle View controls and action wheel. The persistent left-click Move To toggle is at Pause → Settings → Controls; right-click routing remains available.
 
 These are fixed contextual shortcuts, not a new keyboard remapping editor. Castle's separate item-information window is unnecessary because item facts are already shown; identification uses Rebuilt's existing contextual control rather than a second paid-identification command. W enters the dedicated weapon targeting action rather than reviving Castle's intermediate weapon workflow. Scroll creation is explicitly chosen from the spell workspace and retains ordinary camp, class, SP, and scroll-case requirements.
 

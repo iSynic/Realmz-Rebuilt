@@ -58,7 +58,7 @@ func poll_library_load(active_content: RealmzContent) -> bool:
 	if _art_host != null:
 		_art_host.set_stock_catalog(_library_content.characters)
 	_presentation_media.set_package_media(_library_media)
-	_vault.seed_classic_starters_if_empty()
+	_vault.seed_classic_starters_if_empty(CharacterVaultController.CLASSIC_STARTER_CATALOG_PATH, _library_content.package_hash, _library_content)
 	_shell.navigator.setup_controller.character_creation.set_standalone_character_creation_available(true)
 	refresh_vault_views(active_content)
 	return true
@@ -156,6 +156,29 @@ func archive_character(active_content: RealmzContent, character_id: String) -> v
 	_shell.status.set_status("Character archived • immutable revisions remain recoverable")
 
 
+func request_repair(operation: StringName) -> void:
+	if operation == &"cancel":
+		_vault.cancel_repair_review()
+	elif operation == &"open_backup":
+		var path := _vault.repair_backup_path()
+		if not path.is_empty() and OS.shell_open(path) != OK:
+			_shell.status.set_status("Could not open the backup folder • %s" % path, true)
+	elif not _vault.start_repair(operation):
+		_shell.navigator.content_presenter.characters.present_repair(_vault.last_error(), false, false, false)
+
+
+func poll_repair(active_content: RealmzContent) -> void:
+	var result := _vault.poll_repair()
+	if result.is_empty():
+		return
+	if not result.review: refresh_vault_views(active_content)
+	_shell.navigator.content_presenter.characters.present_repair(result.details, result.review, result.canRepair, result.hasBackup)
+
+
+func shutdown() -> void:
+	_vault.shutdown_repair()
+
+
 func restore_character(active_content: RealmzContent, character_id: String, revision_hash: String) -> void:
 	if not _vault.restore(character_id, revision_hash):
 		_shell.status.set_status("Vault restore failed • %s" % _vault.last_error(), true)
@@ -182,7 +205,7 @@ func _publish_standalone_character() -> void:
 	if character == null:
 		_shell.status.set_status("Character File publication failed • the completed character is unavailable.", true)
 		return
-	if not _vault.publish(character, _library_content.rules_version, "", _library_content.package_hash, "classic-application"):
+	if not _vault.publish(character, _library_content.rules_version, "", _library_content.package_hash, "classic-application", _library_content):
 		_shell.status.set_status("Character File publication failed • %s" % _vault.last_error(), true)
 		return
 	_creator.publication_committed()

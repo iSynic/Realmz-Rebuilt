@@ -91,7 +91,7 @@ func _test_bundled_load_task() -> void:
 func _test_package_host_prewarm(campaign_id: String, package_hash: String) -> void:
 	_cleanup_test_root(); var campaign := CampaignPackageView.new(FIXTURE_PATH, true, campaign_id, package_hash); var host := PackageHostController.new(test_package_repository(), TEST_ROOT)
 	assert_false(host.prewarm_last_campaign([campaign], "missing.campaign"), "a missing last-played campaign falls back without starting package work"); assert_true(host.prewarm_last_campaign([campaign], campaign_id), "the resolved last-played campaign starts on the existing cancellable package worker"); _wait_for_host_prewarm(host)
-	assert_equal([host.retained_candidate_count(), host.prepared_campaign_id()], [1, campaign_id], "successful prewarm retains exactly one identity-bound prepared candidate")
+	assert_equal([host.retained_candidate_count(), host.prepared_campaign_id], [1, campaign_id], "successful prewarm retains exactly one identity-bound prepared candidate")
 	assert_true(host.start_install(FIXTURE_PATH), "selecting the matching campaign claims its prepared candidate"); var claimed_operation := host.operation_view(); var claimed := host.take_prepared_package()
 	assert_true(claimed_operation.state == PackageOperationView.SUCCEEDED and claimed != null and claimed.is_ok() and claimed.content.campaign_id == campaign_id and host.retained_candidate_count() == 0, "matching selection returns the validated package immediately and consumes the retained candidate")
 	host.close(); _cleanup_test_root(); host = PackageHostController.new(test_package_repository(), TEST_ROOT)

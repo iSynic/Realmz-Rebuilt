@@ -117,12 +117,11 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 	var events: Array[DomainEvent] = []
 	var reward_retry_checkpoint := snapshot() if _is_reward_continuation(_pending_continuation) else null
 	var continuation := _pending_continuation.copy() if _pending_continuation != null else null
-	var request_id := _pending_request.request_id
+	var request_counter := _request_counter
 	if continuation == null:
 		_pending_request = null
 		_pending_continuation = null
 		return _fail(&"invalid_vm_continuation", "The pending Scenario VM continuation is unavailable.", events)
-	_append_trace({"event": "resume", "requestId": request_id, "kind": String(continuation.kind)})
 	var operation: ScenarioRuntimeOperationResult
 	match continuation.kind:
 		ScenarioVmPendingContinuation.SAFE_OPERATION:
@@ -133,6 +132,10 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 			_pending_request = null
 			_pending_continuation = null
 			return _fail(&"unknown_interaction_continuation", "Scenario VM continuation kind is unavailable.", events)
+	if operation.is_rejection:
+		_request_counter = request_counter
+		return ScenarioVmResult.rejected(operation.error_code, operation.error_message)
+	_append_trace({"event": "resume", "requestId": _pending_request.request_id, "kind": String(continuation.kind)})
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		if reward_retry_checkpoint != null and restore(reward_retry_checkpoint):
 			return ScenarioVmResult.failed(operation.error_code, operation.error_message)

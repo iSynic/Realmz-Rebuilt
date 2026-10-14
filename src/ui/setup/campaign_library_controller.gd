@@ -19,17 +19,13 @@ signal refresh_requested
 signal campaign_selection_requested
 signal load_adventure_requested
 signal vault_requested
+signal settings_requested
 signal quit_requested
 signal preparation_changed
 signal back_requested
 
 const MAXIMUM_MODAL_Z_INDEX: int = 30
-const SPLASH_WIDE_MINIMUM_WIDTH: float = 1040.0
-
-var splash_overlay: PanelContainer
-var splash_composition: BoxContainer
-var splash_animation_host: NinePatchRect
-var splash_animation: VideoStreamPlayer
+var splash_overlay: MainMenuView
 var campaign_overlay: PanelContainer
 var campaign_list: VBoxContainer
 var campaign_scroll: ScrollContainer
@@ -44,11 +40,13 @@ var startup_action_buttons: Array[Button] = []
 
 var campaigns: Array[CampaignPackageView] = []
 var package_operation_status: RefCounted = PackageOperationView.new()
+var setup_ready := false
 var selected_campaign_summary: CampaignSummaryView
 var media: ClassicMediaCatalog
 var settings: PresentationSettings = PresentationSettings.new()
 var campaign_layout_rect := Rect2(12.0, 36.0, 228.0, 556.0)
 var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
+var _menu_layout_rect := Rect2(0.0, 0.0, 1280.0, 720.0)
 
 var _host: Control
 var _campaign_row_scene: PackedScene
@@ -109,31 +107,29 @@ func attach(host: Control) -> void:
 func build_splash_overlay() -> void:
 	if splash_overlay != null:
 		return
-	splash_overlay = _host.get_node_or_null("SplashScreen") as PanelContainer
+	splash_overlay = _host.get_node_or_null("MainMenu") as MainMenuView
 	if splash_overlay == null:
 		var scene := load(FRONT_DOOR_MENU_PATH) as PackedScene
 		assert(scene != null, "The front-door menu scene is unavailable.")
-		splash_overlay = scene.instantiate() as PanelContainer
+		splash_overlay = scene.instantiate() as MainMenuView
 		splash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		splash_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
 		_host.add_child(splash_overlay)
-	splash_composition = splash_overlay.get_node("%SplashComposition") as BoxContainer
-	splash_animation_host = splash_overlay.get_node("%RealmzIntroOrnament") as NinePatchRect
-	splash_animation = splash_overlay.get_node("%RealmzIntroAnimation") as VideoStreamPlayer
 	var scenarios := splash_overlay.get_node("%ChooseScenario") as Button
 	var load_adventure := splash_overlay.get_node("%LoadAdventure") as Button
 	var characters := splash_overlay.get_node("%CharacterFiles") as Button
+	var preferences := splash_overlay.get_node("%Settings") as Button
 	var quit := splash_overlay.get_node("%Quit") as Button
 	scenarios.pressed.connect(func() -> void: campaign_selection_requested.emit())
 	load_adventure.pressed.connect(func() -> void: load_adventure_requested.emit())
 	characters.pressed.connect(func() -> void: vault_requested.emit())
+	preferences.pressed.connect(func() -> void: settings_requested.emit())
 	quit.pressed.connect(func() -> void: quit_requested.emit())
 	startup_action_buttons.clear()
 	_register_startup_action(scenarios)
 	_register_startup_action(load_adventure)
 	_register_startup_action(characters)
-	_apply_intro_volume()
-	_apply_intro_frame_layout(false)
+	_register_startup_action(preferences)
 
 
 func build_campaign_overlay() -> void:
@@ -205,6 +201,10 @@ func set_package_operation(status: RefCounted) -> void:
 	if was_running != package_operation_status.is_running(): preparation_changed.emit()
 
 
+func blocks_party_editing() -> bool:
+	return package_operation_status.is_running() and not setup_ready
+
+
 func set_selected_campaign_summary(summary: CampaignSummaryView) -> void:
 	selected_campaign_summary = summary
 	_render_campaign_list()
@@ -219,7 +219,6 @@ func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
 func set_presentation_settings(next_settings: PresentationSettings) -> void:
 	if next_settings != null:
 		settings = next_settings
-		_apply_intro_volume()
 
 
 func set_startup_actions_ready(ready: bool) -> void:
@@ -232,7 +231,7 @@ func set_startup_actions_ready(ready: bool) -> void:
 		if became_ready and not startup_action_buttons.is_empty():
 			startup_action_buttons[0].grab_focus()
 		else:
-			_focus_first(splash_overlay)
+			splash_overlay.focus_current_action()
 
 
 func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Rect2) -> void:
@@ -240,15 +239,7 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		return
 	campaign_layout_rect = campaign_rect
 	setup_layout_rect = setup_rect
-	if splash_composition != null:
-		splash_composition.vertical = false
-		var identity_panel := splash_composition.find_child("SplashIdentityPanel", false, false) as Control
-		var command_panel := splash_composition.find_child("SplashCommandPanel", false, false) as Control
-		if identity_panel != null:
-			identity_panel.custom_minimum_size = Vector2.ZERO
-		if command_panel != null:
-			command_panel.custom_minimum_size = Vector2(320.0, 0.0)
-		_apply_intro_frame_layout(setup_rect.size.x < SPLASH_WIDE_MINIMUM_WIDTH)
+	_menu_layout_rect = profile.application_rect
 	if package_install_row != null:
 		package_install_row.vertical = false
 		install_button.text = "Install..." if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
@@ -258,8 +249,8 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 func apply_modal_layouts() -> void:
 	if splash_overlay != null:
 		splash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		splash_overlay.position = setup_layout_rect.position
-		splash_overlay.size = setup_layout_rect.size
+		splash_overlay.position = _menu_layout_rect.position
+		splash_overlay.size = _menu_layout_rect.size
 	if campaign_overlay != null and campaign_overlay.get_parent() == _host:
 		campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		campaign_overlay.position = campaign_layout_rect.position
@@ -271,7 +262,7 @@ func show_campaign() -> void:
 		campaign_overlay.visible = true
 	if splash_overlay != null:
 		splash_overlay.visible = false
-	_set_intro_active(false)
+	_set_main_menu_active(false)
 	apply_modal_layouts()
 	if campaign_scroll != null:
 		campaign_scroll.scroll_vertical = 0
@@ -288,7 +279,7 @@ func select_imported_package(path: String) -> void:
 				campaign_overlay.visible = true
 				if splash_overlay != null:
 					splash_overlay.visible = false
-				_set_intro_active(false)
+				_set_main_menu_active(false)
 				apply_modal_layouts()
 				_render_campaign_list()
 				_reveal_focused_import()
@@ -315,11 +306,11 @@ func show_splash() -> void:
 	if splash_overlay == null:
 		return
 	splash_overlay.visible = true
-	_set_intro_active(true)
+	_set_main_menu_active(true)
 	if campaign_overlay != null:
 		campaign_overlay.visible = false
 	apply_modal_layouts()
-	_focus_first(splash_overlay)
+	splash_overlay.focus_current_action()
 
 
 func hide_overlays() -> void:
@@ -327,31 +318,16 @@ func hide_overlays() -> void:
 		splash_overlay.visible = false
 	if campaign_overlay != null:
 		campaign_overlay.visible = false
-	_set_intro_active(false)
+	_set_main_menu_active(false)
 
 
-func prepare_intro_behind_splash() -> void:
-	var intro := splash_animation as ClassicIntroAnimation
-	if intro == null:
-		return
-	intro.prepare()
-	intro.start_playback()
+func _set_main_menu_active(active: bool) -> void:
+	if splash_overlay != null: splash_overlay.set_menu_active(active)
 
 
-func release_intro_resources() -> void:
-	var intro := splash_animation as ClassicIntroAnimation
-	if intro != null:
-		intro.release_resources()
-
-
-func _set_intro_active(active: bool) -> void:
-	var intro := splash_animation as ClassicIntroAnimation
-	if intro == null:
-		return
-	if active:
-		intro.start_playback()
-	else:
-		intro.suspend_playback()
+func show_controller_hint(family: String, preferences: ControllerPreferences) -> void:
+	if splash_overlay != null and splash_overlay.visible:
+		splash_overlay.show_controller_hint(family, preferences)
 
 
 func _render_campaign_list() -> void:
@@ -387,7 +363,7 @@ func _render_campaign_list() -> void:
 		row.connect("campaign_pressed", _campaign_pressed.bind(campaign))
 		var destination := _main_campaign_rows if campaign.origin == "main" else _imported_campaign_rows
 		destination.add_child(row)
-		row.call("configure", campaign, not running and _campaign_matches_selection(campaign), running, _focused_import_path == campaign.path)
+		row.call("configure", campaign, _campaign_matches_selection(campaign) and (not running or setup_ready), running and package_operation_status.operation_name == &"import_scenario", _focused_import_path == campaign.path)
 	_main_campaign_heading.visible = _has_visible_origin("main")
 	_imported_campaign_heading.visible = _has_visible_origin("imported")
 	_no_campaigns_state.text = "No installed scenarios. Install a .realmz2 package or import a scenario folder below."
@@ -398,13 +374,13 @@ func _render_campaign_list() -> void:
 	for campaign: CampaignPackageView in ordered_campaigns:
 		if campaign.path == _browsed_campaign_path or (browsed == null and _campaign_matches_selection(campaign)):
 			browsed = campaign
-	(campaign_overlay as CampaignSelectionPanel).present_campaign(browsed, running, browsed != null and _campaign_matches_selection(browsed), _pending_revision_hash)
+	(campaign_overlay as CampaignSelectionPanel).present_campaign(browsed, running, browsed != null and _campaign_matches_selection(browsed), _pending_revision_hash, setup_ready)
 	if not restore_path.is_empty(): _restore_list_focus.call_deferred(restore_path)
 
 
 func _restore_list_focus(path: String) -> void:
 	if not is_instance_valid(campaign_overlay) or not campaign_overlay.is_visible_in_tree(): return
-	if package_operation_status.is_running():
+	if package_operation_status.is_running() and not setup_ready:
 		_package_operation.cancel_button.grab_focus()
 		return
 	for rows: VBoxContainer in [_main_campaign_rows, _imported_campaign_rows]:
@@ -545,26 +521,3 @@ func _register_startup_action(button: Button) -> void:
 	button.disabled = not _startup_actions_ready
 	if not _startup_actions_ready:
 		button.tooltip_text = "Finishing startup…"
-
-
-func _apply_intro_frame_layout(compact: bool) -> void:
-	if splash_animation_host == null or splash_animation == null:
-		return
-	var host_size := Vector2(308.0, 198.0) if compact else Vector2(630.0, 410.0)
-	var inset := Vector2(24.0, 24.0) if compact else Vector2(55.0, 55.0)
-	splash_animation_host.custom_minimum_size = host_size
-	splash_animation.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	splash_animation.offset_left = inset.x
-	splash_animation.offset_top = inset.y
-	splash_animation.offset_right = -inset.x
-	splash_animation.offset_bottom = -inset.y
-
-
-func _apply_intro_volume() -> void:
-	if splash_animation == null:
-		return
-	var value := clampf(settings.master_volume, 0.0, 1.0)
-	if splash_animation is ClassicIntroAnimation:
-		(splash_animation as ClassicIntroAnimation).set_master_volume(value)
-	else:
-		splash_animation.volume_db = -80.0

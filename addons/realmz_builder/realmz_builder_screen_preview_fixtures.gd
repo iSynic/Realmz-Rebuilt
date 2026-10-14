@@ -20,6 +20,8 @@ const SUPPORTED_SURFACES: Array[String] = [
 	"party-assembly",
 	"party-import-from-save",
 	"character-creation",
+	"saved-adventure-browser",
+	"loading-adventure",
 ]
 
 
@@ -53,6 +55,8 @@ static func bind(surface: Node, surface_id: String, profile: String) -> bool:
 		"party-assembly": _bind_party_setup(surface as PartySetupWorkspace, view, profile, false)
 		"party-import-from-save": _bind_party_import_dialog(surface as PartyImportFromSaveDialog, profile)
 		"character-creation": _bind_party_setup(surface as PartySetupWorkspace, view, profile, true)
+		"saved-adventure-browser": _bind_saved_adventure_browser(surface as SavedAdventureBrowser, profile)
+		"loading-adventure": _bind_loading_adventure(surface as LoadingAdventureView, profile)
 		_: return false
 	surface.set_meta("realmz_builder_profile", profile)
 	return true
@@ -178,6 +182,64 @@ static func _bind_party_import_dialog(dialog: PartyImportFromSaveDialog, profile
 				preview["candidates"].append({"name": "Preview Adventurer %d" % index, "eligible": true, "selected": false, "detail": "Level %d · HP %d/48 · SP 12/30\nPersonal money: %d gold, 0 gems, 0 jewelry\nKept: Longsword, Iron Rations\nRemoved: None" % [index + 2, index * 5, index * 25]})
 		_: pass
 	dialog.show_party_import(preview)
+
+
+static func _bind_saved_adventure_browser(browser: SavedAdventureBrowser, profile: String) -> void:
+	var campaigns := _campaigns(profile)
+	var previews := _saved_adventure_previews(profile)
+	browser.set_campaigns(campaigns, campaigns[0].campaign_id if not campaigns.is_empty() else "")
+	browser.set_previews(previews, _save_preview_key(previews))
+	browser.set_progress("Checking the selected adventure…" if profile == "Long Content" else "")
+
+
+static func _bind_loading_adventure(view: LoadingAdventureView, profile: String) -> void:
+	var title := "City of Bywater"
+	var progress := "Preparing the saved adventure…"
+	if profile == "Empty":
+		title = "Choose a scenario"
+		progress = "No adventure is being prepared."
+	elif profile == "Unavailable":
+		title = "War in the Sword Lands — unavailable revision"
+		progress = "The exact package revision is unavailable."
+	elif profile == "Error":
+		progress = "The adventure could not be loaded. Review the supplied error details."
+	elif profile == "Long Content":
+		title = "The Siege of the Northern Reaches and the Road Beyond the Mountains"
+		progress = "Validating campaign contents, saved party, map, and starting position…"
+	view.show_wait(title, "saved adventures" if profile != "Compact" else "scenarios")
+	view.update_progress(progress)
+
+
+static func _saved_adventure_previews(profile: String) -> Array[SaveSlotPreview]:
+	var result := _save_previews(profile)
+	if profile == "Error":
+		var preview := SaveSlotPreview.new("quick", SaveSlotPreview.PRIMARY, SaveSlotPreview.CORRUPT)
+		preview.campaign_id = "realmz-builder"
+		preview.error_message = "The save record could not be validated."
+		result.append(preview)
+	elif profile == "Long Content":
+		var backup := SaveSlotPreview.new("quick", SaveSlotPreview.BACKUP, SaveSlotPreview.VALID)
+		backup.campaign_id = "realmz-builder"
+		backup.package_hash = "a".repeat(64)
+		backup.rules_version = "realmz-classic-1"
+		backup.realmz_day = 12
+		backup.realmz_hour = 7
+		backup.map_id = "land:0"
+		backup.coordinate = Vector2i(12, 82)
+		backup.character_names.assign(["Kevlar", "Lothlorian", "Silver Leaf"])
+		backup.can_load = true
+		result.append(backup)
+	return result
+
+
+static func _save_preview_key(previews: Array[SaveSlotPreview]) -> String:
+	for preview: SaveSlotPreview in previews:
+		if preview.can_load:
+			return preview.slot_id + (":backup" if preview.source == SaveSlotPreview.BACKUP else "")
+	if not previews.is_empty():
+		var preview := previews[0]
+		return preview.slot_id + (":backup" if preview.source == SaveSlotPreview.BACKUP else "")
+	return ""
 
 
 static func _game_view(profile: String) -> GameView:

@@ -19,7 +19,7 @@ var campaign_overlay: PanelContainer:
 	get:
 		return campaign_library.campaign_overlay
 var setup_overlay: PanelContainer
-var splash_overlay: PanelContainer:
+var splash_overlay: MainMenuView:
 	get:
 		return campaign_library.splash_overlay
 var campaign_list: VBoxContainer:
@@ -171,7 +171,7 @@ func ensure_appearance_textures(requested_asset_ids: Array[String] = []) -> void
 
 func apply_availability(button: BaseButton, action_id: StringName) -> void:
 	var availability := view.availability(action_id) if view != null else ActionAvailabilityView.new(action_id, false, "No active session.")
-	button.disabled = not availability.enabled or campaign_library.package_operation_status.is_running()
+	button.disabled = not availability.enabled or campaign_library.blocks_party_editing()
 	button.tooltip_text = availability.reason if not availability.enabled else ""
 
 static func select_option_metadata(option: OptionButton, value: int) -> void:

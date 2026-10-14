@@ -33,6 +33,11 @@ text_overrun_behavior = 3
 [node name="Toggle" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderSummary/SummaryRow"]
 layout_mode = 2
 text = "Reorder Party"
+[node name="CurrentAllies" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderSummary/SummaryRow"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Inspect allies currently traveling with the party."
+text = "Current Allies"
 
 [node name="PartyOrderEditor" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea"]
 visible = false

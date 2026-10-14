@@ -22,6 +22,8 @@ var media_assets: Array[MediaAsset] = []
 var compatibility_warnings: Array[ScenarioCompatibilityWarning] = []
 var requires_deferred_references: bool = false
 var transfer_catalog := ContentTransferCatalog.new()
+var setup_rules_identity: String = ""
+var application_package_hash: String = ""
 
 
 func _init(campaign_identity: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], item_definitions: Array[ItemDefinition] = [], spell_definitions: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], timed_encounters: Array[TimedEncounterDefinition] = [], option_labels: Array[OptionLabelDefinition] = [], campaign_definition: CampaignDefinition = null, appearance_options: Array[CharacterAppearanceDefinition] = [], monster_sets: Dictionary = {}, deferred_warnings: Array[ScenarioCompatibilityWarning] = [], deferred_references: bool = false, effective_media_assets: Array[MediaAsset] = []) -> void:

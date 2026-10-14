@@ -28,6 +28,9 @@ func _process(_delta: float) -> void:
 			_shell.show_campaign_selection(true)
 		&"vault":
 			_shell.show_vault_from_splash()
+		&"settings":
+			_shell.show_splash()
+			_shell.navigator.open_screen(&"system", false, &"Display")
 		&"quit":
 			_shell.quit_requested.emit()
 		_:

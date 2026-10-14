@@ -32,7 +32,7 @@ func refresh_party_list() -> void:
 		return
 	_ensure_party_slots()
 	_ensure_appearance_textures()
-	var import_available: bool = view != null and view.availability(&"import_vault_character").enabled and view.party_members.size() < maximum_party_size() and not _campaign_library.package_operation_status.is_running()
+	var import_available: bool = view != null and view.availability(&"import_vault_character").enabled and view.party_members.size() < maximum_party_size() and not _campaign_library.blocks_party_editing()
 	var import_reason := "" if import_available else "The party cannot accept another stored character right now."
 	party_list.configure_drop_target(import_available, import_reason)
 	var party_count := setup_overlay.find_child("PartyCount", true, false) as Label
@@ -42,7 +42,7 @@ func refresh_party_list() -> void:
 		var character: CharacterView = view.party_members[slot_index] if view != null and view.party_setup_available and slot_index < view.party_members.size() else null
 		var portrait: Texture2D = (_appearance_textures.get(character.portrait_id) as Texture2D) if character != null else null
 		var remove_availability := view.availability(&"remove_party_member") if view != null else ActionAvailabilityView.new(&"remove_party_member", false, "No active setup.")
-		if _campaign_library.package_operation_status.is_running():
+		if _campaign_library.blocks_party_editing():
 			remove_availability = ActionAvailabilityView.new(&"remove_party_member", false, "Wait for scenario preparation to finish.")
 		_party_slots[slot_index].call("configure", slot_index, character, portrait, layout_profile == UiLayoutProfile.COMPACT, remove_availability)
 
@@ -59,7 +59,7 @@ func _ensure_party_slots() -> void:
 		_party_slots.append(slot)
 
 func render_party_assembly() -> void:
-	var campaign_setup: bool = view != null and view.party_setup_available and not standalone_character_creation_active and not _campaign_library.package_operation_status.is_running()
+	var campaign_setup: bool = view != null and view.party_setup_available and not standalone_character_creation_active and not _campaign_library.blocks_party_editing()
 	var party_full := campaign_setup and view.party_members.size() >= maximum_party_size()
 	_configure_assembly_actions(campaign_setup, party_full)
 	var current_revisions := _current_vault_revisions()
@@ -78,7 +78,7 @@ func render_party_assembly() -> void:
 
 func _update_campaign_context() -> void:
 	var context := _assembly_browser.get_node("%AssemblyCampaignContext") as Label
-	context.text = "Preparing scenario..." if _campaign_library.package_operation_status.is_running() else "Adding to %s" % view.campaign_summary.title if view != null and view.party_setup_available and view.campaign_summary != null else "Choose a scenario to add characters"
+	context.text = "Preparing scenario..." if _campaign_library.blocks_party_editing() else "Adding to %s" % view.campaign_summary.title if view != null and view.party_setup_available and view.campaign_summary != null else "Choose a scenario to add characters"
 	context.tooltip_text = context.text
 
 
@@ -90,7 +90,7 @@ func _configure_assembly_actions(campaign_setup: bool, party_full: bool) -> void
 		import_party_button.visible = not standalone_character_creation_active and setup_mode == &"assembly"
 		import_party_button.disabled = not campaign_setup or not standalone_character_creation_available
 		import_party_button.tooltip_text = "" if not import_party_button.disabled else "Wait for scenario and character-library preparation to finish."
-	create_character_button.disabled = _campaign_library.package_operation_status.is_running() or party_full or (not campaign_setup and not standalone_character_creation_available)
+	create_character_button.disabled = _campaign_library.blocks_party_editing() or party_full or (not campaign_setup and not standalone_character_creation_available)
 	if party_full:
 		create_character_button.tooltip_text = "This party already has %d characters." % maximum_party_size()
 	elif campaign_setup:
@@ -254,7 +254,7 @@ func refresh_party_setup_options() -> void:
 		begin_button.text = "Begin adventure (0/6)"
 		return
 	party_setup_options.visible = setup_mode == &"assembly"
-	difficulty_option.disabled = _campaign_library.package_operation_status.is_running()
+	difficulty_option.disabled = _campaign_library.blocks_party_editing()
 	monster_set_option.disabled = difficulty_option.disabled
 	monster_set_option.clear()
 	var ordered_monster_sets: Array[int] = []

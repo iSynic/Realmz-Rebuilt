@@ -8,9 +8,13 @@ static func source_definition_error(source: ContentTransferCatalog, target: Real
 		return "The Character File's source rule definitions are unavailable."
 	for family: StringName in [&"races", &"castes"]:
 		var id := character.race_id if family == &"races" else character.caste_id
+		if source != target.transfer_catalog and source.fingerprint(family, id).is_empty():
+			return "The Character File's source race or class definition is unavailable."
 		if source.is_scenario_specific(family, id) and source_campaign_id != target.campaign_id:
 			return "This character uses scenario custom race or class rules and is available only in its source scenario (%s)." % source_campaign_id
-		if source != target.transfer_catalog and not source.matches(target.transfer_catalog, family, id):
+		# Castle partyselect.c admits stock identities under the destination profile.
+		# Rebuilt deliberately retains same-campaign compatibility for custom rules.
+		if source.is_scenario_specific(family, id) and not source.matches(target.transfer_catalog, family, id):
 			return "The destination's %s definition differs from this character's source." % ("race" if family == &"races" else "class")
 	return ""
 
@@ -36,10 +40,6 @@ static func definition_error(context: SessionWorkflowContext, imported: Characte
 	var race := context.content.characters.race_by_id(imported.race_id)
 	var caste := context.content.characters.caste_by_id(imported.caste_id)
 	context.rules.characters.ensure_age_group(imported, race, caste)
-	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
-		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's race cannot use that class.")
-	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
-		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's class is not available to that race.")
 	var imported_item_ids: Dictionary = {}
 	for item: ItemInstance in imported.inventory():
 		if context.content.items.item_by_id(item.definition_id) == null:

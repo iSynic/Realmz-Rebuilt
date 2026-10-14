@@ -62,6 +62,7 @@ var _hurry_cast_key: String = ""
 var _visible_health: Dictionary = {}
 var _summoned_monsters: Dictionary = {}
 var _summoned_sizes: Dictionary = {}
+var _defeat_sounds: Dictionary = {}
 var _backdrops := ClassicCombatBackdrop.new()
 
 
@@ -104,6 +105,7 @@ func reset() -> void:
 	_visible_health.clear()
 	_summoned_monsters.clear()
 	_summoned_sizes.clear()
+	_defeat_sounds.clear()
 	_backdrops.seed(base_view)
 
 
@@ -245,6 +247,9 @@ func _build_frames(events: Array[DomainEvent]) -> Array[String]:
 func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	match event.kind:
 		&"sound_requested", &"character_effect_requested":
+			if event.kind == &"sound_requested" and event.payload.get("playbackBoundary") == "defeat":
+				_defeat_sounds[String(event.payload.get("targetId", ""))] = event
+				return
 			var sound_frame := _new_frame(&"sound", SOUND_FRAME_SECONDS, positions, hidden)
 			sound_frame.sound_event = event
 			_frames.append(sound_frame)
@@ -254,7 +259,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 			_append_movement(event, positions, hidden)
 		&"combatants_swapped": _append_movement(event, positions, hidden)
 		&"combat_attack_resolved": _append_attack(event, positions, hidden)
-		&"combat_projectile_resolved": _append_projectile(event, positions, hidden)
+		&"combat_projectile_resolved": _append_result(event, positions, hidden)
 		&"combat_spell_cast": _append_spell_cast(event, positions, hidden)
 		&"combat_spell_projectile": _append_spell_projectile(event, positions, hidden)
 		&"combat_spell_resolved": _append_spell_result(event, positions, hidden)
@@ -406,16 +411,6 @@ func _append_attack(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 	_append_result(event, positions, hidden)
 
 
-func _append_projectile(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
-	var projectile := _new_frame(&"projectile", PROJECTILE_SECONDS, positions, hidden)
-	projectile.actor_id = String(event.payload.get("actorId", ""))
-	projectile.target_id = String(event.payload.get("targetId", ""))
-	projectile.from_coordinate = _position_for(projectile.actor_id, positions)
-	projectile.to_coordinate = _position_for(projectile.target_id, positions)
-	_frames.append(projectile)
-	_append_result(event, positions, hidden)
-
-
 func _append_spell_cast(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	var cast := _new_frame(&"spell_cast", SPELL_CAST_SECONDS, positions, hidden)
 	cast.actor_id = String(event.payload.get("actorId", ""))
@@ -430,7 +425,7 @@ func _append_spell_cast(event: DomainEvent, positions: Dictionary, hidden: Array
 
 
 func _append_spell_projectile(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
-	var projectile := _new_frame(&"spell_projectile", PROJECTILE_SECONDS, positions, hidden)
+	var projectile := _new_frame(&"projectile" if bool(event.payload.get("weaponProjectile", false)) else &"spell_projectile", PROJECTILE_SECONDS, positions, hidden)
 	projectile.actor_id = String(event.payload.get("actorId", ""))
 	projectile.target_id = String(event.payload.get("targetId", ""))
 	projectile.from_coordinate = _position_for(projectile.actor_id, positions)
@@ -498,6 +493,10 @@ func _append_multi_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 	if not defeats.is_empty():
 		var defeat := _new_frame(&"group_defeat", DEFEAT_SECONDS, positions, hidden)
 		defeat.group_frames = defeats
+		for child: CombatPlaybackFrame in defeats:
+			if child.sound_event != null:
+				defeat.sound_event = child.sound_event
+				break
 		_frames.append(defeat)
 
 
@@ -575,6 +574,8 @@ func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 		defeat.effect_resource_id = CombatDefeatArt.resource_id_for_combatant(base_view, target_id)
 		defeat.result_kind = &"defeat"
 		defeat.display_text = "Defeated"
+		defeat.sound_event = _defeat_sounds.get(target_id) as DomainEvent
+		_defeat_sounds.erase(target_id)
 		_frames.append(defeat)
 
 

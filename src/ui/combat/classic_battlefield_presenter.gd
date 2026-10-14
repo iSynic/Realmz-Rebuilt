@@ -441,9 +441,7 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 				draw_rect(actor_rect.grow(3.0), Color(1.0, 0.86, 0.28, 0.95), false, 3.0)
 			if target_rect.has_area():
 				draw_rect(target_rect.grow(3.0), Color(0.60, 0.86, 1.0, 0.95), false, 3.0)
-		&"projectile":
-			_draw_projectile(actor_rect, target_rect)
-		&"spell_projectile":
+		&"projectile", &"spell_projectile":
 			_draw_spell_projectile(actor_rect, target_rect)
 		&"spell_cast", &"spell_effect":
 			_draw_spell_effect(actor_rect, target_rect)
@@ -471,14 +469,6 @@ func _draw_centered_cue(text: String) -> void:
 	draw_rect(cue_rect, Color(0.02, 0.025, 0.03, 0.86), true)
 	draw_rect(cue_rect, Color(0.86, 0.72, 0.30, 0.95), false, 2.0)
 	draw_string(get_theme_font(&"font", &"Label"), cue_rect.position + Vector2(4.0, 23.0), text, HORIZONTAL_ALIGNMENT_CENTER, cue_rect.size.x - 8.0, 16, Color(1.0, 0.90, 0.56))
-
-
-func _draw_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:
-	if not actor_rect.has_area() or not target_rect.has_area():
-		return
-	var point := actor_rect.get_center().lerp(target_rect.get_center(), _playback_frame.progress)
-	draw_circle(point, 5.0, Color(1.0, 0.91, 0.55, 0.98))
-	draw_circle(point, 7.0, Color(1.0, 1.0, 0.88, 0.72), false, 2.0)
 
 
 func _draw_spell_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:

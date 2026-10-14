@@ -76,7 +76,7 @@ static func populate_action_availability(context: SessionWorkflowContext, result
 	var ordinary_reason := "Resolve the current interaction first." if blocked_by_interaction else "Complete party setup first." if party_setup else ""
 	_populate_exploration_actions(context, result, blocked_by_interaction, battle_active, ordinary_reason)
 	_populate_magic_actions(context, result, blocked_by_interaction, battle_active, ordinary_reason)
-	_populate_setup_actions(context, result, blocked_by_interaction, party_setup, setup_member_count, setup_member_limit, draft_active, battle_active)
+	populate_setup_actions(context, result, blocked_by_interaction, party_setup, setup_member_count, setup_member_limit, draft_active, battle_active)
 	_populate_inventory_and_service_actions(result, ordinary_reason, battle_active)
 	_populate_combat_movement_action(result, battle_active)
 
@@ -136,7 +136,7 @@ static func _populate_magic_actions(context: SessionWorkflowContext, result: Gam
 	result.set_action_availability(&"choose_combat_action", battle_active and not blocked_by_interaction, "No battle action is currently available." if not battle_active else "Resolve the current interaction first." if blocked_by_interaction else "")
 
 
-static func _populate_setup_actions(context: SessionWorkflowContext, result: GameView, blocked_by_interaction: bool, party_setup: bool, setup_member_count: int, setup_member_limit: int, draft_active: bool, battle_active: bool) -> void:
+static func populate_setup_actions(context: SessionWorkflowContext, result: GameView, blocked_by_interaction: bool, party_setup: bool, setup_member_count: int, setup_member_limit: int, draft_active: bool, battle_active: bool) -> void:
 	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
 	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0 and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "Add or import at least one character first.")
 	result.set_action_availability(&"import_vault_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "Vault imports are available only during party setup." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "The party is full.")

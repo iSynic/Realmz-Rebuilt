@@ -155,7 +155,7 @@ static func append_monster_physical_feedback(events: Array[DomainEvent], sound_i
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": true, "source": "classic-party-dragon-hide"}))
 
 
-static func append_character_attack_audio(events: Array[DomainEvent], attacker: CharacterState, equipment: CharacterCombatEquipment, resolution: AttackResolution, target_kind: StringName) -> void:
+static func append_character_attack_audio(events: Array[DomainEvent], attacker: CharacterState, equipment: CharacterCombatEquipment, resolution: AttackResolution, target_kind: StringName, target_id: String) -> void:
 	if attacker == null or equipment == null or resolution == null:
 		return
 	if resolution.blocked:
@@ -169,10 +169,10 @@ static func append_character_attack_audio(events: Array[DomainEvent], attacker: 
 		append_attack_sound(events, 132)
 	append_attack_sound(events, sound_id)
 	if resolution.killed and target_kind != &"character":
-		append_attack_sound(events, 132)
+		append_defeat_audio(events, target_id)
 
 
-static func append_monster_attack_audio(events: Array[DomainEvent], attacker: MonsterState, definition: MonsterDefinition, attack_index: int, weapon: ItemDefinition, resolution: AttackResolution, rng: RealmzRng) -> void:
+static func append_monster_attack_audio(events: Array[DomainEvent], attacker: MonsterState, definition: MonsterDefinition, attack_index: int, weapon: ItemDefinition, resolution: AttackResolution, rng: RealmzRng, target_id: String) -> void:
 	if attacker == null or definition == null or resolution == null or rng == null:
 		return
 	if resolution.blocked:
@@ -199,7 +199,12 @@ static func append_monster_attack_audio(events: Array[DomainEvent], attacker: Mo
 			sound_id = 632
 	append_attack_sound(events, sound_id)
 	if resolution.killed:
-		append_attack_sound(events, 132)
+		append_defeat_audio(events, target_id)
+
+
+static func append_defeat_audio(events: Array[DomainEvent], target_id: String) -> void:
+	# killbody/showresults owns sound 132; playback starts it with the skull cue.
+	events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-defeat", "targetId": target_id, "playbackBoundary": "defeat"}))
 
 
 static func weapon_requirement_sound(reason: StringName) -> int:

@@ -14,6 +14,7 @@ var _total: int = 0
 var _message: String = ""
 var _cancel_requested: bool = false
 var _result: PackageInstallResult
+var _setup: PackageSetupResult
 
 
 func _init(repository: PackageRepository = null) -> void:
@@ -31,6 +32,7 @@ func start(source_path: String, install_root: String = "user://packages") -> boo
 	_message = "Preparing campaign…"
 	_cancel_requested = false
 	_result = null
+	_setup = null
 	_mutex.unlock()
 	var error := _thread.start(_run_install.bind(source_path, install_root))
 	if error == OK:
@@ -57,6 +59,18 @@ func snapshot() -> RefCounted:
 	return result
 
 
+func take_setup() -> PackageSetupResult:
+	_mutex.lock()
+	var result := _setup if not _cancel_requested else null
+	_setup = null
+	_mutex.unlock()
+	return result
+
+
+func cancellation_requested() -> bool:
+	return _is_cancel_requested()
+
+
 func take_result() -> PackageInstallResult:
 	var current := snapshot()
 	if current.is_running() or current.state == PackageOperationStatus.IDLE:
@@ -80,6 +94,10 @@ func shutdown() -> void:
 
 
 func _run_install(source_path: String, install_root: String) -> void:
+	var setup := _repository.prepare_setup(source_path, install_root.path_join(".setup"), _is_cancel_requested)
+	_mutex.lock()
+	if not _cancel_requested and setup.is_ok(): _setup = setup
+	_mutex.unlock()
 	var result := _repository.install_package(source_path, install_root, _on_progress, _is_cancel_requested)
 	_mutex.lock()
 	_result = result

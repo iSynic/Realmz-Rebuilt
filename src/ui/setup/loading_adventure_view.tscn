@@ -1,0 +1,122 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/loading_adventure_view.gd" id="1_loading"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/assets/main-menu/backgrounds/plate-05.png" id="2_background"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_loading_panel"]
+bg_color = Color(0.0627451, 0.0980392, 0.137255, 0.94902)
+border_color = Color(0.392157, 0.439216, 0.482353, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+content_margin_left = 24.0
+content_margin_top = 24.0
+content_margin_right = 24.0
+content_margin_bottom = 24.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_cancel"]
+bg_color = Color(0.160784, 0.2, 0.239216, 1)
+border_color = Color(0.321569, 0.376471, 0.423529, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_cancel_hover"]
+bg_color = Color(0.219608, 0.270588, 0.317647, 1)
+border_color = Color(0.627451, 0.690196, 0.741176, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+
+[node name="LoadingAdventureView" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_loading")
+background_paths = PackedStringArray("res://src/ui/shared/assets/main-menu/backgrounds/plate-01.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-02.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-03.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-04.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-05.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-06.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-07.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-08.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-09.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-10.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-11.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-12.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-13.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-14.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-15.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-16.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-17.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-18.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-19.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-20.png")
+
+[node name="LoadingBackground" type="TextureRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_background")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="LoadingPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -300.0
+offset_top = -292.0
+offset_right = 300.0
+offset_bottom = -84.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 1
+theme_override_styles/panel = SubResource("StyleBox_loading_panel")
+
+[node name="LoadingContent" type="VBoxContainer" parent="LoadingPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="LoadingTitle" type="Label" parent="LoadingPanel/LoadingContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.913725, 0.807843, 0.509804, 1)
+theme_override_font_sizes/font_size = 26
+text = "Loading your adventure"
+
+[node name="LoadingProgress" type="Label" parent="LoadingPanel/LoadingContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.843137, 0.85098, 0.866667, 1)
+theme_override_font_sizes/font_size = 20
+text = "Preparing your adventure…"
+autowrap_mode = 3
+
+[node name="ReturnHint" type="Label" parent="LoadingPanel/LoadingContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72549, 0.760784, 0.796078, 1)
+theme_override_font_sizes/font_size = 16
+text = "Cancel returns to your campaign selection."
+
+[node name="CancelButton" type="Button" parent="LoadingPanel/LoadingContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.901961, 0.909804, 0.921569, 1)
+theme_override_colors/font_hover_color = Color(0.94902, 0.835294, 0.529412, 1)
+theme_override_colors/font_focus_color = Color(0.94902, 0.835294, 0.529412, 1)
+theme_override_styles/normal = SubResource("StyleBox_cancel")
+theme_override_styles/hover = SubResource("StyleBox_cancel_hover")
+theme_override_styles/focus = SubResource("StyleBox_cancel_hover")
+theme_override_font_sizes/font_size = 18
+text = "Cancel"
+focus_mode = 2

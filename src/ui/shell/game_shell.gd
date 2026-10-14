@@ -27,7 +27,7 @@ signal music_playlist_mode_changed(playlist_id: int, mode: int)
 signal interface_text_scale_changed(value: float)
 signal narrative_text_scale_changed(value: float)
 signal font_choice_changed(role: StringName, identity: String)
-signal menu_visibility_changed(value: String)
+signal pause_changed(active: bool)
 signal show_overworld_command_titles_changed(enabled: bool)
 signal integer_fit_hidden_commands_changed(enabled: bool)
 signal ui_scale_mode_changed(value: String)
@@ -61,6 +61,7 @@ signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_repair_requested(operation: StringName)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
@@ -74,15 +75,10 @@ signal combat_inventory_item_use_requested(character_id: String, instance_id: St
 const SCROLL_ARROW_STEP := 32.0
 const SCROLL_ARROW_INITIAL_DELAY := 0.34
 const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
-const COMMAND_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_command_controller.gd")
-const MENU_CONTROLLER_SCRIPT := preload("res://src/ui/shell/game_shell_menu_controller.gd")
 
 @export var party_effect_slot_scene: PackedScene
 
-@onready var _menu_strip: PanelContainer = %MenuStrip
-@onready var _menu_row: HBoxContainer = %MenuRow
-@onready var _compact_menu: MenuButton = %CompactMenu
-@onready var _package_status: Label = %PackageStatus
+@onready var _package_status: Label = $PauseMenu.get_node("%PackageStatus")
 @onready var _stage_frame: NinePatchRect = %StageFrame
 @onready var _picture_stage: Control = %PictureStage
 @onready var _party_roster: ClassicPartyRoster = %PartyRoster
@@ -132,7 +128,7 @@ var _selected_character_id: String = ""
 var _selected_combat_battle_id: String = ""
 var _selected_combat_actor_id: String = ""
 var _command_controller: GameShellCommandController
-var _menu_controller: GameShellMenuController
+var _pause_controller: GameShellPauseController
 var _picture_presenter: GameShellPicturePresenter
 var _layout_controller: GameShellLayoutController
 var _footer_bounds_pending := false
@@ -161,8 +157,10 @@ var click_to_move_enabled: bool:
 	get: return _presentation_settings.click_to_move_enabled
 var picture_stage: Control:
 	get: return _picture_stage
+var pause_active: bool:
+	get: return _pause_controller != null and _pause_controller.is_active()
 var navigation_overlay_active: bool:
-	get: return character_art.visible or font_picker.visible or (music_workspace != null and music_workspace.visible) or _menu_controller.owns_native_menu_input() or _menu_controller.controller_is_open() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
+	get: return character_art.visible or font_picker.visible or (music_workspace != null and music_workspace.visible) or _pause_controller.is_active() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
 
 
 class ControllerAccess:
@@ -171,6 +169,7 @@ class ControllerAccess:
 	func _init(shell: Variant) -> void: _shell = shell
 	func show_prompts(family: String, context: StringName = &"") -> void:
 		_shell._controller_prompts.present(family, context, _shell._presentation_settings.controller)
+		_shell._navigator.setup_controller.campaign_library.show_controller_hint(family, _shell._presentation_settings.controller)
 		_shell._controller_radial.set_prompt_family(family)
 	func hide_prompts() -> void:
 		_shell._controller_prompts.hide_prompts()
@@ -178,7 +177,8 @@ class ControllerAccess:
 	func navigation_workspace_focus_root() -> Node:
 		if _shell.character_art.visible: return _shell.character_art.controller_focus_root()
 		if _shell.font_picker.visible: return _shell.font_picker.controller_focus_root()
-		return _shell.music_workspace.controller_focus_root() if _shell.music_workspace != null and _shell.music_workspace.visible else null
+		if _shell.music_workspace.visible: return _shell.music_workspace.controller_focus_root()
+		return _shell._navigator if _shell._pause_controller.workspace_is_open() else null
 	func cycle_navigation_workspace_tab(delta: int) -> void:
 		if _shell.music_workspace.visible: _shell.music_workspace.controller_cycle_tab(delta)
 	func spellbook_focus_root() -> Control:
@@ -204,14 +204,14 @@ class ControllerAccess:
 	func cancel_binding_capture() -> void: _shell._navigator.content_presenter.cancel_controller_binding_capture()
 	func set_live_input(value: String) -> void: _shell._navigator.content_presenter.set_controller_live_input(value)
 	func radial_is_open() -> bool: return _shell._controller_radial.is_open()
-	func top_menu_is_open() -> bool: return _shell._menu_controller.controller_is_open()
-	func open_top_menu() -> bool: return _shell._menu_controller.controller_open()
-	func move_top_menu(direction: Vector2i, repeated: bool = false) -> bool: return _shell._menu_controller.controller_direction(direction, repeated)
-	func confirm_top_menu() -> bool: return _shell._menu_controller.controller_confirm()
-	func back_top_menu() -> bool: return _shell._menu_controller.controller_back()
-	func selected_top_menu_label() -> String: return _shell._menu_controller.controller_selected_label()
-	func close_top_menu_for_pointer() -> void: _shell._menu_controller.controller_pointer_takeover()
-	func handle_top_menu_input(event: InputEvent) -> bool: return _shell._menu_controller.handle_host_input(event)
+	func poll_pause() -> void: _shell._pause_controller.poll()
+	func pause_is_open() -> bool: return _shell._pause_controller.is_open()
+	func open_pause() -> bool: return _shell._pause_controller.open()
+	func move_pause(direction: Vector2i, repeated: bool = false) -> bool: return _shell._pause_controller.move(direction, repeated)
+	func confirm_pause() -> bool: return _shell._pause_controller.confirm()
+	func back_pause() -> bool: return _shell._pause_controller.back()
+	func selected_pause_label() -> String: return _shell._pause_controller.selected_label()
+	func handle_pause_input(event: InputEvent) -> bool: return _shell._pause_controller.handle_input(event)
 	func handle_navigation_modal_input(event: InputEvent) -> bool:
 		if _shell.character_art.visible and not _shell._controller_keyboard.is_open():
 			if event.is_action_pressed(&"realmz_back"):
@@ -273,7 +273,7 @@ class ControllerAccess:
 			{"id": &"bestiary", "label": "Bestiary", "symbol": "♜"},
 			{"id": &"workspace_music", "label": "Music", "symbol": "♫"},
 			{"id": &"workspace_diagnostics", "label": "Diagnostics", "symbol": "◇"},
-			{"id": &"workspace_top_menu", "label": "Top Menu", "symbol": "☰"},
+			{"id": &"workspace_pause", "label": "Pause", "symbol": "☰"},
 		]
 		for definition: Dictionary in definitions:
 			var reason := route_reason
@@ -313,7 +313,7 @@ class ControllerAccess:
 			&"workspace_save_load": _shell._navigator.open_screen(&"save_load")
 			&"workspace_music": _shell._navigator.open_screen(&"system", true, &"Audio")
 			&"workspace_diagnostics": _shell._navigator.open_screen(&"system", true, &"Diagnostics")
-			&"workspace_top_menu": _shell._menu_controller.controller_open()
+			&"workspace_pause": _shell._pause_controller.open()
 			_: _shell._navigator.open_screen(command_id)
 	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry], standalone_workspaces: bool = false) -> void:
 		_shell._controller_radial_kind = kind
@@ -332,9 +332,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	get_tree().node_added.connect(_on_tree_node_added)
 	ClassicScrollArrowController.configure_descendants(self, SCROLL_ARROW_STEP, SCROLL_ARROW_INITIAL_DELAY, SCROLL_ARROW_REPEAT_INTERVAL)
-	_command_controller = COMMAND_CONTROLLER_SCRIPT.new(self)
+	_command_controller = GameShellCommandController.new(self)
 	_command_controller.initialize()
-	_menu_controller = MENU_CONTROLLER_SCRIPT.new(self)
+	_pause_controller = GameShellPauseController.new(self)
 	_picture_presenter = GameShellPicturePresenter.new(self)
 	_layout_controller = GameShellLayoutController.new(self)
 	_status_controller = GameShellStatusController.new()
@@ -353,13 +353,14 @@ func _ready() -> void:
 	_navigator.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
 	_navigator.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	_navigator.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
+	_navigator.vault_repair_requested.connect(func(operation: StringName) -> void: vault_repair_requested.emit(operation))
 	_navigator.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
 	_navigator.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
 	_navigator.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
 	_navigator.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
 	_navigator.screen_changed.connect(_on_screen_changed)
 	_navigator.system_action_requested.connect(handle_system_action_requested)
-	_navigator.content_presenter.save_previews_changed.connect(_build_menus)
+	_navigator.content_presenter.save_previews_changed.connect(_refresh_pause_menu)
 	_navigator.presentation_setting_changed.connect(_on_presentation_setting_changed)
 	_navigator.combat_inventory_response_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: combat_inventory_response_submitted.emit(body))
 	_navigator.combat_inventory_item_use_requested.connect(func(character_id: String, instance_id: String) -> void: combat_inventory_item_use_requested.emit(character_id, instance_id))
@@ -374,7 +375,7 @@ func _ready() -> void:
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
 	_bottom_region.minimum_size_changed.connect(_queue_footer_bounds)
-	_build_menus()
+	_refresh_pause_menu()
 	_status_controller.set_status("Choose a validated Realmz campaign")
 	_apply_layout()
 
@@ -404,7 +405,7 @@ func present(game_view: GameView) -> void:
 		_party_roster.present(game_view)
 		_navigator.present(game_view)
 		_set_play_regions_visible(false)
-		_build_menus()
+		_refresh_pause_menu()
 		_command_controller.update_availability()
 		return
 	if previous_campaign_id != game_view.campaign_id:
@@ -425,7 +426,7 @@ func present(game_view: GameView) -> void:
 	var automatic_route := GameShellRoutePolicy.automatic_route(_navigator.current_screen(), game_view, contextual_service_closed)
 	if automatic_route != _navigator.current_screen():
 		_navigator.open_screen(automatic_route, false)
-	_build_menus()
+	_refresh_pause_menu()
 	_rebuild_command_deck()
 
 
@@ -485,7 +486,7 @@ func apply_settings(settings: PresentationSettings) -> void:
 	if music_workspace != null and music_workspace.visible:
 		music_workspace.open(settings, _music_playlist_id, _music_title, _music_playing)
 	_apply_layout()
-	_build_menus()
+	_refresh_pause_menu()
 
 
 func set_music_playback_state(playlist_id: int, title: String, playing: bool) -> void:
@@ -494,11 +495,11 @@ func set_music_playback_state(playlist_id: int, title: String, playing: bool) ->
 	_music_playing = playing
 	if music_workspace != null:
 		music_workspace.set_playback_state(playlist_id, title, playing)
-	_build_menus()
+	_refresh_pause_menu()
 
 
 func accepts_exploration_input() -> bool:
-	return (music_workspace == null or not music_workspace.visible) and _navigator.accepts_exploration_input()
+	return not navigation_overlay_active and _navigator.accepts_exploration_input()
 
 
 func handle_back() -> bool:
@@ -508,9 +509,8 @@ func handle_back() -> bool:
 	if music_workspace != null and music_workspace.visible:
 		music_workspace.close()
 		return true
-	if accepts_exploration_input():
-		_navigator.open_screen(&"system")
-		return true
+	if pause_active: return _pause_controller.back()
+	if accepts_exploration_input(): return _pause_controller.open()
 	var handled := _navigator.handle_back()
 	if handled:
 		var play_regions_visible := _current_view != null and _current_view.session_started and not _navigator.full_stage_overlay_visible
@@ -519,7 +519,7 @@ func handle_back() -> bool:
 
 
 func open_system_workspace() -> void:
-	_navigator.open_screen(&"system")
+	_pause_controller.open()
 
 
 func _handle_controller_radial_selection(command_id: StringName) -> void:
@@ -540,19 +540,19 @@ func handle_route_shortcut(event: InputEvent) -> bool:
 func show_campaign_selection(load_after_selection: bool = false) -> void:
 	_navigator.show_campaign_selection(load_after_selection)
 	_set_play_regions_visible(false)
-	_build_menus()
+	_refresh_pause_menu()
 
 
 func show_vault_from_splash() -> void:
 	_navigator.show_vault_from_splash()
 	_set_play_regions_visible(false)
-	_build_menus()
+	_refresh_pause_menu()
 
 
 func show_splash() -> void:
 	_navigator.show_splash()
 	_set_play_regions_visible(false)
-	_build_menus()
+	_refresh_pause_menu()
 
 
 func _apply_layout() -> void:
@@ -565,7 +565,7 @@ func _apply_layout() -> void:
 		theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, _presentation_settings, sizing_profile.ui_scale, font_resolver)
 	UiSizing.apply(self, sizing_profile)
 	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
-	_build_menus()
+	_refresh_pause_menu()
 	_rebuild_command_deck()
 	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
 	layout_changed.emit(_layout_controller.workspace_rect, _profile)
@@ -575,10 +575,10 @@ func refresh_layout() -> void:
 	_apply_layout()
 
 
-func _build_menus() -> void:
+func _refresh_pause_menu() -> void:
 	if not is_node_ready():
 		return
-	_menu_controller.rebuild(_current_view, _presentation_settings, _music_title, _music_playing)
+	_pause_controller.rebuild()
 
 
 func _rebuild_command_deck() -> void:
@@ -613,7 +613,7 @@ func _on_screen_changed(screen_id: StringName) -> void:
 	_set_play_regions_visible(play_regions_visible)
 	_apply_layout()
 	_status_controller.set_status(String(screen_id).replace("_", " ").capitalize())
-	_build_menus()
+	_refresh_pause_menu()
 	_rebuild_command_deck()
 	route_changed.emit(screen_id)
 

@@ -1,6 +1,28 @@
 # Scenario VM evidence
 
+## Native map markers and placed Action Points
+
+Castle revision `491816ad60037394f92c428e99c004494d3c28b3` keeps the native map marker separate from its placed AP record. `buttonchoice.c:75-143` resolves land marker bands before ordinary collision and calls `newland` only for the active band. `newland.c:70` selects the first matching native record, including a nonpositive or empty record that shadows later records. Dungeon movement uses bit `0x1000` in `threed.c`; opcode 20 and AP-header destination processing instead test the absolute raw field value (`newland.c:2055,3770`). The destination test retains Castle's `field[x][y]` indexing even for dungeons. A colocated record does not itself mark a tile.
+
+Schema v6 therefore carries each map's exact signed native values in logical row-major order. The topology owner evaluates those values with saved tile changes, secret discovery, and moved-boat replacements. Ordinary land activation and marker-based collision retain their distinct upper bounds; destination rechecks use the raw-value test. Schema v3-v5 archives retain their compiled marker interpretation because the missing original values cannot be recovered from normalized terrain. Their archive identities and bound saves remain unchanged.
+
+This corrects the interpretation reported in [City of Bywater issue 5](https://github.com/iSynic/Realmz-Rebuilt/issues/5), without changing authored AP instructions, chance values, quests, or native files. The coffin record at Land 6 AP 2 and false-accusation records at Land 5/6 AP 68 occupy unmarked tiles. The treasury AP 74 is independently dormant. Prepared adjacent movement verifies those gates, the outer-office message, the living magistrate after visiting the treasury, complete state/RNG restoration, and independence of an earlier snapshot. Pending APs that remove their own marker remain restorable.
+
+A bounded corpus audit finds 16 positive first records with executable instructions on plain native land cells: 12 in Bywater, three in Mithril Vault, and one in Twin Sands of Time. Package-backed prepared movement verifies that each remains preserved and unconsumed without activating. Five prepared Bywater one-off routes also retain consumption through pending interactions, battles, save restoration, and re-entry; forced victory verifies continuation only. These are source and controlled session proofs. They do not reproduce the reporter's complete ordinary route or establish Castle executable parity or campaign certification.
+
 This document separates the Classic control-flow observations used to design the 2.0 VM from the behavior proven in the new runtime. It does not claim a Castle runtime fixture where only source has been inspected.
+
+## Rejected combat commands and friendly collisions
+
+Castle revision `491816ad60037394f92c428e99c004494d3c28b3` keeps invalid spell targets and movement inside the combat loop (`combatinfo-combatchoice.c:730-751,1283-1438,1497-1513,1793-1853`). An invalid command does not complete the battle or abandon its AP caller. The same file at `1723-1788` opens Swap Positions or Attack Friend for eligible adjacent allies; `question.c:257-261,292-300` supplies cancellation. This is source-control-flow evidence, without an independent Castle executable capture.
+
+Rebuilt distinguishes unchanged command rejection from terminal runtime faults. A rejected response preserves the complete session snapshot, pending request, scenario caller, VM frames/counters/trace, revision, and RNG. Missing immutable definitions or battlefield data and invalid continuation ownership remain terminal. Scenario-owned Classic and Safe battles open the shared friend prompt after Guard settles, retain their caller through the typed collision continuation, and resume that exact reaction after Swap, Attack, or Back out. Existing save-v5 and Character Files-v2 formats remain unchanged.
+
+Private runtime-integration acceptance uses the reporter's exact save and archive, then a separately created, readback-verified Update Save copy against the current Bywater package. Prepared adjacent movement exercises Land 0 APs 53, 70, and 78 (beastmen corral, arena troll, and protohyenas), plus Land 6 AP 17 (militia). Clean and rejected-command runs complete natural Auto combat, publish the authored aftermath, disable the issuing trigger, and do not refire on re-entry. The militia's dormant chance is enabled during preparation; its acquisition route is not certified. A separate corral pair rejects out-of-range Discover Magic with the complete snapshot unchanged and still completes its aftermath on both package revisions.
+
+Collision acceptance saves and restores the pending troll-battle choice, verifies all three responses, and rejects forged actor, destination, battle, prompt, and command ownership without replacing the live session. Back out preserves anchors, turn resources, and post-Guard RNG; Swap exchanges anchors and spends five movement with sound 654. Constructed nested VM wrappers verify rejection propagation through battle, death, and opcode-death macros; direct Safe lifecycle checks exercise the same choices. These bounded preparations do not certify whole campaign routes.
+
+A canonical 1280x720 Mobile fixture separately verifies rendered mouse activation of Swap Positions, controller Back cancellation, and controller navigation/confirmation of Attack Friend. The owned fixture closes through its normal protocol. The committed continuation denominator covers both new collision kinds with exact wire round trips and unknown-field rejection; the existing combat, VM, and persistence suites retain their distinct responsibilities.
 
 ## Castle source/control-flow
 

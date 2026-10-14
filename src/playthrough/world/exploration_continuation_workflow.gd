@@ -27,11 +27,10 @@ static func post_time(context: SessionWorkflowContext, map: MapDefinition, resum
 
 
 static func post_move(context: SessionWorkflowContext, map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> SessionContinuation:
-	var cell := map.topology.cell_at(coordinate)
 	var exploration := ExplorationContinuationBody.new()
 	exploration.map_id = map.id
 	exploration.coordinate = coordinate
-	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, cell, context.state.world))
+	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, map, coordinate, context.state.world, destination_depth > 0))
 	exploration.trigger_index = 0
 	exploration.active_trigger_id = ""
 	var region_ids := context.state.world.triggers.random_region_ids_at(map, coordinate)
@@ -91,10 +90,13 @@ static func timed_encounter_requirements_met(context: SessionWorkflowContext, en
 	return true
 
 
-static func selected_placed_trigger_ids(content: RealmzContent, cell: MapCell, world_state: WorldState) -> Array[String]:
-	for feature: MapFeature in cell.features():
-		if cell.is_land and feature.kind == &"secret" and feature.orientation.is_empty() and not world_state.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
-			return []
+static func selected_placed_trigger_ids(content: RealmzContent, map: MapDefinition, coordinate: Vector2i, world_state: WorldState, destination_recheck: bool = false) -> Array[String]:
+	if not map.topology.action_point_is_marked(coordinate, world_state, destination_recheck):
+		return []
+	return first_placed_trigger_ids(content, map.topology.cell_at(coordinate))
+
+
+static func first_placed_trigger_ids(content: RealmzContent, cell: MapCell) -> Array[String]:
 	var selected_id := ""
 	var selected_record_index := 2_147_483_647
 	for trigger_id: String in cell.trigger_ids():

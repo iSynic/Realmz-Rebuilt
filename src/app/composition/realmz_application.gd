@@ -28,6 +28,8 @@ var _dungeon_presenter: DungeonMap3DPresenter
 var _package_host: PackageHostController
 var _imported_scenario_workflow: ImportedScenarioWorkflow
 var _campaign_catalog: CampaignCatalogWorkflow
+var _campaign_preparation: CampaignPreparationWorkflow
+var _campaign_publication: CampaignPresentationHost
 var _save_host: SaveHostController
 var _pending_package_seed: int = 1
 var _pending_package_path: String = ""
@@ -85,7 +87,7 @@ func _build_dependencies() -> void:
 	var scratch_root := fixture.scratch_root if fixture != null else preview_state_root
 	_package_host = PackageHostController.new(null, scratch_root.path_join("packages")) if fixture != null else PackageHostController.new()
 	if _save_host == null:
-		_save_host = SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves"))) if not scratch_root.is_empty() else SaveHostController.new()
+		_save_host = _create_save_host(scratch_root)
 	settings_repository = SettingsRepository.new(scratch_root.path_join("settings.json")) if not scratch_root.is_empty() else SettingsRepository.new()
 	_presentation_settings = PresentationSettings.new() if not scratch_root.is_empty() else settings_repository.load_settings()
 	session_controller = GameSessionController.new()
@@ -122,9 +124,18 @@ func _build_dependencies() -> void:
 		if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active(): return &"combat-playback"
 		if presentation_coordinator.drawn_revision != session_controller.view().revision: return &"presentation-awaiting-draw"
 		if lifecycle_host.has_active_interaction(): return &"lifecycle-dialog"
+		if _shell_presenter.pause_active: return &"pause-menu"
 		if _controller_resume_required: return &"controller-suspended"
 		if _interaction_presenter.controller.blocks_automatic_progress(): return &"interaction-overlay"
 		return &"", _present_step_status, lifecycle_host.has_active_interaction)
+
+
+func _create_save_host(scratch_root: String) -> SaveHostController:
+	if scratch_root.is_empty():
+		return SaveHostController.new()
+	var packages := scratch_root.path_join("packages")
+	var half_truth := packages.path_join(HalfTruthMediaSaveUpdate.CAMPAIGN_ID).path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")
+	return SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves")), HalfTruthMediaSaveUpdate.new(half_truth), ShopSaveUpdate.new(packages), MarkerSaveUpdate.new(packages))
 
 
 func _bind_debug_and_movement() -> void:
@@ -213,6 +224,15 @@ func _bind_combat_and_interactions() -> void:
 
 
 func _bind_shell_and_settings() -> void:
+	_shell_presenter.pause_changed.connect(func(active: bool) -> void:
+		_held_movement.stop()
+		_input_router.clear_controller_state()
+		_controller_input.clear_held_input()
+		if active:
+			if click_to_move != null: click_to_move.cancel("Move To cancelled.")
+			presentation_coordinator.skip_combat_playback()
+	)
+
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
 	_shell_presenter.cancel_package_requested.connect(_package_host.cancel)
 	var campaign_library := _shell_presenter.navigator.setup_controller.campaign_library
@@ -221,6 +241,8 @@ func _bind_shell_and_settings() -> void:
 	_imported_scenario_workflow = IMPORTED_SCENARIO_WORKFLOW.new(_package_host, campaign_library, character_files, _shell_presenter.status)
 	_imported_scenario_workflow.campaign_refresh_requested.connect(_campaign_catalog.refresh)
 	_imported_scenario_workflow.bind()
+	_campaign_publication = CampaignPresentationHost.new(_package_host, character_files, adventure_storage, presentation_media, presentation_coordinator, _shell_presenter, _presentation_settings, settings_repository, func(content: RealmzContent) -> void: _active_content = content, _combat_host.invalidate)
+	_campaign_preparation = CampaignPreparationWorkflow.new(_package_host, session_controller, character_files, _save_host, adventure_storage, _shell_presenter.navigator, _presentation_settings, _imported_scenario_workflow, _campaign_publication.publish_adventure, _campaign_publication.publish_setup)
 	_shell_presenter.intent_submitted.connect(submit_intent)
 	_shell_presenter.combat_inventory_response_submitted.connect(_on_battlefield_action_requested)
 	_shell_presenter.save_requested.connect(func(slot_id: String) -> void: adventure_storage.save(_active_content, slot_id))
@@ -241,6 +263,7 @@ func _bind_shell_and_settings() -> void:
 	presentation_coordinator.spatial_visibility_changed.connect(func() -> void: _spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings))
 	_shell_presenter.route_changed.connect(_on_route_changed)
 	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
+	_shell_presenter.vault_repair_requested.connect(character_files.request_repair)
 	_shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: character_files.restore_character(_active_content, character_id, revision_hash))
 	_shell_presenter.standalone_character_creation_requested.connect(func() -> void: character_files.begin_creation(_active_content))
 	_shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: character_files.cancel_creation(_active_content))
@@ -281,10 +304,12 @@ func _process(_delta: float) -> void:
 	session_controller.poll_combat_work()
 	if adventure_storage != null and adventure_storage.party_import != null: adventure_storage.party_import.poll()
 	lifecycle_host.poll()
+	_shell_presenter.controller.poll_pause()
 	adventure_storage.poll()
 	if click_to_move != null: click_to_move.poll(_delta)
 	_combat_host.poll()
 	var library_completed := character_files.poll_library_load(_active_content)
+	character_files.poll_repair(_active_content)
 	if library_completed and _pending_prepared_package != null:
 		var pending := _pending_prepared_package
 		_pending_prepared_package = null
@@ -296,9 +321,15 @@ func _process(_delta: float) -> void:
 			_held_movement.stop()
 		elif _held_movement.active_source() == &"mouse" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			_held_movement.stop(&"mouse")
+	_poll_package_operation()
+
+
+func _poll_package_operation() -> void:
 	if _package_host == null:
 		return
 	var operation := _package_host.operation_view()
+	if _campaign_preparation != null and character_files.library_ready():
+		_campaign_preparation.accept_setup(_package_host.take_setup())
 	if operation.state == PackageOperationView.IDLE:
 		return
 	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
@@ -306,9 +337,16 @@ func _process(_delta: float) -> void:
 		_last_package_operation_key = operation_key
 		_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(operation)
 		_shell_presenter.status.set_status(operation.message, operation.state == PackageOperationView.FAILED)
+		_campaign_preparation.progress(operation)
 	if operation.is_running():
 		return
 	var prepared := _package_host.take_prepared_package()
+	if _campaign_preparation.active and operation.operation_name != &"import_scenario":
+		_last_package_operation_key = ""
+		if operation.state == PackageOperationView.SUCCEEDED:
+			_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new())
+		_campaign_preparation.accept_package(prepared, operation.package_path)
+		return
 	if _imported_scenario_workflow.complete_operation(operation, prepared):
 		_last_package_operation_key = ""
 		var current_view := session_controller.view()
@@ -334,6 +372,7 @@ func _process(_delta: float) -> void:
 
 func _exit_tree() -> void:
 	_trace_shutdown("application tree exit started")
+	if character_files != null: character_files.shutdown()
 	_combat_host.release()
 	if _held_movement != null:
 		_held_movement.stop()
@@ -383,11 +422,9 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	if current_view.session_started and not current_view.party_setup_available:
 		_shell_presenter.status.set_status("End the active adventure before starting another campaign.", true)
 		return
-	if _package_host.operation_view().is_running():
-		return
 	_pending_package_seed = initial_seed
 	_pending_package_path = package_path
-	if not _package_host.start_install(package_path):
+	if not _campaign_preparation.begin_setup(package_path, initial_seed):
 		_shell_presenter.status.set_status(_package_host.operation_view().message, true)
 		return
 	_shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(_package_host.operation_view())
@@ -400,20 +437,9 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int, sou
 		presentation_coordinator.refresh()
 		_present_package_failure(step.error_message, step.error_code, source_path)
 		return step
-	_combat_host.invalidate()
-	_active_content = prepared.content
-	_package_host.promote(prepared)
-	if _presentation_settings.last_campaign_id != _active_content.campaign_id: _presentation_settings.last_campaign_id = _active_content.campaign_id
-	settings_repository.save_settings(_presentation_settings)
-	presentation_media.set_package_media(prepared.media)
-	presentation_coordinator.refresh()
-	adventure_storage.refresh(_active_content)
-	character_files.refresh_vault_views(_active_content)
 	_smoke_button.text = "Search area"
-	_status_label.text = ApplicationStepStatusText.for_package(_active_content, session_controller.view(), initial_seed)
-	_shell_presenter.status.set_status(_status_label.text)
 	_campaign_catalog.refresh()
-	_shell_presenter.navigator.setup_controller.campaign_library.select_prepared_package(prepared.installed_path)
+	_status_label.text = _campaign_publication.publish_installed_setup(prepared, session_controller.view(), initial_seed)
 	return step
 
 
@@ -530,7 +556,9 @@ func submit_movement(direction: Vector2i) -> bool:
 
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
-	if session_controller.view().party_setup_available and _package_host.operation_view().is_running():
+	if intent != null and intent.kind == PlayerIntent.Kind.BEGIN_ADVENTURE and _campaign_preparation != null and _campaign_preparation.owns_party_setup():
+		return _campaign_preparation.request_play()
+	if session_controller.view().party_setup_available and _shell_presenter.navigator.setup_controller.campaign_library.blocks_party_editing():
 		return SessionStep.failed(session_controller.view().revision, &"campaign_preparing", "Wait for scenario preparation to finish.")
 	if character_files.creator_active():
 		return character_files.submit_creator_intent(intent)
@@ -552,6 +580,9 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return failed
 		intent = import_intent
 	var step := session_controller.submit_intent(intent)
+	if intent != null and intent.kind == PlayerIntent.Kind.BEGIN_ADVENTURE and step.state != SessionStep.State.FAILED and _active_content != null:
+		_presentation_settings.last_campaign_id = _active_content.campaign_id
+		settings_repository.save_settings(_presentation_settings)
 	var committed_view := session_controller.view()
 	if _held_movement != null and (step.state != SessionStep.State.COMPLETED or committed_view == null or committed_view.pending_interaction != null or committed_view.combat_view != null):
 		_held_movement.stop()

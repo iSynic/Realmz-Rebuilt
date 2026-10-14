@@ -199,13 +199,30 @@ foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic
     if (-not $fontIds.ContainsKey($requiredFont)) { throw "Required Classic font asset is missing: $requiredFont" }
 }
 
-$introManifestPath = Join-Path $repoRoot "src/ui/shared/assets/ui/intro/intro-video.json"
-if (-not (Test-Path -LiteralPath $introManifestPath -PathType Leaf)) { throw "Realmz Rebuilt intro video manifest is missing" }
-$introManifest = Get-Content -Raw -LiteralPath $introManifestPath | ConvertFrom-Json
-if ($introManifest.schema_version -ne 4 -or $introManifest.source_sha256 -ne "2b30c6bca4a8d6ba6ee524c28630c4706944f327b5d8d304ce0253050fb53f40" -or $introManifest.license -ne "Project-Owner-Supplied" -or $introManifest.path -ne "res://src/ui/shared/assets/ui/intro/rebuilt-intro.ogv" -or $introManifest.bytes -ne 1097782 -or $introManifest.width -ne 832 -or $introManifest.height -ne 480 -or $introManifest.frames_per_second -ne 24 -or $introManifest.duration_ms -ne 5167 -or $introManifest.video_codec -ne "theora" -or $introManifest.audio_codec -ne "vorbis" -or $introManifest.audio_sample_rate -ne 48000 -or $introManifest.audio_channels -ne 2 -or -not $introManifest.loop -or $introManifest.playback_audio -ne $false) {
-    throw "Realmz Rebuilt intro video provenance or media contract is invalid"
+$menuManifestPath = Join-Path $repoRoot "src/ui/shared/assets/main-menu/main-menu-assets.json"
+$menuManifest = Get-Content -Raw -LiteralPath $menuManifestPath | ConvertFrom-Json
+if ($menuManifest.schema_version -ne 1 -or $menuManifest.license -ne "Project-Owner-Supplied" -or @($menuManifest.backgrounds).Count -ne 20) {
+    throw "Main-menu artwork provenance is invalid"
 }
-$launchSplash = $introManifest.launch_splash
+$menuImagePaths = @{}
+foreach ($image in (@($menuManifest.backgrounds) + @($menuManifest.title))) {
+    if (-not $image.path.StartsWith("res://src/ui/shared/assets/main-menu/") -or $image.path.Contains("..") -or $menuImagePaths.ContainsKey($image.path)) { throw "Main-menu image identity is invalid" }
+    $menuImagePaths[$image.path] = $true
+    $imagePath = Join-Path $repoRoot ($image.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
+    if ((Get-Item -LiteralPath $imagePath).Length -ne $image.bytes -or (Get-FileHash -LiteralPath $imagePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $image.sha256) { throw "Main-menu image bytes do not match: $($image.path)" }
+    $dimensions = Get-ImageDimensions $imagePath
+    if ($dimensions.Width -ne $image.width -or $dimensions.Height -ne $image.height) { throw "Main-menu image dimensions do not match: $($image.path)" }
+}
+foreach ($image in $menuManifest.backgrounds) {
+    if ($image.width -ne 1280 -or $image.height -ne 720 -or [string]::IsNullOrWhiteSpace($image.source_name)) { throw "Main-menu source plate contract is invalid" }
+}
+$menuFontPath = Join-Path $repoRoot ($menuManifest.title.font_path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
+if ($menuManifest.title.width -ne 920 -or $menuManifest.title.height -ne 336 -or $menuManifest.title.logical_width -ne 460 -or $menuManifest.title.logical_height -ne 168 -or (Get-FileHash -LiteralPath $menuFontPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $menuManifest.title.font_sha256) { throw "Main-menu title derivation is invalid" }
+
+$launchManifestPath = Join-Path $repoRoot "src/ui/shared/assets/ui/intro/launch-splash.json"
+$launchManifest = Get-Content -Raw -LiteralPath $launchManifestPath | ConvertFrom-Json
+if ($launchManifest.schema_version -ne 1) { throw "Realmz Rebuilt launch-card provenance is unsupported" }
+$launchSplash = $launchManifest.launch_splash
 if ($null -eq $launchSplash -or $launchSplash.source_role -ne "Realmz Rebuilt launch splash supplied by the project owner" -or $launchSplash.source_name -ne "Rebuilt Splash.jpg" -or $launchSplash.source_sha256 -ne "de81e79e6cf5e92bac396f5c4aa90b6be21c3b16b33cb450879b08a9e655497a" -or $launchSplash.license -ne "Project-Owner-Supplied" -or $launchSplash.path -ne "res://src/ui/shared/assets/ui/intro/rebuilt-launch-splash.jpg" -or $launchSplash.bytes -ne 219118 -or $launchSplash.width -ne 1024 -or $launchSplash.height -ne 1024 -or $launchSplash.format -ne "jpeg" -or $launchSplash.minimum_duration_ms -ne 3000 -or $launchSplash.scaling -ne "keep-aspect-centered") {
     throw "Realmz Rebuilt launch splash provenance or presentation contract is invalid"
 }
@@ -219,23 +236,6 @@ if ($projectSettings -notmatch 'boot_splash/bg_color=Color\(0, 0, 0, 1\)' -or $p
 }
 $launchDimensions = Get-ImageDimensions $launchSplashPath
 if ($launchDimensions.Width -ne $launchSplash.width -or $launchDimensions.Height -ne $launchSplash.height) { throw "Realmz Rebuilt launch splash dimensions do not match" }
-$introVideoPath = Join-Path $repoRoot ($introManifest.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
-if (-not (Test-Path -LiteralPath $introVideoPath -PathType Leaf)) { throw "Realmz Rebuilt intro video is missing" }
-if ((Get-Item -LiteralPath $introVideoPath).Length -ne $introManifest.bytes) { throw "Realmz Rebuilt intro video byte length does not match" }
-if ((Get-FileHash -Algorithm SHA256 -LiteralPath $introVideoPath).Hash.ToLowerInvariant() -ne $introManifest.source_sha256) { throw "Realmz Rebuilt intro video hash does not match" }
-$introSoundtrack = $introManifest.soundtrack
-if ($null -eq $introSoundtrack -or $introSoundtrack.source_sha256 -ne "c64e2792eba92284896084c3d48af9d595fdd98cda5e7a3d90931b2a9a21f0e5" -or $introSoundtrack.license -ne "Project-Owner-Supplied" -or $introSoundtrack.path -ne "res://src/ui/shared/assets/ui/intro/rebuilt-intro-soundtrack.mp3" -or $introSoundtrack.bytes -ne 721197 -or $introSoundtrack.duration_ms -ne 30000 -or $introSoundtrack.codec -ne "mp3" -or $introSoundtrack.bit_rate -ne 192000 -or $introSoundtrack.sample_rate -ne 48000 -or $introSoundtrack.channels -ne 2 -or -not $introSoundtrack.loop -or -not $introSoundtrack.click_toggle -or -not $introSoundtrack.independent_from_video) {
-    throw "Realmz Rebuilt intro soundtrack provenance or playback contract is invalid"
-}
-$introSoundtrackPath = Join-Path $repoRoot ($introSoundtrack.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
-if (-not (Test-Path -LiteralPath $introSoundtrackPath -PathType Leaf)) { throw "Realmz Rebuilt intro soundtrack is missing" }
-if ((Get-Item -LiteralPath $introSoundtrackPath).Length -ne $introSoundtrack.bytes) { throw "Realmz Rebuilt intro soundtrack byte length does not match" }
-if ((Get-FileHash -Algorithm SHA256 -LiteralPath $introSoundtrackPath).Hash.ToLowerInvariant() -ne $introSoundtrack.source_sha256) { throw "Realmz Rebuilt intro soundtrack hash does not match" }
-$introSoundtrackImportPath = "$introSoundtrackPath.import"
-if (-not (Test-Path -LiteralPath $introSoundtrackImportPath -PathType Leaf)) { throw "Realmz Rebuilt intro soundtrack import contract is missing" }
-$introSoundtrackImport = Get-Content -Raw -LiteralPath $introSoundtrackImportPath
-if ($introSoundtrackImport -notmatch 'importer="mp3"' -or $introSoundtrackImport -notmatch '(?m)^loop=true\r?$') { throw "Realmz Rebuilt intro soundtrack import contract does not enable MP3 looping" }
-
 $chromeManifestPath = Join-Path $repoRoot "src/ui/shared/assets/ui/spritecook-assets.json"
 if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
     throw "SpriteCook chrome manifest is missing"
@@ -293,5 +293,5 @@ foreach ($file in $chromeFiles) {
         throw "Generated chrome dimensions do not match: $($file.path)"
     }
 }
-Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; intro media verified: $($launchSplash.width)x$($launchSplash.height) launch + $($introManifest.width)x$($introManifest.height) video + $($introSoundtrack.duration_ms)ms soundtrack; generated chrome verified: $($chromeFiles.Count) files."
+Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; launch card and 20 main-menu plates verified; generated chrome verified: $($chromeFiles.Count) files."
 exit 0

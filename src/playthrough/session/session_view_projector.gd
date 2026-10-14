@@ -60,6 +60,22 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	return result
 
 
+func project_party_preparation(context: SessionWorkflowContext, pending: InteractionRequest, revision: int) -> GameView:
+	if _cached_view != null and _cached_view.revision == revision:
+		return _cached_view
+	_equipment_by_character_id.clear()
+	var result := GameView.new(revision, true, pending)
+	result.party_members = _complete_party_members(context)
+	_populate_complete_identity(context, result)
+	_populate_complete_campaign(context, result)
+	_populate_complete_party(context, result)
+	_populate_character_options(context.content, result)
+	ActionViewProjector.populate_setup_actions(context, result, pending != null, true, result.party_members.size(), clampi(context.content.campaign.restrictions.maximum_party_size, 1, 6), context.state.character_draft != null, false)
+	result.domain_revisions = ViewDomainRevisions.new(revision)
+	_cached_view = result
+	return result
+
+
 func _complete_party_members(context: SessionWorkflowContext) -> Array[CharacterView]:
 	var members: Array[CharacterView] = []
 	var item_definitions := context.content.items.definitions()
@@ -164,6 +180,10 @@ func _populate_complete_collections(context: SessionWorkflowContext, result: Gam
 		var journal_message := content.scenario_records.message_by_id(message_id)
 		if journal_message != null:
 			result.journal_entries.append(JournalEntryView.new(message_id, journal_message.text))
+	_populate_character_options(content, result)
+
+
+func _populate_character_options(content: RealmzContent, result: GameView) -> void:
 	if result.party_setup_available:
 		for race: RaceDefinition in content.characters.race_definitions():
 			result.race_options.append(DefinitionOptionView.from_race(race, content.transfer_catalog.is_scenario_owned(&"races", race.id)))

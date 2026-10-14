@@ -6,6 +6,7 @@ extends RefCounted
 var allowed: bool = false
 var reason: StringName = &"spell_cast_unavailable"
 var reason_text: String = "Spell casting is unavailable."
+var content_fault: bool = false
 
 
 static func permitted() -> CombatSpellCastProbe:
@@ -21,3 +22,13 @@ static func blocked(code: StringName, message: String) -> CombatSpellCastProbe:
 	result.reason = code
 	result.reason_text = message
 	return result
+
+
+static func fault(code: StringName, message: String) -> CombatSpellCastProbe:
+	var result := blocked(code, message)
+	result.content_fault = true
+	return result
+
+
+func denial_result() -> CombatFlowResult:
+	return CombatFlowResult.failed(reason, reason_text) if content_fault else CombatFlowResult.rejected(reason, reason_text)

@@ -13,6 +13,21 @@ $noticePath = Join-Path $repoRoot "THIRD_PARTY_NOTICES.txt"
 $ciPath = Join-Path $repoRoot ".github\workflows\ci.yml"
 $releaseWorkflowPath = Join-Path $repoRoot ".github\workflows\release.yml"
 
+$importerInputs = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'scenario-importer-inputs.json') | ConvertFrom-Json
+if ($null -ne $importerInputs.sourceUpdate) {
+    $update = $importerInputs.sourceUpdate
+    $updateFile = [string]$update.file
+    if ([string]::IsNullOrWhiteSpace($updateFile) -or $updateFile -in @('.', '..') -or $updateFile -match '[/\\:]' -or $update.baseCommit -cne $importerInputs.source.commit) { throw 'The converter source update has an invalid local filename or base identity.' }
+    if ((Get-FileHash -LiteralPath (Join-Path $PSScriptRoot $updateFile) -Algorithm SHA256).Hash.ToLowerInvariant() -cne $update.sha256) { throw 'The converter source update differs from its pinned bytes.' }
+}
+
+$recoveryPath = Join-Path $repoRoot "src\storage\characters\character-rule-recovery.json"
+$recoveryIdentity = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "src\storage\characters\character_vault_recovery_catalog.gd")
+$recoveryPin = [regex]::Match($recoveryIdentity, 'const SHA256 := "([0-9a-f]{64})"').Groups[1].Value
+if (-not $recoveryPin -or (Get-FileHash -LiteralPath $recoveryPath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $recoveryPin) {
+    throw "Character rule recovery catalog failed its committed identity pin."
+}
+
 if (-not (Test-Path -LiteralPath $presetPath)) {
     throw "export_presets.cfg is required."
 }
@@ -40,7 +55,7 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
     }
-    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/ui/shared/assets/classic-application-media.json", "src/ui/shared/assets/classic-media/**", "src/storage/packages/application/realmz-classic-application-library.realmz2", "src/storage/characters/realmz-classic-starter-characters.json")) {
+    foreach ($requiredBundledFile in @("LICENSE", "THIRD_PARTY_NOTICES.txt", "src/ui/shared/assets/classic-application-media.json", "src/ui/shared/assets/classic-media/**", "src/storage/packages/application/realmz-classic-application-library.realmz2", "src/storage/characters/realmz-classic-starter-characters.json", "src/storage/characters/character-rule-recovery.json")) {
         if ($body -notmatch ('(?m)^include_filter="[^"]*' + [regex]::Escape($requiredBundledFile) + '[^"]*"$')) {
             throw "Release preset $($expected.Key) must include $requiredBundledFile"
         }
@@ -150,6 +165,11 @@ $schemaV5Path = Join-Path $repoRoot "contracts/realmz2/realmz2-package-v5.schema
 $expectedV5Hash = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "contracts/realmz2/realmz2-package-v5.schema.sha256")).Trim()
 if ((Get-FileHash -LiteralPath $schemaV5Path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedV5Hash -or -not $repositorySource.Contains($expectedV5Hash)) {
     throw "Realmz 2.0 schema v5 mirror or runtime identity drift."
+}
+$schemaV6Path = Join-Path $repoRoot "contracts/realmz2/realmz2-package-v6.schema.json"
+$expectedV6Hash = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "contracts/realmz2/realmz2-package-v6.schema.sha256")).Trim()
+if ((Get-FileHash -LiteralPath $schemaV6Path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedV6Hash -or -not $repositorySource.Contains($expectedV6Hash)) {
+    throw "Realmz 2.0 schema v6 mirror or runtime identity drift."
 }
 
 if (-not (Test-Path -LiteralPath $featureSchemaPath) -or -not (Test-Path -LiteralPath $featureSchemaHashPath)) {

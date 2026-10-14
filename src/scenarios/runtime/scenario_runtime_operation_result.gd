@@ -19,6 +19,7 @@ var handoff: ScenarioRuntimeHandoff
 var directive: ScenarioVmDirective
 var error_code: StringName = &""
 var error_message: String = ""
+var is_rejection: bool = false
 
 
 static func completed(result_value: Variant = null, committed_events: Array[DomainEvent] = [], vm_directive: ScenarioVmDirective = null) -> ScenarioRuntimeOperationResult:
@@ -49,4 +50,10 @@ static func failed(code: StringName, message: String) -> ScenarioRuntimeOperatio
 	result.state = State.FAILED
 	result.error_code = code
 	result.error_message = message
+	return result
+
+
+static func rejected(code: StringName, message: String) -> ScenarioRuntimeOperationResult:
+	var result := failed(code, message)
+	result.is_rejection = true
 	return result

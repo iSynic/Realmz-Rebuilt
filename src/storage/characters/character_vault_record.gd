@@ -15,6 +15,7 @@ var publication_metadata: Dictionary = {}
 var state: CharacterState
 var source_revision: String
 var character_art := CharacterArtBundle.new()
+var source_rules: CharacterVaultRuleIdentity
 
 
 func _init(id: String, rules: String, campaign: String, package_hash: String, character_state: CharacterState, source: String = "") -> void:
@@ -41,6 +42,8 @@ func to_data() -> Dictionary:
 	}
 	if not character_art.assets().is_empty():
 		data["characterArt"] = character_art.to_data()
+	if source_rules != null:
+		data["sourceRules"] = source_rules.to_data()
 	return data
 
 
@@ -63,4 +66,8 @@ static func from_data(value: Variant) -> CharacterVaultRecord:
 	result.character_art = CharacterArtBundle.from_data(value.get("characterArt", []))
 	if result.character_art == null or not result.character_art.matches_characters([state]):
 		return null
+	if value.has("sourceRules"):
+		result.source_rules = CharacterVaultRuleIdentity.from_data(value["sourceRules"])
+		if result.source_rules == null or not result.source_rules.matches_character(state) or (result.source_rules.race_custom or result.source_rules.caste_custom) and result.source_campaign_id.is_empty():
+			return null
 	return result

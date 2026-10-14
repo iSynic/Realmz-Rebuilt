@@ -1,4 +1,4 @@
-## Carries scenario-owned battle, retreat, age, macro, and terminal progress.
+## Carries scenario-owned battle, retreat, friendly collision, age, macro, and terminal progress.
 
 class_name ScenarioCombatContinuationBody
 extends ScenarioRuntimeContinuationBody

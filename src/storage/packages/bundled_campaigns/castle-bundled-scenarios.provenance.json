@@ -26,11 +26,11 @@
       "name": "Assault on Giant Mountain",
       "campaignId": "scenario-assault-on-giant-mountain",
       "file": "scenario-assault-on-giant-mountain.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "cc0436ba01bc932bc9f48f78f3deed62780c26c934bd6abfb90e350932bc567f",
-      "contentId": "8266d7465d341a882cfc508fab03278f22716149e026ddeeee0eb43a06868694",
-      "archiveSha256": "c91fb632050467df4d8f52691269ff5c33210c782b19c99b48c0745de3dd21b7",
-      "bytes": 936479,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "44de42201952febb5320dd0933b352b816cebd117c6f3d5f64dcda39c5d0c8b8",
+      "contentId": "ec57dce90d52c55e545ff2a20dc894c9cf62158b3322288d4d28433b7b31f893",
+      "archiveSha256": "9be2a50ea98da5ce79144768fe84f4aa1e21af1152efd4f570c38be56bceda11",
+      "bytes": 963712,
       "sourceArchive": {
         "compilerRevision": "9b037e5d6436a970eeeaaebea7a70c6867e89e99",
         "archiveSha256": "9cde824d3b37ab9604ecf15f1db57720835107c5701bedeca76be236e6bf69b5",
@@ -83,17 +83,29 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "cc0436ba01bc932bc9f48f78f3deed62780c26c934bd6abfb90e350932bc567f",
+          "archiveSha256": "c91fb632050467df4d8f52691269ff5c33210c782b19c99b48c0745de3dd21b7",
+          "contentId": "8266d7465d341a882cfc508fab03278f22716149e026ddeeee0eb43a06868694",
+          "bytes": 936479
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Castle in the Clouds",
       "campaignId": "scenario-castle-in-the-clouds",
       "file": "scenario-castle-in-the-clouds.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "3eb53a9fa7775755143e94db0f585cb08bdc684704fc88a1e8a3fdeb46d967ba",
-      "contentId": "5a7ddd63dcbbb754476814b4f88a05765f8a4f6dc6eaba5227f76f0f6efccdd5",
-      "archiveSha256": "8f8931b64eb9c9530a797209ac4c9020a6095dce93255203c1d76ecb27981704",
-      "bytes": 971744,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "8616163f005e8facdc8a4cbbaa10c7f6b2c4f362cc565cc4cf6421b0f6498de1",
+      "contentId": "18626a831e08ef4397a519c5d60a00567214a14da63fff71ea547dd9059b26a1",
+      "archiveSha256": "43a5c1bfeea78bad2a997694ba703e2813d74be81d40a7fb11f7cd39f936377a",
+      "bytes": 1000302,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "8607fc9f58a495ba87bfe2e63500545ff6a4e0c844722e0ba055b0cb4a85c96d",
@@ -146,6 +158,18 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "3eb53a9fa7775755143e94db0f585cb08bdc684704fc88a1e8a3fdeb46d967ba",
+          "archiveSha256": "8f8931b64eb9c9530a797209ac4c9020a6095dce93255203c1d76ecb27981704",
+          "contentId": "5a7ddd63dcbbb754476814b4f88a05765f8a4f6dc6eaba5227f76f0f6efccdd5",
+          "bytes": 971744
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
@@ -157,11 +181,11 @@
         "catalog": "city-of-bywater.source.json",
         "snapshotSha256": "ab4b6fc19a1a42bb61353629feb71187e76e760f94c46392958311a5e1361d2e"
       },
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "92a0ed62cdb82acda1f5963b6e49096c446cec5ee7af11bee98b5693429c9c32",
-      "contentId": "39ead60925eeda448c3c677b8c8781b72b1b2d040dbad66ae137024d7dde0b74",
-      "archiveSha256": "483ebdf07fd3b9b791aa6eeff9cf6b54c3e6454b4483e2e8cdc064aa3e9bdbbd",
-      "bytes": 654882,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "26d73a87fccb55befe0dc510fb620b535fbd521ff70ea6d88bfdd67ea5711389",
+      "contentId": "54619d8a114972e6d66393101dff18adc6708f9607b68e8f96cffd58cd846553",
+      "archiveSha256": "b8d22d64c9f34210f05a8bf06a118260e77ec7bb2cadab2762c88edaab9163f1",
+      "bytes": 683146,
       "sourceArchive": {
         "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
         "archiveSha256": "425087df5a2d98bf42da1623c09cfc2fadcdcfcd7977945fdd49ba1d67f1ab58",
@@ -214,17 +238,29 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "92a0ed62cdb82acda1f5963b6e49096c446cec5ee7af11bee98b5693429c9c32",
+          "archiveSha256": "483ebdf07fd3b9b791aa6eeff9cf6b54c3e6454b4483e2e8cdc064aa3e9bdbbd",
+          "contentId": "39ead60925eeda448c3c677b8c8781b72b1b2d040dbad66ae137024d7dde0b74",
+          "bytes": 654882
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Destroy the Necronomicon",
       "campaignId": "scenario-destroy-the-necronomicon",
       "file": "scenario-destroy-the-necronomicon.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "d2fc6daa381610398533bb6918c10393d604d76b7727bc951a8fc440123e02e4",
-      "contentId": "be4d2c9beac80f04d31d0551653001de46e97ed350f302a195c1fab89a50895e",
-      "archiveSha256": "b85ab4ce2ca7b24fb2e6c1d7c97253ef6c0bc7f110d9c41f683468c623e3291f",
-      "bytes": 1523340,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "f2fde15520a7b8c488936f75e422959659aec6add4f8fb35ec99204b1c6a1dd7",
+      "contentId": "d47806c061942a6cbaaab066cd405aa4fde1273c219f78db9078c8cf9c7bb881",
+      "archiveSha256": "e1c199fb44e3b5280b79433d4c4aa09540cc38abf228ca6050487342f59f9702",
+      "bytes": 1557832,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "5a39c7e13bcdb73532457c39faef1226c1257548deb0b50b8a603172be949c87",
@@ -277,17 +313,29 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "d2fc6daa381610398533bb6918c10393d604d76b7727bc951a8fc440123e02e4",
+          "archiveSha256": "b85ab4ce2ca7b24fb2e6c1d7c97253ef6c0bc7f110d9c41f683468c623e3291f",
+          "contentId": "be4d2c9beac80f04d31d0551653001de46e97ed350f302a195c1fab89a50895e",
+          "bytes": 1523340
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Grilochs Revenge",
       "campaignId": "scenario-grilochs-revenge",
       "file": "scenario-grilochs-revenge.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "83e12ca872897023456ec97233170311c47e65667b286e145f4f9f3a45cc4302",
-      "contentId": "0ec504e4bb8c40783f653f85af4ee2a0555524cff94c7b0b7a3e7d4bfbcbea7a",
-      "archiveSha256": "c4b6202e5295981e74c6df852f6b32f02e205e9fc3777bbc84c72e69f3e05c0d",
-      "bytes": 1751762,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "a5662fcf210504339d8170b7189487d9f0f874ebd3d8b55594d4c5e1478c5970",
+      "contentId": "86619bb53e3341f825c384b4deaf5cd6b8609c4376b5af774b39e9721c6ea445",
+      "archiveSha256": "ecb2277f56074edbf2696441ecd43945cedb8763af91f52420471f41e6db1c46",
+      "bytes": 1789679,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "5cc2520282703a53425962e64dfb98eed7017e85c83153f90c602f65453b174d",
@@ -340,17 +388,29 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "83e12ca872897023456ec97233170311c47e65667b286e145f4f9f3a45cc4302",
+          "archiveSha256": "c4b6202e5295981e74c6df852f6b32f02e205e9fc3777bbc84c72e69f3e05c0d",
+          "contentId": "0ec504e4bb8c40783f653f85af4ee2a0555524cff94c7b0b7a3e7d4bfbcbea7a",
+          "bytes": 1751762
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Half Truth",
       "campaignId": "scenario-half-truth",
       "file": "scenario-half-truth.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "a96fbff24e4204ce49bb60556c27cab6091d0f8f8a26d6b6b0c4c543ecc06562",
-      "contentId": "bdb30584924e0274307e963110c2a78e2f8e22721a8ad0f0115671cef36b9ff7",
-      "archiveSha256": "f9884317800f5a897a4a5f007898b6d8e81207572a5bb0994353559ea47b5001",
-      "bytes": 6397432,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "c68c78ac6201e246cd7d3deb391bd9a0fad712b8c25dc37778e8074c1a8548c3",
+      "contentId": "3a19a83cfc93da328f3fa951c65babbb6266e7488612cb437b8723d709131565",
+      "archiveSha256": "e9c7c1ca211ba9672c0ad1000be8d86be782d0cff70b363ce0d67aa3f819ea2b",
+      "bytes": 6440427,
       "sourceArchive": {
         "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
         "archiveSha256": "4b77256f51305cc2c4cb276982a3e19ab9dc9b13062074d49d4f449d9838fed4",
@@ -403,17 +463,29 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "a96fbff24e4204ce49bb60556c27cab6091d0f8f8a26d6b6b0c4c543ecc06562",
+          "archiveSha256": "f9884317800f5a897a4a5f007898b6d8e81207572a5bb0994353559ea47b5001",
+          "contentId": "bdb30584924e0274307e963110c2a78e2f8e22721a8ad0f0115671cef36b9ff7",
+          "bytes": 6397432
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Mithril Vault",
       "campaignId": "scenario-mithril-vault",
       "file": "scenario-mithril-vault.realmz2",
-      "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
-      "packageHash": "39b054e9163e47176cebab403f8cb2a71139c248ec74c06e3dd0419ee6dc9919",
-      "contentId": "fdc2fa41de277f8869499f4afd095f737d9152d56267b87c511a7db5be123b88",
-      "archiveSha256": "163a0cd69f6371847061ec77694fb508a7df888e724242673507c381f160a1b8",
-      "bytes": 3176243,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "681a90529ddaae25425405ca090ce9e1d989c523d4c783061c66b823d0997764",
+      "contentId": "4d7f0c77e5561b2bfc3a8acbb36e40de89b1359646dff03a0884a5949b93cdb2",
+      "archiveSha256": "72678fc3366a5f37e68a56e5ab488ef651f5ad35be0dcdb374d05987da706906",
+      "bytes": 3231614,
       "sourceArchive": {
         "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
         "archiveSha256": "213a4fc5def565793f5489eff08890d22e73b8d86e33476f668d19cfdafc9ad2",
@@ -470,17 +542,29 @@
       "shopRestoration": {
         "catalog": "shop-restoration.json",
         "previousCompilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909"
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
+          "packageHash": "39b054e9163e47176cebab403f8cb2a71139c248ec74c06e3dd0419ee6dc9919",
+          "archiveSha256": "163a0cd69f6371847061ec77694fb508a7df888e724242673507c381f160a1b8",
+          "contentId": "fdc2fa41de277f8869499f4afd095f737d9152d56267b87c511a7db5be123b88",
+          "bytes": 3176243
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Prelude to Pestilence",
       "campaignId": "scenario-prelude-to-pestilence",
       "file": "scenario-prelude-to-pestilence.realmz2",
-      "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
-      "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
-      "contentId": "1539bc1df94967ddd641e8e497b15f008ac891230abf0be02461a1134d4cadf1",
-      "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
-      "bytes": 917225,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "a93377fe0e8f029d3451ea593fb6650b7a4c482524f62832adbc3fbc44094c78",
+      "contentId": "1ca4171e4b76e0dc2f630644343a8accadea1ab96c2a87d0bfbb1d17d4e9693a",
+      "archiveSha256": "70c063a2a2dde5847dc7e8284f295bae8c3d0625f874e0ad7f43bdb09d0337ba",
+      "bytes": 931149,
       "sourceArchive": {
         "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
         "archiveSha256": "2bbfe84b06ebce409146aa2fb01ff88f9e8aec6035750675dae9e6119b19aba9",
@@ -577,15 +661,39 @@
           "slot": 1,
           "opcode": 44,
           "operandId": 4,
-          "extraCode": [4, 0, 0, 0, 5]
+          "extraCode": [
+            4,
+            0,
+            0,
+            0,
+            5
+          ]
         },
         "packageCountDelta": {
-          "battles": [103, 102],
-          "items": [200, 198],
-          "spells": [0, 1],
-          "monsters": [157, 87],
-          "thiefEncounters": [13, 9],
-          "programs": [690, 687]
+          "battles": [
+            103,
+            102
+          ],
+          "items": [
+            200,
+            198
+          ],
+          "spells": [
+            0,
+            1
+          ],
+          "monsters": [
+            157,
+            87
+          ],
+          "thiefEncounters": [
+            13,
+            9
+          ],
+          "programs": [
+            690,
+            687
+          ]
         },
         "explanation": "The previous bundled archive was a hand-corrected, overbundled package. Providence regeneration preserved the authored XAP 97 and XAP 149 records and Simple Encounter 7 opcode 44 from the pinned source, while removing source-unexplained overbundled records and restoring the source-owned spell dependency. Battle 75 is the authored Riter route target; Land 3 AP 5 independently has an opcode-2 range that can select Battle 103."
       },
@@ -627,17 +735,29 @@
         "sourceCorrectedSharedItemTexts": 21,
         "explanation": "The pinned native Prelude source retains timed encounter row 0 and its XAP 303 destination. Land 4 AP 10 reschedules row 0; Castle scans it at midnight. The previous package omitted both. The regenerated archive preserves the existing programs, world cells, and media and restores the source-owned catalogs and item text."
       },
-      "correctionsCatalog": "prelude-to-pestilence.corrections.json"
+      "correctionsCatalog": "prelude-to-pestilence.corrections.json",
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "f8735f3921d4fd67b6ba56fad065f0eb4728c148",
+          "packageHash": "2529f5f05b3a8fa81236f03e1ca4f8749b7d5cace8922b1fceea8b6b1672c439",
+          "archiveSha256": "0976add8fb41e6da840a53a8ace047e6af6b95e2a2dce3768264ed0a7a59a496",
+          "contentId": "1539bc1df94967ddd641e8e497b15f008ac891230abf0be02461a1134d4cadf1",
+          "bytes": 917225
+        },
+        "receiptFile": "native-map-triggers.json"
+      }
     },
     {
       "name": "Trouble in the Sword Lands",
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
-      "packageHash": "7fc1ecb2106c0514c983022f39db98666bc82ef87e6c883229e6f6624d0103dc",
-      "contentId": "f6c1c6bce933665f3c7fb35ce3953aa6bbe1c657fb52c7448fbdf7d1a8020a68",
-      "archiveSha256": "429885984f000f98fb7390be077031d58b569ed22e66d5cafa34a5e59b2b66f3",
-      "bytes": 5000906,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "6d5fbc4fa8d99a4932d09b74cf719184e466e34509c57014aad3038c92c8a61e",
+      "contentId": "efe9af288aafca47729aae282e639d8936b150810271ee84c855a816f3c42b27",
+      "archiveSha256": "c87a004438e05070d297cfa61f245c6eb637d9d4b5093bc8c7ef6b8ada758aaa",
+      "bytes": 5080377,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "10cb5cae1af68109084fd84b95254663ccf397e6a704813514f90c795ed88c42",
@@ -694,17 +814,29 @@
       "shopRestoration": {
         "catalog": "shop-restoration.json",
         "previousCompilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909"
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
+          "packageHash": "7fc1ecb2106c0514c983022f39db98666bc82ef87e6c883229e6f6624d0103dc",
+          "archiveSha256": "429885984f000f98fb7390be077031d58b569ed22e66d5cafa34a5e59b2b66f3",
+          "contentId": "f6c1c6bce933665f3c7fb35ce3953aa6bbe1c657fb52c7448fbdf7d1a8020a68",
+          "bytes": 5000906
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Twin Sands of Time",
       "campaignId": "scenario-twin-sands-of-time",
       "file": "scenario-twin-sands-of-time.realmz2",
-      "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
-      "packageHash": "136ae8a319ad414a7cff2183bd01606fd7359bb1e6eb903cf8b70ba31b369b15",
-      "contentId": "eb0a050a4b3b4c0528d10075764ea0d7e3d40f86cbb2cee1ed6d653abdebb287",
-      "archiveSha256": "1c7754f894337510e71e283a6c8b95a943710f64ae6a3b9d293c6838ebc37561",
-      "bytes": 1106323,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "320da7e47cb18e5e15650e1bfb26b0a432ab953175ef46c6444d0631618f4662",
+      "contentId": "8416ca907a9864ca541361dd60c07f110d16094149db72d76cf2539b70e929b0",
+      "archiveSha256": "44f7db4b7442caef748e19393d9c8da8945f13dee8e4fdcc648398d36123728e",
+      "bytes": 1141529,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "b1ab186356915ed759c9bfb042b47685a98b403063cdae9b91003a10502fd3fd",
@@ -761,17 +893,29 @@
       "shopRestoration": {
         "catalog": "shop-restoration.json",
         "previousCompilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909"
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "a779ad4de3d247b045c54e7ef4633a89a7ec9660",
+          "packageHash": "136ae8a319ad414a7cff2183bd01606fd7359bb1e6eb903cf8b70ba31b369b15",
+          "archiveSha256": "1c7754f894337510e71e283a6c8b95a943710f64ae6a3b9d293c6838ebc37561",
+          "contentId": "eb0a050a4b3b4c0528d10075764ea0d7e3d40f86cbb2cee1ed6d653abdebb287",
+          "bytes": 1106323
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "War in the Sword Lands",
       "campaignId": "scenario-war-in-the-sword-lands",
       "file": "scenario-war-in-the-sword-lands.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "8b7402132277d1028719fc1225c624273e74975b532ab11721113865bc9b34ab",
-      "contentId": "cc9173733e28f10bd5ad71297b23e5225c81e75b2e35219db1e1a3a50b5322d6",
-      "archiveSha256": "4fa2f4722b85e004938b9c13611f53bf3f1bdc6a4f694f490b0e087d316a4814",
-      "bytes": 12995491,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "fa80219a1ce7e39e2866cc1b4d0d5d04afdb9e2fd0e645e4ae55936241aa0b9f",
+      "contentId": "de08f27a8fafd95a0b0c32dbc40f34255b1111fc99c503faf6cab23c08bfe526",
+      "archiveSha256": "2026a436f70699fb8afb0dcd9b79898c350abb2e29b265535b80989a5e3b982b",
+      "bytes": 13101863,
       "sourceArchive": {
         "compilerRevision": "31360e29be145a123f3906daa9e018a57729906c",
         "archiveSha256": "30c2c8c5aadc7424533c34e4242885dc42ed47533e2dd7c2be9fe756d74535c5",
@@ -812,17 +956,29 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "8b7402132277d1028719fc1225c624273e74975b532ab11721113865bc9b34ab",
+          "archiveSha256": "4fa2f4722b85e004938b9c13611f53bf3f1bdc6a4f694f490b0e087d316a4814",
+          "contentId": "cc9173733e28f10bd5ad71297b23e5225c81e75b2e35219db1e1a3a50b5322d6",
+          "bytes": 12995491
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "White Dragon",
       "campaignId": "scenario-white-dragon",
       "file": "scenario-white-dragon.realmz2",
-      "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
-      "packageHash": "a4f6722eff1af08f407b37b9e757e0e17dc17b8b5ef7680f7897345709bf0bd6",
-      "contentId": "b77f0829a046459cb065cb3404ae8adafa286a9e4f42cd10115ceccb2efd8409",
-      "archiveSha256": "b8b101f118e1c69b4ad285b977dc8d71bfe94980d196afc4c0f2bafeab25157b",
-      "bytes": 1465404,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "5d666c3d0220f204bf844f040566b322e3f47e9c10f92d97c04e8771d22a5025",
+      "contentId": "2905fead0c11cec3fbaa134e943c54b27200a19469e56ade0f69763f3d7c6d69",
+      "archiveSha256": "1f8b8fc7d9aca2f59ced9e5a3df91cd9302b517855e6a648b92bfdb0012ee829",
+      "bytes": 1502858,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "920b4f651acaa5f94cfc66ad0da1d8c6e115591490950e3477153a4add09e85e",
@@ -875,17 +1031,29 @@
         "removedMediaDescriptors": 0,
         "removedMediaPayloads": 0,
         "rewrittenAssetReferences": 0
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "9c1f6f33ab2ff126cb105ff0af5376353d8cd909",
+          "packageHash": "a4f6722eff1af08f407b37b9e757e0e17dc17b8b5ef7680f7897345709bf0bd6",
+          "archiveSha256": "b8b101f118e1c69b4ad285b977dc8d71bfe94980d196afc4c0f2bafeab25157b",
+          "contentId": "b77f0829a046459cb065cb3404ae8adafa286a9e4f42cd10115ceccb2efd8409",
+          "bytes": 1465404
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     },
     {
       "name": "Wrath of the Mind Lords",
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "file": "scenario-wrath-of-the-mind-lords.realmz2",
-      "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
-      "packageHash": "b2019c2b6cec90ff2c0dfd780828e3ed303b1f34db7f2e3ba369363509a22bd4",
-      "contentId": "909d2c857a7b1984a76769409ad81f624d3fc3cff7191c40797de07f193f55f5",
-      "archiveSha256": "ff198638b6c8b6a474d4c1be9b62067a02d7b05149d8cf785712e854554da5c7",
-      "bytes": 16327919,
+      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "packageHash": "03b0c6a8099e1cfe4f257e8c4e1a3ef949fa2faa76720b5182c7d486496bac74",
+      "contentId": "21a521d78862c4b2fb2d5486f268a62c1e7713496643cc5572edb462ba13409e",
+      "archiveSha256": "f28b7c9b6a257079605f916fb343aab70a0a7c984427662f8498c8aca3fa27ea",
+      "bytes": 16416080,
       "sourceArchive": {
         "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
         "archiveSha256": "9366031c11818d7e80814fe922ea4b8bed867b56915cc34d9e47f851efaa71a9",
@@ -971,18 +1139,70 @@
         "changedPlayerMapRecords": 4,
         "changedPlayerMapMarkerReferences": 13,
         "changedMarkerIdentities": [
-          {"classicIconId": 257, "from": "realmz-application-cicn-257", "to": "realmz-portrait-257"},
-          {"classicIconId": 336, "from": "realmz-application-cicn-336", "to": "realmz-portrait-336"},
-          {"classicIconId": 269, "from": "realmz-application-cicn-269", "to": "realmz-portrait-269"},
-          {"classicIconId": 374, "from": "realmz-application-cicn-374", "to": "realmz-portrait-374"},
-          {"classicIconId": 325, "from": "realmz-application-cicn-325", "to": "realmz-portrait-325"},
-          {"classicIconId": 262, "from": "realmz-application-cicn-262", "to": "realmz-portrait-262"},
-          {"classicIconId": -15, "from": "realmz-application-cicn--15", "to": "realmz-special-land-neg-15"},
-          {"classicIconId": -99, "from": "realmz-application-cicn--99", "to": "realmz-special-land-neg-99"},
-          {"classicIconId": -17, "from": "realmz-application-cicn--17", "to": "realmz-special-land-neg-17"},
-          {"classicIconId": -18, "from": "realmz-application-cicn--18", "to": "realmz-special-land-neg-18"}
+          {
+            "classicIconId": 257,
+            "from": "realmz-application-cicn-257",
+            "to": "realmz-portrait-257"
+          },
+          {
+            "classicIconId": 336,
+            "from": "realmz-application-cicn-336",
+            "to": "realmz-portrait-336"
+          },
+          {
+            "classicIconId": 269,
+            "from": "realmz-application-cicn-269",
+            "to": "realmz-portrait-269"
+          },
+          {
+            "classicIconId": 374,
+            "from": "realmz-application-cicn-374",
+            "to": "realmz-portrait-374"
+          },
+          {
+            "classicIconId": 325,
+            "from": "realmz-application-cicn-325",
+            "to": "realmz-portrait-325"
+          },
+          {
+            "classicIconId": 262,
+            "from": "realmz-application-cicn-262",
+            "to": "realmz-portrait-262"
+          },
+          {
+            "classicIconId": -15,
+            "from": "realmz-application-cicn--15",
+            "to": "realmz-special-land-neg-15"
+          },
+          {
+            "classicIconId": -99,
+            "from": "realmz-application-cicn--99",
+            "to": "realmz-special-land-neg-99"
+          },
+          {
+            "classicIconId": -17,
+            "from": "realmz-application-cicn--17",
+            "to": "realmz-special-land-neg-17"
+          },
+          {
+            "classicIconId": -18,
+            "from": "realmz-application-cicn--18",
+            "to": "realmz-special-land-neg-18"
+          }
         ],
         "documentComparison": "The regenerated content.json, scenario.json, and assets/index.json match the prior Providence export at a122766. world.json matches except for the four player-map records and thirteen marker identities above. The shipped archive was an older 9c1f6f33 postprocessed export; its broader record-count differences are historical package drift, not changes introduced by the marker correction."
+      },
+      "nativeTileRefresh": {
+        "operation": "correct-classic-map-markers",
+        "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+        "previousPackage": {
+          "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
+          "packageHash": "b2019c2b6cec90ff2c0dfd780828e3ed303b1f34db7f2e3ba369363509a22bd4",
+          "archiveSha256": "ff198638b6c8b6a474d4c1be9b62067a02d7b05149d8cf785712e854554da5c7",
+          "contentId": "909d2c857a7b1984a76769409ad81f624d3fc3cff7191c40797de07f193f55f5",
+          "bytes": 16327919
+        },
+        "receiptFile": "native-map-triggers.json"
       }
     }
   ]

@@ -37,7 +37,9 @@ func probe_destination(state: GameState, content: RealmzContent, caster_id: Stri
 	var map := content.world.map_by_id(combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
-	if terrain_set == null or not _context.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster_id, destination, maximum_range, spell.range_min + spell.range_max > 0):
+	if terrain_set == null:
+		return CombatSpellCastProbe.fault(&"missing_battle_terrain", "The active battlefield has no validated Classic terrain catalog.")
+	if not _context.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster_id, destination, maximum_range, spell.range_min + spell.range_max > 0):
 		return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The Phase destination is outside the Classic spell range or line of sight.")
 	return CombatSpellCastProbe.permitted()
 
@@ -78,6 +80,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	events.append(DomainEvent.new(&"sound_requested", {"soundId": 658, "waitForCompletion": false, "source": "classic-combat-phase-arrival"}))
 	if defeated:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 631, "waitForCompletion": false, "source": "classic-combat-phase-death"}))
+		CombatActionEvents.append_defeat_audio(events, caster.id)
 	events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetId": caster.id, "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "targetCoordinate": [destination.x, destination.y], "phased": true, "collisionActorId": collision_actor_id, "solidCollision": phased_into_solid, "defeated": defeated, "source": event_source}))
 	var advances_turn: bool = not _context.actions().character_can_continue(caster)
 	if advances_turn and not defeated:

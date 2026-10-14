@@ -51,6 +51,8 @@ static func _restore_core(content: RealmzContent, snapshot: SessionSnapshot) -> 
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
 	if not SessionScenarioRestoreValidator.thief_vm_continuation_is_valid(content, replacement_state, replacement_rng.snapshot(), replacement_vm):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM Thief Encounter continuation is invalid.")
+	if not SessionScenarioRestoreValidator.combat_vm_continuation_is_valid(replacement_state, replacement_rules, replacement_vm.snapshot()):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM friendly-collision continuation is invalid.")
 	if not SessionRestoreStateValidator.combat_vm_request_is_valid(content, replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm.pending_request()):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved combat request does not match authoritative combat state.")
 	return SessionRestoreResult.succeeded(SessionRestoreCandidate.new(replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm, SessionContinuation.new(), SessionContinuation.new(), null, snapshot.view_revision))
@@ -314,7 +316,7 @@ static func _valid_combat_reward_continuation(content: RealmzContent, state: Gam
 
 static func _valid_friendly_collision(continuation: SessionContinuation, state: GameState, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
 	var combat := continuation.combat()
-	if combat == null or combat.mode != &"friendly" or vm_interaction != null or session_interaction == null or session_interaction.to_data() != SessionInteractionFactory.friendly_collision(session_interaction.request_id).to_data():
+	if combat == null or combat.mode != &"friendly" or vm_interaction != null or session_interaction == null or session_interaction.to_data() != CombatInteractionRequestBuilder.friendly_collision(session_interaction.request_id).to_data():
 		return false
 	if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.turns.active_actor_id() != combat.actor_id:
 		return false
@@ -451,7 +453,16 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 		return false
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
-	if cell == null or exploration.trigger_ids != ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, cell, state.world) or exploration.random_region_ids != state.world.triggers.random_region_ids_at(map, exploration.coordinate):
+	if cell == null or exploration.random_region_ids != state.world.triggers.random_region_ids_at(map, exploration.coordinate):
+		return false
+	# A started AP or contextual Encounter can change the entry marker before yielding.
+	var expected_triggers := ExplorationContinuationWorkflow.first_placed_trigger_ids(content, cell)
+	if not exploration.active_random_program_id.is_empty():
+		if exploration.trigger_ids.is_empty():
+			expected_triggers.clear()
+	elif exploration.active_trigger_id.is_empty() and exploration.trigger_index == 0:
+		expected_triggers = ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, map, exploration.coordinate, state.world, exploration.action_point_destination_depth > 0)
+	if exploration.trigger_ids != expected_triggers:
 		return false
 	# An active AP retains its issuing cell after its program moves the party.
 	if exploration.active_trigger_id.is_empty() and (state.party.map_id != map.id or state.party.coordinate != exploration.coordinate):

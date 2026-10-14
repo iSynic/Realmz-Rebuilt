@@ -7,6 +7,7 @@ signal refresh_requested
 signal vault_back_requested
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_repair_requested(operation: StringName)
 
 const GOLD := Color("d5b45d")
 const MUTED := Color("9aa0a8")
@@ -21,7 +22,6 @@ var _vault_notice: String = ""
 var _vault_inspection_revision_hash: String = ""
 var _vault_target: Control
 var _vault_screen: VaultScreen
-var _vault_parent: VBoxContainer
 var _vault_view: GameView
 var _vault_appearance_textures: Dictionary = {}
 var _vault_text_scale: float = 1.0
@@ -45,7 +45,6 @@ func reset() -> void:
 	_vault_inspection_revision_hash = ""
 	_vault_show_history = false
 	_vault_target = null
-	_vault_parent = null
 	_vault_view = null
 	_vault_media = null
 
@@ -69,7 +68,17 @@ func clear_vault_inspection() -> void:
 	_vault_inspection_revision_hash = ""
 
 
+func present_repair(details: String, review: bool, can_repair: bool, has_backup: bool) -> void:
+	if is_instance_valid(_vault_screen) and _vault_screen.is_visible_in_tree():
+		_vault_screen.repair_dialog.present(details, review, can_repair, has_backup)
+
+
 func handle_vault_back() -> bool:
+	if is_instance_valid(_vault_screen) and _vault_screen.repair_dialog.visible:
+		if not _vault_screen.repair_dialog.committing():
+			_vault_screen.repair_dialog.hide()
+			vault_repair_requested.emit(&"cancel")
+		return true
 	if _vault_inspection_revision_hash.is_empty():
 		return false
 	_vault_inspection_revision_hash = ""
@@ -83,7 +92,12 @@ func present_vault(target: Control, view: GameView, appearance_textures: Diction
 		return
 	_vault_target = target
 	_vault_screen = screen
-	_vault_parent = screen.body_control()
+	if not screen.archive_confirmation.archive_requested.is_connected(vault_archive_requested.emit):
+		screen.archive_confirmation.archive_requested.connect(vault_archive_requested.emit)
+	if not screen.repair_dialog.operation_requested.is_connected(vault_repair_requested.emit):
+		screen.repair_dialog.operation_requested.connect(vault_repair_requested.emit)
+	if not screen.repair_button().pressed.is_connected(screen.repair_dialog.begin_review.bind(screen.repair_button())):
+		screen.repair_button().pressed.connect(screen.repair_dialog.begin_review.bind(screen.repair_button()))
 	_vault_view = view
 	_vault_appearance_textures = appearance_textures
 	_vault_text_scale = text_scale
@@ -143,6 +157,7 @@ func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 
 
 func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisionView, view: GameView) -> void:
+	_ensure_vault_appearance(revision)
 	var panel := _vault_screen.character_card_scene.instantiate() as PanelContainer
 	if panel == null:
 		push_error("Character File card scene must instantiate a PanelContainer.")
@@ -179,7 +194,7 @@ func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisi
 	_bind_vault_import_button(panel.get_node("CardContent/CharacterFileActions/AddToParty") as Button, revision, view)
 	var archive := panel.get_node("CardContent/CharacterFileActions/Archive") as Button
 	archive.tooltip_text = "Remove this character from the active list without deleting immutable history."
-	archive.pressed.connect(_confirm_vault_archive.bind(revision))
+	archive.pressed.connect(_vault_screen.archive_confirmation.present.bind(revision.character_id, revision.name, archive))
 	parent.add_child(panel)
 
 
@@ -244,6 +259,7 @@ func _render_vault_inspection() -> void:
 		_vault_inspection_revision_hash = ""
 		_refresh_vault()
 		return
+	_ensure_vault_appearance(revision)
 	var back := _vault_screen.inspection_back_button()
 	_clear_pressed_connections(back)
 	back.pressed.connect(func() -> void:
@@ -275,20 +291,19 @@ func _on_vault_sheet_tab_changed(tab_id: StringName) -> void:
 	_selected_tab = tab_id
 
 
-func _confirm_vault_archive(revision: CharacterVaultRevisionView) -> void:
-	if _vault_parent == null:
+func _ensure_vault_appearance(revision: CharacterVaultRevisionView) -> void:
+	if _vault_media == null:
 		return
-	var confirmation := ConfirmationDialog.new()
-	confirmation.title = "Archive character"
-	confirmation.dialog_text = "Archive %s? Campaign saves are unchanged, and this revision can be restored later." % revision.name
-	confirmation.ok_button_text = "Archive"
-	confirmation.confirmed.connect(func() -> void: vault_archive_requested.emit(revision.character_id))
-	confirmation.visibility_changed.connect(func() -> void:
-		if not confirmation.visible:
-			confirmation.queue_free()
-	)
-	_vault_parent.add_child(confirmation)
-	confirmation.popup_centered(Vector2i(480, 180))
+	var asset_ids: Array[String] = [revision.portrait_id, revision.character.combat_icon_id if revision.character != null else ""]
+	for asset_id: String in asset_ids:
+		if asset_id.is_empty() or _vault_appearance_textures.get(asset_id) != null:
+			continue
+		var asset := _vault_media.asset_by_id(asset_id)
+		if asset == null:
+			continue
+		var texture := _vault_media.image_texture(asset)
+		if texture != null:
+			_vault_appearance_textures[asset_id] = texture
 
 
 func draft_order_ids() -> Array[String]:
@@ -299,10 +314,14 @@ func present(screen: CharacterScreen, view: GameView, appearance_textures: Dicti
 	if screen == null or view == null:
 		return
 	screen.prepare_for_render()
+	var allies_button := screen.current_allies_button()
+	var allies_reason := GameShellAvailability.allies_reason(view)
+	allies_button.disabled = not allies_reason.is_empty()
+	allies_button.tooltip_text = allies_reason if allies_button.disabled else "Inspect allies currently traveling with the party."
+	_render_party_order_summary(screen, view)
 	if view.party_members.is_empty():
 		screen.empty_state().visible = true
 		return
-	_render_party_order_summary(screen, view)
 	if _party_order_open:
 		_render_party_order(screen, view)
 	var sheet := screen.character_sheet()

@@ -1,7 +1,10 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/screen_navigator.gd" id="1_navigator"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/controller_draft_dialog.tscn" id="2_draft"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/saved_adventure_browser.tscn" id="3_browser"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/loading_adventure_view.tscn" id="4_loading"]
+[ext_resource type="Script" path="res://src/ui/shell/startup_workspace_controller.gd" id="5_startup"]
 
 [node name="ScreenNavigator" type="Control"]
 layout_mode = 3
@@ -43,3 +46,21 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="ControllerDraftDialog" parent="." instance=ExtResource("2_draft")]
+
+[node name="StartupWorkspaces" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("5_startup")
+
+[node name="SavedAdventureBrowser" parent="StartupWorkspaces" instance=ExtResource("3_browser")]
+visible = false
+z_index = 31
+
+[node name="LoadingAdventure" parent="StartupWorkspaces" instance=ExtResource("4_loading")]
+visible = false
+z_index = 32

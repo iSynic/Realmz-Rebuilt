@@ -17,6 +17,7 @@ var handoff: ScenarioVmHandoff
 var error_code: StringName = &""
 var error_message: String = ""
 var outcome: Variant
+var is_rejection: bool = false
 
 
 static func completed(committed_events: Array[DomainEvent] = [], result: Variant = null) -> ScenarioVmResult:
@@ -45,4 +46,10 @@ static func failed(code: StringName, message: String, committed_events: Array[Do
 	vm_result.state = State.FAILED
 	vm_result.error_code = code
 	vm_result.error_message = message
+	return vm_result
+
+
+static func rejected(code: StringName, message: String) -> ScenarioVmResult:
+	var vm_result := failed(code, message)
+	vm_result.is_rejection = true
 	return vm_result

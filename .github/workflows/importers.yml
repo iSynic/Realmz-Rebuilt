@@ -6,6 +6,7 @@ on:
       - '.github/workflows/importers.yml'
       - 'tools/build_release_importer.ps1'
       - 'tools/scenario-importer-inputs.json'
+      - 'tools/providence-converter-map-markers-v6.bundle'
       - 'tools/package_scenario_importer.ps1'
       - 'tools/verify_scenario_importer_platform.ps1'
 permissions:

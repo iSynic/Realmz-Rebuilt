@@ -5,6 +5,8 @@ from pathlib import Path
 import sys
 import zipfile
 
+from verify_bundled_native_tiles import reconstruct_previous_documents
+
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
@@ -42,18 +44,62 @@ def verify(root):
             if entry["campaignId"] not in transitions:
                 continue
             repair = transitions[entry["campaignId"]]
-            assert entry["packageHash"] == repair["newPackageHash"]
-            assert entry["compilerRevision"] == repair["compilerRevision"] == repairs["compilerRevision"]
-            assert entry["archiveSha256"] == repair["newArchiveSha256"] == digest(path.read_bytes())
+            refresh = entry.get("nativeTileRefresh")
+            if refresh is not None:
+                previous = refresh["previousPackage"]
+                assert previous["packageHash"] == repair["newPackageHash"]
+                assert previous["compilerRevision"] == repair["compilerRevision"] == repairs["compilerRevision"]
+                assert previous["archiveSha256"] == repair["newArchiveSha256"]
+                assert previous["contentId"] == repair["newContentId"]
+                assert previous["bytes"] == repair["bytes"]
+                receipt_row = _receipt_row(root, refresh, entry)
+                old_documents = reconstruct_previous_documents(archive, receipt_row)
+                old_content = json.loads(old_documents["content.json"])
+                old_scenario = json.loads(old_documents["scenario.json"])
+                old_content_comparable = dict(old_content)
+                current_content_comparable = dict(content)
+                old_content_comparable.pop("schemaVersion", None)
+                current_content_comparable.pop("schemaVersion", None)
+                assert digest(canonical(old_content_comparable)) == digest(canonical(current_content_comparable)), "native refresh changed gameplay content"
+                added_program_ids = {row["programId"] for row in receipt_row["restoredEmptyRecords"]}
+                current_programs = [program for program in scenario["programs"]
+                                    if program["id"] not in added_program_ids]
+                assert sorted(old_scenario["programs"], key=lambda p: p["id"]) == sorted(
+                    current_programs, key=lambda p: p["id"]
+                ), "native refresh changed existing scenario programs"
+                content = old_content
+                scenario = old_scenario
+                payloads = {name: old_documents[name] for name in old_documents
+                            if name not in ("content.json", "manifest.json")}
+                payloads.update({name: archive.read(name) for name in archive.namelist()
+                                 if name.startswith("assets/media/")})
+                identities = "".join(name + "\0" + digest(payloads[name]) + "\n"
+                                     for name in sorted(payloads))
+                assert digest(identities.encode()) == repair["unchangedPayloadsSha256"], "unrelated package payload changed"
+            else:
+                assert entry["packageHash"] == repair["newPackageHash"]
+                assert entry["compilerRevision"] == repair["compilerRevision"] == repairs["compilerRevision"]
+                assert entry["archiveSha256"] == repair["newArchiveSha256"] == digest(path.read_bytes())
+                identities = "".join(name + "\0" + digest(archive.read(name)) + "\n"
+                                     for name in sorted(archive.namelist()) if name not in ("manifest.json", "content.json"))
+                assert digest(identities.encode()) == repair["unchangedPayloadsSha256"], "unrelated package payload changed"
             additions = [s for s in content["shops"] if s["classicId"] in repair["shopIds"]]
             assert [s["classicId"] for s in additions] == repair["shopIds"]
             assert digest(canonical(additions)) == repair["addedShopsSha256"]
             content["shops"] = [s for s in content["shops"] if s["classicId"] not in repair["shopIds"]]
             assert digest(canonical(content)) == repair["oldContentSha256"], "existing gameplay content changed"
-            identities = "".join(name + "\0" + digest(archive.read(name)) + "\n"
-                                 for name in sorted(archive.namelist()) if name not in ("manifest.json", "content.json"))
-            assert digest(identities.encode()) == repair["unchangedPayloadsSha256"], "unrelated package payload changed"
     print(f"Verified {site_count} shop instruction sites across 13 campaigns; 31 source-compiled additions and unchanged existing content.")
+
+
+def _receipt_row(root, refresh, entry):
+    assert refresh.get("receiptFile") == "native-map-triggers.json", "unsupported native refresh receipt file"
+    path = root / "src/storage/packages/bundled_campaigns" / refresh["receiptFile"]
+    report = json.loads(path.read_text(encoding="utf-8"))
+    matches = [row for row in report["scenarios"]
+               if row.get("outputFile") == entry["file"]
+               and row.get("name") == entry["name"]]
+    assert len(matches) == 1, f"{entry['file']} has no unique native refresh receipt row"
+    return matches[0]
 
 
 if __name__ == "__main__":

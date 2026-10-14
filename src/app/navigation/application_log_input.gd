@@ -26,10 +26,4 @@ static func handle_controller(application: Variant, action_id: StringName, direc
 	var diagnostics := application.get("debug_tools") as DebugToolsHost
 	if presenter != null and presenter.combat_log.handle_controller(action_id, direction) or diagnostics != null and diagnostics.handle_controller(action_id, direction):
 		return true
-	if presenter == null:
-		return false
-	var view: GameView = application.session_controller.view()
-	if action_id == &"realmz_controller_top_menu" and view != null and view.combat_view != null and not application.lifecycle_host.has_active_interaction() and not application._shell_presenter.navigation_overlay_active:
-		presenter.combat_log.open()
-		return true
 	return false

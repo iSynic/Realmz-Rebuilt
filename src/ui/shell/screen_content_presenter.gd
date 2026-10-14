@@ -10,6 +10,7 @@ signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal controller_binding_capture_requested(action_id: StringName)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_repair_requested(operation: StringName)
 signal route_requested(screen_id: StringName)
 signal refresh_requested
 signal save_previews_changed
@@ -111,6 +112,9 @@ func navigate_section(screen_id: StringName, section_name: StringName = &"", del
 
 
 func _bind_character_controller(owner_ref: WeakRef) -> void:
+	_character_controller.vault_repair_requested.connect(func(operation: StringName) -> void:
+		var owner := owner_ref.get_ref() as ScreenContentPresenter
+		if owner != null: owner.vault_repair_requested.emit(operation))
 	_character_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
@@ -287,11 +291,13 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 	if screen == null:
 		return
 	var body := screen.body_control()
+	if screen is CharacterScreen or screen is JournalScreen:
+		if not screen.route_requested.is_connected(route_requested.emit): screen.route_requested.connect(route_requested.emit)
 	if screen_id not in [&"allies", &"bestiary", &"character", &"inventory", &"journal", &"services", &"spells", &"system", &"save_load", &"vault"]:
 		_clear(body)
 	if context_actions != null:
 		context_actions.get_node("SpellActionDock").visible = false
-	if (_view == null or not _view.session_started) and screen_id != &"vault":
+	if (_view == null or not _view.session_started) and screen_id not in [&"vault", &"system"]:
 		var message_host: Container = body
 		if screen is CharacterScreen:
 			var character_screen := screen as CharacterScreen
@@ -336,9 +342,9 @@ func present(screen_id: StringName, screen: ScreenFrame, appearance_textures: Di
 			_maps_journal_controller.present(screen, _view, _media)
 		&"system", &"save_load":
 			_system_controller.present(screen, _view, _settings, _media)
-			if screen_id == &"save_load":
+			if screen_id == &"save_load" and _view != null and _view.session_started:
 				_system_controller.show_saves()
-			elif _system_route == &"save_load":
+			elif _system_route != screen_id:
 				_system_controller.show_category(&"Display")
 			_system_route = screen_id
 

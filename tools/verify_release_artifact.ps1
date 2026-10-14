@@ -45,7 +45,7 @@ $expectedPackagePaths = @($expectedPackagePaths | Sort-Object)
 if (($packagePaths -join '|') -ne ($expectedPackagePaths -join '|')) {
     throw "Release export contains an unexpected Realmz package set: $($packagePaths -join ', ')"
 }
-foreach ($requiredRuntimeFile in @('res://LICENSE', 'res://THIRD_PARTY_NOTICES.txt', 'res://src/storage/characters/realmz-classic-starter-characters.json')) {
+foreach ($requiredRuntimeFile in @('res://LICENSE', 'res://THIRD_PARTY_NOTICES.txt', 'res://src/storage/characters/realmz-classic-starter-characters.json', 'res://src/storage/characters/character-rule-recovery.json')) {
     if ($plainLogText -notmatch ('Storing File:\s+' + [regex]::Escape($requiredRuntimeFile) + '(?:\r?\n|$)')) {
         throw "Release export is missing required runtime/license file: $requiredRuntimeFile"
     }
@@ -118,6 +118,14 @@ $importerManifest = Get-Content -Raw -LiteralPath $importerBuildManifestPath | C
 if ($importerManifest.kind -cne "realmz-rebuilt.scenario-importer-build" -or [int]$importerManifest.formatVersion -ne 1) { throw "Scenario importer build manifest kind or version is unsupported." }
 if ($importerManifest.buildIdentity.profile -cne "release") { throw "Artifacts require a release-profile Providence build identity." }
 if ([bool]$importerManifest.buildIdentity.sourceDirty -and -not $LocalTestBuild) { throw "Release artifacts require a clean Providence build identity; use -LocalTestBuild only for an unpublished local test export." }
+if (-not $LocalTestBuild) {
+    $importerInputs = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot 'scenario-importer-inputs.json') | ConvertFrom-Json
+    $importerSource = if ($null -ne $importerInputs.sourceUpdate) { $importerInputs.sourceUpdate } else { $importerInputs.source }
+    foreach ($field in @('commit', 'schemaSha256', 'cargoLockSha256')) {
+        if ($importerManifest.buildIdentity.$field -cne $importerSource.$field) { throw "The packaged importer $field differs from the pinned source. Rebuild and promote the matching native importer archives before release." }
+    }
+    if ($importerManifest.buildIdentity.sourceTree -cne $importerSource.tree) { throw 'The packaged importer source tree differs from the pinned converter.' }
+}
 $importerTarget = [string]$importerManifest.buildIdentity.target
 $expectedImporterPlatform = switch ($Preset) {
     "Windows Desktop" { "windows" }
@@ -240,6 +248,10 @@ $manifest = [ordered]@{
         file = "src/storage/characters/realmz-classic-starter-characters.json"
         sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "src\storage\characters\realmz-classic-starter-characters.json") -Algorithm SHA256).Hash.ToLowerInvariant()
         recordCount = 6
+    }
+    characterRuleRecovery = [ordered]@{
+        file = "src/storage/characters/character-rule-recovery.json"
+        sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "src\storage\characters\character-rule-recovery.json") -Algorithm SHA256).Hash.ToLowerInvariant()
     }
     scenarioImporter = [ordered]@{
         executable = $importerManifest.executable

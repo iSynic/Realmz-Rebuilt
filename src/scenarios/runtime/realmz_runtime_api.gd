@@ -148,7 +148,7 @@ func resume_safe(continuation: ScenarioRuntimeContinuation, response: Interactio
 			if response.kind != &"scenario_choice" or choice == null or choice.index < 0 or choice.index >= option_count:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Scenario choice response must identify an available option.")
 			return ScenarioRuntimeOperationResult.completed(choice.index)
-		ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
+		ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
 			return _battle_reward_operations.resume(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_interaction_continuation", "Scenario Action interaction continuation is unavailable.")
@@ -259,7 +259,7 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.exploration.has_map(player_map_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic player-map continuation references unavailable acquired content.")
 			return ScenarioRuntimeOperationResult.completed(true)
-		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
+		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
 			return _battle_reward_operations.resume(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_OPCODE_DEATH_MACRO:
 			return _combat_operations.resume_opcode_death_macro(continuation, response)

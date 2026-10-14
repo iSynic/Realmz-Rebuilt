@@ -161,6 +161,8 @@ func _append_result(state: GameState, content: RealmzContent, source_id: String,
 	if resolution.special_result == &"turned":
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
 	CombatSpellEventBuilder.append_sound(events, spell.sound_end, SOURCE)
+	if resolution.target_defeated:
+		CombatActionEvents.append_defeat_audio(events, target_id)
 	var payload := {"actorId": source_id, "targetId": target_id, "selectedTargetId": group.selected_target_ids[index], "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power, "classicTier": spell.classic_tier(), "reflected": group.reflected_targets[index], "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": SOURCE, "areaCenter": [center.x, center.y], "areaShape": shape, "clearedConditionCount": resolution.cleared_condition_count, "detectedMagicItemCount": resolution.detected_magic_item_count}
 	if resolution.cleared_condition >= 0:
 		payload["clearedCondition"] = resolution.cleared_condition

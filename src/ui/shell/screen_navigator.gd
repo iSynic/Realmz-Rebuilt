@@ -15,6 +15,7 @@ signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal controller_binding_capture_requested(action_id: StringName)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_repair_requested(operation: StringName)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
@@ -53,6 +54,8 @@ var _vault_return_to_campaign: bool = false
 var _vault_return_to_splash: bool = false
 var _load_after_campaign_selection: bool = false
 var _system_return_to_setup: bool = false
+var _system_return_to_splash := false
+var _main_menu_settings_origin: StringName = &"exploration"
 var _workspace_host: Control
 var _overlay_host: Control
 var _media: ClassicMediaCatalog
@@ -60,11 +63,12 @@ var content_presenter := SCREEN_CONTENT_PRESENTER.new()
 var draft_dialog: Control:
 	get: return get_node("ControllerDraftDialog") as Control
 var setup_controller := CampaignPartySetupController.new()
+@onready var startup: StartupWorkspaceController = $StartupWorkspaces
 var _initialized: bool = false
 var _startup_splash_enabled: bool = true
 var full_stage_overlay_visible: bool:
 	get:
-		return setup_controller.full_stage_overlay_visible() or _screen_id == &"vault"
+		return setup_controller.full_stage_overlay_visible() or _screen_id == &"vault" or startup != null and startup.is_active()
 
 
 func _init() -> void:
@@ -75,15 +79,17 @@ func _init() -> void:
 	setup_controller.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
 	setup_controller.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
 	setup_controller.campaign_library.campaign_selection_requested.connect(func() -> void: show_campaign_selection())
-	setup_controller.campaign_library.load_adventure_requested.connect(func() -> void: show_campaign_selection(true))
+	setup_controller.campaign_library.load_adventure_requested.connect(func() -> void: startup.show_browser(false))
 	setup_controller.load_saved_adventure_requested.connect(_show_load_workspace)
 	setup_controller.campaign_library.vault_requested.connect(show_vault_from_splash)
+	setup_controller.campaign_library.settings_requested.connect(func() -> void: open_screen(&"system", false, &"Display"))
 	setup_controller.campaign_library.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
 	content_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	content_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
 	content_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
 	content_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
 	content_presenter.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
+	content_presenter.vault_repair_requested.connect(func(operation: StringName) -> void: vault_repair_requested.emit(operation))
 	content_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
 	content_presenter.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
 	content_presenter.refresh_requested.connect(func() -> void: refresh_current_workspace())
@@ -94,8 +100,20 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	startup.bind(func() -> void:
+		setup_controller.hide_overlays()
+		_set_workspace_visible(false),
+		func(from_setup: bool) -> void:
+			if from_setup: setup_controller.show_party_setup()
+			else: show_splash(),
+		func(entered: bool) -> void:
+			if entered:
+				_finish_party_setup_navigation()
+				setup_controller.hide_overlays()
+				refresh_current_workspace()
+			else: present(_view),
+		func() -> void: screen_changed.emit(_screen_id))
 	initialize()
-
 
 func initialize() -> void:
 	if _initialized:
@@ -133,15 +151,27 @@ func present(view: GameView) -> void:
 	var completed_party_setup := _party_setup_completed(_view, view)
 	_view = view
 	content_presenter.set_view(view)
+	if startup != null and startup.is_active():
+		setup_controller.present(view)
+		setup_controller.hide_overlays()
+		_set_workspace_visible(false)
+		return
 	if view == null or not view.session_started:
 		setup_controller.present(view)
-		_set_workspace_visible(false)
+		if _screen_id == &"system":
+			refresh_current_workspace()
+		else:
+			_set_workspace_visible(false)
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
 		setup_controller.character_creation.reset_creator(true)
 		content_presenter.reset_campaign()
 	_presented_campaign_id = view.campaign_id
 	setup_controller.present(view)
+	if _screen_id == &"system" and primary_workspace_visible():
+		setup_controller.hide_overlays()
+		refresh_current_workspace()
+		return
 	if view.party_setup_available:
 		if _load_after_campaign_selection:
 			_load_after_campaign_selection = false
@@ -214,6 +244,7 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2, origin
 		return
 	var composition_changed := _layout_profile != profile.id
 	_layout_profile = profile.id
+	startup.set_layout(profile, viewport_size, origin)
 	content_presenter.set_layout_profile(profile.id)
 	var top := profile.menu_height
 	var bottom := profile.bottom_height
@@ -267,34 +298,47 @@ func show_splash() -> void:
 	if draft_dialog.defer_if_dirty(content_presenter.system_preferences, show_splash): return
 	if setup_controller.splash_overlay == null:
 		return
+	startup.browser.hide()
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
 	_load_after_campaign_selection = false
 	_system_return_to_setup = false
+	_system_return_to_splash = false
 	setup_controller.show_splash()
 	_set_workspace_visible(false)
 
 
 func show_campaign_selection(load_after_selection: bool = false) -> void:
+	if load_after_selection:
+		startup.show_browser(false)
+		return
 	if draft_dialog.defer_if_dirty(content_presenter.system_preferences, show_campaign_selection.bind(load_after_selection)): return
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
 	_load_after_campaign_selection = load_after_selection
 	_system_return_to_setup = false
+	_system_return_to_splash = false
+	startup.browser.hide()
 	setup_controller.show_campaign_selection()
 	_set_workspace_visible(false)
 	call_deferred("_prepare_campaign_selection")
 
 
 func accepts_exploration_input() -> bool:
-	return _view != null and _view.session_started and not _view.party_setup_available and not setup_controller.full_stage_overlay_visible() and _screen_id == &"exploration"
+	return _view != null and _view.session_started and not _view.party_setup_available and not full_stage_overlay_visible and _screen_id == &"exploration"
 
 
 func open_screen(screen_id: StringName, play_opening_sound: bool = true, section_name: StringName = &"") -> void:
 	if not UiRouteCatalog.has_route(screen_id):
 		return
+	if screen_id == &"system" and setup_controller.campaign_library.splash_visible:
+		_main_menu_settings_origin = _screen_id
+		_system_return_to_splash = true
+		_route_history.clear()
+	elif screen_id == &"system" and setup_controller.setup_overlay.visible:
+		_system_return_to_setup = true
 	if screen_id != _screen_id and draft_dialog.defer_if_dirty(content_presenter.system_preferences, open_screen.bind(screen_id, play_opening_sound, section_name)): return
 	if screen_id == &"vault":
 		_vault_return_to_campaign = false
@@ -319,12 +363,13 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true, section
 
 
 func handle_back() -> bool:
+	if startup.handle_back(): return true
 	if (get_node("ControllerDraftDialog") as Control).visible:
 		get_node("ControllerDraftDialog").resolve(&"keep")
 		return true
 	if draft_dialog.defer_if_dirty(content_presenter.system_preferences, handle_back): return true
-	if setup_controller.handle_back():
-		return true
+	if setup_controller.handle_back(): return true
+	if _system_return_to_splash: return _return_to_main_menu()
 	if _system_return_to_setup and _view != null and _view.party_setup_available:
 		_system_return_to_setup = false
 		route_exiting.emit(_screen_id)
@@ -379,13 +424,17 @@ func handle_back() -> bool:
 	return false
 
 
-func _show_load_workspace() -> void:
-	if _view == null or not _view.session_started or not _view.party_setup_available:
-		return
-	_load_after_campaign_selection = false
-	_system_return_to_setup = true
+func _return_to_main_menu() -> bool:
+	route_exiting.emit(_screen_id)
+	_screen_id = _main_menu_settings_origin
 	_route_history.clear()
-	open_screen(&"save_load")
+	show_splash()
+	screen_changed.emit(_screen_id)
+	return true
+
+
+func _show_load_workspace() -> void:
+	startup.show_browser(true)
 
 
 func current_screen() -> StringName:

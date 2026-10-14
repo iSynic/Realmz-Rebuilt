@@ -2,6 +2,8 @@
 class_name JournalScreen
 extends ScreenFrame
 
+signal route_requested(screen_id: StringName)
+
 const BODY_PATH := "WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"
 
 
@@ -11,9 +13,16 @@ func _enter_tree() -> void:
 	back.reparent(get_node("WorkspaceColumn/JournalFooter/BackHost"))
 	back.owner = self
 	UiSizing.minimum_size(back, Vector2(142.0, 34.0))
+	var bestiary := get_node("%Bestiary") as Button
+	if not bestiary.pressed.is_connected(_request_bestiary_route):
+		bestiary.pressed.connect(_request_bestiary_route)
 	workspace().get_node("MapsNotesSummary").visible = false
 	workspace().tabs().tab_changed.connect(_update_section_scrolling)
 	_update_section_scrolling(workspace().tabs().current_tab)
+
+
+func _request_bestiary_route() -> void:
+	route_requested.emit(&"bestiary")
 
 
 func _update_section_scrolling(index: int) -> void:

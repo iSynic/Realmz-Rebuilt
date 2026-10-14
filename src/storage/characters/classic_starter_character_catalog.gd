@@ -19,7 +19,7 @@ const EXPECTED_SOURCE_HASHES := {
 var last_error: String = ""
 
 
-func load_records(path: String, application_package_hash: String) -> Array[CharacterVaultRecord]:
+func load_records(path: String, application_package_hash: String, application: RealmzContent = null) -> Array[CharacterVaultRecord]:
 	last_error = ""
 	var result: Array[CharacterVaultRecord] = []
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -33,6 +33,8 @@ func load_records(path: String, application_package_hash: String) -> Array[Chara
 		return _fail("The built-in starter-character catalog identity is invalid.", result)
 	if application_package_hash.length() != 64 or parsed.get("applicationCharacterLibraryPackageHash") != application_package_hash:
 		return _fail("The starter characters do not match the built-in application library.", result)
+	if application != null and (application.package_hash != application_package_hash or application.campaign_id != ApplicationLibraryIdentity.CAMPAIGN_ID):
+		return _fail("The starter character source rules do not match the application library.", result)
 	if not _valid_sources(parsed.get("sources")) or not parsed.get("records") is Array or parsed["records"].size() != EXPECTED_SOURCE_HASHES.size():
 		return _fail("The built-in starter-character inventory is incomplete.", result)
 	var character_ids: Dictionary = {}
@@ -48,6 +50,13 @@ func load_records(path: String, application_package_hash: String) -> Array[Chara
 		context.update(CanonicalJson.encode(canonical_data).to_utf8_buffer())
 		if context.finish().hex_encode() != expected_hash:
 			return _fail("A built-in starter-character revision hash is invalid.", result)
+		if application != null:
+			record.source_rules = CharacterVaultRuleIdentity.capture(application.transfer_catalog, record.state)
+			if record.source_rules == null:
+				return _fail("A starter character's source rules are unavailable.", result)
+			canonical_data = record.to_data()
+			canonical_data["revisionHash"] = ""
+			record.revision_hash = CanonicalJson.encode(canonical_data).sha256_text()
 		character_ids[record.character_id] = true
 		result.append(record)
 	result.sort_custom(func(left: CharacterVaultRecord, right: CharacterVaultRecord) -> bool: return left.character_id < right.character_id)
@@ -67,4 +76,5 @@ func _valid_sources(value: Variant) -> bool:
 
 func _fail(message: String, empty: Array[CharacterVaultRecord]) -> Array[CharacterVaultRecord]:
 	last_error = message
+	empty.clear()
 	return empty

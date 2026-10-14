@@ -10,6 +10,13 @@ var _validated_records: Dictionary = {}
 var _operation_error: String = ""
 var _rule_sources: CharacterVaultRuleSources
 var _active_content: RealmzContent
+var _repair: CharacterVaultRepair
+var _repair_thread: Thread
+var _repair_operation: StringName
+var _repair_cancelled := false
+var _repair_packages: Array[PackageDiscoveryResult] = []
+var _repair_application: RealmzContent
+var _repair_prepared := false
 
 
 func _init(repository: CharacterVaultRepository = null) -> void:
@@ -43,14 +50,88 @@ func configure_rule_sources(application: RealmzContent, packages: Array[PackageD
 	if _rule_sources == null:
 		_rule_sources = CharacterVaultRuleSources.new()
 	_rule_sources.configure(application, packages)
+	_repair_application = application
+	_repair_packages = packages.duplicate()
 
 
-func publish(character: CharacterState, rules_version: String, source_campaign_id: String, source_package_hash: String, publication_source: String) -> bool:
+func start_repair(operation: StringName) -> bool:
+	_operation_error = ""
+	if _repair_thread != null or _repair_application == null:
+		_operation_error = "Wait for the Character Files library to finish its current operation."
+		return false
+	if operation == &"review":
+		_repair = CharacterVaultRepair.new(CharacterVaultRepository.new(_repository.directory_path()), _repair_application, _repair_packages)
+	elif operation != &"repair" or not _repair_prepared or _repair == null or _repair.ready_names.is_empty():
+		_operation_error = "Review the Character Files repair first."
+		return false
+	_repair_operation = operation
+	_repair_prepared = false
+	_repair_cancelled = false
+	_repair_thread = Thread.new()
+	var error := _repair_thread.start(_repair.prepare if operation == &"review" else _repair.execute)
+	if error != OK:
+		_repair_thread = null
+		_operation_error = "Could not start Character Files repair."
+		return false
+	return true
+
+
+func cancel_repair_review() -> void:
+	_repair_prepared = false
+	if _repair_operation == &"review": _repair_cancelled = true
+
+
+func poll_repair() -> Dictionary:
+	if _repair_thread == null or _repair_thread.is_alive():
+		return {}
+	var success: bool = _repair_thread.wait_to_finish()
+	_repair_thread = null
+	if _repair_cancelled:
+		_repair = null
+		return {}
+	_repair_prepared = success and _repair_operation == &"review"
+	_validated_records.clear()
+	var details := ""
+	if not success:
+		details = _repair.last_error
+	elif _repair_operation == &"review":
+		details = "%d Character Files can be repaired.\n\n%s\n\nThe complete vault will be backed up before repair. New revisions preserve every original character field, and the originals remain in revision history." % [_repair.ready_names.size(), ", ".join(_repair.ready_names)] if not _repair.ready_names.is_empty() else "No Character Files need a repair that can be verified."
+	else:
+		details = "Repaired %d Character Files. Your original characters remain in revision history.\n\n%s" % [_repair.repaired_names.size(), ", ".join(_repair.repaired_names)]
+	if _repair.already_ready > 0:
+		details += "\n\n%d Character Files already have their source identity." % _repair.already_ready
+	if not _repair.issues.is_empty():
+		details += "\n\nNeeds attention:\n" + "\n\n".join(_repair.issues)
+	if _repair.backup.complete:
+		details += "\n\nComplete vault backup:\n" + ProjectSettings.globalize_path(_repair.backup.path)
+	return {"details": details, "review": success and _repair_operation == &"review", "canRepair": success and not _repair.ready_names.is_empty(), "hasBackup": _repair.backup.complete}
+
+
+func repair_backup_path() -> String:
+	return ProjectSettings.globalize_path(_repair.backup.path) if _repair != null and _repair.backup.complete else ""
+
+
+func shutdown_repair() -> void:
+	if _repair_thread != null:
+		_repair_thread.wait_to_finish()
+		_repair_thread = null
+
+
+func publish(character: CharacterState, rules_version: String, source_campaign_id: String, source_package_hash: String, publication_source: String, source_content: RealmzContent = null) -> bool:
+	_operation_error = ""
 	if character == null:
 		return false
 	var record := CharacterVaultRecord.new(character.id, rules_version, source_campaign_id, source_package_hash, character)
+	if source_content != null:
+		if source_content.package_hash != source_package_hash or source_content.rules_version != rules_version or not source_campaign_id in ["", source_content.campaign_id]:
+			_operation_error = "The character publication does not match its source rules."
+			return false
+		record.source_rules = CharacterVaultRuleIdentity.capture(source_content.transfer_catalog, character)
+		if record.source_rules == null:
+			_operation_error = "The character's source race and class could not be recorded."
+			return false
 	record.publication_metadata = {"name": character.name, "level": character.level, "source": publication_source}
-	var published := _repository.publish_revision(record)
+	var published := _repository.publish_new_character(record)
 	if published:
 		_validated_records.clear()
 	return published
@@ -68,11 +149,12 @@ func publish_from_snapshot(snapshot: SessionSnapshot, content: RealmzContent, ch
 	if source_character == null:
 		_operation_error = "the character is unavailable"
 		return ""
-	var character := CharacterStateCodec.copy(source_character)
+	# Campaign slot IDs belong to their playthrough, not to the reusable vault.
+	var character := CharacterStateCodec.copy_with_identity(source_character, next_character_file_identity().character_id)
 	if character == null:
 		_operation_error = "the character state is invalid"
 		return ""
-	if not publish(character, content.rules_version, content.campaign_id, content.package_hash, "character-creation"):
+	if not publish(character, content.rules_version, content.campaign_id, content.package_hash, "character-creation", content):
 		_operation_error = last_error()
 		return ""
 	return character.name
@@ -86,9 +168,9 @@ func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
 	return seeded
 
 
-func seed_classic_starters_if_empty(catalog_path: String = CLASSIC_STARTER_CATALOG_PATH, application_library_hash: String = ApplicationLibraryIdentity.PACKAGE_HASH) -> bool:
+func seed_classic_starters_if_empty(catalog_path: String = CLASSIC_STARTER_CATALOG_PATH, application_library_hash: String = ApplicationLibraryIdentity.PACKAGE_HASH, application: RealmzContent = null) -> bool:
 	var catalog := ClassicStarterCharacterCatalog.new()
-	var records := catalog.load_records(catalog_path, application_library_hash)
+	var records := catalog.load_records(catalog_path, application_library_hash, application)
 	if records.is_empty():
 		_operation_error = catalog.last_error
 		push_warning("Starter characters were not installed: %s" % _operation_error)

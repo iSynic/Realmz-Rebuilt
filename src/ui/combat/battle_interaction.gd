@@ -8,6 +8,7 @@ extends InteractionComponent
 signal combat_items_requested
 signal move_to_requested
 signal combat_log_requested
+signal pause_requested
 signal combat_inventory_targeting_started
 signal weapon_aim_requested(mode: StringName, preparation: StringName)
 signal weapon_ability_prepared(instance_id: String)
@@ -425,6 +426,8 @@ func _perform_presentation_action(action: StringName) -> void:
 		reveal_friends_requested.emit()
 	if action == &"combat_log":
 		combat_log_requested.emit()
+	if action == &"pause":
+		pause_requested.emit()
 
 
 func _refresh_inspected_label() -> void:
@@ -502,6 +505,7 @@ func _build_command_shelf(body: CombatRequestBody, actor_id: String, action_ids:
 	_bind_presentation_button(inspection_rows[0].get_node("Previous") as Button, "Previous", &"inspect_previous")
 	_bind_presentation_button(inspection_rows[0].get_node("Center") as Button, "Center", &"center_active")
 	_bind_presentation_button(inspection_rows[0].get_node("Next") as Button, "Next", &"inspect_next")
+	_bind_presentation_button(inspection_rows[0].get_node("Pause") as Button, "Pause", &"pause")
 	_bind_presentation_button(inspection_rows[1].get_node("RevealFriends") as Button, "Reveal Friends", &"reveal_friends")
 	_bind_presentation_button(inspection_rows[1].get_node("CombatLog") as Button, "Combat Log", &"combat_log")
 	var move_to := inspection_rows[1].get_node("MoveTo") as Button

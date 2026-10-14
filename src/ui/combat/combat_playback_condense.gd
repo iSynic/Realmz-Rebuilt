@@ -34,14 +34,17 @@ static func _spell_group(events: Array[DomainEvent], cast_index: int) -> Diction
 	var results: Array[Dictionary] = []
 	var distinct_targets := {}
 	var first_sound: DomainEvent
+	var defeat_sounds: Array[DomainEvent] = []
 	var count := -1
 	var index := cast_index + 1
 	while index < events.size():
 		var event := events[index]
 		if event.kind == &"sound_requested":
-			if String(event.payload.get("source", "")) not in ["classic-combat-spell-result", "classic-monster-spell-result", "classic-monster-macro"]:
+			if event.payload.get("playbackBoundary") == "defeat":
+				defeat_sounds.append(event)
+			elif String(event.payload.get("source", "")) not in ["classic-combat-spell-result", "classic-monster-spell-result", "classic-monster-macro"]:
 				break
-			if first_sound == null: first_sound = event
+			elif first_sound == null: first_sound = event
 		elif event.kind == &"combat_spell_projectile":
 			if String(event.payload.get("actorId", "")) != actor_id or String(event.payload.get("spellId", "")) != spell_id:
 				break
@@ -59,6 +62,7 @@ static func _spell_group(events: Array[DomainEvent], cast_index: int) -> Diction
 				if distinct_targets.size() < 2: break
 				var condensed: Array[DomainEvent] = []
 				if first_sound != null: condensed.append(first_sound)
+				condensed.append_array(defeat_sounds)
 				condensed.append(DomainEvent.new(&"combat_multi_spell_resolved", {"actorId": actor_id, "results": results}))
 				return {"events": condensed, "nextIndex": index + 1}
 		else:
@@ -84,7 +88,7 @@ static func _attack_group(events: Array[DomainEvent], first_index: int) -> Dicti
 	while index < events.size():
 		var event := events[index]
 		if event.kind == &"sound_requested":
-			if String(event.payload.get("source", "")) != "classic-combat-attack":
+			if String(event.payload.get("source", "")) not in ["classic-combat-attack", "classic-combat-defeat"]:
 				break
 			pending_sounds.append(event)
 		elif event.kind == &"combat_attack_resolved":
@@ -93,9 +97,10 @@ static func _attack_group(events: Array[DomainEvent], first_index: int) -> Dicti
 				break
 			for sound: DomainEvent in pending_sounds:
 				var sound_id := int(sound.payload.get("soundId", 0))
-				if not sound_ids.has(sound_id):
+				var sound_key := "%d:%s" % [sound_id, sound.payload.get("targetId", "") if sound.payload.get("playbackBoundary") == "defeat" else ""]
+				if not sound_ids.has(sound_key):
 					sounds.append(sound)
-					sound_ids[sound_id] = true
+					sound_ids[sound_key] = true
 			pending_sounds.clear()
 			results.append(payload.duplicate(true))
 			distinct_targets[String(payload.get("targetId", ""))] = true

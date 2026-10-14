@@ -64,6 +64,8 @@ func resume_opcode_death_macro(continuation: ScenarioRuntimeContinuation, respon
 	if not vm.restore(body.macro_vm):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_continuation", "Classic opcode 125 cannot restore its pending death macro.")
 	var result := vm.resume(response, runtime_api)
+	if result.is_rejection:
+		return ScenarioRuntimeOperationResult.rejected(result.error_code, result.error_message)
 	if result.state == ScenarioVmResult.State.FAILED:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	if result.state == ScenarioVmResult.State.SUSPENDED:

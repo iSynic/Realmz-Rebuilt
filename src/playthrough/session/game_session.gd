@@ -74,6 +74,34 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	return SessionStep.completed(_context.current_revision(), [DomainEvent.new("session_started", {"campaignId": content.campaign_id})])
 
 
+func prepare_party(catalog: ScenarioSetupCatalog, initial_seed: int) -> SessionStep:
+	if _started or catalog == null or catalog.content == null:
+		return SessionStep.failed(_context.current_revision(), &"invalid_party_preparation", "An unused session and validated setup catalog are required.")
+	var preparation := PartyPreparationState.new()
+	preparation.prepare(catalog, initial_seed)
+	_context = preparation
+	navigation = SessionNavigationQuery.new(_context)
+	_started = true
+	_view_projector.clear()
+	return SessionStep.completed(_context.current_revision())
+
+
+func is_preparing_party() -> bool:
+	return _started and _context is PartyPreparationState and (_context as PartyPreparationState).awaiting_world
+
+
+func activate_prepared_party(content: RealmzContent) -> SessionStep:
+	if not is_preparing_party() or content == null or content.scenario == null or content.world == null:
+		return SessionStep.failed(_context.current_revision(), &"invalid_party_preparation", "The complete validated scenario is required.")
+	var start_map := content.world.map_by_id(content.start_map_id)
+	if start_map == null or start_map.topology.cell_at(content.start_coordinate) == null:
+		return SessionStep.failed(_context.current_revision(), &"invalid_start_location", "The package start location is unavailable.")
+	if not (_context as PartyPreparationState).activate(content):
+		return SessionStep.failed(_context.current_revision(), &"party_preparation_mismatch", "The prepared party does not match this scenario, or character creation is still active.")
+	_view_projector.clear()
+	return _finish_completed([])
+
+
 func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionStep:
 	var result := SessionRestoreValidator.validate(content, save_envelope)
 	if not result.ok:
@@ -88,6 +116,7 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 func close() -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_context.current_revision(), &"session_not_started", "There is no active session to close.")
+	if is_preparing_party(): return _commit_close([], "party-preparation")
 	if _context.runtime_fault != null:
 		return _commit_close([], "scenario-content-fault")
 	var pending := _pending_interaction()
@@ -121,6 +150,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_context.current_revision(), &"invalid_intent", "A typed player intent is required.")
 	if not intent.is_valid():
 		return SessionStep.failed(_context.current_revision(), &"invalid_intent_payload", "The player intent payload does not match its kind.")
+	if is_preparing_party() and intent.kind in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE]:
+		return SessionStep.failed(_context.current_revision(), &"campaign_preparing", "The complete scenario must be ready before Play.")
 	if intent.kind == PlayerIntent.Kind.SET_COMBAT_AUTO:
 		return _set_combat_auto(intent)
 	if _pending_interaction() != null or _context.scenario_vm.is_active():
@@ -134,7 +165,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 
 
 func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
-	if not _started:
+	if not _started or is_preparing_party():
 		return SessionStep.failed(_context.current_revision(), &"debug_command_unavailable", "Debug commands require a committed active adventure boundary.")
 	if _context.runtime_fault != null:
 		return SessionStep.failed(_context.current_revision(), &"scenario_session_faulted", _context.runtime_fault.display_message())
@@ -170,7 +201,7 @@ func respond(response: InteractionResponse) -> SessionStep:
 			_debug_operation_active = false
 		return session_result
 	var result := _context.scenario_vm.resume(response, _context.runtime_api)
-	if _debug_operation_active and result.state != ScenarioVmResult.State.WAITING:
+	if _debug_operation_active and not result.is_rejection and result.state != ScenarioVmResult.State.WAITING:
 		_debug_operation_active = false
 	var events: Array[DomainEvent] = []
 	events.append_array(result.events)
@@ -211,6 +242,8 @@ func _finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEve
 
 
 func view(events: Array[DomainEvent] = []) -> GameView:
+	if is_preparing_party():
+		return _view_projector.project_party_preparation(_context.workflow_context(), _pending_interaction(), _context.current_revision())
 	var result := _view_projector.project(_context.workflow_context(), _pending_interaction(), _context.current_revision(), _started, events)
 	if result != null:
 		result.runtime_fault = _context.runtime_fault.copy() if _context.runtime_fault != null else null
@@ -317,7 +350,7 @@ func _latch_deferred_reference_fault(code: StringName, message: String) -> Sessi
 
 
 func _record_current_visibility() -> void:
-	if not _started or _context.content == null or _context.state == null:
+	if not _started or is_preparing_party() or _context.content == null or _context.state == null:
 		return
 	var map := _context.content.world.map_by_id(_context.state.party.map_id)
 	if map == null or not map.uses_los:

@@ -24,7 +24,7 @@ var campaign_overlay: PanelContainer:
 var setup_overlay: PanelContainer:
 	get: return _state.setup_overlay
 	set(value): _state.setup_overlay = value
-var splash_overlay: PanelContainer:
+var splash_overlay: MainMenuView:
 	get: return _state.splash_overlay
 var campaign_list: VBoxContainer:
 	get: return _state.campaign_list

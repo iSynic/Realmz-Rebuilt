@@ -1,0 +1,117 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/pause_menu_action.gd" id="1_action"]
+
+[sub_resource type="StyleBoxFlat" id="FocusOutlineStyle"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.949, 0.796, 0.345, 1)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+content_margin_left = 2.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="ActionNormal"]
+bg_color = Color(0.065, 0.085, 0.09, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.28, 0.32, 0.32, 1)
+content_margin_left = 28.0
+content_margin_right = 28.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="ActionHover"]
+bg_color = Color(0.15, 0.18, 0.19, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.55, 0.53, 0.38, 1)
+content_margin_left = 28.0
+content_margin_right = 28.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxEmpty" id="NoFocus"]
+
+[node name="PauseMenuAction" type="VBoxContainer"]
+custom_minimum_size = Vector2(0, 52)
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+script = ExtResource("1_action")
+
+[node name="ActionRow" type="Control" parent="."]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ActionContent" type="HBoxContainer" parent="ActionRow"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_right = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 4
+
+[node name="ActionButton" type="Button" parent="ActionRow/ActionContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Action"
+alignment = 1
+autowrap_mode = 2
+theme_override_styles/normal = SubResource("ActionNormal")
+theme_override_styles/hover = SubResource("ActionHover")
+theme_override_styles/pressed = SubResource("ActionHover")
+theme_override_styles/disabled = SubResource("ActionNormal")
+theme_override_styles/focus = SubResource("NoFocus")
+
+[node name="FocusOutline" type="Panel" parent="ActionRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("FocusOutlineStyle")
+
+[node name="FocusMarker" type="Label" parent="ActionRow"]
+unique_name_in_owner = true
+layout_mode = 1
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_right = 34.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.949, 0.796, 0.345, 1)
+theme_override_font_sizes/font_size = 26
+text = ">"
+vertical_alignment = 1
+
+[node name="Reason" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.72, 0.75, 0.76, 1)
+theme_override_font_sizes/font_size = 16
+text = "Unavailable reason"
+autowrap_mode = 2

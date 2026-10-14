@@ -45,6 +45,10 @@ var prewarm_running: bool:
 	get:
 		_advance_task()
 		return _task.snapshot().is_running() and not _task_is_foreground
+var prepared_campaign_id: String:
+	get:
+		_advance_task()
+		return _prepared_candidate_campaign_id
 
 
 func _init(repository: PackageRepository = null, install_root: String = USER_CAMPAIGN_ROOT) -> void:
@@ -101,15 +105,17 @@ func start_install(package_path: String) -> bool:
 	_advance_task()
 	if package_path.is_empty() or not _import_source.is_empty():
 		return false
+	if _foreground_prepared != null and _foreground_prepared.is_ok() and _foreground_operation.package_path == package_path:
+		return true
 	if _prepared_candidate != null and _prepared_candidate_source_path == package_path:
 		_foreground_prepared = _prepared_candidate
 		_prepared_candidate = null
 		_prepared_candidate_source_path = ""
 		_prepared_candidate_campaign_id = ""
-		_foreground_operation = PackageOperationView.new(PackageOperationView.SUCCEEDED, &"complete", 1, 1, "Campaign ready.")
+		_foreground_operation = PackageOperationView.new(PackageOperationView.SUCCEEDED, &"complete", 1, 1, "Campaign ready.", &"", package_path, &"install_scenario")
 		return true
 	if _task.snapshot().is_running():
-		if _task_source_path == package_path:
+		if _task_source_path == package_path and _queued_foreground_path.is_empty() and not _task.cancellation_requested():
 			_task_is_foreground = true
 			return true
 		_queued_foreground_path = package_path
@@ -181,14 +187,15 @@ func take_prepared_package() -> PreparedPackage:
 	return prepared
 
 
+func take_setup() -> PackageSetupResult:
+	if not _task_is_foreground or not _queued_foreground_path.is_empty() or _import_installing:
+		return null
+	return _task.take_setup()
+
+
 func retained_candidate_count() -> int:
 	_advance_task()
 	return 1 if _prepared_candidate != null else 0
-
-
-func prepared_campaign_id() -> String:
-	_advance_task()
-	return _prepared_candidate_campaign_id
 
 
 func install_sync(package_path: String) -> PreparedPackage:
@@ -265,7 +272,8 @@ func _start_task(package_path: String, campaign_id: String, foreground: bool) ->
 	_task_campaign_id = campaign_id
 	_task_is_foreground = foreground
 	if foreground:
-		_foreground_operation = PackageOperationView.from_status(_task.snapshot())
+		_foreground_prepared = null
+		_foreground_operation = PackageOperationView.from_status(_task.snapshot(), package_path)
 	return true
 
 
@@ -273,7 +281,7 @@ func _advance_task() -> void:
 	var status := _task.snapshot()
 	if status.is_running() or status.state == PackageOperationView.IDLE:
 		if _task_is_foreground and status.is_running():
-			_foreground_operation = PackageOperationView.from_status(status)
+			_foreground_operation = PackageOperationView.from_status(status, _task_source_path)
 			if _import_installing:
 				_foreground_operation.operation_name = &"import_scenario"
 				_foreground_operation.native_menu_selection = _conversion.native_menu_selection

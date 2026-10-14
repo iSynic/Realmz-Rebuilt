@@ -15,8 +15,8 @@ func decode_scenario(document: Dictionary, campaign_id: String, allow_deferred: 
 	_extra_code_tail = null
 	if document.has("extraCodeTail"):
 		var tail: Variant = document["extraCodeTail"]
-		if not allow_deferred or document.get("schemaVersion") != 5 or not tail is Dictionary or not _exact_fields(tail, ["rowId", "availableBytes"]) or not _is_integer(tail["rowId"]) or not _is_integer(tail["availableBytes"]) or _integer(tail["rowId"]) < 0 or _integer(tail["availableBytes"]) < 1 or _integer(tail["availableBytes"]) > 9:
-			_reject("Scenario Extra Code tail must identify an incomplete imported schema-v5 row.")
+		if not allow_deferred or document.get("schemaVersion") not in [5, 6] or not tail is Dictionary or not _exact_fields(tail, ["rowId", "availableBytes"]) or not _is_integer(tail["rowId"]) or not _is_integer(tail["availableBytes"]) or _integer(tail["rowId"]) < 0 or _integer(tail["availableBytes"]) < 1 or _integer(tail["availableBytes"]) > 9:
+			_reject("Scenario Extra Code tail must identify an incomplete imported schema-v5/v6 row.")
 			return null
 		_extra_code_tail = ClassicExtraCodeFault.new(_integer(tail["rowId"]), _integer(tail["availableBytes"]))
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)

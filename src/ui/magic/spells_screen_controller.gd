@@ -472,7 +472,7 @@ func _bind_fast_spell_row(workspace: SpellsWorkspace, character: CharacterView, 
 	var label := row.get_node("Slot") as Label
 	_bind_label(label, "Slot %s" % binding.shortcut_label, GOLD, 13)
 	UiSizing.minimum_size(label, Vector2(0.0 if _compact else 52.0, 0.0))
-	var picker := row.get_node("FastSpellPicker%d" % binding.slot_index) as OptionButton
+	var picker := row.get_node("Picker") as OptionButton
 	_clear_option_button(picker)
 	picker.add_item("Choose a spell")
 	picker.set_item_metadata(0, {})
@@ -510,9 +510,9 @@ func _bind_scrolls(workspace: SpellsWorkspace, character: CharacterView) -> void
 		row.vertical = _compact
 		var text := "Slot %d  •  %s%s" % [scroll.slot_index + 1, scroll.spell_name, "" if scroll.power == 0 else "  •  Power %d" % scroll.power]
 		_bind_label(row.get_node("Record") as Label, text, MUTED if scroll.power == 0 else TEXT, 14)
-		var use := row.get_node("UseScroll%d" % scroll.slot_index) as Button
+		var use := row.get_node("Use") as Button
 		_bind_button(use, "Use", scroll.use, func() -> void: intent_submitted.emit(MagicIntents.use_scroll(character.id, scroll.slot_index)))
-		var discard := row.get_node("DiscardScroll%d" % scroll.slot_index) as Button
+		var discard := row.get_node("Discard") as Button
 		_bind_button(discard, "Discard", scroll.discard, func() -> void: intent_submitted.emit(MagicIntents.use_scroll(character.id, scroll.slot_index)))
 
 

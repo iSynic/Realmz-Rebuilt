@@ -4,13 +4,6 @@ extends RefCounted
 
 
 static func bind(shell: GameShell, settings: PresentationSettings, persist: Callable, fonts_changed: Callable) -> void:
-	shell.menu_visibility_changed.connect(func(value: String) -> void:
-		if value not in PresentationSettings.MENU_MODES:
-			return
-		settings.menu_visibility = value
-		shell.apply_settings(settings)
-		persist.call()
-	)
 	shell.font_choice_changed.connect(func(role: StringName, identity: String) -> void:
 		if not PresentationSettings.font_choice_is_valid(identity) or role not in [&"interface", &"narrative"]:
 			return

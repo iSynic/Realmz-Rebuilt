@@ -62,6 +62,28 @@ static func copy(state: CharacterState) -> CharacterState:
 	return null if state == null else decode(encode(state))
 
 
+static func copy_with_identity(state: CharacterState, character_id: String) -> CharacterState:
+	var character := copy(state)
+	if character == null or character_id.is_empty():
+		return null
+	var inventory := character.inventory()
+	var previous_order := character.equipment_order.resolved(inventory)
+	var item_ids: Dictionary = {}
+	for index: int in inventory.size():
+		var item := inventory[index]
+		var next_id := "%s.item.%d" % [character_id, index]
+		item_ids[item.id] = next_id
+		item.id = next_id
+	character.set_inventory(inventory)
+	var equipment_order: Array[String] = []
+	for previous_id: String in previous_order:
+		equipment_order.append(item_ids[previous_id])
+	if not character.equipment_order.set_exact(equipment_order, inventory):
+		return null
+	character.id = character_id
+	return character
+
+
 static func _base_fields_are_valid(data: Dictionary) -> bool:
 	for field: String in ["id", "name", "currentHealth", "maximumHealth"]:
 		if not data.has(field):

@@ -42,7 +42,7 @@ static func _decode_payload(kind: StringName, data: Dictionary) -> ScenarioRunti
 			return _decode_shop(data)
 		ScenarioRuntimeContinuation.CLASSIC_TEMPLE, ScenarioRuntimeContinuation.CLASSIC_TEMPLE_EXIT:
 			return _decode_temple(kind, data)
-		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE:
+		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE:
 			return _decode_combat(kind, data)
 		ScenarioRuntimeContinuation.CLASSIC_OPCODE_DEATH_MACRO:
 			return _decode_opcode_death_macro(data)
@@ -141,23 +141,27 @@ static func _decode_combat(kind: StringName, data: Dictionary) -> ScenarioRuntim
 		return ScenarioCombatContinuations.battle(kind, data["battleId"], caller) if data.size() == 3 else null
 	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE]:
 		return ScenarioCombatContinuations.terminal(kind, expected_source, data["battleId"], caller) if data.size() == 3 else null
-	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT]:
-		return _decode_combat_retreat(kind, expected_source, data, caller)
+	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION]:
+		return _decode_combat_movement(kind, expected_source, data, caller)
 	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE]:
 		return _decode_combat_age(kind, expected_source, data, caller)
 	return _decode_combat_macro(kind, expected_source, data, caller)
 
 
-static func _decode_combat_retreat(kind: StringName, source_kind: StringName, data: Dictionary, caller: ScenarioBattleCaller) -> ScenarioRuntimeContinuation:
-	if data.size() != 6 or not data.get("actorId") is String or data["actorId"].is_empty() or data.get("mode") not in ["explicit", "edge"] or not data.get("destination") is Array or data["destination"].size() != 2:
+static func _decode_combat_movement(kind: StringName, source_kind: StringName, data: Dictionary, caller: ScenarioBattleCaller) -> ScenarioRuntimeContinuation:
+	var friendly := kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION]
+	var modes := ["friendly"] if friendly else ["explicit", "edge"]
+	if data.size() != 6 or not data.get("actorId") is String or data["actorId"].is_empty() or data.get("mode") not in modes or not data.get("destination") is Array or data["destination"].size() != 2:
 		return null
 	var x_value: Variant = _signed_integer_or_null(data["destination"][0])
 	var y_value: Variant = _signed_integer_or_null(data["destination"][1])
 	if x_value == null or y_value == null:
 		return null
 	var destination := Vector2i(int(x_value), int(y_value))
-	if data["mode"] == "explicit" and destination != Vector2i(-100_000, -100_000) or data["mode"] == "edge" and destination == Vector2i(-100_000, -100_000):
+	if data["mode"] == "explicit" and destination != Vector2i(-100_000, -100_000) or data["mode"] in ["edge", "friendly"] and destination == Vector2i(-100_000, -100_000):
 		return null
+	if friendly:
+		return ScenarioCombatContinuations.friendly_collision(source_kind, data["battleId"], caller, data["actorId"], destination)
 	return ScenarioCombatContinuations.retreat(kind, source_kind, data["battleId"], caller, data["actorId"], StringName(data["mode"]), destination)
 
 
@@ -201,7 +205,7 @@ static func _decode_opcode_death_macro(data: Dictionary) -> ScenarioRuntimeConti
 
 
 static func _safe_combat_kinds() -> Array[StringName]:
-	return [ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE]
+	return [ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE]
 
 
 static func _integers(value: Variant) -> Array[int]:

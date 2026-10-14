@@ -218,14 +218,6 @@ func bind_pacing(settings: PresentationSettings) -> void:
 	)
 
 
-static func menu_visibility_options() -> Array[Dictionary]:
-	return [
-		{"label": "Always visible", "id": PresentationSettings.MENU_VISIBLE},
-		{"label": "Show on hover", "id": PresentationSettings.MENU_HOVER},
-		{"label": "Hidden", "id": PresentationSettings.MENU_HIDDEN},
-	]
-
-
 func bind_accessibility(settings: PresentationSettings, fonts: FontResolver) -> void:
 	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content")
 	_bind_font_choices(root, settings, fonts)
@@ -346,3 +338,8 @@ func save_detail_record() -> VBoxContainer:
 
 func save_detail_empty() -> PanelContainer:
 	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty") as PanelContainer
+
+
+func bind_diagnostics(settings: PresentationSettings) -> void:
+	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content")
+	_bind_toggle(root.get_node("TopologyDebug") as CheckButton, settings.topology_debug, &"topology_debug")

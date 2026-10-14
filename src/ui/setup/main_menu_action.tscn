@@ -1,0 +1,50 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/main_menu_action.gd" id="1_action"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_idle"]
+bg_color = Color(0, 0, 0, 0)
+content_margin_left = 37.0
+content_margin_right = 18.0
+content_margin_top = 5.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_focus"]
+bg_color = Color(0.866667, 0.729412, 0.415686, 1)
+content_margin_left = 37.0
+content_margin_right = 18.0
+content_margin_top = 5.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_disabled"]
+bg_color = Color(0, 0, 0, 0)
+content_margin_left = 37.0
+content_margin_right = 18.0
+content_margin_top = 5.0
+content_margin_bottom = 5.0
+
+[node name="MainMenuAction" type="Button"]
+custom_minimum_size = Vector2(0, 50)
+theme_override_colors/font_color = Color(0.886275, 0.898039, 0.886275, 1)
+theme_override_colors/font_hover_color = Color(0.082353, 0.129412, 0.192157, 1)
+theme_override_colors/font_focus_color = Color(0.082353, 0.129412, 0.192157, 1)
+theme_override_colors/font_pressed_color = Color(0.082353, 0.129412, 0.192157, 1)
+theme_override_colors/font_disabled_color = Color(0.427451, 0.505882, 0.560784, 1)
+theme_override_styles/normal = SubResource("StyleBox_idle")
+theme_override_styles/hover = SubResource("StyleBox_focus")
+theme_override_styles/focus = SubResource("StyleBox_focus")
+theme_override_styles/pressed = SubResource("StyleBox_focus")
+theme_override_styles/disabled = SubResource("StyleBox_disabled")
+theme_override_font_sizes/font_size = 30
+alignment = 0
+script = ExtResource("1_action")
+
+[node name="FocusMarker" type="ColorRect" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 18.0
+offset_top = 22.5
+offset_right = 23.0
+offset_bottom = 27.5
+mouse_filter = 2
+color = Color(0.427451, 0.505882, 0.560784, 1)

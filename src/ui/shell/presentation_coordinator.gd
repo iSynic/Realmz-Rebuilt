@@ -77,6 +77,7 @@ func bind(
 	_shell_presenter.play_stage_visibility_changed.connect(_set_play_stage_visible)
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
 	_shell_presenter.combat_log_requested.connect(_interaction_presenter.combat_log.open)
+	_interaction_presenter.combat.pause_requested.connect(func() -> void: _shell_presenter.controller.open_pause())
 	_interaction_presenter.combat.spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 		_interaction_presenter.combat.set_spellbook_open(true)
 		_shell_presenter.roster.present_combat_spellbook(actor_id, options)
@@ -125,6 +126,7 @@ func _on_step_committed(step: SessionStep) -> void:
 		if _host_interaction == null:
 			_interaction_presenter.present_combat_playback_mask(_combat_playback.current_frame(), _combat_playback.base_view, _combat_playback.final_view, _media_controller.catalog())
 		set_process(true)
+		if _shell_presenter.pause_active: skip_combat_playback()
 		return
 	_present_committed_step(step, game_view, true)
 	if treasure_transfer_captured:
@@ -206,12 +208,12 @@ func set_active_route(route_id: StringName) -> void:
 	# nested second projection/presentation pass, most visibly on combat entry.
 	if _session_controller != null:
 		var current_view := _session_controller.view()
-		if route_id == &"inventory" and current_view != null and current_view.combat_view != null and current_view.combat_view.outcome == &"active":
-			# The full Inventory workspace owns the window while combat is paused
-			# for inspection. Hide the sibling combat interaction surface so its
+		if route_id in [&"inventory", &"system"] and current_view != null and current_view.combat_view != null and current_view.combat_view.outcome == &"active":
+			# Inventory and Pause settings own the window during battle
+			# inspection. Hide the sibling combat interaction surface so its
 			# command shelf cannot cover the workspace or receive input behind it.
 			_interaction_presenter.present(null)
-		elif previous_route == &"inventory" and route_id != &"inventory":
+		elif previous_route in [&"inventory", &"system"] and route_id not in [&"inventory", &"system"]:
 			_present_interaction(current_view)
 		_update_spatial_visibility(current_view)
 		refresh_music()
@@ -442,9 +444,9 @@ func _present_interaction(game_view: GameView) -> void:
 	if _host_interaction != null:
 		_present_request(_host_interaction, game_view, _host_interaction)
 		return
-	if GameShellRoutePolicy.combat_inventory_owns_interaction(_active_route, game_view):
-		# Inventory owns the application surface while a battle is paused for
-		# browsing. Session updates still re-present the detached view, but must
+	if GameShellRoutePolicy.combat_workspace_owns_interaction(_active_route, game_view):
+		# Inventory and Pause settings own the application surface during battle
+		# inspection. Session updates still re-present the detached view, but must
 		# not remount the sibling BattleInteraction over that workspace.
 		_interaction_presenter.present(null)
 		return

@@ -1,0 +1,182 @@
+{
+  "schema_version": 1,
+  "license": "Project-Owner-Supplied",
+  "backgrounds": [
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__1aa1367f-2664-4b52-9cdb-fcb5e97943c5_1-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-01.png",
+      "sha256": "cd9160d4039d8b9adec0e5885c51f618fdc30e4ea3ba83e8ead52e108ebda452",
+      "bytes": 599875,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__27bb02ab-aca4-4506-aa70-5b9dac77b17b_3-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-02.png",
+      "sha256": "38bf7d9d12474789e0952c88ac3327116322598f430ae9ca0bedc662b0f52ff4",
+      "bytes": 705908,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__2b8500ec-ec78-482e-8aaa-1d7554a7ec5b_3-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-03.png",
+      "sha256": "28b7a9715f35d41537ecaea1158d6f82d2cd62d13b259b74ff8099354ecaa53c",
+      "bytes": 611293,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__533dae65-3016-4da9-97b3-84d7bcd5ef16_2-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-04.png",
+      "sha256": "3fce72abcda03cef243fe016d7da873b2b87a3639d901fa6a665a3e2a33d171c",
+      "bytes": 842842,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__66b1a072-e406-4852-b98a-ee5d6f00f828_2-studio-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-05.png",
+      "sha256": "4043eb8313b8ab66e0b593d940de7d9139a9b07da89e5c6df058698eef54a843",
+      "bytes": 619089,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__671f1011-8918-4c56-a5a5-33f2e4b0bc77_0-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-06.png",
+      "sha256": "865429d099b2603b3da837c43a701eb00380aabad6786ac06029128f0c0708d5",
+      "bytes": 694066,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__73bea5a6-b674-4246-b9ee-5eb90f849461_0-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-07.png",
+      "sha256": "1c19bee88ae5a33ed9abf52890e25aed4a10f96e7052e7175581c9d8c2c051a7",
+      "bytes": 667547,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__7736d310-7b36-4550-abf8-c307cfe6e929_1-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-08.png",
+      "sha256": "c55b0b0d36fe28c1893c05c62d844d8f9d89377d030a2ba4387a1dcad4d1e96d",
+      "bytes": 889196,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__811e73c0-2eca-4c7f-aa73-d9e1e3b71c23_1-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-09.png",
+      "sha256": "3b0fe181abbdb9e2a6c7b90ea504b7e709a4930fbfd33a6501baad2a7e56bd77",
+      "bytes": 652271,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__844c303b-4a20-4181-b80d-e883a53eff86_2-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-10.png",
+      "sha256": "b96ac98ba4d4a6c4ba16953496b84c4a44a9bbb1156c78c254aecc585a0b63bb",
+      "bytes": 701619,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__88f91041-28c3-44de-b6c0-b389f3a43127_0-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-11.png",
+      "sha256": "391690ff8afca1835b3a07cb4c423ee861a650a7f29ccaed0b4cfb2f8942ae10",
+      "bytes": 816417,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__c11245d5-f366-4dd0-b9f1-2a320efd4678_2-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-12.png",
+      "sha256": "5022062309eb6a1c2be86c8230bb60433a40a20781de1ee80825246aa20fcd62",
+      "bytes": 743277,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__c15f2973-407c-4aa0-ae3b-e02c141eddfb_1-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-13.png",
+      "sha256": "a3bb893040857ffee173a230fa3e99b4913c8ac7c8162823cdf319878a5c17c9",
+      "bytes": 704016,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__dea6c916-cf11-432c-a022-25e5f7362467_2-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-14.png",
+      "sha256": "622bc5ddadfe9aa59b91f801a699733bc9464dac63c00e9c5c30848c7aeacfc9",
+      "bytes": 816710,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__e581d194-73b6-4315-9917-1fda1355b21e_0-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-15.png",
+      "sha256": "179173d96e68d84c2b5d6ea21dfa5683d5e119495310b05819006c8f7b598ef0",
+      "bytes": 546523,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Classic_90s_Bryce_3D_render_of_a_fantastical__ffe211c1-9649-4cef-bc10-0b67e1f2e738_3-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-16.png",
+      "sha256": "179446d39cb5da138f7adbae6de754617b48f7edd17605c534d0b88e717a0b5f",
+      "bytes": 668914,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Keep_the_sky_but_I_want_a_darker_foreground_a_658e524e-c9d7-4d35-8999-bd74cb385358_1-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-17.png",
+      "sha256": "73780a2b633da9e4d5ee83db7195fbd54eda652fa58ef48bc66f60b6e7f30a5f",
+      "bytes": 521295,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_Make_the_scene_darker_and_the_purple_less_int_feba7586-6053-42e9-99f6-0fcebb992eec_1-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-18.png",
+      "sha256": "62ca97c99bc26d262b9d03a1949dd2c130353453e30b43c1af33fbc850954cd9",
+      "bytes": 631228,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_darker_--ar_9151_--edit_httpss.mj.runGbNUxT78_e87e02d5-7c2c-4ad4-be90-25caad808182_1-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-19.png",
+      "sha256": "bcf5a6d94a89e68922a203fa230c1d45cb23662c9867c0d6b52e8304e45382c4",
+      "bytes": 726709,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "source_name": "misterpokeylope_make_a_semi-transparent_cloud_obscure_part_of_f62c15a1-24b5-4da6-a8bd-2440242d63d2_2-snapped.png",
+      "path": "res://src/ui/shared/assets/main-menu/backgrounds/plate-20.png",
+      "sha256": "ee988964fe863c640dde281452ff3cff98aa8421027f3f3f9584c72d97d857ee",
+      "bytes": 592998,
+      "width": 1280,
+      "height": 720
+    }
+  ],
+  "title": {
+    "path": "res://src/ui/shared/assets/main-menu/weathered-gold-title.png",
+    "sha256": "ea7cf5978c238db5a9f8a63f8fc6234999be06efc407b2e4b425a17bada93ec6",
+    "bytes": 210243,
+    "width": 920,
+    "height": 336,
+    "logical_width": 460,
+    "logical_height": 168,
+    "source_document": "Rebuilt UI Revision and Reimagining.pen",
+    "source_node": "H5Sx8a",
+    "derivation": "Unchanged approved weathered-gold title composition, transparent PNG export at 2x. Exact Theldrow glyph paths; no redrawn lettering.",
+    "font_path": "res://src/ui/shared/assets/fonts/Theldrow-Rebuilt.ttf",
+    "font_sha256": "79c7b7d54ad746db41b103ffc9f1bc3fabacb2cf2b594af080c0ac2c2fc7705d",
+    "material_source_name": "generated-6.png",
+    "material_source_sha256": "7e4229bb995fc5c56803f76959a26f99f465ee6e4f08a5ca2593f3ca448d865e"
+  }
+}

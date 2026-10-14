@@ -129,7 +129,7 @@ func _construct_battle_terrain_tile(value: Variant) -> BattleTerrainTileDefiniti
 		combat_build.append(parsed_row)
 	return BattleTerrainTileDefinition.new(integers["tile"], integers["sound"], integers["time"], integers["solid"], record["shore"], integers["needBoat"], record["isPath"], record["los"], record["flyFloat"], integers["forest"], combat_build)
 
-func decode_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary = {}, require_battle_terrain: bool = false, validate_compact_rows: bool = true) -> Variant:
+func decode_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary = {}, require_battle_terrain: bool = false, validate_compact_rows: bool = true, schema_version: int = 3) -> Variant:
 	if not value is Array or value.is_empty():
 		_reject("World maps must be a non-empty array.")
 		return null
@@ -141,13 +141,13 @@ func decode_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_sets: D
 		if land_terrain_set != null and land_terrain_set.landlook >= 0:
 			land_terrain_sets_by_landlook[land_terrain_set.landlook] = land_terrain_set
 	for record: Variant in value:
-		var map := _decode_map_record(record, trigger_ids, battle_terrain_sets, land_terrain_sets_by_landlook, map_ids, require_battle_terrain, validate_compact_rows)
+		var map := _decode_map_record(record, trigger_ids, battle_terrain_sets, land_terrain_sets_by_landlook, map_ids, require_battle_terrain, validate_compact_rows, schema_version)
 		if map == null:
 			return null
 		maps.append(map)
 	return maps
 
-func _decode_map_record(record: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary, land_terrain_sets_by_landlook: Dictionary, map_ids: Dictionary, require_battle_terrain: bool, validate_compact_rows: bool) -> MapDefinition:
+func _decode_map_record(record: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary, land_terrain_sets_by_landlook: Dictionary, map_ids: Dictionary, require_battle_terrain: bool, validate_compact_rows: bool, schema_version: int) -> MapDefinition:
 	if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("name") is String:
 		_reject("Map definition is malformed.")
 		return null
@@ -159,6 +159,9 @@ func _decode_map_record(record: Variant, trigger_ids: Dictionary, battle_terrain
 	var height := _integer(record.get("height"))
 	if width < 1 or height < 1 or width > 256 or height > 256 or record.get("topologyFormat") != "realmz2.compact-cell-rows.v2" or not record.get("cells") is Array or record["cells"].size() != width * height:
 		_reject("Map '%s' dimensions do not match its topology cells." % record["id"])
+		return null
+	var classic_tiles: Variant = _decode_classic_tile_values(record, width * height, schema_version)
+	if classic_tiles == null:
 		return null
 	var level_index := _integer(record.get("levelIndex"))
 	var level_type: Variant = record.get("levelType")
@@ -199,12 +202,29 @@ func _decode_map_record(record: Variant, trigger_ids: Dictionary, battle_terrain
 	if terrain_set != null and ((level_type == "land" and terrain_set.landlook != landlook) or (level_type == "dungeon" and terrain_set.landlook != -1)):
 		_reject("Map '%s' references a battle terrain set for the wrong level type or landlook." % record["id"])
 		return null
-	var boat_profiles_value: Variant = _construct_boat_replacement_profiles(record.get("boatReplacementProfiles"), StringName(level_type), record["id"])
-	if boat_profiles_value == null:
+	var boat_profiles: Variant = _construct_boat_replacement_profiles(record.get("boatReplacementProfiles"), StringName(level_type), record["id"])
+	if boat_profiles == null:
 		return null
-	var boat_profiles: Array = boat_profiles_value
-	var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile, landlook, land_terrain_sets_by_landlook)
+	var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile, landlook, land_terrain_sets_by_landlook, classic_tiles)
 	return MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id, base_scale)
+
+
+func _decode_classic_tile_values(record: Dictionary, cell_count: int, schema_version: int) -> Variant:
+	var classic_tiles := PackedInt32Array()
+	if schema_version >= 6:
+		var raw_tiles: Variant = record.get("classicTileValues")
+		if not raw_tiles is Array or raw_tiles.size() != cell_count:
+			_reject("Map '%s' must retain one native Classic tile value per topology cell." % record["id"])
+			return null
+		for raw_tile: Variant in raw_tiles:
+			if not _is_integer(raw_tile) or _integer(raw_tile) < -32768 or _integer(raw_tile) > 32767:
+				_reject("Map '%s' contains an invalid native Classic tile value." % record["id"])
+				return null
+			classic_tiles.append(_integer(raw_tile))
+	elif record.has("classicTileValues"):
+		_reject("Native Classic tile values require package schema v6.")
+		return null
+	return classic_tiles
 
 
 func _construct_boat_replacement_profiles(value: Variant, level_type: StringName, map_id: String) -> Variant:

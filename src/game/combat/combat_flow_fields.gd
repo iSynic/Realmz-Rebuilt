@@ -141,6 +141,8 @@ func _resolve_actor_field(state: GameState, content: RealmzContent, field: Persi
 
 
 static func _append_field_collision_event(events: Array[DomainEvent], field: PersistentCombatField, spell: SpellDefinition, target_id: String, target_is_character: bool, resolution: SpellResolution) -> void:
+	if resolution.target_defeated:
+		CombatActionEvents.append_defeat_audio(events, target_id)
 	var payload := {"actorId": field.caster_id, "targetId": target_id, "targetKind": "character" if target_is_character else "monster", "spellId": spell.id, "targetType": spell.target_type, "power": field.power_level, "classicTier": field.cast_level, "reflected": false, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "fieldSlot": field.slot, "areaCenter": [field.center.x, field.center.y], "areaShape": field.shape, "source": "classic-persistent-field", "detectedMagicItemCount": resolution.detected_magic_item_count}
 	if resolution.applied_condition >= 0:
 		payload["appliedCondition"] = resolution.applied_condition

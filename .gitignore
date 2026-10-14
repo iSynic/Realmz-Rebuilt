@@ -11,6 +11,7 @@ music-importer/
 test-results/
 release-evidence/
 *.bundle
+!tools/providence-converter-map-markers-v6.bundle
 *.pyc
 __pycache__/
 user-data/

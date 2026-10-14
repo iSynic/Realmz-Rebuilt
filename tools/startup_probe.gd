@@ -52,21 +52,14 @@ func _report_application_ready(background_load_ms: float) -> void:
 func _report_transition() -> void:
 	while not _front_door.menu_visible():
 		await process_frame
-	var intro := _root.find_child("RealmzIntroAnimation", true, false) as ClassicIntroAnimation
-	var prepared_decoder_count: int = 0
-	for candidate: Node in get_root().find_children("RealmzIntroAnimation", "ClassicIntroAnimation", true, false):
-		if (candidate as ClassicIntroAnimation).resources_prepared():
-			prepared_decoder_count += 1
-	var intro_prepared_once := intro != null and intro.resources_prepared() and intro.preparation_count() == 1
-	var intro_playing_at_reveal := intro != null and intro.playback_active()
+	var menu := _root.find_child("MainMenu", true, false) as MainMenuView
+	var background_count := menu.background_count() if menu != null else 0
+	var background_ready := menu != null and not menu.current_background_path().is_empty()
+	var video_decoder_count := get_root().find_children("*", "VideoStreamPlayer", true, false).size()
 	var reveal_at := Time.get_ticks_usec()
 	while Time.get_ticks_usec() - reveal_at < 5_000_000:
 		await process_frame
-	var intro_playing_after_five_seconds := intro != null and intro.playback_active()
-	var prepared_decoder_count_after_five_seconds := 0
-	for candidate: Node in get_root().find_children("RealmzIntroAnimation", "ClassicIntroAnimation", true, false):
-		if (candidate as ClassicIntroAnimation).resources_prepared():
-			prepared_decoder_count_after_five_seconds += 1
+	var menu_retained_after_five_seconds := menu != null and menu.is_visible_in_tree() and not menu.current_background_path().is_empty()
 	var scenario_action := _front_door.find_child("ChooseScenario", true, false) as Button
 	var scenario_action_enabled := scenario_action != null and not scenario_action.disabled
 	var scenario_action_focused := scenario_action != null and scenario_action.has_focus()
@@ -109,11 +102,10 @@ func _report_transition() -> void:
 		"instantiateMs": _milliseconds(_loaded_at, _instantiated_at),
 		"loadSceneMs": _milliseconds(_started_at, _loaded_at),
 		"menuVisibleOnFirstFrame": _menu_visible_on_first_frame,
-		"introPlayingAtMenuReveal": intro_playing_at_reveal,
-		"introPlayingAfterFiveSeconds": intro_playing_after_five_seconds,
-		"introPreparedOnce": intro_prepared_once,
-		"preparedDecoderCountAtMenuReveal": prepared_decoder_count,
-		"preparedDecoderCountAfterFiveSeconds": prepared_decoder_count_after_five_seconds,
+		"mainMenuBackgroundCount": background_count,
+		"mainMenuBackgroundReadyAtReveal": background_ready,
+		"mainMenuRetainedAfterFiveSeconds": menu_retained_after_five_seconds,
+		"videoDecoderCount": video_decoder_count,
 		"scenarioActionEnabledAtTransition": scenario_action_enabled,
 		"scenarioActionFocusedBeforeControllerInput": scenario_action_focused,
 		"transitionInput": "viewport-joypad-south" if controller_input else "window-pointer-click",
@@ -129,7 +121,7 @@ func _report_transition() -> void:
 	await process_frame
 	await process_frame
 	await process_frame
-	quit(0 if transition_succeeded else 1)
+	quit(0 if transition_succeeded and background_count == 20 and background_ready and menu_retained_after_five_seconds and video_decoder_count == 0 else 1)
 
 
 static func _milliseconds(started_at: int, finished_at: int) -> float:

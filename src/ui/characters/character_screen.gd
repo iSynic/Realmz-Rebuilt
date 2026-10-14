@@ -2,9 +2,21 @@
 class_name CharacterScreen
 extends ScreenFrame
 
+signal route_requested(screen_id: StringName)
+
 const BODY_PATH := "WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"
 
 @export var party_order_row_scene: PackedScene
+
+
+func _enter_tree() -> void:
+	var button := current_allies_button()
+	if not button.pressed.is_connected(_request_allies_route):
+		button.pressed.connect(_request_allies_route)
+
+
+func _request_allies_route() -> void:
+	route_requested.emit(&"allies")
 
 
 func prepare_for_render() -> void:
@@ -25,6 +37,10 @@ func character_sheet_area() -> VBoxContainer:
 
 func party_order_summary() -> PanelContainer:
 	return get_node(BODY_PATH + "/PartyOrderArea/PartyOrderSummary") as PanelContainer
+
+
+func current_allies_button() -> Button:
+	return get_node("%CurrentAllies") as Button
 
 
 func party_order_editor() -> PanelContainer:

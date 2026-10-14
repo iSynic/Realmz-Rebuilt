@@ -13,9 +13,9 @@ static func build(content: Dictionary, application: RealmzContent) -> ContentTra
 			if family in ["races", "castes"]:
 				normalized.erase("name")
 				normalized.erase("description")
-				# Eligibility lists define membership, independent of authored order.
-				var eligible_ids: Array = normalized["eligibleCasteIds" if family == "races" else "eligibleRaceIds"]
-				eligible_ids.sort()
+				# Castle uses these lists for creation, not existing-character admission.
+				normalized.erase("eligibleCasteIds" if family == "races" else "eligibleRaceIds")
+				normalized.erase("defaultIconSet" if family == "races" else "defaultIcon")
 			if family == "items":
 				if normalized.has("raceRestrictions"):
 					normalized["raceRestrictions"] = int(normalized["raceRestrictions"]) & 0xFF80

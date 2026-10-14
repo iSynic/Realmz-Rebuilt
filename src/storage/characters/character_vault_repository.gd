@@ -14,6 +14,71 @@ func _init(root_path: String = "user://characters") -> void:
 	_root_path = root_path.trim_suffix("/")
 
 
+func directory_path() -> String:
+	return _root_path
+
+
+func repair_rule_identity(character_id: String, original_revision: String, identity: CharacterVaultRuleIdentity) -> bool:
+	last_error = ""
+	var record := load_revision(character_id, original_revision)
+	if record == null or identity == null or record.source_rules != null or current_revision_hash(character_id) != original_revision:
+		return _fail("The current character revision changed or cannot be repaired.")
+	var directory := _root_path.path_join(character_id)
+	var data: Dictionary = _read_record_data(directory.path_join(original_revision + RECORD_EXTENSION))
+	data["sourceRules"] = identity.to_data()
+	data["revisionHash"] = _revision_hash(data)
+	if _validated_record(data) == null:
+		return _fail("The recovered source identity does not match this character.")
+	var revision: String = data["revisionHash"]
+	var target := directory.path_join(revision + RECORD_EXTENSION)
+	if FileAccess.file_exists(target):
+		var existing := _validated_record(_read_record_data(target))
+		if existing == null or existing.character_id != character_id or existing.revision_hash != revision:
+			return _fail("A conflicting repaired revision already exists.")
+	else:
+		var temporary := target + ".repair-%d.tmp" % Time.get_ticks_usec()
+		if FileAccess.file_exists(temporary):
+			return _fail("An interrupted repair file is present; the original character remains available.")
+		var file := FileAccess.open(temporary, FileAccess.WRITE)
+		if file == null:
+			return _fail("Could not prepare the repaired character revision.")
+		file.store_string(CanonicalJson.encode(data))
+		file.flush()
+		file.close()
+		var verified := _read_record(temporary)
+		if verified == null or verified.revision_hash != revision:
+			_delete_file(temporary)
+			return _fail("The repaired character failed verification.")
+		if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(target)) != OK:
+			return _fail("Could not install the verified character revision.")
+	if not _write_repair_selection(character_id, original_revision, revision) or current_revision_hash(character_id) != revision or load_revision(character_id, revision) == null:
+		return _fail("Could not verify the repaired current revision selection.")
+	return true
+
+
+func _write_repair_selection(character_id: String, original_revision: String, revision: String) -> bool:
+	var index := _root_path.path_join(character_id).path_join("current.json")
+	var temporary := index + ".repair-%d.tmp" % Time.get_ticks_usec()
+	if FileAccess.file_exists(temporary):
+		return false
+	var file := FileAccess.open(temporary, FileAccess.WRITE)
+	if file == null:
+		return false
+	var selection := {"characterId": character_id, "revisionHash": revision}
+	file.store_string(CanonicalJson.encode(selection))
+	file.flush()
+	file.close()
+	if _read_record_data(temporary) != selection or current_revision_hash(character_id) != original_revision:
+		_delete_file(temporary)
+		return false
+	# The complete vault backup owns the original index. Replace it atomically
+	# without moving the live selection out of the way during a process failure.
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(index)) != OK:
+		_delete_file(temporary)
+		return false
+	return true
+
+
 func list_current_records() -> Array[CharacterVaultRecord]:
 	last_error = ""
 	var result: Array[CharacterVaultRecord] = []
@@ -116,6 +181,18 @@ func load_revision(character_id: String, revision_hash: String) -> CharacterVaul
 	return record
 
 
+func publish_new_character(record: CharacterVaultRecord) -> bool:
+	last_error = ""
+	if record == null or record.state == null or not _safe_component(record.character_id) or record.state.id != record.character_id:
+		return _fail("A valid character record is required.")
+	if DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_root_path)) != OK:
+		return _fail("Could not create the Character Files folder.")
+	# An exclusive directory claim reserves active, archived and incomplete identities.
+	if DirAccess.make_dir_absolute(ProjectSettings.globalize_path(_root_path.path_join(record.character_id))) != OK:
+		return _fail("A Character File already uses this identity. Publish it as a separate character.")
+	return publish_revision(record)
+
+
 func publish_revision(record: CharacterVaultRecord) -> bool:
 	last_error = ""
 	if record == null or record.state == null or not _safe_component(record.character_id) or record.state.id != record.character_id:
@@ -127,7 +204,11 @@ func publish_revision(record: CharacterVaultRecord) -> bool:
 		record.character_art = art_repository.selected([record.state])
 		if record.character_art == null:
 			return _fail(art_repository.last_error)
-	record.revision_hash = _revision_hash(record.to_data())
+	var previous_hash := current_revision_hash(record.character_id)
+	var next_hash := _revision_hash(record.to_data())
+	if not previous_hash.is_empty() and next_hash != previous_hash and record.revision_hash != previous_hash:
+		return _fail("The Character File changed or belongs to another character. Refresh before publishing a revision.")
+	record.revision_hash = next_hash
 	var directory_path := "%s/%s" % [_root_path, record.character_id]
 	var create_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(directory_path))
 	if create_error != OK:
@@ -265,10 +346,6 @@ func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) 
 		result.reasons.append("This campaign does not allow class '%s'." % record.state.caste_id)
 	if restrictions.maximum_level > 0 and record.state.level > restrictions.maximum_level:
 		result.reasons.append("Character level %d exceeds this campaign's maximum level %d." % [record.state.level, restrictions.maximum_level])
-	if race != null and not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(record.state.caste_id):
-		result.reasons.append("Race '%s' cannot use class '%s'." % [race.name, caste.name if caste != null else record.state.caste_id])
-	if caste != null and not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(record.state.race_id):
-		result.reasons.append("Class '%s' is not available to race '%s'." % [caste.name, race.name if race != null else record.state.race_id])
 	for item: ItemInstance in record.state.inventory():
 		if content.items.item_by_id(item.definition_id) == null:
 			result.reasons.append("Item '%s' is not defined by this campaign." % item.definition_id)

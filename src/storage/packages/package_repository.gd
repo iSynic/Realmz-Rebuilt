@@ -6,8 +6,9 @@ extends RefCounted
 const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78c874287c2ae694b585273d"
 const SCHEMA_V4_HASH: String = "78b1e34503fd44fe7ce79d8225f09e36f303e8bf6c62dfbe3145472c5feaf307"
 const SCHEMA_V5_HASH: String = "ab3aca6322599dc348e48ddf82cffc99568bbbf598927ccba9377b24b396943c"
-const SCHEMA_HASHES: Dictionary = {3: EXPECTED_SCHEMA_HASH, 4: SCHEMA_V4_HASH, 5: SCHEMA_V5_HASH}
-const DECODER_VERSION: int = 12
+const SCHEMA_V6_HASH: String = "5f7cbc80444bca4630f2989cfef4339a7c5ea6fe4c3af687f41c43280c33e439"
+const SCHEMA_HASHES: Dictionary = {3: EXPECTED_SCHEMA_HASH, 4: SCHEMA_V4_HASH, 5: SCHEMA_V5_HASH, 6: SCHEMA_V6_HASH}
+const DECODER_VERSION: int = 13
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -25,7 +26,7 @@ const DEFERRED_PACKAGE_CAPABILITIES: Array[String] = [
 
 var _last_error: String = ""
 var _package_cache := PackageGraphCache.new()
-var _receipt_store := PackageInstallReceiptStore.new([EXPECTED_SCHEMA_HASH, SCHEMA_V4_HASH, SCHEMA_V5_HASH], DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
+var _receipt_store := PackageInstallReceiptStore.new([EXPECTED_SCHEMA_HASH, SCHEMA_V4_HASH, SCHEMA_V5_HASH, SCHEMA_V6_HASH], DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
 var _archive_reader := PackageArchiveReader.new()
 var _document_cache := PackageDocumentCache.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _manifest_discovery := PackageManifestDiscovery.new(SCHEMA_HASHES, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
@@ -78,6 +79,10 @@ func load_package(path: String, progress_callback: Callable = Callable(), cancel
 	if result.is_ok():
 		_report_progress(progress_callback, &"complete", 1, 1)
 	return result
+
+
+func prepare_setup(path: String, cache_root: String, cancelled: Callable = Callable()) -> PackageSetupResult:
+	return PackageSetupReader.new().read(path, cache_root, _application_content, _application_media_assets, cancelled)
 
 
 func load_bundled_package(path: String, expected_campaign_id: String, expected_package_hash: String) -> PackageLoadResult:

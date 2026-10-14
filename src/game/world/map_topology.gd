@@ -12,6 +12,7 @@ var _cells: Array[MapCell]
 var _cells_by_coordinate: Dictionary = {}
 var _compact_map_id: String = ""
 var _compact_rows: Array = []
+var _classic_tile_values: PackedInt32Array = PackedInt32Array()
 var _compact_cells_by_index: Dictionary = {}
 var _boat_removed_profile: LandTileProfile
 var _boat_placed_profile: LandTileProfile
@@ -28,10 +29,11 @@ func _init(map_width: int, map_height: int, map_cells: Array[MapCell]) -> void:
 		_cells_by_coordinate[cell.coordinate] = cell
 
 
-static func from_compact_rows(map_id: String, map_width: int, map_height: int, rows: Array, boat_removed_profile: LandTileProfile = null, boat_placed_profile: LandTileProfile = null, authored_landlook: int = -1, land_terrain_sets_by_landlook: Dictionary = {}) -> MapTopology:
+static func from_compact_rows(map_id: String, map_width: int, map_height: int, rows: Array, boat_removed_profile: LandTileProfile = null, boat_placed_profile: LandTileProfile = null, authored_landlook: int = -1, land_terrain_sets_by_landlook: Dictionary = {}, classic_tile_values: PackedInt32Array = PackedInt32Array()) -> MapTopology:
 	var topology := MapTopology.new(map_width, map_height, [])
 	topology._compact_map_id = map_id
 	topology._compact_rows = rows
+	topology._classic_tile_values = classic_tile_values.duplicate()
 	topology._boat_removed_profile = boat_removed_profile
 	topology._boat_placed_profile = boat_placed_profile
 	topology._authored_landlook = authored_landlook
@@ -126,16 +128,8 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState, party_in_bo
 	var cell := effective_cell_at(coordinate, world_state)
 	if cell == null:
 		return TopologyMoveResult.blocked(&"outside_map")
-	var secret := cell.feature_by_kind(&"secret")
-	var concealed_land_secret := secret != null and secret.orientation.is_empty()
-	if concealed_land_secret:
-		if world_state.topology.secret_is_discovered(secret.id, secret.initial_state == &"revealed"):
-			return TopologyMoveResult.permitted(cell)
-	# Castle overlays placed Data DD records into the land field as door-band
-	# values and enters that branch before ordinary boat/terrain collision. An
-	# undiscovered 3000-band secret is first reduced to its underlying terrain,
-	# so its colocated AP cannot bypass that terrain's collision.
-	if not concealed_land_secret and not cell.trigger_ids().is_empty():
+	# Castle's native marker, not a colocated Data DD record, precedes terrain collision.
+	if _action_point_marker_value(coordinate, world_state) > 999:
 		return TopologyMoveResult.permitted(cell)
 	var boat_requirement := cell.boat_requirement
 	if party_in_boat:
@@ -151,6 +145,44 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState, party_in_bo
 	if not cell.passable:
 		return TopologyMoveResult.blocked(&"terrain_blocked", cell)
 	return TopologyMoveResult.permitted(cell)
+
+
+func action_point_is_marked(coordinate: Vector2i, world_state: WorldState, destination_recheck: bool = false) -> bool:
+	var marker := _action_point_marker_value(coordinate, world_state, destination_recheck)
+	return marker > 999 and (destination_recheck or marker < 2999)
+
+
+func _action_point_marker_value(coordinate: Vector2i, world_state: WorldState, destination_recheck: bool = false) -> int:
+	var cell := cell_at(coordinate)
+	if cell == null:
+		return 0
+	# Castle's destination recheck reads field[x][y] even in a row-major dungeon.
+	var tile_coordinate := Vector2i(coordinate.y, coordinate.x) if destination_recheck and not cell.is_land and not _classic_tile_values.is_empty() else coordinate
+	var tile_cell := cell_at(tile_coordinate)
+	if tile_cell == null:
+		return 0
+	var has_override := world_state != null and world_state.topology.has_terrain_override(_compact_map_id, tile_coordinate)
+	var secret := cell.feature_by_kind(&"secret")
+	if has_override or not _classic_tile_values.is_empty():
+		var raw_tile := world_state.topology.classic_tile_for(_compact_map_id, tile_cell) if has_override else _classic_tile_values[tile_coordinate.y * width + tile_coordinate.x]
+		if cell.is_land and world_state != null and not _classic_tile_values.is_empty():
+			var boat_presence := world_state.topology.boat_presence_state(_compact_map_id, tile_coordinate)
+			if boat_presence >= 0:
+				raw_tile = 147 if boat_presence == 1 else 60
+		if destination_recheck:
+			return absi(raw_tile)
+		if not cell.is_land:
+			return 1000 if raw_tile & 0x1000 else 0
+		var magnitude := absi(raw_tile) if raw_tile < 0 else raw_tile & ~0x6000
+		if magnitude > 2999:
+			var secret_id := "%s:secret" % cell.id if secret == null else secret.id
+			var discovered := world_state != null and world_state.topology.secret_is_discovered(secret_id)
+			magnitude -= 1000 if discovered else 3000
+		return magnitude
+	# Older immutable packages retain their compiled marker interpretation.
+	if not destination_recheck and cell.is_land and secret != null and secret.orientation.is_empty():
+		return 1000 if world_state != null and world_state.topology.secret_is_discovered(secret.id, secret.initial_state == &"revealed") else 0
+	return 1000 if cell.feature_by_kind(&"action-point") != null else 0
 
 
 func probe_movement(coordinate: Vector2i, move_direction: Vector2i, world_state: WorldState, level_type: StringName, party_in_boat: bool = false) -> TopologyMoveResult:

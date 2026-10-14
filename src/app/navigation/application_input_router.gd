@@ -17,18 +17,23 @@ func _init(application: Variant) -> void:
 func handle_input(event: InputEvent) -> void:
 	if _application._shell_presenter.controller.handle_navigation_modal_input(event):
 		return
-	if _application._shell_presenter.controller.handle_top_menu_input(event):
-		return
-	if ApplicationLogInput.handle_input(_application, event):
-		return
+	if ApplicationLogInput.handle_input(_application, event): return
 	var focus: Control = _application.get_viewport().gui_get_focus_owner()
 	if event is InputEventKey and (focus is LineEdit or focus is TextEdit):
 		return
+	if event.is_action_pressed(&"realmz_back") and _application._shell_presenter.pause_active:
+		_application.abort_full_party_auto(true)
+	if _application._shell_presenter.controller.handle_pause_input(event): return
 	var released_direction := UiInputActions.released_movement_direction(event)
 	if released_direction != Vector2i.ZERO and _application._held_movement != null:
 		if not (_application._dungeon_presenter.is_active() and _application._dungeon_presenter.handle_keyboard_release(released_direction)) and _application._held_movement.active_direction() == released_direction:
 			_application._held_movement.stop(&"keyboard")
 	var key_event := event as InputEventKey
+	if _application._shell_presenter.pause_active and not _application.lifecycle_host.has_active_interaction():
+		if event.is_action_pressed(&"realmz_back"):
+			_application._shell_presenter.handle_back()
+			_mark_handled()
+		return
 	if _handle_playback_or_combat_modifier_input(event, key_event):
 		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
@@ -72,14 +77,18 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 	var direction_action := _controller_direction(action_id)
 	if _update_controller_direction(action_id, direction_action, pressed):
 		return
+	if _handle_controller_log_or_diagnostics(action_id, _controller_scroll_direction(action_id) if _controller_scroll_direction(action_id) != Vector2i.ZERO else direction_action): return
+	if action_id in [&"realmz_controller_system", &"realmz_controller_top_menu"] and not repeated:
+		if _pause_is_open(): _application._shell_presenter.controller.back_pause()
+		elif not _navigation_workspace_owns_controller(): _application._shell_presenter.controller.open_pause()
+		_mark_handled()
+		return
 	if _navigation_workspace_owns_controller():
 		if pressed: _handle_navigation_workspace_controller(action_id, _combined_controller_direction() if direction_action != Vector2i.ZERO else Vector2i.ZERO)
 		_mark_handled()
 		return
-	if _top_menu_is_open():
-		_handle_top_menu_action(action_id)
-		return
-	if _handle_controller_log_or_diagnostics(action_id, _controller_scroll_direction(action_id) if _controller_scroll_direction(action_id) != Vector2i.ZERO else direction_action):
+	if _pause_is_open():
+		_handle_pause_action(action_id)
 		return
 	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
 		if action_id == &"realmz_controller_back":
@@ -126,8 +135,8 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 	if _application._shell_presenter.controller.handle_navigation_modal_controller(&"", true, direction):
 		_mark_handled()
 		return
-	if _top_menu_is_open():
-		_application._shell_presenter.controller.move_top_menu(direction, repeated)
+	if _pause_is_open():
+		_application._shell_presenter.controller.move_pause(direction, repeated)
 		_mark_handled()
 		return
 	if direction == Vector2i.ZERO:
@@ -166,13 +175,9 @@ func _handle_controller_log_or_diagnostics(action_id: StringName, direction: Vec
 
 func _handle_controller_navigation_action(action_id: StringName) -> bool:
 	var interaction_blocking: bool = _application._interaction_presenter.has_blocking_request()
-	if _handle_radial_or_top_menu_action(action_id, interaction_blocking):
+	if _handle_radial_action(action_id, interaction_blocking):
 		return true
 	if _handle_back_or_confirm_action(action_id):
-		return true
-	if action_id == &"realmz_controller_system" and _application.accepts_route_input():
-		_application._shell_presenter.open_system_workspace()
-		_mark_handled()
 		return true
 	if action_id == &"realmz_controller_section_previous" or action_id == &"realmz_controller_section_next":
 		var delta := -1 if action_id == &"realmz_controller_section_previous" else 1
@@ -196,19 +201,19 @@ func _handle_controller_navigation_action(action_id: StringName) -> bool:
 	return false
 
 
-func _handle_top_menu_action(action_id: StringName) -> void:
+func _handle_pause_action(action_id: StringName) -> void:
 	if action_id == &"realmz_controller_confirm":
-		_application._shell_presenter.controller.confirm_top_menu()
+		_application._shell_presenter.controller.confirm_pause()
 	elif action_id == &"realmz_controller_back" or action_id == &"realmz_controller_top_menu":
-		_application._shell_presenter.controller.back_top_menu()
+		_application._shell_presenter.controller.back_pause()
 	else:
 		var menu_direction := _controller_direction(action_id)
 		if menu_direction != Vector2i.ZERO:
-			_application._shell_presenter.controller.move_top_menu(menu_direction, false)
+			_application._shell_presenter.controller.move_pause(menu_direction, false)
 	_mark_handled()
 
 
-func _handle_radial_or_top_menu_action(action_id: StringName, interaction_blocking: bool) -> bool:
+func _handle_radial_action(action_id: StringName, interaction_blocking: bool) -> bool:
 	if action_id == &"realmz_controller_action_radial":
 		_stop_controller_movement()
 		if interaction_blocking:
@@ -227,13 +232,7 @@ func _handle_radial_or_top_menu_action(action_id: StringName, interaction_blocki
 		if _application._shell_presenter.controller.open_workspace_radial():
 			_mark_handled()
 		return true
-	if action_id != &"realmz_controller_top_menu":
-		return false
-	_stop_controller_movement()
-	if not interaction_blocking and _application.accepts_route_input():
-		_application._shell_presenter.controller.open_top_menu()
-		_mark_handled()
-	return true
+	return false
 
 
 func _handle_back_or_confirm_action(action_id: StringName) -> bool:
@@ -462,9 +461,9 @@ func _navigation_workspace_owns_controller() -> bool:
 	return _application._shell_presenter.controller.navigation_workspace_focus_root() != null
 
 
-func _top_menu_is_open() -> bool:
+func _pause_is_open() -> bool:
 	var access: Variant = _application._shell_presenter.controller
-	return access.has_method("top_menu_is_open") and access.top_menu_is_open()
+	return access.has_method("pause_is_open") and access.pause_is_open()
 
 
 func _controller_direction(action_id: StringName) -> Vector2i:
@@ -489,7 +488,9 @@ func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: Inp
 	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
 		if key_event != null and key_event.pressed and key_event.keycode == KEY_ESCAPE and _application.click_to_move != null:
 			_application.click_to_move.cancel("Move To cancelled.")
-		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _application.abort_full_party_auto(true):
+		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE:
+			_application.abort_full_party_auto(true)
+			_application._shell_presenter.controller.open_pause()
 			_mark_handled()
 		elif key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE:
 			_application.presentation_coordinator.skip_combat_playback()
@@ -503,6 +504,7 @@ func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: Inp
 			_mark_handled()
 		return true
 	if combat_pending and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _application.abort_full_party_auto(false):
+		_application._shell_presenter.controller.open_pause()
 		_mark_handled()
 		return true
 	return false
@@ -533,11 +535,14 @@ func _handle_back_input(event: InputEvent, combat_pending: bool) -> bool:
 	if _application._interaction_presenter.handle_back_request():
 		_mark_handled()
 		return true
+	if combat_pending and _application._shell_presenter.controller.open_pause():
+		_mark_handled()
+		return true
 	if _application._interaction_presenter.has_blocking_request():
 		_application._shell_presenter.status.set_status("Choose a response before leaving this interaction.")
 		_mark_handled()
 		return true
-	if _application._interaction_presenter.dismiss_passive_text() or _application._shell_presenter.handle_back():
+	if _application._shell_presenter.handle_back() or _application._interaction_presenter.dismiss_passive_text():
 		_mark_handled()
 		return true
 	return false

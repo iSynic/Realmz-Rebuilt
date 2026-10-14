@@ -218,7 +218,7 @@ func activate(command_id: StringName, held_repeat: bool = false) -> void:
 		&"inventory": owner._navigator.open_screen(&"inventory")
 		&"spells": owner._navigator.open_screen(&"spells")
 		&"maps": owner._navigator.open_screen(&"journal")
-		&"settings": owner._navigator.open_screen(&"system")
+		&"settings": owner.open_system_workspace()
 		&"save": owner.save_requested.emit("quick")
 
 

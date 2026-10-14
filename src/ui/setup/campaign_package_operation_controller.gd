@@ -63,6 +63,9 @@ func present(status: PackageOperationView, needs_startup_selection: bool) -> voi
 	_operation_progress.value = clampf(float(status.completed), 0.0, _operation_progress.max_value)
 	_operation_status.text = status.message
 	_operation_status.tooltip_text = status.message
+	var profile := UiSizing.profile_for(_host)
+	_operation_status.visible = not running or profile == null or profile.id != UiLayoutProfile.COMPACT
+	cancel_button.tooltip_text = status.message
 	var diagnostics: Array[String] = status.diagnostic_details
 	if not diagnostics.is_empty():
 		_operation_warning_toggle.visible = true

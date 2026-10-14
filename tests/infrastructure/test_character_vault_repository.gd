@@ -2,12 +2,11 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const STARTER_CATALOG_PATH: String = "res://src/storage/characters/realmz-classic-starter-characters.json"
-const CHARACTER_LIBRARY_HASH: String = ApplicationLibraryIdentity.PACKAGE_HASH
-const ClassicStarterCharacterCatalogScript := preload("res://src/storage/characters/classic_starter_character_catalog.gd")
 
 
 func run() -> void:
 	_test_classic_starter_seeding()
+	_remove_test_tree("user://realmz2-tests/character-vault-v1")
 	var repository := CharacterVaultRepository.new("user://realmz2-tests/character-vault-v1")
 	var character := CharacterState.new("party.character.1", "Vault Fixture", 12, 12)
 	character.race_id = "classic.race.1"
@@ -15,16 +14,21 @@ func run() -> void:
 	character.two_hand = 24
 	character.set_ability_value(4, 63)
 	var record := CharacterVaultRecord.new(character.id, "realmz-classic-1", "realmz2-synthetic-fixture", "0000000000000000000000000000000000000000000000000000000000000000", character, "synthetic-v1")
+	var package := load_test_package(FIXTURE_PATH)
+	record.source_rules = CharacterVaultRuleIdentity.capture(package.content.transfer_catalog, character)
 	record.publication_metadata = {"label": "Fixture vault character"}
-	assert_true(repository.publish_revision(record), "vault publication uses a temporary typed write and readback")
+	assert_true(repository.publish_new_character(record), "new vault publication claims an unused identity and uses a temporary typed write and readback")
 	assert_equal(record.revision_hash.length(), 64, "published character revisions receive a stable SHA-256 identity"); var loaded := repository.load_revision(record.character_id, record.revision_hash)
 	var legacy_record := record.to_data(); legacy_record["formatVersion"] = 1
 	assert_equal(CharacterVaultRecord.from_data(legacy_record), null, "Character Files v1 is explicitly incompatible with the ordered-equipment v2 contract")
 	assert_not_null(loaded, "published character revisions can be loaded by stable identity")
 	if loaded != null:
-		assert_equal(loaded.state.name, "Vault Fixture", "vault state round-trips through the detached character record")
-		assert_equal([loaded.state.two_hand, loaded.state.ability_value(4)], [24, 63], "vault revisions preserve the source-owned combat statistic and trained abilities separately")
+		assert_equal(CharacterVaultRuleSources.new().catalog(loaded, package.content).fingerprint(&"races", character.race_id), record.source_rules.race_fingerprint, "stored source identity resolves without any installed source catalog")
+		assert_equal([loaded.state.name, loaded.state.two_hand, loaded.state.ability_value(4)], ["Vault Fixture", 24, 63], "vault revisions round-trip the name, source-owned combat statistic and trained abilities separately")
 		assert_equal(loaded.publication_metadata.get("label"), "Fixture vault character", "publication metadata remains separate from gameplay state")
+	var collision := CharacterVaultRecord.new(character.id, record.rules_version, record.source_campaign_id, record.source_package_hash, CharacterState.new(character.id, "Another adventurer", 12, 12))
+	assert_false(repository.publish_new_character(collision) or repository.publish_revision(collision), "neither new-character publication nor an unlinked revision can replace an occupied identity")
+	assert_equal([repository.current_revision_hash(record.character_id), repository.load_revision(record.character_id, record.revision_hash).state.name], [record.revision_hash, character.name], "a rejected identity collision preserves the current selection and original character")
 	assert_false(CharacterVaultRepository.new("user://realmz2-tests/character-vault-invalid").publish_revision(CharacterVaultRecord.new("..", "realmz-classic-1", "realmz2-synthetic-fixture", "0".repeat(64), CharacterState.new("..", "Invalid", 1, 1))), "portable dotted character IDs do not permit traversal components")
 	var charmed_state := CharacterStateCodec.copy(character)
 	charmed_state.traitor = true
@@ -34,7 +38,6 @@ func run() -> void:
 	assert_true(records.any(func(candidate: CharacterVaultRecord) -> bool: return candidate.character_id == record.character_id), "the current-revision index exposes published characters")
 	assert_true(repository.list_character_ids().has(record.character_id), "vault enumeration includes active character identities without reading presentation state")
 	var vault_controller := CharacterVaultController.new(repository); var cached_views := vault_controller.revisions(null); assert_true(not cached_views.is_empty() and vault_controller.cached_revision_count() >= 1, "listing Character Files retains each already validated revision by stable identity"); assert_true(repository.archive_character(record.character_id), "the cache proof temporarily removes the source record from the active vault without deleting it"); var first_cached_intent := vault_controller.import_intent(record.character_id, record.revision_hash); var second_cached_intent := vault_controller.import_intent(record.character_id, record.revision_hash); assert_true(first_cached_intent != null and second_cached_intent != null and (first_cached_intent.payload as PartyIntentPayloads.VaultImport).character_state != (second_cached_intent.payload as PartyIntentPayloads.VaultImport).character_state, "cached imports remain available without a drop-frame read and return detached state clones"); (first_cached_intent.payload as PartyIntentPayloads.VaultImport).character_state.name = "Detached mutation"; assert_equal((second_cached_intent.payload as PartyIntentPayloads.VaultImport).character_state.name, "Vault Fixture", "one cached import cannot mutate another"); assert_true(repository.restore_revision(record.character_id, record.revision_hash), "the cache proof restores the active revision before ordinary repository checks continue")
-	var package := load_test_package(FIXTURE_PATH)
 	if package.is_ok():
 		var eligibility := repository.campaign_eligibility(record, package.content)
 		assert_true(eligibility.eligible, "a matching race and class are eligible for the target campaign")
@@ -50,14 +53,15 @@ func run() -> void:
 	assert_true(repository.publish_revision(record), "publishing a changed character creates a new immutable revision")
 	assert_true(record.revision_hash != first_revision_hash, "changed character state receives a distinct revision hash")
 	var second_revision_hash := record.revision_hash
+	assert_false(repository.publish_revision(loaded), "a stale earlier revision cannot replace the current Character File")
 	assert_not_null(repository.load_revision(record.character_id, first_revision_hash), "older character revisions remain loadable after a new publication")
 	var revision_count_before_archive := repository.list_revisions(record.character_id).size()
 	assert_true(revision_count_before_archive >= 2, "vault history exposes both immutable revisions instead of only the current index")
 	character.race_id = "missing.race"
 	var rejected := repository.campaign_eligibility(record, package.content)
-	assert_false(rejected.eligible, "a missing campaign definition makes a vault character ineligible")
-	assert_true(not rejected.reasons.is_empty(), "vault eligibility reports an actionable reason")
+	assert_true(not rejected.eligible and not rejected.reasons.is_empty(), "a missing campaign definition rejects a vault character with an actionable reason")
 	assert_true(repository.archive_character(record.character_id), "archiving removes the current index without destructive character deletion")
+	assert_false(repository.publish_new_character(collision), "archived history continues to reserve its identity against unrelated new characters")
 	assert_true(repository.list_current_records().all(func(candidate: CharacterVaultRecord) -> bool: return candidate.character_id != record.character_id), "archived characters leave the current vault listing")
 	assert_true(repository.current_revision_hash(record.character_id).is_empty(), "archive clears the recoverable current-revision index")
 	assert_true(repository.revision_is_archived(record.character_id, second_revision_hash), "the archived current revision remains explicitly discoverable")
@@ -79,8 +83,8 @@ func run() -> void:
 
 
 func _test_classic_starter_seeding() -> void:
-	var catalog := ClassicStarterCharacterCatalogScript.new()
-	var records: Array[CharacterVaultRecord] = catalog.load_records(STARTER_CATALOG_PATH, CHARACTER_LIBRARY_HASH)
+	var catalog := ClassicStarterCharacterCatalog.new()
+	var records: Array[CharacterVaultRecord] = catalog.load_records(STARTER_CATALOG_PATH, ApplicationLibraryIdentity.PACKAGE_HASH)
 	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.character_id), ["classic.starter.kevlar", "classic.starter.lothlorian", "classic.starter.silver-leaf", "classic.starter.traskelion", "classic.starter.trevor", "classic.starter.vormale"], "the trusted catalog exposes exactly the six pinned Realmz 7.1.2 starter identities")
 	assert_equal(records.map(func(record: CharacterVaultRecord) -> String: return record.revision_hash), ["7859725d73fb3ef46328f40f6cf31725894d1539103b1ca2aedf019f5e63bd60", "ec89f73fc3e0d685823d51e38377b61c99bc3f0272972f2f6d4393ee55547e4f", "e44480503b748a0b91851e45ec0079c41023f492bf35c8fc7104ac5280fee73a", "36f97466aed5ff5110c83cd30ae35c2faa7b6316782aedc95f51ede044c3d345", "7ad580175b08afb61a6663fb33a664168e49a93004a477d2ac50f4c8a7fa1f24", "d8b2cb6fb97f89b1aa54d8026a940e5426d460937a0fea242d28310c23ca7482"], "the format-v2 offline conversion produces deterministic canonical revision hashes")
 	var seeded_root := "user://realmz2-tests/classic-starter-seed"

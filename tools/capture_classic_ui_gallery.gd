@@ -158,9 +158,6 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(800, 600))
 	await _capture("compact-campaign-800x600")
 	await _resize(Vector2i(1280, 720))
-	Input.warp_mouse(Vector2(520, 18))
-	await _settle()
-	await _capture("canonical-campaign-menu-hover-1280x720")
 	_router.show_campaign_selection()
 	_router.setup_controller.campaign_library.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new(&"running", &"validating_media", 7, 12, "Validating packaged media 7 of 12"))
 	await _settle()
@@ -226,7 +223,7 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"exploration"); await _settle()
-	_shell.controller.open_workspace_radial(); await _settle(); await _capture("canonical-controller-workspaces-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_action_radial(); await _settle(); await _capture("canonical-controller-actions-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_top_menu(); _shell.controller.move_top_menu(Vector2i.RIGHT); _shell.controller.move_top_menu(Vector2i.DOWN); await _settle(); await _capture("canonical-controller-top-menu-1280x720"); _shell.controller.back_top_menu(); _shell.controller.back_top_menu(); await _resize(Vector2i(800, 600)); _shell.controller.open_workspace_radial(); await _settle(); await _capture("classic-controller-workspaces-wheel-800x600"); _shell.controller.cancel_radial(); _shell.controller.open_top_menu(); _shell.controller.move_top_menu(Vector2i.DOWN); await _settle(); await _capture("classic-controller-top-menu-800x600"); _shell.controller.back_top_menu(); _shell.controller.back_top_menu(); await _resize(Vector2i(1280, 720))
+	_shell.controller.open_workspace_radial(); await _settle(); await _capture("canonical-controller-workspaces-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_action_radial(); await _settle(); await _capture("canonical-controller-actions-wheel-1280x720"); _shell.controller.cancel_radial(); _shell.controller.open_pause(); await _settle(); await _capture("canonical-pause-menu-1280x720"); _shell.controller.back_pause(); await _resize(Vector2i(800, 600)); _shell.controller.open_workspace_radial(); await _settle(); await _capture("classic-controller-workspaces-wheel-800x600"); _shell.controller.cancel_radial(); _shell.controller.open_pause(); await _settle(); await _capture("classic-pause-menu-800x600"); _shell.controller.back_pause(); await _resize(Vector2i(1280, 720))
 	var explore_view := _application.session_controller.view() as GameView
 	explore_view.party_summary.condition_values[ConditionRules.PARTY_SEARCHING] = -1
 	_shell.present(explore_view); await _settle(); await _capture_canonical_compact("canonical-search-effect-1280x720", "compact-search-effect-800x600")
@@ -684,7 +681,7 @@ func _apply_raw_display_adaptations(surface_id: String, raw_root: Control) -> Ar
 			_set_raw_visibility(raw_root, "BottomRegion", true, adaptations)
 			_set_raw_visibility(raw_root, "PartyRoster", true, adaptations)
 			_set_raw_visibility(raw_root, "ScreenNavigator", true, adaptations)
-			_set_raw_visibility(raw_root, "ScreenNavigator/OverlayHost/SplashScreen", false, adaptations)
+			_set_raw_visibility(raw_root, "ScreenNavigator/OverlayHost/MainMenu", false, adaptations)
 		"party-import-from-save":
 			# The production root starts hidden and is shown only after host data is bound.
 			# Expose its authored dialog frame here without populating any party rows.
@@ -813,7 +810,8 @@ func _surface_id_for_capture(label: String) -> String:
 		"canonical-location-service-1280x720": "services",
 		"wide-journal-1280x720": "maps-journal",
 		"canonical-system-display-1280x720": "system",
-		"canonical-campaign-menu-hover-1280x720": "campaign-selection",
+		"canonical-pause-menu-1280x720": "pause-menu",
+		"classic-pause-menu-800x600": "pause-menu",
 		"canonical-party-setup-1280x720": "party-assembly",
 		"canonical-party-import-from-save-1280x720": "party-import-from-save",
 		"canonical-character-creator-review-1280x720": "character-creation",

@@ -19,6 +19,14 @@ func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rn
 	_rng = rng
 
 
+static func friendly_collision(request_id: String) -> InteractionRequest:
+	var request := InteractionRequest.indexed_choice(request_id, "An ally occupies that battlefield position.", [{"label": "Swap Positions"}, {"label": "Attack Friend"}])
+	var body := request.body as ChoiceRequestBody
+	body.can_back_out = true
+	body.has_can_back_out = true
+	return request
+
+
 func build(request_id: String) -> InteractionRequest:
 	_summon_previews.clear()
 	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)

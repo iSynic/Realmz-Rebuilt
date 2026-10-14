@@ -23,6 +23,7 @@ const EXIT_CUE_SECONDS: float = 1.513
 const ACTION_SCENARIO: StringName = &"scenario"
 const ACTION_LOAD: StringName = &"load"
 const ACTION_VAULT: StringName = &"vault"
+const ACTION_SETTINGS: StringName = &"settings"
 const ACTION_QUIT: StringName = &"quit"
 
 @onready var _overlay_host: Control = %OverlayHost
@@ -112,8 +113,6 @@ func _input(event: InputEvent) -> void:
 
 
 func _exit_tree() -> void:
-	if _menu_controller != null:
-		_menu_controller.release_intro_resources()
 	if is_instance_valid(_application):
 		if _startup_diagnostics != null:
 			_startup_diagnostics.call("restore_overlay")
@@ -173,9 +172,9 @@ func _initialize_after_first_draw() -> void:
 	_menu_controller.campaign_selection_requested.connect(func() -> void: _request_action(ACTION_SCENARIO))
 	_menu_controller.load_adventure_requested.connect(func() -> void: _request_action(ACTION_LOAD))
 	_menu_controller.vault_requested.connect(func() -> void: _request_action(ACTION_VAULT))
+	_menu_controller.settings_requested.connect(func() -> void: _request_action(ACTION_SETTINGS))
 	_menu_controller.quit_requested.connect(func() -> void: _request_action(ACTION_QUIT))
 	_menu_controller.hide_overlays()
-	_menu_controller.prepare_intro_behind_splash()
 	_apply_layout()
 	_begin_application_load()
 
@@ -282,6 +281,8 @@ func _initialize_controller_navigation() -> void:
 
 
 func _on_controller_action_pressed(action_id: StringName, _repeated: bool) -> void:
+	if _menu_controller != null and _menu_controller.splash_overlay != null:
+		_menu_controller.splash_overlay.show_controller_hint(_controller_input.prompt_family(), _presentation_settings.controller)
 	match action_id:
 		&"realmz_controller_confirm": _controller_focus.activate_focused(self)
 		&"realmz_controller_back":

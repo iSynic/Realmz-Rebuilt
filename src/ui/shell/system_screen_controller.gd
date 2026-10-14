@@ -3,52 +3,6 @@ class_name SystemScreenController
 extends RefCounted
 
 
-class ControllerAccess:
-	extends RefCounted
-	var _owner: Variant
-	func _init(owner: Variant) -> void: _owner = owner
-	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void:
-		if _owner._controller_draft == null or action_id != _owner._controller_capture_action: return
-		var physical_key := "%s:%d:%d" % [descriptor["kind"], int(descriptor["code"]), int(descriptor["direction"])]
-		_owner._controller_draft.bindings = _owner._controller_draft.bindings.filter(func(binding: Dictionary) -> bool:
-			return StringName(binding["action"]) != action_id and "%s:%d:%d" % [binding["kind"], int(binding["code"]), int(binding["direction"])] != physical_key
-		)
-		_owner._controller_draft.bindings.append(descriptor.duplicate(true))
-		_owner._controller_capture_action = &""
-		_owner._controller_draft_dirty = true
-		_owner.refresh_controller_editor()
-	func cancel_binding_capture() -> void:
-		_owner._controller_capture_action = &""
-		_owner.refresh_controller_editor()
-	func set_live_input(value: String) -> void:
-		_owner._controller_live_text = value
-		if _owner._workspace == null: return
-		var label := _owner._workspace.get_node_or_null("SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/LiveInput") as Label
-		if label != null: label.text = "Live input • %s" % value
-	func bind_binding_list(bindings: VBoxContainer, conflicts: Array[Dictionary], reachable: bool, status: Label) -> void:
-		var rows := bindings.get_node("BindingRows") as VBoxContainer
-		for action_id: StringName in ControllerPreferences.ACTIONS:
-			var button := rows.get_node("ControllerBinding_%s" % String(action_id).trim_prefix("realmz_controller_")) as Button
-			SystemSignalBinding.clear_pressed(button)
-			button.text = "%s  •  %s" % [_controller_action_label(action_id), _binding_summary(action_id)]
-			button.pressed.connect(func() -> void:
-				_owner._controller_capture_action = action_id
-				(bindings.get_node("BindingStatus") as Label).text = "Listening for %s… press East to cancel." % _controller_action_label(action_id)
-				_owner.controller_binding_capture_requested.emit(action_id)
-			)
-		if _owner._controller_capture_action.is_empty():
-			status.text = "Rebind every missing required action before Apply." if not reachable else "%d binding conflict(s) must be resolved." % conflicts.size() if not conflicts.is_empty() else "Draft bindings are ready to apply."
-
-	func _binding_summary(action_id: StringName) -> String:
-		var values: Array[String] = []
-		for binding: Dictionary in _owner._controller_draft.bindings:
-			if StringName(binding["action"]) == action_id:
-				values.append("button %d" % int(binding["code"]) if binding["kind"] == ControllerPreferences.BINDING_BUTTON else "axis %d %s" % [int(binding["code"]), "+" if int(binding["direction"]) > 0 else "-"])
-		return ", ".join(values) if not values.is_empty() else "UNBOUND"
-
-	static func _controller_action_label(action_id: StringName) -> String:
-		return String(action_id).trim_prefix("realmz_controller_").replace("_", " ").capitalize()
-
 const WORKSPACE_SCENE_PATH := "res://src/ui/shell/system_workspace.tscn"
 
 signal action_requested(action_id: StringName, value: Variant)
@@ -71,6 +25,8 @@ var _selected_save_key: String = ""
 var _active_slot_id: String = "A"
 var active_slot_id: String:
 	get: return _active_slot_id
+var active_quick_preview: SaveSlotPreview:
+	get: return _preview_for_slot(_active_slot_id, SaveSlotPreview.PRIMARY)
 var _pending_save_action: StringName = &""
 var _pending_save_slot: String = ""
 var _pending_save_backup: bool = false
@@ -80,6 +36,7 @@ var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _save_and_quit_mode: bool = false
 var _selected_workspace_mode: StringName = &"Display"
 var _workspace: SystemWorkspace
+var _has_active_session: bool = false
 var _display_settings: PresentationSettings
 var font_resolver := FontResolver.new()
 var _controller_draft: ControllerPreferences
@@ -87,14 +44,16 @@ var _committed_controller_draft: ControllerPreferences
 var _controller_draft_dirty: bool = false
 var _controller_capture_action: StringName = &""
 var _controller_live_text: String = ""
-var controller: ControllerAccess:
-	get: return ControllerAccess.new(self)
+var controller: SystemControllerBindings:
+	get: return SystemControllerBindings.new(self)
 
 
 func navigate_section(section_name: StringName = &"", delta: int = 0) -> bool:
 	if _workspace == null:
 		return false
 	if section_name == &"Save & Load" or section_name == &"SaveAndLoad":
+		if not _has_active_session:
+			return false
 		show_saves()
 		return true
 	var categories: Array[StringName] = [&"Display", &"Audio", &"Accessibility", &"Controls", &"Diagnostics"]
@@ -122,7 +81,7 @@ func show_category(category: StringName) -> void:
 
 
 func show_saves() -> void:
-	if _workspace == null:
+	if _workspace == null or not _has_active_session:
 		return
 	_workspace.call("show_saves")
 	_selected_workspace_mode = &"Save & Load"
@@ -178,8 +137,9 @@ func set_save_and_quit_mode(enabled: bool) -> void:
 
 
 func present(target: Control, view: GameView, settings: PresentationSettings, media: ClassicMediaCatalog = null) -> void:
-	if target == null or view == null or settings == null:
+	if target == null or settings == null:
 		return
+	_has_active_session = view != null and view.session_started
 	var screen := target as SystemScreen
 	if screen != null:
 		screen.prepare_for_render(_layout_profile == UiLayoutProfile.COMPACT)
@@ -205,16 +165,24 @@ func present(target: Control, view: GameView, settings: PresentationSettings, me
 	if not _workspace.has_meta("interface_size_feedback_observer"):
 		_workspace.resized.connect(_refresh_interface_size_feedback)
 		_workspace.set_meta("interface_size_feedback_observer", true)
-	_bind_header(view)
-	_bind_save_workspace(view)
+	if _workspace.has_method("tabs"):
+		(_workspace.call("tabs") as TabContainer).set_tab_disabled(0, not _has_active_session)
+	if not _has_active_session and _selected_workspace_mode == &"Save & Load":
+		_selected_workspace_mode = &"Display"
+	if _has_active_session:
+		_bind_header(view)
+	else:
+		_workspace.campaign_context().text = ""
+	if _has_active_session:
+		_bind_save_workspace(view)
 	_bind_display(settings)
 	_workspace.call("bind_indoor_icon", settings.indoor_party_icon, media)
 	_workspace.call("bind_audio", settings)
 	_workspace.call("bind_pacing", settings)
 	_workspace.call("bind_accessibility", settings, font_resolver)
 	_bind_controls(settings)
-	_bind_diagnostics(settings)
-	if _selected_workspace_mode == &"Save & Load":
+	_workspace.call("bind_diagnostics", settings)
+	if _selected_workspace_mode == &"Save & Load" and _has_active_session:
 		_workspace.call("show_saves")
 	else:
 		_workspace.call("show_category", _selected_workspace_mode)
@@ -351,7 +319,7 @@ func _refresh_save_detail() -> void:
 	load_selected.tooltip_text = "Select a validated save record." if preview == null else preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
 	load_selected.text = "Load %s" % slot_id if preview != null and preview.can_load else "Load Slot"
 	update_save.visible = preview != null and preview.can_update
-	update_save.tooltip_text = "Create and verify a copy for the corrected campaign. The original save and backup remain untouched."
+	update_save.tooltip_text = "Create a verified copy for the corrected campaign. Earlier event results are kept. The original save and backup remain untouched."
 	_update_save_confirmation()
 	var record := _workspace.save_detail_record()
 	var empty := _workspace.save_detail_empty()
@@ -374,7 +342,7 @@ func _refresh_save_detail() -> void:
 	map_status.visible = preview.can_load and map_image.texture == null
 	var error := record.get_node("Error") as Label
 	error.visible = preview.status != SaveSlotPreview.VALID
-	_bind_label(error, "%s\nUpdate Save creates a separate verified copy; this original remains untouched." % preview.error_message if preview.can_update else preview.error_message, MUTED, 14)
+	_bind_label(error, "%s\nUpdate Save creates a verified copy; this original remains untouched. Earlier event results are kept." % preview.error_message if preview.can_update else preview.error_message, MUTED, 14)
 	var valid := preview.status == SaveSlotPreview.VALID
 	for path: String in ["Location", "Party", "Divider", "Package", "Rules", "Saved"]:
 		record.get_node(path).visible = valid
@@ -504,7 +472,6 @@ func _bind_display(settings: PresentationSettings) -> void:
 	var scale_root := root.get_node("Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content")
 	var effects_root := root.get_node("Image Effects/VisualEffectsGroup/Content")
 	var world_root := root.get_node("World View/WorldViewGroup/Content")
-	_bind_option(scale_root.get_node("MenuVisibilityRow/MenuVisibilityPicker") as OptionButton, SystemPreferencesLayout.menu_visibility_options(), settings.menu_visibility, &"menu_visibility")
 	_bind_option(scale_root.get_node("DisplayScalingRow/DisplayScalingPicker") as OptionButton, SystemPreferencesLayout.display_mode_options(), settings.display_scaling_mode, &"display_scaling_mode")
 	var zoom_picker := scale_root.get_node("WorldZoomRow/WorldZoomPicker") as OptionButton
 	_bind_option(zoom_picker, [
@@ -558,6 +525,7 @@ func _bind_controls(settings: PresentationSettings) -> void:
 	_bind_controller_editor(root.get_node("ControllerSettings/Content") as GridContainer)
 	_bind_toggle(root.get_node("AutoSwitchToMelee") as CheckButton, settings.auto_switch_to_melee, &"auto_switch_to_melee")
 	_bind_toggle(root.get_node("ImmediateSingleTargetActions") as CheckButton, settings.immediate_single_target_actions, &"immediate_single_target_actions")
+	_bind_toggle(root.get_node("ClickToMove") as CheckButton, settings.click_to_move_enabled, &"click_to_move_enabled")
 	_bind_toggle(root.get_node("ClassicKeyboardShortcuts") as CheckButton, settings.classic_keyboard_shortcuts, &"classic_keyboard_shortcuts")
 	_bind_toggle(root.get_node("ShowExplorationMinimap") as CheckButton, settings.show_exploration_minimap, &"show_exploration_minimap")
 	_bind_toggle(root.get_node("AutojournalEnabled") as CheckButton, settings.autojournal_enabled, &"autojournal_enabled")
@@ -583,6 +551,7 @@ func _bind_controller_editor(root: GridContainer) -> void:
 	prompt.item_selected.connect(func(index: int) -> void:
 		_controller_draft.prompt_family = String(prompt.get_item_metadata(index))
 		_controller_draft_dirty = true
+		_workspace.get_node("ControlsDraftFooter/DiscardControllerDraftDock").disabled = false
 	)
 	_bind_controller_slider(tuning.get_node("LeftDeadZone") as HSlider, tuning.get_node("LeftDeadZoneLabelRow/Value") as Label, _controller_draft.left_stick_dead_zone, "Left stick dead zone", func(value: float) -> void: _controller_draft.left_stick_dead_zone = value)
 	_bind_controller_slider(tuning.get_node("RightDeadZone") as HSlider, tuning.get_node("RightDeadZoneLabelRow/Value") as Label, _controller_draft.right_stick_dead_zone, "Right stick dead zone", func(value: float) -> void: _controller_draft.right_stick_dead_zone = value)
@@ -633,6 +602,7 @@ func _bind_controller_slider(slider: HSlider, value_label: Label, value: float, 
 	slider.value_changed.connect(func(next: float) -> void:
 		assign.call(next)
 		_controller_draft_dirty = true
+		_workspace.get_node("ControlsDraftFooter/DiscardControllerDraftDock").disabled = false
 		value_label.text = format_value.call(next)
 		slider.tooltip_text = "%s • %s" % [caption, value_label.text]
 	)
@@ -641,11 +611,6 @@ func _bind_controller_slider(slider: HSlider, value_label: Label, value: float, 
 func refresh_controller_editor() -> void:
 	if _workspace != null:
 		_bind_controller_editor(_workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content") as GridContainer)
-
-
-func _bind_diagnostics(settings: PresentationSettings) -> void:
-	var root := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Diagnostics/DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content")
-	_bind_toggle(root.get_node("TopologyDebug") as CheckButton, settings.topology_debug, &"topology_debug")
 
 
 func _bind_option(picker: OptionButton, entries: Array[Dictionary], selected_id: String, setting_id: StringName) -> void:

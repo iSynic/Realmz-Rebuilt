@@ -3,10 +3,6 @@ class_name GameShellLayoutController
 extends RefCounted
 
 var workspace_rect: Rect2
-var _menu_strip: PanelContainer
-var _menu_display_height: float
-var _menu_row: HBoxContainer
-var _compact_menu: MenuButton
 var _stage_frame: NinePatchRect
 var _activity_indicator: PanelContainer
 var _party_roster: ClassicPartyRoster
@@ -30,9 +26,6 @@ var _effect_slots: Array[TextureRect] = []
 
 
 func _init(shell: Control) -> void:
-	_menu_strip = shell.get_node("%MenuStrip") as PanelContainer
-	_menu_row = shell.get_node("%MenuRow") as HBoxContainer
-	_compact_menu = shell.get_node("%CompactMenu") as MenuButton
 	_stage_frame = shell.get_node("%StageFrame") as NinePatchRect
 	_activity_indicator = shell.get_node("%ActivityIndicator") as PanelContainer
 	_party_roster = shell.get_node("%PartyRoster") as ClassicPartyRoster
@@ -63,10 +56,7 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	var canvas_rect := profile.application_rect
 	var viewport_size := canvas_rect.size
 	var origin := canvas_rect.position
-	_menu_row.visible = profile.id != UiLayoutProfile.COMPACT
-	_compact_menu.visible = profile.id == UiLayoutProfile.COMPACT
-	_menu_display_height = maxf(profile.menu_height, ceilf(_menu_strip.get_combined_minimum_size().y))
-	profile.menu_height = _menu_display_height if settings.menu_visibility == PresentationSettings.MENU_VISIBLE else 0.0
+	profile.menu_height = 0.0
 	_apply_footer(profile, viewport_size, origin, game_view)
 	profile.bottom_height = maxf(profile.bottom_height, ceilf(_bottom_region.get_combined_minimum_size().y))
 	if game_view != null and game_view.combat_view != null:
@@ -84,9 +74,6 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 
 
 func _apply_stage(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, stage_rect: Rect2) -> void:
-	_menu_strip.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_menu_strip.position = origin
-	_menu_strip.size = Vector2(viewport_size.x, _menu_display_height)
 	_stage_frame.position = stage_rect.position
 	_stage_frame.size = stage_rect.size
 	_activity_indicator.position = stage_rect.position + Vector2(10.0, 10.0)

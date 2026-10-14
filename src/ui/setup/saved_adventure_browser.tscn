@@ -1,0 +1,257 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/setup/saved_adventure_browser.gd" id="1_script"]
+
+[node name="SavedAdventureBrowser" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_script")
+
+[node name="Workspace" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_left = 0.015
+anchor_top = 0.015
+anchor_right = 0.985
+anchor_bottom = 0.985
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="WorkspaceContent" type="VBoxContainer" parent="Workspace"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="Heading" type="HBoxContainer" parent="Workspace/WorkspaceContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="PageTitle" type="Label" parent="Workspace/WorkspaceContent/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 30
+text = "Saved Adventures"
+
+[node name="BackButton" type="Button" parent="Workspace/WorkspaceContent/Heading"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(110, 42)
+layout_mode = 2
+text = "Back"
+theme_type_variation = &"ClassicTheldrowButton"
+
+[node name="CampaignLabel" type="Label" parent="Workspace/WorkspaceContent"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Campaign"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+
+[node name="CampaignPicker" type="OptionButton" parent="Workspace/WorkspaceContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Choose a campaign"
+theme_type_variation = &"ClassicTheldrowButton"
+
+[node name="MainColumns" type="HBoxContainer" parent="Workspace/WorkspaceContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 28
+
+[node name="SaveList" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(350, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="SaveHeading" type="Label" parent="Workspace/WorkspaceContent/MainColumns/SaveList"]
+layout_mode = 2
+text = "Saved games"
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 20
+
+[node name="BackupsToggle" type="Button" parent="Workspace/WorkspaceContent/MainColumns/SaveList"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "Show backups"
+theme_type_variation = &"ClassicTheldrowButton"
+
+[node name="SaveScroll" type="ScrollContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveList"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="SaveRows" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveList/SaveScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="SaveRowTemplate" type="Button" parent="Workspace/WorkspaceContent/MainColumns/SaveList/SaveScroll/SaveRows"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+toggle_mode = true
+text = "Slot 1"
+autowrap_mode = 2
+theme_type_variation = &"ClassicTheldrowButton"
+
+[node name="DetailsScroll" type="ScrollContainer" parent="Workspace/WorkspaceContent/MainColumns"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="Details" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="SelectedSaveTitle" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_override_font_sizes/font_size = 26
+text = "Select a saved adventure"
+autowrap_mode = 2
+
+[node name="SavedTime" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+
+[node name="SavedParty" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+autowrap_mode = 2
+
+[node name="SavedLocation" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 2
+
+[node name="IdentityStatus" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.91, 0.65, 0.36, 1)
+autowrap_mode = 2
+
+[node name="LoadingProgress" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+autowrap_mode = 2
+
+[node name="LoadNote" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="SaveError" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.95, 0.48, 0.42, 1)
+autowrap_mode = 2
+
+[node name="MapPreview" type="TextureRect" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(240, 160)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MapPreviewNote" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Choose a save to see its map preview."
+autowrap_mode = 2
+
+[node name="Actions" type="HBoxContainer" parent="Workspace/WorkspaceContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="RefreshButton" type="Button" parent="Workspace/WorkspaceContent/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Refresh"
+theme_type_variation = &"ClassicTheldrowButton"
+
+[node name="UpdateSaveButton" type="Button" parent="Workspace/WorkspaceContent/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Update Save"
+theme_type_variation = &"ClassicTheldrowButton"
+
+[node name="LoadButton" type="Button" parent="Workspace/WorkspaceContent/Actions"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Load"
+theme_type_variation = &"ClassicTheldrowButton"
+
+[node name="ReplaceConfirmation" type="VBoxContainer" parent="Workspace/WorkspaceContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Explanation" type="Label" parent="Workspace/WorkspaceContent/ReplaceConfirmation"]
+layout_mode = 2
+text = "All ten slots are occupied. Choose a slot to replace. Its current save becomes the backup; the earlier quick save is kept."
+autowrap_mode = 2
+
+[node name="Choices" type="HBoxContainer" parent="Workspace/WorkspaceContent/ReplaceConfirmation"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ReplaceSlot" type="OptionButton" parent="Workspace/WorkspaceContent/ReplaceConfirmation/Choices"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 42)
+
+[node name="ReplaceCancel" type="Button" parent="Workspace/WorkspaceContent/ReplaceConfirmation/Choices"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 42)
+text = "Cancel"
+
+[node name="ReplaceLoad" type="Button" parent="Workspace/WorkspaceContent/ReplaceConfirmation/Choices"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 42)
+text = "Replace and load"

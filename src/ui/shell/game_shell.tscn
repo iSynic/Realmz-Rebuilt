@@ -11,7 +11,7 @@
 [ext_resource type="PackedScene" path="res://src/ui/shell/controller_prompt_strip.tscn" id="9_controller_prompt"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/controller/controller_radial_overlay.tscn" id="10_controller_radial"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/controller/controller_qwerty_editor.tscn" id="11_controller_keyboard"]
-[ext_resource type="PackedScene" path="res://src/ui/shell/controller_top_menu_overlay.tscn" id="12_controller_menu"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/pause_menu_view.tscn" id="12_controller_menu"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="13_command"]
 [ext_resource type="PackedScene" path="res://src/ui/exploration/classic_search_command_button.tscn" id="14_search"]
 [ext_resource type="PackedScene" path="res://src/ui/exploration/classic_torch_command_button.tscn" id="15_torch"]
@@ -55,10 +55,6 @@ z_index = 95
 unique_name_in_owner = true
 z_index = 130
 
-[node name="ControllerTopMenuOverlay" parent="." instance=ExtResource("12_controller_menu")]
-unique_name_in_owner = true
-z_index = 93
-
 [node name="ActivityIndicator" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 visible = false
@@ -79,76 +75,6 @@ mouse_filter = 2
 texture_filter = 1
 expand_mode = 0
 stretch_mode = 5
-
-[node name="MenuStrip" type="PanelContainer" parent="."]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_bottom = 28.0
-grow_horizontal = 2
-z_index = 20
-
-[node name="MenuChromeColumn" type="VBoxContainer" parent="MenuStrip"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="MenuSurface" type="Control" parent="MenuStrip/MenuChromeColumn"]
-custom_minimum_size = Vector2(0, 28)
-layout_mode = 2
-
-[node name="MenuRow" type="HBoxContainer" parent="MenuStrip/MenuChromeColumn/MenuSurface"]
-unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 2
-
-[node name="GameMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Game"
-
-[node name="AdventureMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Adventure"
-
-[node name="PartyMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Party"
-
-[node name="SettingsMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Settings"
-
-[node name="HelpMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-text = "Help"
-
-[node name="MenuSpacer" type="Control" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="PackageStatus" type="Label" parent="MenuStrip/MenuChromeColumn/MenuSurface/MenuRow"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_colors/font_color = Color(0.49, 0.83, 0.9, 1)
-text = "No campaign"
-vertical_alignment = 1
-text_overrun_behavior = 3
-
-[node name="CompactMenu" type="MenuButton" parent="MenuStrip/MenuChromeColumn/MenuSurface"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Realmz Menu"
 
 [node name="ControllerPromptStrip" parent="." instance=ExtResource("9_controller_prompt")]
 unique_name_in_owner = true
@@ -685,3 +611,7 @@ text = "Encounter Stop"
 [node name="FontPickerDialog" parent="." instance=ExtResource("16_fonts")]
 
 [node name="CharacterArtDialog" parent="." instance=ExtResource("17_character_art")]
+
+[node name="PauseMenu" parent="." instance=ExtResource("12_controller_menu")]
+unique_name_in_owner = true
+z_index = 93

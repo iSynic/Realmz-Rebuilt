@@ -64,7 +64,7 @@ func probe_choice(state: GameState, content: RealmzContent, caster_id: String, s
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null or not state.combat.battlefield.actors.has_actor(caster_id):
-		return CombatSpellCastProbe.blocked(&"summon_battlefield_unavailable", "The summon battlefield has no validated terrain or caster position.")
+		return CombatSpellCastProbe.fault(&"summon_battlefield_unavailable", "The summon battlefield has no validated terrain or caster position.")
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	var require_line_of_sight := spell.range_min + spell.range_max > 0
 	var bounds := _candidate_bounds(state.combat.battlefield, caster_id, maximum_range)
@@ -105,7 +105,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 		return CombatFlowResult.failed(&"summon_unavailable", "The summon transaction is incomplete.")
 	var probe := probe_coordinates(state, content, caster.id, spell, power_level, target_coordinates)
 	if not probe.allowed:
-		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+		return probe.denial_result()
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
 	var definition := _select_classic_summon_definition(state, content, spell, rng)
@@ -165,7 +165,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 		return CombatFlowResult.failed(&"summon_unavailable", "The monster summon transaction is incomplete.")
 	var probe := probe_coordinates(state, content, caster.id, spell, power_level, target_coordinates)
 	if not probe.allowed:
-		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+		return probe.denial_result()
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
 	var definition := _select_classic_summon_definition(state, content, spell, rng)

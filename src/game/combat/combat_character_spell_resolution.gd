@@ -140,6 +140,8 @@ func _append_resolution(state: GameState, content: RealmzContent, caster: Charac
 	if resolution.special_result == &"turned":
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))
 	CombatSpellEventBuilder.append_sound(events, spell.sound_end, "classic-combat-spell-result")
+	if resolution.target_defeated:
+		CombatActionEvents.append_defeat_audio(events, resolved_target_id)
 	var payload := _resolution_payload(caster, spell, power_level, cast_level, resolution, resolved_target_id, selected_target_id, target_kind, reflected, event_source)
 	CombatSpellEventBuilder.append_resolution_effect(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
 	if not item_instance_id.is_empty():
