@@ -9,3 +9,4 @@
 *.r2save binary
 *.bundle binary
 src/ui/shared/assets/fonts/licenses/*.txt binary
+src/storage/packages/bundled_campaigns/native-map-triggers.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
