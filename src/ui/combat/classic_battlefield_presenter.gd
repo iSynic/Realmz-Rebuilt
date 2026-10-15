@@ -19,6 +19,7 @@ var _render_camera_visible_cells := Vector2i.ZERO
 var _targeting_camera_manually_panned := false
 var _actor_clip := Rect2()
 var _playback_frame: CombatPlaybackFrame
+var _damage_font := FontVariation.new()
 var _target_edge_direction := Vector2i.ZERO
 var _target_edge_elapsed := 0.0
 ## Castle stores monster lr as -1 (left), 0 (neutral/vertical), or 1 (right).
@@ -541,6 +542,15 @@ func _draw_result(target_rect: Rect2, combat: CombatView, camera: Vector2i, visi
 		return
 	if _playback_frame.effect_resource_id > 0:
 		_draw_classic_effect(target_rect, "classic-combat-result")
+	if _playback_frame.result_kind in [&"damage", &"elemental_damage"]:
+		# Castle font/ink/size; deliberately center numerals instead of its fixed -8 pen offset.
+		var utility_font := get_theme_font(&"font", &"ClassicUtility")
+		if _damage_font.base_font != utility_font:
+			_damage_font.base_font = utility_font
+			_damage_font.variation_embolden = 1.0
+		var ink := Color.BLACK if _playback_frame.effect_resource_id in [162, 163, 164, 167] else Color.RED if _playback_frame.effect_resource_id == 159 else Color.WHITE
+		draw_string(_damage_font, target_rect.get_center() + Vector2(-16.0, 3.0), str(_playback_frame.display_amount), HORIZONTAL_ALIGNMENT_CENTER, 32.0, 10 if _playback_frame.display_amount > 9 else 12, ink)
+		return
 	var text_color := Color(0.72, 1.0, 0.72) if _playback_frame.result_kind == &"healing" else Color(1.0, 0.95, 0.82)
 	var result_rect := Rect2(target_rect.get_center() - Vector2(18.0, 14.0), Vector2(36.0, 28.0))
 	if _playback_frame.effect_resource_id <= 0:

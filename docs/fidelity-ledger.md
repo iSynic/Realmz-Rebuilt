@@ -557,6 +557,14 @@ Each entry must include:
 - Evidence is pinned Castle source control flow, focused Rebuilt regression coverage, and isolated native renderer captures, not a controlled Castle runtime comparison or a complete gameplay certification.
 
 
+## Actor spell targets use complete footprints
+
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `combatinfo-combatchoice.c:1239-1242,1273-1285` checks the chosen cursor cell for range and LOS before looking up its occupant. Secondary large-monster cells use the same absolute actor identity. `getrange.c` separately uses anchors for automatic target scans; this is source-control-flow evidence, not a controlled Castle runtime comparison.
+- Rebuilt admits an actor when one occupied cell satisfies both the spell's floored Euclidean range and its required LOS from the caster anchor. Learned spells, scrolls, activated items, cast validation and target lists share that check. Coordinate-targeted areas and physical projectiles keep their existing geometry.
+- Deliberate Auto correction: automatic spell selection and pursuit use the same manual footprint rule, without an invented large-caster reach bonus. Rays choose the first qualifying cell in stable anchor-first footprint order, and scoring, ally-safety checks and resolution use that same endpoint. Existing legal anchor endpoints therefore remain unchanged; newly reachable edges become usable without storing a cursor cell in saves.
+- Verification combines the existing combat-flow suite's geometry and obstruction checks with an isolated 120-placement perimeter matrix that crosses request serialization and ordinary cast admission. Actual-control graphical and exported-build acceptance remains separate. No save, package or Character Files identity changes.
+
+
 ## Complete action cues during accelerated playback
 
 - Deviation ID: `presentation-complete-action-cues` (presentation only).
@@ -564,3 +572,22 @@ Each entry must include:
 - Problem: accelerated playback can reuse a still-playing channel, and submitting an entire scenario spell's sound batch at once discards the original effect intervals. An offscreen Auto target can also die before entering the camera.
 - Rebuilt preserves four-channel overlap and explicit interruption, but waits for a busy channel before reuse. Queued character effects preserve their portrait interval between sound requests. Combat results/effects focus their recipient, and each visual frame receives a draw boundary before elapsed time advances. These choices do not change simulation timing, outcomes, event serialization, RNG, saves, or packages.
 - Verification: existing combat-flow, UI shell/system, media/music, and Builder suites plus an isolated native playback probe. The probe covers a captured opening formation whose final view has already removed the target, visible lethal result followed by defeat, a deliberately oversized initial frame delta, six Magic Darts sound/effect pairs from Trouble land 9 AP 96, and a six-cue burst. Seeded before/after state, serialized event, and RNG comparisons remain distinct from ordinary-route campaign proof.
+
+## Weapon elemental feedback
+
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `attack.c` weapon heat/cold/electrical branches and `showresults`, plus `showdamage-loaddark-cansee.c:32-54`. Positive post-defense fire, cold and electrical components select CICNs 162/163/164 and sounds 645/686/681 in that order. This is source evidence, not a controlled Castle runtime comparison.
+- Every physical-attack producer retains the resolved components and actual recipient without additional damage or RNG. A reflected attack's result, backdrop and defeat belong to its attacker. Aging-interrupted monster attacks publish resolved weapon components before the existing handoff; resume retains the pending total and never repeats those cues or changes saved fields.
+- Playback presents each component before the aggregate hit and defeat, requests its sound at the effect boundary, and deducts aggregate health only once. Components explain the total; they are not additional damage. Reduced Motion preserves the sound order, while Skip discards unplayed requests. Elemental and reflected attacks remain outside condensation. The existing complete-cue presentation policy waits for each component sound and drawn frame.
+- Verification combines focused playback coverage with deterministic before/after state and RNG comparisons. Ordinary-control rendered pixels, recorded Windows output, and exported-build acceptance remain separate required evidence.
+
+## Monster elemental feedback
+
+- Castle evidence: the same pinned revision, `attack.c:921-975` and `showresults`, plus `showdamage-loaddark-cansee.c:32-54`. Monster specials 11–15 select fire/cold/electrical/chemical/mental CICNs 162–166 and sounds 645/686/681/640/630 after positive resolved damage.
+- Monster attacks against characters or monsters, including allied actors and reactions, use the shared elemental representation after weapon components. Existing special diagnostic events retain their original facts; they do not create a second damage display. Saved, protected, immune, or zero results use their existing final amount, and suppressed physical attacks emit no false weapon component.
+- `FD-COMBAT-001` remains authoritative for protected monster recipients: both the cue and total use the corrected committed amount. No resolver, RNG, save, package, or Character Files behavior changes.
+- The existing five-element rules matrix verifies exact cues after save and protection, while baseline replay verifies unchanged complete state and RNG. Rendered source fixtures cover all five specials. Exported-build checks remain separate evidence and do not establish the full five-special matrix or campaign certification.
+
+## Combat damage numerals
+
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `showdamage-loaddark-cansee.c:5-65`, requests bold Geneva at 12 points, reduced to 10 for amounts above 9, with a fixed pen baseline at the recipient footprint center plus (-8, 3). Ordinary damage uses white; fire/cold/electrical/magic use black and condition damage uses red. `Font.cpp` maps Geneva to the bundled Inter font and applies synthetic bold.
+- Rebuilt uses that retained Geneva-style utility font, native-pixel sizing, vertical baseline and effect-specific colors for on-canvas damage, preserving the selected interface-font override. The owner-requested readability correction centers each numeral string horizontally instead of reproducing Castle's fixed -8 pen offset, which leaves single digits visibly left of center. Godot and Castle use different text rasterizers; matching the font contract is not pixel-perfect native-font parity. Offscreen badges and descriptive result labels retain their readable presentation treatment.

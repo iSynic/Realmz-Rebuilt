@@ -45,6 +45,7 @@ static func character_attack_event(actor_id: String, target_id: String, target_k
 	})
 	append_helpless_condition_state(event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	append_physical_result_effect(event, resolution.hit, armed)
+	CombatElementalFeedback.append_attack(event, resolution)
 	return event
 
 
@@ -144,7 +145,10 @@ static func append_monster_special_events(events: Array[DomainEvent], actor_id: 
 		"source": "classic",
 	}
 	append_helpless_condition_state(payload, resolution.special_condition_index, resolution.special_condition_before, resolution.special_condition_after)
-	events.append(DomainEvent.new(&"combat_monster_special_resolved", payload))
+	var special_event := DomainEvent.new(&"combat_monster_special_resolved", payload)
+	if resolution.damage_deferred:
+		CombatElementalFeedback.append_attack(special_event, resolution)
+	events.append(special_event)
 	if resolution.special_announced and resolution.special_sound_id != 0:
 		var sound_source := "classic-monster-status" if resolution.special_condition_index >= 0 else "classic-monster-special"
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": resolution.special_sound_id, "waitForCompletion": false, "source": sound_source}))
@@ -165,10 +169,12 @@ static func append_character_attack_audio(events: Array[DomainEvent], attacker: 
 		append_attack_sound(events, 650)
 		return
 	var sound_id := 600 + (equipment.melee_weapon.sound_id if equipment.melee_weapon != null else 30 + attacker.gender * 8)
-	if resolution.killed and target_kind == &"character":
+	if resolution.killed and resolution.reflected:
+		append_defeat_audio(events, attacker.id)
+	elif resolution.killed and target_kind == &"character":
 		append_attack_sound(events, 132)
 	append_attack_sound(events, sound_id)
-	if resolution.killed and target_kind != &"character":
+	if resolution.killed and target_kind != &"character" and not resolution.reflected:
 		append_defeat_audio(events, target_id)
 
 

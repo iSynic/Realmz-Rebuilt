@@ -541,6 +541,7 @@ func _resolve_monster_character_reaction(state: GameState, content: RealmzConten
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": target.id, "targetKind": "character", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(event, resolution.hit, weapon != null)
+	CombatElementalFeedback.append_attack(event, resolution)
 	append_reaction_identity(event, action, behind)
 	events.append(event)
 	if not resolution.killed:
@@ -566,6 +567,7 @@ func _resolve_monster_monster_reaction(state: GameState, content: RealmzContent,
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": target.id, "targetKind": "monster", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(event, resolution.hit, weapon != null)
+	CombatElementalFeedback.append_attack(event, resolution)
 	append_reaction_identity(event, action, behind)
 	events.append(event)
 	if resolution.killed:

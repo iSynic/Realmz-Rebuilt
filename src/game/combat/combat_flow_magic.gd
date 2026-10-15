@@ -211,7 +211,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 	elif spell.target_type == 0:
 		result = _resolve_repeated_spell_item(state, content, caster, instance, spell, power_level, cast_level, rng, target_ids, state_checkpoint, rng_checkpoint)
 	elif spell.target_type == 6:
-		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell)
+		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell, power_level)
 		var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
 		if ray == null or not ray.cast:
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item ray spell could not be resolved.")
@@ -442,7 +442,7 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	if spell.target_type == 0:
 		return _cast_learned_repeated_spell(state, content, caster, spell, power_level, cast_level, rng, target_ids)
 	if spell.target_type == 6:
-		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell)
+		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell, power_level)
 		var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng)
 		if ray == null or not ray.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The ray spell could not be cast with the available spell points.")
@@ -476,8 +476,8 @@ func _cast_learned_repeated_spell(state: GameState, content: RealmzContent, cast
 	return _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic", "", true, repeated_fields)
 
 
-func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[String]:
-	return _resolution.ray_actor_ids(state, content, caster_id, target_id, spell)
+func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power: int) -> Array[String]:
+	return _resolution.ray_actor_ids(state, content, caster_id, target_id, spell, power)
 
 
 func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:

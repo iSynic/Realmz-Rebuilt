@@ -263,7 +263,7 @@ func _prepare_monster_spell_targets(state: GameState, content: RealmzContent, mo
 	for target_id: String in ai_plan["targetIds"]:
 		plan.target_ids.append(target_id)
 	if spell.target_type == 6:
-		plan.target_ids = _context.magic_flow().ray_spell_actor_ids(state, content, monster.id, plan.target_ids[0], spell)
+		plan.target_ids = _context.magic_flow().ray_spell_actor_ids(state, content, monster.id, plan.target_ids[0], spell, power)
 	for target_id: String in plan.target_ids:
 		var selection := _monster_spell_target_selection(state, content, target_id)
 		if selection != null:
@@ -628,6 +628,7 @@ func _resolve_attack_against_character(state: GameState, content: RealmzContent,
 	var attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(attack_event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(attack_event, resolution.hit, weapon != null)
+	CombatElementalFeedback.append_attack(attack_event, resolution)
 	events.append(attack_event)
 	_context.actions().mark_character_bleeding(state, target, resolution.killed)
 	remove_defeated_position(state.combat, target.id, resolution.killed)
@@ -652,6 +653,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 	var monster_attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(monster_attack_event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
 	_context.actions().events().append_physical_result_effect(monster_attack_event, resolution.hit, weapon != null)
+	CombatElementalFeedback.append_attack(monster_attack_event, resolution)
 	events.append(monster_attack_event)
 	if resolution.killed:
 		active_turn.target_id = ""

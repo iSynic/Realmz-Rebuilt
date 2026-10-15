@@ -3,7 +3,26 @@ var _cached_battle_world: WorldDefinition
 
 
 func run() -> void:
+	_test_actor_spell_footprints()
 	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix(); _test_public_area_reflection(); _test_public_remove_curse_matrix(); _test_public_destroy_magic_matrix(); _test_public_magic_detection_matrix(); _test_public_polymorph_matrix(); _test_random_weapon_table_fails_when_consumed(); _test_public_destroy_turn_undead_matrix(); _test_public_spell_point_drain_matrix(); _test_public_direct_damage_matrix(); _test_war_immediate_spell_matrix(); _test_public_special_condition_matrix(); _test_public_party_condition_matrix(); _test_public_permanent_poison_matrix(); _test_public_tangle_weed_correction_matrix(); _test_public_monster_friendly_group_matrix(); _test_war_helpless_spell_matrix(); _test_war_queued_actor_field_matrix(); _test_war_self_centered_field_matrix(); _test_war_phase_spell(); _test_war_physical_projectile_profile(); _test_random_power_projectile_staging(); _test_public_monster_spell_projectile_profile(); _test_public_repeated_combat_item(); _test_public_monster_turn_matrix(); _test_public_monster_retreat_paths(); _test_half_truth_allied_blue_dragon_activation(); _test_public_continuation_fumble_terminal_matrix(); _test_public_command_automation_matrix(); _test_weapon_condition_equipment_admission_and_neutrality(); _test_weapon_condition_combat_resolution(); _test_incapacitated_actor_turn_skipping_and_removal()
+
+
+func _test_actor_spell_footprints() -> void:
+	var rules := RealmzRules.new()
+	var field := _blank_battlefield()
+	var terrain := BattleTerrainSetDefinition.new("terrain.footprints", 1, 1, [_battle_world().battle_terrain_set_by_id("terrain.test").tile_by_id(1), BattleTerrainTileDefinition.new(3, 0, 0, 2, false, 0, false, true, false, 0, [])])
+	field.actors.place_character("caster", Vector2i(43, 45))
+	for size: int in range(4):
+		field.actors.place_monster("target", Vector2i(45, 45), size)
+		var endpoint := rules.combat_flow.magic.selection().target_coordinate(field, terrain, "caster", "target", 1)
+		assert_equal(endpoint.x >= 0, size in [2, 3], "range-one actor spells reach the left occupied cell only for wide footprints")
+		assert_false(rules.battlefield.projectile_target_is_valid(field, terrain, "caster", "target", 1), "physical projectile range retains its anchor contract")
+		field.actors.remove_monster("target")
+	field.actors.place_monster("target", Vector2i(46, 45), 3)
+	for y: int in range(90):
+		field.terrain.set_tile(Vector2i(44, y), 3)
+	assert_equal(rules.combat_flow.magic.selection().target_coordinate(field, terrain, "caster", "target", 3), Vector2i(-1, -1), "blocked target footprints cannot borrow an unrelated visible cell")
+	assert_equal(rules.combat_flow.magic.selection().target_coordinate(field, terrain, "caster", "target", 3, false), Vector2i(46, 45), "LOS-free actor spells preserve anchor-first ray endpoints")
 
 
 func _test_public_area_reflection() -> void:
@@ -710,14 +729,9 @@ func _test_weapon_condition_equipment_admission_and_neutrality() -> void:
 
 	var war_pkg := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2")
 	assert_true(war_pkg.is_ok(), "War in the Sword Lands package loads successfully")
-	var fang: ItemDefinition = war_pkg.content.items.item_by_id("classic.item.927")
-	var scrambler: ItemDefinition = war_pkg.content.items.item_by_id("classic.item.907")
-	var dread_holder: ItemDefinition = war_pkg.content.items.item_by_id("classic.item.956")
-	var serpents_kiss: ItemDefinition = war_pkg.content.items.item_by_id("classic.item.968")
-	assert_equal([fang.special_1, fang.special_2, fang.special_3, fang.special_4, fang.special_5], [-10, 1, 21, 7, 4], "Fang encodes save-check Helpless duration 4")
-	assert_equal([scrambler.special_1, scrambler.special_2, scrambler.special_3, scrambler.special_4, scrambler.special_5], [-10, 2, 49, 50, -1], "Scrambler encodes 50% chance permanent Confused")
-	assert_equal([dread_holder.special_1, dread_holder.special_2, dread_holder.special_3, dread_holder.special_4, dread_holder.special_5], [-10, 1, 21, 7, 6], "Dread Holder encodes save-check Helpless duration 6")
-	assert_equal([serpents_kiss.special_1, serpents_kiss.special_2, serpents_kiss.special_3, serpents_kiss.special_4, serpents_kiss.special_5], [-10, 1, 29, 4, 6], "Serpent's Kiss encodes save-check Poisoned duration 6")
+	for record: Array in [[927, 1, 21, 7, 4], [907, 2, 49, 50, -1], [956, 1, 21, 7, 6], [968, 1, 29, 4, 6]]:
+		var weapon: ItemDefinition = war_pkg.content.items.item_by_id("classic.item.%d" % record[0])
+		assert_equal([weapon.special_1, weapon.special_2, weapon.special_3, weapon.special_4, weapon.special_5], [-10] + record.slice(1), "%s preserves its exact condition trigger, slot, save/chance and duration" % weapon.name)
 
 	var human_race: RaceDefinition = app_pkg.content.characters.race_by_id("classic.race.1")
 	var fighter_caste: CasteDefinition = app_pkg.content.characters.caste_by_id("classic.caste.1")
@@ -746,34 +760,23 @@ func _test_weapon_condition_equipment_admission_and_neutrality() -> void:
 	var cobra_view := ItemView.new(cobra_inst, cobra, null, app_pkg.content)
 	assert_false(cobra_view.properties.any(func(prop: String) -> bool: return prop.contains("to Disarm Trap") or prop.contains("to Pick Lock")), "ItemView displays no phantom ability bonuses for weapon conditions")
 
-	var invalid_cond_low := ItemDefinition.new("item.invalid-condition-low", 991, "Invalid Condition Low")
-	invalid_cond_low.item_type = 2
-	invalid_cond_low.special_1 = -10
-	invalid_cond_low.special_3 = 19
-	invalid_cond_low.item_category_mask_low = cobra.item_category_mask_low
-	var inv_probe_low := rules.equipment.classic_equip_probe(hero, ItemInstance.new("inst.inv1", invalid_cond_low.id, 0, false, true), invalid_cond_low, human_race, fighter_caste, [hero], [invalid_cond_low])
-	assert_false(inv_probe_low.allowed, "special_3 < 20 is rejected by equip probe")
-	assert_equal(CombatAttackPolicy.invalid_weapon_reason(invalid_cond_low), &"invalid_weapon_condition", "CombatAttackPolicy rejects special_3 < 20")
-
-	var invalid_cond_high := ItemDefinition.new("item.invalid-condition-high", 992, "Invalid Condition High")
-	invalid_cond_high.item_type = 2
-	invalid_cond_high.special_1 = -10
-	invalid_cond_high.special_3 = 60
-	invalid_cond_high.item_category_mask_low = cobra.item_category_mask_low
-	var inv_probe_high := rules.equipment.classic_equip_probe(hero, ItemInstance.new("inst.inv2", invalid_cond_high.id, 0, false, true), invalid_cond_high, human_race, fighter_caste, [hero], [invalid_cond_high])
-	assert_false(inv_probe_high.allowed, "special_3 >= 60 is rejected by equip probe")
-	assert_equal(CombatAttackPolicy.invalid_weapon_reason(invalid_cond_high), &"invalid_weapon_condition", "CombatAttackPolicy rejects special_3 >= 60")
-
-	var invalid_save := ItemDefinition.new("item.invalid-save", 993, "Invalid Save Index")
-	invalid_save.item_type = 2
-	invalid_save.special_1 = -10
-	invalid_save.special_2 = 1
-	invalid_save.special_3 = 21
-	invalid_save.special_4 = 8
-	invalid_save.item_category_mask_low = cobra.item_category_mask_low
-	var inv_probe_save := rules.equipment.classic_equip_probe(hero, ItemInstance.new("inst.inv3", invalid_save.id, 0, false, true), invalid_save, human_race, fighter_caste, [hero], [invalid_save])
-	assert_false(inv_probe_save.allowed, "special_2 == 1 with special_4 >= 8 is rejected by equip probe")
-	assert_equal(CombatAttackPolicy.invalid_weapon_reason(invalid_save), &"invalid_weapon_condition_save", "CombatAttackPolicy rejects special_4 >= 8")
+	var invalid_cases: Array[Dictionary] = [
+		{"item_id": "item.invalid-condition-low", "instance_id": "inst.inv1", "classic_id": 991, "name": "Invalid Condition Low", "special_2": 0, "special_3": 19, "special_4": 0, "equip_message": "special_3 < 20 is rejected by equip probe", "reason_message": "CombatAttackPolicy rejects special_3 < 20", "reason": &"invalid_weapon_condition"},
+		{"item_id": "item.invalid-condition-high", "instance_id": "inst.inv2", "classic_id": 992, "name": "Invalid Condition High", "special_2": 0, "special_3": 60, "special_4": 0, "equip_message": "special_3 >= 60 is rejected by equip probe", "reason_message": "CombatAttackPolicy rejects special_3 >= 60", "reason": &"invalid_weapon_condition"},
+		{"item_id": "item.invalid-save", "instance_id": "inst.inv3", "classic_id": 993, "name": "Invalid Save Index", "special_2": 1, "special_3": 21, "special_4": 8, "equip_message": "special_2 == 1 with special_4 >= 8 is rejected by equip probe", "reason_message": "CombatAttackPolicy rejects special_4 >= 8", "reason": &"invalid_weapon_condition_save"},
+	]
+	for invalid_case: Dictionary in invalid_cases:
+		var invalid_item := ItemDefinition.new(str(invalid_case["item_id"]), int(invalid_case["classic_id"]), str(invalid_case["name"]))
+		invalid_item.item_type = 2
+		invalid_item.special_1 = -10
+		invalid_item.special_2 = int(invalid_case["special_2"])
+		invalid_item.special_3 = int(invalid_case["special_3"])
+		invalid_item.special_4 = int(invalid_case["special_4"])
+		invalid_item.item_category_mask_low = cobra.item_category_mask_low
+		var invalid_instance := ItemInstance.new(str(invalid_case["instance_id"]), invalid_item.id, 0, false, true)
+		var invalid_probe := rules.equipment.classic_equip_probe(hero, invalid_instance, invalid_item, human_race, fighter_caste, [hero], [invalid_item])
+		assert_false(invalid_probe.allowed, str(invalid_case["equip_message"]))
+		assert_equal(CombatAttackPolicy.invalid_weapon_reason(invalid_item), invalid_case["reason"], str(invalid_case["reason_message"]))
 
 
 func _test_weapon_condition_combat_resolution() -> void:
@@ -788,78 +791,51 @@ func _test_weapon_condition_combat_resolution() -> void:
 	var human_race: RaceDefinition = app_pkg.content.characters.race_by_id("classic.race.1")
 	var fighter_caste: CasteDefinition = app_pkg.content.characters.caste_by_id("classic.caste.1")
 
-	# Test A: Automatic trigger (Cobra Strike +4, special_2 = 0, special_3 = 29, special_5 = -5)
-	var hero_a := _character("character.combat-cobra")
-	hero_a.race_id = human_race.id
-	hero_a.caste_id = fighter_caste.id
-	var cobra_inst := ItemInstance.new("inst.combat-cobra", cobra.id, 0, false, true)
-	hero_a.set_inventory([cobra_inst])
-	rules.equipment.equip_classic(hero_a, cobra_inst, cobra, human_race, fighter_caste, [hero_a], [cobra])
-	var equipment_a := rules.equipment.combat_equipment(hero_a, [cobra])
-	var def_a := _monster_definition("monster.cobra-target", [])
-	def_a.hit_dice = 10
-	var mon_a := MonsterState.new("monster.cobra-target.instance", def_a.id, def_a.name, 50, 50, 10)
-	var attack_a := rules.combat.resolve_character_attack(hero_a, equipment_a, mon_a, def_a, ScriptedRng.new(_ints(16)))
-	assert_true(attack_a.hit, "melee attack with Cobra Strike hits")
-	assert_equal(attack_a.weapon_condition_index, ConditionRules.POISONED, "weapon condition index is POISONED (9)")
-	assert_equal(attack_a.weapon_condition_before, 0, "target condition before was 0")
-	assert_equal(attack_a.weapon_condition_after, -5, "target condition after is permanent -5")
-	assert_equal(mon_a.conditions.value(ConditionRules.POISONED), -5, "monster receives permanent poison -5 from Cobra Strike")
-
-	# Test B: Save check trigger (Fang, special_2 = 1, special_3 = 21, special_4 = 7, special_5 = 4)
-	var hero_b := _character("character.combat-fang")
-	hero_b.race_id = human_race.id
-	hero_b.caste_id = fighter_caste.id
-	var fang_inst := ItemInstance.new("inst.combat-fang", fang.id, 0, false, true)
-	hero_b.set_inventory([fang_inst])
-	rules.equipment.equip_classic(hero_b, fang_inst, fang, human_race, fighter_caste, [hero_b], [fang])
-	var equipment_b := rules.equipment.combat_equipment(hero_b, [fang])
-	var def_b := _monster_definition("monster.fang-target", [])
-	def_b.hit_dice = 10
-	var mon_b := MonsterState.new("monster.fang-target.instance", def_b.id, def_b.name, 50, 50, 10)
-	for i: int in 6:
-		mon_b.set_save_value(i, 50)
-
-	# B1: Save roll 0 -> 1 <= chance 50 -> saves, condition does NOT apply
-	var attack_b1 := rules.combat.resolve_character_attack(hero_b, equipment_b, mon_b, def_b, ScriptedRng.new(_ints(16)))
-	assert_true(attack_b1.hit, "attack hits")
-	assert_equal(mon_b.conditions.value(ConditionRules.HELPLESS), 0, "successful save prevents Helpless condition")
-
-	# B2: Save roll 32767 -> 100 > chance 50 -> fails save, condition applies (duration 4)
-	var rng_b2 := _ints(16)
-	rng_b2[0] = 32_767
-	var attack_b2 := rules.combat.resolve_character_attack(hero_b, equipment_b, mon_b, def_b, ScriptedRng.new(rng_b2))
-	assert_true(attack_b2.hit, "attack hits")
-	assert_equal(attack_b2.weapon_condition_index, ConditionRules.HELPLESS, "weapon condition index is HELPLESS (1)")
-	assert_equal(attack_b2.weapon_condition_after, 4, "target condition after is 4 rounds")
-	assert_equal(mon_b.conditions.value(ConditionRules.HELPLESS), 4, "monster receives Helpless duration 4 on failed save")
-
-	# Test C: Chance roll trigger (Scrambler, special_2 = 2, special_3 = 49, special_4 = 50, special_5 = -1)
-	var hero_c := _character("character.combat-scrambler")
-	hero_c.race_id = human_race.id
-	hero_c.caste_id = fighter_caste.id
-	var scrambler_inst := ItemInstance.new("inst.combat-scrambler", scrambler.id, 0, false, true)
-	hero_c.set_inventory([scrambler_inst])
-	rules.equipment.equip_classic(hero_c, scrambler_inst, scrambler, human_race, fighter_caste, [hero_c], [scrambler])
-	var equipment_c := rules.equipment.combat_equipment(hero_c, [scrambler])
-	var def_c := _monster_definition("monster.scrambler-target", [])
-	def_c.hit_dice = 10
-
-	# C1: Chance roll 0 -> 1 <= 50 -> condition applies (duration -1)
-	var mon_c1 := MonsterState.new("monster.scrambler-c1", def_c.id, def_c.name, 50, 50, 10)
-	var attack_c1 := rules.combat.resolve_character_attack(hero_c, equipment_c, mon_c1, def_c, ScriptedRng.new(_ints(16)))
-	assert_true(attack_c1.hit, "attack hits")
-	assert_equal(attack_c1.weapon_condition_index, ConditionRules.CONFUSED, "weapon condition index is CONFUSED (29)")
-	assert_equal(attack_c1.weapon_condition_after, -1, "target condition after is permanent -1")
-	assert_equal(mon_c1.conditions.value(ConditionRules.CONFUSED), -1, "monster receives permanent confusion on successful chance roll")
-
-	# C2: Chance roll 32767 -> 100 > 50 -> condition does NOT apply
-	var mon_c2 := MonsterState.new("monster.scrambler-c2", def_c.id, def_c.name, 50, 50, 10)
-	var rng_c2 := _ints(16)
-	rng_c2[0] = 32_767
-	var attack_c2 := rules.combat.resolve_character_attack(hero_c, equipment_c, mon_c2, def_c, ScriptedRng.new(rng_c2))
-	assert_true(attack_c2.hit, "attack hits")
-	assert_equal(mon_c2.conditions.value(ConditionRules.CONFUSED), 0, "failed chance roll does not apply confusion")
+	# Case tuple: weapon kind, definition, condition. Outcome tuple: RNG roll, index, before, after, target value.
+	var weapon_cases: Array = [
+		["cobra", cobra, ConditionRules.POISONED, [[0, ConditionRules.POISONED, 0, -5, -5]]],
+		["fang", fang, ConditionRules.HELPLESS, [[0, null, null, null, 0], [32_767, ConditionRules.HELPLESS, null, 4, 4]]],
+		["scrambler", scrambler, ConditionRules.CONFUSED, [[0, ConditionRules.CONFUSED, null, -1, -1], [32_767, null, null, null, 0]]],
+	]
+	var def_a: MonsterDefinition
+	var mon_a: MonsterState
+	for weapon_case: Array in weapon_cases:
+		var case_name := str(weapon_case[0])
+		var weapon: ItemDefinition = weapon_case[1] as ItemDefinition
+		var condition_index := int(weapon_case[2])
+		var hero := _character("character.combat-%s" % case_name)
+		hero.race_id = human_race.id
+		hero.caste_id = fighter_caste.id
+		var weapon_instance := ItemInstance.new("inst.combat-%s" % case_name, weapon.id, 0, false, true)
+		hero.set_inventory([weapon_instance])
+		rules.equipment.equip_classic(hero, weapon_instance, weapon, human_race, fighter_caste, [hero], [weapon])
+		var equipment := rules.equipment.combat_equipment(hero, [weapon])
+		var target_definition := _monster_definition("monster.%s-target" % case_name, [])
+		target_definition.hit_dice = 10
+		var target := MonsterState.new("%s.instance" % target_definition.id, target_definition.id, target_definition.name, 50, 50, 10)
+		if case_name == "cobra":
+			def_a = target_definition
+			mon_a = target
+		if case_name == "fang":
+			for save_index: int in 6:
+				target.set_save_value(save_index, 50)
+		for outcome_index: int in weapon_case[3].size():
+			var outcome: Array = weapon_case[3][outcome_index]
+			if case_name == "scrambler":
+				target = MonsterState.new("monster.scrambler-c%d" % (outcome_index + 1), target_definition.id, target_definition.name, 50, 50, 10)
+			var rng_values := _ints(16)
+			if int(outcome[0]) != 0:
+				rng_values[0] = int(outcome[0])
+			var attack := rules.combat.resolve_character_attack(hero, equipment, target, target_definition, ScriptedRng.new(rng_values))
+			var assertion_context := "%s outcome %d" % [case_name, outcome_index + 1]
+			assert_true(attack.hit, "melee attack hits for %s" % assertion_context)
+			if outcome[1] != null:
+				assert_equal(attack.weapon_condition_index, outcome[1], "condition index matches for %s" % assertion_context)
+			if outcome[2] != null:
+				assert_equal(attack.weapon_condition_before, outcome[2], "condition before matches for %s" % assertion_context)
+			if outcome[3] != null:
+				assert_equal(attack.weapon_condition_after, outcome[3], "condition duration matches for %s" % assertion_context)
+			assert_equal(target.conditions.value(condition_index), outcome[4], "target condition matches for %s" % assertion_context)
 
 	# Test D: Integrated CombatFlow submit_action with weapon condition
 	var hero_d := _character("character.combat-flow-fang")

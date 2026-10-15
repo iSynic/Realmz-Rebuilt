@@ -152,12 +152,13 @@ func character_spell_admissions(state: GameState, content: RealmzContent, caster
 
 func character_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatSpellOptionView]:
 	var result: Array[CombatSpellOptionView] = []
+	var caster := state.party.character_by_id(caster_id) if state != null else null
 	for admission: CombatSpellAdmission in character_spell_admissions(state, content, caster_id):
 		var spell := admission.spell
 		var power_level := admission.power
 		if spell.target_type == 0:
 			if CombatFlowSummoning.is_summon_spell(spell): result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d open spaces" % power_level, &"coordinate_sequence", 0, state.combat.battlefield.actors.actor_position(caster_id), [], power_level))
-			else: result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
+			else: result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level, character_actor_spell_candidates(state, content, caster, spell, power_level)))
 			continue
 		if ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell):
 			result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield destination", &"area", 0, state.combat.battlefield.actors.actor_position(caster_id), [Vector2i.ZERO]))
@@ -173,7 +174,7 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 		if spell.target_type in [5, 7]:
 			result.append(CombatSpellOptionView.new(spell, power_level, spell_target_view(state, content, caster_id), "Party" if spell.target_type == 7 else "Self", &"automatic"))
 			continue
-		result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose combatant"))
+		result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose combatant", &"combatant", 0, INVALID_COORDINATE, [], 1, character_actor_spell_candidates(state, content, caster, spell, power_level)))
 	return result
 
 
@@ -270,11 +271,20 @@ static func spell_target_view(state: GameState, content: RealmzContent, target_i
 func spell_actor_target_is_valid(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int) -> bool:
 	if ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell) and state.party.character_by_id(target_id) == null: return false
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
-	if caster_id == target_id:
-		var map := content.world.map_by_id(state.combat.battlefield.map_id)
-		var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
-		return terrain_set != null and _context.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actors.actor_position(caster_id), maximum_range, spell.range_min + spell.range_max > 0)
-	return _context.reactions().projectile_target_is_valid(state.combat, content, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0)
+	var map := content.world.map_by_id(state.combat.battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
+	return terrain_set != null and target_coordinate(state.combat.battlefield, terrain_set, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0).x >= 0
+
+
+func target_coordinate(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, caster_id: String, target_id: String, maximum_range: int, require_line_of_sight: bool = true, origin_override: Vector2i = Vector2i(-1, -1), occupied_cells: Dictionary = {}) -> Vector2i:
+	if battlefield == null or not battlefield.actors.has_actor(caster_id) or not battlefield.actors.has_actor(target_id): return Vector2i(-1, -1)
+	var origin := battlefield.actors.actor_position(caster_id) if origin_override.x < 0 else origin_override
+	# Castle combatchoice checks the cursor cell before resolving abs(field[cell]).
+	# Keep anchor-first footprint order so an already legal ray keeps its endpoint.
+	for destination: Vector2i in battlefield.actors.actor_footprint(target_id):
+		if floori(Vector2(destination - origin).length()) > maximum_range: continue
+		if not require_line_of_sight or _context.battlefield.has_line_of_sight_to_coordinate(battlefield, terrain_set, caster_id, destination, origin_override, occupied_cells): return destination
+	return Vector2i(-1, -1)
 
 
 static func spell_target_selection(state: GameState, content: RealmzContent, target_id: String) -> SpellTargetSelection:

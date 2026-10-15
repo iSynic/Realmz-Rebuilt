@@ -317,7 +317,7 @@ func _monster_ray_spell_power_plan(state: GameState, content: RealmzContent, mon
 	for endpoint_id: String in _opposed_actor_ids_for_monster(state, monster):
 		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, endpoint_id, spell, power):
 			continue
-		var ray_ids: Array[String] = _context.magic_flow().ray_spell_actor_ids(state, content, monster.id, endpoint_id, spell)
+		var ray_ids: Array[String] = _context.magic_flow().ray_spell_actor_ids(state, content, monster.id, endpoint_id, spell, power)
 		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly_to_monster(state, monster, target_id) or _target_hard_immune(state, content, target_id, spell)):
 			continue
 		var drain := ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell)

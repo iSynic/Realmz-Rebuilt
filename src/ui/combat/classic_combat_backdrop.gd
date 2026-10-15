@@ -41,7 +41,7 @@ func seed(view: GameView) -> void:
 
 func apply_result(payload: Dictionary, suffix: String = "After") -> void:
 	if not payload.has("traitor" + suffix) and not payload.has("helpless" + suffix): return
-	var id := String(payload.get("targetId", payload.get("characterId", payload.get("allyId", ""))))
+	var id := String(payload.get("resultTargetId", payload.get("targetId", payload.get("characterId", payload.get("allyId", "")))))
 	if id.is_empty(): return
 	var state := int(actors.get(id, 0))
 	if payload.has("traitor" + suffix):

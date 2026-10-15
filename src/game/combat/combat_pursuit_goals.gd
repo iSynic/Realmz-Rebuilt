@@ -61,7 +61,7 @@ func firing_anchors(state: GameState, content: RealmzContent, actor_id: String, 
 		var profile: Dictionary = geometry["profile"]
 		geometry["centers"] = _centers(state, actor_id, target_id, profile, occupied)
 		for center: Vector2i in geometry["centers"]:
-			if floori(Vector2(center - origin).length()) <= int(geometry["radius"]) and _position_is_safe(state, terrain, actor_id, origin, center, profile, occupied, footprints) and (not geometry["los"] or _context.battlefield.has_line_of_sight_to_coordinate(field, terrain, actor_id, center, origin, occupied)):
+			if floori(Vector2(center - origin).length()) <= int(geometry["radius"]) and _position_is_safe(state, terrain, actor_id, target_id, origin, center, profile, occupied, footprints) and (not geometry["los"] or _context.battlefield.has_line_of_sight_to_coordinate(field, terrain, actor_id, center, origin, occupied)):
 				return [origin]
 	for geometry: Dictionary in geometries:
 		var profile: Dictionary = geometry["profile"]
@@ -74,7 +74,7 @@ func firing_anchors(state: GameState, content: RealmzContent, actor_id: String, 
 				for x: int in range(maxi(0, center.x - half_width), mini(BattlefieldGrid.SIZE, center.x + half_width + 1)):
 					var anchor := Vector2i(x, y)
 					if unique.has(anchor): continue
-					if not _position_is_safe(state, terrain, actor_id, anchor, center, profile, occupied, footprints): continue
+					if not _position_is_safe(state, terrain, actor_id, target_id, anchor, center, profile, occupied, footprints): continue
 					if geometry["los"] and not _context.battlefield.has_line_of_sight_to_coordinate(field, terrain, actor_id, center, anchor, occupied): continue
 					unique[anchor] = true
 	for value: Variant in unique: result.append(value)
@@ -93,11 +93,11 @@ func _firing_geometries(state: GameState, content: RealmzContent, actor_id: Stri
 		var condition := ClassicSpellConditionRules.combat_condition_effect_index(spell)
 		if condition >= 0 and _target_condition_value(state, target_id, condition) != 0: continue
 		var radius := int(profile["range"])
-		if state.combat.roster.monster_by_id(actor_id) != null:
+		if profile.get("physical", false) and state.combat.roster.monster_by_id(actor_id) != null:
 			var size := state.combat.battlefield.actors.actor_size(actor_id)
 			radius += (1 if size != 0 else 0) + (1 if size == 3 else 0)
 		var require_los := spell.range_min + spell.range_max > 0
-		var key := "%s:%d:%d" % [require_los, spell.target_type, _context.spell_areas.shape_for(spell, int(profile.get("power", 1)), int(profile.get("rotation", 0))) if spell.target_type in [3, 4] else 0]
+		var key := "%s:%d:%d:%s" % [require_los, spell.target_type, _context.spell_areas.shape_for(spell, int(profile.get("power", 1)), int(profile.get("rotation", 0))) if spell.target_type in [3, 4] else 0, profile.get("physical", false)]
 		if not geometries.has(key) or radius > int(geometries[key]["radius"]):
 			geometries[key] = {"profile": profile, "radius": radius, "los": require_los}
 	var result: Array[Dictionary] = []
@@ -117,7 +117,8 @@ func _append_profile(profiles: Array[Dictionary], spell: SpellDefinition, power:
 func _centers(state: GameState, actor_id: String, target_id: String, profile: Dictionary, occupied: Dictionary) -> Array[Vector2i]:
 	var field := state.combat.battlefield
 	var spell: SpellDefinition = profile["spell"]
-	if not spell.target_type in [3, 4]: return [field.actors.actor_position(target_id)]
+	if profile.get("physical", false): return [field.actors.actor_position(target_id)]
+	if not spell.target_type in [3, 4]: return field.actors.actor_footprint(target_id)
 	var shape := _context.spell_areas.shape_for(spell, int(profile["power"]), int(profile.get("rotation", 0)))
 	var offsets := _context.spell_areas.pattern(shape)
 	var result: Array[Vector2i] = []
@@ -134,7 +135,7 @@ func _centers(state: GameState, actor_id: String, target_id: String, profile: Di
 	return result
 
 
-func _position_is_safe(state: GameState, terrain: BattleTerrainSetDefinition, actor_id: String, anchor: Vector2i, center: Vector2i, profile: Dictionary, occupied: Dictionary, footprints: Dictionary) -> bool:
+func _position_is_safe(state: GameState, terrain: BattleTerrainSetDefinition, actor_id: String, target_id: String, anchor: Vector2i, center: Vector2i, profile: Dictionary, occupied: Dictionary, footprints: Dictionary) -> bool:
 	var spell: SpellDefinition = profile["spell"]
 	if not footprints.has(anchor):
 		var cells := state.combat.battlefield.actors.actor_footprint_at(actor_id, anchor)
@@ -154,7 +155,9 @@ func _position_is_safe(state: GameState, terrain: BattleTerrainSetDefinition, ac
 		for offset: Vector2i in _context.spell_areas.pattern(_context.spell_areas.shape_for(spell, int(profile["power"]), int(profile.get("rotation", 0)))):
 			if footprint.has(center + offset): return false
 	if spell.target_type == 6:
-		for occupant: String in _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain, actor_id, center, spell.range_min + spell.range_max > 0, anchor, occupied):
+		var endpoint: Vector2i = center if profile.get("physical", false) else _context.magic_flow().selection().target_coordinate(state.combat.battlefield, terrain, actor_id, target_id, int(profile["range"]), spell.range_min + spell.range_max > 0, anchor, occupied)
+		if endpoint.x < 0: return false
+		for occupant: String in _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain, actor_id, endpoint, spell.range_min + spell.range_max > 0, anchor, occupied):
 			if _same_side(state, actor_id, occupant): return false
 	return true
 

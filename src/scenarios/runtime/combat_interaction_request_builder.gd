@@ -164,6 +164,12 @@ func _spell_cast_payloads(actor_id: String) -> Array[Dictionary]:
 	for option: CombatSpellOptionView in _rules.combat_flow.magic.selection().character_spell_options(_game_state, _content, actor_id):
 		var payload := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
 		_append_spell_target_payload(payload, option)
+		if option.target_mode == &"combatant" and not option.target_candidates.is_empty():
+			for candidate: CombatSpellTargetView in option.target_candidates:
+				var targeted := payload.duplicate(true)
+				targeted.merge({"targetId": candidate.id, "targetName": candidate.name, "targetCurrentHealth": candidate.current_health, "targetMaximumHealth": candidate.maximum_health}, true)
+				result.append(targeted)
+			continue
 		result.append(payload)
 	return result
 

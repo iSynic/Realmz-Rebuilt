@@ -44,3 +44,14 @@ func position_for(combatant_id: String) -> Vector2i:
 
 func hides(combatant_id: String) -> bool:
 	return hidden_combatant_ids.has(combatant_id)
+
+
+func set_elemental_result(attacker_id: String, component: Dictionary) -> void:
+	actor_id = attacker_id
+	target_id = String(component["targetId"])
+	result_kind = &"elemental_damage"
+	display_amount = int(component["amount"])
+	display_text = "%d %s damage" % [display_amount, String(component["element"])]
+	effect_resource_id = int(component["effectResourceId"])
+	effect_resource_type = String(component["effectResourceType"])
+	sound_event = DomainEvent.new(&"sound_requested", component["soundRequest"].duplicate(true))

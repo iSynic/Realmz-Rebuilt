@@ -13,23 +13,24 @@ func _init(context: CombatContext, selection: CombatSpellSelection) -> void:
 	_selection = selection
 
 
-func ray_selections(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[SpellTargetSelection]:
+func ray_selections(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power: int) -> Array[SpellTargetSelection]:
 	var result: Array[SpellTargetSelection] = []
-	for actor_id: String in ray_actor_ids(state, content, caster_id, target_id, spell):
+	for actor_id: String in ray_actor_ids(state, content, caster_id, target_id, spell, power):
 		var selection := _selection.spell_target_selection(state, content, actor_id)
 		if selection != null:
 			result.append(selection)
 	return result
 
 
-func ray_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[String]:
+func ray_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power: int) -> Array[String]:
 	var result: Array[String] = []
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	if terrain_set == null or not state.combat.battlefield.actors.has_actor(target_id):
 		return result
 	var stop_at_blocker := spell.range_min + spell.range_max > 0
-	return _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actors.actor_position(target_id), stop_at_blocker)
+	var destination := _selection.target_coordinate(state.combat.battlefield, terrain_set, caster_id, target_id, absi(spell.range_min + spell.range_max * power), stop_at_blocker)
+	return _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, destination, stop_at_blocker) if destination.x >= 0 else result
 
 
 func group_targets(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, selected_ids: Dictionary = {}, area_target: bool = false, missing_definition_message: String = "A scroll target has no immutable monster definition.") -> Dictionary:

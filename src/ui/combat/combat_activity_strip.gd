@@ -78,7 +78,7 @@ func show_frame(frame: CombatPlaybackFrame) -> void:
 		_target_id = ""
 	elif frame.kind == &"group_result":
 		_target_id = ""
-	elif not frame.target_id.is_empty() and frame.target_id != _actor_id:
+	elif not frame.target_id.is_empty() and (frame.target_id != _actor_id or frame.kind == &"result"):
 		_target_id = frame.target_id
 	_render_previews(frame)
 	_last_frame_id = frame.get_instance_id()

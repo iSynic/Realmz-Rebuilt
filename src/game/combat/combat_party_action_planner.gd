@@ -322,9 +322,9 @@ func _best_party_spell_point_drain_ray(state: GameState, content: RealmzContent,
 	for endpoint_id: String in _opposed_actor_ids(state, actor):
 		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, actor.id, endpoint_id, spell, power):
 			continue
-		var cache_key := "%s:%d" % [endpoint_id, 1 if spell.range_min + spell.range_max > 0 else 0]
+		var cache_key := "%s:%d:%d" % [endpoint_id, 1 if spell.range_min + spell.range_max > 0 else 0, absi(spell.range_min + spell.range_max * power)]
 		if not ray_actor_cache.has(cache_key):
-			ray_actor_cache[cache_key] = _context.magic_flow().ray_spell_actor_ids(state, content, actor.id, endpoint_id, spell)
+			ray_actor_cache[cache_key] = _context.magic_flow().ray_spell_actor_ids(state, content, actor.id, endpoint_id, spell, power)
 		var ray_ids: Array[String] = ray_actor_cache[cache_key]
 		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly(state, actor, target_id) or _target_hard_immune(state, content, target_id, spell)) or ray_ids.all(func(target_id: String) -> bool: return _target_spell_points(state, target_id) <= 0):
 			continue
@@ -373,9 +373,9 @@ func _best_party_ray(state: GameState, content: RealmzContent, actor: CharacterS
 	for endpoint_id: String in _opposed_actor_ids(state, actor):
 		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, actor.id, endpoint_id, spell, power):
 			continue
-		var cache_key := "%s:%d" % [endpoint_id, 1 if spell.range_min + spell.range_max > 0 else 0]
+		var cache_key := "%s:%d:%d" % [endpoint_id, 1 if spell.range_min + spell.range_max > 0 else 0, absi(spell.range_min + spell.range_max * power)]
 		if not ray_actor_cache.has(cache_key):
-			ray_actor_cache[cache_key] = _context.magic_flow().ray_spell_actor_ids(state, content, actor.id, endpoint_id, spell)
+			ray_actor_cache[cache_key] = _context.magic_flow().ray_spell_actor_ids(state, content, actor.id, endpoint_id, spell, power)
 		var ray_ids: Array[String] = ray_actor_cache[cache_key]
 		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly(state, actor, target_id) or _target_hard_immune(state, content, target_id, spell)):
 			continue

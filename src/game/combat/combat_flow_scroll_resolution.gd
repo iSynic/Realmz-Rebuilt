@@ -34,7 +34,7 @@ func resolve(state: GameState, content: RealmzContent, caster: CharacterState, s
 	if spell.target_type == 0:
 		return _resolve_repeated(state, content, caster, spell, power_level, cast_level, rng, target_ids, state_checkpoint, rng_checkpoint)
 	if spell.target_type == 6:
-		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell)
+		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell, power_level)
 		var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
 		if ray == null or not ray.cast:
 			return CombatFlowSpellRollback.scroll(state, rng, state_checkpoint, rng_checkpoint, &"scroll_spell_failed", "The ray scroll could not be resolved.")

@@ -73,7 +73,7 @@ static func _spell_group(events: Array[DomainEvent], cast_index: int) -> Diction
 
 static func _attack_group(events: Array[DomainEvent], first_index: int) -> Dictionary:
 	var first := events[first_index]
-	if int(first.payload.get("attackIndex", -1)) != 0 or bool(first.payload.get("reaction", false)):
+	if int(first.payload.get("attackIndex", -1)) != 0 or bool(first.payload.get("reaction", false)) or first.payload.has("elementalResults") or bool(first.payload.get("reflected", false)):
 		return {}
 	var actor_id := String(first.payload.get("actorId", ""))
 	var action := String(first.payload.get("action", ""))
@@ -93,6 +93,7 @@ static func _attack_group(events: Array[DomainEvent], first_index: int) -> Dicti
 			pending_sounds.append(event)
 		elif event.kind == &"combat_attack_resolved":
 			var payload := event.payload
+			if payload.has("elementalResults") or bool(payload.get("reflected", false)): break
 			if String(payload.get("actorId", "")) != actor_id or String(payload.get("action", "")) != action or int(payload.get("attackIndex", -1)) != results.size() or bool(payload.get("reaction", false)):
 				break
 			for sound: DomainEvent in pending_sounds:

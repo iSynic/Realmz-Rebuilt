@@ -60,7 +60,7 @@ func update_selection(selection: CombatTargetingState) -> void:
 	for id: String in selection.selected_ids:
 		var name := _combatant_name(id)
 		for combatant: InteractionRequestValue.Combatant in _combatants:
-			if combatant.id == id and combatant.has_position_facts and combatant.range >= 0:
+			if selection.response_body.action == &"attack" and combatant.id == id and combatant.has_position_facts and combatant.range >= 0:
 				name += " · Range %d" % combatant.range
 		names.append(name)
 	var status := selection.status_text

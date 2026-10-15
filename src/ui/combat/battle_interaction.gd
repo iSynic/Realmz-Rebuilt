@@ -308,15 +308,12 @@ func battlefield_targeting_cancelled() -> void:
 func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.CastOption], selected: InteractionRequestValue.CastOption, response_body: InteractionResponse.CombatBody) -> CombatTargetingRequest:
 	var mode := selected.target_mode
 	var candidate_ids: Array[String] = []
-	if mode == &"sequence":
+	if mode in [&"combatant", &"sequence"]:
 		for candidate: InteractionRequestValue.CombatTarget in selected.target_candidates:
 			if not candidate.id.is_empty(): candidate_ids.append(candidate.id)
-	elif mode == &"combatant":
+	if mode == &"combatant":
 		for candidate: InteractionRequestValue.CastOption in spell_casts:
 			if candidate.spell_id == selected.spell_id and candidate.power == selected.power and candidate.scroll_slot == selected.scroll_slot and candidate.target_mode == &"combatant" and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
-	if candidate_ids.is_empty() and response_body.action == &"cast_spell" and mode in [&"combatant", &"sequence"]:
-		for combatant: InteractionRequestValue.Combatant in _combatants:
-			if not combatant.id.is_empty(): candidate_ids.append(combatant.id)
 	var result := CombatTargetingRequest.new(mode, response_body)
 	result.classic_backdrops = true
 	result.candidate_ids = candidate_ids

@@ -25,6 +25,7 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"combatant_moved",
 	&"combatants_swapped",
 	&"combat_attack_resolved",
+	&"combat_monster_special_resolved",
 	&"combat_projectile_resolved",
 	&"combat_spell_cast",
 	&"combat_spell_projectile",
@@ -75,6 +76,8 @@ func begin(previous: GameView, events: Array[DomainEvent], final: GameView, redu
 		return false
 	if reduced_motion:
 		for event: DomainEvent in events:
+			if event.kind in [&"combat_attack_resolved", &"combat_monster_special_resolved"]:
+				_append_elemental_results(event, {}, [], true)
 			if event.kind in [&"sound_requested", &"character_effect_requested"]:
 				var sound_frame := CombatPlaybackFrame.new(&"sound", SOUND_FRAME_SECONDS)
 				sound_frame.sound_event = event
@@ -282,6 +285,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 			frame.result_kind = &"blocked"
 			frame.display_text = String(event.payload.get("reason", "Unable to act")).replace("-", " ").capitalize()
 			_frames.append(frame)
+		&"combat_monster_special_resolved": _append_elemental_results(event, positions, hidden)
 
 
 func _append_field_change(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
@@ -408,7 +412,15 @@ func _append_attack(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 	attack.from_coordinate = _position_for(attack.actor_id, positions)
 	attack.to_coordinate = _position_for(attack.target_id, positions)
 	_frames.append(attack)
+	_append_elemental_results(event, positions, hidden)
 	_append_result(event, positions, hidden)
+
+
+func _append_elemental_results(event: DomainEvent, positions: Dictionary, hidden: Array[String], audio_only: bool = false) -> void:
+	for component: Dictionary in event.payload.get("elementalResults", []):
+		var frame := _new_frame(&"sound" if audio_only else &"result", SOUND_FRAME_SECONDS if audio_only else RESULT_SECONDS, positions, hidden)
+		frame.set_elemental_result(String(event.payload.get("actorId", "")), component)
+		_frames.append(frame)
 
 
 func _append_spell_cast(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
@@ -557,7 +569,7 @@ func _append_simple_result(event: DomainEvent, positions: Dictionary, hidden: Ar
 
 func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	_backdrops.apply_result(event.payload)
-	var target_id := String(event.payload.get("targetId", ""))
+	var target_id := String(event.payload.get("resultTargetId", event.payload.get("targetId", "")))
 	var defeated := bool(event.payload.get("defeated", false))
 	if _visible_health.has(target_id):
 		_visible_health[target_id] = int(_visible_health[target_id]) - int(event.payload.get("damage", 0)) + int(event.payload.get("healing", 0))
