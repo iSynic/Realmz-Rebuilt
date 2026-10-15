@@ -148,6 +148,8 @@ func _draw() -> void:
 	var battlefield := combat.battlefield
 	var focus_id := BattlefieldPresentationGeometry.camera_focus_id_for(_playback_frame, interaction.focused_combatant_id, combat.active_actor_id)
 	var active_position := _effective_actor_position(combat, focus_id)
+	if _playback_frame != null and _playback_frame.kind in [&"projectile", &"spell_projectile"] and _playback_frame.from_coordinate.x >= 0 and _playback_frame.to_coordinate.x >= 0:
+		active_position = Vector2i(Vector2(_playback_frame.from_coordinate).lerp(Vector2(_playback_frame.to_coordinate), _playback_frame.progress).round())
 	if active_position.x < 0:
 		active_position = battlefield.party_anchor
 	var visible_cells := BattlefieldPresentationGeometry.viewport_cells_for(size)
@@ -442,7 +444,7 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 			if target_rect.has_area():
 				draw_rect(target_rect.grow(3.0), Color(0.60, 0.86, 1.0, 0.95), false, 3.0)
 		&"projectile", &"spell_projectile":
-			_draw_spell_projectile(actor_rect, target_rect)
+			_draw_spell_projectile(_combatant_rect(combat, _playback_frame.actor_id, camera, visible_cells, draw_origin, false), _combatant_rect(combat, _playback_frame.target_id, camera, visible_cells, draw_origin, false))
 		&"spell_cast", &"spell_effect":
 			_draw_spell_effect(actor_rect, target_rect)
 		&"group_result", &"group_defeat":
@@ -475,6 +477,14 @@ func _draw_spell_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:
 	if not actor_rect.has_area() or not target_rect.has_area():
 		return
 	var point := actor_rect.get_center().lerp(target_rect.get_center(), _playback_frame.progress)
+	if _playback_frame.kind == &"projectile":
+		# Castle missileset fills the blank travel tile from this directional CICN.
+		var missile_asset := _media.asset_by_resource("cicn", _playback_frame.effect_resource_id) if _media != null else null
+		var missile_texture := _textures.missile_texture(missile_asset)
+		last_playback_media_diagnostic = {"resourceType": "cicn", "resourceId": _playback_frame.effect_resource_id, "decodeResult": "decoded" if missile_texture != null else "unavailable", "role": "classic-combat-weapon-projectile"}
+		if missile_texture != null:
+			draw_texture_rect(missile_texture, Rect2(point - Vector2(16.0, 16.0), Vector2(32.0, 32.0)), false)
+		return
 	var atlas_asset := _textures.battle_atlas_asset()
 	var tile_texture := _textures.transparent_battle_tile_texture(_playback_frame.battle_tile_id)
 	if _playback_frame.battle_tile_id <= 0 or tile_texture == null:
@@ -615,11 +625,11 @@ func _update_monster_facing(frame: CombatPlaybackFrame) -> void:
 	_monster_facing_lr[frame.actor_id] = current
 
 
-func _combatant_rect(combat: CombatView, actor_id: String, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> Rect2:
+func _combatant_rect(combat: CombatView, actor_id: String, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2, visible_only: bool = true) -> Rect2:
 	if actor_id.is_empty() or _playback_hides(actor_id):
 		return Rect2()
 	var coordinate := _effective_actor_position(combat, actor_id)
-	if not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
+	if coordinate.x < 0 or visible_only and not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
 		return Rect2()
 	for monster: MonsterView in combat.monsters:
 		if monster.id != actor_id:

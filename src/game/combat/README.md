@@ -14,6 +14,7 @@ Important invariants:
 
 - Simulation uses only the supplied serialized RNG.
 - A rejected command leaves combat state and resources unchanged.
+- Equipped missile weapons cannot fire while any living hostile is adjacent, including diagonally or beside a large enemy footprint. This applies even when aiming at a farther target; friendly or defeated neighbors do not block. Manual controls, random-power preparation and Party Auto use the same admission before spending resources or RNG (`tomissle-weap.c`, `combatinfo-combatchoice.c`, `checkforenemy.c`). Range and line of sight remain independent target checks.
 - Battlefield occupancy and footprints remain authoritative.
 - Summon placement previews the creature Castle selects before targeting, including every occupied footprint cell; an anchor is selectable only when that whole footprint fits. The preview forks the session RNG, so only a committed cast advances it.
 - UI playback never advances rules or owns a continuation.

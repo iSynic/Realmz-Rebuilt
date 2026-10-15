@@ -57,9 +57,13 @@ func probe_character_retreat(combat: CombatState, characters: Array[CharacterSta
 	return CombatRetreatProbe.permitted(nearest_range)
 
 
-func character_projectile_profile(character: CharacterState, content: RealmzContent, equipment: CharacterCombatEquipment = null, combat: CombatState = null) -> ProjectileAttackProfile:
+func character_projectile_profile(character: CharacterState, content: RealmzContent, equipment: CharacterCombatEquipment = null, state: GameState = null) -> ProjectileAttackProfile:
 	if character == null or content == null:
 		return ProjectileAttackProfile.blocked(&"invalid_combat_actor", "A projectile requires an available character and content package.")
+	var combat := state.combat if state != null else null
+	# Castle tomissle and combatchoice reject Fire under any adjacent hostile pressure.
+	if combat != null and not _context.automation().hostile_adjacent_ids(state, character.id).is_empty():
+		return ProjectileAttackProfile.blocked(&"projectile_enemy_adjacent", "Cannot fire a missile weapon while an enemy is adjacent.")
 	var resolved_equipment := equipment if equipment != null else _context.equipment.combat_equipment(character, content.items.definitions())
 	if not resolved_equipment.valid:
 		return ProjectileAttackProfile.blocked(resolved_equipment.error_code, resolved_equipment.error_message)

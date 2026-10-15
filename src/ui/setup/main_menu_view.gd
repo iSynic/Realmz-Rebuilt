@@ -26,6 +26,8 @@ var _focused_action: StringName = &"ChooseScenario"
 
 func _ready() -> void:
 	_rng.randomize()
+	if not background_paths.is_empty():
+		_background.texture = load(background_paths[_rng.randi_range(0, background_paths.size() - 1)]) as Texture2D
 	_hold.timeout.connect(advance_background)
 	resized.connect(_fit_layout)
 	_commands.minimum_size_changed.connect(_fit_layout)

@@ -56,9 +56,9 @@ func _submit_standard_action(state: GameState, content: RealmzContent, actor: Ch
 		&"attack":
 			return _submit_character_attack(state, content, actor, target_id, rng, allow_friendly_contact)
 		&"prepare_projectile":
-			return _prepare_character_projectile(state.combat, content, actor, rng)
+			return _prepare_character_projectile(state, content, actor, rng)
 		&"switch_weapon":
-			return _switch_character_weapon(state.combat, content, actor)
+			return _switch_character_weapon(state, content, actor)
 		&"defend":
 			return _submit_guard(state, content, actor, rng)
 		&"delay":
@@ -157,7 +157,8 @@ func _action_waits_for_continuation(combat: CombatState, action: StringName, eve
 	return action == &"attack" and _events_include(events, &"monster_death_macro_requested") or action == &"turn_undead" and not combat.spell_runtime.pending_death_macro_id().is_empty()
 
 
-func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor: CharacterState) -> CombatFlowResult:
+func _switch_character_weapon(state: GameState, content: RealmzContent, actor: CharacterState) -> CombatFlowResult:
+	var combat := state.combat
 	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if not equipment.valid:
 		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
@@ -165,6 +166,9 @@ func _switch_character_weapon(combat: CombatState, content: RealmzContent, actor
 	var next_mode: StringName = &"melee" if current_mode == &"missile" else &"missile"
 	if next_mode == &"missile" and equipment.missile_weapon == null:
 		return CombatFlowResult.rejected(&"missile_weapon_unavailable", "The active character has no equipped Classic type-15 missile weapon.")
+	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	if next_mode == &"missile" and profile.error_code == &"projectile_enemy_adjacent":
+		return CombatFlowResult.rejected(profile.error_code, profile.error_message)
 	prepare_character_turn(combat, actor)
 	if not combat.actor_statuses.set_character_weapon_mode(actor.id, next_mode):
 		return CombatFlowResult.failed(&"invalid_weapon_mode", "The active character's battle weapon mode could not be changed.")
@@ -218,11 +222,14 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 	return CombatFlowResult.succeeded(events)
 
 
-func _prepare_character_projectile(combat: CombatState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+func _prepare_character_projectile(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	var combat := state.combat
 	if combat.actor_statuses.character_weapon_mode(actor.id) != &"missile":
 		return CombatFlowResult.failed(&"projectile_power_roll_unavailable", "Random projectile power is available only in missile weapon mode.")
 	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
-	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, combat)
+	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	if profile.error_code == &"projectile_enemy_adjacent":
+		return CombatFlowResult.rejected(profile.error_code, profile.error_message)
 	if profile.available or profile.error_code != &"projectile_power_roll_required":
 		return CombatFlowResult.failed(profile.error_code if profile != null else &"projectile_power_roll_unavailable", profile.error_message if profile != null else "The equipped projectile cannot stage a power roll.")
 	var projectile_item := equipment.missile_weapon
@@ -452,7 +459,9 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 
 func fire_character_projectile(state: GameState, content: RealmzContent, actor: CharacterState, equipment: CharacterCombatEquipment, target_id: String, rng: RealmzRng) -> CombatFlowResult:
 	var combat := state.combat
-	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, combat)
+	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	if profile.error_code == &"projectile_enemy_adjacent":
+		return CombatFlowResult.rejected(profile.error_code, profile.error_message)
 	if not profile.available:
 		return CombatFlowResult.failed(profile.error_code, profile.error_message)
 	var target := combat.roster.monster_by_id(target_id)

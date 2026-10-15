@@ -17,7 +17,7 @@ func character_profiles(state: GameState, content: RealmzContent, actor: Charact
 			if power == 8: power = maxi(1, state.combat.turns.staged_random_item_power(actor.id, equipped.melee_weapon_instance_id))
 			_append_profile(profiles, content.magic.spell_by_classic_id(equipped.melee_weapon.special_2), power)
 	if actor.attacks_remaining >= 2:
-		var projectile = _context.reactions().character_projectile_profile(actor, content, equipped, state.combat)
+		var projectile = _context.reactions().character_projectile_profile(actor, content, equipped, state)
 		if projectile != null and (projectile.available or projectile.error_code == &"projectile_power_roll_required"):
 			profiles.append({"spell": projectile.spell, "range": projectile.maximum_range, "physical": true, "targetKind": &"monster"})
 	return profiles

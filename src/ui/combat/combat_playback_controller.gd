@@ -431,6 +431,8 @@ func _append_spell_projectile(event: DomainEvent, positions: Dictionary, hidden:
 	projectile.from_coordinate = _position_for(projectile.actor_id, positions)
 	projectile.to_coordinate = _position_for(projectile.target_id, positions)
 	projectile.battle_tile_id = int(event.payload.get("classicBattleTileId", 0))
+	if projectile.kind == &"projectile":
+		projectile.effect_resource_id = CombatMissileArt.resource_id_for(projectile.battle_tile_id - 200, projectile.from_coordinate, projectile.to_coordinate)
 	_frames.append(projectile)
 
 

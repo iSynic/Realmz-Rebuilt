@@ -70,18 +70,34 @@ func transparent_battle_tile_texture(tile_id: int) -> Texture2D:
 	if not region.has_area():
 		return null
 	var tile := _atlas_texture.get_image().get_region(region)
-	if tile == null or tile.is_empty():
-		return null
-	tile.convert(Image.FORMAT_RGBA8)
-	for y in tile.get_height():
-		for x in tile.get_width():
-			var color := tile.get_pixel(x, y)
-			if color.r == 1.0 and color.g == 1.0 and color.b == 1.0:
-				color.a = 0.0
-				tile.set_pixel(x, y, color)
-	var texture := ImageTexture.create_from_image(tile)
+	var texture := _exact_white_transparent_texture(tile)
 	_transparent_battle_tiles[tile_id] = texture
 	return texture
+
+
+func missile_texture(asset: MediaAsset) -> Texture2D:
+	if asset == null:
+		return null
+	var cache_key := "missile:%s" % asset.id
+	if _actor_textures.has(cache_key):
+		return _actor_textures[cache_key] as Texture2D
+	var source := _load_image_texture(asset)
+	var texture := _exact_white_transparent_texture(source.get_image()) if source != null else null
+	_actor_textures[cache_key] = texture
+	return texture
+
+
+static func _exact_white_transparent_texture(image: Image) -> Texture2D:
+	if image == null or image.is_empty():
+		return null
+	image.convert(Image.FORMAT_RGBA8)
+	for y in image.get_height():
+		for x in image.get_width():
+			var color := image.get_pixel(x, y)
+			if color.r == 1.0 and color.g == 1.0 and color.b == 1.0:
+				color.a = 0.0
+				image.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(image)
 
 
 func actor_texture(asset: MediaAsset) -> Texture2D:

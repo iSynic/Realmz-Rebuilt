@@ -153,8 +153,12 @@ func _populate_weapon_actions(combat: CombatState, content: RealmzContent, comba
 		weapon_switch_available = weapon_mode == &"missile" or equipment.missile_weapon != null
 		weapon_switch_target_mode = &"melee" if weapon_mode == &"missile" else &"missile"
 		weapon_switch_unavailable_reason = "" if weapon_switch_available else "The active character has no equipped Classic type-15 missile weapon."
+		var profile := combat_flow.reactions.character_projectile_profile(active_character, content, equipment, game_state) if combat_flow != null else null
+		if weapon_mode == &"melee" and profile != null and profile.error_code == &"projectile_enemy_adjacent":
+			weapon_switch_available = false
+			weapon_switch_unavailable_reason = profile.error_message
 		if weapon_mode != &"melee":
-			_populate_projectile_targets(combat, content, combat_flow, active_character, equipment)
+			_populate_projectile_targets(combat, content, combat_flow, active_character, profile)
 		if weapon_switch_available:
 			legal_actions.append(&"switch_weapon")
 	else:
@@ -162,10 +166,9 @@ func _populate_weapon_actions(combat: CombatState, content: RealmzContent, comba
 		weapon_switch_unavailable_reason = equipment.error_message
 
 
-func _populate_projectile_targets(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, active_character: CharacterState, equipment: CharacterCombatEquipment) -> void:
+func _populate_projectile_targets(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, active_character: CharacterState, profile: ProjectileAttackProfile) -> void:
 	targets.clear()
 	character_targets.clear()
-	var profile := combat_flow.reactions.character_projectile_profile(active_character, content, equipment, combat) if combat_flow != null else null
 	if profile == null or not profile.available:
 		ranged_attack_unavailable_reason = profile.error_message if profile != null else "Projectile rules are unavailable."
 		if profile != null and profile.error_code == &"projectile_power_roll_required":
