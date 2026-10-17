@@ -1,0 +1,34 @@
+[gd_scene format=3]
+
+[node name="AssignmentRow" type="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Context" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Outdoor"
+
+[node name="Mode" type="OptionButton" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(125, 0)
+size_flags_horizontal = 3
+item_count = 3
+popup/item_0/text = "Play"
+popup/item_1/text = "Continue"
+popup/item_2/text = "Off"
+
+[node name="Source" type="OptionButton" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+size_flags_horizontal = 3
+item_count = 3
+popup/item_0/text = "Inherit"
+popup/item_1/text = "Original music"
+popup/item_2/text = "Playlist"
+
+[node name="Playlist" type="OptionButton" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 0)
+size_flags_horizontal = 3
+fit_to_longest_item = false

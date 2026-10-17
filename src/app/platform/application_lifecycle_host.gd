@@ -68,7 +68,7 @@ func request_quit() -> void:
 	_held_movement.stop()
 	if _interaction != null:
 		return
-	_shell.controller.cancel_radial()
+	_shell.controller.radial.cancel()
 	if _save_and_quit_pending:
 		_save_and_quit_pending = false
 		_set_save_and_quit_mode(false)
@@ -188,7 +188,7 @@ func _respond_quit(action: StringName) -> void:
 		_presentation.dismiss_host_interaction()
 		_save_and_quit_pending = true
 		_refresh_saves_operation.call()
-		_shell.navigator.content_presenter.set_save_and_quit_mode(true)
+		_shell.navigator.content_presenter.system_preferences.saves.set_save_and_quit_mode(true)
 		_shell.navigator.open_screen(&"save_load")
 		_shell.status.set_status("Choose a save slot, then Save and Quit.")
 		return
@@ -212,7 +212,7 @@ func _represent_error(message: String) -> void:
 
 
 func _set_save_and_quit_mode(enabled: bool) -> void:
-	_shell.navigator.content_presenter.set_save_and_quit_mode(enabled)
+	_shell.navigator.content_presenter.system_preferences.saves.set_save_and_quit_mode(enabled)
 	if _shell.navigator.current_screen() == &"save_load" and _session_controller.view().session_started:
 		_shell.navigator.refresh_current_workspace()
 

@@ -374,19 +374,7 @@ func _scroll_content(source: RealmzContent) -> RealmzContent:
 
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:
-	var result := CharacterState.new(character_id, display_name, 12, 12)
-	result.race_id = content.characters.race_definitions()[0].id
-	result.caste_id = content.characters.caste_definitions()[0].id
-	result.spellcaster_type = 1
-	result.spell_points = 50
-	result.maximum_spell_points = 50
-	result.maximum_load = 100
-	result.set_known_spells(["classic.spell.scroll-heal", "classic.spell.scroll-fixed"])
-	return result
-
-
-func _has_event(step: SessionStep, kind: StringName) -> bool:
-	return step.events.any(func(event: DomainEvent) -> bool: return event.kind == kind)
+	return _fixture_character(character_id, display_name, content, 12, 100, ["classic.spell.scroll-heal", "classic.spell.scroll-fixed"])
 
 
 func _events(step: SessionStep, kind: StringName) -> Array[DomainEvent]:
@@ -409,19 +397,7 @@ func _drain_battle_return(session: GameSession, step: SessionStep) -> SessionSte
 	var boundary_count := 0
 	while current.state == SessionStep.State.WAITING_FOR_INTERACTION and boundary_count < 256:
 		var request := current.interaction
-		var payload: Dictionary
-		if request.kind == InteractionRequest.ALLY_SELECTION:
-			payload = {"selectedIds": []}
-		elif request.kind == InteractionRequest.LEVEL_UP and request.body.to_data().get("mode") == "result":
-			payload = {"action": "continue", "characterId": request.body.to_data()["characterId"]}
-		elif request.kind == InteractionRequest.LEVEL_UP:
-			payload = {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": []}
-		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("mode") == "completion-confirmation":
-			payload = {"action": "confirm-completion"}
-		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and not request.body.to_data().get("items", []).is_empty():
-			payload = {"action": "discard", "instanceId": request.body.to_data()["items"][0]["instanceId"]}
-		else:
-			payload = {"action": "done"}
+		var payload := _fixture_interaction_payload(request)
 		current = session.respond(InteractionResponse.from_data(request.request_id, request.kind, payload))
 		boundary_count += 1
 	assert_true(boundary_count < 256, "the interrupted battle return remains bounded")

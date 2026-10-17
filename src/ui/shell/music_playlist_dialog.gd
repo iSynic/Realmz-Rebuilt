@@ -4,10 +4,8 @@ extends Control
 
 signal opened
 signal closed
-signal music_enabled_changed(enabled: bool)
-signal music_volume_changed(value: float)
-signal playlist_mode_changed(playlist_id: int, mode: int)
 signal import_requested(paths: PackedStringArray)
+signal import_folder_requested(path: String)
 signal import_cancelled
 signal preview_requested(track_id: String)
 signal preview_stopped
@@ -16,6 +14,7 @@ signal repair_requested(track_id: String)
 signal apply_requested(draft: MusicLibraryView)
 
 var _settings: PresentationSettings
+var _settings_baseline: PresentationSettings
 var _committed := MusicLibraryView.new()
 var _draft := MusicLibraryView.new()
 var _campaign: String = ""
@@ -25,26 +24,34 @@ var _close_after_apply: bool = false
 var _importing: bool = false
 var _focus_before_open: WeakRef
 var _messages: Array[String] = []
+var _remove_id := ""
 
 
 func _ready() -> void:
-	%MusicEnabled.toggled.connect(func(value: bool) -> void: music_enabled_changed.emit(value))
-	%MusicVolume.value_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
 	%MusicDone.pressed.connect(_done)
 	%MusicApply.pressed.connect(_apply)
 	%MusicCancel.pressed.connect(close)
 	%ImportMusic.pressed.connect(_open_import)
+	%ImportFolder.pressed.connect(_open_import.bind(true))
+	%LibrarySearch.text_changed.connect(func(_query: String) -> void: _refresh_library())
+	%MusicFiles.dir_selected.connect(func(path: String) -> void: import_folder_requested.emit(path))
 	%CancelImport.pressed.connect(func() -> void: import_cancelled.emit())
 	%MusicFiles.files_selected.connect(func(paths: PackedStringArray) -> void: import_requested.emit(paths))
 	%LibraryTracks.item_selected.connect(func(_index: int) -> void: _show_track())
 	%LibraryTracks.item_activated.connect(func(_index: int) -> void: _preview())
 	%PreviewTrack.pressed.connect(_preview)
 	%StopPreview.pressed.connect(func() -> void: preview_stopped.emit())
-	%RemoveLibraryTrack.pressed.connect(func() -> void: remove_requested.emit(_selected_track()))
+	%RemoveLibraryTrack.pressed.connect(_confirm_removal)
+	%KeepTrack.pressed.connect(_cancel_removal)
+	%ConfirmRemove.pressed.connect(func() -> void:
+		var id := _remove_id
+		_cancel_removal()
+		remove_requested.emit(id)
+	)
 	%RepairTrack.pressed.connect(func() -> void: repair_requested.emit(_selected_track()))
 	%Playlists.changed.connect(_changed)
 	%Assignments.changed.connect(_changed)
-	%Assignments.mode_changed.connect(func(context: int, mode: int) -> void: playlist_mode_changed.emit(context, mode))
+	%Assignments.mode_changed.connect(func(_context: int, _mode: int) -> void: _changed())
 	(%MusicTabs as TabContainer).get_tab_bar().focus_mode = Control.FOCUS_ALL
 	resized.connect(_apply_layout)
 	visibility_changed.connect(_apply_layout)
@@ -60,11 +67,10 @@ func open(settings: PresentationSettings, context: int, title: String, playing: 
 		_focus_before_open = weakref(previous) if previous != null else null
 		_draft = _committed.copy()
 		_dirty = false
-	_settings = settings
+		_settings = PresentationSettings.from_data(settings.to_data())
+		_settings_baseline = PresentationSettings.from_data(settings.to_data())
 	if opening:
 		opened.emit()
-	(%MusicEnabled as CheckButton).set_pressed_no_signal(settings != null and settings.music_enabled)
-	(%MusicVolume as HSlider).set_value_no_signal(settings.music_volume if settings != null else 0.8)
 	_bind_editors()
 	set_playback_state(context, title, playing)
 	show()
@@ -102,6 +108,7 @@ func apply_result(success: bool, message: String = "") -> void:
 		_close_after_apply = false
 		return
 	_committed = _draft.copy()
+	_settings_baseline = PresentationSettings.from_data(_settings.to_data())
 	_dirty = false
 	(%MusicApply as Button).disabled = true
 	report("Music playlists and assignments saved.")
@@ -110,10 +117,19 @@ func apply_result(success: bool, message: String = "") -> void:
 		close()
 
 
+func playback_preferences() -> PresentationSettings:
+	return _settings
+
+
+func playback_baseline() -> PresentationSettings:
+	return _settings_baseline
+
+
 func set_import_status(running: bool, message: String) -> void:
 	_importing = running
 	(%CancelImport as Button).visible = running
 	(%ImportMusic as Button).disabled = running
+	(%ImportFolder as Button).disabled = running
 	(%ImportStatus as Label).text = message
 	(%ImportStatus as Label).tooltip_text = message
 	_show_track()
@@ -131,11 +147,13 @@ func report(message: String) -> void:
 
 
 func controller_focus_root() -> Node:
-	return %MusicFiles if (%MusicFiles as FileDialog).visible else self
+	if (%MusicFiles as FileDialog).visible:
+		return %MusicFiles
+	return %RemoveConfirmation if %RemoveConfirmation.visible else self
 
 
 func controller_cycle_tab(delta: int) -> void:
-	if (%MusicFiles as FileDialog).visible:
+	if (%MusicFiles as FileDialog).visible or %RemoveConfirmation.visible:
 		return
 	var tabs := %MusicTabs as TabContainer
 	tabs.current_tab = wrapi(tabs.current_tab + delta, 0, tabs.get_tab_count())
@@ -147,6 +165,11 @@ func close() -> void:
 	if browser.visible:
 		browser.hide()
 		(%ImportMusic as Button).grab_focus()
+		return
+	if %RemoveConfirmation.visible:
+		_cancel_removal()
+		return
+	if (%MusicTabs as TabContainer).current_tab == 1 and (%Playlists as MusicPlaylistEditor).handle_back():
 		return
 	if not visible:
 		return
@@ -180,12 +203,16 @@ func _refresh_library() -> void:
 	var list := %LibraryTracks as ItemList
 	var selected := _selected_track()
 	list.clear()
+	var query := (%LibrarySearch as LineEdit).text.strip_edges().to_lower()
 	for id: String in _draft.tracks:
+		if not query.is_empty() and not query in _draft.tracks[id].title.to_lower():
+			continue
 		list.add_item(_draft.tracks[id].title)
 		list.set_item_metadata(list.item_count - 1, id)
 		if id == selected:
 			list.select(list.item_count - 1)
 	(%LibraryEmpty as Label).visible = list.item_count == 0
+	(%LibraryEmpty as Label).text = "No matching tracks." if not query.is_empty() else "Import music to build your library."
 	_show_track()
 
 
@@ -209,8 +236,10 @@ func _preview() -> void:
 		preview_requested.emit(id)
 
 
-func _open_import() -> void:
+func _open_import(folder: bool = false) -> void:
 	var browser := %MusicFiles as FileDialog
+	browser.file_mode = FileDialog.FILE_MODE_OPEN_DIR if folder else FileDialog.FILE_MODE_OPEN_FILES
+	browser.title = "Import music folder" if folder else "Import music"
 	browser.popup_centered_ratio(0.88)
 	browser.get_line_edit().grab_focus()
 
@@ -218,6 +247,7 @@ func _open_import() -> void:
 func _changed() -> void:
 	_dirty = true
 	(%MusicApply as Button).disabled = false
+	(%ImportStatus as Label).text = "Unapplied music changes"
 	(%Assignments as MusicAssignmentsEditor).refresh_playlists()
 
 
@@ -249,6 +279,29 @@ func _apply_layout() -> void:
 	var scale := profile.ui_scale if profile != null else 1.0
 	var panel := %MusicPlaylistWindow as PanelContainer
 	var available := size - Vector2(32, 32) * scale
+	var compact := available.x < 900 * scale
+	(%LibraryColumns as BoxContainer).vertical = compact
+	(%LibraryColumns.get_node("Collection") as Control).custom_minimum_size.y = 100 * scale if compact else 0
+	(%LibraryColumns.get_node("DetailsScroll") as Control).custom_minimum_size.y = 80 * scale
+	(%LibraryColumns.get_node("DetailsScroll/Details/Formats") as Control).visible = not compact
+	(%NowPlayingTitle as Control).visible = not compact
+	(%MusicPlaylistWindow.get_node("Content/Footer/DraftHelp") as Control).visible = not compact
 	var desired := Vector2(1120, 640) * scale
 	panel.position = (size - desired.min(available)) * 0.5
 	panel.size = desired.min(available)
+
+
+func _confirm_removal() -> void:
+	_remove_id = _selected_track()
+	var track := _draft.tracks.get(_remove_id) as MusicLibraryView.Track
+	if track == null:
+		return
+	(%RemovePrompt as Label).text = "Remove %s from the library and its playlists? Your original file is preserved. This library change is saved separately." % track.title
+	%RemoveConfirmation.show()
+	(%KeepTrack as Button).grab_focus()
+
+
+func _cancel_removal() -> void:
+	_remove_id = ""
+	%RemoveConfirmation.hide()
+	(%RemoveLibraryTrack as Button).grab_focus()

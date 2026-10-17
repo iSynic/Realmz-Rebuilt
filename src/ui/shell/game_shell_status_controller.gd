@@ -2,6 +2,8 @@
 class_name GameShellStatusController
 extends RefCounted
 
+signal narrative_appended(text: String)
+
 const ERROR := Color("ef7770")
 const TEXT := Color("d8d9d2")
 const SAVE_STATUS_TEXTURE_PATH := "res://src/ui/shared/assets/ui/status/save-status.png"
@@ -140,6 +142,7 @@ func _present_age_change(event: DomainEvent) -> void:
 
 
 func append_narrative(text: String) -> void:
+	narrative_appended.emit(text)
 	var first_message := _narrative_history.is_empty()
 	if first_message:
 		_narrative_history = text

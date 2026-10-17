@@ -1,0 +1,407 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/hud_arrange_overlay.gd" id="1_overlay"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="2_menu_theme"]
+
+[sub_resource type="StyleBoxFlat" id="RosterFrame"]
+bg_color = Color(0, 0, 0, 0)
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.72, 0.78, 0.8, 0.64)
+
+[sub_resource type="StyleBoxFlat" id="NarrationFrame"]
+bg_color = Color(0, 0, 0, 0)
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.72, 0.78, 0.8, 0.64)
+
+[sub_resource type="StyleBoxFlat" id="WorldFrame"]
+bg_color = Color(0, 0, 0, 0)
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.72, 0.78, 0.8, 0.64)
+
+[sub_resource type="StyleBoxFlat" id="PartyFrame"]
+bg_color = Color(0, 0, 0, 0)
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.72, 0.78, 0.8, 0.64)
+
+[sub_resource type="StyleBoxFlat" id="FrameFocus"]
+bg_color = Color(0, 0, 0, 0)
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.94, 0.78, 0.36, 0.98)
+
+[node name="HudArrangeOverlay" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+z_index = 120
+theme = ExtResource("2_menu_theme")
+script = ExtResource("1_overlay")
+
+[node name="Veil" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 0
+color = Color(0, 0, 0, 0.28)
+
+[node name="Roster" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(176, 96)
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Roster panel"
+tooltip_text = "Select or drag the roster panel to move it."
+theme_override_styles/panel = SubResource("RosterFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="Roster"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Roster/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Roster"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="Roster/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ResizeHandle" type="Control" parent="Roster/Content"]
+visible = false
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -24.0
+offset_top = -24.0
+mouse_default_cursor_shape = 12
+focus_mode = 0
+tooltip_text = "Drag to resize width and height. Dimensions are also available in Arrange controls."
+
+[node name="Corner" type="Polygon2D" parent="Roster/Content/ResizeHandle"]
+polygon = PackedVector2Array(4, 20, 20, 4, 20, 20)
+color = Color(0.9, 0.91, 0.86, 1)
+
+[node name="Narration" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(176, 96)
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Narration panel"
+tooltip_text = "Select or drag the narration panel to move it."
+theme_override_styles/panel = SubResource("NarrationFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="Narration"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Narration/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Narration"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="Narration/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ResizeHandle" type="Control" parent="Narration/Content"]
+visible = false
+layout_mode = 0
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -24.0
+offset_top = -24.0
+mouse_default_cursor_shape = 12
+focus_mode = 0
+tooltip_text = "Drag to resize width and height. Dimensions are also available in Arrange controls."
+
+[node name="Corner" type="Polygon2D" parent="Narration/Content/ResizeHandle"]
+polygon = PackedVector2Array(4, 20, 20, 4, 20, 20)
+color = Color(0.9, 0.91, 0.86, 1)
+
+[node name="World" type="PanelContainer" parent="."]
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move World commands panel"
+tooltip_text = "Select or drag the world commands panel to move it."
+theme_override_styles/panel = SubResource("WorldFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="World"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="World/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "World"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="World/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Party" type="PanelContainer" parent="."]
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Party commands panel"
+tooltip_text = "Select or drag the party commands panel to move it."
+theme_override_styles/panel = SubResource("PartyFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="Party"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Party/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Party"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="Party/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Effects" type="PanelContainer" parent="."]
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Effects panel"
+tooltip_text = "Select or drag the effects panel to move it."
+theme_override_styles/panel = SubResource("PartyFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="Effects"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Effects/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Effects"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="Effects/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Toolbar" type="PanelContainer" parent="."]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -280.0
+offset_top = -178.0
+offset_right = 280.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 0
+z_index = 2
+theme_type_variation = &"MenuDialog"
+
+[node name="Content" type="VBoxContainer" parent="Toolbar"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Toolbar/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Arrange HUD panels"
+horizontal_alignment = 1
+
+[node name="Help" type="Label" parent="Toolbar/Content"]
+custom_minimum_size = Vector2(480, 36)
+layout_mode = 2
+text = "Drag or use directions to move. Confirm opens actions; shoulders select a panel."
+autowrap_mode = 3
+horizontal_alignment = 1
+
+[node name="PanelSelector" type="OptionButton" parent="Toolbar/Content"]
+custom_minimum_size = Vector2(220, 32)
+layout_mode = 2
+size_flags_horizontal = 4
+action_mode = 1
+accessibility_name = "Panel to arrange"
+tooltip_text = "Choose a panel to move, including panels covered by the Arrange controls."
+item_count = 5
+selected = 0
+popup/item_0/text = "Party roster"
+popup/item_0/id = 0
+popup/item_1/text = "Narration"
+popup/item_1/id = 1
+popup/item_2/text = "World commands"
+popup/item_2/id = 2
+popup/item_3/text = "Party commands"
+popup/item_3/id = 3
+popup/item_4/text = "Effects"
+popup/item_4/id = 4
+
+[node name="SizeControls" type="HBoxContainer" parent="Toolbar/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="WidthLabel" type="Label" parent="Toolbar/Content/SizeControls"]
+layout_mode = 2
+text = "Width"
+
+[node name="PanelWidth" type="SpinBox" parent="Toolbar/Content/SizeControls"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(110, 36)
+min_value = 100.0
+max_value = 10000.0
+step = 1.0
+update_on_text_changed = false
+tooltip_text = "Width in logical UI pixels. Up/down changes size; controller directions change it by eight pixels."
+
+[node name="HeightLabel" type="Label" parent="Toolbar/Content/SizeControls"]
+layout_mode = 2
+text = "Height"
+
+[node name="PanelHeight" type="SpinBox" parent="Toolbar/Content/SizeControls"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(110, 36)
+min_value = 100.0
+max_value = 10000.0
+step = 1.0
+update_on_text_changed = false
+tooltip_text = "Height in logical UI pixels. Up/down changes size; controller directions change it by eight pixels."
+
+[node name="OrientationControls" type="HBoxContainer" parent="Toolbar/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="Caption" type="Label" parent="Toolbar/Content/OrientationControls"]
+layout_mode = 2
+text = "Orientation"
+
+[node name="Orientation" type="OptionButton" parent="Toolbar/Content/OrientationControls"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(180, 36)
+action_mode = 1
+item_count = 3
+popup/item_0/text = "Auto"
+popup/item_1/text = "Horizontal"
+popup/item_2/text = "Vertical"
+tooltip_text = "Arrange these icons in a row or column. They wrap only when necessary to fit the viewport."
+
+[node name="Actions" type="HBoxContainer" parent="Toolbar/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ResetButton" type="Button" parent="Toolbar/Content/Actions"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Reset layout"
+tooltip_text = "Restore default positions, sizes and strip orientations in this local draft."
+
+[node name="CancelButton" type="Button" parent="Toolbar/Content/Actions"]
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Cancel"
+tooltip_text = "Cancel Arrange mode and restore the parent Preferences draft."
+
+[node name="UseButton" type="Button" parent="Toolbar/Content/Actions"]
+custom_minimum_size = Vector2(120, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Use layout"
+tooltip_text = "Keep positions, sizes and orientations in the parent Preferences draft."

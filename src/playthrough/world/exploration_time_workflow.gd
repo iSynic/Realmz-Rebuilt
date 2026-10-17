@@ -100,7 +100,8 @@ static func heal(context: SessionWorkflowContext) -> ClockTransitionResult:
 	if map == null:
 		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Heal.")
 	var previous_day := context.state.clock.day()
-	var events: Array[DomainEvent] = [_sound_event(10105, "classic-heal")]
+	# Castle buttonchoice.c plays 10105 before the held loop; the command owner supplies it.
+	var events: Array[DomainEvent] = []
 	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 5 if map.level_type == &"dungeon" else 1, classic_time_scale(map), true))
 	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 

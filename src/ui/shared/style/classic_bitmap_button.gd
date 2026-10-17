@@ -98,6 +98,12 @@ func has_visual_art() -> bool:
 	return _art_texture != null
 
 
+func set_modular_icon_layout(art_scale: int, padding: int) -> void:
+	var profile := UiSizing.profile_for(self)
+	set_art_scale(art_scale if art_scale > 0 else profile.bitmap_scale if profile != null else 1)
+	CommandIconLayout.apply(self, Vector2(_native_size), art_scale, padding)
+
+
 func radial_art_texture() -> Texture2D:
 	return _art_texture
 

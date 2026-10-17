@@ -76,3 +76,28 @@ static func activate_visible(root: Node, action_id: StringName) -> bool:
 	if button == null or button.disabled: return false
 	button.pressed.emit()
 	return true
+
+
+static func activate_exploration(shell: GameShell, action: StringName) -> void:
+	if action == &"trade":
+		shell.navigator.open_screen(&"inventory")
+		ClassicKeyboardShortcuts.activate_visible.call_deferred(shell.navigator, &"trade")
+	elif action in [&"scrolls", &"make_scroll"]:
+		shell.navigator.open_screen(&"spells", true, &"Scrolls" if action == &"scrolls" else &"Known")
+	else:
+		if action in [&"service", &"encounter"]:
+			if (shell.commands.contextual_service() != null) != (action == &"service"): return
+			action = &"contextual"
+		for entry: ControllerRadialEntry in shell.commands.controller_entries():
+			if entry.id == action and entry.enabled:
+				shell.commands.activate(action)
+				break
+
+
+static func handle_visible_action(root: Node, event: InputEventKey, scope: String) -> bool:
+	var action_id := action(event, scope)
+	if action_id.is_empty():
+		return false
+	if not event.echo:
+		activate_visible(root, action_id)
+	return true

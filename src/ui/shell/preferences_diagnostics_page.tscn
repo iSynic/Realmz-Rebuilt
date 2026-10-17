@@ -1,0 +1,27 @@
+[gd_scene load_steps=1 format=3]
+
+
+
+[node name="Diagnostics" type="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="DiagnosticsSettingsScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="DiagnosticsSettingsPanel" type="PanelContainer" parent="DiagnosticsSettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="DiagnosticsSettingsScroll/DiagnosticsSettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="TopologyDebug" type="CheckButton" parent="DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
+layout_mode = 2
+text = "Show APs and random rectangles on map"
+autowrap_mode = 2
+[node name="TopologyExplanation" type="Label" parent="DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
+layout_mode = 2
+text = "Gold diamonds mark placed Action Points and gold outlines show effective random encounter rectangles."
+autowrap_mode = 2

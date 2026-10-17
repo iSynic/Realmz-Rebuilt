@@ -97,7 +97,7 @@ func _test_startup_shell() -> void:
 	assert_true(Rect2(Vector2.ZERO, Vector2(800, 600)).encloses((splash.get_node("%Quit") as Button).get_global_rect()), "the compact menu keeps every action visible, including Quit")
 	router.set_layout_profile(profile, Vector2(1280, 720)); settings_action.pressed.emit()
 	assert_equal(router.current_screen(), &"system", "main-menu Settings uses the ordinary preferences workspace")
-	assert_true(not splash.visible and (splash.get_node("%BackgroundHold") as Timer).is_stopped() and router.handle_back() and splash.visible, "Settings coverage pauses rotation and Back restores the same main menu")
+	assert_true(splash.visible and splash.background_only and splash.mouse_filter == Control.MOUSE_FILTER_IGNORE and not choose_scenario.is_visible_in_tree() and (splash.get_node("%BackgroundHold") as Timer).is_stopped() and router.handle_back() and splash.visible and not splash.background_only and splash.mouse_filter == Control.MOUSE_FILTER_STOP and choose_scenario.is_visible_in_tree(), "Settings retains only the paused background and Back restores the same main menu")
 	assert_not_null(character_files, "the splash exposes reusable character files independently of party setup")
 	choose_scenario.pressed.emit()
 	var setup_workspace := router.find_child("PartySetup", true, false) as Control

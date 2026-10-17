@@ -1,0 +1,31 @@
+[gd_scene load_steps=1 format=3]
+
+
+
+[node name="Accessibility" type="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="AccessibilitySettingsScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="AccessibilitySettingsPanel" type="PanelContainer" parent="AccessibilitySettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="ReducedMotion" type="CheckButton" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+layout_mode = 2
+text = "Reduced motion"
+autowrap_mode = 2
+[node name="ReducedMotionExplanation" type="Label" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+layout_mode = 2
+text = "Reduced motion settles combat feedback in one presentation frame without skipping committed events."
+autowrap_mode = 2
+[node name="ReducedSound" type="CheckButton" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+layout_mode = 2
+text = "Reduce Classic modal sounds"
+autowrap_mode = 2

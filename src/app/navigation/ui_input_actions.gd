@@ -19,8 +19,10 @@ const DEFINITIONS: Array[Dictionary] = [
 	{"id": &"realmz_inspect_movement", "keys": [KEY_SHIFT]},
 	{"id": &"realmz_target", "keys": [KEY_T]},
 	{"id": &"realmz_confirm_target", "keys": [KEY_SPACE]},
-	{"id": &"realmz_back", "keys": [KEY_ESCAPE]},
-	{"id": &"realmz_top_menu", "keys": [KEY_F10]},
+	{"id": &"realmz_back", "keys": [KEY_ESCAPE], "logical": true},
+	{"id": &"realmz_quick_save", "keys": [KEY_F5], "logical": true},
+	{"id": &"realmz_quick_load", "keys": [KEY_F7], "logical": true},
+	{"id": &"realmz_top_menu", "keys": [KEY_F10], "logical": true},
 	{"id": &"realmz_debug_tools", "keys": [KEY_F12]},
 	{"id": &"realmz_debug_console", "keys": [KEY_QUOTELEFT]},
 	{"id": &"ui_screen_explore", "keys": [KEY_1], "alt": true},
@@ -47,7 +49,8 @@ static func ensure_defaults() -> void:
 			continue
 		for keycode: Key in definition["keys"]:
 			var event := InputEventKey.new()
-			event.physical_keycode = keycode
+			if definition.get("logical", false): event.keycode = keycode
+			else: event.physical_keycode = keycode
 			event.alt_pressed = bool(definition.get("alt", false))
 			InputMap.action_add_event(action_id, event)
 	for action_id: StringName in CONTROLLER_ACTIONS:
@@ -89,6 +92,16 @@ static func fast_spell_use_requested(event: InputEvent) -> bool:
 
 static func combat_fast_spell_use_requested(event: InputEvent) -> bool:
 	return event is InputEventKey and ((event as InputEventKey).alt_pressed or fast_spell_use_requested(event))
+
+
+static func quick_save_load_action(event: InputEventKey) -> StringName:
+	if event == null or not event.pressed or event.echo or event.alt_pressed or event.ctrl_pressed or event.meta_pressed or event.shift_pressed:
+		return &""
+	if event.is_action_pressed(&"realmz_quick_save", false, true):
+		return &"save"
+	if event.is_action_pressed(&"realmz_quick_load", false, true):
+		return &"load"
+	return &""
 
 
 static func movement_direction(event: InputEvent) -> Vector2i:

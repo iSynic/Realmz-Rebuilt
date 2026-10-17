@@ -54,6 +54,7 @@ func _init(
 	_fonts.bind(shell.font_picker)
 	shell.navigator.content_presenter.system_preferences.font_resolver = _fonts.resolver
 	var music_host := ApplicationMusicHost.new(repository.settings_path.get_base_dir().path_join("music"))
+	music_host.commit_preferences = commit_preferences
 	application.add_child(music_host)
 	music_host.bind(shell.music_workspace, audio.music, game_view)
 	var scenario_music := ScenarioMusicHost.new(repository.settings_path.get_base_dir().path_join("scenario-music"))
@@ -64,6 +65,7 @@ func _init(
 
 
 func bind() -> void:
+	_shell.navigator.content_presenter.system_preferences.commit_preferences = commit_preferences
 	_shell.topology_debug_changed.connect(_on_topology_debug_changed)
 	_shell.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
 	_shell.master_volume_changed.connect(_on_master_volume_changed)
@@ -75,7 +77,6 @@ func bind() -> void:
 			_settings.music_transition = value
 			_save()
 	)
-	_shell.music_playlist_mode_changed.connect(_on_music_playlist_mode_changed)
 	_shell.interface_text_scale_changed.connect(_on_text_scale_changed.bind(false))
 	_shell.narrative_text_scale_changed.connect(_on_text_scale_changed.bind(true))
 	ApplicationShellPreferences.bind(_shell, _settings, _save, _on_fonts_changed)
@@ -111,10 +112,36 @@ func bind() -> void:
 	_debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
 
 
+func commit_preferences(baseline: PresentationSettings, draft: PresentationSettings) -> String:
+	if baseline == null or draft == null:
+		return "The settings draft is missing."
+	var current := _settings.to_data()
+	var before := baseline.to_data()
+	var edited := draft.to_data()
+	for key: String in edited:
+		if key != "lastCampaignId" and edited[key] != before[key]:
+			current[key] = edited[key]
+	var candidate := PresentationSettings.from_data(current)
+	if candidate == null or not candidate.controller.required_navigation_is_reachable() or not candidate.controller.conflicts().is_empty():
+		return "Settings are invalid or controller navigation is incomplete."
+	if not _repository.save_settings(candidate):
+		return _repository.last_error
+	var refresh_music := candidate.music_enabled != _settings.music_enabled or candidate.music_playlist_modes != _settings.music_playlist_modes
+	_settings.copy_from(candidate)
+	_application._controller_input.configure(_settings.controller)
+	_held_movement.set_speed_percent(_settings.exploration_speed_percent)
+	apply_initial_settings()
+	if refresh_music:
+		_presentation.refresh_music()
+	return ""
+
+
 func apply_initial_settings() -> void:
 	_apply_scaling()
 	_shell.apply_settings(_settings)
 	_presentation.set_reduced_motion(_settings.reduced_motion)
+	_presentation.combat_text_speed_percent = _settings.combat_text_speed_percent
+	_presentation.combat_text_background_opacity_percent = _settings.combat_text_background_opacity_percent
 	_presentation.set_combat_playback_speed_percent(_settings.combat_playback_speed_percent)
 	_presentation.set_hurry_spell_resolution(_settings.hurry_spell_resolution)
 	_presentation.set_exploration_speed_percent(_settings.exploration_speed_percent)
@@ -182,13 +209,6 @@ func _on_music_volume_changed(value: float) -> void:
 func _on_music_enabled_changed(enabled: bool) -> void:
 	_settings.music_enabled = enabled
 	_shell.apply_settings(_settings)
-	_save()
-	_presentation.refresh_music()
-
-
-func _on_music_playlist_mode_changed(playlist_id: int, mode: int) -> void:
-	if not _settings.set_music_mode(playlist_id, mode):
-		return
 	_save()
 	_presentation.refresh_music()
 

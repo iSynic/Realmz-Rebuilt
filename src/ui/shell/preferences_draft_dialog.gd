@@ -1,4 +1,4 @@
-## Keeps a controller draft intact until the player chooses how to leave.
+## Keeps a settings draft intact until the player chooses how to leave.
 extends Control
 
 var _apply: Callable
@@ -15,8 +15,8 @@ func _ready() -> void:
 
 
 func defer_if_dirty(preferences: SystemScreenController, continuation: Callable) -> bool:
-	if not preferences.has_dirty_controller_draft(): return false
-	open(preferences.apply_controller_draft, preferences.discard_controller_draft, continuation)
+	if not preferences.has_dirty_draft(): return false
+	open(preferences.apply_draft, preferences.discard_draft, continuation)
 	return true
 
 
@@ -28,14 +28,14 @@ func open(apply: Callable, discard: Callable, continuation: Callable) -> void:
 	_continuation = continuation
 	var focused := get_viewport().gui_get_focus_owner()
 	_restore_focus = weakref(focused) if focused != null else null
-	%Message.text = "Your controller changes have not been applied."
+	%Message.text = "Your settings changes have not been applied."
 	show()
 	%KeepEditing.grab_focus()
 
 
 func resolve(choice: StringName) -> void:
 	if choice == &"apply" and not bool(_apply.call()):
-		%Message.text = "Resolve binding conflicts before applying, or keep editing."
+		%Message.text = "Settings could not be applied. Keep editing to review the explanation."
 		return
 	if choice == &"discard":
 		_discard.call()

@@ -1,7 +1,8 @@
 [gd_scene format=3]
 
-[node name="PartyEffectSlot" type="Control"]
+[node name="PartyEffectSlot" type="Button"]
 custom_minimum_size = Vector2(36, 36)
+flat = true
 
 [node name="Background" type="Panel" parent="."]
 layout_mode = 1

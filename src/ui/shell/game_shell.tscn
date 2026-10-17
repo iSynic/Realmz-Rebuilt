@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=23 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/game_shell.gd" id="1_shell"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/screen_navigator.tscn" id="2_navigator"]
@@ -17,6 +17,10 @@
 [ext_resource type="PackedScene" path="res://src/ui/exploration/classic_torch_command_button.tscn" id="15_torch"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/font_picker_dialog.tscn" id="16_fonts"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/character_art_dialog.tscn" id="17_character_art"]
+
+[ext_resource type="PackedScene" path="res://src/ui/shell/pause_backdrop.tscn" id="18_pause_backdrop"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/modular_hud.tscn" id="19_hud"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/hud_arrange_overlay.tscn" id="20_arrange"]
 
 [sub_resource type="StyleBoxFlat" id="FatigueTrackStyle"]
 bg_color = Color(0.025, 0.035, 0.04, 1)
@@ -50,6 +54,13 @@ theme = ExtResource("3_theme")
 [node name="ControllerRadialOverlay" parent="." instance=ExtResource("10_controller_radial")]
 unique_name_in_owner = true
 z_index = 95
+
+[node name="ModularHud" parent="." instance=ExtResource("19_hud")]
+unique_name_in_owner = true
+z_index = 15
+
+[node name="HudArrangeOverlay" parent="." instance=ExtResource("20_arrange")]
+unique_name_in_owner = true
 
 [node name="ControllerQwertyEditor" parent="." instance=ExtResource("11_controller_keyboard")]
 unique_name_in_owner = true
@@ -268,6 +279,7 @@ theme_override_constants/separation = 3
 
 [node name="NarrativeText" type="RichTextLabel" parent="BottomRegion/BottomRow/NarrativeWell/NarrativeColumn"]
 unique_name_in_owner = true
+focus_mode = 2
 layout_mode = 2
 size_flags_vertical = 3
 theme_type_variation = &"ClassicNarrative"
@@ -611,6 +623,8 @@ text = "Encounter Stop"
 [node name="FontPickerDialog" parent="." instance=ExtResource("16_fonts")]
 
 [node name="CharacterArtDialog" parent="." instance=ExtResource("17_character_art")]
+
+[node name="PauseBackdrop" parent="." instance=ExtResource("18_pause_backdrop")]
 
 [node name="PauseMenu" parent="." instance=ExtResource("12_controller_menu")]
 unique_name_in_owner = true

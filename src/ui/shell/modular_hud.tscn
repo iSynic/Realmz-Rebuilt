@@ -1,0 +1,50 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/modular_hud.gd" id="1"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/hud_panel.tscn" id="2"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/hud_panel_menu.tscn" id="3"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/modular_controls_theme.tres" id="4"]
+
+[sub_resource type="StyleBoxFlat" id="CommandSurface"]
+bg_color = Color(0.082, 0.133, 0.18, 1)
+content_margin_left = 0.0
+content_margin_right = 0.0
+content_margin_top = 0.0
+content_margin_bottom = 0.0
+
+[node name="ModularHud" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+visible = false
+script = ExtResource("1")
+
+[node name="Roster" parent="." instance=ExtResource("2")]
+[node name="Narration" parent="." instance=ExtResource("2")]
+[node name="World" parent="." instance=ExtResource("2")]
+[node name="Surface" parent="World" index="0"]
+theme_override_styles/panel = SubResource("CommandSurface")
+[node name="Body" parent="World/Surface/Column" index="0"]
+vertical_scroll_mode = 0
+[node name="Party" parent="." instance=ExtResource("2")]
+[node name="Surface" parent="Party" index="0"]
+theme_override_styles/panel = SubResource("CommandSurface")
+
+[node name="Body" parent="Party/Surface/Column" index="0"]
+vertical_scroll_mode = 0
+
+[node name="EffectsDock" type="PanelContainer" parent="Party"]
+unique_name_in_owner = true
+theme_override_styles/panel = SubResource("CommandSurface")
+mouse_filter = 1
+theme = ExtResource("4")
+theme_type_variation = &"ClassicInset"
+
+[node name="PanelMenu" parent="." instance=ExtResource("3")]
+
+[editable path="World"]
+[editable path="Party"]

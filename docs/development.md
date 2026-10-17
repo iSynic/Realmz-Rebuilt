@@ -43,6 +43,16 @@ Use Realmz Builder to inspect registered scenes with Wide, Compact, Empty, Long 
 
 For menu and Preferences changes, keep source inspection, focused controller fixtures, rendered GUI inspection, and native retail execution as separate evidence. A controller fixture can prove focus/routing without proving native MenuButton pointer timing or visual fit. Verify all five Game/Adventure/Party/Settings/Help headings, pointer switching and dismissal without gameplay click leakage, the controller radial and `Move To` preview/confirm, the five Preferences categories, separate Save & Load route, and the controller-draft Apply/Discard/Keep Editing guard at canonical and compact layouts. Do not describe a source/test pass as GUI or retail acceptance.
 
+## Rebuilding Theldrow
+
+The runtime uses the approved Pen outlines and proportional spacing in `tools/ui-assets/theldrow-reading-master.json`. Install the pinned `requirements-theldrow-fonts.txt` into an isolated Python environment, then run:
+
+```powershell
+python tools/ui-assets/theldrow_reading.py --master tools/ui-assets/theldrow-reading-master.json --baseline tools/ui-assets/theldrow-reading-baseline.ttf --output src/ui/shared/assets/fonts/Theldrow-Rebuilt.ttf --production
+```
+
+The builder verifies contours, coverage, metrics, kerning and checksums before publishing the file. Add `--verify-only` to check an existing build. Omit `--production` and choose an external output path for a separately named design candidate. Full pinned-source regeneration uses `pwsh -File tools/ui-assets/sync-fonts.ps1`; it also reproduces the retained baseline. Keep Classic references and the textured title's historical source intact. Review outline changes in native-size paragraphs and application controls before promotion, then update the pinned output and tool hashes.
+
 ## Classic fidelity
 
 Castle source and controlled Castle runtime fixtures adjudicate Classic-visible differences. Keep source control flow, fixture observation, runtime tests, and ordinary-play evidence distinct. Record a deliberate correction in the fidelity ledger rather than silently changing behavior.

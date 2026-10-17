@@ -17,11 +17,17 @@ $remakeLicenseArchiveSha256 = "5ee3c5ede6fd1062d232f748c28dc33806d758f93bbb554f5
 $grenzeSha256 = "701b299d8dc002a2b4bea2ff0f1272c0e4081a2835914354804565c410d0c637"
 $grenzeLicenseSha256 = "bca29af2c3c9e142d11f523f414902ab8fb9ab8ffa3c34c63b6b72aa4e7d6acc"
 $modernizedGlyphSha256 = "1f0420531587dc657e5fc06ea8014440a42f3dc79f8ec6c0eb5b43b6f32827e9"
-$modernizedBuilderSha256 = "4b4bd1bfd21c4fcf44c5aba7cb304495dd349b3ca0264b315b6fb97207fd3acd"
+$modernizedBuilderSha256 = "57f9e54d064a201a93d7326353ba3ad42cc8f90ecf70e1787f3c2ab0ee64e694"
 $modernizedRulesSha256 = "429ef0ab43d1fc91db4c055e6fccef8f790ac681e4f4086bf7e5a445a20b261c"
-$modernizedVerifierSha256 = "d630209d14f51da9fec92f920037454516a37aed95ee7b3dcd410a5250ca4b95"
+$modernizedVerifierSha256 = "b1a5c8e963356c077c57bec328fc899b5c1389142817c3a9d1c6447a5236db49"
 $fontToolsRequirementsSha256 = "c8f1eaefa5e6398ded5498c3025fd623e14956a3f558a82d0c50a4db60f87d80"
-$modernizedFontSha256 = "79c7b7d54ad746db41b103ffc9f1bc3fabacb2cf2b594af080c0ac2c2fc7705d"
+$modernizedFontSha256 = "2a610e83847e48f4b85018d6ec9a049936065ea155ff020234f782a65f9c5c64"
+$readingMasterSha256 = "f696e265b796bef932a1ba928c86519fe14c7bf328ace2948c4ad513ae5240bf"
+$readingMasterPath = Join-Path $toolRoot "theldrow-reading-master.json"
+$readingBuilderSha256 = "12b9fe959772284d49c136d5742807d70f099c7b8489aee6c09dd518ec1d6b33"
+$readingBuilderPath = Join-Path $toolRoot "theldrow_reading.py"
+$readingBaselineSha256 = "79c7b7d54ad746db41b103ffc9f1bc3fabacb2cf2b594af080c0ac2c2fc7705d"
+$readingBaselinePath = Join-Path $toolRoot "theldrow-reading-baseline.ttf"
 $modernizedGlyphPath = Join-Path $toolRoot "theldrow-modernized-glyphs.json"
 $modernizedBuilderPath = Join-Path $toolRoot "build-theldrow-modernized.py"
 $modernizedRulesPath = Join-Path $toolRoot "theldrow-modernized-rules.json"
@@ -77,7 +83,7 @@ $records = @(
     @{ Id = "font.classic.theldrow.bitmap"; Target = "Theldrow-Classic.fnt"; Repository = "Realmz-Castle/realmz"; Commit = $castleCommit; SourcePath = "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601"; License = "Realmz-Art-NonCommercial"; Role = "exact default Realmz interface, dialog, and narrative text metrics" },
     @{ Id = "font.classic.theldrow.atlas"; Target = "Theldrow-Classic.png"; Repository = "Realmz-Castle/realmz"; Commit = $castleCommit; SourcePath = "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601"; License = "Realmz-Art-NonCommercial"; Role = "exact default Realmz bitmap glyph strike" },
     @{ Id = "font.classic.theldrow.vector"; Target = "Theldrow-Classic-Vector.ttf"; Repository = "iSynic/Realmz-Remake"; Commit = $remakeCommit; SourcePath = "src/Fonts/theldrowremake.ttf"; SourceSha256 = $remakeFontSha256; MetricRepository = "Realmz-Castle/realmz"; MetricCommit = $castleCommit; MetricPath = "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601"; MetricSha256 = "cda33a0e5f352d7d38d8fdfcc64b71db10a23fcfd9d8c7a699fa1646ffcab553"; License = "CC0-1.0"; Role = "scalable Samuel Theldrow outlines with original FONT 1601 advance widths" },
-    @{ Id = "font.classic.theldrow.rebuilt"; Target = "Theldrow-Rebuilt.ttf"; Repository = "Realmz-Rebuilt/Pencil-export"; Commit = $modernizedGlyphSha256; SourcePath = "tools/ui-assets/theldrow-modernized-glyphs.json"; SourceSha256 = $modernizedGlyphSha256; MetricRepository = "Realmz-Castle/realmz"; MetricCommit = $castleCommit; MetricPath = "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601"; MetricSha256 = "cda33a0e5f352d7d38d8fdfcc64b71db10a23fcfd9d8c7a699fa1646ffcab553"; BaselineRepository = "iSynic/Realmz-Remake"; BaselineCommit = $remakeCommit; BaselinePath = "src/Fonts/theldrowremake.ttf"; BaselineSha256 = $remakeFontSha256; UtilityRepository = "google/fonts"; UtilityCommit = $googleFontsCommit; UtilityPath = "ofl/grenzegotisch/GrenzeGotisch[wght].ttf"; UtilitySha256 = $grenzeSha256; BuildToolPath = "tools/ui-assets/build-theldrow-modernized.py"; BuildToolSha256 = $modernizedBuilderSha256; StyleRulePath = "tools/ui-assets/theldrow-modernized-rules.json"; StyleRuleSha256 = $modernizedRulesSha256; VerifyToolPath = "tools/ui-assets/verify-theldrow-modernized.py"; VerifyToolSha256 = $modernizedVerifierSha256; License = "Realmz-Art-NonCommercial + CC0-1.0 + OFL-1.1"; Role = "runtime Classic body and narrative font: project-owner-approved Pen contours, strict production-sheet proportions and mixed-case optical weight, exact Castle advances, cap-height figures, and Grenze Gotisch utility glyphs" },
+    @{ Id = "font.classic.theldrow.rebuilt"; Target = "Theldrow-Rebuilt.ttf"; Repository = "Realmz-Rebuilt/Pencil-export"; Commit = $readingMasterSha256; SourcePath = "tools/ui-assets/theldrow-reading-master.json"; SourceSha256 = $readingMasterSha256; MetricRepository = "Realmz-Castle/realmz"; MetricCommit = $castleCommit; MetricPath = "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601"; MetricSha256 = "cda33a0e5f352d7d38d8fdfcc64b71db10a23fcfd9d8c7a699fa1646ffcab553"; BaselineRepository = "Realmz-Rebuilt"; BaselineCommit = $readingBaselineSha256; BaselinePath = "tools/ui-assets/theldrow-reading-baseline.ttf"; BaselineSha256 = $readingBaselineSha256; UtilityRepository = "google/fonts"; UtilityCommit = $googleFontsCommit; UtilityPath = "ofl/grenzegotisch/GrenzeGotisch[wght].ttf"; UtilitySha256 = $grenzeSha256; BuildToolPath = "tools/ui-assets/theldrow_reading.py"; BuildToolSha256 = $readingBuilderSha256; StyleRulePath = "tools/ui-assets/theldrow-reading-master.json"; StyleRuleSha256 = $readingMasterSha256; VerifyToolPath = "tools/ui-assets/theldrow_reading.py"; VerifyToolSha256 = $readingBuilderSha256; License = "Realmz-Art-NonCommercial + CC0-1.0 + OFL-1.1"; Role = "runtime Classic body and narrative font: project-owner-approved Pen contours, proportional spacing, GPOS kerning, coherent body heights, optical capital weight, and refined Grenze Gotisch utility glyphs" },
     @{ Id = "license.black_chancery"; Target = "licenses/BlackChancery-PUBLIC-DOMAIN.txt"; Repository = "Realmz-Castle/realmz"; Commit = $castleCommit; License = "Public-Domain" },
     @{ Id = "license.chicago_flf"; Target = "licenses/ChicagoFLF-PUBLIC-DOMAIN.txt"; Repository = "Realmz-Castle/realmz"; Commit = $castleCommit; License = "Public-Domain" },
     @{ Id = "license.inter"; Target = "licenses/Inter-OFL.txt"; Repository = "Realmz-Castle/realmz"; Commit = $castleCommit; SourcePath = "vendored/Inter/LICENSE.txt"; License = "OFL-1.1" },
@@ -88,6 +94,9 @@ $records = @(
 )
 
 foreach ($localInput in @(
+    @{ Path = $readingMasterPath; Sha256 = $readingMasterSha256; Name = "approved reading master" },
+    @{ Path = $readingBuilderPath; Sha256 = $readingBuilderSha256; Name = "reading font builder/verifier" },
+    @{ Path = $readingBaselinePath; Sha256 = $readingBaselineSha256; Name = "retained reading baseline" },
     @{ Path = $modernizedGlyphPath; Sha256 = $modernizedGlyphSha256; Name = "Pencil glyph geometry" },
     @{ Path = $modernizedBuilderPath; Sha256 = $modernizedBuilderSha256; Name = "modernized Theldrow builder" },
     @{ Path = $modernizedRulesPath; Sha256 = $modernizedRulesSha256; Name = "modernized Theldrow production rules" },
@@ -150,13 +159,18 @@ try {
             --metrics (Join-Path $stagingRoot "Theldrow-Classic.fnt") `
             --baseline (Join-Path $stagingRoot "Theldrow-Classic-Vector.ttf") `
             --utility (Join-Path $stagingRoot "source/GrenzeGotisch-Variable.ttf") `
-            --output (Join-Path $stagingRoot "Theldrow-Rebuilt.ttf")
+            --output (Join-Path $stagingRoot "source/Theldrow-Reading-Baseline.ttf")
         if ($LASTEXITCODE -ne 0) { throw "Failed to build the modernized Theldrow font" }
         & $PythonExecutable $modernizedVerifierPath `
-            --font (Join-Path $stagingRoot "Theldrow-Rebuilt.ttf") `
+            --font (Join-Path $stagingRoot "source/Theldrow-Reading-Baseline.ttf") `
             --metrics (Join-Path $stagingRoot "Theldrow-Classic.fnt") `
             --rules $modernizedRulesPath
         if ($LASTEXITCODE -ne 0) { throw "Modernized Theldrow failed strict production-rule verification" }
+        $rebuiltBaseline = Join-Path $stagingRoot "source/Theldrow-Reading-Baseline.ttf"
+        if ((Get-FileHash -LiteralPath $rebuiltBaseline -Algorithm SHA256).Hash.ToLowerInvariant() -ne $readingBaselineSha256) { throw "Reading baseline reproduction differs" }
+        & $PythonExecutable $readingBuilderPath --master $readingMasterPath --baseline $rebuiltBaseline --output (Join-Path $stagingRoot "Theldrow-Rebuilt.ttf") --production
+        if ($LASTEXITCODE -ne 0) { throw "Failed to build and verify approved Theldrow" }
+
     }
     finally {
         $env:PYTHONPATH = $previousPythonPath
@@ -239,7 +253,7 @@ try {
         $obsoletePath = Join-Path $destinationRoot $obsoleteTarget
         if (Test-Path -LiteralPath $obsoletePath -PathType Leaf) { Remove-Item -LiteralPath $obsoletePath -Force }
     }
-    Write-Host "Bundled readable fonts and source-backed Classic typography assets, including the strict Pen-modernized Theldrow with original Castle advances, from pinned sources."
+    Write-Host "Bundled readable fonts and source-backed Classic typography assets, including the approved Pen-refined Theldrow with proportional spacing and kerning, from pinned sources."
 }
 finally {
     if (Test-Path -LiteralPath $stagingRoot) { Remove-Item -LiteralPath $stagingRoot -Recurse -Force }

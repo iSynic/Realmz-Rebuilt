@@ -174,7 +174,7 @@
     "source_document": "Rebuilt UI Revision and Reimagining.pen",
     "source_node": "H5Sx8a",
     "derivation": "Unchanged approved weathered-gold title composition, transparent PNG export at 2x. Exact Theldrow glyph paths; no redrawn lettering.",
-    "font_path": "res://src/ui/shared/assets/fonts/Theldrow-Rebuilt.ttf",
+    "font_path": "res://tools/ui-assets/theldrow-reading-baseline.ttf",
     "font_sha256": "79c7b7d54ad746db41b103ffc9f1bc3fabacb2cf2b594af080c0ac2c2fc7705d",
     "material_source_name": "generated-6.png",
     "material_source_sha256": "7e4229bb995fc5c56803f76959a26f99f465ee6e4f08a5ca2593f3ca448d865e"

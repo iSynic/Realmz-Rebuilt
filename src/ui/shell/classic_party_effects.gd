@@ -29,6 +29,8 @@ static func build_slots(grid: GridContainer, _slot_scene: PackedScene) -> Array[
 		icon.custom_minimum_size = Vector2.ONE * icon_size(1)
 		icon.tooltip_text = NAMES[condition_index - 1]
 		frame.tooltip_text = icon.tooltip_text
+		frame.accessibility_name = icon.tooltip_text
+		frame.set_meta("focus_key", "party-effect:%d" % condition_index)
 		slots.append(icon)
 	return slots
 

@@ -1,0 +1,2 @@
+# Preserve exported master bytes pinned by the provenance manifest.
+source/** -text whitespace=trailing-space,space-before-tab,cr-at-eol

@@ -1,6 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/font_picker_dialog.gd" id="1"]
+
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="2_menu"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_source_tabs"]
 
 [node name="FontPickerDialog" type="Control"]
 unique_name_in_owner = true
@@ -14,6 +18,7 @@ grow_vertical = 2
 mouse_filter = 0
 z_index = 120
 script = ExtResource("1")
+theme = ExtResource("2_menu")
 
 [node name="ModalVeil" type="ColorRect" parent="."]
 layout_mode = 1
@@ -32,6 +37,7 @@ offset_left = 80.0
 offset_top = 50.0
 offset_right = 1200.0
 offset_bottom = 670.0
+theme_type_variation = &"MenuDialog"
 
 [node name="Content" type="VBoxContainer" parent="FontPickerWindow"]
 layout_mode = 2
@@ -44,103 +50,177 @@ theme_type_variation = &"ClassicHeading"
 theme_override_font_sizes/font_size = 22
 text = "Choose Interface font"
 
-[node name="FontSearch" type="LineEdit" parent="FontPickerWindow/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_type_variation = &"SlateLineEdit"
-placeholder_text = "Search fonts…"
-max_length = 256
-
 [node name="Body" type="HBoxContainer" parent="FontPickerWindow/Content"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 20
 
-[node name="FontChoices" type="ItemList" parent="FontPickerWindow/Content/Body"]
+[node name="ListPage" type="VBoxContainer" parent="FontPickerWindow/Content/Body"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(270, 0)
+custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
 size_flags_vertical = 3
-theme_type_variation = &"SlateList"
+theme_override_constants/separation = 8
+
+[node name="SourceTabs" type="HBoxContainer" parent="FontPickerWindow/Content/Body/ListPage"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="BundledTab" type="Button" parent="FontPickerWindow/Content/Body/ListPage/SourceTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_source_tabs")
+theme_type_variation = &"MenuAction"
+text = "Bundled"
+
+[node name="SystemTab" type="Button" parent="FontPickerWindow/Content/Body/ListPage/SourceTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_source_tabs")
+theme_type_variation = &"MenuAction"
+text = "System"
+
+[node name="ImportedTab" type="Button" parent="FontPickerWindow/Content/Body/ListPage/SourceTabs"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_source_tabs")
+theme_type_variation = &"MenuAction"
+text = "Imported"
+
+[node name="FontSearch" type="LineEdit" parent="FontPickerWindow/Content/Body/ListPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+placeholder_text = "Search fonts…"
+max_length = 256
+
+[node name="FontChoices" type="ItemList" parent="FontPickerWindow/Content/Body/ListPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
 allow_reselect = true
 
-[node name="PreviewPanel" type="PanelContainer" parent="FontPickerWindow/Content/Body"]
+[node name="PreviewSelected" type="Button" parent="FontPickerWindow/Content/Body/ListPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Preview selected font  ›"
+
+[node name="ImportFont" type="Button" parent="FontPickerWindow/Content/Body/ListPage"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Import font…"
+
+[node name="FontImportStatus" type="Label" parent="FontPickerWindow/Content/Body/ListPage"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+autowrap_mode = 2
+
+[node name="PreviewPage" type="VBoxContainer" parent="FontPickerWindow/Content/Body"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PreviewPanel" type="PanelContainer" parent="FontPickerWindow/Content/Body/PreviewPage"]
+layout_mode = 2
+size_flags_vertical = 3
 theme_type_variation = &"ClassicInset"
 
-[node name="PreviewScroll" type="ScrollContainer" parent="FontPickerWindow/Content/Body/PreviewPanel"]
+[node name="PreviewScroll" type="ScrollContainer" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel"]
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="Preview" type="VBoxContainer" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll"]
+[node name="Preview" type="VBoxContainer" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel/PreviewScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
-[node name="FontFamily" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+[node name="FontFamily" type="Label" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel/PreviewScroll/Preview"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
 text = "Classic fonts"
 autowrap_mode = 2
 
-[node name="FontIdentitySample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+[node name="PreviewScale" type="Label" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel/PreviewScroll/Preview"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+text = "Narrative preview · 100%"
+
+[node name="FontIdentitySample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel/PreviewScroll/Preview"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Alexandria the Wayfarer\nHuman / Enchanter"
 autowrap_mode = 2
 
-[node name="FontNumberSample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+[node name="FontNumberSample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel/PreviewScroll/Preview"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "HP 12345 / 12345\nSP 9876 / 9876\nArmor −12"
 autowrap_mode = 2
 
-[node name="FontNarrativeSample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+[node name="FontNarrativeSample" type="Label" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel/PreviewScroll/Preview"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
-text = "Beyond the old gate, the road winds toward Bywater."
+text = "The road winds toward the harbour. Beyond the old watchtower, a weathered sign points north to Araman’s Keep.\n\n“Wait here,” whispered Lyra. “If the gate is locked, we will return before nightfall.”"
 autowrap_mode = 2
 
-[node name="FontUnavailable" type="Label" parent="FontPickerWindow/Content/Body/PreviewPanel/PreviewScroll/Preview"]
+[node name="FontUnavailable" type="Label" parent="FontPickerWindow/Content/Body/PreviewPage/PreviewPanel/PreviewScroll/Preview"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.94, 0.76, 0.45, 1)
 autowrap_mode = 2
 
-[node name="FontImportStatus" type="Label" parent="FontPickerWindow/Content"]
+[node name="BackToFonts" type="Button" parent="FontPickerWindow/Content/Body/PreviewPage"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-autowrap_mode = 2
+theme_type_variation = &"MenuAction"
+text = "‹  Back to fonts"
 
 [node name="Actions" type="HBoxContainer" parent="FontPickerWindow/Content"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="ImportFont" type="Button" parent="FontPickerWindow/Content/Actions"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 36)
+[node name="FooterGuidance" type="Label" parent="FontPickerWindow/Content/Actions"]
+custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Import TTF/OTF…"
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+text = "Adds this choice to Settings. Apply there to keep it."
+autowrap_mode = 2
+vertical_alignment = 1
 
 [node name="FontCancel" type="Button" parent="FontPickerWindow/Content/Actions"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 36)
+custom_minimum_size = Vector2(140, 48)
 layout_mode = 2
-size_flags_horizontal = 3
+theme_type_variation = &"MenuAction"
 text = "Cancel"
 
-[node name="FontApply" type="Button" parent="FontPickerWindow/Content/Actions"]
+[node name="FontUse" type="Button" parent="FontPickerWindow/Content/Actions"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 36)
+custom_minimum_size = Vector2(200, 48)
 layout_mode = 2
-size_flags_horizontal = 3
-text = "Apply"
+theme_type_variation = &"MenuAction"
+text = "Use font"
 
 [node name="FontFiles" type="FileDialog" parent="."]
 unique_name_in_owner = true

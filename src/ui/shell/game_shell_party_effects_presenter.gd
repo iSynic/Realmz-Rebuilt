@@ -37,6 +37,9 @@ func present(game_view: GameView) -> void:
 	_panel.visible = game_view != null and game_view.session_started
 	for slot_index: int in _slots.size():
 		var active := _condition_values.size() > slot_index + 1 and _condition_values[slot_index + 1] != 0
+		var slot := _slots[slot_index].get_parent().get_parent() as Control
+		slot.tooltip_text = "%s — %s" % [ClassicPartyEffects.NAMES[slot_index], "Active" if active else "Inactive"]
+		slot.accessibility_name = slot.tooltip_text
 		UiSizing.artwork(_slots[slot_index], ClassicPartyEffects.texture(_media, _texture_cache, slot_index + 1, _frame_index) if active else null)
 		_slots[slot_index].modulate = Color.WHITE if active else Color(0.35, 0.35, 0.35, 0.35)
 

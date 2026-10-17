@@ -3,7 +3,7 @@ class_name GameShellCommandController
 extends RefCounted
 
 const HELD_COMMAND_INTERVAL := 1.0 / 60.0
-const HELD_COMMAND_START_SOUND_IDS: Dictionary = {&"area_search": 6001, &"rest": 6001}
+const HELD_COMMAND_START_SOUND_IDS: Dictionary = {&"area_search": 6001, &"rest": 6001, &"heal": 10105}
 const CONTEXTUAL_CONTROL_SOUND_ID := 141
 
 var _owner_ref: WeakRef
@@ -53,6 +53,7 @@ func rebuild() -> void:
 	for button: BaseButton in _buttons.values():
 		button.hide()
 	var context: StringName = owner._navigator.current_screen()
+	if owner.hud.active: context = &"exploration"
 	var world_command_count := 0
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = presentation_definition(definition)
@@ -67,18 +68,22 @@ func rebuild() -> void:
 			else:
 				bitmap.set_art_scale(owner._profile.bitmap_scale)
 		if button.has_method("set_command_title_visible"):
-			var show_command_title: bool = context != &"exploration" or owner._presentation_settings.show_overworld_command_titles
-			button.call("set_command_title_visible", show_command_title, owner._presentation_settings.integer_fit_hidden_commands)
+			var show_command_title: bool = not owner.hud.active and (context != &"exploration" or owner._presentation_settings.show_overworld_command_titles)
+			button.call("set_command_title_visible", show_command_title, not owner.hud.active and owner._presentation_settings.integer_fit_hidden_commands)
+		if not owner.hud.active and button.has_method("set_modular_icon_layout"):
+			button.call("set_modular_icon_layout", 0, 0)
 		var group := StringName(definition.get("group", &"party"))
 		var target_grid: Control = owner._command_grid
-		if command_id == &"torch" and owner._torch_dock.visible:
-			target_grid = owner._torch_dock
+		if command_id == &"torch":
+			target_grid = owner._command_grid if owner.hud.active else owner._torch_dock
 		elif group == &"world" and owner._world_command_panel.visible:
-			target_grid = owner._world_command_grid if world_command_count < 4 else owner._world_command_lower_grid
+			target_grid = owner._world_command_grid if owner.hud.active or world_command_count < 4 else owner._world_command_lower_grid
 			world_command_count += 1
 		if button.get_parent() != target_grid:
 			button.reparent(target_grid, false)
 		target_grid.move_child(button, target_grid.get_child_count() - 1)
+	if owner.hud.active:
+		owner._command_grid.move_child(_buttons[&"torch"], owner._command_grid.get_child_count() - 1)
 	update_availability()
 
 
@@ -108,7 +113,8 @@ func update_availability() -> void:
 			if button is ClassicBitmapButton:
 				(button as ClassicBitmapButton).set_visual_pressed(_is_visually_pressed(command_id))
 		button.set_meta("command_unavailable_reason", reason)
-		button.tooltip_text = String(definition["label"])
+		if not bool(button.get_meta("torch_meter", false)) and not bool(button.get_meta("search_animation", false)):
+			button.tooltip_text = String(definition["label"]) + ("\n" + reason if not reason.is_empty() else "")
 		button.queue_redraw()
 
 
@@ -199,6 +205,8 @@ static func command_route(command_id: StringName) -> StringName:
 func activate(command_id: StringName, held_repeat: bool = false) -> void:
 	var owner = _owner()
 	var start_sound_id := command_activation_sound_id(command_id, held_repeat)
+	if command_id == &"heal" and (owner._current_view == null or owner._current_view.character_spellcasting_blocked or not owner._current_view.availability(&"heal").enabled):
+		start_sound_id = 0
 	if start_sound_id > 0:
 		owner.presentation_sound_requested.emit(start_sound_id, false, false, false)
 	match command_id:

@@ -125,7 +125,7 @@ static func _bind_journal_screen(screen: JournalScreen, view: GameView, compact:
 static func _bind_system_screen(screen: SystemScreen, view: GameView, profile: String, compact: bool) -> void:
 	var controller := SystemScreenController.new()
 	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
-	controller.set_save_previews(_save_previews(profile))
+	controller.saves.set_save_previews(_save_previews(profile))
 	controller.present(screen, view, PresentationSettings.new())
 	screen.set_meta("realmz_builder_controller", controller)
 

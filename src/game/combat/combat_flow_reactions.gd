@@ -201,13 +201,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	combat.pending_reaction.set_phase(CombatReactionState.GUARD_BEFORE, guarding_actor_ids(state, origin_hostiles))
 	var events: Array[DomainEvent] = []
 	var reaction_result := continue_pending_reaction(state, content, rng, events)
-	if reaction_result == REACTION_MOVER_DEFEATED:
-		if combat.turns.active_actor_id() == actor.id:
-			_context.rounds().advance_turn(state, content, rng, events)
-		if _context.rounds().finish_if_resolved(state, content, events):
-			return CombatFlowResult.succeeded(events, true)
-		return _context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _finish_character_movement(state, content, actor.id, reaction_result, rng, events)
 
 
 func _resolve_friendly_collision(state: GameState, content: RealmzContent, action: StringName, rng: RealmzRng) -> CombatFlowResult:
@@ -232,13 +226,23 @@ func _resolve_friendly_collision(state: GameState, content: RealmzContent, actio
 	var events: Array[DomainEvent] = []
 	var mover_id := reaction.mover_id
 	var reaction_result := continue_pending_reaction(state, content, rng, events)
+	return _finish_character_movement(state, content, mover_id, reaction_result, rng, events)
+
+
+func _finish_character_movement(state: GameState, content: RealmzContent, mover_id: String, reaction_result: int, rng: RealmzRng, events: Array[DomainEvent]) -> CombatFlowResult:
+	var combat := state.combat
+	if reaction_result in [REACTION_WAITING, REACTION_DEATH_MACRO]:
+		return CombatFlowResult.succeeded(events, combat.completed)
 	if reaction_result == REACTION_MOVER_DEFEATED and combat.turns.active_actor_id() == mover_id:
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
-	if reaction_result == REACTION_MOVER_DEFEATED:
+	var mover := state.party.character_by_id(mover_id)
+	# Rebuilt handoff correction: Guard charm cannot return a loyal-player turn.
+	var charmed_active_mover := mover != null and mover.traitor and combat.turns.active_actor_id() == mover_id
+	if reaction_result == REACTION_MOVER_DEFEATED or charmed_active_mover:
 		return _context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return CombatFlowResult.succeeded(events, combat.completed)
 
 
 func friendly_collision_target_id(state: GameState, actor_id: String, destination: Vector2i) -> String:
@@ -317,6 +321,10 @@ func continue_pending_reaction(state: GameState, content: RealmzContent, rng: Re
 func _continue_guard_before(state: GameState, content: RealmzContent, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	if reaction.kind != CombatReactionState.CHARACTER_MOVE:
 		return commit_reaction_move(state, content, reaction, rng, events)
+	var actor := state.party.character_by_id(reaction.mover_id)
+	if not reaction.friendly_collision_target_id.is_empty() and (not CombatAiTargetFacts.character_is_friendly(state, actor, reaction.friendly_collision_target_id) or state.combat.battlefield.actors.actor_at(reaction.destination, reaction.mover_id) != reaction.friendly_collision_target_id):
+		state.combat.pending_reaction = null
+		return REACTION_COMPLETED
 	if reaction.awaits_friendly_collision_choice():
 		return REACTION_WAITING
 	if reaction.friendly_collision_action == &"attack":
@@ -328,7 +336,6 @@ func _continue_guard_before(state: GameState, content: RealmzContent, reaction: 
 		return _submit_hostile_contact_attack(state, content, reaction, contact_target_id, rng, events)
 	reaction.auto_switch_to_melee = false
 	var terrain_set: BattleTerrainSetDefinition = _context.automation().monster_actions().battle_terrain_set(content, state.combat.battlefield)
-	var actor := state.party.character_by_id(reaction.mover_id)
 	var probe := _context.battlefield.probe_step(state.combat.battlefield, terrain_set, reaction.mover_id, reaction.destination - reaction.origin, actor.movement)
 	if not probe.allowed and probe.reason != &"insufficient_movement":
 		return commit_reaction_move(state, content, reaction, rng, events)

@@ -536,17 +536,7 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 					break
 				reward_session = resumed_reward
 				var request: InteractionRequest = reward_session.view().pending_interaction
-				var payload: Dictionary
-				if request.kind == InteractionRequest.LEVEL_UP and request.body.to_data().get("mode") == "result":
-					payload = {"action": "continue", "characterId": request.body.to_data()["characterId"]}
-				elif request.kind == InteractionRequest.LEVEL_UP:
-					payload = {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": []}
-				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("mode") == "completion-confirmation":
-					payload = {"action": "confirm-completion"}
-				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and not request.body.to_data().get("items", []).is_empty():
-					payload = {"action": "discard", "instanceId": request.body.to_data()["items"][0]["instanceId"]}
-				else:
-					payload = {"action": "done"}
+				var payload := _fixture_interaction_payload(request, false)
 				terminal = reward_session.respond(InteractionResponse.from_data(request.request_id, request.kind, payload))
 				reward_completed = reward_completed or terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"reward_completed")
 				boundary_count += 1
@@ -585,14 +575,9 @@ func _complete_public_defeat(session: GameSession, content: RealmzContent, chara
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
-	var races := content.characters.race_definitions()
-	var castes := content.characters.caste_definitions()
-	assert_false(races.is_empty() or castes.is_empty(), "playable fixture provides one race and class for setup")
-	if races.is_empty() or castes.is_empty():
+	if not _fixture_race_caste_available(content, "playable fixture provides one race and class for setup"):
 		return
-	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
-	character.race_id = races[0].id
-	character.caste_id = castes[0].id
+	var character := _fixture_character("fixture.party.member", "Fixture Hero", content, 10, -1)
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
 	var begin_step := session.submit_intent(PartyIntents.begin_adventure())
 	assert_equal([begin_step.state, begin_step.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Start Game application hook runs."], "fixture party commits before the Start Game hook")
@@ -620,11 +605,4 @@ func _spellcaster_creation_spec(content: RealmzContent) -> CharacterCreationSpec
 			if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
 				continue
 			return CharacterCreationSpec.new("Mira", race.id, caste.id, 2)
-	return null
-
-
-func _aging_race(content: RealmzContent) -> RaceDefinition:
-	for race: RaceDefinition in content.characters.race_definitions():
-		if race.max_age > 0 and race.age_range(1).x == race.age_range(0).y + 1:
-			return race
 	return null

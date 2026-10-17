@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 26
+const SCHEMA_VERSION: int = 27
 const INDOOR_PARTY_ICON_COUNT: int = 120
 const DEFAULT_INDOOR_PARTY_ICON: int = 72
 const MUSIC_SLOT_COUNT: int = 20
@@ -70,6 +70,8 @@ var classic_keyboard_shortcuts: bool = false
 var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var combat_playback_speed_percent: int = 100
+var combat_text_speed_percent: int = 100
+var combat_text_background_opacity_percent: int = 50
 var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
@@ -84,6 +86,52 @@ var show_overworld_command_titles: bool = true
 var integer_fit_hidden_commands: bool = false
 var last_campaign_id: String = ""
 var controller := ControllerPreferences.new()
+var hud := HudPreferences.new()
+
+
+func copy_from(other: PresentationSettings) -> void:
+	master_volume = other.master_volume
+	sound_volume = other.sound_volume
+	music_volume = other.music_volume
+	music_enabled = other.music_enabled
+	music_transition = other.music_transition
+	music_playlist_modes = other.music_playlist_modes.duplicate()
+	topology_debug = other.topology_debug
+	interface_text_scale = other.interface_text_scale
+	narrative_text_scale = other.narrative_text_scale
+	reduced_motion = other.reduced_motion
+	reduced_sound = other.reduced_sound
+	auto_switch_to_melee = other.auto_switch_to_melee
+	dungeon_3d = other.dungeon_3d
+	ui_scale_mode = other.ui_scale_mode
+	display_scaling_mode = other.display_scaling_mode
+	world_zoom = other.world_zoom
+	pixel_art_smoothing = other.pixel_art_smoothing
+	crt_enabled = other.crt_enabled
+	crt_shader = other.crt_shader
+	crt_area = other.crt_area
+	immediate_single_target_actions = other.immediate_single_target_actions
+	click_to_move_enabled = other.click_to_move_enabled
+	classic_keyboard_shortcuts = other.classic_keyboard_shortcuts
+	window_mode = other.window_mode
+	exploration_speed_percent = other.exploration_speed_percent
+	combat_playback_speed_percent = other.combat_playback_speed_percent
+	combat_text_speed_percent = other.combat_text_speed_percent
+	combat_text_background_opacity_percent = other.combat_text_background_opacity_percent
+	hurry_spell_resolution = other.hurry_spell_resolution
+	show_exploration_minimap = other.show_exploration_minimap
+	classic_exploration_visibility = other.classic_exploration_visibility
+	custom_fog_tile_enabled = other.custom_fog_tile_enabled
+	indoor_party_icon = other.indoor_party_icon
+	autojournal_enabled = other.autojournal_enabled
+	interface_font = other.interface_font
+	narrative_font = other.narrative_font
+	menu_visibility = other.menu_visibility
+	show_overworld_command_titles = other.show_overworld_command_titles
+	integer_fit_hidden_commands = other.integer_fit_hidden_commands
+	last_campaign_id = other.last_campaign_id
+	controller = other.controller.duplicate_value()
+	hud = other.hud.duplicate_value()
 
 
 func to_data() -> Dictionary:
@@ -116,6 +164,8 @@ func to_data() -> Dictionary:
 		"windowMode": window_mode,
 		"explorationSpeedPercent": exploration_speed_percent,
 		"combatPlaybackSpeedPercent": combat_playback_speed_percent,
+		"combatTextSpeedPercent": combat_text_speed_percent,
+		"combatTextBackgroundOpacityPercent": combat_text_background_opacity_percent,
 		"hurrySpellResolution": hurry_spell_resolution,
 		"showExplorationMinimap": show_exploration_minimap,
 		"classicExplorationVisibility": classic_exploration_visibility,
@@ -129,6 +179,7 @@ func to_data() -> Dictionary:
 		"integerFitHiddenCommands": integer_fit_hidden_commands,
 		"lastCampaignId": last_campaign_id,
 		"controller": controller.to_data(),
+		"hud": hud.to_data(),
 	}
 
 
@@ -185,6 +236,10 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 11 and not _stepped_number_is_valid(data.get("combatPlaybackSpeedPercent"), 25, 200):
 		return false
+	if data.has("combatTextSpeedPercent") and not _stepped_number_is_valid(data["combatTextSpeedPercent"], 25, 200):
+		return false
+	if data.has("combatTextBackgroundOpacityPercent") and not _stepped_number_is_valid(data["combatTextBackgroundOpacityPercent"], 0, 100):
+		return false
 	if schema_version >= 12 and not data.get("lastCampaignId") is String:
 		return false
 	if schema_version >= 13 and not data.get("customFogTileEnabled") is bool:
@@ -208,6 +263,8 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 	if schema_version >= 23 and (not font_choice_is_valid(data.get("interfaceFont")) or not font_choice_is_valid(data.get("narrativeFont")) or data.get("menuVisibility") not in MENU_MODES):
 		return false
 	if schema_version >= 24 and (not data.get("showOverworldCommandTitles") is bool or not data.get("integerFitHiddenCommands") is bool):
+		return false
+	if schema_version >= 27 and HudPreferences.from_data(data.get("hud")) == null:
 		return false
 	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
 
@@ -307,9 +364,7 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.click_to_move_enabled = bool(data.get("clickToMoveEnabled", false))
 	settings.classic_keyboard_shortcuts = bool(data.get("classicKeyboardShortcuts", false))
 	settings.window_mode = String(data.get("windowMode", WINDOWED))
-	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
-	settings.combat_playback_speed_percent = int(data.get("combatPlaybackSpeedPercent", 100))
-	settings.hurry_spell_resolution = bool(data.get("hurrySpellResolution", false))
+	_read_pacing(settings, data)
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
 	settings.custom_fog_tile_enabled = bool(data.get("customFogTileEnabled", false))
@@ -329,10 +384,20 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 		settings.show_overworld_command_titles = data["showOverworldCommandTitles"]
 		settings.integer_fit_hidden_commands = data["integerFitHiddenCommands"]
 	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
+	if int(data["schemaVersion"]) >= 27:
+		settings.hud = HudPreferences.from_data(data["hud"])
 	settings.controller = ControllerPreferences.from_data(data["controller"]) if data.has("controller") else ControllerPreferences.new()
 	if int(data.get("schemaVersion", 1)) == 14:
 		settings.controller.add_top_menu_default_if_available()
 	return settings
+
+
+static func _read_pacing(settings: PresentationSettings, data: Dictionary) -> void:
+	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
+	settings.combat_playback_speed_percent = int(data.get("combatPlaybackSpeedPercent", 100))
+	settings.combat_text_speed_percent = int(data.get("combatTextSpeedPercent", 100))
+	settings.combat_text_background_opacity_percent = int(data.get("combatTextBackgroundOpacityPercent", 50))
+	settings.hurry_spell_resolution = bool(data.get("hurrySpellResolution", false))
 
 
 func music_mode(playlist_id: int) -> int:

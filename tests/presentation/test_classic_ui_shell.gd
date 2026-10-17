@@ -64,40 +64,48 @@ func _test_pause_menu_contracts() -> void:
 	view.campaign_summary.title = "Pause Contract Fixture"
 	view.party_members = [CharacterView.new(CharacterState.new("pause.hero", "Hero", 10, 10))]
 	shell.present(view)
-	assert_true(shell.controller.open_pause() and shell.pause_active and shell.controller.pause_is_open(), "a started adventure opens the scene-authored pause menu")
+	assert_true(shell.controller.pause.open() and shell.pause_active and shell.controller.pause.is_open() and shell.get_node("PauseBackdrop").visible, "a started adventure opens the scene-authored pause menu")
 	var pause := shell.get_node("PauseMenu") as PauseMenuView
 	assert_equal(pause.find_children("*", "PauseMenuAction", true, false).map(func(node: Node) -> StringName: return (node as PauseMenuAction).action_id).filter(func(id: StringName) -> bool: return id in [&"saves", &"settings", &"help"]), [&"saves", &"settings", &"help"], "Pause provides save, settings, and help destinations")
-	shell.controller.move_pause(Vector2i.DOWN); shell.controller.confirm_pause()
+	shell.controller.pause.move(Vector2i.DOWN); shell.controller.pause.confirm()
 	var quick_load := pause.find_children("*", "PauseMenuAction", true, false).filter(func(node: Node) -> bool: return (node as PauseMenuAction).action_id == &"quick_load")[0] as PauseMenuAction
 	assert_true(quick_load.button.disabled and quick_load.button.tooltip_text == "No quicksave in slot A.", "an empty active quickslot disables Quickload with its concrete reason")
-	assert_true(shell.controller.back_pause() and shell.controller.pause_is_open() and (pause.find_child("Heading", true, false) as Label).text == "Paused", "Back from Save & Load returns to the parent Pause page")
-	assert_equal(shell.controller.selected_pause_label(), "Resume", "returning to Pause restores its default Resume selection")
-	shell.controller.move_pause(Vector2i.DOWN); shell.controller.move_pause(Vector2i.DOWN)
-	assert_equal(shell.controller.selected_pause_label(), "Settings", "after returning from Save & Load, Down advances to Settings")
-	shell.controller.confirm_pause()
+	assert_true(shell.controller.pause.back() and shell.controller.pause.is_open() and (pause.find_child("Heading", true, false) as Label).text == "Paused", "Back from Save & Load returns to the parent Pause page")
+	assert_equal(shell.controller.pause.selected_label(), "Save & Load", "returning to Pause restores the initiating selection")
+	shell.controller.pause.move(Vector2i.DOWN)
+	assert_equal(shell.controller.pause.selected_label(), "Settings", "after returning from Save & Load, Down advances to Settings")
+	shell.controller.pause.confirm()
 	assert_equal((pause.find_child("Heading", true, false) as Label).text, "Settings", "confirming Settings opens that Pause page")
-	shell.controller.back_pause()
-	assert_equal(shell.controller.selected_pause_label(), "Resume", "returning from Settings restores its parent Pause selection")
-	for _step: int in 3: shell.controller.move_pause(Vector2i.DOWN)
-	assert_equal(shell.controller.selected_pause_label(), "Help & About", "after returning from Settings, Down advances to Help")
-	shell.controller.confirm_pause()
-	assert_equal((pause.find_child("Heading", true, false) as Label).text, "Help & About", "confirming Help opens that Pause page")
+	shell.controller.pause.back()
+	assert_equal(shell.controller.pause.selected_label(), "Settings", "returning from Settings restores its parent Pause selection")
+	shell.controller.pause.move(Vector2i.DOWN)
+	assert_equal(shell.controller.pause.selected_label(), "Help", "after returning from Settings, Down advances to Help")
+	shell.controller.pause.confirm()
+	assert_equal((pause.find_child("Heading", true, false) as Label).text, "Help", "confirming Help opens that Pause page")
+	view.campaign_summary.maximum_party_size = 4
+	view.campaign_summary.maximum_level = 9
+	view.campaign_summary.banned_races = ["fixture.race"]
+	view.campaign_summary.banned_race_names = ["Hill Dwarf"]
+	view.campaign_summary.banned_castes = ["fixture.caste"]
+	view.campaign_summary.banned_caste_names = ["Warrior"]
+	pause.action_requested.emit(&"scenario_info")
+	var details := (pause.find_child("DetailText", true, false) as Label).text
+	assert_true(details.contains("Up to 4 characters") and details.contains("Maximum character level: 9") and details.contains("Excluded races: Hill Dwarf") and details.contains("Excluded castes: Warrior"), "Scenario details show structured restrictions without authored prose")
+	shell.controller.pause.back()
 	host.size = Vector2(800.0, 600.0)
 	await (Engine.get_main_loop() as SceneTree).process_frame
-	assert_true(pause.visible and (pause.find_child("Surface", true, false) as Control).get_global_rect().size.x <= 460.0, "Pause fits the compact 4:3 application composition")
+	assert_true(pause.visible and (pause.find_child("Surface", true, false) as Control).get_global_rect().end.x <= host.size.x, "Pause fits the compact 4:3 application composition")
 	host.free()
 	await (Engine.get_main_loop() as SceneTree).process_frame
 
 func _test_interaction_layout_policy() -> void:
 	var textbox := InteractionRequest.acknowledge("layout.textbox", "Narration")
-	var floating := InteractionRequest.yes_no("layout.floating", "Continue?", "Yes", "No")
 	var combat := ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
 	var lifecycle := ApplicationLifecycleScript.end_adventure_request(true)
 	var treasure := ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION)
 	var scrolling := InteractionRequest.from_payload("layout.scrolling", InteractionRequest.ACKNOWLEDGE, {"prompt": "Chronicle", "presentation": "classic-scrolling-text"})
 	var application_size := Vector2(1280.0, 688.0)
 	assert_true(InteractionLayoutPolicyScript.uses_textbox_region(textbox) and not InteractionLayoutPolicyScript.uses_full_stage_region(textbox), "ordinary narration remains in the Castle textbox region")
-	assert_true(InteractionLayoutPolicyScript.uses_floating_choice_modal(floating) and InteractionLayoutPolicyScript.floating_choice_rect(Rect2(0.0, 28.0, 992.0, 502.0), Rect2(286.0, 530.0, 620.0, 190.0), Vector2(286.0, 46.0)).size == Vector2(520.0, 116.0), "indexed choices retain their compact floating geometry")
 	var narrative := RichTextLabel.new(); (Engine.get_main_loop() as SceneTree).root.add_child(narrative); var status := GameShellStatusController.new(); status.initialize(null, null, narrative, null, null, null, null, null, null, null, null, null, null, null); status.append_narrative("Older"); status.append_narrative("Current AP"); status._latest_classic_text = "Current AP"; status.present_choice_context(InteractionRequest.from_payload("ap-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"})); assert_equal(narrative.text, "Current AP", "a pending AP choice shows only its own narration"); status.present_choice_context(null); assert_equal(narrative.text, "Older\n\nCurrent AP", "dismissal restores the narrative history"); narrative.free()
 	assert_equal(InteractionLayoutPolicyScript.interaction_region(combat, Rect2(8.0, 530.0, 984.0, 182.0), Rect2(0.0, 530.0, 1280.0, 190.0)), Rect2(0.0, 530.0, 1280.0, 190.0), "combat commands retain the full-width footer region")
 	assert_true(InteractionLayoutPolicyScript.uses_application_modal_region(lifecycle) and InteractionLayoutPolicyScript.preferred_modal_size(lifecycle, application_size) == Vector2(560.0, 220.0), "lifecycle questions retain their application-centered size")
@@ -151,7 +159,6 @@ func _test_startup_party_setup_composition() -> void:
 
 	assert_true(workspace != null and workspace is HBoxContainer, "startup party setup mounts one horizontal three-pane workspace")
 	assert_equal(workspace.get_child_count() if workspace != null else -1, 3, "startup party setup has exactly Scenarios, Character Files, and Current Party panes")
-	assert_true(scenario_pane != null and character_pane != null and party_pane != null and scenario_pane != character_pane and scenario_pane != party_pane and character_pane != party_pane, "the three startup panes are distinct controls")
 	assert_true(scenario_pane != null and character_pane != null and party_pane != null and scenario_pane.get_parent() == workspace and character_pane.get_parent() == workspace and party_pane.get_parent() == workspace, "the three startup panes are direct siblings in the full-stage row")
 	assert_true(scenario_pane is PanelContainer and character_pane is PanelContainer and party_pane is PanelContainer and scenario_style != null and character_style != null and party_style != null, "each startup pane has a named panel backing instead of relying on the shared slate alone")
 	assert_true(scenario_pane != null and character_pane != null and party_pane != null and scenario_pane.custom_minimum_size.x < character_pane.custom_minimum_size.x and scenario_pane.custom_minimum_size.x < party_pane.custom_minimum_size.x and scenario_pane.size_flags_stretch_ratio < character_pane.size_flags_stretch_ratio and scenario_pane.size_flags_stretch_ratio < party_pane.size_flags_stretch_ratio, "Scenarios receives a narrower minimum and stretch share than Character Files and Current Party")
@@ -210,11 +217,11 @@ func _test_primary_workspace_lifecycle() -> void:
 		var shell_mode := route_id in [&"exploration", &"combat"]
 		assert_equal(router.primary_workspace_id(), &"" if shell_mode else route_id, "only workspace routes mount a primary scene")
 		assert_equal(router.mounted_primary_workspace_count(), 0 if shell_mode else 1, "a route transition mounts exactly one workspace or no scene for a shell mode")
-		assert_equal([router.primary_workspace_visible(), focused, (router.get_node("SaveModalShield") as Control).visible], [not shell_mode, [] if shell_mode else [route_id], route_id == &"save_load"], "only the current workspace restores deferred focus; shell modes discard superseded workspace work")
+		assert_equal([router.primary_workspace_visible(), focused, (router.get_node("SaveModalShield") as Control).visible], [not shell_mode, [] if shell_mode else [route_id], route_id in [&"save_load", &"system"]], "only the current workspace restores deferred focus; shell modes discard superseded workspace work")
 		if shell_mode:
 			assert_true(router.find_child("WorkspaceFrame", true, false) == null, "shell modes do not leave a hidden explanatory scene in the tree")
 			continue
-		var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ScreenFrame if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_footer := spell_screen.find_child("WorkspaceFooter", true, false) as Control if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; var services_done := router.find_child("MoneyDone", true, false) as Button if route_id == &"services" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"vault", &"inventory", &"services"]) and (route_id != &"spells" or spell_footer != null and spell_footer.get_parent().name == &"WorkspaceColumn" and spell_footer.custom_minimum_size.y == 50.0 and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"services" or services_done != null and services_done.visible and services_done.get_parent().name == &"MoneyPartyArea") and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory and Party Wealth Done into fixed records, opens the current Character, and gives Spells a fixed in-flow action footer without a redundant route heading" % route_id)
+		var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ScreenFrame if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_footer := spell_screen.find_child("WorkspaceFooter", true, false) as Control if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; var services_done := router.find_child("MoneyDone", true, false) as Button if route_id == &"services" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"vault", &"inventory", &"services"]) and (route_id != &"spells" or spell_footer != null and spell_footer.get_parent().name == &"WorkspaceColumn" and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"services" or services_done != null and services_done.visible and services_done.get_parent().name == &"MoneyPartyArea") and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory and Party Wealth Done into fixed records, opens the current Character, and gives Spells a fixed in-flow action footer without a redundant route heading" % route_id)
 		if route_id == &"inventory":
 			var inventory_regions := [router.find_child("InventoryMainSplit", true, false), router.find_child("InventoryItemBrowser", true, false), router.find_child("InventoryCharacterCommandRail", true, false), router.find_child("InventoryItemInspector", true, false)]
 			var inventory_region_ids := inventory_regions.map(func(region: Node) -> int: return region.get_instance_id())

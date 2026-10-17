@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/preferences_search.gd" id="1_search"]
+
+[node name="PreferencesSearch" type="VBoxContainer"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+script = ExtResource("1_search")
+
+[node name="SearchRow" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(320, 0)
+size_flags_horizontal = 8
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SearchField" type="LineEdit" parent="SearchRow"]
+custom_minimum_size = Vector2(180, 34)
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Search preferences"
+max_length = 120
+clear_button_enabled = false
+select_all_on_focus = false
+
+[node name="ClearButton" type="Button" parent="SearchRow"]
+visible = false
+custom_minimum_size = Vector2(58, 34)
+layout_mode = 2
+text = "Clear"
+theme_type_variation = &"MenuAction"
+
+[node name="Results" type="ItemList" parent="."]
+visible = false
+custom_minimum_size = Vector2(0, 112)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+select_mode = 0
+allow_rmb_select = false

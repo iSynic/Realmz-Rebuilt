@@ -18,6 +18,7 @@ var _order: Array[int] = []
 var _rng := RandomNumberGenerator.new()
 var _pending_path := ""
 var _transition: Tween
+var background_only := false
 var _active := false
 var _remaining_hold := 0.0
 var _profile: UiLayoutProfile
@@ -59,6 +60,16 @@ func background_count() -> int:
 
 func current_background_path() -> String:
 	return _background.texture.resource_path if _background.texture != null else ""
+
+
+func set_background_only(covered: bool) -> void:
+	background_only = covered
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if covered else Control.MOUSE_FILTER_STOP
+	_title.visible = not covered
+	_commands.visible = not covered
+	_hint.visible = not covered
+	z_index = -1 if covered else 30
+	set_menu_active(not covered and is_visible_in_tree())
 
 
 func set_menu_active(active: bool) -> void:

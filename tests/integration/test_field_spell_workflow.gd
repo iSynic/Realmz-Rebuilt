@@ -21,8 +21,8 @@ func run() -> void:
 	var content := _field_content(loaded.content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 91).state, SessionStep.State.COMPLETED, "field-spell session starts")
-	var caster := _character("field.caster", "Aster", content)
-	var target := _character("field.target", "Bryn", content)
+	var caster := _fixture_character("field.caster", "Aster", content, 20)
+	var target := _fixture_character("field.target", "Bryn", content, 20)
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(caster.id, "1".repeat(64), caster, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "caster enters party setup")
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(target.id, "2".repeat(64), target, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "target enters party setup")
 	assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "field-spell fixture begins")
@@ -160,11 +160,3 @@ func _field_content(source: RealmzContent) -> RealmzContent:
 	var ally_definition := MonsterDefinition.new("classic.monster.field-ally", 1, "Field Ally", 1, 0, 1, 0, 0, [], [], [], [], [], [], []); var library := PackageRepository.new().load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH); items.append(library.content.items.item_by_classic_id(609)); items.append(library.content.items.item_by_classic_id(723)); var spells: Array[SpellDefinition] = [bolt, fixed, light, rest, cure, remove_item, heroism, library.content.magic.spell_by_classic_id(1101), library.content.magic.spell_by_classic_id(1512), library.content.magic.spell_by_classic_id(2102), library.content.magic.spell_by_classic_id(3102), library.content.magic.spell_by_classic_id(2106)]; for classic_id: int in [1609, 2504, 2609, 2611, 3111, 3112, 3410, 3709, 3711, 4310, 4713]: spells.append(library.content.magic.spell_by_classic_id(classic_id))
 	var source_map := source.world.map_by_id(source.start_map_id); var los_map := MapDefinition.new(source_map.id, source_map.name, source_map.level_type, source_map.level_index, source_map.topology, source_map.dark, true, source_map.landlook, source_map.random_regions(), source_map.battle_terrain_set_id, source_map.base_scale)
 	return RealmzContent.new("field-spell-workflow", source.package_hash, "field-spell-content", source.rules_version, source.start_map_id, source.start_coordinate, WorldDefinition.new([los_map]), ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells, [ally_definition])
-
-
-func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:
-	var result := CharacterState.new(character_id, display_name, 20, 20)
-	result.race_id = content.characters.race_definitions()[0].id
-	result.caste_id = content.characters.caste_definitions()[0].id
-	result.maximum_load = 100
-	return result

@@ -429,7 +429,7 @@ func _test_public_session_resume(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
 	_begin_fixture_adventure(session, content)
-	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1))
+	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1), "fixture position changes through validated restore")
 	var waiting := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_equal([waiting.state, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, Vector2i(1, 1)], "movement commits before the public interaction response")
 	var held := session.snapshot()
@@ -634,7 +634,7 @@ func _test_public_continuation_matrix(content: RealmzContent) -> void:
 	var age_source := GameSession.new()
 	age_source.start(content, 1)
 	_begin_fixture_adventure(age_source, content)
-	_restore_fixture_position(age_source, content, "land:1", Vector2i(0, 1))
+	_restore_fixture_position(age_source, content, "land:1", Vector2i(0, 1), "fixture position changes through validated restore")
 	var age_boundary := age_source.snapshot()
 	var character := age_boundary.game_state.party.characters()[0]
 	var race := _aging_race(content)
@@ -980,14 +980,9 @@ func _package_macro_battle(content: RealmzContent, monster_classic_id: int) -> D
 	if blocking_tile_id >= 0: field.terrain.set_tile(Vector2i(50, 48), blocking_tile_id)
 	var monster_def := content.combat.monster_by_classic_id(monster_classic_id); var source := MonsterState.new("macro.source", monster_def.id, monster_def.name, 20, 20, 1, 1, 0, 0, 0, true); source.current_health = 0; field.actors.place_monster(source.id, Vector2i(50, 50), monster_def.size); var ally := MonsterState.new("macro.ally", monster_def.id, "Ally", 20, 20, 1, 1, 0, 0, 0, true); field.actors.place_monster(ally.id, Vector2i(52, 50), monster_def.size); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [hero1, hero2, hero_los, hero_range]), RealmzClock.new()); state.combat = CombatState.new("battle.macro", [source, ally], -1, field); state.combat.set_turn_order([hero1.id, hero2.id, source.id, ally.id]); return {"state": state, "source": source, "ally": ally, "hero1": hero1, "hero2": hero2, "hero_los": hero_los, "hero_range": hero_range, "monster_def": monster_def}
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
-	var races := content.characters.race_definitions()
-	var castes := content.characters.caste_definitions()
-	assert_false(races.is_empty() or castes.is_empty(), "fixture has playable race and caste data")
-	if races.is_empty() or castes.is_empty():
+	if not _fixture_race_caste_available(content, "fixture has playable race and caste data"):
 		return
-	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
-	character.race_id = races[0].id
-	character.caste_id = castes[0].id
+	var character := _fixture_character("fixture.party.member", "Fixture Hero", content, 10, -1)
 	var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog))
 	assert_equal(imported.state, SessionStep.State.COMPLETED, "fixture imports a deterministic party member")
 	var started := session.submit_intent(PartyIntents.begin_adventure())
@@ -1026,13 +1021,6 @@ func _assert_vm_combat_auto_round_trip(content: RealmzContent, session: GameSess
 	var disabled_id := restored.view().combat_view.active_actor_id if phase == "active" else character_id
 	var disabled := restored.submit_intent(CombatIntents.set_auto(disabled_id, false))
 	assert_equal([disabled.state, disabled.error_code, disabled.interaction.kind, restored.view().combat_view.auto_character_ids.has(disabled_id)], [SessionStep.State.WAITING_FOR_INTERACTION, &"", InteractionRequest.COMBAT, false], "restored %s VM combat disables Auto at the next activation boundary" % phase)
-func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:
-	var envelope := session.snapshot()
-	envelope.game_state.party.map_id = map_id
-	envelope.game_state.party.coordinate = coordinate
-	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "fixture position changes through validated restore")
-
-
 func _test_repaired_branch_and_opcode_variants(content: RealmzContent) -> void:
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("variant.hero", "Variant Hero", 10, 10)]), RealmzClock.new())
 	state.difficulty = 1
@@ -1228,13 +1216,6 @@ func _variable(scope: StringName, name: String) -> SafeExpressionDefinition:
 	expression.scope = scope
 	expression.name = name
 	return expression
-
-
-func _aging_race(content: RealmzContent) -> RaceDefinition:
-	for race: RaceDefinition in content.characters.race_definitions():
-		if race.max_age > 0 and race.age_range(1).x == race.age_range(0).y + 1:
-			return race
-	return null
 
 
 func _trace_has(trace: Array[Dictionary], event_name: String) -> bool:

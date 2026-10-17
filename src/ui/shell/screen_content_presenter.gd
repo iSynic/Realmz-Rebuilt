@@ -77,11 +77,6 @@ func _bind_system_controller(owner_ref: WeakRef) -> void:
 		if owner != null:
 			owner.system_action_requested.emit(action_id, value)
 	)
-	_system_controller.setting_changed.connect(func(setting_id: StringName, value: Variant) -> void:
-		var owner := owner_ref.get_ref() as ScreenContentPresenter
-		if owner != null:
-			owner.presentation_setting_changed.emit(setting_id, value)
-	)
 	_system_controller.controller_binding_capture_requested.connect(func(action_id: StringName) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
@@ -234,15 +229,6 @@ func reset_campaign() -> void:
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: String = "") -> void:
 	_character_controller.set_vault_revisions(revisions, notice)
-
-
-func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: String = "", active_slot_id: String = "A") -> void:
-	_system_controller.set_save_previews(previews, selected_slot_id, active_slot_id)
-	save_previews_changed.emit()
-
-
-func set_save_and_quit_mode(enabled: bool) -> void:
-	_system_controller.set_save_and_quit_mode(enabled)
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:

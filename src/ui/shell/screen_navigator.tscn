@@ -1,7 +1,7 @@
 [gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/screen_navigator.gd" id="1_navigator"]
-[ext_resource type="PackedScene" path="res://src/ui/shell/controller_draft_dialog.tscn" id="2_draft"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/preferences_draft_dialog.tscn" id="2_draft"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/saved_adventure_browser.tscn" id="3_browser"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/loading_adventure_view.tscn" id="4_loading"]
 [ext_resource type="Script" path="res://src/ui/shell/startup_workspace_controller.gd" id="5_startup"]
@@ -45,7 +45,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="ControllerDraftDialog" parent="." instance=ExtResource("2_draft")]
+[node name="PreferencesDraftDialog" parent="." instance=ExtResource("2_draft")]
 
 [node name="StartupWorkspaces" type="Control" parent="."]
 layout_mode = 1

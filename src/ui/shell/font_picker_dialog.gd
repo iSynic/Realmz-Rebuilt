@@ -1,4 +1,4 @@
-## Keeps font browsing and preview local until the player applies a choice.
+## Keeps a font choice local until the parent Settings draft accepts it.
 class_name FontPickerDialog
 extends Control
 
@@ -6,18 +6,27 @@ signal opened
 signal applied(role: StringName, identity: String)
 signal import_requested(path: String)
 
+const THEME_PATH := "res://src/ui/shared/style/classic_ui_theme.tres"
+
 var resolver := FontResolver.new()
 var _settings: PresentationSettings
 var _role: StringName
 var _selected: String
+var _source: StringName = &"Bundled"
+var _compact_preview := false
 var _focus_before_open: WeakRef
 
 
 func _ready() -> void:
 	(%FontSearch as LineEdit).text_changed.connect(func(_value: String) -> void: _refresh_choices())
 	(%FontChoices as ItemList).item_selected.connect(_choose)
-	(%FontApply as Button).pressed.connect(_apply)
-	(%FontCancel as Button).pressed.connect(close)
+	(%BundledTab as Button).pressed.connect(_set_source.bind(&"Bundled"))
+	(%SystemTab as Button).pressed.connect(_set_source.bind(&"System"))
+	(%ImportedTab as Button).pressed.connect(_set_source.bind(&"Imported"))
+	(%PreviewSelected as Button).pressed.connect(_show_compact_preview)
+	(%BackToFonts as Button).pressed.connect(_show_font_list)
+	(%FontUse as Button).pressed.connect(_stage_selection)
+	(%FontCancel as Button).pressed.connect(dismiss)
 	(%ImportFont as Button).pressed.connect(func() -> void:
 		(%FontFiles as FileDialog).popup_centered_ratio(0.88)
 		(%FontFiles as FileDialog).get_line_edit().grab_focus()
@@ -37,8 +46,13 @@ func open(role: StringName, settings: PresentationSettings) -> void:
 	(%FontPickerTitle as Label).text = "Choose %s font" % String(role).capitalize()
 	(%FontSearch as LineEdit).text = ""
 	(%FontImportStatus as Label).text = ""
+	_compact_preview = false
+	(%ListPage as Control).visible = true
+	(%PreviewPage as Control).visible = true
 	visible = true
 	opened.emit()
+	_source = _source_for_identity(_selected)
+	_sync_source_tabs()
 	_refresh_choices()
 	_fit()
 	(%FontSearch as LineEdit).grab_focus()
@@ -51,7 +65,9 @@ func refresh_library(message: String = "") -> void:
 
 
 func controller_focus_root() -> Node:
-	return %FontFiles if (%FontFiles as FileDialog).visible else self
+	if (%FontFiles as FileDialog).visible:
+		return %FontFiles
+	return self
 
 
 func close() -> void:
@@ -59,6 +75,14 @@ func close() -> void:
 		(%FontFiles as FileDialog).hide()
 		(%ImportFont as Button).grab_focus()
 		return
+	if _compact_preview:
+		_show_font_list()
+		return
+	dismiss()
+
+
+func dismiss() -> void:
+	_compact_preview = false
 	hide()
 	var previous := _focus_before_open.get_ref() as Control if _focus_before_open != null else null
 	_focus_before_open = null
@@ -66,28 +90,54 @@ func close() -> void:
 		previous.grab_focus()
 
 
-func _apply() -> void:
+func _stage_selection() -> void:
+	if not _selection_is_available():
+		return
 	applied.emit(_role, _selected)
-	close()
+	dismiss()
+
+
+func _set_source(source: StringName) -> void:
+	_source = source
+	_sync_source_tabs()
+	_refresh_choices()
+
+
+func _sync_source_tabs() -> void:
+	for pair: Array in [[&"Bundled", %BundledTab], [&"System", %SystemTab], [&"Imported", %ImportedTab]]:
+		var button := pair[1] as Button
+		button.button_pressed = _source == pair[0]
 
 
 func _refresh_choices() -> void:
 	var list := %FontChoices as ItemList
 	var query := (%FontSearch as LineEdit).text.strip_edges().to_lower()
+	var retained_index := -1
 	list.clear()
-	var group := ""
+	var matches := 0
 	for choice: FontResolver.Choice in resolver.choices():
-		if not query.is_empty() and not choice.name.to_lower().contains(query):
+		var group := &"Bundled" if choice.group.is_empty() else StringName(choice.group)
+		if group != _source or (not query.is_empty() and not choice.name.to_lower().contains(query)):
 			continue
-		if choice.group != group:
-			group = choice.group
-			list.add_item(group)
-			list.set_item_selectable(list.item_count - 1, false)
-			list.set_item_custom_fg_color(list.item_count - 1, Color("8fcfd1"))
+		matches += 1
 		list.add_item(choice.name)
-		list.set_item_metadata(list.item_count - 1, choice.id)
+		var index := list.item_count - 1
+		list.set_item_metadata(index, choice.id)
 		if choice.id == _selected:
-			list.select(list.item_count - 1)
+			retained_index = index
+	if not _selected.is_empty() and _source_for_identity(_selected) == _source and not _identity_exists(_selected):
+		var missing_label := "%s · unavailable" % resolver.label(_selected)
+		if not query.is_empty() and not missing_label.to_lower().contains(query):
+			missing_label = ""
+		if not missing_label.is_empty():
+			list.add_item(missing_label)
+			retained_index = list.item_count - 1
+			list.set_item_metadata(retained_index, _selected)
+	if list.item_count == 0:
+		list.add_item("No matching fonts" if matches == 0 else "No fonts available")
+		list.set_item_selectable(0, false)
+	if retained_index >= 0:
+		list.select(retained_index)
 	_update_preview()
 
 
@@ -106,19 +156,68 @@ func _update_preview() -> void:
 		draft.narrative_font = _selected
 	else:
 		draft.interface_font = _selected
-	var preview := ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, draft, 1.0, resolver)
+	var preview := ClassicTypography.themed_copy(load(THEME_PATH) as Theme, draft, 1.0, resolver)
 	var selected_font := preview.get_font(&"normal_font", &"ClassicNarrative") if _role == &"narrative" else preview.default_font
 	(%FontFamily as Label).text = resolver.label(_selected)
+	var text_scale := _settings.narrative_text_scale if _role == &"narrative" else _settings.interface_text_scale
+	(%PreviewScale as Label).text = "%s preview · %d%%" % [String(_role).capitalize(), roundi(text_scale * 100.0)]
 	for node: Label in [%FontIdentitySample, %FontNumberSample, %FontNarrativeSample]:
 		node.add_theme_font_override(&"font", selected_font)
 		node.theme_type_variation = &"ClassicNarrativeText" if _role == &"narrative" else &""
-		UiSizing.font_size(node, &"font_size", 20)
-	(%FontUnavailable as Label).text = resolver.unavailable_message(_selected)
-	(%FontApply as Button).disabled = not PresentationSettings.font_choice_is_valid(_selected)
+	_apply_preview_font_sizes()
+	var unavailable := not _selected.is_empty() and not _identity_exists(_selected)
+	(%FontUnavailable as Label).visible = unavailable
+	(%FontUnavailable as Label).text = "%s\nChoose an available font or cancel to keep its saved identity." % resolver.unavailable_message(_selected) if unavailable else ""
+	(%FontUse as Button).disabled = not _selection_is_available()
+
+
+func _selection_is_available() -> bool:
+	return _identity_exists(_selected)
+
+
+func _identity_exists(identity: String) -> bool:
+	if identity.is_empty():
+		return true
+	for choice: FontResolver.Choice in resolver.choices():
+		if choice.id == identity:
+			return resolver.unavailable_message(identity).is_empty()
+	return false
+
+
+func _source_for_identity(identity: String) -> StringName:
+	if identity.begins_with("system:"):
+		return &"System"
+	if identity.begins_with("imported:"):
+		return &"Imported"
+	return &"Bundled"
+
+
+func _show_compact_preview() -> void:
+	_compact_preview = true
+	_fit()
+	(%BackToFonts as Button).grab_focus()
+
+
+func _show_font_list() -> void:
+	_compact_preview = false
+	_fit()
+	(%FontChoices as ItemList).grab_focus()
 
 
 func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
 	_fit.call_deferred()
+	_apply_preview_font_sizes.call_deferred()
+
+
+func _apply_preview_font_sizes() -> void:
+	if not is_node_ready() or _settings == null:
+		return
+	var profile := UiSizing.profile_for(self)
+	var interface_size := profile.ui_scale if profile != null else 1.0
+	var role_scale := _settings.narrative_text_scale if _role == &"narrative" else _settings.interface_text_scale
+	var preview_size := maxi(1, roundi(20.0 * interface_size * role_scale))
+	for node: Label in [%FontIdentitySample, %FontNumberSample, %FontNarrativeSample]:
+		node.add_theme_font_size_override(&"font_size", preview_size)
 
 
 func _fit() -> void:
@@ -130,4 +229,15 @@ func _fit() -> void:
 	var window := %FontPickerWindow as PanelContainer
 	window.size = Vector2(minf(1100.0 * scale, area.size.x * 0.94), minf(620.0 * scale, area.size.y * 0.92))
 	window.position = area.position + (area.size - window.size) * 0.5
-	(%FontChoices as ItemList).custom_minimum_size.x = minf(270.0 * scale, window.size.x * 0.36)
+	var compact := profile != null and profile.id == UiLayoutProfile.COMPACT and maxf(profile.font_scale, profile.narrative_font_scale) >= 1.45
+	if not compact:
+		_compact_preview = false
+	(%PreviewSelected as Button).visible = compact
+	(%BackToFonts as Button).visible = compact and _compact_preview
+	var list_page := %ListPage as Control
+	var preview_page := %PreviewPage as Control
+	list_page.visible = not compact or not _compact_preview
+	preview_page.visible = not compact or _compact_preview
+	list_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_FILL
+	if not compact:
+		(%FontChoices as ItemList).custom_minimum_size.x = minf(270.0 * scale, window.size.x * 0.36)

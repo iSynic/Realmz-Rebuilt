@@ -1,4 +1,4 @@
-## Five-category shell for the shared System workspace.
+## Seven-category shell for the shared System workspace.
 class_name SystemPreferencesLayout
 extends SystemWorkspace
 
@@ -6,9 +6,13 @@ signal category_selected(category: StringName)
 signal setting_changed(setting_id: StringName, value: Variant)
 signal action_requested(action_id: StringName, value: Variant)
 
-const PREFERENCE_SECTIONS: Array[StringName] = [&"Display", &"Audio", &"Accessibility", &"Controls", &"Diagnostics"]
+const PREFERENCE_SECTIONS: Array[StringName] = [&"Display", &"Interface", &"Controls", &"Audio", &"Pacing", &"Accessibility", &"Diagnostics"]
+
+@export var setting_caption_width := 200.0
+@export var setting_field_width := 246.0
 
 var _save_mode := false
+var _compact := false
 
 
 static func interface_size_options() -> Array[Dictionary]:
@@ -33,9 +37,9 @@ static func refresh_interface_size_feedback(workspace: Control, settings: Presen
 		return
 	var output := DisplayScalingPolicy.geometry(workspace.get_window().size, settings.display_scaling_mode)
 	var profile := UiLayoutProfile.for_viewport(Vector2(output["source_size"]), settings.ui_scale_mode, settings.display_scaling_mode)
-	var text := "Applied interface size: %d%%" % roundi(profile.ui_scale * 100.0)
+	var text := "Draft interface size: %d%%" % roundi(profile.ui_scale * 100.0)
 	if settings.display_scaling_mode in [PresentationSettings.DISPLAY_INTEGER_WINDOW, PresentationSettings.DISPLAY_FILL_WINDOW]:
-		text = "Interface: %d%% logical · %d%% on screen" % [roundi(profile.ui_scale * 100.0), roundi(profile.ui_scale * float(output["scale"]) * 100.0)]
+		text = "Draft: %d%% logical · %d%% on screen" % [roundi(profile.ui_scale * 100.0), roundi(profile.ui_scale * float(output["scale"]) * 100.0)]
 	if profile.scale_limited:
 		text += " · %s requested, limited by window size" % ("Auto" if settings.ui_scale_mode == PresentationSettings.UI_SCALE_AUTO else "%s%%" % settings.ui_scale_mode)
 	feedback.text = text
@@ -43,16 +47,28 @@ static func refresh_interface_size_feedback(workspace: Control, settings: Presen
 
 func _ready() -> void:
 	tabs().tabs_visible = false
+	var search := get_node("PreferencesSearch") as PreferencesSearch
+	search.bind_pages(tabs())
+	search.result_selected.connect(_focus_search_result)
 	for category: StringName in PREFERENCE_SECTIONS:
 		var button := get_node("SystemWorkspaceBody/SystemCategoryRail/%s" % category) as Button
 		button.set_meta("setting_id", category)
 		button.pressed.connect(show_category.bind(category))
+	var compact_picker := get_node("CompactCategory") as OptionButton
+	compact_picker.item_selected.connect(func(index: int) -> void: show_category(PREFERENCE_SECTIONS[index]))
+	for control: Node in tabs().find_children("*", "Control", true, false):
+		if control is BaseButton or control is Range:
+			(control as Control).focus_entered.connect(_show_context_help.bind(control))
+			(control as Control).mouse_entered.connect(_show_context_help.bind(control))
 	show_category(&"Display")
 
 
 func prepare(compact: bool) -> void:
 	visible = true
-	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content") as GridContainer).columns = 1 if compact else 2
+	_compact = compact
+	var controller_tabs := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content") as TabContainer
+	controller_tabs.set_tab_title(0, "Bindings")
+	controller_tabs.set_tab_title(1, "Tuning")
 	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns") as BoxContainer).vertical = false
 	(get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/NewSaveSlotRow") as BoxContainer).vertical = compact
 	_apply_compact_rows(self, compact)
@@ -67,14 +83,19 @@ func prepare(compact: bool) -> void:
 		show_category(_current_category())
 
 
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	_apply_preference_row_density(_compact)
+
+
 func show_category(category: StringName) -> void:
 	var index := PREFERENCE_SECTIONS.find(category)
 	if index < 0:
 		return
 	_save_mode = false
-	tabs().current_tab = index + 1
-	_sync_category_rail(index + 1)
+	tabs().current_tab = tabs().get_node(NodePath(category)).get_index()
+	_sync_category_rail(tabs().current_tab)
 	_update_screen_heading(false)
+	(get_node("CompactCategory") as OptionButton).select(index)
 	category_selected.emit(category)
 
 
@@ -123,30 +144,84 @@ static func slot_label(slot_id: String) -> String:
 
 func _sync_category_rail(index: int) -> void:
 	var rail := get_node("SystemWorkspaceBody/SystemCategoryRail") as VBoxContainer
-	rail.visible = not _save_mode
+	rail.visible = not _save_mode and not _compact
+	get_node("CompactCategory").visible = not _save_mode and _compact
+	get_node("PreferencesSearch").visible = not _save_mode
+	get_node("SystemWorkspaceBody/ContextHelp").visible = not _save_mode and not _compact
 	for category_index: int in PREFERENCE_SECTIONS.size():
 		var button := get_node("SystemWorkspaceBody/SystemCategoryRail/%s" % PREFERENCE_SECTIONS[category_index]) as Button
-		button.button_pressed = not _save_mode and category_index + 1 == index
-	get_node("ControlsDraftFooter").visible = not _save_mode and index == 4
+		button.button_pressed = not _save_mode and String(tabs().get_child(index).name) == String(PREFERENCE_SECTIONS[category_index])
+	get_node("PreferencesFooter").visible = not _save_mode
+
+
+func _show_context_help(control: Control) -> void:
+	var heading := "Settings"
+	var row := control.get_parent()
+	if row.is_in_group(&"system_setting_rows") and row.get_child(0) is Label:
+		heading = (row.get_child(0) as Label).text
+	elif control is BaseButton:
+		heading = (control as BaseButton).text
+	(get_node("SystemWorkspaceBody/ContextHelp/Heading") as Label).text = heading
+	(get_node("SystemWorkspaceBody/ContextHelp/Detail") as Label).text = control.tooltip_text if not control.tooltip_text.is_empty() else "Changes stay in this draft until Apply. Cancel keeps your current settings."
+
+
+func _focus_search_result(category: StringName, target: Control) -> void:
+	show_category(category)
+	var child: Node = target
+	while child.get_parent() != null and child != tabs():
+		var parent := child.get_parent()
+		if parent is TabContainer:
+			(parent as TabContainer).current_tab = child.get_index()
+		child = parent
+	(get_node("PreferencesSearch") as PreferencesSearch).hide_results()
+	target.grab_focus.call_deferred()
+	_scroll_to_setting.call_deferred(target)
+
+
+func _scroll_to_setting(target: Control) -> void:
+	var ancestor := target.get_parent()
+	while ancestor != null and ancestor != self:
+		if ancestor is ScrollContainer:
+			(ancestor as ScrollContainer).ensure_control_visible(target)
+		ancestor = ancestor.get_parent()
 
 
 func _current_category() -> StringName:
-	var index := tabs().current_tab - 1
-	return PREFERENCE_SECTIONS[index] if index >= 0 and index < PREFERENCE_SECTIONS.size() else &"Display"
+	var category := StringName(tabs().get_current_tab_control().name)
+	return category if category in PREFERENCE_SECTIONS else &"Display"
 
 
-func _apply_preference_row_density(compact: bool) -> void:
-	var display := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display")
-	var accessibility := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility")
+func _apply_preference_row_density(_compact: bool) -> void:
+	var profile := UiSizing.profile_for(self)
+	var scale := profile.ui_scale if profile != null else 1.0
 	for row: Node in find_children("*", "BoxContainer", true, false):
 		if not row.is_in_group(&"system_setting_rows"):
 			continue
-		var caption := row.get_child(0) as Label
-		if caption == null or not (display.is_ancestor_of(row) or accessibility.is_ancestor_of(row)):
-			continue
 		(row as BoxContainer).vertical = false
-		caption.custom_minimum_size.x = 156.0 if compact else 230.0
-		caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var caption := row.get_child(0) as Label
+		if caption != null:
+			UiSizing.minimum_size(caption, Vector2(setting_caption_width, 0.0))
+			caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		for child: Node in row.get_children():
+			if child is OptionButton or child is HSlider or child is Button:
+				(child as Control).size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+				UiSizing.minimum_size(child as Control, Vector2(setting_field_width, 0.0))
+
+	for toggle: Node in find_children("*", "CheckButton", true, false):
+		_fit_toggle(toggle as CheckButton, (setting_caption_width + setting_field_width + 8.0) * scale)
+
+
+func _fit_toggle(toggle: CheckButton, maximum_width: float) -> void:
+	var font := toggle.get_theme_font(&"font")
+	var text_width := font.get_string_size(toggle.text, HORIZONTAL_ALIGNMENT_LEFT, -1, toggle.get_theme_font_size(&"font_size")).x
+	var icon_width := maxf(toggle.get_theme_icon(&"checked").get_width(), toggle.get_theme_icon(&"unchecked").get_width())
+	var margins := toggle.get_theme_stylebox(&"normal").get_minimum_size().x
+	var available := tabs().size.x if tabs().size.x > 32.0 else maximum_width
+	var profile := UiSizing.profile_for(self)
+	var scale := profile.ui_scale if profile != null else 1.0
+	toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var width := minf(minf(maximum_width, available), text_width + icon_width + toggle.get_theme_constant(&"h_separation") + margins)
+	UiSizing.minimum_size(toggle, Vector2(width / scale, 0.0))
 
 
 func bind_indoor_icon(index: int, media: ClassicMediaCatalog) -> void:
@@ -171,12 +246,11 @@ func bind_audio(settings: PresentationSettings) -> void:
 		{"label": "Restart playlist", "id": PresentationSettings.MUSIC_RESTART_PLAYLIST},
 		{"label": "Resume where it stopped", "id": PresentationSettings.MUSIC_RESUME},
 	], settings.music_transition, &"music_transition")
-	_bind_toggle(root.get_node("ReducedSound") as CheckButton, settings.reduced_sound, &"reduced_sound")
 	_bind_action(root.get_node("OpenMusicPlaylist") as Button, func() -> void: action_requested.emit(&"music_playlist", null))
 
 
 func bind_command_titles(settings: PresentationSettings) -> void:
-	var world := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Display/DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions")
+	var world := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Interface/InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Commands")
 	var titles := world.get_node("OverworldCommandTitles") as CheckButton
 	var fit := world.get_node("FitHiddenCommandArt") as CheckButton
 	SystemSignalBinding.clear_toggled(titles)
@@ -190,11 +264,13 @@ func bind_command_titles(settings: PresentationSettings) -> void:
 
 
 func bind_pacing(settings: PresentationSettings) -> void:
-	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Audio/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content")
+	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content")
+	_bind_combat_text_speed(root, settings.combat_text_speed_percent)
+	_bind_combat_text_background(root, settings.combat_text_background_opacity_percent)
 	_bind_toggle(root.get_node("HurrySpellResolution") as CheckButton, settings.hurry_spell_resolution, &"hurry_spell_resolution")
 	var combat := root.get_node("CombatSpeedRow/CombatPlaybackSpeedSlider") as HSlider
 	var combat_caption := root.get_node("CombatSpeedRow/CombatPlaybackSpeedCaption") as Label
-	_bind_label(combat_caption, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, Color("e0e2e5"), 15)
+	bind_label(combat_caption, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, Color("e0e2e5"), 15)
 	_clear_value_changed_connections(combat)
 	combat.value = settings.combat_playback_speed_percent
 	combat.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % settings.combat_playback_speed_percent
@@ -206,7 +282,7 @@ func bind_pacing(settings: PresentationSettings) -> void:
 	)
 	var movement := root.get_node("MovementSpeedRow/ExplorationSpeedSlider") as HSlider
 	var movement_caption := root.get_node("MovementSpeedRow/ExplorationSpeedCaption") as Label
-	_bind_label(movement_caption, "Exploration travel speed  •  %d%%" % settings.exploration_speed_percent, Color("e0e2e5"), 15)
+	bind_label(movement_caption, "Exploration travel speed  •  %d%%" % settings.exploration_speed_percent, Color("e0e2e5"), 15)
 	_clear_value_changed_connections(movement)
 	movement.value = settings.exploration_speed_percent
 	movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementController.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
@@ -218,17 +294,51 @@ func bind_pacing(settings: PresentationSettings) -> void:
 	)
 
 
-func bind_accessibility(settings: PresentationSettings, fonts: FontResolver) -> void:
+func _bind_combat_text_speed(root: Node, percent: int) -> void:
+	var slider := root.get_node("CombatTextSpeedRow/CombatTextSpeedSlider") as HSlider
+	var caption := root.get_node("CombatTextSpeedRow/CombatTextSpeedCaption") as Label
+	bind_label(caption, "Scrolling combat text speed  •  %d%%" % percent, Color("e0e2e5"), 15)
+	_clear_value_changed_connections(slider)
+	slider.value = percent
+	slider.tooltip_text = "Lower values slow damage and status text without slowing combat."
+	slider.value_changed.connect(func(value: float) -> void:
+		caption.text = "Scrolling combat text speed  •  %d%%" % int(value)
+		setting_changed.emit(&"combat_text_speed_percent", int(value))
+	)
+
+
+func _bind_combat_text_background(root: Node, percent: int) -> void:
+	var slider := root.get_node("CombatTextBackgroundRow/CombatTextBackgroundSlider") as HSlider
+	var caption := root.get_node("CombatTextBackgroundRow/CombatTextBackgroundCaption") as Label
+	bind_label(caption, "Combat text background opacity  •  %d%%" % percent, Color("e0e2e5"), 15)
+	_clear_value_changed_connections(slider)
+	slider.value = percent
+	slider.tooltip_text = "Change only the backing behind combat text; letters keep their contrast."
+	slider.value_changed.connect(func(value: float) -> void:
+		caption.text = "Combat text background opacity  •  %d%%" % int(value)
+		setting_changed.emit(&"combat_text_background_opacity_percent", int(value))
+	)
+
+
+func bind_accessibility(settings: PresentationSettings, _fonts: FontResolver) -> void:
 	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content")
-	_bind_font_choices(root, settings, fonts)
 	_bind_toggle(root.get_node("ReducedMotion") as CheckButton, settings.reduced_motion, &"reduced_motion")
+	_bind_toggle(root.get_node("ReducedSound") as CheckButton, settings.reduced_sound, &"reduced_sound")
+
+
+func bind_interface(settings: PresentationSettings, fonts: FontResolver) -> void:
+	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Interface/InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text")
+	_bind_font_choices(root, settings, fonts)
+	bind_command_titles(settings)
 	var preview := ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, settings, 1.0, fonts)
 	var sample := root.get_node("TextPreview/Content/Sample") as Label
 	var narrative := root.get_node("TextPreview/Content/PreviewDetail") as Label
 	sample.add_theme_font_override(&"font", preview.default_font)
 	narrative.add_theme_font_override(&"font", preview.get_font(&"normal_font", &"ClassicNarrative"))
-	UiSizing.font_size(sample, &"font_size", 18)
-	UiSizing.font_size(narrative, &"font_size", 16)
+	var profile := UiSizing.profile_for(self)
+	var ui_scale := profile.ui_scale if profile != null else 1.0
+	sample.add_theme_font_size_override(&"font_size", roundi(18 * ui_scale * settings.interface_text_scale))
+	narrative.add_theme_font_size_override(&"font_size", roundi(16 * ui_scale * settings.narrative_text_scale))
 	for role: String in ["Interface", "Narrative"]:
 		var slider := root.get_node("%sTextScaleRow/TextScaleSlider" % role) as HSlider
 		var percentage := root.get_node("%sTextScaleRow/SizeValue" % role) as Label
@@ -256,7 +366,7 @@ func _bind_font_choices(root: Node, settings: PresentationSettings, fonts: FontR
 
 
 func _bind_volume_row(row: BoxContainer, title: String, value: float, setting_id: StringName) -> void:
-	_bind_label(row.get_node("Caption") as Label, "%s  •  %d%%" % [title, int(round(value * 100.0))], Color("e0e2e5"), 15)
+	bind_label(row.get_node("Caption") as Label, "%s  •  %d%%" % [title, int(round(value * 100.0))], Color("e0e2e5"), 15)
 	var slider := row.get_child(1) as HSlider
 	_bind_slider(slider, value, setting_id)
 	slider.tooltip_text = "%s volume %d%%" % [title, int(round(value * 100.0))]
@@ -294,7 +404,7 @@ func _bind_action(button: Button, action: Callable) -> void:
 	button.pressed.connect(action)
 
 
-static func _bind_label(label: Label, text: String, color: Color, size: int) -> void:
+static func bind_label(label: Label, text: String, color: Color, size: int) -> void:
 	label.text = text
 	label.add_theme_color_override("font_color", color)
 	UiSizing.font_size(label, &"font_size", size)
@@ -318,26 +428,6 @@ static func _clear_item_selected_connections(picker: OptionButton) -> void:
 static func _clear_value_changed_connections(control: Range) -> void:
 	for connection: Dictionary in control.value_changed.get_connections():
 		control.value_changed.disconnect(connection["callable"] as Callable)
-
-
-func tabs() -> TabContainer:
-	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs") as TabContainer
-
-
-func save_slot_rows() -> VBoxContainer:
-	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SaveSlotScroll/SaveSlotRows") as VBoxContainer
-
-
-func save_browser_empty() -> PanelContainer:
-	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/Empty") as PanelContainer
-
-
-func save_detail_record() -> VBoxContainer:
-	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record") as VBoxContainer
-
-
-func save_detail_empty() -> PanelContainer:
-	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty") as PanelContainer
 
 
 func bind_diagnostics(settings: PresentationSettings) -> void:

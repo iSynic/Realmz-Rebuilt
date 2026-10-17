@@ -3581,8 +3581,8 @@
             "symbol": "func present"
           },
           {
-            "path": "src/ui/shell/game_shell.gd",
-            "symbol": "func _presentation_command_definition"
+            "path": "src/ui/shell/game_shell_command_controller.gd",
+            "symbol": "func presentation_definition"
           }
         ]
       },

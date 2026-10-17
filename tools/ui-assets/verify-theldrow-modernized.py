@@ -175,9 +175,22 @@ def assert_close(actual: int, expected: int, label: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--font", required=True, type=Path)
-    parser.add_argument("--metrics", required=True, type=Path)
-    parser.add_argument("--rules", required=True, type=Path)
+    parser.add_argument("--metrics", type=Path)
+    parser.add_argument("--rules", type=Path)
+    parser.add_argument("--reading-master", type=Path)
+    parser.add_argument("--baseline", type=Path)
     args = parser.parse_args()
+
+    if args.reading_master:
+        if not args.baseline:
+            parser.error("Reading candidate verification requires --baseline")
+        from theldrow_reading import verify
+
+        report = verify(args.reading_master, args.baseline, args.font)
+        print(json.dumps({k: v for k, v in report.items() if k != "glyphs"}, indent=2))
+        return 0
+    if not all((args.metrics, args.rules)):
+        parser.error("Production verification requires --metrics and --rules")
 
     rules = json.loads(args.rules.read_text(encoding="utf-8"))
     if rules.get("schemaVersion") != 1:

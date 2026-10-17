@@ -23,7 +23,6 @@ signal sound_volume_changed(value: float)
 signal music_volume_changed(value: float)
 signal music_enabled_changed(enabled: bool)
 signal music_transition_changed(value: String)
-signal music_playlist_mode_changed(playlist_id: int, mode: int)
 signal interface_text_scale_changed(value: float)
 signal narrative_text_scale_changed(value: float)
 signal font_choice_changed(role: StringName, identity: String)
@@ -115,6 +114,8 @@ const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
 @onready var _controller_prompts: ControllerPromptStrip = %ControllerPromptStrip
 @onready var _controller_radial: ControllerRadialOverlay = %ControllerRadialOverlay
 @onready var _controller_keyboard: ControllerQwertyEditor = %ControllerQwertyEditor
+@onready var hud: ModularHud = %ModularHud
+@onready var hud_arrange: HudArrangeOverlay = %HudArrangeOverlay
 
 var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
@@ -131,7 +132,6 @@ var _command_controller: GameShellCommandController
 var _pause_controller: GameShellPauseController
 var _picture_presenter: GameShellPicturePresenter
 var _layout_controller: GameShellLayoutController
-var _footer_bounds_pending := false
 var _status_controller: GameShellStatusController
 var _party_effects: GameShellPartyEffectsPresenter
 var _music_playlist_id: int = 0
@@ -140,8 +140,8 @@ var _music_playing: bool = false
 var _controller_radial_kind: StringName = &""
 var _controller_radial_activation := Callable()
 var exploration_move_to_available: Callable
-var controller: ControllerAccess:
-	get: return ControllerAccess.new(self)
+var controller: GameShellControllerAccess:
+	get: return GameShellControllerAccess.new(self)
 
 var navigator: ScreenNavigator:
 	get: return _navigator
@@ -160,170 +160,7 @@ var picture_stage: Control:
 var pause_active: bool:
 	get: return _pause_controller != null and _pause_controller.is_active()
 var navigation_overlay_active: bool:
-	get: return character_art.visible or font_picker.visible or (music_workspace != null and music_workspace.visible) or _pause_controller.is_active() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible
-
-
-class ControllerAccess:
-	extends RefCounted
-	var _shell: Variant
-	func _init(shell: Variant) -> void: _shell = shell
-	func show_prompts(family: String, context: StringName = &"") -> void:
-		_shell._controller_prompts.present(family, context, _shell._presentation_settings.controller)
-		_shell._navigator.setup_controller.campaign_library.show_controller_hint(family, _shell._presentation_settings.controller)
-		_shell._controller_radial.set_prompt_family(family)
-	func hide_prompts() -> void:
-		_shell._controller_prompts.hide_prompts()
-	func show_detail(value: String) -> void: _shell._controller_prompts.set_detail(value)
-	func navigation_workspace_focus_root() -> Node:
-		if _shell.character_art.visible: return _shell.character_art.controller_focus_root()
-		if _shell.font_picker.visible: return _shell.font_picker.controller_focus_root()
-		if _shell.music_workspace.visible: return _shell.music_workspace.controller_focus_root()
-		return _shell._navigator if _shell._pause_controller.workspace_is_open() else null
-	func cycle_navigation_workspace_tab(delta: int) -> void:
-		if _shell.music_workspace.visible: _shell.music_workspace.controller_cycle_tab(delta)
-	func spellbook_focus_root() -> Control:
-		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
-		if book != null: return book
-		return _shell._navigator.content_presenter.spellbook.controller_focus_root() if _shell._navigator.current_screen() == &"spells" else null
-	func cycle_spellbook_level(delta: int) -> bool:
-		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
-		return book.controller_cycle_section(delta) if book != null else _shell._navigator.content_presenter.spellbook.controller_cycle_section(delta)
-	func focus_spellbook_selection() -> bool:
-		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
-		return book.focus_selected_spell() if book != null else _shell._navigator.content_presenter.spellbook.focus_selected_spell()
-	func show_spellbook_prompts(encounter: bool = false) -> void:
-		var levels: bool = encounter or _shell._party_roster.controller_spellbook() != null or _shell._navigator.content_presenter.spellbook.controller_browses_levels
-		_shell._controller_prompts.present_spellbook(_shell._presentation_settings.controller, levels)
-	func close_spellbook() -> void:
-		var book: CombatRosterSpellbook = _shell._party_roster.controller_spellbook()
-		if book != null: book.back_requested.emit()
-		else: _shell._navigator.handle_back()
-	func select_relative_character(delta: int) -> bool: return _shell._party_roster.controller_select_relative(delta)
-	func cycle_section(delta: int) -> bool: return _shell._navigator.content_presenter.navigate_section(_shell._navigator.current_screen(), &"", delta)
-	func receive_binding(action_id: StringName, descriptor: Dictionary) -> void: _shell._navigator.content_presenter.receive_controller_binding(action_id, descriptor)
-	func cancel_binding_capture() -> void: _shell._navigator.content_presenter.cancel_controller_binding_capture()
-	func set_live_input(value: String) -> void: _shell._navigator.content_presenter.set_controller_live_input(value)
-	func radial_is_open() -> bool: return _shell._controller_radial.is_open()
-	func poll_pause() -> void: _shell._pause_controller.poll()
-	func pause_is_open() -> bool: return _shell._pause_controller.is_open()
-	func open_pause() -> bool: return _shell._pause_controller.open()
-	func move_pause(direction: Vector2i, repeated: bool = false) -> bool: return _shell._pause_controller.move(direction, repeated)
-	func confirm_pause() -> bool: return _shell._pause_controller.confirm()
-	func back_pause() -> bool: return _shell._pause_controller.back()
-	func selected_pause_label() -> String: return _shell._pause_controller.selected_label()
-	func handle_pause_input(event: InputEvent) -> bool: return _shell._pause_controller.handle_input(event)
-	func handle_navigation_modal_input(event: InputEvent) -> bool:
-		if _shell.character_art.visible and not _shell._controller_keyboard.is_open():
-			if event.is_action_pressed(&"realmz_back"):
-				_shell.character_art.dismiss()
-				_shell.get_viewport().set_input_as_handled()
-				return true
-			return true
-		if _shell.font_picker.visible and not _shell._controller_keyboard.is_open():
-			if event.is_action_pressed(&"realmz_back"):
-				_shell.font_picker.close()
-				_shell.get_viewport().set_input_as_handled()
-				return true
-			return true
-		return _shell._navigator.draft_dialog.handle_input(event)
-	func handle_navigation_modal_controller(action: StringName, pressed: bool, direction: Vector2i = Vector2i.ZERO) -> bool: return _shell._navigator.draft_dialog.handle_controller(action, pressed, direction)
-	func text_editor_is_open() -> bool: return _shell._controller_keyboard.is_open()
-	func open_text_editor(focus_scope: Node = null) -> bool:
-		var focused: Control = (focus_scope if focus_scope != null else _shell).get_viewport().gui_get_focus_owner()
-		return _shell._controller_keyboard.open_for(focused) if focused is LineEdit or focused is TextEdit else false
-	func move_text_editor(direction: Vector2i) -> void: _shell._controller_keyboard.move_direction(Vector2(direction))
-	func confirm_text_editor() -> void: _shell._controller_keyboard.confirm_focused()
-	func cancel_text_editor() -> void: _shell._controller_keyboard.cancel()
-	func page_text_editor(delta: int) -> void:
-		if delta < 0: _shell._controller_keyboard.previous_page()
-		else: _shell._controller_keyboard.next_page()
-	func edit_text(action_id: StringName) -> void:
-		match action_id:
-			&"realmz_controller_action_radial": _shell._controller_keyboard.backspace()
-			&"realmz_controller_workspace_radial": _shell._controller_keyboard.next_page()
-			&"realmz_controller_character_previous": _shell._controller_keyboard.caret_left()
-			&"realmz_controller_character_next": _shell._controller_keyboard.caret_right()
-	func open_action_radial() -> bool:
-		var entries: Array[ControllerRadialEntry] = _shell._command_controller.controller_entries()
-		if _shell._navigator.current_screen() == &"exploration":
-			var available: bool = _shell.exploration_move_to_available.is_valid() and _shell.exploration_move_to_available.call()
-			entries.append(ControllerRadialEntry.new(&"move_to", "Move To", available, "Available on the active two-dimensional exploration map." if not available else "", null, "✥"))
-		if entries.is_empty(): return false
-		_open_radial(&"action", "ACTIONS", entries)
-		return true
-	func open_interaction_radial(entries: Array[ControllerRadialEntry], activation: Callable) -> bool:
-		if entries.is_empty() or not activation.is_valid(): return false
-		_open_radial(&"interaction", "ACTIONS", entries)
-		_shell._controller_radial_activation = activation
-		return true
-	func open_workspace_radial() -> bool:
-		var entries: Array[ControllerRadialEntry] = []
-		var route_reason := GameShellAvailability.route_change_reason(_shell._current_view)
-		var definitions: Array[Dictionary] = [
-			{"id": &"inventory", "label": "Items", "icon": &"inventory"},
-			{"id": &"spells", "label": "Spells", "icon": &"spells"},
-			{"id": &"journal", "label": "Maps / Notes", "icon": &"maps"},
-			{"id": &"character", "label": "Characters", "symbol": "♟"},
-			{"id": &"services", "label": "Money", "icon": &"money"},
-			{"id": &"workspace_preferences", "label": "Preferences", "icon": &"settings"},
-			{"id": &"workspace_save_load", "label": "Save & Load", "icon": &"save"},
-			{"id": &"exploration", "label": "Explore", "symbol": "✥"},
-			{"id": &"vault", "label": "Character Files", "symbol": "▣"},
-			{"id": &"allies", "label": "Allies", "symbol": "♙"},
-			{"id": &"bestiary", "label": "Bestiary", "symbol": "♜"},
-			{"id": &"workspace_music", "label": "Music", "symbol": "♫"},
-			{"id": &"workspace_diagnostics", "label": "Diagnostics", "symbol": "◇"},
-			{"id": &"workspace_pause", "label": "Pause", "symbol": "☰"},
-		]
-		for definition: Dictionary in definitions:
-			var reason := route_reason
-			if definition["id"] == &"allies" and reason.is_empty():
-				reason = GameShellAvailability.allies_reason(_shell._current_view)
-			var icon: Texture2D = _shell._command_controller.controller_icon(StringName(definition.get("icon", &"")))
-			var entry := ControllerRadialEntry.new(StringName(definition["id"]), String(definition["label"]), reason.is_empty(), reason, icon, String(definition.get("symbol", "")))
-			if entry.id == &"character" and _shell._media != null:
-				entry.icon = _shell._media.image_texture(_shell._media.asset_by_resource("cicn", 9000))
-				entry.secondary_icon = _shell._media.image_texture(_shell._media.asset_by_resource("cicn", 9006))
-			entries.append(entry)
-		_open_radial(&"workspace", "WORKSPACES", entries, true)
-		return true
-	func move_radial(direction: Vector2i) -> void: _shell._controller_radial.move_direction(Vector2(direction))
-	func page_radial(delta: int) -> void:
-		if delta < 0: _shell._controller_radial.previous_page()
-		else: _shell._controller_radial.next_page()
-	func scroll_radial(direction: Vector2i) -> void: _shell._controller_radial.scroll_reason(direction)
-	func confirm_radial() -> void: _shell._controller_radial.confirm_selected()
-	func release_controller_hold() -> void: _shell._command_controller.release_controller_hold()
-	func cancel_radial() -> bool:
-		if not _shell._controller_radial.is_open(): return false
-		_shell._controller_radial.cancel()
-		_clear_radial_owner()
-		return true
-	func on_radial_selected(command_id: StringName) -> void:
-		var kind: StringName = _shell._controller_radial_kind
-		var activation: Callable = _shell._controller_radial_activation
-		_clear_radial_owner()
-		if kind == &"action" and command_id == &"move_to": _shell.exploration_move_to_requested.emit()
-		elif kind == &"action": _shell._command_controller.activate_controller(command_id)
-		elif kind == &"workspace": _activate_workspace(command_id)
-		elif kind == &"interaction" and activation.is_valid(): activation.call(command_id)
-	func _activate_workspace(command_id: StringName) -> void:
-		match command_id:
-			&"workspace_preferences": _shell._navigator.open_screen(&"system", true, &"Display")
-			&"workspace_save_load": _shell._navigator.open_screen(&"save_load")
-			&"workspace_music": _shell._navigator.open_screen(&"system", true, &"Audio")
-			&"workspace_diagnostics": _shell._navigator.open_screen(&"system", true, &"Diagnostics")
-			&"workspace_pause": _shell._pause_controller.open()
-			_: _shell._navigator.open_screen(command_id)
-	func _open_radial(kind: StringName, title: String, entries: Array[ControllerRadialEntry], standalone_workspaces: bool = false) -> void:
-		_shell._controller_radial_kind = kind
-		_shell._controller_radial_activation = Callable()
-		_shell._controller_radial.set_title(title)
-		_shell._controller_radial.set_workspaces_presentation(standalone_workspaces)
-		_shell._controller_radial.open(entries)
-	func _clear_radial_owner() -> void:
-		_shell._controller_radial_kind = &""
-		_shell._controller_radial_activation = Callable()
+	get: return character_art.visible or font_picker.visible or (music_workspace != null and music_workspace.visible) or _pause_controller.is_active() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible or hud.focus_root() != null
 
 
 func _ready() -> void:
@@ -339,12 +176,12 @@ func _ready() -> void:
 	_layout_controller = GameShellLayoutController.new(self)
 	_status_controller = GameShellStatusController.new()
 	_status_controller.initialize(self, _status_label, _narrative, _narrative_well, _package_status, _coordinates_label, _fatigue_label, _fatigue_bar, _light_label, _clock_label, _gold_label, _activity_indicator, _activity_icon, _navigator.setup_controller)
+	hud.initialize(self)
 	_party_effects = GameShellPartyEffectsPresenter.new()
 	_layout_controller.set_effect_slots(_party_effects.initialize(self, _effects_grid, _effects_panel, party_effect_slot_scene))
-	music_workspace.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
-	music_workspace.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
-	music_workspace.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
-	font_picker.applied.connect(func(role: StringName, identity: String) -> void: font_choice_changed.emit(role, identity))
+	font_picker.applied.connect(func(role: StringName, identity: String) -> void:
+		_navigator.content_presenter.system_preferences.stage_setting(StringName(String(role) + "_font"), identity)
+	)
 	_navigator.setup_controller.set_character_art_dialog(character_art)
 	_navigator.content_presenter.characters.character_art_dialog = character_art
 	_controller_radial.command_selected.connect(_handle_controller_radial_selection)
@@ -374,7 +211,7 @@ func _ready() -> void:
 	_party_roster.combat_bandage_target_selected.connect(func(character_id: String) -> void: combat_bandage_target_selected.emit(character_id))
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
-	_bottom_region.minimum_size_changed.connect(_queue_footer_bounds)
+	_bottom_region.minimum_size_changed.connect(_layout_controller.queue_footer_layout)
 	_refresh_pause_menu()
 	_status_controller.set_status("Choose a validated Realmz campaign")
 	_apply_layout()
@@ -394,6 +231,7 @@ func present(game_view: GameView) -> void:
 	var ordinary_exploration_update: bool = previous_view != null and game_view != null and not game_view.change_set.complete_refresh and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
 	var ordinary_party_update: bool = ordinary_exploration_update and game_view.domain_revisions.party != previous_view.domain_revisions.party
 	_current_view = game_view
+	hud.observe(previous_view, game_view)
 	_sync_combat_roster_selection(game_view)
 	if ordinary_exploration_update:
 		_present_ordinary_exploration_shell(game_view, ordinary_party_update)
@@ -503,6 +341,9 @@ func accepts_exploration_input() -> bool:
 
 
 func handle_back() -> bool:
+	if hud_arrange.visible:
+		hud_arrange.cancel()
+		return true
 	if character_art.visible:
 		character_art.dismiss()
 		return true
@@ -510,6 +351,7 @@ func handle_back() -> bool:
 		music_workspace.close()
 		return true
 	if pause_active: return _pause_controller.back()
+	if hud.release_panel_focus(): return true
 	if accepts_exploration_input(): return _pause_controller.open()
 	var handled := _navigator.handle_back()
 	if handled:
@@ -523,7 +365,7 @@ func open_system_workspace() -> void:
 
 
 func _handle_controller_radial_selection(command_id: StringName) -> void:
-	controller.on_radial_selected(command_id)
+	controller.radial.on_selected(command_id)
 
 
 func handle_route_shortcut(event: InputEvent) -> bool:
@@ -583,24 +425,7 @@ func _refresh_pause_menu() -> void:
 
 func _rebuild_command_deck() -> void:
 	_command_controller.rebuild()
-	_queue_footer_bounds()
-
-
-func _queue_footer_bounds() -> void:
-	if not _footer_bounds_pending:
-		_footer_bounds_pending = true
-		call_deferred("_restore_footer_bounds")
-
-
-func _restore_footer_bounds() -> void:
-	_footer_bounds_pending = false
-	if is_node_ready() and _profile != null:
-		_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
-		layout_changed.emit(_layout_controller.workspace_rect, _profile)
-
-
-func _presentation_command_definition(definition: Dictionary) -> Dictionary:
-	return _command_controller.presentation_definition(definition)
+	_layout_controller.queue_footer_layout()
 
 
 func _notification(what: int) -> void:
@@ -619,16 +444,21 @@ func _on_screen_changed(screen_id: StringName) -> void:
 
 
 func _set_play_regions_visible(visible: bool) -> void:
-	var play_route := visible and _navigator.current_screen() in [&"exploration", &"combat", &"spells", &"save_load"]
+	var menu_over_adventure := _pause_controller != null and _pause_controller.is_active() and _current_view != null and _current_view.session_started
+	var play_route := visible and (_navigator.current_screen() in [&"exploration", &"combat", &"spells", &"save_load"] or menu_over_adventure)
 	_stage_frame.visible = play_route
-	_bottom_region.visible = play_route and _navigator.current_screen() in [&"exploration", &"spells", &"save_load"]
+	_bottom_region.visible = play_route and (_navigator.current_screen() in [&"exploration", &"spells", &"save_load"] or menu_over_adventure)
 	_party_roster.visible = play_route
+	if hud.active:
+		hud.visible = play_route
+		_bottom_region.hide()
 	play_stage_visibility_changed.emit(play_route)
 
 
 func handle_system_action_requested(action_id: StringName, value: Variant) -> void:
 	if action_id in [&"end_adventure", &"campaigns", &"quit", &"load", &"load_backup", &"load_legacy_into_slot"] and _navigator.draft_dialog.defer_if_dirty(_navigator.content_presenter.system_preferences, handle_system_action_requested.bind(action_id, value)): return
 	match action_id:
+		&"arrange_hud": hud_arrange.open(self)
 		&"save": save_requested.emit("quick" if value == null else String(value))
 		&"save_and_quit": save_and_quit_requested.emit("quick" if value == null else String(value))
 		&"load": load_requested.emit("quick" if value == null else String(value))
@@ -638,11 +468,14 @@ func handle_system_action_requested(action_id: StringName, value: Variant) -> vo
 		&"refresh_saves": refresh_saves_requested.emit()
 		&"end_adventure": end_adventure_requested.emit()
 		&"campaigns": show_campaign_selection()
+		&"cancel_preferences": _navigator.handle_back()
 		&"music_toggle": music_enabled_changed.emit(not _presentation_settings.music_enabled)
-		&"music_playlist": music_workspace.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
-		&"choose_interface_font": font_picker.open(&"interface", _presentation_settings)
+		&"music_playlist":
+			if not _navigator.draft_dialog.defer_if_dirty(_navigator.content_presenter.system_preferences, handle_system_action_requested.bind(&"music_playlist", null)):
+				music_workspace.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
+		&"choose_interface_font": font_picker.open(&"interface", _navigator.content_presenter.system_preferences.draft_settings())
 		&"character_art": character_art.open_library()
-		&"choose_narrative_font": font_picker.open(&"narrative", _presentation_settings)
+		&"choose_narrative_font": font_picker.open(&"narrative", _navigator.content_presenter.system_preferences.draft_settings())
 		&"click_to_move_toggle": click_to_move_enabled_changed.emit(not _presentation_settings.click_to_move_enabled)
 		&"combat_log": combat_log_requested.emit()
 		&"quit": quit_requested.emit()

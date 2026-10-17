@@ -1,0 +1,32 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://src/ui/shared/style/menu_backdrop.gdshader" id="1_blur"]
+
+[sub_resource type="ShaderMaterial" id="BackdropMaterial"]
+shader = ExtResource("1_blur")
+shader_parameter/blur_lod = 3.0
+shader_parameter/veil = Color(0.043, 0.082, 0.133, 0.84)
+
+[node name="PauseBackdrop" type="Control"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+z_index = 89
+
+[node name="AdventureCopy" type="BackBufferCopy" parent="."]
+copy_mode = 2
+
+[node name="SoftenedAdventure" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+material = SubResource("BackdropMaterial")

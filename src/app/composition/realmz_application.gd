@@ -225,6 +225,7 @@ func _bind_combat_and_interactions() -> void:
 
 func _bind_shell_and_settings() -> void:
 	_shell_presenter.pause_changed.connect(func(active: bool) -> void:
+		_interaction_presenter.pause_background_active = active
 		_held_movement.stop()
 		_input_router.clear_controller_state()
 		_controller_input.clear_held_input()
@@ -261,13 +262,15 @@ func _bind_shell_and_settings() -> void:
 		_spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings)
 	)
 	presentation_coordinator.spatial_visibility_changed.connect(func() -> void: _spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings))
-	_shell_presenter.route_changed.connect(_on_route_changed)
+	_shell_presenter.route_changed.connect(_held_movement.stop.unbind(1))
+	_shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
 	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
 	_shell_presenter.vault_repair_requested.connect(character_files.request_repair)
 	_shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: character_files.restore_character(_active_content, character_id, revision_hash))
 	_shell_presenter.standalone_character_creation_requested.connect(func() -> void: character_files.begin_creation(_active_content))
 	_shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: character_files.cancel_creation(_active_content))
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
+	_shell_presenter.navigator.content_presenter.system_preferences.cancel_binding_capture = _controller_input.cancel_binding_capture
 	_shell_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: _controller_input.begin_binding_capture(action_id))
 	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_settings_controller = ApplicationSettingsController.new(self, _presentation_settings, settings_repository, _shell_presenter, _map_presenter, _interaction_presenter, _audio_presenter, presentation_coordinator, _dungeon_presenter, _held_movement, debug_tools, _spatial_layout, get_viewport().get_parent() as DisplayCompositor, session_controller.view)
@@ -304,7 +307,7 @@ func _process(_delta: float) -> void:
 	session_controller.poll_combat_work()
 	if adventure_storage != null and adventure_storage.party_import != null: adventure_storage.party_import.poll()
 	lifecycle_host.poll()
-	_shell_presenter.controller.poll_pause()
+	_shell_presenter.controller.pause.poll()
 	adventure_storage.poll()
 	if click_to_move != null: click_to_move.poll(_delta)
 	_combat_host.poll()
@@ -675,8 +678,3 @@ func _present_step_status(step: SessionStep) -> void:
 			if not status_text.is_empty(): _status_label.text = status_text
 	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
 		_status_label.text = ApplicationStepStatusText.for_interaction(step.interaction)
-
-
-func _on_route_changed(route_id: StringName) -> void:
-	_held_movement.stop()
-	presentation_coordinator.set_active_route(route_id)

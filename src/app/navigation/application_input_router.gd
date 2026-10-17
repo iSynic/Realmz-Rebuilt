@@ -23,7 +23,7 @@ func handle_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed(&"realmz_back") and _application._shell_presenter.pause_active:
 		_application.abort_full_party_auto(true)
-	if _application._shell_presenter.controller.handle_pause_input(event): return
+	if _application._shell_presenter.controller.pause.handle_input(event): return
 	var released_direction := UiInputActions.released_movement_direction(event)
 	if released_direction != Vector2i.ZERO and _application._held_movement != null:
 		if not (_application._dungeon_presenter.is_active() and _application._dungeon_presenter.handle_keyboard_release(released_direction)) and _application._held_movement.active_direction() == released_direction:
@@ -55,6 +55,8 @@ func handle_input(event: InputEvent) -> void:
 		return
 	if _application.lifecycle_host.has_active_interaction():
 		return
+	if _handle_quick_save_load_input(key_event):
+		return
 	if _handle_classic_keyboard_input(key_event, pending):
 		_mark_handled()
 		return
@@ -73,14 +75,14 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 		_mark_handled()
 		return
 	if not pressed and action_id == &"realmz_controller_confirm":
-		_application._shell_presenter.controller.release_controller_hold()
+		_application._shell_presenter.controller.radial.release_hold()
 	var direction_action := _controller_direction(action_id)
 	if _update_controller_direction(action_id, direction_action, pressed):
 		return
 	if _handle_controller_log_or_diagnostics(action_id, _controller_scroll_direction(action_id) if _controller_scroll_direction(action_id) != Vector2i.ZERO else direction_action): return
 	if action_id in [&"realmz_controller_system", &"realmz_controller_top_menu"] and not repeated:
-		if _pause_is_open(): _application._shell_presenter.controller.back_pause()
-		elif not _navigation_workspace_owns_controller(): _application._shell_presenter.controller.open_pause()
+		if _pause_is_open(): _application._shell_presenter.controller.pause.back()
+		elif not _navigation_workspace_owns_controller(): _application._shell_presenter.controller.pause.open()
 		_mark_handled()
 		return
 	if _navigation_workspace_owns_controller():
@@ -126,17 +128,17 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 
 
 func handle_controller_direction(direction: Vector2i, repeated: bool = false) -> void:
+	if _application._shell_presenter.controller.handle_navigation_modal_controller(&"", true, direction):
+		_mark_handled()
+		return
 	if _navigation_workspace_owns_controller():
 		_handle_navigation_workspace_controller(&"", direction)
 		_mark_handled()
 		return
 	if _handle_controller_log_or_diagnostics(&"", direction):
 		return
-	if _application._shell_presenter.controller.handle_navigation_modal_controller(&"", true, direction):
-		_mark_handled()
-		return
 	if _pause_is_open():
-		_application._shell_presenter.controller.move_pause(direction, repeated)
+		_application._shell_presenter.controller.pause.move(direction, repeated)
 		_mark_handled()
 		return
 	if direction == Vector2i.ZERO:
@@ -144,12 +146,12 @@ func handle_controller_direction(direction: Vector2i, repeated: bool = false) ->
 		return
 	if _application.presentation_coordinator != null and _application.presentation_coordinator.is_combat_playback_active():
 		return
-	if _application._shell_presenter.controller.text_editor_is_open():
-		_application._shell_presenter.controller.move_text_editor(direction)
+	if _application._shell_presenter.controller.text.is_open():
+		_application._shell_presenter.controller.text.move(direction)
 		_mark_handled()
 		return
-	if _application._shell_presenter.controller.radial_is_open():
-		_application._shell_presenter.controller.move_radial(direction)
+	if _application._shell_presenter.controller.radial.is_open():
+		_application._shell_presenter.controller.radial.move(direction)
 		_mark_handled()
 		return
 	var pending: InteractionRequest = _application.session_controller.view().active_interaction_request()
@@ -203,13 +205,13 @@ func _handle_controller_navigation_action(action_id: StringName) -> bool:
 
 func _handle_pause_action(action_id: StringName) -> void:
 	if action_id == &"realmz_controller_confirm":
-		_application._shell_presenter.controller.confirm_pause()
+		_application._shell_presenter.controller.pause.confirm()
 	elif action_id == &"realmz_controller_back" or action_id == &"realmz_controller_top_menu":
-		_application._shell_presenter.controller.back_pause()
+		_application._shell_presenter.controller.pause.back()
 	else:
 		var menu_direction := _controller_direction(action_id)
 		if menu_direction != Vector2i.ZERO:
-			_application._shell_presenter.controller.move_pause(menu_direction, false)
+			_application._shell_presenter.controller.pause.move(menu_direction, false)
 	_mark_handled()
 
 
@@ -218,10 +220,10 @@ func _handle_radial_action(action_id: StringName, interaction_blocking: bool) ->
 		_stop_controller_movement()
 		if interaction_blocking:
 			var interaction_controls: Variant = _application._interaction_presenter.controller
-			_application._shell_presenter.controller.open_interaction_radial(interaction_controls.actions(), func(command_id: StringName) -> bool: return interaction_controls.activate_action(command_id))
+			_application._shell_presenter.controller.radial.open_interaction(interaction_controls.actions(), func(command_id: StringName) -> bool: return interaction_controls.activate_action(command_id))
 			_mark_handled()
 			return true
-		if _application._shell_presenter.controller.open_action_radial():
+		if _application._shell_presenter.controller.radial.open_actions():
 			_mark_handled()
 		return true
 	if action_id == &"realmz_controller_workspace_radial":
@@ -229,7 +231,7 @@ func _handle_radial_action(action_id: StringName, interaction_blocking: bool) ->
 		if interaction_blocking:
 			_mark_handled()
 			return true
-		if _application._shell_presenter.controller.open_workspace_radial():
+		if _application._shell_presenter.controller.radial.open_workspaces():
 			_mark_handled()
 		return true
 	return false
@@ -238,7 +240,7 @@ func _handle_radial_action(action_id: StringName, interaction_blocking: bool) ->
 func _handle_back_or_confirm_action(action_id: StringName) -> bool:
 	if action_id == &"realmz_controller_back":
 		_stop_controller_movement()
-		if _focus.cancel_active_popup():
+		if _focus.cancel_active_popup(_controller_focus_root()):
 			_mark_handled()
 			return true
 		var back := InputEventAction.new()
@@ -251,7 +253,7 @@ func _handle_back_or_confirm_action(action_id: StringName) -> bool:
 	if _application._interaction_presenter.controller.submit_acknowledgement():
 		_mark_handled()
 		return true
-	if _application._shell_presenter.controller.open_text_editor(_controller_focus_root()):
+	if _application._shell_presenter.controller.text.open(_controller_focus_root()):
 		_mark_handled()
 		return true
 	if _focus.activate_focused(_controller_focus_root()):
@@ -287,7 +289,7 @@ func _update_controller_direction(action_id: StringName, direction: Vector2i, pr
 	if _application._held_movement != null:
 		_application._held_movement.stop(&"controller")
 	var remaining := _combined_controller_direction()
-	if remaining != Vector2i.ZERO and _application.accepts_exploration_input() and not _application._dungeon_presenter.is_active() and not _application._shell_presenter.controller.radial_is_open() and not (_application.click_to_move != null and _application.click_to_move.is_selecting_destination()):
+	if remaining != Vector2i.ZERO and _application.accepts_exploration_input() and not _application._dungeon_presenter.is_active() and not _application._shell_presenter.controller.radial.is_open() and not (_application.click_to_move != null and _application.click_to_move.is_selecting_destination()):
 		_application._held_movement.start(&"controller", remaining)
 	return true
 
@@ -298,33 +300,33 @@ func clear_controller_state() -> void:
 
 
 func _handle_controller_overlay(action_id: StringName) -> bool:
-	if _application._shell_presenter.controller.text_editor_is_open():
+	if _application._shell_presenter.controller.text.is_open():
 		ApplicationControllerTextInput.handle(_application._shell_presenter.controller, action_id, _controller_direction(action_id))
 		_mark_handled()
 		return true
-	if not _application._shell_presenter.controller.radial_is_open():
+	if not _application._shell_presenter.controller.radial.is_open():
 		return false
 	return _handle_controller_radial(action_id)
 
 
 func _handle_controller_radial(action_id: StringName) -> bool:
 	if action_id == &"realmz_controller_confirm":
-		_application._shell_presenter.controller.confirm_radial()
+		_application._shell_presenter.controller.radial.confirm()
 	elif action_id == &"realmz_controller_back":
-		_application._shell_presenter.controller.cancel_radial()
+		_application._shell_presenter.controller.radial.cancel()
 	elif action_id == &"realmz_controller_section_previous":
-		_application._shell_presenter.controller.page_radial(-1)
+		_application._shell_presenter.controller.radial.page(-1)
 	elif action_id == &"realmz_controller_section_next":
-		_application._shell_presenter.controller.page_radial(1)
+		_application._shell_presenter.controller.radial.page(1)
 	else:
 		var scroll_direction := _controller_scroll_direction(action_id)
 		if scroll_direction != Vector2i.ZERO:
-			_application._shell_presenter.controller.scroll_radial(scroll_direction)
+			_application._shell_presenter.controller.radial.scroll(scroll_direction)
 			_mark_handled()
 			return true
 		var direction := _controller_direction(action_id)
 		if direction != Vector2i.ZERO:
-			_application._shell_presenter.controller.move_radial(direction)
+			_application._shell_presenter.controller.radial.move(direction)
 	_mark_handled()
 	return true
 
@@ -429,7 +431,7 @@ func _handle_controller_spellbook(action_id: StringName, direction: Vector2i) ->
 	elif action_id == &"realmz_controller_confirm":
 		_focus.activate_focused(root)
 	elif action_id == &"realmz_controller_back":
-		if not _focus.cancel_active_popup():
+		if not _focus.cancel_active_popup(_controller_focus_root()):
 			if encounter: _application._interaction_presenter.handle_back_request()
 			else: _application._shell_presenter.controller.close_spellbook()
 	elif action_id in [&"realmz_controller_section_previous", &"realmz_controller_section_next"]:
@@ -445,7 +447,7 @@ func _handle_controller_spellbook(action_id: StringName, direction: Vector2i) ->
 
 func _handle_navigation_workspace_controller(action_id: StringName, direction: Vector2i) -> void:
 	_stop_controller_movement()
-	if _application._shell_presenter.controller.text_editor_is_open():
+	if _application._shell_presenter.controller.text.is_open():
 		ApplicationControllerTextInput.handle(_application._shell_presenter.controller, action_id, direction)
 	elif direction != Vector2i.ZERO:
 		_focus.move(_controller_focus_root(), direction)
@@ -463,7 +465,7 @@ func _navigation_workspace_owns_controller() -> bool:
 
 func _pause_is_open() -> bool:
 	var access: Variant = _application._shell_presenter.controller
-	return access.has_method("pause_is_open") and access.pause_is_open()
+	return access.has_method("pause_is_open") and access.pause.is_open()
 
 
 func _controller_direction(action_id: StringName) -> Vector2i:
@@ -490,7 +492,7 @@ func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: Inp
 			_application.click_to_move.cancel("Move To cancelled.")
 		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE:
 			_application.abort_full_party_auto(true)
-			_application._shell_presenter.controller.open_pause()
+			_application._shell_presenter.controller.pause.open()
 			_mark_handled()
 		elif key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE:
 			_application.presentation_coordinator.skip_combat_playback()
@@ -504,7 +506,7 @@ func _handle_playback_or_combat_modifier_input(event: InputEvent, key_event: Inp
 			_mark_handled()
 		return true
 	if combat_pending and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _application.abort_full_party_auto(false):
-		_application._shell_presenter.controller.open_pause()
+		_application._shell_presenter.controller.pause.open()
 		_mark_handled()
 		return true
 	return false
@@ -535,7 +537,7 @@ func _handle_back_input(event: InputEvent, combat_pending: bool) -> bool:
 	if _application._interaction_presenter.handle_back_request():
 		_mark_handled()
 		return true
-	if combat_pending and _application._shell_presenter.controller.open_pause():
+	if combat_pending and _application._shell_presenter.controller.pause.open():
 		_mark_handled()
 		return true
 	if _application._interaction_presenter.has_blocking_request():
@@ -589,7 +591,7 @@ func _handle_exploration_input(event: InputEvent, key_event: InputEventKey) -> v
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_heal"):
-		_application.submit_intent(ExplorationIntents.heal())
+		_application._shell_presenter.commands.activate(&"heal")
 		_mark_handled()
 		return
 	var direction := UiInputActions.movement_direction(event)
@@ -606,9 +608,27 @@ func _mark_handled() -> void:
 	_application.get_viewport().set_input_as_handled()
 
 
+func _handle_quick_save_load_input(event: InputEventKey) -> bool:
+	var action := UiInputActions.quick_save_load_action(event)
+	if action.is_empty():
+		return false
+	var shell: GameShell = _application._shell_presenter
+	var preferences: SystemScreenController = shell.navigator.content_presenter.system_preferences
+	var view: GameView = _application.session_controller.view()
+	if action == &"save":
+		if GameShellAvailability.save_reason(view).is_empty():
+			shell.handle_system_action_requested(&"save", "quick")
+	else:
+		var preview: SaveSlotPreview = preferences.saves.active_quick_preview
+		if GameShellAvailability.load_reason(view).is_empty() and preview != null and preview.can_load:
+			shell.handle_system_action_requested(&"load", preferences.saves.active_slot_id)
+	_mark_handled()
+	return true
+
+
 func _handle_classic_keyboard_input(event: InputEventKey, pending: InteractionRequest) -> bool:
 	var shell: GameShell = _application._shell_presenter
-	if event == null or not shell.settings.classic_keyboard_shortcuts or shell.controller.radial_is_open():
+	if event == null or not shell.settings.classic_keyboard_shortcuts or shell.controller.radial.is_open():
 		return false
 	var root := _controller_focus_root() as Control
 	if root == null or _navigation_workspace_owns_controller(): return false
@@ -633,33 +653,16 @@ func _handle_classic_keyboard_input(event: InputEventKey, pending: InteractionRe
 			else: _application._interaction_presenter.controller.activate_action(action)
 		return true
 	if root != null and ClassicKeyboardShortcuts.visible_button(root, &"equip") != null:
-		var action := ClassicKeyboardShortcuts.action(event, "inventory")
-		if not action.is_empty():
-			if not event.echo: ClassicKeyboardShortcuts.activate_visible(root, action)
+		if ClassicKeyboardShortcuts.handle_visible_action(root, event, "inventory"):
 			return true
 	if pending != null:
 		if pending.kind != InteractionRequest.SHOP: return false
-		var action := ClassicKeyboardShortcuts.action(event, "shop")
-		if action.is_empty(): return false
-		if not event.echo: ClassicKeyboardShortcuts.activate_visible(root, action)
-		return true
+		return ClassicKeyboardShortcuts.handle_visible_action(root, event, "shop")
 	if not _application.accepts_exploration_input(): return false
 	var action := ClassicKeyboardShortcuts.action(event, "exploration")
 	if action.is_empty():
 		return not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed and event.physical_keycode in [KEY_W, KEY_A, KEY_S, KEY_D]
 	if event.echo: return true
 	_application._held_movement.stop()
-	if action == &"trade":
-		shell.navigator.open_screen(&"inventory")
-		ClassicKeyboardShortcuts.activate_visible.call_deferred(shell.navigator, &"trade")
-	elif action in [&"scrolls", &"make_scroll"]:
-		shell.navigator.open_screen(&"spells", true, &"Scrolls" if action == &"scrolls" else &"Known")
-	else:
-		if action in [&"service", &"encounter"]:
-			if (shell.commands.contextual_service() != null) != (action == &"service"): return true
-			action = &"contextual"
-		for entry: ControllerRadialEntry in shell.commands.controller_entries():
-			if entry.id == action and entry.enabled:
-				shell.commands.activate(action)
-				break
+	ClassicKeyboardShortcuts.activate_exploration(shell, action)
 	return true

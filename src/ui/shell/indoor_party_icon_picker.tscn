@@ -1,0 +1,283 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/indoor_party_icon_picker.gd" id="1_picker"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="2_menu_theme"]
+
+[node name="IndoorPartyIcon" type="VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_menu_theme")
+theme_override_constants/separation = 8
+script = ExtResource("1_picker")
+
+[node name="Heading" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Indoor party icon"
+
+[node name="Description" type="Label" parent="."]
+layout_mode = 2
+text = "Choose the party marker shown indoors."
+autowrap_mode = 2
+
+[node name="Summary" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="CurrentIcon" type="TextureRect" parent="Summary"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 0
+stretch_mode = 5
+
+[node name="CurrentText" type="Label" parent="Summary"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Icon 73 · Classic default"
+vertical_alignment = 1
+
+[node name="Change" type="Button" parent="Summary"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 40)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Change…"
+
+[node name="MediaUnavailable" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+text = "Icon previews are available after opening an adventure."
+autowrap_mode = 2
+visible = false
+
+[node name="PickerCanvas" type="CanvasLayer" parent="."]
+layer = 140
+
+[node name="PickerOverlay" type="Control" parent="PickerCanvas"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+z_index = 120
+
+[node name="Veil" type="ColorRect" parent="PickerCanvas/PickerOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+color = Color(0, 0, 0, 0.62)
+
+[node name="PickerPanel" type="PanelContainer" parent="PickerCanvas/PickerOverlay"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 72.0
+offset_top = 36.0
+offset_right = 1208.0
+offset_bottom = 684.0
+theme = ExtResource("2_menu_theme")
+theme_type_variation = &"MenuDialog"
+
+[node name="Content" type="VBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PickerTitle" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+theme_override_font_sizes/font_size = 24
+text = "Indoor party icon"
+
+[node name="PickerDescription" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+text = "Choose the party marker shown indoors."
+autowrap_mode = 2
+
+[node name="PickerBody" type="HBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 28
+
+[node name="GridWorkspace" type="VBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="CompactSummary" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.93, 0.75, 0.39, 1)
+theme_override_font_sizes/font_size = 24
+text = "Current: 73   →   Selected: 74"
+visible = false
+
+[node name="IconGridCenter" type="CenterContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="IconGrid" type="GridContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace/IconGridCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+
+[node name="IconTemplate" type="Button" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace/IconGridCenter/IconGrid"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(60, 42)
+layout_mode = 2
+focus_mode = 2
+toggle_mode = true
+texture_filter = 1
+icon_alignment = 1
+icon_max_width = 32
+theme_type_variation = &"MenuAction"
+tooltip_text = "Indoor party icon"
+
+[node name="PageNavigation" type="HBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="PreviousPage" type="Button" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace/PageNavigation"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 44)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "‹ Previous"
+tooltip_text = "Previous page of indoor party icons"
+
+[node name="PageLabel" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace/PageNavigation"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(70, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
+text = "4 / 5"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="NextPage" type="Button" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace/PageNavigation"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 44)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Next ›"
+tooltip_text = "Next page of indoor party icons"
+
+[node name="DefaultIcon" type="Button" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Use Classic default icon"
+
+[node name="PageHint" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/GridWorkspace"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+text = "24 choices on this page · arrow keys or controller to browse"
+autowrap_mode = 2
+
+[node name="WideSummary" type="VBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(390, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 22
+
+[node name="WideCurrentRow" type="HBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/WideSummary"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="WideCurrentIcon" type="TextureRect" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/WideSummary/WideCurrentRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 0
+stretch_mode = 5
+
+[node name="WideCurrentText" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/WideSummary/WideCurrentRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Current setting: Icon 73"
+vertical_alignment = 1
+
+[node name="WideSelectedRow" type="HBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/WideSummary"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SelectedIcon" type="TextureRect" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/WideSummary/WideSelectedRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+texture_filter = 1
+expand_mode = 0
+stretch_mode = 5
+
+[node name="WideSelectedText" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/WideSummary/WideSelectedRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.93, 0.75, 0.39, 1)
+text = "Selected: Icon 74"
+vertical_alignment = 1
+
+[node name="WideHelp" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/PickerBody/WideSummary"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+text = "Use icon returns to Settings with this choice staged. Apply changes there to save it.\n\nCancel returns with your previous draft choice intact."
+autowrap_mode = 2
+
+[node name="CompactGuidance" type="Label" parent="PickerCanvas/PickerOverlay/PickerPanel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.57, 0.71, 0.74, 1)
+text = "Use icon adds this choice to Settings."
+autowrap_mode = 2
+visible = false
+
+[node name="FooterDivider" type="HSeparator" parent="PickerCanvas/PickerOverlay/PickerPanel/Content"]
+layout_mode = 2
+
+[node name="Footer" type="HBoxContainer" parent="PickerCanvas/PickerOverlay/PickerPanel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CancelIcon" type="Button" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 48)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Cancel"
+
+[node name="FooterSpacer" type="Control" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="UseIcon" type="Button" parent="PickerCanvas/PickerOverlay/PickerPanel/Content/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 48)
+layout_mode = 2
+theme_type_variation = &"MenuAction"
+text = "Use icon"

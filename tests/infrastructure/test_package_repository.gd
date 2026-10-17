@@ -329,7 +329,7 @@ func _cleanup_install_test_root() -> void:
 	var actual := ProjectSettings.globalize_path(INSTALL_TEST_ROOT).simplify_path()
 	if actual != expected or not DirAccess.dir_exists_absolute(actual):
 		return
-	_remove_install_tree(actual, actual)
+	_remove_tree(actual, actual)
 
 
 func _write_schema_v2_fixture() -> String:
@@ -362,19 +362,6 @@ func _cleanup_schema_rejection() -> void:
 	var absolute_path := ProjectSettings.globalize_path(SCHEMA_REJECTION_PATH)
 	if FileAccess.file_exists(absolute_path):
 		DirAccess.remove_absolute(absolute_path)
-
-
-func _remove_install_tree(path: String, verified_root: String) -> void:
-	if path != verified_root and not path.begins_with(verified_root + "/"):
-		return
-	var directory := DirAccess.open(path)
-	if directory == null:
-		return
-	for file_name: String in directory.get_files():
-		DirAccess.remove_absolute(path.path_join(file_name))
-	for directory_name: String in directory.get_directories():
-		_remove_install_tree(path.path_join(directory_name), verified_root)
-	DirAccess.remove_absolute(path)
 
 
 func _test_deferred_start_locations(loaded: Variant, character_library: Variant) -> void:

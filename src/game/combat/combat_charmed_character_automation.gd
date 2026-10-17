@@ -33,7 +33,8 @@ func advance_charmed_character(state: GameState, content: RealmzContent, actor: 
 		var origin := combat.battlefield.actors.actor_position(actor.id)
 		visited.append(origin)
 		var retained := combat.turns.active_turn.target_id
-		var candidates: Array[String] = [retained] if targets.has(retained) else targets
+		var candidates: Array[String] = targets.duplicate()
+		if targets.has(retained): candidates.assign([retained])
 		var step: BattlefieldStepResult = null
 		for target_id: String in candidates:
 			step = _context.battlefield.probe_path_step_toward_actors(combat.battlefield, terrain, actor.id, [target_id], actor.movement, [], visited)

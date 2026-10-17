@@ -28,4 +28,6 @@ For automatic turns, enter through `CombatFlowAutomation`. Party Auto activation
 
 An Auto spell plan must preserve its authored targeting form, including explicit repeated targets or an area center and rotation. An actor ID alone is not an area placement. Held-over allies start each battle without their former target identity so the new battle remains valid for transaction rollback. Smart target selection is a deliberate improvement over the Realmz Castle codebase; spell effects, costs, and targeting rules remain authoritative.
 
+Auto condition spells score only recipients missing the effect. Friendly/opposed automatic groups use their actual target-type allegiance, including their reflection bypass; an active positive duration or permanent negative condition has no recast value. Party-wide conditions check the party slot rather than a character slot. The same policy covers equipped spell abilities, while manual refresh and stacking remain unchanged.
+
 All of those rule collaborators are colocated in this folder. `src/playthrough/combat` translates player intents and saved handoffs into their public commands; `src/ui/combat` binds the scene-authored battle controls and renders detached views. Neither boundary owns a second combat rules implementation.

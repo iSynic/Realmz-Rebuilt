@@ -264,8 +264,8 @@ func show_party_setup() -> void:
 	apply_modal_layouts()
 	_focus_first(setup_overlay)
 
-func hide_overlays() -> void:
-	_campaign_library.hide_overlays()
+func hide_overlays(keep_menu_background: bool = false) -> void:
+	_campaign_library.hide_overlays(keep_menu_background)
 	if setup_overlay != null:
 		setup_overlay.visible = false
 	close_party_import()

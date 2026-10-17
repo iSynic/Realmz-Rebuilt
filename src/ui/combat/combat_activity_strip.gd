@@ -78,13 +78,13 @@ func show_frame(frame: CombatPlaybackFrame) -> void:
 		_target_id = ""
 	elif frame.kind == &"group_result":
 		_target_id = ""
-	elif not frame.target_id.is_empty() and (frame.target_id != _actor_id or frame.kind == &"result"):
+	elif not frame.target_id.is_empty() and (frame.target_id != _actor_id or frame.kind in [&"result", &"account_result"]):
 		_target_id = frame.target_id
 	_render_previews(frame)
 	_last_frame_id = frame.get_instance_id()
 	var line := _frame_line(frame)
 	var entries: Array[String] = []
-	if frame.kind == &"group_result":
+	if frame.kind in [&"group_result", &"group_defeat"]:
 		for child: CombatPlaybackFrame in frame.group_frames:
 			entries.append(_frame_line(child))
 	elif not line.is_empty():
@@ -110,7 +110,7 @@ func _frame_line(frame: CombatPlaybackFrame) -> String:
 		&"swap", &"retreat": return "%s · %s" % [actor, frame.display_text]
 		&"melee_attack", &"projectile": return "%s attacks %s" % [actor, target]
 		&"spell_cast": return "%s · %s" % [actor, frame.display_text]
-		&"result":
+		&"result", &"account_result":
 			return "%s · %s" % [target if not frame.target_id.is_empty() else actor, frame.display_text]
 		&"defeat": return "%s · %s" % [target, frame.display_text]
 		&"field_changed": return frame.display_text
@@ -149,7 +149,7 @@ func _bind_preview(combatant_id: String, icon: TextureRect, name_label: Label, v
 	var conditions: Array = facts.get("conditions", [])
 	if not conditions.is_empty():
 		details.append(String(conditions[0]))
-	if heading == "Target" and frame != null and frame.kind == &"result" and frame.target_id == combatant_id and not frame.display_text.is_empty():
+	if heading == "Target" and frame != null and frame.kind in [&"result", &"account_result"] and frame.target_id == combatant_id and not frame.display_text.is_empty():
 		details.append(frame.display_text)
 	vitals.text = "\n".join(details)
 

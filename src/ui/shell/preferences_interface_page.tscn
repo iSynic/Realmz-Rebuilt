@@ -1,0 +1,145 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shell/hud_settings_panel.tscn" id="1_hud_panel"]
+
+[node name="Interface" type="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InterfaceSettingsScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="InterfaceSettingsPanel" type="PanelContainer" parent="InterfaceSettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Content" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InterfaceTabs" type="TabContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Text" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Commands" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="HUD panels" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs" instance=ExtResource("1_hud_panel")]
+layout_mode = 2
+
+[node name="InterfaceFontRow" type="BoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text" groups=["system_setting_rows"]]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/InterfaceFontRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Interface font"
+
+[node name="ChooseFont" type="Button" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/InterfaceFontRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Classic fonts"
+clip_text = true
+
+[node name="InterfaceTextScaleRow" type="BoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/InterfaceTextScaleRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Interface text size"
+[node name="TextScaleSlider" type="HSlider" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/InterfaceTextScaleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.5
+max_value = 1.5
+step = 0.05
+value = 1.0
+
+[node name="SizeValue" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/InterfaceTextScaleRow"]
+custom_minimum_size = Vector2(52, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
+[node name="NarrativeFontRow" type="BoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text" groups=["system_setting_rows"]]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/NarrativeFontRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Narrative font"
+
+[node name="ChooseFont" type="Button" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/NarrativeFontRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Classic fonts"
+clip_text = true
+
+[node name="NarrativeTextScaleRow" type="BoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/NarrativeTextScaleRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Narrative text size"
+[node name="TextScaleSlider" type="HSlider" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/NarrativeTextScaleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.5
+max_value = 1.5
+step = 0.05
+value = 1.0
+
+[node name="SizeValue" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/NarrativeTextScaleRow"]
+custom_minimum_size = Vector2(52, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
+[node name="FontStatus" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text"]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="TextPreview" type="PanelContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text"]
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/TextPreview"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Heading" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/TextPreview/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Text preview"
+
+[node name="Sample" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/TextPreview/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "The quick brown fox explores the Realmz."
+autowrap_mode = 2
+
+[node name="PreviewDetail" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text/TextPreview/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicNarrativeText"
+text = "The road bends through the forest, and distant bells carry on the wind."
+autowrap_mode = 2
+[node name="OverworldCommandTitles" type="CheckButton" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Commands"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Show overworld command titles"
+tooltip_text = "Show captions on Search, Area Search, Camp, and Rest. Tooltips and controller labels remain available when captions are hidden."
+autowrap_mode = 2
+
+[node name="FitHiddenCommandArt" type="CheckButton" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Commands"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Fit hidden command art to button"
+tooltip_text = "When titles are hidden, use the largest whole-number art scale from 1× to 3× that fits each button."
+autowrap_mode = 2

@@ -60,7 +60,7 @@ static func text_for(result_kind: StringName, amount: int, payload: Dictionary =
 		&"resisted":
 			return "Resist"
 		&"saved":
-			return "Saved"
+			return "Saved · %d damage" % amount if amount > 0 else "Saved"
 		&"fumble":
 			return "Fumble"
 		&"healing":

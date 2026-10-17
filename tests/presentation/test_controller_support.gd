@@ -1,11 +1,11 @@
 extends RealmzTestCase
 
-const PERSISTENT_AUTO_COORDINATOR := preload("res://src/app/session/persistent_auto_coordinator.gd")
+class RouterClosedPopup extends RefCounted:
+	func is_open() -> bool: return false
 
 class RouterOverlayAccess extends RefCounted:
 	func navigation_workspace_focus_root() -> Node: return null
-	func text_editor_is_open() -> bool: return false
-	func radial_is_open() -> bool: return false
+	var text := RouterClosedPopup.new(); var radial := text
 	func handle_navigation_modal_controller(_action: StringName, _pressed: bool, _direction: Vector2i = Vector2i.ZERO) -> bool: return false
 
 class RouterShellPresenter extends RefCounted:
@@ -221,6 +221,9 @@ func _test_focus_navigation_activation_and_prompts() -> void:
 	assert_false(navigator.activate_focused(root), "South cannot activate a focused disabled control")
 	var toggle := CheckButton.new(); toggle.position = Vector2(40, 100); toggle.text = "Toggle"; root.add_child(toggle); toggle.grab_focus(); var toggled := [false]; toggle.toggled.connect(func(value: bool) -> void: toggled[0] = value); assert_true(navigator.activate_focused(root) and toggle.button_pressed and toggled[0], "South changes a focused toggle through its native state and signal")
 	var picker := OptionButton.new(); picker.position = Vector2(200, 100); picker.add_item("First"); picker.add_item("Second"); root.add_child(picker); picker.grab_focus(); assert_true(navigator.activate_focused(root), "South opens a focused dropdown under controller ownership"); navigator.move(root, Vector2i.DOWN); assert_true(navigator.activate_focused(root) and picker.selected == 1, "direction and South select the highlighted dropdown entry through the option owner")
+	picker.show_popup()
+	navigator.move(root, Vector2i.UP)
+	assert_true(navigator.activate_focused(root) and picker.selected == 0, "controller navigation adopts a pointer-opened dropdown")
 	var list := ItemList.new(); list.position = Vector2(380, 100); list.size = Vector2(120, 80); list.add_item("One"); list.add_item("Two"); root.add_child(list); list.grab_focus(); navigator.move(root, Vector2i.DOWN); var activated_item := [-1]; list.item_activated.connect(func(index: int) -> void: activated_item[0] = index); assert_true(navigator.activate_focused(root) and activated_item[0] == 1, "controller selection activates the exact focused list record")
 	var modal := Control.new(); modal.size = Vector2(200, 100)
 	root.add_child(modal)
@@ -271,25 +274,25 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	assert_false(radial.is_open(), "cancel closes the radial without dispatching another command")
 	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell; host.add_child(shell); await (Engine.get_main_loop() as SceneTree).process_frame
 	for shell_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]: host.size = shell_size; await (Engine.get_main_loop() as SceneTree).process_frame; shell.controller.hide_prompts(); var stage_before := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); shell.controller.show_prompts(ControllerPreferences.PROMPT_XBOX, &"workspace"); var prompt_rect := (shell.find_child("ControllerPromptStrip", true, false) as Control).get_global_rect(); var stage_rect := (shell.find_child("StageFrame", true, false) as Control).get_global_rect(); var footer_rect := (shell.find_child("BottomRegion", true, false) as Control).get_global_rect(); assert_true(prompt_rect.intersects(stage_rect) and not prompt_rect.intersects(footer_rect) and stage_rect == stage_before, "the transient controller hint floats over the upper stage without changing shell geometry at %s" % shell_size)
-	assert_true(shell.controller.open_workspace_radial(), "North opens the curated workspace wheel"); var workspace_radial := shell.find_child("ControllerRadialOverlay", true, false) as ControllerRadialOverlay; assert_equal(workspace_radial.current_page_entries().map(func(entry: ControllerRadialEntry) -> StringName: return entry.id), [&"inventory", &"spells", &"journal", &"character", &"services", &"workspace_preferences", &"workspace_save_load", &"exploration"], "the primary workspace wheel exposes the approved eight stable destinations in order"); assert_true((workspace_radial.find_child("WorkspaceHints", true, false) as Label).visible and not (workspace_radial.find_child("Footer", true, false) as Control).visible, "the shell opens Workspaces in the standalone wheel mode"); shell.controller.cancel_radial()
+	assert_true(shell.controller.radial.open_workspaces(), "North opens the curated workspace wheel"); var workspace_radial := shell.find_child("ControllerRadialOverlay", true, false) as ControllerRadialOverlay; assert_equal(workspace_radial.current_page_entries().map(func(entry: ControllerRadialEntry) -> StringName: return entry.id), [&"inventory", &"spells", &"journal", &"character", &"services", &"workspace_preferences", &"workspace_save_load", &"exploration"], "the primary workspace wheel exposes the approved eight stable destinations in order"); assert_true((workspace_radial.find_child("WorkspaceHints", true, false) as Label).visible and not (workspace_radial.find_child("Footer", true, false) as Control).visible, "the shell opens Workspaces in the standalone wheel mode"); shell.controller.radial.cancel()
 	var battle_view := _auto_view(1, 1, "hero"); battle_view.campaign_id = "pause-battle-fixture"; battle_view.campaign_summary = CampaignSummaryView.new(); battle_view.campaign_summary.title = "Battle Fixture"; battle_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 10, 10))]; shell.present(battle_view); await (Engine.get_main_loop() as SceneTree).process_frame
-	assert_true(shell.controller.open_pause() and shell.controller.pause_is_open(), "controller navigation opens Pause during an active battle")
-	shell.controller.move_pause(Vector2i.DOWN); shell.controller.confirm_pause()
+	assert_true(shell.controller.pause.open() and shell.controller.pause.is_open(), "controller navigation opens Pause during an active battle")
+	shell.controller.pause.move(Vector2i.DOWN); shell.controller.pause.confirm()
 	var pause_view := shell.get_node("PauseMenu") as PauseMenuView; var saves := pause_view.find_children("*", "PauseMenuAction", true, false).filter(func(node: Node) -> bool: return (node as PauseMenuAction).action_id == &"saves")[0] as PauseMenuAction
 	assert_true(saves.button.disabled and saves.button.tooltip_text == "Unavailable during battle.", "Battle disables Save & Load with its explicit reason")
-	shell.controller.back_pause(); shell.controller.back_pause()
+	shell.controller.pause.back(); shell.controller.pause.back()
 	var modal_view := GameView.new(2, true, null); modal_view.campaign_id = "pause-modal-fixture"; modal_view.campaign_summary = CampaignSummaryView.new(); modal_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 10, 10))]; modal_view.pending_interaction = InteractionRequest.acknowledge("pause.modal", "Resolve this choice first."); shell.present(modal_view)
-	assert_false(shell.controller.open_pause(), "a pending interaction keeps priority over Pause")
-	var activated: Array[StringName] = []; assert_true(shell.controller.open_interaction_radial([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.confirm_radial(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
+	assert_false(shell.controller.pause.open(), "a pending interaction keeps priority over Pause")
+	var activated: Array[StringName] = []; assert_true(shell.controller.radial.open_interaction([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.radial.confirm(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")
 	var hold_view := GameView.new(1, true, null); hold_view.campaign_id = "controller-hold"; hold_view.campaign_summary = CampaignSummaryView.new(); hold_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 10, 10))]; hold_view.set_action_availability(&"rest", true); hold_view.set_action_availability(&"heal", true)
 	var intents: Array[PlayerIntent] = []; shell.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent)); shell.present(hold_view); await (Engine.get_main_loop() as SceneTree).process_frame
-	assert_true(shell.commands.activate_controller(&"rest") and intents.size() == 1 and intents[0].kind == PlayerIntent.Kind.REST, "confirming Rest through the radial begins its ordinary held-command owner with one immediate pulse"); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "a held radial Rest repeats through the same presentation cadence as its footer button"); shell.controller.release_controller_hold(); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "releasing controller Confirm ends the radial-held command without another pulse")
-	assert_true(shell.commands.activate_controller(&"heal") and intents.size() == 3 and intents[-1].kind == PlayerIntent.Kind.HEAL, "confirming Heal through the radial begins its ordinary held-command owner"); shell.commands.call("_on_timeout"); shell.controller.release_controller_hold(); shell.commands.call("_on_timeout"); assert_equal([intents.size(), intents[-1].kind], [4, PlayerIntent.Kind.HEAL], "held radial Heal repeats only until controller Confirm releases")
+	assert_true(shell.commands.activate_controller(&"rest") and intents.size() == 1 and intents[0].kind == PlayerIntent.Kind.REST, "confirming Rest through the radial begins its ordinary held-command owner with one immediate pulse"); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "a held radial Rest repeats through the same presentation cadence as its footer button"); shell.controller.radial.release_hold(); shell.commands.call("_on_timeout"); assert_equal(intents.size(), 2, "releasing controller Confirm ends the radial-held command without another pulse")
+	assert_true(shell.commands.activate_controller(&"heal") and intents.size() == 3 and intents[-1].kind == PlayerIntent.Kind.HEAL, "confirming Heal through the radial begins its ordinary held-command owner"); shell.commands.call("_on_timeout"); shell.controller.radial.release_hold(); shell.commands.call("_on_timeout"); assert_equal([intents.size(), intents[-1].kind], [4, PlayerIntent.Kind.HEAL], "held radial Heal repeats only until controller Confirm releases")
 	host.free(); await (Engine.get_main_loop() as SceneTree).process_frame
 
 
 func _test_persistent_auto_continuation() -> void:
-	var current: Array[GameView] = [_auto_view(10, 1, "hero")]; var blocker: Array[StringName] = [&""]; var submissions: Array[Dictionary] = []; var failures: Array[String] = []; var fail_submit: Array[bool] = [false]; var coordinator: RefCounted = PERSISTENT_AUTO_COORDINATOR.new(); var coordinator_ref: WeakRef = weakref(coordinator)
+	var current: Array[GameView] = [_auto_view(10, 1, "hero")]; var blocker: Array[StringName] = [&""]; var submissions: Array[Dictionary] = []; var failures: Array[String] = []; var fail_submit: Array[bool] = [false]; var coordinator: RefCounted = PersistentAutoCoordinator.new(); var coordinator_ref: WeakRef = weakref(coordinator)
 	var pending_id: Array[int] = [0]
 	coordinator.configure(func() -> GameView: return current[0], func() -> int: return 41, func() -> StringName: return blocker[0], func(response: InteractionResponse) -> CombatSubmission:
 		var body := response.body as InteractionResponse.CombatBody; submissions.append({"actor": body.actor_id, "round": current[0].combat_view.round_number, "revision": current[0].revision}); pending_id[0] = submissions.size()
@@ -415,19 +418,45 @@ func _test_controller_settings_draft_and_embedded_file_dialog() -> void:
 	var captures: Array[StringName] = []
 	var applied: Array[ControllerPreferences] = []
 	controller.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: captures.append(action_id))
-	controller.setting_changed.connect(func(setting_id: StringName, value: Variant) -> void:
-		if setting_id == &"controller_preferences": applied.append(value as ControllerPreferences)
-	)
+	controller.commit_preferences = func(_baseline: PresentationSettings, candidate: PresentationSettings) -> String:
+		applied.append(candidate.controller.duplicate_value())
+		settings.copy_from(candidate)
+		return ""
 	controller.present(screen, view, settings)
-	assert_true(controller.navigate_section(&"Controls") and controller.navigate_section(&"", 1) and (screen.find_child("SystemWorkspaceTabs", true, false) as TabContainer).get_current_tab_control().name == "Diagnostics", "shoulders switch declared Preferences sections without walking every control")
+	assert_true(controller.navigate_section(&"Controls") and controller.navigate_section(&"", 1) and (screen.find_child("SystemWorkspaceTabs", true, false) as TabContainer).get_current_tab_control().name == "Audio", "shoulders switch declared Preferences sections without walking every control")
 	var confirm := screen.find_child("ControllerBinding_confirm", true, false) as Button
 	confirm.pressed.emit()
 	assert_equal(captures, [&"realmz_controller_confirm"], "the Controls page gives binding capture sole ownership of a named draft action")
 	controller.controller.receive_binding(&"realmz_controller_confirm", {"action": "realmz_controller_confirm", "kind": "button", "code": JOY_BUTTON_MISC1, "direction": 0})
-	var apply := screen.find_child("ApplyControllerBindings", true, false) as Button
+	var apply := screen.workspace().get_node("PreferencesFooter/Apply") as Button
 	assert_false(apply.disabled, "a conflict-free reachable draft can be applied while current controls remain active")
+	controller.stage_setting(&"master_volume", 0.25)
+	assert_equal(settings.master_volume, 1.0, "ordinary settings stay detached alongside controller edits")
 	apply.pressed.emit()
+	assert_equal(settings.master_volume, 0.25, "one Apply commits ordinary and controller changes together")
+	controller.stage_setting(&"master_volume", 0.75)
+	controller.discard_draft()
+	assert_equal(controller.draft_settings().master_volume, 0.25, "Cancel restores the last committed preference")
 	assert_true(applied.size() == 1 and applied[0].bindings.any(func(binding: Dictionary) -> bool: return binding["action"] == "realmz_controller_confirm" and binding["code"] == JOY_BUTTON_MISC1), "Apply emits one complete typed controller preference value")
+	controller.commit_preferences = func(_baseline: PresentationSettings, _candidate: PresentationSettings) -> String: return "Fixture storage failure"
+	controller.stage_setting(&"master_volume", 0.9)
+	assert_true(not controller.apply_draft() and controller.has_dirty_draft() and settings.master_volume == 0.25 and controller.draft_settings().master_volume == 0.9, "a failed commit retains the draft and live settings")
+	controller.discard_draft()
+	var input_owner := ControllerInputOwner.new()
+	input_owner.configure(settings.controller)
+	controller.controller_binding_capture_requested.connect(input_owner.begin_binding_capture)
+	controller.cancel_binding_capture = input_owner.cancel_binding_capture
+	var captured_after_exit: Array[Dictionary] = []
+	input_owner.binding_captured.connect(func(_action: StringName, descriptor: Dictionary) -> void: captured_after_exit.append(descriptor))
+	confirm.pressed.emit()
+	assert_true(controller.has_dirty_draft() and controller.close_local_picker() and not controller.has_dirty_draft(), "local Back ends a clean binding capture before leaving Preferences")
+	input_owner.handle_input(_pad_button(0, JOY_BUTTON_X, true))
+	assert_true(captured_after_exit.is_empty(), "controller input after leaving capture cannot rebind a hidden draft")
+	confirm.pressed.emit()
+	(screen.find_child("RestoreControllerDefaults", true, false) as Button).pressed.emit()
+	input_owner.handle_input(_pad_button(0, JOY_BUTTON_Y, true))
+	assert_true(captured_after_exit.is_empty(), "Restore Defaults also cancels the host binding listener")
+	input_owner.free()
 	var campaign_panel: Control = load("res://src/ui/setup/campaign_selection_panel.tscn").instantiate() as Control
 	var dialog := campaign_panel.find_child("InstallScenarioDialog", true, false) as FileDialog
 	assert_true(dialog != null and not dialog.use_native_dialog, "scenario installation uses Godot's embedded controller-focusable file dialog")

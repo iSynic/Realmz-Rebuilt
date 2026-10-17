@@ -21,7 +21,7 @@ func run() -> void:
 	_test_door_item_xap(content)
 	_test_inventory_identification(content)
 	_test_split_join(content)
-	var session := GameSession.new(); assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts"); var source := _character("inventory.source", "Alis", content); var destination := _character("inventory.destination", "Borin", content)
+	var session := GameSession.new(); assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts"); var source := _fixture_character("inventory.source", "Alis", content); var destination := _fixture_character("inventory.destination", "Borin", content)
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(source.id, "1".repeat(64), source, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "source character enters party setup"); assert_equal(session.submit_intent(PartyIntents.import_vault_character(destination.id, "2".repeat(64), destination, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
 	var carried_source := session._context.state.party.character_by_id(source.id); var item := content.items.item_by_id("classic.item.inventory-sword"); var instance := RealmzRules.new().inventory.add_item(carried_source, item, "inventory.instance.sword", true)
 	assert_not_null(instance, "source-backed carried item enters the source character inventory")
@@ -93,7 +93,7 @@ func _test_minstrel_pipes(application: RealmzContent) -> void:
 
 func _test_split_join(content: RealmzContent) -> void:
 	var stack := content.items.item_by_id("classic.item.inventory-stack")
-	var owner := _character("inventory.stack-owner", "Cora", content)
+	var owner := _fixture_character("inventory.stack-owner", "Cora", content)
 	owner.maximum_load = 100_000
 	owner.set_inventory([ItemInstance.new("inventory.instance.stack", stack.id, 5, false, true)])
 	owner.carried_load = stack.instance_weight(5)
@@ -123,7 +123,7 @@ func _test_split_join(content: RealmzContent) -> void:
 	assert_equal(joined_owner.carried_load, stack.instance_weight(5), "Join immediately removes duplicate-record base weight")
 	assert_true(joined.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 663), "Join requests Castle's integrated sound")
 
-	var overflow_owner := _character("inventory.overflow-owner", "Dara", content)
+	var overflow_owner := _fixture_character("inventory.overflow-owner", "Dara", content)
 	overflow_owner.maximum_load = 100_000
 	overflow_owner.set_inventory([ItemInstance.new("inventory.instance.large-a", stack.id, 20_000, false, true), ItemInstance.new("inventory.instance.large-b", stack.id, 20_000, false, true)])
 	overflow_owner.carried_load = stack.instance_weight(20_000) * 2
@@ -138,8 +138,8 @@ func _test_split_join(content: RealmzContent) -> void:
 
 
 func _test_inventory_identification(content: RealmzContent) -> void:
-	var target := _character("inventory.identify-target", "Galen", content)
-	var caster := _character("inventory.identify-caster", "Iria", content)
+	var target := _fixture_character("inventory.identify-target", "Galen", content)
+	var caster := _fixture_character("inventory.identify-caster", "Iria", content)
 	var spell := content.magic.spell_by_id("classic.spell.inventory-identify")
 	caster.spellcaster_type = 1
 	caster.spell_points = 30
@@ -172,8 +172,8 @@ func _test_inventory_identification(content: RealmzContent) -> void:
 func _test_field_spell_item_use(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	assert_equal(session.start(content, 73).state, SessionStep.State.COMPLETED, "field item-use session starts")
-	var user := _character("inventory.item-user", "Ena", content)
-	var target := _character("inventory.item-target", "Fenn", content)
+	var user := _fixture_character("inventory.item-user", "Ena", content)
+	var target := _fixture_character("inventory.item-target", "Fenn", content)
 	user.current_health = 4
 	target.current_health = 5
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "3".repeat(64), user, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "item user enters party setup")
@@ -249,7 +249,7 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 
 func _test_door_item_xap(content: RealmzContent) -> void:
 	var session := GameSession.new(); assert_equal(session.start(content, 79).state, SessionStep.State.COMPLETED, "door-item session starts")
-	var user := _character("inventory.door-user", "Ena", content); assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "9".repeat(64), user, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "door-item user enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "door-item fixture begins")
+	var user := _fixture_character("inventory.door-user", "Ena", content); assert_equal(session.submit_intent(PartyIntents.import_vault_character(user.id, "9".repeat(64), user, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "door-item user enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "door-item fixture begins")
 	var carried := session._context.state.party.character_by_id(user.id); var door := content.items.item_by_id("classic.item.inventory-door"); var instance := RealmzRules.new().inventory.add_item(carried, door, "inventory.instance.door", true); assert_true(session.view().party_members[0].items[0].actions.use.enabled, "type-23 item exposes its authored field XAP")
 	var waiting := session.submit_intent(InventoryIntents.use(instance.id, carried.id)); assert_equal([waiting.state, waiting.interaction.kind, instance.charges, session._context.session_continuation.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE, 1, &"item-xap"], "field door item spends one charge and waits inside its typed XAP owner")
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "pending door-item XAP restores transactionally"); var completed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction)); assert_true(completed.state == SessionStep.State.COMPLETED and completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_xap_completed"), "restored field door XAP completes exactly once")
@@ -260,7 +260,7 @@ func _test_door_item_xap(content: RealmzContent) -> void:
 
 func _test_equipment_probes(content: RealmzContent) -> void:
 	var rules := RealmzRules.new()
-	var character := _character("inventory.probes", "Probe", content)
+	var character := _fixture_character("inventory.probes", "Probe", content)
 	character.maximum_load = 2_000
 	var party: Array[CharacterState] = [character]
 	var race := content.characters.race_by_id(character.race_id)
@@ -397,11 +397,3 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, torch, stack, door]
 	var spells: Array[SpellDefinition] = [healing_spell, self_spell, light_spell, identify_spell]
 	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([door_program], []), [MessageDefinition.new(901, "The crown answers.")], [], [], races, castes, items, spells)
-
-
-func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:
-	var result := CharacterState.new(character_id, display_name, 12, 12)
-	result.race_id = content.characters.race_definitions()[0].id
-	result.caste_id = content.characters.caste_definitions()[0].id
-	result.maximum_load = 100
-	return result

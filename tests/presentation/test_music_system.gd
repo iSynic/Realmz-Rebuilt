@@ -23,7 +23,7 @@ func _test_immediate_single_target_action_preference() -> void:
 	assert_false(settings.immediate_single_target_actions, "immediate single-target actions default off")
 	settings.immediate_single_target_actions = true
 	var serialized := settings.to_data()
-	assert_equal(serialized["schemaVersion"], 26, "presentation settings serialize with schema twenty-six")
+	assert_equal(serialized["schemaVersion"], 27, "presentation settings serialize with schema twenty-seven")
 	assert_true(serialized["immediateSingleTargetActions"], "the preference uses its stable serialized key")
 	var restored := PresentationSettings.from_data(serialized)
 	assert_true(restored != null and restored.immediate_single_target_actions, "schema-nineteen preference round-trips through serialization")
@@ -73,16 +73,16 @@ func _test_music_workspace() -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(dialog)
 	var settings := PresentationSettings.new()
 	dialog.open(settings, 1, "After the Rain", true)
-	var contexts := dialog.find_child("Contexts", true, false) as ItemList
+	var contexts := dialog.find_child("Assignments", true, false).get_node("Compact/Content/Context") as OptionButton
 	assert_true(dialog.visible and contexts.item_count == 20 and dialog.find_child("MusicDone", true, false) != null, "the workspace keeps twenty Classic contexts and a persistent Done action")
 	assert_equal((dialog.find_child("MusicTabs", true, false) as TabContainer).get_tab_count(), 3, "Library, Playlists, and Assignments have separate editable scene tabs")
 	contexts.select(17)
 	contexts.item_selected.emit(17)
-	assert_true((dialog.find_child("ModePlay", true, false) as Button).disabled and (dialog.find_child("ModeOff", true, false) as Button).disabled, "unused contexts remain visible and reserved")
+	assert_true((dialog.find_child("Assignments", true, false).get_node("Compact/Content/CompactFields/ModeRow/Mode") as OptionButton).disabled, "unused contexts remain visible and reserved")
 	contexts.select(10)
 	contexts.item_selected.emit(10)
-	(dialog.find_child("ModeContinue", true, false) as Button).pressed.emit()
-	assert_equal(settings.music_mode(11), PresentationSettings.MUSIC_CONTINUE, "mode controls update the selected Classic context")
+	(dialog.find_child("Assignments", true, false).get_node("Compact/Content/CompactFields/ModeRow/Mode") as OptionButton).item_selected.emit(1)
+	assert_true(dialog.playback_preferences().music_mode(11) == PresentationSettings.MUSIC_CONTINUE and settings.music_mode(11) == PresentationSettings.MUSIC_PLAY, "context modes remain in the music draft until Apply")
 	dialog.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	var panel := dialog.find_child("MusicPlaylistWindow", true, false) as PanelContainer
 	for dimensions: Vector2 in [Vector2(1280, 720), Vector2(800, 600)]:
@@ -109,7 +109,7 @@ func _test_music_workspace() -> void:
 	(dialog.find_child("NewPlaylist", true, false) as Button).pressed.emit()
 	(dialog.find_child("MusicCancel", true, false) as Button).pressed.emit()
 	dialog.open(settings, 1, "After the Rain", true)
-	assert_equal((dialog.find_child("PlaylistChoice", true, false) as OptionButton).item_count, 1, "Cancel discards unapplied playlist edits")
+	assert_equal((dialog.find_child("PlaylistChoice", true, false) as ItemList).item_count, 1, "Cancel discards unapplied playlist edits")
 	(dialog.find_child("MusicDone", true, false) as Button).pressed.emit()
 	assert_false(dialog.visible, "Done returns without requiring Escape")
 	dialog.free()

@@ -1,0 +1,71 @@
+[gd_scene load_steps=1 format=3]
+
+
+[node name="Audio" type="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="AudioSettingsScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="AudioSettingsPanel" type="PanelContainer" parent="AudioSettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="AudioSettingsScroll/AudioSettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="MasterVolumeRow" type="BoxContainer" parent="AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="AudioSettingsScroll/AudioSettingsPanel/Content/MasterVolumeRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Master volume"
+[node name="MasterVolumeSlider" type="HSlider" parent="AudioSettingsScroll/AudioSettingsPanel/Content/MasterVolumeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+[node name="SoundVolumeRow" type="BoxContainer" parent="AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="AudioSettingsScroll/AudioSettingsPanel/Content/SoundVolumeRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Sound effects"
+[node name="SoundVolumeSlider" type="HSlider" parent="AudioSettingsScroll/AudioSettingsPanel/Content/SoundVolumeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+[node name="MusicVolumeRow" type="BoxContainer" parent="AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="AudioSettingsScroll/AudioSettingsPanel/Content/MusicVolumeRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Music"
+[node name="MusicVolumeSlider" type="HSlider" parent="AudioSettingsScroll/AudioSettingsPanel/Content/MusicVolumeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 1.0
+step = 0.05
+[node name="MusicEnabled" type="CheckButton" parent="AudioSettingsScroll/AudioSettingsPanel/Content"]
+layout_mode = 2
+text = "Music enabled"
+autowrap_mode = 2
+[node name="MusicTransitionRow" type="BoxContainer" parent="AudioSettingsScroll/AudioSettingsPanel/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="AudioSettingsScroll/AudioSettingsPanel/Content/MusicTransitionRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "On music transitions"
+autowrap_mode = 2
+[node name="MusicTransition" type="OptionButton" parent="AudioSettingsScroll/AudioSettingsPanel/Content/MusicTransitionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+text = "Restart current song"
+tooltip_text = "When returning to music after another context: restart the current song, restart its playlist, or resume at the exact position. Continue keeps music playing."
+[node name="OpenMusicPlaylist" type="Button" parent="AudioSettingsScroll/AudioSettingsPanel/Content"]
+layout_mode = 2
+text = "Open Music Playlist…"

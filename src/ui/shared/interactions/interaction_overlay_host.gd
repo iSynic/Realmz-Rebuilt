@@ -70,8 +70,8 @@ func update_modal_shield(needed: bool, dim_background: bool = true) -> void:
 		return
 	if _modal_shield == null:
 		_modal_shield = _modal_shield_scene.instantiate() as ColorRect
-		_modal_shield.z_index = _presenter.z_index - 1
 		_presenter.get_parent().add_child(_modal_shield)
+	_modal_shield.z_index = _presenter.z_index - 1
 	_modal_shield.color = Color(0.01, 0.015, 0.02, 0.62) if dim_background else Color.TRANSPARENT
 	_modal_shield.position = _application_rect.position
 	_modal_shield.size = _application_rect.size

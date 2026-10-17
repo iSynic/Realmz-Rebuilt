@@ -1,59 +1,114 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/music_playlist_editor.gd" id="1"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="2_theme"]
 
 [node name="Playlists" type="VBoxContainer"]
 layout_mode = 2
 script = ExtResource("1")
+theme = ExtResource("2_theme")
 theme_override_constants/separation = 8
 
-[node name="Selection" type="HBoxContainer" parent="."]
-layout_mode = 2
-
-[node name="PlaylistChoice" type="OptionButton" parent="Selection"]
-layout_mode = 2
-focus_neighbor_right = NodePath("../NewPlaylist")
+[node name="EditorScroll" type="ScrollContainer" parent="."]
 unique_name_in_owner = true
-size_flags_horizontal = 3
-fit_to_longest_item = false
-
-[node name="NewPlaylist" type="Button" parent="Selection"]
 layout_mode = 2
-focus_neighbor_left = NodePath("../PlaylistChoice")
-focus_neighbor_right = NodePath("../DeletePlaylist")
-focus_neighbor_bottom = NodePath("../../Identity/PlaylistName")
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="EditorPage" type="HBoxContainer" parent="EditorScroll"]
+size_flags_horizontal = 3
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+unique_name_in_owner = true
+
+[node name="PlaylistPanel" type="VBoxContainer" parent="EditorScroll/EditorPage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 1
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PlaylistTitle" type="Label" parent="EditorScroll/EditorPage/PlaylistPanel"]
+layout_mode = 2
+text = "Playlists"
+
+[node name="PlaylistChoice" type="ItemList" parent="EditorScroll/EditorPage/PlaylistPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(170, 120)
+unique_name_in_owner = true
+
+[node name="PlaylistActions" type="HBoxContainer" parent="EditorScroll/EditorPage/PlaylistPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="NewPlaylist" type="Button" parent="EditorScroll/EditorPage/PlaylistPanel/PlaylistActions"]
+layout_mode = 2
+size_flags_horizontal = 3
 unique_name_in_owner = true
 text = "New"
 
-[node name="DeletePlaylist" type="Button" parent="Selection"]
+[node name="DeletePlaylist" type="Button" parent="EditorScroll/EditorPage/PlaylistPanel/PlaylistActions"]
+layout_mode = 2
+size_flags_horizontal = 3
+unique_name_in_owner = true
+text = "Delete"
+
+[node name="DetailPanel" type="VBoxContainer" parent="EditorScroll/EditorPage"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="CompactPlaylistBar" type="HBoxContainer" parent="EditorScroll/EditorPage/DetailPanel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+visible = false
+unique_name_in_owner = true
+
+[node name="CompactPlaylistChoice" type="OptionButton" parent="EditorScroll/EditorPage/DetailPanel/CompactPlaylistBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+unique_name_in_owner = true
+
+[node name="CompactNewPlaylist" type="Button" parent="EditorScroll/EditorPage/DetailPanel/CompactPlaylistBar"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "New"
+
+[node name="CompactDeletePlaylist" type="Button" parent="EditorScroll/EditorPage/DetailPanel/CompactPlaylistBar"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Delete"
 
-[node name="Identity" type="HBoxContainer" parent="."]
+[node name="NameRow" type="HBoxContainer" parent="EditorScroll/EditorPage/DetailPanel"]
 layout_mode = 2
 
-[node name="NameLabel" type="Label" parent="Identity"]
+[node name="NameLabel" type="Label" parent="EditorScroll/EditorPage/DetailPanel/NameRow"]
 layout_mode = 2
 text = "Name"
 
-[node name="PlaylistName" type="LineEdit" parent="Identity"]
+[node name="PlaylistName" type="LineEdit" parent="EditorScroll/EditorPage/DetailPanel/NameRow"]
 layout_mode = 2
-theme_type_variation = &"SlateLineEdit"
-focus_neighbor_top = NodePath("../../Selection/NewPlaylist")
-focus_neighbor_right = NodePath("../Shuffle")
-focus_neighbor_bottom = NodePath("../../Lists/Queue/PlaylistTracks")
-unique_name_in_owner = true
 size_flags_horizontal = 3
 max_length = 120
 placeholder_text = "Playlist name"
+unique_name_in_owner = true
 
-[node name="Shuffle" type="CheckButton" parent="Identity"]
+[node name="PlaybackOptions" type="HBoxContainer" parent="EditorScroll/EditorPage/DetailPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Shuffle" type="CheckButton" parent="EditorScroll/EditorPage/DetailPanel/PlaybackOptions"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Shuffle"
 
-[node name="RepeatMode" type="OptionButton" parent="Identity"]
+[node name="RepeatMode" type="OptionButton" parent="EditorScroll/EditorPage/DetailPanel/PlaybackOptions"]
 layout_mode = 2
 unique_name_in_owner = true
 item_count = 3
@@ -64,72 +119,73 @@ popup/item_1/id = 1
 popup/item_2/text = "No repeat"
 popup/item_2/id = 2
 
-[node name="Lists" type="HBoxContainer" parent="."]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/separation = 12
-
-[node name="Queue" type="VBoxContainer" parent="Lists"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-
-[node name="QueueTitle" type="Label" parent="Lists/Queue"]
+[node name="QueueHeading" type="Label" parent="EditorScroll/EditorPage/DetailPanel"]
 layout_mode = 2
 text = "Playlist order"
 
-[node name="PlaylistTracks" type="ItemList" parent="Lists/Queue"]
+[node name="PlaylistTracks" type="ItemList" parent="EditorScroll/EditorPage/DetailPanel"]
 layout_mode = 2
-theme_type_variation = &"SlateList"
-focus_neighbor_left = NodePath("../OrderActions/TrackUp")
-focus_neighbor_right = NodePath("../../Available/AvailableTracks")
 size_flags_horizontal = 3
 size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 100)
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 80)
 
-[node name="OrderActions" type="HBoxContainer" parent="Lists/Queue"]
+[node name="QueueActions" type="HBoxContainer" parent="EditorScroll/EditorPage/DetailPanel"]
 layout_mode = 2
+theme_override_constants/separation = 6
 
-[node name="TrackUp" type="Button" parent="Lists/Queue/OrderActions"]
+[node name="AddTracks" type="Button" parent="EditorScroll/EditorPage/DetailPanel/QueueActions"]
 layout_mode = 2
+size_flags_horizontal = 3
+unique_name_in_owner = true
+text = "Add tracks"
+
+[node name="TrackUp" type="Button" parent="EditorScroll/EditorPage/DetailPanel/QueueActions"]
+layout_mode = 2
+size_flags_horizontal = 1
 unique_name_in_owner = true
 text = "Up"
-size_flags_horizontal = 3
 
-[node name="TrackDown" type="Button" parent="Lists/Queue/OrderActions"]
+[node name="TrackDown" type="Button" parent="EditorScroll/EditorPage/DetailPanel/QueueActions"]
 layout_mode = 2
+size_flags_horizontal = 1
 unique_name_in_owner = true
 text = "Down"
-size_flags_horizontal = 3
 
-[node name="RemoveTrack" type="Button" parent="Lists/Queue/OrderActions"]
+[node name="RemoveTrack" type="Button" parent="EditorScroll/EditorPage/DetailPanel/QueueActions"]
 layout_mode = 2
+size_flags_horizontal = 1
 unique_name_in_owner = true
 text = "Remove"
-size_flags_horizontal = 3
 
-[node name="Available" type="VBoxContainer" parent="Lists"]
+[node name="TrackPickerPage" type="VBoxContainer" parent="."]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+theme_override_constants/separation = 8
+visible = false
+unique_name_in_owner = true
 
-[node name="AvailableTitle" type="Label" parent="Lists/Available"]
+[node name="PickerHeading" type="Label" parent="TrackPickerPage"]
 layout_mode = 2
-text = "Your library"
+text = "Add tracks"
 
-[node name="AvailableTracks" type="ItemList" parent="Lists/Available"]
+[node name="AvailableTracks" type="ItemList" parent="TrackPickerPage"]
 layout_mode = 2
-theme_type_variation = &"SlateList"
-focus_neighbor_left = NodePath("../../Queue/PlaylistTracks")
-focus_neighbor_right = NodePath("../AddTrack")
 size_flags_horizontal = 3
 size_flags_vertical = 3
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 80)
 
-[node name="AddTrack" type="Button" parent="Lists/Available"]
+[node name="PickerActions" type="HBoxContainer" parent="TrackPickerPage"]
+layout_mode = 2
+alignment = 2
+
+[node name="PickerBack" type="Button" parent="TrackPickerPage/PickerActions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Back"
+
+[node name="AddTrack" type="Button" parent="TrackPickerPage/PickerActions"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Add to playlist"

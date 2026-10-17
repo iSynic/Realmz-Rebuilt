@@ -2,45 +2,11 @@
 
 [ext_resource type="Script" path="res://src/ui/shell/pause_menu_action.gd" id="1_action"]
 
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_idle.tres" id="2_idle"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_selected.tres" id="3_selected"]
+
 [sub_resource type="StyleBoxFlat" id="FocusOutlineStyle"]
-bg_color = Color(0, 0, 0, 0)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.949, 0.796, 0.345, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-content_margin_left = 2.0
-content_margin_top = 2.0
-content_margin_right = 2.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="ActionNormal"]
-bg_color = Color(0.065, 0.085, 0.09, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.28, 0.32, 0.32, 1)
-content_margin_left = 28.0
-content_margin_right = 28.0
-content_margin_top = 6.0
-content_margin_bottom = 6.0
-
-[sub_resource type="StyleBoxFlat" id="ActionHover"]
-bg_color = Color(0.15, 0.18, 0.19, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.55, 0.53, 0.38, 1)
-content_margin_left = 28.0
-content_margin_right = 28.0
-content_margin_top = 6.0
-content_margin_bottom = 6.0
+bg_color = Color(0.866667, 0.729412, 0.415686, 1)
 
 [sub_resource type="StyleBoxEmpty" id="NoFocus"]
 
@@ -54,6 +20,18 @@ script = ExtResource("1_action")
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="FocusOutline" type="Panel" parent="ActionRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("FocusOutlineStyle")
 
 [node name="ActionContent" type="HBoxContainer" parent="ActionRow"]
 layout_mode = 1
@@ -72,39 +50,32 @@ custom_minimum_size = Vector2(0, 44)
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 30
+theme_override_colors/font_color = Color(0.925, 0.925, 0.89, 1)
+theme_override_colors/font_focus_color = Color(0.063, 0.102, 0.141, 1)
+theme_override_colors/font_hover_color = Color(0.063, 0.102, 0.141, 1)
+theme_override_colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
+theme_override_colors/font_disabled_color = Color(0.53, 0.61, 0.65, 1)
 text = "Action"
-alignment = 1
+alignment = 0
 autowrap_mode = 2
-theme_override_styles/normal = SubResource("ActionNormal")
-theme_override_styles/hover = SubResource("ActionHover")
-theme_override_styles/pressed = SubResource("ActionHover")
-theme_override_styles/disabled = SubResource("ActionNormal")
+theme_override_styles/normal = ExtResource("2_idle")
+theme_override_styles/hover = ExtResource("2_idle")
+theme_override_styles/pressed = ExtResource("3_selected")
+theme_override_styles/disabled = ExtResource("2_idle")
 theme_override_styles/focus = SubResource("NoFocus")
 
-[node name="FocusOutline" type="Panel" parent="ActionRow"]
-unique_name_in_owner = true
-visible = false
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-theme_override_styles/panel = SubResource("FocusOutlineStyle")
-
-[node name="FocusMarker" type="Label" parent="ActionRow"]
+[node name="FocusMarker" type="ColorRect" parent="ActionRow"]
 unique_name_in_owner = true
 layout_mode = 1
-anchor_bottom = 1.0
-offset_left = 16.0
-offset_right = 34.0
+anchor_top = 0.5
+anchor_bottom = 0.5
+offset_left = 18.0
+offset_top = -2.5
+offset_right = 23.0
+offset_bottom = 2.5
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.949, 0.796, 0.345, 1)
-theme_override_font_sizes/font_size = 26
-text = ">"
-vertical_alignment = 1
+color = Color(0.49, 0.59, 0.62, 1)
 
 [node name="Reason" type="Label" parent="."]
 unique_name_in_owner = true
@@ -112,6 +83,6 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.72, 0.75, 0.76, 1)
-theme_override_font_sizes/font_size = 16
+theme_override_font_sizes/font_size = 22
 text = "Unavailable reason"
 autowrap_mode = 2

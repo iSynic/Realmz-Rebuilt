@@ -1,0 +1,98 @@
+[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/hud_panel.gd" id="1_hud_panel"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/modular_controls_theme.tres" id="2_theme"]
+
+[sub_resource type="StyleBoxFlat" id="HudSurface"]
+bg_color = Color(0.082, 0.133, 0.18, 1)
+content_margin_left = 6.0
+content_margin_right = 6.0
+content_margin_top = 6.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="HandleFocus"]
+bg_color = Color(0.12, 0.15, 0.17, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.93, 0.79, 0.42, 0.95)
+corner_radius_top_left = 5
+corner_radius_top_right = 5
+corner_radius_bottom_right = 5
+corner_radius_bottom_left = 5
+
+[sub_resource type="StyleBoxEmpty" id="HandleNormal"]
+
+[sub_resource type="StyleBoxEmpty" id="HandleHover"]
+
+[sub_resource type="StyleBoxEmpty" id="HandlePressed"]
+
+[node name="HudPanel" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_hud_panel")
+
+[node name="Surface" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_type_variation = &"MenuDialog"
+theme_override_styles/panel = SubResource("HudSurface")
+
+[node name="Column" type="VBoxContainer" parent="Surface"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_constants/separation = 4
+
+[node name="Body" type="ScrollContainer" parent="Surface/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="MarginContainer" parent="Surface/Column/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 1
+
+[node name="Handle" type="Button" parent="."]
+z_index = 50
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 80)
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -32.0
+offset_top = -40.0
+offset_right = 0.0
+offset_bottom = 40.0
+focus_mode = 2
+tooltip_text = "Open Party roster panel"
+accessibility_name = "Party roster panel"
+theme_override_styles/normal = SubResource("HandleNormal")
+theme_override_styles/hover = SubResource("HandleHover")
+theme_override_styles/pressed = SubResource("HandlePressed")
+theme_override_styles/focus = SubResource("HandleFocus")
+
+[node name="TabShape" type="Polygon2D" parent="Handle"]
+unique_name_in_owner = true
+position = Vector2(0, 0)
+polygon = PackedVector2Array(10, 8, 16, 8, 22, 12, 22, 68, 16, 72, 10, 68)
+color = Color(0.42, 0.47, 0.48, 0.72)
+input_pickable = false

@@ -41,13 +41,17 @@ static func append_weapon_projectile(events: Array[DomainEvent], actor_id: Strin
 
 static func append_resolution_effect(payload: Dictionary, spell: SpellDefinition, sequence_index: int, sequence_count: int, target_defeated: bool) -> void:
 	payload["spellName"] = spell.name
+	payload["damageType"] = absi(spell.damage_type)
 	payload["castSequenceIndex"] = sequence_index
 	payload["castSequenceCount"] = sequence_count
+	# Castle exits before per-target resolution art when resistance/save stops it.
+	if bool(payload.get("resisted", false)) or (bool(payload.get("saved", false)) and int(payload.get("damage", 0)) == 0):
+		return
 	if spell.target_type in [9, 10]:
 		payload["classicTargetType"] = spell.target_type
-	# Castle bypasses the ordinary eight-frame resolution effect when the target
-	# dies, while group-body flashes (target types 9 and 10) use a separate path.
-	if target_defeated or spell.target_type in [9, 10]:
+	# Rebuilt deliberately animates the authored end bank on every successful
+	# recipient, including Castle's body-flash-only target types 9 and 10.
+	if target_defeated:
 		return
 	var first_resource_id := 12_032 if spell.look_end == 0 else 11_992 + spell.look_end * 8
 	var effect_ids: Array[int] = []

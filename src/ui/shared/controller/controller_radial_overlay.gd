@@ -154,8 +154,8 @@ func confirm_selected() -> void:
 	if not entry.enabled:
 		_update_text()
 		return
-	command_selected.emit(entry.id)
 	close()
+	command_selected.emit(entry.id)
 
 
 func cancel() -> void:

@@ -76,7 +76,7 @@ var _browsed_campaign_path := ""
 var full_stage_overlay_visible: bool:
 	get: return splash_visible or campaign_overlay != null and campaign_overlay.visible
 var splash_visible: bool:
-	get: return splash_overlay != null and splash_overlay.visible
+	get: return splash_overlay != null and splash_overlay.visible and not splash_overlay.background_only
 
 
 
@@ -306,6 +306,7 @@ func show_splash() -> void:
 	if splash_overlay == null:
 		return
 	splash_overlay.visible = true
+	splash_overlay.set_background_only(false)
 	_set_main_menu_active(true)
 	if campaign_overlay != null:
 		campaign_overlay.visible = false
@@ -313,12 +314,14 @@ func show_splash() -> void:
 	splash_overlay.focus_current_action()
 
 
-func hide_overlays() -> void:
+func hide_overlays(keep_menu_background: bool = false) -> void:
 	if splash_overlay != null:
-		splash_overlay.visible = false
+		splash_overlay.visible = keep_menu_background
+		splash_overlay.set_background_only(keep_menu_background)
 	if campaign_overlay != null:
 		campaign_overlay.visible = false
 	_set_main_menu_active(false)
+	if keep_menu_background: apply_modal_layouts()
 
 
 func _set_main_menu_active(active: bool) -> void:

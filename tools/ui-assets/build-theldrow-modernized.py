@@ -257,13 +257,23 @@ def update_names(font: TTFont) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--glyphs", required=True, type=Path)
-    parser.add_argument("--rules", required=True, type=Path)
-    parser.add_argument("--metrics", required=True, type=Path)
+    parser.add_argument("--glyphs", type=Path)
+    parser.add_argument("--rules", type=Path)
+    parser.add_argument("--metrics", type=Path)
     parser.add_argument("--baseline", required=True, type=Path)
-    parser.add_argument("--utility", required=True, type=Path)
+    parser.add_argument("--utility", type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--reading-master", type=Path)
     args = parser.parse_args()
+
+    if args.reading_master:
+        from theldrow_reading import build
+
+        report = build(args.reading_master, args.baseline, args.output)
+        print(json.dumps({k: v for k, v in report.items() if k != "glyphs"}, indent=2))
+        return 0
+    if not all((args.glyphs, args.rules, args.metrics, args.utility)):
+        parser.error("Production build requires --glyphs, --rules, --metrics and --utility")
 
     metrics = read_metrics(args.metrics)
     pencil = read_pencil_glyphs(args.glyphs)

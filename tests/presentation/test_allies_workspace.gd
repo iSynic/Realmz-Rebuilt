@@ -36,10 +36,3 @@ func _test_allies_workspace() -> void:
 	assert_true(_labels_in(allies).has("No current allies") and _labels_in(allies).has("No allies are currently with the party."), "Allies has an explicit concise empty state")
 	allies.free()
 	bestiary.free()
-
-
-func _labels_in(root: Node) -> Array[String]:
-	var labels: Array[String] = []
-	for child: Node in root.find_children("*", "Label", true, false):
-		labels.append((child as Label).text)
-	return labels

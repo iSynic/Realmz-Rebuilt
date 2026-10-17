@@ -1,10 +1,10 @@
 # Custom music
 
-Open Music from Settings or Preferences to import MP3, Ogg Vorbis, WAV, FLAC, AIFF, MOD, XM, S3M, and IT. The library copies originals, so moving the source files afterward does not affect playback. MAD is not supported.
+Open Music from Pause or Settings > Sound & Music to import MP3, Ogg Vorbis, WAV, FLAC, AIFF, MOD, XM, S3M, and IT. The library copies originals, so moving the source files afterward does not affect playback. MAD is not supported.
 
-Create a playlist, add tracks, reorder them, and choose ordered or shuffled playback with Repeat All, Repeat One, or no repeat. Assign it to Outdoor, Battle, Shop, or another context globally or for the current scenario. Inherit uses the global choice; Original music explicitly uses the authored or stock track. Apply saves playlists and assignments; Done saves and closes; Cancel discards that draft. Imports, removals, volume, and Play/Continue/Off apply immediately.
+Create a playlist, add tracks, reorder them, and choose ordered or shuffled playback with Repeat All, Repeat One, or no repeat. Assign it to Outdoor, Battle, Shop, or another context globally or for the current scenario. Inherit uses the global choice; Original music explicitly uses the authored or stock track. Apply saves playlists, assignments, and Play/Continue/Off context modes; Done saves and closes; Cancel discards that draft. Modes apply globally even while editing a scenario assignment. Imports, confirmed removals, and cache repairs are saved separately. Volume and enablement use the Settings draft. You can search the library and import files or the supported files directly inside one folder.
 
-In Preferences → Audio & Pacing, choose what happens when you return to music after a transition:
+In Settings > Sound & Music, choose what happens when you return to music after a transition:
 
 - **Restart current song** is the default. Keep your place in the playlist and replay that song from the beginning.
 - **Restart playlist** returns to the first track in its current order. Shuffled playlists keep their shuffled order.

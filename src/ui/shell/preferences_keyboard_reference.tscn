@@ -1,0 +1,550 @@
+[gd_scene format=3]
+
+[node name="KeyboardReference" type="TabContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+clip_tabs = true
+
+[node name="General" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Table" type="GridContainer" parent="General"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 28
+theme_override_constants/v_separation = 5
+
+[node name="Action0" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Action"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+
+[node name="Input0" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Input"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+
+[node name="Action1" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Move"
+autowrap_mode = 2
+
+[node name="Input1" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Arrows / WASD / numpad"
+autowrap_mode = 2
+
+[node name="Action2" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Route"
+autowrap_mode = 2
+
+[node name="Input2" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Right-click destination"
+autowrap_mode = 2
+
+[node name="Action3" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Search / Camp / Rest / Heal"
+autowrap_mode = 2
+
+[node name="Input3" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "F / C / R / H"
+autowrap_mode = 2
+
+[node name="Action4" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Fast Spell preview / cast"
+autowrap_mode = 2
+
+[node name="Input4" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "1–0 / Ctrl or Cmd + 1–0"
+autowrap_mode = 2
+
+[node name="Action5" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Combat Fast Spell dock / cast"
+autowrap_mode = 2
+
+[node name="Input5" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Hold Alt / Alt + 1–0"
+autowrap_mode = 2
+
+[node name="Action6" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Target / confirm / cancel"
+autowrap_mode = 2
+
+[node name="Input6" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "T / Space / Esc"
+autowrap_mode = 2
+
+[node name="Action7" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Quicksave / Quickload"
+autowrap_mode = 2
+
+[node name="Input7" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "F5 / F7"
+autowrap_mode = 2
+
+[node name="Action8" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Workspaces / Back"
+autowrap_mode = 2
+
+[node name="Input8" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Alt + 1–9 / Esc"
+autowrap_mode = 2
+
+[node name="ModeNote" type="Label" parent="General"]
+layout_mode = 2
+text = "WASD is disabled with Classic keyboard shortcuts. Space also skips playback."
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.63, 0.71, 0.75, 1)
+
+[node name="Classic exploration" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ModeNote" type="Label" parent="Classic exploration"]
+layout_mode = 2
+text = "Requires Classic keyboard shortcuts."
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.63, 0.71, 0.75, 1)
+
+[node name="Table" type="GridContainer" parent="Classic exploration"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 28
+theme_override_constants/v_separation = 5
+
+[node name="Action0" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Action"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+
+[node name="Input0" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Input"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+
+[node name="Action1" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Items"
+autowrap_mode = 2
+
+[node name="Input1" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "I"
+autowrap_mode = 2
+
+[node name="Action2" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Money"
+autowrap_mode = 2
+
+[node name="Input2" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "M"
+autowrap_mode = 2
+
+[node name="Action3" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Spells"
+autowrap_mode = 2
+
+[node name="Input3" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "S"
+autowrap_mode = 2
+
+[node name="Action4" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Trade"
+autowrap_mode = 2
+
+[node name="Input4" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "T"
+autowrap_mode = 2
+
+[node name="Action5" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Area Search"
+autowrap_mode = 2
+
+[node name="Input5" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "A"
+autowrap_mode = 2
+
+[node name="Action6" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Camp"
+autowrap_mode = 2
+
+[node name="Input6" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "C"
+autowrap_mode = 2
+
+[node name="Action7" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Heal"
+autowrap_mode = 2
+
+[node name="Input7" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "H"
+autowrap_mode = 2
+
+[node name="Action8" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Rest"
+autowrap_mode = 2
+
+[node name="Input8" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "R"
+autowrap_mode = 2
+
+[node name="Action9" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Encounter"
+autowrap_mode = 2
+
+[node name="Input9" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "E"
+autowrap_mode = 2
+
+[node name="Action10" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Shop / Temple"
+autowrap_mode = 2
+
+[node name="Input10" type="Label" parent="Classic exploration/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "G"
+autowrap_mode = 2
+
+[node name="Classic combat" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ModeNote" type="Label" parent="Classic combat"]
+layout_mode = 2
+text = "Requires Classic keyboard shortcuts."
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.63, 0.71, 0.75, 1)
+
+[node name="Table" type="GridContainer" parent="Classic combat"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 28
+theme_override_constants/v_separation = 5
+
+[node name="Action0" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Action"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+
+[node name="Input0" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Input"
+autowrap_mode = 2
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+
+[node name="Action1" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Weapon"
+autowrap_mode = 2
+
+[node name="Input1" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "W"
+autowrap_mode = 2
+
+[node name="Action2" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Spells"
+autowrap_mode = 2
+
+[node name="Input2" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "S"
+autowrap_mode = 2
+
+[node name="Action3" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Scrolls"
+autowrap_mode = 2
+
+[node name="Input3" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "L"
+autowrap_mode = 2
+
+[node name="Action4" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Items"
+autowrap_mode = 2
+
+[node name="Input4" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "I"
+autowrap_mode = 2
+
+[node name="Action5" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Auto Turn"
+autowrap_mode = 2
+
+[node name="Input5" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "A"
+autowrap_mode = 2
+
+[node name="Action6" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Guard"
+autowrap_mode = 2
+
+[node name="Input6" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "G"
+autowrap_mode = 2
+
+[node name="Action7" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Delay"
+autowrap_mode = 2
+
+[node name="Input7" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "D"
+autowrap_mode = 2
+
+[node name="Action8" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Bandage"
+autowrap_mode = 2
+
+[node name="Input8" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "B"
+autowrap_mode = 2
+
+[node name="Action9" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Undo"
+autowrap_mode = 2
+
+[node name="Input9" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "U"
+autowrap_mode = 2
+
+[node name="Action10" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Escape"
+autowrap_mode = 2
+
+[node name="Input10" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "E"
+autowrap_mode = 2
+
+[node name="Action11" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Finish"
+autowrap_mode = 2
+
+[node name="Input11" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "F"
+autowrap_mode = 2
+
+[node name="Action12" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Center"
+autowrap_mode = 2
+
+[node name="Input12" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "C"
+autowrap_mode = 2
+
+[node name="Action13" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Next / Previous"
+autowrap_mode = 2
+
+[node name="Input13" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "N / P"
+autowrap_mode = 2
+
+[node name="Action14" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Reveal Friends"
+autowrap_mode = 2
+
+[node name="Input14" type="Label" parent="Classic combat/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "R"
+autowrap_mode = 2

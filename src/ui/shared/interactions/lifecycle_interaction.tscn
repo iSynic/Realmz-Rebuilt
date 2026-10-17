@@ -23,7 +23,7 @@ custom_minimum_size = Vector2(128, 36)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Save and return"
-theme_type_variation = &"ClassicChoiceButton"
+theme_type_variation = &"MenuAction"
 
 [node name="LifecycleDiscardAction" type="Button" parent="LifecycleVerticalActions"]
 unique_name_in_owner = true
@@ -31,7 +31,7 @@ custom_minimum_size = Vector2(128, 36)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Return without saving"
-theme_type_variation = &"ClassicChoiceButton"
+theme_type_variation = &"MenuAction"
 
 [node name="LifecycleCancelAction" type="Button" parent="LifecycleVerticalActions"]
 unique_name_in_owner = true
@@ -39,7 +39,7 @@ custom_minimum_size = Vector2(128, 36)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Cancel"
-theme_type_variation = &"ClassicChoiceButton"
+theme_type_variation = &"MenuAction"
 
 [node name="LifecycleActions" type="HBoxContainer" parent="."]
 unique_name_in_owner = true

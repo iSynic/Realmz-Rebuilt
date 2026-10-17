@@ -61,7 +61,7 @@ var _overlay_host: Control
 var _media: ClassicMediaCatalog
 var content_presenter := SCREEN_CONTENT_PRESENTER.new()
 var draft_dialog: Control:
-	get: return get_node("ControllerDraftDialog") as Control
+	get: return get_node("PreferencesDraftDialog") as Control
 var setup_controller := CampaignPartySetupController.new()
 @onready var startup: StartupWorkspaceController = $StartupWorkspaces
 var _initialized: bool = false
@@ -97,6 +97,12 @@ func _init() -> void:
 	content_presenter.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
 	content_presenter.combat_inventory_response_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: combat_inventory_response_submitted.emit(body))
 	content_presenter.combat_inventory_item_use_requested.connect(func(character_id: String, instance_id: String) -> void: combat_inventory_item_use_requested.emit(character_id, instance_id))
+
+
+var shared_menu_backdrop: bool:
+	set(active):
+		shared_menu_backdrop = active
+		(get_node("SaveModalShield") as ColorRect).color.a = 0.0 if active else 0.72
 
 
 func _ready() -> void:
@@ -353,7 +359,7 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true, section
 		route_exiting.emit(_screen_id)
 		_route_history.append(_screen_id)
 	_screen_id = screen_id
-	setup_controller.hide_overlays()
+	setup_controller.hide_overlays(screen_id == &"system" and _system_return_to_splash)
 	content_presenter.sync_route_audio(screen_id)
 	if changed and play_opening_sound and WORKSPACE_OPEN_SOUND_IDS.has(screen_id):
 		presentation_sound_requested.emit(int(WORKSPACE_OPEN_SOUND_IDS[screen_id]), false, false, true)
@@ -364,8 +370,9 @@ func open_screen(screen_id: StringName, play_opening_sound: bool = true, section
 
 func handle_back() -> bool:
 	if startup.handle_back(): return true
-	if (get_node("ControllerDraftDialog") as Control).visible:
-		get_node("ControllerDraftDialog").resolve(&"keep")
+	if content_presenter.system_preferences.close_local_picker(): return true
+	if (get_node("PreferencesDraftDialog") as Control).visible:
+		get_node("PreferencesDraftDialog").resolve(&"keep")
 		return true
 	if draft_dialog.defer_if_dirty(content_presenter.system_preferences, handle_back): return true
 	if setup_controller.handle_back(): return true
@@ -408,6 +415,10 @@ func handle_back() -> bool:
 	if setup_controller.setup_overlay.visible:
 		show_splash()
 		return true
+	return _return_to_previous_route()
+
+
+func _return_to_previous_route() -> bool:
 	if not _route_history.is_empty():
 		var previous: StringName = _route_history.pop_back()
 		route_exiting.emit(_screen_id)
@@ -513,7 +524,7 @@ func _release_workspace() -> void:
 func _set_workspace_visible(visible: bool) -> void:
 	if _body_frame != null:
 		_body_frame.visible = visible
-	(get_node("SaveModalShield") as ColorRect).visible = visible and _screen_id == &"save_load"
+	(get_node("SaveModalShield") as ColorRect).visible = visible and _screen_id in [&"save_load", &"system"]
 
 
 

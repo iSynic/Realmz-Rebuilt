@@ -79,7 +79,7 @@ func _test_replacement_controls(previews: Array) -> void:
 	var typed: Array[SaveSlotPreview] = []
 	typed.assign(previews)
 	var controller := SystemScreenController.new()
-	controller.set_save_previews(typed)
+	controller.saves.set_save_previews(typed)
 	var body := VBoxContainer.new()
 	controller.present(body, GameView.new(1, true, null), PresentationSettings.new())
 	var actions: Array[Dictionary] = []

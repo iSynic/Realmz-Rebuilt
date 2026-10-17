@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=45 format=3]
+[gd_resource type="Theme" load_steps=48 format=3]
 
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-inset-frame.png" id="2_inset"]
@@ -11,6 +11,10 @@
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-left.svg" id="9_scroll_left"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-right.svg" id="10_scroll_right"]
 [ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/InterVariable-Castle.ttf" id="11_roster_font"]
+
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_idle.tres" id="12_menu_idle"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_selected.tres" id="13_menu_selected"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_panel.tres" id="14_menu_panel"]
 
 [sub_resource type="StyleBoxTexture" id="RaisedPanel"]
 texture = ExtResource("1_raised")
@@ -525,3 +529,18 @@ ClassicMoneyLedgerButton/styles/hover = SubResource("ButtonHover")
 ClassicMoneyLedgerButton/styles/pressed = SubResource("ButtonPressed")
 ClassicMoneyLedgerButton/styles/disabled = SubResource("ButtonDisabled")
 ClassicMoneyLedgerButton/styles/focus = SubResource("Focus")
+
+MenuDialog/base_type = &"PanelContainer"
+MenuDialog/styles/panel = ExtResource("14_menu_panel")
+MenuAction/base_type = &"Button"
+MenuAction/font_sizes/font_size = 24
+MenuAction/colors/font_color = Color(0.925, 0.925, 0.89, 1)
+MenuAction/colors/font_hover_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/colors/font_focus_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/colors/font_disabled_color = Color(0.53, 0.61, 0.65, 1)
+MenuAction/styles/normal = ExtResource("12_menu_idle")
+MenuAction/styles/hover = ExtResource("13_menu_selected")
+MenuAction/styles/focus = ExtResource("13_menu_selected")
+MenuAction/styles/pressed = ExtResource("13_menu_selected")
+MenuAction/styles/disabled = ExtResource("12_menu_idle")

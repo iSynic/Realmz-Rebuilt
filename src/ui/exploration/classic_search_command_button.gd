@@ -25,6 +25,7 @@ var _frame_index: int
 var _frame_elapsed: float
 var _show_command_title: bool = true
 var _fit_hidden_art: bool = false
+var _modular_art_scale := 0
 
 
 func _ready() -> void:
@@ -64,6 +65,16 @@ func sync_status(searching: bool, can_activate: bool, reason: String = "") -> vo
 		_frame_elapsed = 0.0
 	set_process(searching)
 	queue_redraw()
+
+
+func set_modular_icon_layout(art_scale: int, padding: int) -> void:
+	_modular_art_scale = art_scale
+	set_process(_searching)
+	var profile := UiSizing.profile_for(self)
+	if art_scale == 0:
+		custom_minimum_size = Vector2(62, 70) * (profile.ui_scale if profile != null else 1.0)
+		if profile != null: apply_ui_sizing(profile)
+	CommandIconLayout.apply(self, FRAME_SIZE, art_scale, padding)
 
 
 func caption_text() -> String:
@@ -111,7 +122,7 @@ func _draw() -> void:
 	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	if _atlas != null:
 		var profile := UiSizing.profile_for(self)
-		var art_scale := _fitted_art_scale() if not _show_command_title and _fit_hidden_art else profile.bitmap_scale if profile != null else 1
+		var art_scale := _modular_art_scale if _modular_art_scale > 0 else _fitted_art_scale() if not _show_command_title and _fit_hidden_art else profile.bitmap_scale if profile != null else 1
 		var stage := get_node("CommandMargin/CommandContent/IconStage") as Control
 		var frame_size := FRAME_SIZE * art_scale
 		var frame_rect := Rect2(Vector2(float(_frame_index) * FRAME_SIZE.x, FRAME_ROW_Y), FRAME_SIZE)

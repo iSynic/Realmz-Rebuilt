@@ -11,7 +11,7 @@ func advance(playback: CombatPlaybackController, delta: float, sound_blocking: b
 	if _pending:
 		return
 	var frame := playback.current_frame()
-	if frame == null or frame.kind in [&"sound", &"settle", &"move_end"]:
+	if frame == null or frame.kind in [&"sound", &"settle", &"move_end", &"account_result"]:
 		playback.advance(delta, sound_blocking)
 		return
 	if frame != _started:

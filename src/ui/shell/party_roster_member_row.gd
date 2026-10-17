@@ -8,6 +8,8 @@ var _compact_layout := false
 var _condition_icon_ids: Array[int] = []
 var _condition_icon_textures: Array[Texture2D] = []
 var _condition_icon_labels: Array[String] = []
+var _fixed_style: StyleBox
+var _modular_style := false
 
 
 func _ready() -> void:
@@ -36,6 +38,13 @@ func set_compact_layout(compact: bool) -> void:
 	_compact_layout = compact
 	if is_node_ready():
 		_apply_layout()
+
+
+func set_modular_style(enabled: bool) -> void:
+	_modular_style = enabled
+	if _fixed_style == null: _fixed_style = get_theme_stylebox("panel")
+	if enabled: add_theme_stylebox_override("panel", load("res://src/ui/shared/style/modular_roster_row.tres") as StyleBox)
+	else: add_theme_stylebox_override("panel", _fixed_style)
 
 
 func set_selected(selected: bool) -> void:
@@ -132,6 +141,8 @@ func _update_height() -> void:
 
 
 func apply_ui_sizing(profile: UiLayoutProfile) -> void:
+	if _modular_style:
+		add_theme_stylebox_override("panel", load("res://src/ui/shared/style/modular_roster_row.tres") as StyleBox)
 	var button := character_button()
 	var native := button.get_meta("native_portrait") as Texture2D if button.has_meta("native_portrait") else null
 	if native != null:

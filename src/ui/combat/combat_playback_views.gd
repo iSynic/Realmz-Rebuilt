@@ -22,3 +22,18 @@ static func base_for(previous: GameView, final: GameView, events: Array[DomainEv
 	return null
 
 
+static func positions_for(view: GameView) -> Dictionary:
+	var result: Dictionary = {}
+	if view == null or view.combat_view == null or view.combat_view.battlefield == null:
+		return result
+	for character: CharacterView in view.party_members:
+		var coordinate := view.combat_view.battlefield.character_position(character.id)
+		if coordinate.x >= 0:
+			result[character.id] = coordinate
+	for monster: MonsterView in view.combat_view.monsters:
+		var coordinate := view.combat_view.battlefield.monster_position(monster.id)
+		if coordinate.x >= 0:
+			result[monster.id] = coordinate
+	return result
+
+

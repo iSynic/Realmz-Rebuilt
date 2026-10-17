@@ -8,6 +8,11 @@ const COMBAT_COMMAND_BASE_HEIGHT := 100.0
 const COMBAT_FIXED_HEIGHT := 90.0
 
 
+static func split_character_selection(request: InteractionRequest, passive_text: bool, textbox: Rect2, profile: UiLayoutProfile) -> bool:
+	var scale_value := profile.font_scale if profile != null else 1.0
+	return uses_textbox_region(request, passive_text) and request != null and request.kind == InteractionRequest.CHARACTER_SELECTION and textbox.size.x >= 600.0 * scale_value
+
+
 static func textbox_theme_variation(request: InteractionRequest = null) -> StringName:
 	return &"ClassicOpenRight" if request != null and request.kind == InteractionRequest.COMBAT else &"ClassicTextboxOverlay"
 

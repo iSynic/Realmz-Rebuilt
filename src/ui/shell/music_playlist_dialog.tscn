@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/music_playlist_dialog.gd" id="1"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/music_playlist_editor.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/music_assignments_editor.tscn" id="3"]
+
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="4_theme"]
 
 [node name="MusicPlaylistDialog" type="Control"]
 layout_mode = 1
@@ -16,6 +18,7 @@ visible = false
 mouse_filter = 0
 z_index = 120
 script = ExtResource("1")
+theme = ExtResource("4_theme")
 
 [node name="MusicModalVeil" type="ColorRect" parent="."]
 layout_mode = 1
@@ -30,6 +33,7 @@ color = Color(0, 0, 0, 0.68)
 [node name="MusicPlaylistWindow" type="PanelContainer" parent="."]
 layout_mode = 0
 unique_name_in_owner = true
+theme_type_variation = &"MenuDialog"
 offset_left = 80.0
 offset_top = 40.0
 offset_right = 1200.0
@@ -44,27 +48,10 @@ layout_mode = 2
 
 [node name="Title" type="Label" parent="MusicPlaylistWindow/Content/Header"]
 layout_mode = 2
-text = "Music"
+text = "Music library"
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicHeading"
 theme_override_font_sizes/font_size = 22
-
-[node name="MusicEnabled" type="CheckButton" parent="MusicPlaylistWindow/Content/Header"]
-layout_mode = 2
-unique_name_in_owner = true
-text = "Music enabled"
-
-[node name="VolumeLabel" type="Label" parent="MusicPlaylistWindow/Content/Header"]
-layout_mode = 2
-text = "Volume"
-
-[node name="MusicVolume" type="HSlider" parent="MusicPlaylistWindow/Content/Header"]
-layout_mode = 2
-unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 0)
-size_flags_vertical = 4
-max_value = 1.0
-step = 0.05
 
 [node name="NowPlayingTitle" type="Label" parent="MusicPlaylistWindow/Content"]
 layout_mode = 2
@@ -75,88 +62,108 @@ clip_text = true
 
 [node name="MusicTabs" type="TabContainer" parent="MusicPlaylistWindow/Content"]
 layout_mode = 2
-theme_type_variation = &"SlateTabs"
 size_flags_horizontal = 3
 size_flags_vertical = 3
 unique_name_in_owner = true
 current_tab = 0
+use_hidden_tabs_for_min_size = false
 
-[node name="Library" type="HBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs"]
+[node name="Library" type="VBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Collection" type="VBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library"]
+[node name="LibraryTools" type="HBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library"]
+layout_mode = 2
+
+[node name="LibrarySearch" type="LineEdit" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryTools"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Search tracks…"
+clear_button_enabled = true
+
+[node name="ImportFolder" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryTools"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Import folder…"
+
+[node name="LibraryColumns" type="BoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="Collection" type="VBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="LibraryEmpty" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/Collection"]
+[node name="LibraryEmpty" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/Collection"]
 layout_mode = 2
 text = "Import music to build your library."
 unique_name_in_owner = true
 autowrap_mode = 3
 
-[node name="LibraryTracks" type="ItemList" parent="MusicPlaylistWindow/Content/MusicTabs/Library/Collection"]
+[node name="LibraryTracks" type="ItemList" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/Collection"]
 layout_mode = 2
-theme_type_variation = &"SlateList"
 size_flags_horizontal = 3
 size_flags_vertical = 3
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 80)
 
-[node name="ImportMusic" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/Collection"]
+[node name="ImportMusic" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryTools"]
 layout_mode = 2
 unique_name_in_owner = true
-text = "Import files…"
+text = "Import music…"
 
-[node name="DetailsScroll" type="ScrollContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library"]
+[node name="DetailsScroll" type="ScrollContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Details" type="VBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll"]
+[node name="Details" type="VBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="TrackDetails" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details"]
+[node name="TrackDetails" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
 layout_mode = 2
 text = "Select a track to preview, repair, or remove it."
 unique_name_in_owner = true
 autowrap_mode = 3
 
-[node name="PreviewActions" type="HBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details"]
+[node name="PreviewActions" type="HBoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
 layout_mode = 2
 
-[node name="PreviewTrack" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details/PreviewActions"]
+[node name="PreviewTrack" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details/PreviewActions"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Preview"
 size_flags_horizontal = 3
 
-[node name="StopPreview" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details/PreviewActions"]
+[node name="StopPreview" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details/PreviewActions"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Stop preview"
 size_flags_horizontal = 3
 
-[node name="RepairTrack" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details"]
+[node name="RepairTrack" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Repair cache"
 
-[node name="RemoveLibraryTrack" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details"]
+[node name="RemoveLibraryTrack" type="Button" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Remove from library"
 
-[node name="Formats" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details"]
+[node name="Formats" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
 layout_mode = 2
 text = "MP3, Ogg, WAV, FLAC, AIFF, MOD, XM, S3M, IT.\nOriginals are copied into your library. MAD is not supported."
 autowrap_mode = 3
 
-[node name="MusicMessages" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/DetailsScroll/Details"]
+[node name="MusicMessages" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
 layout_mode = 2
 text = ""
 unique_name_in_owner = true
@@ -175,7 +182,7 @@ layout_mode = 2
 
 [node name="ImportStatus" type="Label" parent="MusicPlaylistWindow/Content/ImportProgress"]
 layout_mode = 2
-text = "Apply saves playlists and assignments."
+text = "No playlist changes"
 unique_name_in_owner = true
 size_flags_horizontal = 3
 clip_text = true
@@ -192,16 +199,19 @@ layout_mode = 2
 
 [node name="DraftHelp" type="Label" parent="MusicPlaylistWindow/Content/Footer"]
 layout_mode = 2
-text = "Imports and playback controls apply immediately."
+text = "Imports and library file changes are saved separately."
 size_flags_horizontal = 3
 clip_text = true
 text_overrun_behavior = 3
+
+[node name="FooterSpacer" type="Control" parent="MusicPlaylistWindow/Content/Footer"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="MusicCancel" type="Button" parent="MusicPlaylistWindow/Content/Footer"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Cancel"
-focus_neighbor_left = NodePath("../../MusicTabs/Library/Collection/ImportMusic")
 
 [node name="MusicApply" type="Button" parent="MusicPlaylistWindow/Content/Footer"]
 layout_mode = 2
@@ -226,3 +236,62 @@ file_mode = 1
 access = 2
 filters = PackedStringArray("*.mp3,*.ogg,*.wav,*.flac,*.aiff,*.aif,*.mod,*.xm,*.s3m,*.it;Supported music", "*;All files")
 use_native_dialog = false
+
+[node name="RemoveConfirmation" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Veil" type="ColorRect" parent="RemoveConfirmation"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 0
+color = Color(0, 0, 0, 0.6)
+
+[node name="Panel" type="PanelContainer" parent="RemoveConfirmation"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -120.0
+offset_right = 300.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"MenuDialog"
+
+[node name="Content" type="VBoxContainer" parent="RemoveConfirmation/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="RemovePrompt" type="Label" parent="RemoveConfirmation/Panel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 3
+text = "Remove this track from the library and its playlists? The original file is preserved."
+
+[node name="Actions" type="HBoxContainer" parent="RemoveConfirmation/Panel/Content"]
+layout_mode = 2
+alignment = 2
+
+[node name="KeepTrack" type="Button" parent="RemoveConfirmation/Panel/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Cancel"
+
+[node name="ConfirmRemove" type="Button" parent="RemoveConfirmation/Panel/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Remove track"

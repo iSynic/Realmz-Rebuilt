@@ -24,7 +24,8 @@ static func shown(id: String, active: String, state: int, forced: bool, frame: C
 		if not frame.active_combatant_id.is_empty(): active = frame.active_combatant_id
 		if frame.kind == &"actor_cue": active = frame.actor_id
 		if frame.kind in [&"melee_attack", &"projectile", &"spell_cast", &"spell_projectile", &"result", &"group_result"] and frame.actor_id == id: return true
-		if frame.kind == &"backdrop_effect" and frame.target_id == id: return true
+		if frame.kind == &"spell_effect" and frame.force_recipient_backdrop:
+			if frame.target_id == id or frame.group_frames.any(func(child: CombatPlaybackFrame) -> bool: return child.force_recipient_backdrop and child.target_id == id): return true
 	return id == active or bool(state & HELPLESS) or forced
 
 

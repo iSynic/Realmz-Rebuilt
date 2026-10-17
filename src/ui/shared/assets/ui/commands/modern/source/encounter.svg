@@ -1,0 +1,135 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="288" height="288" viewBox="0 0 288 288" data-pen-frame-id="ViqhR" data-source-json-sha256="97f384942da602e2c9d5b3d81829fb4fe4199714c7500c13155254953f7cfde7">
+  <title>Encounter editable vector master</title>
+  <defs>
+    <clipPath id="frame-clip-ViqhR">
+      <rect x="0" y="0" width="288" height="288" />
+    </clipPath>
+    <linearGradient id="pen-gradient-QV7Yt" gradientUnits="userSpaceOnUse" x1="243.647473415" y1="118.400506278" x2="-3.51167341505" y2="118.400506278">
+      <stop offset="0" stop-color="#999999" />
+      <stop offset="0.24001" stop-color="#4A4849" />
+      <stop offset="0.51421" stop-color="#666465" />
+      <stop offset="0.75227" stop-color="#413F40" />
+      <stop offset="1" stop-color="#393738" />
+    </linearGradient>
+    <linearGradient id="pen-gradient-SkxM3" gradientUnits="userSpaceOnUse" x1="108.1339" y1="213.625400489" x2="108.1339" y2="-1.39031974285">
+      <stop offset="0" stop-color="#E7C872" />
+      <stop offset="0.13073" stop-color="#E9B64A" />
+      <stop offset="0.24828" stop-color="#F2CA73" />
+      <stop offset="0.40232" stop-color="#DFA63D" />
+      <stop offset="0.55982" stop-color="#E6B143" />
+      <stop offset="0.71262" stop-color="#D79A24" />
+      <stop offset="0.85306" stop-color="#C58A1E" />
+      <stop offset="1" stop-color="#995F12" />
+    </linearGradient>
+    <linearGradient id="pen-gradient-Sg7sS" gradientUnits="userSpaceOnUse" x1="98.4177047379" y1="233.11622398" x2="98.4177047379" y2="-36.9406825508">
+      <stop offset="0" stop-color="#E0CEA6" />
+      <stop offset="0.32928" stop-color="#F2E5C3" />
+      <stop offset="0.66534" stop-color="#F2E6C4" />
+      <stop offset="1" stop-color="#EAD9B7" />
+    </linearGradient>
+    <linearGradient id="pen-gradient-V1QhHI" gradientUnits="userSpaceOnUse" x1="72.8655967595" y1="198.126242527" x2="72.8655967595" y2="0.703204666238">
+      <stop offset="0" stop-color="#070707" />
+      <stop offset="0.32374" stop-color="#1A191A" />
+      <stop offset="0.70485" stop-color="#191819" />
+      <stop offset="1" stop-color="#070606" />
+    </linearGradient>
+    <linearGradient id="pen-gradient-EDsyT" gradientUnits="userSpaceOnUse" x1="22.4390400002" y1="45.1337878636" x2="22.4390400002" y2="-0.255707863254">
+      <stop offset="0" stop-color="#B57820" />
+      <stop offset="0.27615" stop-color="#F8D770" />
+      <stop offset="0.52646" stop-color="#D89D2E" />
+      <stop offset="0.77399" stop-color="#9D661E" />
+      <stop offset="1" stop-color="#704410" />
+    </linearGradient>
+    <linearGradient id="pen-gradient-uGzpc" gradientUnits="userSpaceOnUse" x1="16.3038099993" y1="32.8134322763" x2="16.3038099993" y2="-0.204732276252">
+      <stop offset="0" stop-color="#8C5A1E" />
+      <stop offset="0.49281" stop-color="#DFA433" />
+      <stop offset="1" stop-color="#704410" />
+    </linearGradient>
+    <linearGradient id="pen-gradient-PfmBC" gradientUnits="userSpaceOnUse" x1="22.5834199999" y1="45.2875480426" x2="22.5834199999" y2="-0.120348042632">
+      <stop offset="0" stop-color="#C98F27" />
+      <stop offset="0.27615" stop-color="#F6D26F" />
+      <stop offset="0.52646" stop-color="#D1962F" />
+      <stop offset="0.77399" stop-color="#A67121" />
+      <stop offset="1" stop-color="#6D4412" />
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#frame-clip-ViqhR)">
+    <ellipse data-pen-shape-id="MAeoB" data-pen-name="Encounter editable vector master ellipse 1" transform="translate(15.4667 17.5885)" cx="125.81605" cy="125.81605" rx="125.81605" ry="125.81605" fill="#1E0B00" />
+    <ellipse data-pen-shape-id="QV7Yt" data-pen-name="Encounter editable vector master ellipse 2" transform="translate(21.2148 22.599)" cx="120.0679" cy="120.0679" rx="120.0679" ry="120.0679" fill="url(#pen-gradient-QV7Yt)" />
+    <path data-pen-shape-id="dPc64" data-pen-name="Encounter editable vector master path 3" transform="translate(164.592 145.296)" d="M93.924 0c-5.616 57.88799-44.74799 102.49199-93.924 116.35197l14.65201-14.29199c32.11198-12.02398 57.67198-39.16798 67.60799-72.252l11.664-29.80798z" fill="#090808" opacity="0.2" />
+    <path data-pen-shape-id="K9ENo" data-pen-name="Encounter editable vector master path 4" transform="translate(183.852 166.716)" d="M74.052 0c-7.41599 42.76799-38.73599 78.40797-74.052 89.45999l14.796-18.972c23.004-12.95999 40.28401-36.972 47.59202-61.70399l11.66398-8.784z" fill="#131213" opacity="0.3" />
+    <path data-pen-shape-id="PB110" data-pen-name="Encounter editable vector master path 5" transform="translate(246.744 145.656)" d="M12.744 0c-0.18002 7.668-0.936 14.976-2.19601 20.84401l-10.54799 8.532 2.952-16.45201 9.792-12.924z" fill="#F2F2F2" opacity="0.5" />
+    <path data-pen-shape-id="Xvhrn" data-pen-name="Encounter editable vector master path 6" transform="translate(246.24 97.02)" d="M6.192 0c1.97998 5.868 3.49197 11.772 4.608 17.532l-7.59601 14.112-3.20399-22.572 6.192-9.072z" fill="#262526" opacity="0.2" />
+    <path data-pen-shape-id="q4V6H" data-pen-name="Encounter editable vector master path 7" transform="translate(229.248 60.696)" d="M0.468 0c8.28 9.072 16.23599 20.664 20.33998 33.08399l-7.55998 12.70801-13.248-28.08 0.468-17.712z" fill="#323031" opacity="0.2" />
+    <path data-pen-shape-id="N7bLR" data-pen-name="Encounter editable vector master path 8" transform="translate(193.824 35.424)" d="M6.336 0c11.62801 5.904 21.96001 14.58 29.34001 24.372l0.35999 15.48-17.71199-17.172-18.32401-17.46 6.336-5.22z" fill="#343233" opacity="0.5" />
+    <path data-pen-shape-id="aoYAl" data-pen-name="Encounter editable vector master path 9" transform="translate(170.748 24.084)" d="M0 0c11.08798 2.484 21.78 7.056 28.728 11.412l-5.90401 5.868-11.87999-5.004-10.944-12.276z" fill="#565455" opacity="0.5" />
+    <path data-pen-shape-id="oADV9" data-pen-name="Encounter editable vector master path 10" transform="translate(141.12 20.0338)" d="M0 0.01823c10.8-0.216 22.248 1.512 30.09601 3.852l9.71998 11.88-23.75999-5.4-8.64-1.764c-4.17601-1.764-6.76799-4.5-7.416-6.516l0-2.052z" fill="#898889" opacity="0.5" />
+    <path data-pen-shape-id="aGCDh" data-pen-name="Encounter editable vector master path 11" transform="translate(101.736 19.9683)" d="M9.864 3.71965c9.972-2.664 21.16801-3.852 29.66401-3.708l0.50399 2.304 6.58799 6.336c-12.996-0.612-30.16798 2.088-46.61999 7.164l9.864-12.096z" fill="#D9D9D9" opacity="0.5" />
+    <path data-pen-shape-id="vVKEp" data-pen-name="Encounter editable vector master path 12" transform="translate(70.632 24.696)" d="M0 19.008c11.84399-9.036 26.496-15.696 40.03199-19.008l-8.784 12.096-16.99199 7.92-14.256-1.008z" fill="#B2B1B1" opacity="0.5" />
+    <path data-pen-shape-id="kxxPy" data-pen-name="Encounter editable vector master path 13" transform="translate(54.9 43.884)" d="M0 13.896c4.392-5.256 10.368-10.584 15.624-13.896l13.60801 0.936-18.50401 13.608-8.856 9.036-1.872-9.684z" fill="#E3E3E3" opacity="0.5" />
+    <path data-pen-shape-id="DZTL0" data-pen-name="Encounter editable vector master path 14" transform="translate(33.156 57.744)" d="M0 32.328c5.04-12.78001 14.076-25.02 21.852-32.328l2.34 0.39599-0.396 10.94401-12.024 19.29599-7.74 16.56-4.032-14.86799z" fill="#898889" opacity="0.5" />
+    <path data-pen-shape-id="prrxr" data-pen-name="Encounter editable vector master path 15" transform="translate(23.724 90.144)" d="M0 23.292c1.404-8.28001 5.544-17.244 9.324-23.292l3.42 6.552 0.468 11.844-3.348 13.104-9.864-8.208z" fill="#6D6C6C" opacity="0.5" />
+    <path data-pen-shape-id="e5vIcR" data-pen-name="Encounter editable vector master path 16" transform="translate(21.2828 107.964)" d="M0.35319 37.188c-0.792-7.63199-0.252-19.872 1.62-29.196l4.212-7.992 5.724 8.10001-1.8 28.69199 0 10.368-9.756-9.972z" fill="#757374" opacity="0.5" />
+    <path data-pen-shape-id="l8nRuV" data-pen-name="Encounter editable vector master path 17" transform="translate(21.452 145.584)" d="M2.27202 23.22002c-1.44-7.23601-2.34-16.66801-2.268-23.22002l9.756 9.54001 5.4 22.53599 1.728 5.90401-14.616-14.75999z" fill="#514F50" opacity="0.5" />
+    <path data-pen-shape-id="bwRQI" data-pen-name="Encounter editable vector master path 18" transform="translate(24.3 169.596)" d="M19.584 44.784c-9.288-12.45599-16.848-29.7-19.584-44.784l13.032 12.996 12.348 22.93201 4.716 8.71199 1.98 4.82399-3.168 3.996-9.324-8.67599z" fill="#3B3A3B" opacity="0.5" />
+    <path data-pen-shape-id="Q01BJ" data-pen-name="Encounter editable vector master path 19" transform="translate(44.568 208.224)" d="M32.47199 36.68399c-12.81599-7.66798-25.02-19.116-32.47199-29.98799l7.956-6.696 24.26399 24.58798 2.44801 7.63202-2.19601 4.46399z" fill="#5D5B5C" opacity="0.5" />
+    <path data-pen-shape-id="rDZTW" data-pen-name="Encounter editable vector master path 20" transform="translate(76.932 237.636)" d="M18.18 16.63199c-6.768-2.62799-13.176-6.37199-18.18-9.468l2.592-4.17601 3.528-2.98798 15.048 8.13599-2.988 8.496z" fill="#A5A4A5" opacity="0.5" />
+    <path data-pen-shape-id="IgahO" data-pen-name="Encounter editable vector master path 21" transform="translate(95.148 246.636)" d="M70.776 14.868c-8.604 2.15997-17.64 2.91599-25.09201 3.05999-17.20798 0.07199-34.09199-4.35602-45.68399-9.792l2.98801-8.13599c15.336 5.57999 39.49199 9.21599 63.75599 5.72398l16.38001-4.53601-12.34801 13.68003z" fill="#464445" opacity="0.5" />
+    <ellipse data-pen-shape-id="vYUei" data-pen-name="Encounter editable vector master ellipse 22" transform="translate(30.9028 31.2444)" cx="109.9717" cy="109.9717" rx="109.9717" ry="109.9717" fill="#251104" />
+    <ellipse data-pen-shape-id="SkxM3" data-pen-name="Encounter editable vector master ellipse 23" transform="translate(32.7406 33.0822)" cx="108.1339" cy="108.1339" rx="108.1339" ry="108.1339" fill="url(#pen-gradient-SkxM3)" />
+    <path data-pen-shape-id="lgknc" data-pen-name="Encounter editable vector master path 24" transform="translate(196.56 130.14)" d="M50.94002 0c0.43201 6.48 0.684 21.23999-1.72801 32.79599-7.63199 35.496-30.636 60.048-49.21201 70.92l2.01601-9.18c24.66-17.748 40.392-46.692 42.40802-87.69599l6.51599-6.84z" fill="#975F12" opacity="0.5" />
+    <path data-pen-shape-id="RO7iy" data-pen-name="Encounter editable vector master path 25" transform="translate(224.1 161.208)" d="M19.8 1.33202l1.80001-1.33202c-1.65601 12.636-9.756 28.548-15.37201 36.07201l-6.228 1.25999 14.18401-28.15199 5.61599-7.84799z" fill="#975F12" opacity="0.5" />
+    <path data-pen-shape-id="uqsCS" data-pen-name="Encounter editable vector master path 26" transform="translate(230.832 86.904)" d="M3.06 0c7.2 12.81601 12.24001 30.492 13.356 42.804l-5.43602 7.02c-0.17998-15.51601-5.32797-35.64-10.97998-45.10799l3.06-4.71601z" fill="#B57821" opacity="0.5" />
+    <path data-pen-shape-id="Ie4z1" data-pen-name="Encounter editable vector master path 27" transform="translate(204.372 56.808)" d="M5.364 0c8.964 6.732 19.87199 19.368 24.048 29.772l-3.56399 3.492c-5.688-9.684-16.38-22.104-25.84801-29.052l5.364-4.212z" fill="#F8C761" opacity="0.5" />
+    <path data-pen-shape-id="RvMyx" data-pen-name="Encounter editable vector master path 28" transform="translate(163.044 36.324)" d="M8.09999 0c10.728 2.844 22.96799 8.676 26.676 14.00399l-4.68 2.26801c-7.74001-5.508-19.188-10.116-30.09599-12.384l8.09999-3.888z" fill="#CC8E1C" opacity="0.5" />
+    <path data-pen-shape-id="D88gb" data-pen-name="Encounter editable vector master path 29" transform="translate(106.632 31.4346)" d="M5.72399 3.9174c15.984-5.076 41.76-5.076 55.11601-0.828l-3.168 3.42c-15.44402-3.024-42.12001-1.908-57.672 5.472l3.384-5.76 2.33999-2.304z" fill="#DEA236" opacity="0.5" />
+    <path data-pen-shape-id="DMkss" data-pen-name="Encounter editable vector master path 30" transform="translate(81.108 40.896)" d="M0 8.64c7.74-5.076 16.05599-8.604 19.188-8.64l-3.13201 6.228-13.608 5.112-2.44799-2.7z" fill="#EAB042" opacity="0.5" />
+    <path data-pen-shape-id="ZvjfM" data-pen-name="Encounter editable vector master path 31" transform="translate(64.404 51.8237)" d="M1.872 9.12434c5.22-4.824 12.672-9.684 20.87999-9.07199l-17.99999 15.012-4.752-0.756 1.872-5.18401z" fill="#EBB447" opacity="0.5" />
+    <path data-pen-shape-id="o1m3Ml" data-pen-name="Encounter editable vector master path 32" transform="translate(38.664 69.984)" d="M15.732 1.656l1.296-1.656c-1.116 0.97199 4.284 1.98 9.54001 1.836l-15.04801 18.612-11.52 29.84399 0.036-21.92399c3.168-9.216 10.116-19.98 15.696-26.712z" fill="#D09126" opacity="0.5" />
+    <path data-pen-shape-id="o9UG8w" data-pen-name="Encounter editable vector master path 33" transform="translate(34.272 91.98)" d="M4.176 35.568c0.936-10.26 3.744-26.496 9.288-35.568l-2.196 8.604c-3.276 15.44399-4.68 28.62-6.336 33.588l-4.896 1.692-0.036-4.06799 4.176-4.24801z" fill="#D89C30" opacity="0.5" />
+    <path data-pen-shape-id="OXciZ" data-pen-name="Encounter editable vector master path 34" transform="translate(33.408 142.452)" d="M0.216 1.8l-0.072-0.03599-0.144-0.79201 4.32-0.972 2.556 17.28-3.744 6.804c-1.656-6.804-2.592-15.87601-2.916-22.284z" fill="#B2751B" opacity="0.5" />
+    <path data-pen-shape-id="i6Aut" data-pen-name="Encounter editable vector master path 35" transform="translate(40.284 175.86)" d="M0 3.60001l4.932-3.60001 12.312 22.10402-3.276 6.552c-6.192-7.524-10.98-17.71202-13.968-25.05601z" fill="#A36D1A" opacity="0.5" />
+    <path data-pen-shape-id="oUWBh" data-pen-name="Encounter editable vector master path 36" transform="translate(61.668 217.152)" d="M9.46801 0l9.89999 9.07201-4.5 3.996-14.868-9.79201 5.868 10.836c0.468 0.324-2.88-2.48399-2.01599-8.028l1.87199-3.60001 3.74401-2.48399z" fill="#A7701B" opacity="0.5" />
+    <path data-pen-shape-id="qJCq4" data-pen-name="Encounter editable vector master path 37" transform="translate(88.416 233.82)" d="M5.364 0l11.628 3.78001-8.09999 3.52802-8.89201-7.16402 5.364-0.14401z" fill="#D0952D" opacity="0.5" />
+    <path data-pen-shape-id="MU5DG" data-pen-name="Encounter editable vector master path 38" transform="translate(99.468 237.384)" d="M3.492 0l21.276 7.2 19.476 1.43998 22.78801-3.23999 11.664-5.00399-6.192 8.46c-20.98801 5.72398-40.464 5.47199-58.14 1.04399l-1.44001-0.75599 8.46-6.37201-13.536-0.46799-7.848 1.8 3.492-4.104z" fill="#C48820" opacity="0.5" />
+    <path data-pen-shape-id="CERG1" data-pen-name="Encounter editable vector master path 39" transform="translate(171.36 228.204)" d="M26.02801 0l-1.98001 6.3c-7.59601 5.29199-16.16399 10.008-24.048 11.77201l5.83202-8.06401 20.19599-10.008z" fill="#915E18" opacity="0.5" />
+    <ellipse data-pen-shape-id="ie5Fg" data-pen-name="Encounter editable vector master ellipse 40" transform="translate(38.943 39.5093)" cx="101.59415" cy="101.59415" rx="101.59415" ry="101.59415" fill="#251104" />
+    <path data-pen-shape-id="Sg7sS" data-pen-name="Encounter editable vector master path 41" transform="translate(42.12 41.112)" d="M97.884 0c-52.992 0-97.884 43.272-97.884 99.71999 0 50.50801 35.532 88.776 75.85201 96.98399-18.10801-8.81998-29.88001-25.48799-29.88001-45.28798 0-27.612 21.63601-50.14801 51.51599-53.388 30.63602-3.06001 47.37601-24.08401 47.37601-48.49201 0-26.13599-21.70799-49.53599-46.98-49.53599z" fill="url(#pen-gradient-Sg7sS)" />
+    <path data-pen-shape-id="czF0S" data-pen-name="Encounter editable vector master path 42" transform="translate(42.0492 81.072)" d="M142.34276 0c1.69198 27.072-19.04401 49.85999-46.476 52.77599-41.04 4.14001-64.116 33.51601-60.984 64.62001-15.768-14.40001-26.676-36.86401-26.568-57.92399l-6.264-16.52401c-2.268 8.49601-2.16 14.97601-1.944 20.59199 0.72 48.56401 38.196 84.67202 74.55599 92.916-17.56799-9.72-28.11599-26.56799-28.07998-44.27999 0.35999-28.044 23.58-50.904 50.36399-53.64001 32.976-2.7 52.99201-31.75199 45.396-58.53599z" fill="#B18A58" opacity="0.4" />
+    <path data-pen-shape-id="V1QhHI" data-pen-name="Encounter editable vector master path 43" transform="translate(92.1102 42.876)" d="M67.47782 0c18.90001 9.324 30.34799 27.9 30.06 49.42799-0.576 27.972-20.87999 47.016-48.672 49.89601-29.952 3.70799-48.42001 25.02-48.852 49.896-0.68401 29.37601 24.12 47.91599 51.98399 47.91599 50.94-0.612 94.17602-45.64798 94.03201-98.352 0-47.01599-34.128-91.36799-78.552-98.78399z" fill="url(#pen-gradient-V1QhHI)" />
+    <path data-pen-shape-id="bp8x0" data-pen-name="Encounter editable vector master path 44" transform="translate(185.616 56.376)" d="M0 0c18.504 16.524 22.78799 43.344 14.18399 66.348l20.84401-24.66c-6.3-16.95599-19.98-33.228-35.028-41.688z" fill="#8A898C" opacity="0.5" />
+    <path data-pen-shape-id="UP9hl" data-pen-name="Encounter editable vector master path 45" transform="translate(163.548 170.424)" d="M48.23999 0c-15.22801 22.46401-28.29599 46.87199-48.23999 56.304 12.27599-2.91602 25.2-10.36801 33.80399-17.67601 6.47999-11.30399 11.48399-26.20799 14.436-38.62799z" fill="#575658" opacity="0.5" />
+    <path data-pen-shape-id="YurGF" data-pen-name="Encounter editable vector master path 46" transform="translate(92.2789 111.42)" d="M137.65308 0c0.324 6.51599 0.432 13.5 0.14401 18.36-3.78 12.96001-10.36801 26.85599-17.78401 39.13199-3.20399 14.79601-8.89199 30.924-14.90399 40.17601-15.264 13.752-37.332 21.77998-56.23201 22.06799-27.64799-0.504-46.83599-17.496-48.52799-39.23999-1.332 9.612 1.15199 19.90799 7.38001 28.26 11.26799 13.32 28.008 19.656 44.31598 19.764 45.468-1.22401 84.88799-36.28801 92.772-79.164 2.91601-16.92001 0.75601-36.288-6.04801-48.636l-1.11599-0.72z" fill="#070707" opacity="0.8" />
+    <path data-pen-shape-id="VwZ5l" data-pen-name="Encounter editable vector master path 47" transform="translate(92.9831 97.056)" d="M98.35693 0c-3.276 25.56001-25.2 42.66001-48.564 45.36001-36.792 3.60001-50.652 30.99599-49.75201 51.048 1.152-19.11601 17.82001-40.968 49.71601-45.79201 33.15599-3.888 48.09598-26.71201 48.81598-49.93199l-0.21598-0.68401z" fill="#9D9B9C" opacity="0.6" />
+    <path data-pen-shape-id="DLQys" data-pen-name="Encounter editable vector master path 48" transform="translate(50.3829 49.356)" d="M71.47709 0c-44.172 8.064-73.94399 45.252-71.316 93.59999 1.62-12.564 7.596-26.56799 12.708-35.56799l18.18-17.136 10.296-15.876 5.94-7.812c7.812-6.912 17.20801-14.32799 24.192-17.208z" fill="#FFFFF5" opacity="0.9" />
+    <ellipse data-pen-shape-id="ztXHP" data-pen-name="Encounter editable vector master ellipse 49" transform="translate(114.1386 64.1145)" cx="25.28825" cy="25.28825" rx="25.28825" ry="25.28825" fill="#1D0A00" />
+    <ellipse data-pen-shape-id="EDsyT" data-pen-name="Encounter editable vector master ellipse 50" transform="translate(116.9807 67.121)" cx="22.4394" cy="22.4394" rx="22.4394" ry="22.4394" fill="url(#pen-gradient-EDsyT)" />
+    <path data-pen-shape-id="KKNX6" data-pen-name="Encounter editable vector master path 51" transform="translate(138.528 82.656)" d="M21.81599 0l-4.13999 1.692c2.08801 12.45599-6.696 22.248-17.676 25.02l7.59599 0.936c11.088-3.81599 17.352-15.66 14.22-27.648z" fill="#5F3912" opacity="0.5" />
+    <ellipse data-pen-shape-id="uaU41" data-pen-name="Encounter editable vector master ellipse 52" transform="translate(122.1663 72.0845)" cx="17.47595" cy="17.47595" rx="17.47595" ry="17.47595" fill="#1D0A00" />
+    <ellipse data-pen-shape-id="uGzpc" data-pen-name="Encounter editable vector master ellipse 53" transform="translate(123.3382 73.2561)" cx="16.30435" cy="16.30435" rx="16.30435" ry="16.30435" fill="url(#pen-gradient-uGzpc)" />
+    <path data-pen-shape-id="tqKLy" data-pen-name="Encounter editable vector master path 54" transform="translate(124.388 73.728)" d="M15.25604 0c-9.396 0.576-15.73201 7.164-15.22799 16.524 0.432 8.676 7.66798 14.90399 15.40799 15.048 9.18001-0.36 15.22801-7.56 15.372-16.05599 0.36-8.748-6.948-15.26401-15.552-15.51601z" fill="#021660" />
+    <path data-pen-shape-id="n7htDZ" data-pen-name="Encounter editable vector master path 55" transform="translate(131.436 80.496)" d="M8.496 0l-8.496 9.252 0.972 5.93999 3.38402 3.06001 5.21998 1.04399 7.95601-7.30799-1.08-8.1-7.95601-3.888z" fill="#0835B7" />
+    <path data-pen-shape-id="Rg2sf" data-pen-name="Encounter editable vector master path 56" transform="translate(147.78 80.604)" d="M4.82399 0l-4.82399 3.744 1.04399 8.424 5.22002 3.024c1.83598-4.968 1.65599-10.908-1.44002-15.192z" fill="#011256" />
+    <path data-pen-shape-id="nBM4x" data-pen-name="Encounter editable vector master path 57" transform="translate(140.724 92.556)" d="M8.172 0l-8.172 6.87601 1.476 5.796c5.58-1.62 10.116-5.544 11.664-9.252l-4.968-3.42001z" fill="#072B9F" />
+    <path data-pen-shape-id="bQh3v" data-pen-name="Encounter editable vector master path 58" transform="translate(127.476 96.336)" d="M4.896 0l-4.896 3.636c3.06 4.104 10.224 6.08399 14.39999 5.328l-1.296-5.50801-8.20799-3.45599z" fill="#021256" />
+    <path data-pen-shape-id="Qtjyk" data-pen-name="Encounter editable vector master path 59" transform="translate(124.416 86.112)" d="M0.07201 0l-0.07201 3.852 0.828 5.472 2.01599 4.46399 5.43601-4.03199-1.476-6.156-6.73199-3.6z" fill="#04217C" />
+    <path data-pen-shape-id="hNgSP" data-pen-name="Encounter editable vector master path 60" transform="translate(125.316 74.844)" d="M5.076 3.78l-3.38401 5.004-1.69199 2.484 5.86799 3.6 8.964-9.36-1.40399-5.508-8.352 3.78z" fill="#5B8EF6" />
+    <path data-pen-shape-id="c10yW" data-pen-name="Encounter editable vector master path 61" transform="translate(139.572 74.088)" d="M0 0l0.79201 6.408 7.668 4.068 4.64399-3.744c-3.13199-4.284-8.13599-6.66-13.104-6.732z" fill="#062184" />
+    <ellipse data-pen-shape-id="i0Yj8" data-pen-name="Encounter editable vector master ellipse 62" transform="translate(114.0119 166.7951)" cx="25.73465" cy="25.73465" rx="25.73465" ry="25.73465" fill="#190B00" />
+    <ellipse data-pen-shape-id="PfmBC" data-pen-name="Encounter editable vector master ellipse 63" transform="translate(117.1428 169.9494)" cx="22.5836" cy="22.5836" rx="22.5836" ry="22.5836" fill="url(#pen-gradient-PfmBC)" />
+    <path data-pen-shape-id="Tn4Vg" data-pen-name="Encounter editable vector master path 64" transform="translate(138.384 184.464)" d="M22.46401 0c-2.15999 0.504-2.80798 1.58398-3.708 1.90799 2.01599 11.26801-6.552 21.672-18.75601 24.76801l9.03601 2.59199c12.60001-4.248 16.524-18.79199 13.428-29.26799z" fill="#5F3A10" opacity="0.5" />
+    <ellipse data-pen-shape-id="ydF7K" data-pen-name="Encounter editable vector master ellipse 65" transform="translate(122.6886 175.0571)" cx="17.47595" cy="17.47595" rx="17.47595" ry="17.47595" fill="#380C08" />
+    <path data-pen-shape-id="almki" data-pen-name="Encounter editable vector master path 66" transform="translate(124.9194 176.2177)" d="M15.15659 0.00227c-8.67599-0.14401-15.22799 6.58798-15.15599 15.444 1.728 4.17599 1.25999 6.69598 3.024 10.29599 3.024 4.32001 9.93599 7.524 15.588 6.73201 7.2-3.06001 12.996-8.496 12.45601-16.164 0.17999-9.252-7.66801-15.588-15.91202-16.308z" fill="#560304" />
+    <path data-pen-shape-id="F0ol73" data-pen-name="Encounter editable vector master path 67" transform="translate(131.688 182.88)" d="M8.67599 0l-8.67599 9.68401 0.828 6.804 10.008 4.53599 7.45199-8.13598-0.93599-8.10001-8.67601-4.78801z" fill="#940D0E" />
+    <path data-pen-shape-id="O3hH1I" data-pen-name="Encounter editable vector master path 68" transform="translate(148.5 183.204)" d="M4.85999 0l-4.85999 3.81601 0.864 8.53198 5.184 3.96001c2.51999-5.29199 2.34-11.51999-1.18801-16.308z" fill="#440305" />
+    <path data-pen-shape-id="EtXoO" data-pen-name="Encounter editable vector master path 69" transform="translate(141.084 195.732)" d="M8.13602 0l-8.13602 7.164 1.44002 5.508c5.364-1.76399 9.72-6.048 11.916-9.504l-5.22-3.168z" fill="#7D0A0A" />
+    <path data-pen-shape-id="Bz7JB" data-pen-name="Encounter editable vector master path 70" transform="translate(127.872 199.584)" d="M4.75199 0l-4.75199 3.528c3.42001 4.42801 10.33199 6.37201 14.83199 5.436l-1.47599-5.472-8.60401-3.492z" fill="#3B0202" />
+    <path data-pen-shape-id="eXhBF" data-pen-name="Encounter editable vector master path 71" transform="translate(125.424 189.396)" d="M0 0l0.036 4.93199 0.864 4.968 1.908 3.49201 4.464-3.74401-0.75599-6.29998-6.51601-3.34801z" fill="#860D0F" />
+    <path data-pen-shape-id="nNKP9" data-pen-name="Encounter editable vector master path 72" transform="translate(125.784 177.876)" d="M13.60801 0l-9.216 3.636-1.98 4.21201-2.41201 2.84399 5.83201 3.564 8.96399-9.18-1.18799-5.076z" fill="#F2989B" />
+    <path data-pen-shape-id="g4WVT" data-pen-name="Encounter editable vector master path 73" transform="translate(140.328 176.292)" d="M0 0l0.54001 6.69601 7.48799 4.176 5.22-3.85202c-4.06799-3.74399-7.95599-6.76799-13.248-7.01999z" fill="#7A080B" />
+    <path data-pen-shape-id="YojKM" data-pen-name="Encounter editable vector master path 74" transform="translate(142.704 170.964)" d="M4.42799 0l-4.42799 4.78799c9.216 1.65599 14.436 9.57599 13.896 14.76l4.03199-2.62801-0.53999-5.724c-2.37599-5.076-7.524-9.39598-12.96001-11.19598z" fill="#A56E1A" opacity="0.6" />
+    <path data-pen-shape-id="zAOfM" data-pen-name="Encounter editable vector master path 75" transform="translate(131.256 170.3067)" d="M0 1.6653l1.04401 4.35599c3.13199-1.29599 7.77599-1.25999 10.15199-1.116l3.42-3.816c-4.464-1.836-10.008-1.15199-14.616 0.57601z" fill="#DEA240" opacity="0.6" />
+    <path data-pen-shape-id="gFL9R" data-pen-name="Encounter editable vector master path 76" transform="translate(118.656 197.532)" d="M2.7 6.80399c3.744 6.3 10.94401 10.476 18.39601 10.83601 4.10399 0.144 8.31599-0.576 11.15999-2.808l-2.44799-3.636c-9.216 5.436-19.62001 1.65599-23.724-8.28l-1.8-2.916-4.28401 3.06 2.7 3.74399z" fill="#825415" opacity="0.6" />
+  </g>
+</svg>

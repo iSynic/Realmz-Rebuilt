@@ -1,8 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
-[ext_resource type="Script" path="res://src/ui/shell/controller_draft_dialog.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/ui/shell/preferences_draft_dialog.gd" id="1_script"]
 
-[node name="ControllerDraftDialog" type="Control"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="2_menu"]
+
+[node name="PreferencesDraftDialog" type="Control"]
 visible = false
 layout_mode = 3
 anchors_preset = 15
@@ -12,6 +14,7 @@ grow_horizontal = 2
 grow_vertical = 2
 z_index = 120
 script = ExtResource("1_script")
+theme = ExtResource("2_menu")
 
 [node name="Veil" type="ColorRect" parent="."]
 layout_mode = 1
@@ -29,7 +32,7 @@ anchor_bottom = 1.0
 [node name="Panel" type="PanelContainer" parent="Center"]
 layout_mode = 2
 custom_minimum_size = Vector2(420, 0)
-theme_type_variation = &"ClassicTextWell"
+theme_type_variation = &"MenuDialog"
 
 [node name="Content" type="VBoxContainer" parent="Center/Panel"]
 layout_mode = 2
@@ -37,7 +40,7 @@ theme_override_constants/separation = 12
 
 [node name="Title" type="Label" parent="Center/Panel/Content"]
 layout_mode = 2
-text = "Unapplied controller changes"
+text = "Unapplied settings changes"
 theme_type_variation = &"ClassicHeading"
 
 [node name="Message" type="Label" parent="Center/Panel/Content"]
@@ -45,7 +48,7 @@ unique_name_in_owner = true
 layout_mode = 2
 custom_minimum_size = Vector2(420, 56)
 autowrap_mode = 3
-text = "Your controller changes have not been applied."
+text = "Your settings changes have not been applied."
 
 [node name="Actions" type="HBoxContainer" parent="Center/Panel/Content"]
 layout_mode = 2
@@ -55,7 +58,7 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Apply"
+text = "Apply & leave"
 
 [node name="Discard" type="Button" parent="Center/Panel/Content/Actions"]
 unique_name_in_owner = true
@@ -67,4 +70,4 @@ text = "Discard"
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Keep Editing"
+text = "Keep editing"

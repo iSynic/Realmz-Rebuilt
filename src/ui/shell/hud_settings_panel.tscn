@@ -1,0 +1,203 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/hud_settings_panel.gd" id="1_script"]
+
+[node name="HudSettingsPanel" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_script")
+
+[node name="SettingsScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
+
+[node name="SettingsPanel" type="PanelContainer" parent="SettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Content" type="VBoxContainer" parent="SettingsScroll/SettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="LayoutGroup" type="PanelContainer" parent="SettingsScroll/SettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Content" type="VBoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="LayoutRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/LayoutRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "HUD layout"
+tooltip_text = "Fixed keeps the familiar layout. Modular places the same four panels over the map."
+
+[node name="LayoutChoice" type="OptionButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/LayoutRow"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+tooltip_text = "Fixed is the default. Modular retains its panel settings while Fixed is selected."
+item_count = 2
+popup/item_0/text = "Fixed"
+popup/item_1/text = "Modular"
+
+[node name="AllVisibilityRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/AllVisibilityRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "All panels"
+
+[node name="AllVisibility" type="OptionButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/AllVisibilityRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+action_mode = 1
+item_count = 3
+popup/item_0/text = "Mixed / individual"
+popup/item_0/disabled = true
+popup/item_1/text = "Always visible"
+popup/item_2/text = "Auto-hide all panels"
+tooltip_text = "Set visibility for every panel, or adjust each panel below. Effects follow Party commands."
+
+[node name="CompactCommands" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content"]
+layout_mode = 2
+text = "Compact command icons"
+tooltip_text = "Fit the modular command strip to its icons with minimal padding. Names remain available on hover and controller focus."
+
+[node name="PanelGroup" type="PanelContainer" parent="SettingsScroll/SettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Content" type="VBoxContainer" parent="SettingsScroll/SettingsPanel/Content/PanelGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="PanelRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/PanelRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Panel"
+tooltip_text = "Choose which modular HUD panel to configure."
+
+[node name="PanelChoice" type="OptionButton" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/PanelRow"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+tooltip_text = "Select roster, narration, world commands, or party commands."
+item_count = 4
+popup/item_0/text = "Roster"
+popup/item_1/text = "Narration"
+popup/item_2/text = "World commands"
+popup/item_3/text = "Party commands"
+
+[node name="VisibilityRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/VisibilityRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "This panel"
+tooltip_text = "Auto hide keeps this panel available through its on-screen reveal handle."
+
+[node name="VisibilityChoice" type="OptionButton" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/VisibilityRow"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+tooltip_text = "Always visible keeps the panel open. Auto hide lets it collapse to its reveal handle."
+item_count = 2
+popup/item_0/text = "Always visible"
+popup/item_1/text = "Auto hide"
+
+[node name="OpacityRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/OpacityRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Panel background"
+tooltip_text = "Adjust only the panel background; text, portraits, icons, and command art stay opaque."
+
+[node name="OpacitySlider" type="HSlider" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/OpacityRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 40.0
+max_value = 100.0
+step = 5.0
+tick_count = 13
+ticks_on_borders = true
+tooltip_text = "Set the panel background opacity from 40 to 100 percent."
+
+[node name="OpacityValue" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/OpacityRow"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
+[node name="HoverReveal" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content"]
+layout_mode = 2
+text = "Reveal on hover"
+tooltip_text = "Allow pointer hover to open this auto-hidden panel after a short dwell."
+autowrap_mode = 2
+
+[node name="ChangeReveal" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content"]
+layout_mode = 2
+text = "Reveal after meaningful changes"
+tooltip_text = "Roster and narration may reveal after substantive updates. World and party commands never auto-reveal from changed values or availability."
+autowrap_mode = 2
+
+[node name="RevealHelp" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content"]
+layout_mode = 2
+text = "Commands never reveal from updates. Effects share Party commands visibility."
+autowrap_mode = 2
+
+[node name="ArrangeGroup" type="PanelContainer" parent="SettingsScroll/SettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Content" type="VBoxContainer" parent="SettingsScroll/SettingsPanel/Content/ArrangeGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="ArrangeButton" type="Button" parent="SettingsScroll/SettingsPanel/Content/ArrangeGroup/Content"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Arrange panels…"
+tooltip_text = "Open Arrange mode for the current adventure. Changes remain in this Preferences draft until Apply."
+
+[node name="ArrangeUnavailableReason" type="Label" parent="SettingsScroll/SettingsPanel/Content/ArrangeGroup/Content"]
+layout_mode = 2
+text = "Start or load an adventure before arranging HUD panels."
+autowrap_mode = 2

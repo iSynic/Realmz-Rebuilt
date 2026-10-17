@@ -1,0 +1,184 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shell/indoor_party_icon_picker.tscn" id="4_icons"]
+
+[node name="Display" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="DisplaySettingsScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="DisplaySettingsPanel" type="PanelContainer" parent="DisplaySettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="DisplayPreferenceTabs" type="TabContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+clip_tabs = true
+[node name="Window & Scale" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="Image Effects" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="World View" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+[node name="DisplayTopRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="DisplaySettingsColumn" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="ScaleGroup" type="PanelContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="VisualEffectsGroup" type="PanelContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="WorldViewGroup" type="PanelContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+[node name="WorldOptions" type="GridContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 1
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 4
+[node name="DisplayScalingRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Display scaling"
+[node name="DisplayScalingPicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/DisplayScalingRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="PixelSmoothingRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/PixelSmoothingRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Pixel-art smoothing"
+[node name="PixelSmoothingPicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/PixelSmoothingRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="CrtEnabled" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content"]
+layout_mode = 2
+text = "CRT effect"
+autowrap_mode = 2
+[node name="CrtShaderRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtShaderRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "CRT shader"
+[node name="CrtShaderPicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtShaderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="CrtAreaRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtAreaRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "CRT area"
+[node name="CrtAreaPicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/CrtAreaRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="InterfaceScaleRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Interface Size"
+[node name="InterfaceScalePicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/InterfaceScaleRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="InterfaceSizeFeedback" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.62, 0.67, 0.68, 1)
+text = "Applied interface size: 100%"
+autowrap_mode = 2
+[node name="WorldZoomRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "World zoom"
+[node name="WorldZoomPicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WorldZoomRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="WindowModeRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Window mode"
+[node name="WindowModePicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content/WindowModeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="Dungeon3d" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Enable 3D dungeons"
+autowrap_mode = 2
+[node name="ClassicExplorationVisibility" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Classic exploration distance with visited outer tiles"
+autowrap_mode = 2
+[node name="CustomFogTile" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Use alternative fog-of-war tile"
+autowrap_mode = 2
+
+[node name="IndoorPartyIcon" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content" instance=ExtResource("4_icons")]
+layout_mode = 2

@@ -212,8 +212,11 @@ func _populate_movement_actions(combat: CombatState, characters: Array[Character
 	if weapon_mode == &"melee" and not contact_attack_available:
 		melee_attack_unavailable_reason = "No hostile battlefield footprint is adjacent."
 	if weapon_mode == &"melee":
-		targets.clear()
-		character_targets.clear()
+		if contact_attack_available and attack_units_remaining > 0:
+			legal_actions.append(&"attack")
+		else:
+			targets.clear()
+			character_targets.clear()
 
 
 func _finalize_legal_actions(game_state: GameState) -> void:

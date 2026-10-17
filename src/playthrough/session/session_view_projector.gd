@@ -126,6 +126,12 @@ static func _populate_complete_campaign(context: SessionWorkflowContext, result:
 	result.campaign_summary.guidance_authored = campaign.guidance_authored
 	result.campaign_summary.banned_races = campaign.restrictions.banned_races.duplicate()
 	result.campaign_summary.banned_castes = campaign.restrictions.banned_castes.duplicate()
+	for id: String in campaign.restrictions.banned_races:
+		var race := content.characters.race_by_id(id)
+		result.campaign_summary.banned_race_names.append(race.name if race != null else id)
+	for id: String in campaign.restrictions.banned_castes:
+		var caste := content.characters.caste_by_id(id)
+		result.campaign_summary.banned_caste_names.append(caste.name if caste != null else id)
 	result.campaign_summary.package_hash = content.package_hash
 	result.campaign_summary.compatibility_warning_count = content.compatibility_warnings.size()
 	for warning: ScenarioCompatibilityWarning in content.compatibility_warnings:

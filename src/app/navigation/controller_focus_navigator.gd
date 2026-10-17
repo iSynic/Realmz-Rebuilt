@@ -12,6 +12,7 @@ func move(root: Node, direction: Vector2i) -> Control:
 		return null
 	var viewport := root.get_viewport()
 	var current := viewport.gui_get_focus_owner() if viewport != null else null
+	has_active_popup(root)
 	if _move_popup(direction):
 		return _popup_owner.get_ref() as Control
 	if current == null or not current.is_visible_in_tree() or current != root and not root.is_ancestor_of(current):
@@ -89,6 +90,7 @@ func activate_focused(root: Node) -> bool:
 	var focused := viewport.gui_get_focus_owner() if viewport != null else null
 	if focused == null or not focused.is_visible_in_tree() or focused != root and not root.is_ancestor_of(focused):
 		focused = focus_first(root)
+	has_active_popup(root)
 	if _confirm_popup():
 		return true
 	if focused is OptionButton and not (focused as OptionButton).disabled:
@@ -129,7 +131,8 @@ func activate_focused(root: Node) -> bool:
 	return false
 
 
-func cancel_active_popup() -> bool:
+func cancel_active_popup(root: Node = null) -> bool:
+	has_active_popup(root)
 	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
 	if option == null or not option.get_popup().visible:
 		_popup_owner = null
@@ -244,8 +247,11 @@ func _move_popup(direction: Vector2i) -> bool:
 		_popup_owner = null
 		return false
 	if direction.y != 0 and option.item_count > 0:
-		_popup_index = wrapi(_popup_index + direction.y, 0, option.item_count)
-		option.get_popup().set_focused_item(_popup_index)
+		for attempt: int in option.item_count:
+			_popup_index = wrapi(_popup_index + direction.y, 0, option.item_count)
+			if not option.is_item_disabled(_popup_index) and not option.get_popup().is_item_separator(_popup_index):
+				option.get_popup().set_focused_item(_popup_index)
+				break
 	return true
 
 
@@ -254,6 +260,7 @@ func _confirm_popup() -> bool:
 	if option == null or not option.get_popup().visible:
 		_popup_owner = null
 		return false
+	if _popup_index < 0 or _popup_index >= option.item_count or option.is_item_disabled(_popup_index) or option.get_popup().is_item_separator(_popup_index): return true
 	option.select(_popup_index)
 	option.item_selected.emit(_popup_index)
 	option.get_popup().hide()

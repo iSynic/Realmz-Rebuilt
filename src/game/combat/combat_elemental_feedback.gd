@@ -29,6 +29,6 @@ static func append_attack(event: DomainEvent, resolution: AttackResolution) -> v
 
 static func _component(element: String, amount: int, recipient: String, source: String) -> Dictionary:
 	if amount <= 0 or not ELEMENT_MEDIA.has(element): return {}
-	# Castle showresults: -19..-23 select CICN 162..166 and these exact sounds.
+	# Castle showdamage selects these cues; misc.c sound(positive ID) uses asynchronous SndPlay.
 	var media: Array = ELEMENT_MEDIA[element]
-	return {"element": element, "amount": amount, "targetId": recipient, "effectResourceType": "cicn", "effectResourceId": media[0], "soundRequest": {"soundId": media[1], "waitForCompletion": true, "source": source}}
+	return {"element": element, "amount": amount, "targetId": recipient, "effectResourceType": "cicn", "effectResourceId": media[0], "soundRequest": {"soundId": media[1], "waitForCompletion": false, "source": source}}

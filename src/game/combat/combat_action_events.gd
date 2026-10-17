@@ -127,6 +127,7 @@ static func append_monster_special_events(events: Array[DomainEvent], actor_id: 
 		"blocked": resolution.special_blocked,
 		"blockReason": String(resolution.special_block_reason),
 		"applied": resolution.special_applied,
+		"announced": resolution.special_announced,
 		"ageDays": resolution.special_age_days,
 		"resource": String(resolution.special_resource),
 		"amount": resolution.special_amount,
@@ -148,10 +149,16 @@ static func append_monster_special_events(events: Array[DomainEvent], actor_id: 
 	var special_event := DomainEvent.new(&"combat_monster_special_resolved", payload)
 	if resolution.damage_deferred:
 		CombatElementalFeedback.append_attack(special_event, resolution)
-	events.append(special_event)
 	if resolution.special_announced and resolution.special_sound_id != 0:
 		var sound_source := "classic-monster-status" if resolution.special_condition_index >= 0 else "classic-monster-special"
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": resolution.special_sound_id, "waitForCompletion": false, "source": sound_source}))
+	if resolution.special_announced and resolution.special_code in [1, 2, 3, 4, 5, 6, 7, 10, 16]:
+		# Castle attack -> showresults(-34..-26) -> showdamage: distinct source cues.
+		var chemical := resolution.special_code in [6, 16]
+		special_event.payload["classicResultEffectResourceId"] = 165 if chemical else 166
+		special_event.payload["classicOverlaySoundId"] = 640 if chemical else 630
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 684 if resolution.special_code == 16 else 651, "waitForCompletion": false, "source": "classic-monster-status-result"}))
+	events.append(special_event)
 
 
 static func append_monster_physical_feedback(events: Array[DomainEvent], sound_id: int) -> void:

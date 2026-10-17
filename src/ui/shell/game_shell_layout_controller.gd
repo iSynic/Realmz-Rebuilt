@@ -2,6 +2,8 @@
 class_name GameShellLayoutController
 extends RefCounted
 
+var _shell_ref: WeakRef
+var _footer_pending := false
 var workspace_rect: Rect2
 var _stage_frame: NinePatchRect
 var _activity_indicator: PanelContainer
@@ -26,6 +28,7 @@ var _effect_slots: Array[TextureRect] = []
 
 
 func _init(shell: Control) -> void:
+	_shell_ref = weakref(shell)
 	_stage_frame = shell.get_node("%StageFrame") as NinePatchRect
 	_activity_indicator = shell.get_node("%ActivityIndicator") as PanelContainer
 	_party_roster = shell.get_node("%PartyRoster") as ClassicPartyRoster
@@ -57,6 +60,11 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	var viewport_size := canvas_rect.size
 	var origin := canvas_rect.position
 	profile.menu_height = 0.0
+	var shell := _shell_ref.get_ref() as GameShell
+	var modular := shell.hud.prepare(settings, game_view, _navigator.current_screen(), shell.pause_active)
+	if modular:
+		_apply_modular(profile)
+		return profile
 	_apply_footer(profile, viewport_size, origin, game_view)
 	profile.bottom_height = maxf(profile.bottom_height, ceilf(_bottom_region.get_combined_minimum_size().y))
 	if game_view != null and game_view.combat_view != null:
@@ -71,6 +79,25 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	_navigator.set_layout_profile(profile, viewport_size, origin)
 	workspace_rect = Rect2(stage_rect.position, Vector2(GameShellLayoutPolicy.combat_spellbook_stage_width(stage_rect.size.x, viewport_size.x, roster_width), stage_rect.size.y))
 	return profile
+
+
+func _apply_modular(profile: UiLayoutProfile) -> void:
+	var shell := _shell_ref.get_ref() as GameShell
+	var area := profile.application_rect
+	_world_command_panel.show()
+	_command_panel.show()
+	_narrative_well.show()
+	_party_roster.show()
+	_bottom_region.hide()
+	_world_command_panel.custom_minimum_size = Vector2.ZERO
+	_command_panel.custom_minimum_size = Vector2.ZERO
+	_narrative_well.custom_minimum_size = Vector2.ZERO
+	_facts.columns = 3 if profile.font_scale <= 1.0 else 2
+	_apply_footer_alignment(profile, profile.command_width)
+	_apply_stage(profile, area.size, area.position, area)
+	shell.hud.arrange(profile)
+	_navigator.set_layout_profile(profile, area.size, area.position)
+	workspace_rect = area
 
 
 func _apply_stage(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, stage_rect: Rect2) -> void:
@@ -126,6 +153,8 @@ func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vec
 
 
 func restore_footer_bounds(profile: UiLayoutProfile) -> void:
+	var shell := _shell_ref.get_ref() as GameShell
+	if shell.hud != null and shell.hud.active: return
 	var canvas_rect := profile.application_rect
 	var footer_width := GameShellLayoutPolicy.exploration_footer_width(canvas_rect.size, profile, _navigator.current_screen())
 	_bottom_region.position = canvas_rect.position + Vector2(0.0, canvas_rect.size.y - profile.bottom_height)
@@ -141,11 +170,26 @@ func _apply_footer_alignment(profile: UiLayoutProfile, command_width: float) -> 
 	_world_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_command_grid.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_world_command_grid.columns = 4
-	_world_command_lower_grid.columns = 3
-	_command_grid.columns = 2 if _world_command_panel.visible else 3 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
+	if not (_shell_ref.get_ref() as GameShell).hud.active:
+		_world_command_grid.columns = 4
+		_world_command_lower_grid.columns = 3
+		_command_grid.columns = 2 if _world_command_panel.visible else 3 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
 	var icon_size := GameShellLayoutPolicy.party_effect_icon_size(profile.bitmap_scale)
 	var slot_size := GameShellLayoutPolicy.party_effect_slot_size(profile.bitmap_scale)
 	for icon: TextureRect in _effect_slots:
 		icon.custom_minimum_size = Vector2(icon_size, icon_size)
 		(icon.get_parent().get_parent() as Control).custom_minimum_size = Vector2(slot_size, slot_size)
+
+
+func queue_footer_layout() -> void:
+	if _footer_pending: return
+	_footer_pending = true
+	call_deferred("_settle_footer_layout")
+
+
+func _settle_footer_layout() -> void:
+	_footer_pending = false
+	var shell := _shell_ref.get_ref() as GameShell
+	if shell == null or not shell.is_node_ready() or shell._profile == null: return
+	shell._profile = apply(shell.size, shell._presentation_settings, shell._current_view)
+	shell.layout_changed.emit(workspace_rect, shell._profile)

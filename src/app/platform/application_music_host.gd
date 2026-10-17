@@ -6,6 +6,7 @@ class Source extends RefCounted:
 	var path: String
 	var name: String
 
+var commit_preferences: Callable
 var _repository: MusicLibraryRepository
 var _dialog: MusicPlaylistDialog
 var _playback: MusicPlaybackController
@@ -30,6 +31,7 @@ func bind(dialog: MusicPlaylistDialog, playback: MusicPlaybackController, game_v
 	_game_view = game_view
 	_dialog.opened.connect(_open)
 	_dialog.import_requested.connect(_import)
+	_dialog.import_folder_requested.connect(_import_folder)
 	_dialog.import_cancelled.connect(_cancel)
 	_dialog.preview_requested.connect(func(id: String) -> void: _playback.preview(id))
 	_dialog.preview_stopped.connect(_playback.end_preview)
@@ -129,10 +131,23 @@ func _finish_import() -> void:
 
 
 func _apply(draft: MusicLibraryView) -> void:
-	var success := _repository.save_preferences(draft.playlist_data(), draft.assignment_data())
-	if success:
-		_playback.set_library(MusicLibraryView.from_data(_repository.snapshot()), _load_track)
-	_dialog.apply_result(success, _repository.last_error)
+	if not commit_preferences.is_valid():
+		_dialog.apply_result(false, "Settings storage is unavailable; your music draft is retained.")
+		return
+	var previous := MusicLibraryView.from_data(_repository.snapshot())
+	if not _repository.save_preferences(draft.playlist_data(), draft.assignment_data()):
+		_dialog.apply_result(false, _repository.last_error)
+		return
+	var error := String(commit_preferences.call(_dialog.playback_baseline(), _dialog.playback_preferences()))
+	if not error.is_empty():
+		var restored := _repository.save_preferences(previous.playlist_data(), previous.assignment_data())
+		if not restored:
+			error += " Playlists were saved, but their rollback failed: " + _repository.last_error
+			_refresh_library()
+		_dialog.apply_result(false, error)
+		return
+	_playback.set_library(MusicLibraryView.from_data(_repository.snapshot()), _load_track)
+	_dialog.apply_result(true)
 
 
 func _remove(id: String) -> void:
@@ -173,3 +188,14 @@ func _load_track(id: String) -> AudioStream:
 func _exit_tree() -> void:
 	if _job != null:
 		_job.close()
+
+
+func _import_folder(path: String) -> void:
+	var paths := PackedStringArray()
+	for file: String in DirAccess.get_files_at(path):
+		if file.get_extension().to_lower() in ["mp3", "ogg", "wav", "flac", "aiff", "aif", "mod", "xm", "s3m", "it"]:
+			paths.append(path.path_join(file))
+	if paths.is_empty():
+		_dialog.report("No supported music files in that folder. Subfolders are not included.")
+	else:
+		_import(paths)

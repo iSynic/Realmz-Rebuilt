@@ -27,6 +27,7 @@ var _frame_index: int
 var _frame_elapsed: float
 var _show_command_title: bool = true
 var _fit_hidden_art: bool = false
+var _modular_art_scale := 0
 
 
 func _ready() -> void:
@@ -52,10 +53,11 @@ func sync_status(light_remaining: int, has_torch: bool, can_activate: bool, reas
 	_has_torch = has_torch
 	disabled = not can_activate
 	tooltip_text = reason if not reason.is_empty() else "Use another Torch" if _light_remaining > 0 else "Light a Torch"
-	if not _has_torch or _light_remaining <= 0:
+	tooltip_text += "\nLight remaining: %d" % _light_remaining
+	if (not _has_torch and _modular_art_scale == 0) or _light_remaining <= 0:
 		_frame_index = 0
 		_frame_elapsed = 0.0
-	set_process(_has_torch and _light_remaining > 0)
+	set_process((_has_torch or _modular_art_scale > 0) and _light_remaining > 0)
 	queue_redraw()
 
 
@@ -73,26 +75,40 @@ func set_command_title_visible(visible: bool, fit_art_to_button: bool = false) -
 
 func _process(delta: float) -> void:
 	_frame_elapsed += delta
-	if _frame_elapsed < FRAME_INTERVAL:
+	var interval := FRAME_INTERVAL
+	if _frame_elapsed < interval:
 		return
 	var frame_count := maxi(1, _flame_frames.size())
-	var advanced := floori(_frame_elapsed / FRAME_INTERVAL)
-	_frame_elapsed -= float(advanced) * FRAME_INTERVAL
+	var advanced := floori(_frame_elapsed / interval)
+	_frame_elapsed -= float(advanced) * interval
 	_frame_index = (_frame_index + advanced) % frame_count
 	queue_redraw()
+
+
+func set_modular_icon_layout(art_scale: int, padding: int) -> void:
+	_modular_art_scale = art_scale
+	set_process((_has_torch or art_scale > 0) and _light_remaining > 0)
+	var profile := UiSizing.profile_for(self)
+	if art_scale == 0:
+		custom_minimum_size = Vector2(62, 146) * (profile.ui_scale if profile != null else 1.0)
+		if profile != null: apply_ui_sizing(profile)
+	CommandIconLayout.apply(self, Vector2(32, 32), art_scale, padding)
 
 
 func _draw() -> void:
 	var rect := Rect2(Vector2.ONE, size - Vector2(2.0, 2.0))
 	var pressed := is_pressed()
-	var leading_edge := SURFACE_DARK if pressed else EDGE_LIGHT
-	var trailing_edge := EDGE_LIGHT if pressed else SURFACE_DARK
-	draw_line(rect.position, Vector2(rect.end.x, rect.position.y), leading_edge, 2.0)
-	draw_line(rect.position, Vector2(rect.position.x, rect.end.y), leading_edge, 2.0)
-	draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
-	draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
+	if get_theme_constant("flat_surface", &"Button") == 1:
+		draw_style_box(get_theme_stylebox(&"hover" if is_hovered() else &"normal", &"Button"), rect)
+	else:
+		var leading_edge := SURFACE_DARK if pressed else EDGE_LIGHT
+		var trailing_edge := EDGE_LIGHT if pressed else SURFACE_DARK
+		draw_line(rect.position, Vector2(rect.end.x, rect.position.y), leading_edge, 2.0)
+		draw_line(rect.position, Vector2(rect.position.x, rect.end.y), leading_edge, 2.0)
+		draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
+		draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
 	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
-	if _has_torch:
+	if _has_torch or _modular_art_scale > 0:
 		_draw_torch_art(pressed_offset)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
@@ -118,6 +134,9 @@ func apply_ui_sizing(profile: UiLayoutProfile) -> void:
 func _draw_torch_art(offset: Vector2) -> void:
 	if _body_texture == null:
 		return
+	if _modular_art_scale > 0:
+		_draw_compact_torch(offset)
+		return
 	var segments := _fuel_segment_count()
 	var profile := UiSizing.profile_for(self)
 	var art_scale := _fitted_art_scale() if not _show_command_title and _fit_hidden_art else profile.bitmap_scale if profile != null else 1
@@ -137,6 +156,21 @@ func _draw_torch_art(offset: Vector2) -> void:
 	var flame_x := floorf((size.x - flame_size.x) * 0.5)
 	var flame_y := maxf(stage_top, base_y - float(segments) * 7.0 * art_scale - flame_size.y + 6.0 * art_scale)
 	draw_texture_rect(flame, Rect2(Vector2(flame_x, flame_y) + offset, flame_size), false)
+
+
+func _draw_compact_torch(offset: Vector2) -> void:
+	var scale_value := _modular_art_scale
+	var origin := ((size - Vector2(32, 32) * scale_value) * 0.5).floor() + offset
+	var texture := _flame_frames[_frame_index] if _light_remaining > 0 and not _flame_frames.is_empty() else _body_texture
+	if texture != null:
+		var art_size := texture.get_size() * scale_value
+		var art_position := origin + Vector2(floorf((32.0 * scale_value - art_size.x) * 0.5), 30.0 * scale_value - art_size.y)
+		draw_texture_rect(texture, Rect2(art_position, art_size), false)
+	draw_rect(Rect2(origin + Vector2(0, 30) * scale_value, Vector2(32, 2) * scale_value), Color("40515b"))
+	if _light_remaining > 0:
+		# Keep Classic's 31-unit display steps; the tooltip retains the exact value.
+		var width := ceili(mini(_fuel_segment_count(), 10) * 3.2)
+		draw_rect(Rect2(origin + Vector2(0, 30) * scale_value, Vector2(width, 2) * scale_value), Color("d8b763"))
 
 
 func _fitted_art_scale() -> int:

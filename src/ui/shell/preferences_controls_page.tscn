@@ -1,0 +1,301 @@
+[gd_scene load_steps=2 format=3]
+
+
+[ext_resource type="PackedScene" path="res://src/ui/shell/preferences_keyboard_reference.tscn" id="1_reference"]
+
+[node name="Controls" type="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+[node name="ControlsSettingsScroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+[node name="ControlsSettingsPanel" type="PanelContainer" parent="ControlsSettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+[node name="Content" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+[node name="ControlsTabs" type="TabContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Keyboard & Mouse" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ClickToMove" type="CheckButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Keyboard & Mouse"]
+layout_mode = 2
+text = "Left-click Move To"
+tooltip_text = "Click a destination to follow a route. Right-click routing is always available."
+autowrap_mode = 2
+
+[node name="ClassicKeyboardShortcuts" type="CheckButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Keyboard & Mouse"]
+layout_mode = 2
+text = "Classic keyboard shortcuts"
+tooltip_text = "Use Castle's context-specific letter commands instead of WASD. Arrow keys and keypad still move. See the keyboard reference below."
+autowrap_mode = 2
+
+[node name="KeyboardReference" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Keyboard & Mouse" instance=ExtResource("1_reference")]
+layout_mode = 2
+
+[node name="Gameplay" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AutoSwitchToMelee" type="CheckButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Gameplay"]
+layout_mode = 2
+text = "Auto Switch To Melee Weapon"
+autowrap_mode = 2
+[node name="ImmediateSingleTargetActions" type="CheckButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Gameplay"]
+layout_mode = 2
+text = "Immediate single-target actions"
+tooltip_text = "Click a combatant to commit a single-target action. Areas and multiple targets still require confirmation."
+autowrap_mode = 2
+[node name="ShowExplorationMinimap" type="CheckButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Gameplay"]
+layout_mode = 2
+text = "Show exploration minimap"
+autowrap_mode = 2
+[node name="AutojournalEnabled" type="CheckButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Gameplay"]
+layout_mode = 2
+text = "Add eligible scenario text to Notes automatically"
+autowrap_mode = 2
+
+[node name="Controller" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="ControllerSettings" type="PanelContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Content" type="TabContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="BindingColumn" type="PanelContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 2.0
+size_flags_vertical = 3
+[node name="Content" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+[node name="Heading" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Bindings"
+[node name="BindingRows" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ControllerBinding_confirm" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Confirm"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_back" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Back"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_action_radial" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Action Radial"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_workspace_radial" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Workspace Radial"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_top_menu" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Pause (alternate)"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_section_previous" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Section Previous"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_section_next" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Section Next"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_character_previous" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Character Previous"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_character_next" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Character Next"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_inspect" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Inspect"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_system" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "System"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_up" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Up"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_down" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Down"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_left" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Left"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_right" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Right"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_up" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Up"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_down" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Down"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_left" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Left"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="ControllerBinding_scroll_right" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/BindingRows"]
+layout_mode = 2
+text = "Scroll Right"
+tooltip_text = "Select, then press the desired controller input. East cancels capture."
+
+[node name="BindingStatus" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+autowrap_mode = 2
+[node name="Actions" type="HBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content"]
+layout_mode = 2
+alignment = 2
+[node name="RestoreControllerDefaults" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/Actions"]
+layout_mode = 2
+text = "Restore Defaults"
+[node name="TuningColumn" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+[node name="Heading" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+text = "Controller"
+theme_type_variation = &"ClassicHeading"
+
+[node name="PromptFamily" type="OptionButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+
+[node name="LeftDeadZoneLabelRow" type="HBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/LeftDeadZoneLabelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Left stick dead zone"
+
+[node name="Value" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/LeftDeadZoneLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="LeftDeadZone" type="HSlider" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 0.9
+step = 0.05
+
+[node name="RightDeadZoneLabelRow" type="HBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/RightDeadZoneLabelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Right stick dead zone"
+
+[node name="Value" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/RightDeadZoneLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RightDeadZone" type="HSlider" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 0.1
+max_value = 0.9
+step = 0.05
+
+[node name="RepeatInitialLabelRow" type="HBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/RepeatInitialLabelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "UI repeat start delay"
+
+[node name="Value" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/RepeatInitialLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RepeatInitial" type="HSlider" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 150.0
+max_value = 1000.0
+step = 25.0
+
+[node name="RepeatIntervalLabelRow" type="HBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/RepeatIntervalLabelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "UI repeat interval"
+
+[node name="Value" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/RepeatIntervalLabelRow"]
+custom_minimum_size = Vector2(76, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="RepeatInterval" type="HSlider" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 50.0
+max_value = 500.0
+step = 25.0
+
+[node name="LiveInput" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn"]
+layout_mode = 2
+autowrap_mode = 2
+text = "Live input • move or press a controller control"

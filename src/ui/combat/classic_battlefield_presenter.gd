@@ -8,6 +8,8 @@ const NATIVE_CELL_SIZE: float = BattlefieldPresentationGeometry.NATIVE_CELL_SIZE
 const TARGET_EDGE_DWELL_SECONDS := 0.35
 const TARGET_EDGE_STEP_SECONDS := 0.12
 
+var result_text := CombatResultTextPlayback.new()
+var result_text_paused: Callable
 var _view: GameView
 var _media: ClassicMediaCatalog
 var _textures := BattlefieldTextureCache.new()
@@ -19,7 +21,6 @@ var _render_camera_visible_cells := Vector2i.ZERO
 var _targeting_camera_manually_panned := false
 var _actor_clip := Rect2()
 var _playback_frame: CombatPlaybackFrame
-var _damage_font := FontVariation.new()
 var _target_edge_direction := Vector2i.ZERO
 var _target_edge_elapsed := 0.0
 ## Castle stores monster lr as -1 (left), 0 (neutral/vertical), or 1 (right).
@@ -39,6 +40,8 @@ func _ready() -> void:
 
 
 func present(game_view: GameView) -> void:
+	if _view == null or game_view == null or _view.combat_view == null or game_view.combat_view == null or _view.combat_view.battle_id != game_view.combat_view.battle_id:
+		result_text.clear()
 	_view = game_view
 	_targeting_camera_manually_panned = false
 	_playback_frame = null
@@ -58,12 +61,15 @@ func present(game_view: GameView) -> void:
 
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
 	if frame != null and frame == _playback_frame and frame.kind not in [&"move_start", &"projectile", &"spell_projectile"]:
+		if frame.kind in [&"result", &"group_result", &"retreat"]:
+			queue_redraw()
 		return
 	_targeting_camera_manually_panned = false
 	_target_edge_direction = Vector2i.ZERO
 	_target_edge_elapsed = 0.0
 	if interaction.playback_changed(_playback_frame, frame):
 		_render_camera_focus_id = ""
+	result_text.begin_frame(frame)
 	_update_monster_facing(frame)
 	_playback_frame = frame
 	queue_redraw()
@@ -185,6 +191,7 @@ func _draw() -> void:
 	_draw_characters(combat, camera, visible_cells, draw_origin)
 	_draw_monsters(combat, camera, visible_cells, draw_origin)
 	_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
+	result_text.draw(self, camera, visible_cells, draw_origin)
 	_draw_tactical_legend()
 	if not has_battle_artwork():
 		draw_string(get_theme_font(&"font", &"Label"), Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
@@ -258,6 +265,8 @@ func _input(event: InputEvent) -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_PROCESS:
+		if is_visible_in_tree() and not (result_text_paused.is_valid() and result_text_paused.call()) and result_text.advance(get_process_delta_time()):
+			queue_redraw()
 		var direction := Vector2i.ZERO
 		if _playback_frame == null and interaction.targeting != null and is_visible_in_tree() and get_viewport().gui_get_hovered_control() == self:
 			direction = BattlefieldPresentationGeometry.targeting_edge_direction(get_local_mouse_position(), size)
@@ -448,10 +457,16 @@ func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells:
 			_draw_spell_projectile(_combatant_rect(combat, _playback_frame.actor_id, camera, visible_cells, draw_origin, false), _combatant_rect(combat, _playback_frame.target_id, camera, visible_cells, draw_origin, false))
 		&"spell_cast", &"spell_effect":
 			_draw_spell_effect(actor_rect, target_rect)
+			_draw_shared_spell_effects(combat, camera, visible_cells, draw_origin)
 		&"group_result", &"group_defeat":
 			var group_frame := _playback_frame
+			var shared_condition := group_frame.kind == &"group_result" and not group_frame.group_frames.is_empty() and group_frame.group_frames.all(func(child: CombatPlaybackFrame) -> bool: return child.result_kind == &"condition" and child.display_text == group_frame.group_frames[0].display_text)
 			for child: CombatPlaybackFrame in group_frame.group_frames:
+				child.progress = group_frame.progress
 				_playback_frame = child
+				if shared_condition:
+					var recipient := _combatant_rect(combat, child.target_id, camera, visible_cells, draw_origin)
+					if recipient.has_area(): draw_rect(recipient, Color(1.0, 0.86, 0.28, 0.8), false, 1.0)
 				_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
 			_playback_frame = group_frame
 		&"result":
@@ -497,6 +512,15 @@ func _draw_spell_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:
 	draw_texture_rect(tile_texture, projectile_rect, false)
 
 
+func _draw_shared_spell_effects(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, origin: Vector2) -> void:
+	var shared := _playback_frame
+	for child: CombatPlaybackFrame in shared.group_frames:
+		child.progress = shared.progress
+		_playback_frame = child
+		_draw_playback_overlay(combat, camera, visible_cells, origin)
+	_playback_frame = shared
+
+
 func _draw_spell_effect(actor_rect: Rect2, target_rect: Rect2) -> void:
 	var destination := target_rect if target_rect.has_area() else actor_rect
 	if not destination.has_area():
@@ -523,39 +547,12 @@ func _draw_classic_effect(destination: Rect2, role: String) -> void:
 func _draw_result(target_rect: Rect2, combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
 	if _playback_frame.display_text.is_empty():
 		return
-	if not target_rect.has_area():
-		var target_coordinate := _effective_actor_position(combat, _playback_frame.target_id)
-		var badge := BattlefieldPresentationGeometry.offscreen_indicator_rect(target_coordinate, camera, visible_cells, draw_origin, Vector2(160.0, 28.0), size)
-		if not badge.has_area():
-			return
-		var target_name := BattlefieldPresentationGeometry.actor_name(combat, _view.party_members, _playback_frame.target_id).left(15)
-		var direction := (BattlefieldPresentationGeometry.cell_rect(target_coordinate, camera, draw_origin).get_center() - (draw_origin + Vector2(visible_cells) * NATIVE_CELL_SIZE * 0.5)).normalized()
-		var arrow_center := badge.position + Vector2(12.0, 14.0)
-		var arrow_base := arrow_center - direction * 4.0
-		var arrow_side := Vector2(-direction.y, direction.x) * 4.0
-		var arrow := PackedVector2Array([arrow_center + direction * 6.0, arrow_base + arrow_side, arrow_base - arrow_side])
-		var text_color := Color(0.72, 1.0, 0.72) if _playback_frame.result_kind == &"healing" else Color(1.0, 0.95, 0.82)
-		draw_rect(badge, Color(0.02, 0.025, 0.03, 0.94), true)
-		draw_rect(badge, Color(0.86, 0.72, 0.30, 0.95), false, 2.0)
-		draw_colored_polygon(arrow, Color(1.0, 0.86, 0.28))
-		draw_string(get_theme_font(&"font", &"Label"), badge.position + Vector2(23.0, 19.0), "%s: %s" % [target_name, _playback_frame.display_text], HORIZONTAL_ALIGNMENT_LEFT, badge.size.x - 27.0, 14, text_color)
-		return
-	if _playback_frame.effect_resource_id > 0:
+	if target_rect.has_area() and _playback_frame.effect_resource_id > 0:
 		_draw_classic_effect(target_rect, "classic-combat-result")
-	if _playback_frame.result_kind in [&"damage", &"elemental_damage"]:
-		# Castle font/ink/size; deliberately center numerals instead of its fixed -8 pen offset.
-		var utility_font := get_theme_font(&"font", &"ClassicUtility")
-		if _damage_font.base_font != utility_font:
-			_damage_font.base_font = utility_font
-			_damage_font.variation_embolden = 1.0
-		var ink := Color.BLACK if _playback_frame.effect_resource_id in [162, 163, 164, 167] else Color.RED if _playback_frame.effect_resource_id == 159 else Color.WHITE
-		draw_string(_damage_font, target_rect.get_center() + Vector2(-16.0, 3.0), str(_playback_frame.display_amount), HORIZONTAL_ALIGNMENT_CENTER, 32.0, 10 if _playback_frame.display_amount > 9 else 12, ink)
-		return
-	var text_color := Color(0.72, 1.0, 0.72) if _playback_frame.result_kind == &"healing" else Color(1.0, 0.95, 0.82)
-	var result_rect := Rect2(target_rect.get_center() - Vector2(18.0, 14.0), Vector2(36.0, 28.0))
-	if _playback_frame.effect_resource_id <= 0:
-		draw_rect(result_rect, Color(0.02, 0.02, 0.02, 0.76), true)
-	draw_string(get_theme_font(&"font", &"Label"), result_rect.position + Vector2(1.0, 20.0), _playback_frame.display_text, HORIZONTAL_ALIGNMENT_CENTER, result_rect.size.x - 2.0, 14, text_color)
+	var recipient := _playback_frame.target_id if not _playback_frame.target_id.is_empty() else _playback_frame.actor_id
+	var coordinate := _effective_actor_position(combat, recipient)
+	var target_name := BattlefieldPresentationGeometry.actor_name(combat, _view.party_members, recipient)
+	result_text.capture(self, _playback_frame, _combatant_rect(combat, recipient, camera, visible_cells, draw_origin, false), coordinate, target_name, camera, visible_cells, draw_origin)
 
 
 func _effective_actor_position(combat: CombatView, actor_id: String) -> Vector2i:

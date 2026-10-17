@@ -1,106 +1,182 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/music_assignments_editor.gd" id="1"]
 
-[sub_resource type="ButtonGroup" id="Modes"]
-
-[node name="Assignments" type="HBoxContainer"]
+[node name="Assignments" type="VBoxContainer"]
 layout_mode = 2
 script = ExtResource("1")
-theme_override_constants/separation = 12
+theme_override_constants/separation = 10
 
-[node name="Contexts" type="ItemList" parent="."]
+[node name="ScopeRow" type="HBoxContainer" parent="."]
 layout_mode = 2
-theme_type_variation = &"SlateList"
+
+[node name="ScopeLabel" type="Label" parent="ScopeRow"]
+layout_mode = 2
+text = "Assignments for"
+
+[node name="Scope" type="OptionButton" parent="ScopeRow"]
+layout_mode = 2
 unique_name_in_owner = true
-custom_minimum_size = Vector2(160, 80)
-size_flags_vertical = 3
 size_flags_horizontal = 3
-size_flags_stretch_ratio = 0.7
+fit_to_longest_item = false
 
-[node name="AssignmentScroll" type="ScrollContainer" parent="."]
+[node name="GlobalDefaults" type="Button" parent="ScopeRow"]
 layout_mode = 2
+unique_name_in_owner = true
+text = "Edit global defaults"
+
+[node name="ScenarioUnavailable" type="Label" parent="."]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Scenario assignments are available while an adventure is selected."
+autowrap_mode = 3
+
+[node name="Wide" type="VBoxContainer" parent="."]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_vertical = 3
+
+[node name="GlobalNote" type="Label" parent="Wide"]
+layout_mode = 2
+text = "Playback behavior applies to every scenario."
+
+[node name="Header" type="HBoxContainer" parent="Wide"]
+layout_mode = 2
+
+[node name="ContextHeader" type="Label" parent="Wide/Header"]
+layout_mode = 2
+text = "Context"
 size_flags_horizontal = 3
+
+[node name="ModeHeader" type="Label" parent="Wide/Header"]
+layout_mode = 2
+text = "Mode"
+custom_minimum_size = Vector2(125, 0)
+
+[node name="SourceHeader" type="Label" parent="Wide/Header"]
+layout_mode = 2
+text = "Source"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="PlaylistHeader" type="Label" parent="Wide/Header"]
+layout_mode = 2
+text = "Playlist"
+custom_minimum_size = Vector2(150, 0)
+
+[node name="Scroll" type="ScrollContainer" parent="Wide"]
+layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="Options" type="VBoxContainer" parent="AssignmentScroll"]
+[node name="Table" type="VBoxContainer" parent="Wide/Scroll"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
+size_flags_vertical = 3
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 6
 
-[node name="ScopeLabel" type="Label" parent="AssignmentScroll/Options"]
+[node name="SlotNote" type="Label" parent="Wide"]
 layout_mode = 2
-text = "Apply assignments to"
-
-[node name="AssignmentScope" type="OptionButton" parent="AssignmentScroll/Options"]
-layout_mode = 2
-unique_name_in_owner = true
-fit_to_longest_item = false
-
-[node name="BehaviorLabel" type="Label" parent="AssignmentScroll/Options"]
-layout_mode = 2
-text = "Playback behavior (all scenarios)"
-
-[node name="Modes" type="HBoxContainer" parent="AssignmentScroll/Options"]
-layout_mode = 2
-
-[node name="ModePlay" type="Button" parent="AssignmentScroll/Options/Modes"]
-layout_mode = 2
-unique_name_in_owner = true
-text = "Play"
-toggle_mode = true
-button_group = SubResource("Modes")
-size_flags_horizontal = 3
-
-[node name="ModeContinue" type="Button" parent="AssignmentScroll/Options/Modes"]
-layout_mode = 2
-unique_name_in_owner = true
-text = "Continue"
-toggle_mode = true
-button_group = SubResource("Modes")
-size_flags_horizontal = 3
-
-[node name="ModeOff" type="Button" parent="AssignmentScroll/Options/Modes"]
-layout_mode = 2
-unique_name_in_owner = true
-text = "Off"
-toggle_mode = true
-button_group = SubResource("Modes")
-size_flags_horizontal = 3
-
-[node name="BehaviorHelp" type="Label" parent="AssignmentScroll/Options"]
-layout_mode = 2
-text = "Continue keeps the playing queue advancing. Off pauses it."
+text = "Classic slots 18–20 are reserved and cannot be assigned."
 autowrap_mode = 3
 
-[node name="MusicLabel" type="Label" parent="AssignmentScroll/Options"]
+[node name="Compact" type="ScrollContainer" parent="."]
+layout_mode = 2
+unique_name_in_owner = true
+visible = false
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Content" type="VBoxContainer" parent="Compact"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="ContextLabel" type="Label" parent="Compact/Content"]
+visible = false
+layout_mode = 2
+text = "Context"
+
+[node name="Context" type="OptionButton" parent="Compact/Content"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+fit_to_longest_item = false
+
+[node name="CompactTitle" type="Label" parent="Compact/Content"]
+visible = false
+layout_mode = 2
+unique_name_in_owner = true
+text = "Outdoor"
+
+[node name="CompactFields" type="VBoxContainer" parent="Compact/Content"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_vertical = 3
+
+[node name="ModeRow" type="HBoxContainer" parent="Compact/Content/CompactFields"]
+layout_mode = 2
+
+[node name="ModeLabel" type="Label" parent="Compact/Content/CompactFields/ModeRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Mode"
+
+[node name="Mode" type="OptionButton" parent="Compact/Content/CompactFields/ModeRow"]
+layout_mode = 2
+unique_name_in_owner = true
+size_flags_horizontal = 3
+item_count = 3
+popup/item_0/text = "Play"
+popup/item_1/text = "Continue"
+popup/item_2/text = "Off"
+
+[node name="ModeHelp" type="Label" parent="Compact/Content/CompactFields"]
+visible = false
+layout_mode = 2
+text = "Continue keeps the current music queue moving."
+autowrap_mode = 3
+
+[node name="SourceRow" type="HBoxContainer" parent="Compact/Content/CompactFields"]
+layout_mode = 2
+
+[node name="SourceLabel" type="Label" parent="Compact/Content/CompactFields/SourceRow"]
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 text = "Music source"
 
-[node name="AssignmentKind" type="OptionButton" parent="AssignmentScroll/Options"]
+[node name="Source" type="OptionButton" parent="Compact/Content/CompactFields/SourceRow"]
 layout_mode = 2
 unique_name_in_owner = true
+size_flags_horizontal = 3
 item_count = 3
-selected = 0
 popup/item_0/text = "Inherit"
 popup/item_1/text = "Original music"
-popup/item_1/id = 1
 popup/item_2/text = "Playlist"
-popup/item_2/id = 2
 
-[node name="AssignmentPlaylist" type="OptionButton" parent="AssignmentScroll/Options"]
+[node name="PlaylistRow" type="HBoxContainer" parent="Compact/Content/CompactFields"]
+layout_mode = 2
+
+[node name="PlaylistLabel" type="Label" parent="Compact/Content/CompactFields/PlaylistRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Playlist"
+
+[node name="Playlist" type="OptionButton" parent="Compact/Content/CompactFields/PlaylistRow"]
 layout_mode = 2
 unique_name_in_owner = true
+size_flags_horizontal = 3
 fit_to_longest_item = false
 
-[node name="AssignmentSummary" type="Label" parent="AssignmentScroll/Options"]
+[node name="ScopeHelp" type="Label" parent="Compact/Content/CompactFields"]
 layout_mode = 2
-text = "Effective music: Original music"
-unique_name_in_owner = true
+text = "Mode applies to all scenarios."
+tooltip_text = "Scenario choices apply across its revisions. Inherit uses global defaults, then original music."
 autowrap_mode = 3
 
-[node name="ScopeHelp" type="Label" parent="AssignmentScroll/Options"]
+[node name="Reserved" type="Label" parent="Compact/Content"]
 layout_mode = 2
-text = "Scenario choices apply across its revisions. Inherit uses global defaults, then original music."
+unique_name_in_owner = true
+text = "Reserved Classic slot; no playback context."
 autowrap_mode = 3

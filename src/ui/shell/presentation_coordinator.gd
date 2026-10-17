@@ -22,6 +22,16 @@ var _combat_playback: CombatPlaybackController
 var _presented_view: GameView
 var _deferred_step: SessionStep
 var _deferred_view: GameView
+var combat_text_speed_percent: int = 100:
+	set(value):
+		combat_text_speed_percent = clampi(snappedi(value, 25), 25, 200)
+		if _battlefield_presenter != null:
+			_battlefield_presenter.result_text.speed_percent = combat_text_speed_percent
+var combat_text_background_opacity_percent: int = 50:
+	set(value):
+		combat_text_background_opacity_percent = clampi(snappedi(value, 25), 0, 100)
+		if _battlefield_presenter != null:
+			_battlefield_presenter.result_text.background_opacity_percent = combat_text_background_opacity_percent
 var _reduced_motion: bool = false
 var _dungeon_3d_enabled: bool = true
 var drawn_revision: int = -1
@@ -70,14 +80,14 @@ func bind(
 	_media_controller.bind(_map_presenter, _battlefield_presenter, _shell_presenter, _audio_presenter)
 	_combat_playback = CombatPlaybackController.new()
 	_combat_playback.frame_changed.connect(_on_combat_playback_frame_changed)
-	_combat_playback.sound_requested.connect(_on_combat_playback_sound_requested)
+	_combat_playback.sound_requested.connect(func(event: DomainEvent) -> void: _audio_presenter.present_events([event], _media_controller.catalog()))
 	_combat_playback.playback_finished.connect(_on_combat_playback_finished)
 	_session_controller.step_committed.connect(_on_step_committed)
 	_interaction_presenter.combat_mount_completed.connect(func() -> void: _queue_draw_ack(_presented_view.revision))
-	_shell_presenter.play_stage_visibility_changed.connect(_set_play_stage_visible)
+	_bind_spatial_visibility()
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
 	_shell_presenter.combat_log_requested.connect(_interaction_presenter.combat_log.open)
-	_interaction_presenter.combat.pause_requested.connect(func() -> void: _shell_presenter.controller.open_pause())
+	_interaction_presenter.combat.pause_requested.connect(func() -> void: _shell_presenter.controller.pause.open())
 	_interaction_presenter.combat.spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 		_interaction_presenter.combat.set_spellbook_open(true)
 		_shell_presenter.roster.present_combat_spellbook(actor_id, options)
@@ -104,6 +114,12 @@ func bind(
 	set_process(false)
 
 
+func _bind_spatial_visibility() -> void:
+	_battlefield_presenter.result_text_paused = func() -> bool: return _shell_presenter.pause_active or combat_log_open
+	_shell_presenter.play_stage_visibility_changed.connect(_set_play_stage_visible)
+	_shell_presenter.pause_changed.connect(func(_active: bool) -> void: _update_spatial_visibility(_presented_view))
+
+
 func _process(delta: float) -> void:
 	if _combat_playback == null or not _combat_playback.is_active():
 		set_process(false)
@@ -115,6 +131,8 @@ func _process(delta: float) -> void:
 
 func _on_step_committed(step: SessionStep) -> void:
 	var game_view := _session_controller.view()
+	if _has_event(step.events, &"session_restored"):
+		_battlefield_presenter.result_text.clear()
 	var treasure_transfer_captured := _has_event(step.events, &"reward_item_assigned") and _interaction_presenter.capture_treasure_transfer()
 	if _combat_playback != null and _combat_playback.begin(_presented_view, step.events, game_view, _reduced_motion):
 		_deferred_step = step
@@ -123,7 +141,7 @@ func _on_step_committed(step: SessionStep) -> void:
 		_active_route = GameShellRoutePolicy.playback_base_route(_active_route, _combat_playback.base_view)
 		if _combat_playback.base_view != _presented_view or _active_route != previous_route:
 			_present_view(_combat_playback.base_view, false)
-		if _host_interaction == null:
+		if _host_interaction == null and not GameShellRoutePolicy.combat_workspace_owns_interaction(_active_route, game_view):
 			_interaction_presenter.present_combat_playback_mask(_combat_playback.current_frame(), _combat_playback.base_view, _combat_playback.final_view, _media_controller.catalog())
 		set_process(true)
 		if _shell_presenter.pause_active: skip_combat_playback()
@@ -171,10 +189,6 @@ func _on_combat_playback_frame_changed(frame: CombatPlaybackFrame) -> void:
 	_shell_presenter.present_combat_playback_frame(frame)
 
 
-func _on_combat_playback_sound_requested(event: DomainEvent) -> void:
-	_audio_presenter.present_events([event], _media_controller.catalog())
-
-
 func _on_combat_playback_finished() -> void:
 	set_process(false)
 	_playback_draw.reset()
@@ -198,7 +212,7 @@ func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, 
 
 
 func set_active_route(route_id: StringName) -> void:
-	if is_combat_playback_active():
+	if is_combat_playback_active() and route_id not in [&"system", &"inventory"]:
 		_pending_route = route_id
 		return
 	var previous_route := _active_route
@@ -290,6 +304,9 @@ func toggle_dungeon_view() -> bool:
 
 func set_reduced_motion(enabled: bool) -> void:
 	_reduced_motion = enabled
+	_battlefield_presenter.result_text.enabled = not enabled
+	if enabled:
+		_battlefield_presenter.result_text.clear()
 	if _dungeon_presenter != null:
 		_dungeon_presenter.set_reduced_motion(enabled)
 	if enabled and is_combat_playback_active():
@@ -316,6 +333,8 @@ func is_combat_playback_active() -> bool:
 
 
 func skip_combat_playback() -> bool:
+	if not _shell_presenter.pause_active:
+		_battlefield_presenter.result_text.clear()
 	if _combat_playback == null or not _combat_playback.is_active():
 		return false
 	_audio_presenter.skip_effects()
@@ -366,7 +385,7 @@ func _present_current_view(include_interaction: bool = true) -> void:
 		var frame := _combat_playback.current_frame()
 		if frame != null:
 			_battlefield_presenter.present_playback_frame(frame)
-		if _host_interaction == null:
+		if _host_interaction == null and not GameShellRoutePolicy.combat_workspace_owns_interaction(_active_route, _combat_playback.base_view):
 			_interaction_presenter.present_combat_playback_mask(frame, _combat_playback.base_view, _combat_playback.final_view, _media_controller.catalog())
 		return
 	var game_view := _session_controller.view()
@@ -406,14 +425,23 @@ func _acknowledge_after_draw(revision: int, generation: int) -> void:
 
 
 func _update_spatial_visibility(game_view: GameView) -> void:
-	var exploration_visible := should_show_exploration_stage(_active_route, game_view, _play_stage_visible)
-	var battle_visible := should_show_battle_stage(_active_route, game_view, _play_stage_visible)
+	var backdrop_route := _active_route
+	if _shell_presenter.pause_active and game_view != null and game_view.session_started:
+		backdrop_route = &"combat" if game_view.combat_view != null else &"exploration"
+	var exploration_visible := should_show_exploration_stage(backdrop_route, game_view, _play_stage_visible)
+	var battle_visible := should_show_battle_stage(backdrop_route, game_view, _play_stage_visible)
 	var was_map_visible := _map_presenter.visible
 	var was_dungeon_visible := _dungeon_presenter.visible
 	var was_battle_visible := _battlefield_presenter.visible
 	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
 	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
 	_battlefield_presenter.visible = battle_visible
+	if not battle_visible:
+		_battlefield_presenter.result_text.clear()
+	var paused := _shell_presenter.pause_active
+	_map_presenter.mouse_filter = Control.MOUSE_FILTER_IGNORE if paused else Control.MOUSE_FILTER_STOP
+	_dungeon_presenter.mouse_filter = Control.MOUSE_FILTER_IGNORE if paused else Control.MOUSE_FILTER_STOP
+	_battlefield_presenter.mouse_filter = Control.MOUSE_FILTER_STOP if not paused and _active_route == &"combat" else Control.MOUSE_FILTER_IGNORE
 	if was_map_visible != _map_presenter.visible or was_dungeon_visible != _dungeon_presenter.visible or was_battle_visible != _battlefield_presenter.visible:
 		spatial_visibility_changed.emit()
 

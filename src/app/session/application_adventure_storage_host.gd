@@ -137,7 +137,7 @@ func update_save(content: RealmzContent, slot_id: String, backup: bool = false) 
 	if updated_slot.is_empty():
 		_shell.status.set_status("Save update failed • %s" % _repository_host.last_error(), true)
 		return ""
-	_shell.navigator.content_presenter.set_save_previews(_repository_host.previews(content), updated_slot, _repository_host.active_slot(content))
+	_shell.navigator.content_presenter.system_preferences.saves.set_save_previews(_repository_host.previews(content), updated_slot, _repository_host.active_slot(content))
 	if _shell.navigator.current_screen() == &"save_load":
 		_shell.navigator.refresh_current_workspace()
 	_shell.status.set_status("Updated copy %s verified • original unchanged" % updated_slot)
@@ -153,6 +153,6 @@ func poll() -> void:
 
 
 func refresh(content: RealmzContent, selected_slot_id: String = "") -> void:
-	_shell.navigator.content_presenter.set_save_previews(_repository_host.previews(content), selected_slot_id, _repository_host.active_slot(content))
+	_shell.navigator.content_presenter.system_preferences.saves.set_save_previews(_repository_host.previews(content), selected_slot_id, _repository_host.active_slot(content))
 	if _shell.navigator.current_screen() == &"save_load" and _session.view().session_started:
 		_shell.navigator.refresh_current_workspace()

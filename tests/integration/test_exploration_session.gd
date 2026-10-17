@@ -119,7 +119,7 @@ func run() -> void:
 	assert_equal(session.view().party_coordinate, Vector2i(0, 1), "the revealed AP entry commits once")
 	assert_equal(session.respond(InteractionResponse.acknowledge(revealed_entry.interaction)).state, SessionStep.State.COMPLETED, "acknowledging the revealed secret AP completes its timeline")
 
-	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1))
+	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1), "fixture position changes through the validated save boundary")
 	session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	var transitioned := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_equal(session.view().party_map_id, "land:1", "edge movement follows the compiled Layout transition")
@@ -270,13 +270,6 @@ func run() -> void:
 		assert_equal(SaveEnvelope.from_data(legacy_data), null, "save v%d is explicitly incompatible with save v5" % legacy_version)
 
 
-func _has_event(step: SessionStep, event_kind: StringName) -> bool:
-	for event: DomainEvent in step.events:
-		if event.kind == event_kind:
-			return true
-	return false
-
-
 func _event(step: SessionStep, event_kind: StringName) -> DomainEvent:
 	for event: DomainEvent in step.events:
 		if event.kind == event_kind:
@@ -337,13 +330,13 @@ func _test_location_notes(content: RealmzContent) -> void:
 	assert_equal(session.view().current_location_note.text, "The road narrows beside the old stones.", "an oversized note cannot replace committed text")
 	var second_land_coordinate := original_coordinate + Vector2i(1, 0)
 	assert_not_null(content.world.map_by_id("land:0").topology.cell_at(second_land_coordinate), "the fixture provides a second land-note cell")
-	_restore_fixture_position(session, content, "land:0", second_land_coordinate)
+	_restore_fixture_position(session, content, "land:0", second_land_coordinate, "fixture position changes through the validated save boundary")
 	assert_equal(session.submit_intent(ExplorationIntents.set_location_note("The lower road.")).state, SessionStep.State.COMPLETED, "a second land note commits at a different current location")
 	assert_equal([session.view().location_notes[0].record_ordinal, session.view().location_notes[1].record_ordinal], [0, 1], "land notes browse in source-record order rather than coordinate order")
-	_restore_fixture_position(session, content, "dungeon:0", Vector2i(1, 1))
+	_restore_fixture_position(session, content, "dungeon:0", Vector2i(1, 1), "fixture position changes through the validated save boundary")
 	assert_equal(session.submit_intent(ExplorationIntents.set_location_note("Dungeon entrance.")).state, SessionStep.State.COMPLETED, "a dungeon note commits into its independent record stream")
 	assert_equal([session.view().location_notes.size(), session.view().location_notes[0].record_ordinal, session.view().location_notes[0].level_type], [1, 0, &"dungeon"], "the detached browser exposes only the current map-kind stream")
-	_restore_fixture_position(session, content, "land:0", original_coordinate)
+	_restore_fixture_position(session, content, "land:0", original_coordinate, "fixture position changes through the validated save boundary")
 	var saved := SaveEnvelope.from_data(JSON.parse_string(JSON.stringify(save_data(session.snapshot()))))
 	assert_not_null(saved, "location-note state survives canonical save-envelope serialization")
 	var restored := GameSession.new()
@@ -432,7 +425,7 @@ func _test_map_view_projection_edges(content: RealmzContent) -> void:
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the north-west map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i.ZERO), "the north-west projection begins at the map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(24, 24)), "the north-west projection shifts inward instead of shrinking around the party"); var winter_snapshot := session.snapshot(); winter_snapshot.game_state.world.topology.set_map_landlook("land:0", 10); var winter_session := GameSession.new(); assert_equal(winter_session.restore(content, winter_snapshot).state, SessionStep.State.COMPLETED, "a save-owned seasonal landlook restores through the public session boundary"); assert_equal([winter_session.view().map_view.landlook, winter_session.view().map_view.cell_at(Vector2i.ZERO).tileset_id, winter_session.view().map_view.cell_at(Vector2i.ZERO).render_tile], [10, "landlook-10", content.world.map_by_id("land:0").topology.cell_at(Vector2i.ZERO).render_tile], "seasonal projection changes every land cell to the effective Snow atlas without changing its authored tile number")
-	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1))
+	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1), "fixture position changes through the validated save boundary")
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the east map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(65, 0)), "the east-edge projection shifts west to retain the complete viewport")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(89, 24)), "the east-edge projection still reaches the authoritative map boundary"); assert_true(session.view().map_view.cell_at(Vector2i(64, 0)) == null, "the shifted east-edge projection remains bounded to twenty-five columns")
@@ -458,7 +451,7 @@ func _test_field_heal(content: RealmzContent) -> void:
 	_begin_fixture_adventure(session, content, 2); var members := session._context.state.party.characters()
 	var healer := members[0]; healer.spellcaster_type = 1; healer.spell_points = 25; healer.maximum_spell_points = 25; healer.set_known_spells(["classic.spell.1506"])
 	var wounded := members[1]; wounded.current_health = 1; var before_minutes := session.snapshot().game_state.clock.total_minutes()
-	var healed := session.submit_intent(ExplorationIntents.heal()); assert_true(_has_event(healed, &"health_recovered") and _has_event(healed, &"spell_points_spent"), "Heal publishes its source-ordered recovery and spell-point events")
+	var healed := session.submit_intent(ExplorationIntents.heal()); assert_true(_has_event(healed, &"health_recovered") and _has_event(healed, &"spell_points_spent") and not healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10105), "Heal publishes recovery and spell-point events without repeating its command-start sound")
 	assert_equal([session._context.state.clock.total_minutes() - before_minutes, healer.spell_points, wounded.current_health > 1, wounded.current_health <= wounded.maximum_health], [1, 15, true, true], "one indoor land Heal pulse spends one minute and ten spell points for its eligible wounded recipient")
 	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "Heal state restores through the public save boundary")
 	assert_equal([restored._context.state.party.character_by_id(healer.id).spell_points, restored._context.state.party.character_by_id(wounded.id).current_health], [healer.spell_points, wounded.current_health], "Heal spell points and stamina persist together")
@@ -542,16 +535,11 @@ func _test_negative_random_battle_surprise(content: RealmzContent) -> void:
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1) -> void:
-	var races := content.characters.race_definitions()
-	var castes := content.characters.caste_definitions()
-	assert_false(races.is_empty() or castes.is_empty(), "playable exploration fixture provides one race and caste")
-	if races.is_empty() or castes.is_empty():
+	if not _fixture_race_caste_available(content, "playable exploration fixture provides one race and caste"):
 		return
 	for character_index: int in range(clampi(party_size, 1, 6)):
 		var character_id := "fixture.party.member" if party_size == 1 else "fixture.party.member.%d" % (character_index + 1)
-		var character := CharacterState.new(character_id, "Fixture Hero %d" % (character_index + 1), 10, 10)
-		character.race_id = races[0].id
-		character.caste_id = castes[0].id
+		var character := _fixture_character(character_id, "Fixture Hero %d" % (character_index + 1), content, 10, -1)
 		assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
 	var started := session.submit_intent(PartyIntents.begin_adventure())
 	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
@@ -559,13 +547,6 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent, part
 	else:
 		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "exploration fixture reaches the Start Game hook after party setup")
 		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "exploration fixture explicitly leaves party setup")
-
-
-func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:
-	var envelope := session.snapshot()
-	envelope.game_state.party.map_id = map_id
-	envelope.game_state.party.coordinate = coordinate
-	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "fixture position changes through the validated save boundary")
 
 
 func _test_scripted_party_loss(source_content: RealmzContent) -> void:
@@ -732,7 +713,7 @@ func _test_stationary_projection(source_content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
 	_begin_fixture_adventure(session, content)
-	_restore_fixture_position(session, content, "open", Vector2i.ZERO)
+	_restore_fixture_position(session, content, "open", Vector2i.ZERO, "fixture position changes through the validated save boundary")
 	for intent: PlayerIntent in [ExplorationIntents.move(Vector2i.LEFT), ExplorationIntents.toggle_search(), ExplorationIntents.search()]:
 		var previous := session.view()
 		var step := session.submit_intent(intent)

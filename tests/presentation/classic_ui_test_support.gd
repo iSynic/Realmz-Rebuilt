@@ -68,13 +68,6 @@ func _base_buttons_in(root: Node) -> Array[BaseButton]:
 	return buttons
 
 
-func _labels_in(root: Node) -> Array[String]:
-	var labels: Array[String] = []
-	for child: Node in root.find_children("*", "Label", true, false):
-		if child is Label: labels.append((child as Label).text)
-	return labels
-
-
 func _visible_control_texts(root: Node) -> Array[String]:
 	var texts: Array[String] = []
 	for child: Node in root.find_children("*", "Control", true, false):
@@ -171,3 +164,19 @@ func _test_player_map_scrolling() -> void:
 		(screen.find_child("PlayerMapZoomFit", true, false) as Button).pressed.emit()
 		for frame: int in range(4): await tree.process_frame
 	viewport.free()
+
+
+func _test_quick_save_load_input() -> void:
+	UiInputActions.ensure_defaults()
+	var save := InputEventKey.new(); save.keycode = KEY_F5; save.physical_keycode = KEY_PAUSE; save.pressed = true
+	var load := InputEventKey.new(); load.keycode = KEY_F7; load.physical_keycode = KEY_PAUSE; load.pressed = true
+	assert_equal(UiInputActions.quick_save_load_action(save), &"save", "F5 resolves to the existing active-slot quicksave route")
+	assert_equal(UiInputActions.quick_save_load_action(load), &"load", "F7 resolves to the existing active-slot quickload route")
+	save.echo = true; load.echo = true
+	assert_equal([UiInputActions.quick_save_load_action(save), UiInputActions.quick_save_load_action(load)], [&"", &""], "key repeat cannot repeat quicksave or quickload")
+	load.echo = false; load.shift_pressed = true
+	assert_equal(UiInputActions.quick_save_load_action(load), &"", "modified function keys do not trigger quickload")
+	var definitions: Dictionary = {}
+	for definition: Dictionary in UiInputActions.DEFINITIONS:
+		definitions[definition["id"]] = definition["keys"]
+	assert_true(KEY_F5 in definitions[&"realmz_quick_save"] and KEY_F7 in definitions[&"realmz_quick_load"], "F5 and F7 remain named host InputMap actions")

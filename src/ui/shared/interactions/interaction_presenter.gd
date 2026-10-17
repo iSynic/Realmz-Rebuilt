@@ -4,27 +4,6 @@ class_name InteractionPresenter
 extends PanelContainer
 
 
-class ControllerAccess:
-	extends RefCounted
-	var _presenter: Variant
-
-	func _init(presenter: Variant) -> void: _presenter = presenter
-	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null else []
-	func activate_action(action_id: StringName) -> bool: return not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
-	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
-	func blocks_automatic_progress() -> bool: return _presenter.combat_mount_pending or _presenter._playback_masked or _presenter._flash.is_open() or _presenter.combat_log.is_open()
-	func focus_root() -> Control: return _presenter._overlays.controller_focus_root()
-	func spellbook_focus_root() -> Control:
-		var encounter := _presenter._component as EncounterInteraction
-		return encounter.controller_spellbook_root() if encounter != null and not blocks_automatic_progress() else null
-	func cycle_spellbook_level(delta: int) -> bool:
-		var encounter := _presenter._component as EncounterInteraction
-		return encounter != null and not blocks_automatic_progress() and encounter.controller_cycle_spell_level(delta)
-	func focus_spellbook_selection() -> bool:
-		var encounter := _presenter._component as EncounterInteraction
-		return encounter != null and not blocks_automatic_progress() and encounter.controller_focus_spell()
-
-
 const LayoutPolicy := preload("res://src/ui/shared/interactions/interaction_layout_policy.gd")
 const ComponentFactory := preload("res://src/ui/shared/interactions/interaction_component_factory.gd")
 const PlaybackFacts := preload("res://src/ui/combat/battle_playback_facts.gd")
@@ -62,6 +41,11 @@ var combat: CombatInteractionController:
 @onready var _playback_result: Label = %Result
 @onready var _playback_target_vitals: Label = %Vitals
 
+var pause_background_active := false:
+	set(active):
+		pause_background_active = active
+		_apply_classic_region()
+@onready var _ordinary_layer: int = z_index
 var _request: InteractionRequest
 var _owns_classic_acknowledgement_cursor: bool = false
 var _pending_treasure_transfer: Dictionary = {}
@@ -87,6 +71,27 @@ var _flash: InteractionFlashController
 var combat_log := CombatLogReview.new()
 var controller: ControllerAccess:
 	get: return ControllerAccess.new(self)
+
+
+class ControllerAccess:
+	extends RefCounted
+	var _presenter: Variant
+
+	func _init(presenter: Variant) -> void: _presenter = presenter
+	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null else []
+	func activate_action(action_id: StringName) -> bool: return not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
+	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
+	func blocks_automatic_progress() -> bool: return _presenter.combat_mount_pending or _presenter._playback_masked or _presenter._flash.is_open() or _presenter.combat_log.is_open()
+	func focus_root() -> Control: return _presenter._overlays.controller_focus_root()
+	func spellbook_focus_root() -> Control:
+		var encounter := _presenter._component as EncounterInteraction
+		return encounter.controller_spellbook_root() if encounter != null and not blocks_automatic_progress() else null
+	func cycle_spellbook_level(delta: int) -> bool:
+		var encounter := _presenter._component as EncounterInteraction
+		return encounter != null and not blocks_automatic_progress() and encounter.controller_cycle_spell_level(delta)
+	func focus_spellbook_selection() -> bool:
+		var encounter := _presenter._component as EncounterInteraction
+		return encounter != null and not blocks_automatic_progress() and encounter.controller_focus_spell()
 
 
 func _ready() -> void:
@@ -562,6 +567,7 @@ func _clear_options() -> void:
 
 
 func _apply_classic_region() -> void:
+	z_index = 110 if pause_background_active and _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE else _ordinary_layer
 	if not is_inside_tree():
 		return
 	# Floating application dialogs fill their own frame, never the battlefield.
@@ -598,7 +604,7 @@ func _apply_classic_region() -> void:
 		position = region.position
 		size = region.size
 	else:
-		theme_type_variation = &"ClassicInset"
+		theme_type_variation = &"MenuDialog" if _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE else &"ClassicInset"
 		var modal_region := _application_rect if LayoutPolicy.uses_application_modal_region(_request) else _stage_rect
 		var profile := UiSizing.profile_for(self)
 		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
@@ -612,7 +618,7 @@ func _apply_classic_region() -> void:
 		position = modal_region.position + (modal_region.size - size) * 0.5
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
 	var modal_surface := encounter_surface or LayoutPolicy.uses_floating_choice_modal(_request) or not LayoutPolicy.uses_textbox_region(_request)
-	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not encounter_surface and not LayoutPolicy.uses_floating_choice_modal(_request))
+	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not pause_background_active and not encounter_surface and not LayoutPolicy.uses_floating_choice_modal(_request))
 	_apply_content_layout()
 	_overlays.apply_layout()
 
@@ -633,7 +639,7 @@ func _present_nested_treasure_confirmation(request: InteractionRequest, game_vie
 
 
 func _apply_content_layout() -> void:
-	var split_textbox := LayoutPolicy.uses_textbox_region(_request, _passive_text) and _request != null and _request.kind == InteractionRequest.CHARACTER_SELECTION
+	var split_textbox := LayoutPolicy.split_character_selection(_request, _passive_text, _textbox_rect, UiSizing.profile_for(self))
 	var encounter_textbox := _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION
 	_content.custom_minimum_size.x = 0.0 if LayoutPolicy.uses_classic_click_modal(_request) else 280.0
 	_scroll.vertical_scroll_mode = LayoutPolicy.interaction_vertical_scroll_mode(_request)
@@ -644,8 +650,6 @@ func _apply_content_layout() -> void:
 	if split_textbox:
 		var available_width := _textbox_rect.size.x
 		var prompt_width := minf(620.0, maxf(320.0, available_width * 0.66))
-		if _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION:
-			prompt_width = 300.0 if available_width < 900.0 else minf(620.0, maxf(300.0, available_width - 410.0))
 		_prompt_column.custom_minimum_size.x = prompt_width
 		_prompt_column.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		_options.custom_minimum_size.x = 220.0

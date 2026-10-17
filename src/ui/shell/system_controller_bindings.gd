@@ -12,7 +12,6 @@ func receive_binding(action_id: StringName, descriptor: Dictionary) -> void:
 	)
 	_owner._controller_draft.bindings.append(descriptor.duplicate(true))
 	_owner._controller_capture_action = &""
-	_owner._controller_draft_dirty = true
 	_owner.refresh_controller_editor()
 func cancel_binding_capture() -> void:
 	_owner._controller_capture_action = &""
@@ -20,7 +19,7 @@ func cancel_binding_capture() -> void:
 func set_live_input(value: String) -> void:
 	_owner._controller_live_text = value
 	if _owner._workspace == null: return
-	var label := _owner._workspace.get_node_or_null("SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControllerSettings/Content/TuningColumn/LiveInput") as Label
+	var label := _owner._workspace.get_node_or_null("SystemWorkspaceBody/SystemWorkspaceTabs/Controls/ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/TuningColumn/LiveInput") as Label
 	if label != null: label.text = "Live input • %s" % value
 func bind_binding_list(bindings: VBoxContainer, conflicts: Array[Dictionary], reachable: bool, status: Label) -> void:
 	var rows := bindings.get_node("BindingRows") as VBoxContainer
@@ -31,6 +30,7 @@ func bind_binding_list(bindings: VBoxContainer, conflicts: Array[Dictionary], re
 		button.pressed.connect(func() -> void:
 			_owner._controller_capture_action = action_id
 			(bindings.get_node("BindingStatus") as Label).text = "Listening for %s… press East to cancel." % _controller_action_label(action_id)
+			_owner.refresh_draft_footer()
 			_owner.controller_binding_capture_requested.emit(action_id)
 		)
 	if _owner._controller_capture_action.is_empty():

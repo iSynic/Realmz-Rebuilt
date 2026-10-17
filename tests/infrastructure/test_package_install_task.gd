@@ -160,16 +160,3 @@ func _verified_test_root() -> String:
 	var expected := ProjectSettings.globalize_path("user://").simplify_path().path_join("test-package-task")
 	var actual := ProjectSettings.globalize_path(TEST_ROOT).simplify_path()
 	return actual if actual == expected else ""
-
-
-func _remove_tree(path: String, verified_root: String) -> void:
-	if path != verified_root and not path.begins_with(verified_root + "/"):
-		return
-	var directory := DirAccess.open(path)
-	if directory == null:
-		return
-	for file_name: String in directory.get_files():
-		DirAccess.remove_absolute(path.path_join(file_name))
-	for directory_name: String in directory.get_directories():
-		_remove_tree(path.path_join(directory_name), verified_root)
-	DirAccess.remove_absolute(path)

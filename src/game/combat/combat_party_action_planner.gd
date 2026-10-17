@@ -68,8 +68,10 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			continue
 		elif MagicRules.is_condition_cure_spell(spell):
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power, item_instance_id))
-		elif spell.target_type == 7 and state.party.conditions.value(absi(spell.special)) < _maximum_condition_duration(spell, option.power):
-			best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "score": 520 + (_maximum_condition_duration(spell, option.power) - state.party.conditions.value(absi(spell.special))) * 8 - absi(spell.cost * option.power) * 3})
+		elif spell.target_type == 7:
+			# Auto buys a missing party effect, never a longer active duration.
+			if state.party.conditions.value(absi(spell.special)) == 0:
+				best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "score": 520 + _maximum_condition_duration(spell, option.power) * 8 - absi(spell.cost * option.power) * 3})
 		elif ClassicSpellConditionRules.combat_condition_effect_index(spell) >= 0 and spell.target_type in [3, 4]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache, area_center_cache, ray_actor_cache))
 		elif ClassicSpellConditionRules.combat_condition_effect_index(spell) >= 0 or spell.target_type == 5 and ClassicSpellConditionRules.combat_persistent_field_condition_index(spell) >= 0:
@@ -220,7 +222,7 @@ func _best_condition_effect(state: GameState, content: RealmzContent, actor: Cha
 	var condition_index := ClassicSpellConditionRules.combat_condition_effect_index(spell)
 	if condition_index < 0:
 		condition_index = ClassicSpellConditionRules.combat_persistent_field_condition_index(spell)
-	var friendly := spell.target_type == 5 or spell.cannot == 4
+	var friendly := spell.target_type in [5, 9] or spell.target_type != 10 and spell.cannot == 4
 	if friendly:
 		if protection_threats == null: protection_threats = CombatProtectionThreats.new(state, content, actor.traitor)
 		if not protection_threats.supports(condition_index): return {}
@@ -232,7 +234,7 @@ func _best_condition_effect(state: GameState, content: RealmzContent, actor: Cha
 		var character := state.party.character_by_id(target_id)
 		var monster := state.combat.roster.monster_by_id(target_id)
 		var conditions := character.conditions if character != null else monster.conditions if monster != null else null
-		if conditions == null or conditions.value(condition_index) != 0 or target_id != actor.id and _target_reflects(state, target_id):
+		if conditions == null or conditions.value(condition_index) != 0 or spell.target_type not in [9, 10, 12] and target_id != actor.id and _target_reflects(state, target_id):
 			continue
 		candidates.append(target_id)
 	if candidates.is_empty():
