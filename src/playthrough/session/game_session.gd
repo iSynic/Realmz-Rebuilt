@@ -152,13 +152,15 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_context.current_revision(), &"invalid_intent_payload", "The player intent payload does not match its kind.")
 	if is_preparing_party() and intent.kind in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE]:
 		return SessionStep.failed(_context.current_revision(), &"campaign_preparing", "The complete scenario must be ready before Play.")
+	if not SessionCombatTargetingPolicy.pending_cast_allows_intent(_context.state, intent):
+		return SessionStep.failed(_context.current_revision(), &"combat_cast_pending", "Finish or cancel the staged combat action before choosing another action.")
 	if intent.kind == PlayerIntent.Kind.SET_COMBAT_AUTO:
 		return _set_combat_auto(intent)
 	if _pending_interaction() != null or _context.scenario_vm.is_active():
 		return SessionStep.failed(_context.current_revision(), &"interaction_pending", "Respond to the pending interaction first.")
 	if not _context.state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.IMPORT_SAVED_PARTY, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS]:
 		return SessionStep.failed(_context.current_revision(), &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
-	if _context.state.combat != null and not _context.state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE, PlayerIntent.Kind.EQUIP_ITEM, PlayerIntent.Kind.UNEQUIP_ITEM, PlayerIntent.Kind.SPLIT_ITEM, PlayerIntent.Kind.JOIN_ITEM, PlayerIntent.Kind.DROP_ITEM]:
+	if _context.state.combat != null and not _context.state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE, PlayerIntent.Kind.COMBAT_TARGETING, PlayerIntent.Kind.EQUIP_ITEM, PlayerIntent.Kind.UNEQUIP_ITEM, PlayerIntent.Kind.SPLIT_ITEM, PlayerIntent.Kind.JOIN_ITEM, PlayerIntent.Kind.DROP_ITEM]:
 		return SessionStep.failed(_context.current_revision(), &"battle_in_progress", "Resolve the active battle before returning to exploration.")
 	_ensure_coordinators()
 	return _commit_coordinator_result(_intent_coordinator.submit(intent))

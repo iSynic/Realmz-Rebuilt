@@ -1064,6 +1064,21 @@
         }
       },
       {
+        "id": "COMBAT_TARGETING",
+        "classification": "implemented",
+        "workflowIds": [
+          "classic.spellcasting.choose-power-target",
+          "classic.spellcasting.combat-cast",
+          "classic.inventory.use-item",
+          "classic.combat.physical-attack"
+        ],
+        "exclusionId": "",
+        "evidence": {
+          "path": "src/playthrough/session/player_intent.gd",
+          "symbol": "COMBAT_TARGETING,"
+        }
+      },
+      {
         "id": "CHOOSE_COMBAT_ACTION",
         "classification": "implemented",
         "workflowIds": [

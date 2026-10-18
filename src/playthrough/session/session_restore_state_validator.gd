@@ -25,6 +25,10 @@ static func party_inventory_is_valid(content: RealmzContent, state: GameState, r
 
 
 static func combat_staged_item_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
+	if not rules.combat_flow.targeting.commitment_is_valid(state, content): return false
+	if CombatCastResources.pending(state) != null:
+		var preview := CombatCastResources.preview(state)
+		return preview != null and party_inventory_is_valid(content, preview, rules) and combat_staged_item_is_valid(content, preview, rules)
 	if state.combat == null or state.combat.turns.staged_random_item_instance_id().is_empty():
 		return true
 	var actor_id := state.combat.turns.active_actor_id()

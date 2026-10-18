@@ -2,6 +2,13 @@
 
 Classic-visible behavior is the default ruleset. This ledger records deliberate departures only; the absence of a decision does not authorize reinterpretation.
 
+## FD-SPELL-003 — Fast Spell combat commitment
+
+- Affected rule: Fast Spell activation and manual combat spell target-selection commitment.
+- Castle evidence: source-control-flow at commit `491816ad60037394f92c428e99c004494d3c28b3`. `castspell.c:714–730` prepays learned-spell points and updates lifetime/turn counters; `getscroll.c:211` consumes the selected scroll; `combatinfo-combatchoice.c:479–486` charges combat items, `1122–1146` handles abort, and `1246–1249` commits successful action costs. Abort costs three movement and refunds about two thirds of the learned-spell payment, spends no attack units, and decrements `spellsofar` only for learned casts. A successful cast costs twelve movement and two half-attacks.
+- Chosen behavior: Fast Spell and the spellbook use one typed staged-cast workflow. Learned spell points are paid before target selection; Abort refunds 66% rounded down, releases the turn spell count, and keeps the lifetime-cast increment. Item charges and scroll slots are consumed before aiming and remain spent on Abort. Abort costs three movement and no attack units. Power adjustment reconciles only the spell-point difference. Manual browsing is free; automatic and AI casts remain one-phase actions. The deliberate exact-cost Fast Spell admission correction remains: enough SP means the cast is legal, including an exact balance.
+- Verification boundary: source-branch differential harness coverage is not full native Castle UI proof.
+
 ## Multi-target spell feedback: complete recipient animations
 
 - Castle `spelleffect.c:45-49` uses a forced body-backdrop flash instead of its ordinary eight-frame resolution animation for target types 9/10. The later `spelllook2` bank remains authored spell data; no animation identity may be inferred from a spell name or its casting artwork.

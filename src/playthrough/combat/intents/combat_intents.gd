@@ -14,3 +14,7 @@ static func move(actor_id: String, destination: Vector2i, auto_switch_to_melee: 
 
 static func set_auto(character_id: String, enabled: bool) -> PlayerIntent:
 	return PlayerIntent.new(PlayerIntent.Kind.SET_COMBAT_AUTO, CombatIntentPayloads.Auto.new(character_id, enabled))
+
+
+static func targeting(operation: StringName, selection: CombatCastSelection) -> PlayerIntent:
+	return PlayerIntent.new(PlayerIntent.Kind.COMBAT_TARGETING, CombatIntentPayloads.Targeting.new(operation, selection))

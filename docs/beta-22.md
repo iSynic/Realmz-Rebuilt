@@ -24,7 +24,7 @@ The bundled campaigns, save format, and Character Files format are unchanged fro
 
 The intermittent combat spellbook-input issue remains unresolved: Power Level, Choose Targets, and Abort can sometimes stop responding while Back to battle still works. Returning to battle and reopening Spells may help. Please report the scenario, caster, spell, and preceding actions if it recurs.
 
-Cancelling throwing-weapon targeting currently spends no charge or movement in Rebuilt. This differs from the Realmz Castle codebase, which consumes the charge before targeting and charges movement for aborting. The normal firing path was checked against that codebase and exercised in isolated Rebuilt fixtures; a controlled side-by-side Castle runtime comparison and exhaustive weapon coverage remain separate work.
+Targeting and Abort now follow the Realmz Castle codebase across learned spells, Fast Spells, scrolls, charged items, bows/ammunition, and throwing weapons. Manual aiming commits the source cost before target selection. Abort spends three movement and no attacks. Learned spells refund 66% of their paid spell points, rounded down; scrolls and item charges stay spent. Invalid targets keep the paid selection available for another attempt. The correction was checked with compiled Castle source branches and isolated Rebuilt fixtures; full side-by-side Castle runtime comparison and exhaustive weapon coverage remain separate work.
 
 The optional modular HUD remains a work in progress. The fixed HUD remains the default. Beta 21's typography, Settings, and combat-feedback improvements are retained.
 

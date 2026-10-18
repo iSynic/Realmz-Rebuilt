@@ -3,6 +3,7 @@ class_name CombatFlowMagic
 extends RefCounted
 
 const CombatFlowScrollResolution = preload("res://src/game/combat/combat_flow_scroll_resolution.gd")
+const CombatCastSourceAdmission = preload("res://src/game/combat/combat_cast_source_admission.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -27,6 +28,7 @@ const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 
 var _context: CombatContext
 var _selection: CombatSpellSelection
+var _source_admission: CombatCastSourceAdmission
 var _resolution: CombatCharacterSpellResolution
 var _scroll_resolution: CombatFlowScrollResolution
 
@@ -34,6 +36,7 @@ var _scroll_resolution: CombatFlowScrollResolution
 func _init(context: CombatContext) -> void:
 	_context = context
 	_selection = CombatSpellSelection.new(context)
+	_source_admission = CombatCastSourceAdmission.new(context)
 	_resolution = CombatCharacterSpellResolution.new(context, _selection)
 	_scroll_resolution = CombatFlowScrollResolution.new(context, _selection, _resolution)
 
@@ -46,33 +49,14 @@ func cast_macro_spell(state: GameState, content: RealmzContent, source_id: Strin
 	return CombatMacroSpells.new(_context).cast(state, content, source_id, spell, power, extra_save_adjust, force_affect, rng)
 
 func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
-	if state == null or content == null:
-		return CombatSpellCastProbe.fault(&"invalid_item_turn", "Item use requires an active game session.")
+	var source_probe := _source_admission.probe_item(state, content, caster_id, instance_id)
+	if not source_probe.allowed:
+		return source_probe
 	var combat := state.combat
-	if combat != null and not combat.completed and combat.battlefield == null:
-		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
-	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
-		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Only the active character may use an item in combat.")
-	if not combat.spell_runtime.pending_death_macro_id().is_empty():
-		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	var instance := inventory_instance(caster, instance_id)
 	var item: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
 	var spell: SpellDefinition = null if item == null else content.magic.spell_by_classic_id(item.special_2)
-	if instance != null and item == null:
-		return CombatSpellCastProbe.fault(&"unknown_item", "Carried item '%s' has no immutable definition." % instance.definition_id)
-	if item != null and item.special_2 > 1100 and spell == null:
-		return CombatSpellCastProbe.fault(&"unknown_spell", "Item '%s' references unavailable spell %d." % [item.id, item.special_2])
-	var use_probe := _context.inventory.classic_spell_item_probe(caster, instance, item, spell, content.characters.race_by_id(caster.race_id) if caster != null else null, content.characters.caste_by_id(caster.caste_id) if caster != null else null, true)
-	if not use_probe.allowed:
-		return CombatSpellCastProbe.blocked(item_use_reason_code(instance, item, spell), use_probe.reason)
-	if ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
-		return CombatSpellCastProbe.blocked(&"unsupported_combat_item_effect", ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-item"))
-	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.spell_runtime.can_queue_persistent_field():
-		return CombatSpellCastProbe.blocked(&"persistent_field_queue_limit", "Castle's persistent battlefield-field queue is full.")
-	var staged_instance_id := combat.turns.staged_random_item_instance_id()
-	if not staged_instance_id.is_empty() and staged_instance_id != instance.id:
-		return CombatSpellCastProbe.blocked(&"random_item_target_pending", "Finish targeting the random-power item already staged for this activation.")
 	var authored_power := absi(item.special_1)
 	var power_level := combat.turns.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
@@ -369,18 +353,6 @@ static func inventory_instance(character: CharacterState, instance_id: String) -
 	return null
 
 
-static func item_use_reason_code(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> StringName:
-	if instance == null or item == null:
-		return &"unknown_item_instance"
-	if instance.charges == 0:
-		return &"item_has_no_charges"
-	if item.special_2 <= 1100:
-		return &"item_has_no_spell_effect"
-	if spell == null:
-		return &"unknown_item_spell"
-	return &"item_cannot_be_used"
-
-
 static func item_used_event(caster_id: String, instance_id: String, item: ItemDefinition, spell: SpellDefinition, power_level: int, caster: CharacterState) -> DomainEvent:
 	var remaining := -1
 	var dropped := true
@@ -466,28 +438,13 @@ func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: St
 
 
 func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
-	if state == null or content == null:
-		return CombatSpellCastProbe.fault(&"invalid_scroll_turn", "Scroll use requires an active game session.")
+	var source_probe := _source_admission.probe_scroll(state, content, caster_id, scroll_slot)
+	if not source_probe.allowed:
+		return source_probe
 	var combat := state.combat
-	if combat != null and not combat.completed and combat.battlefield == null:
-		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
-	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
-		return CombatSpellCastProbe.blocked(&"invalid_scroll_turn", "Only the active character may use a scroll in combat.")
-	if not combat.spell_runtime.pending_death_macro_id().is_empty():
-		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
-	if caster == null or caster.current_health <= 0 or caster.conditions.is_active(ConditionRules.ANIMATED):
-		return CombatSpellCastProbe.blocked(&"scroll_user_unavailable", "The active character cannot use a scroll.")
-	if not _context.equipment.has_equipped_scroll_case(caster, content):
-		return CombatSpellCastProbe.blocked(&"scroll_case_not_equipped", "Equip a scroll case before using its spells.")
 	var scroll := caster.scroll_at(scroll_slot)
 	var spell := content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
-	if scroll != null and not scroll.is_empty() and spell == null:
-		return CombatSpellCastProbe.fault(&"unknown_spell", "Scroll spell '%s' has no immutable definition." % scroll.spell_id)
-	if scroll_slot < 0 or scroll_slot >= 5 or scroll == null or scroll.is_empty() or spell == null or scroll.power < 1 or scroll.power > 7:
-		return CombatSpellCastProbe.blocked(&"invalid_scroll_slot", "This scroll slot is empty or invalid.")
-	if not spell.in_combat:
-		return CombatSpellCastProbe.blocked(&"scroll_not_available_in_combat", "This scroll cannot be used in combat.")
 	var repeated_target := spell.target_type == 0
 	var phase_spell := ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell)
 	var summon_spell: bool = CombatFlowSummoning.is_summon_spell(spell)
@@ -498,17 +455,8 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 	var effective_target_id := caster_id if self_target else target_id
 	if actor_target and _selection.spell_target_selection(state, content, effective_target_id) == null:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_target", "The selected combatant is unavailable.")
-	if ClassicSpellDispositionRules.combat_scroll_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
-		return CombatSpellCastProbe.blocked(&"unsupported_combat_scroll", ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-scroll"))
-	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.spell_runtime.can_queue_persistent_field():
-		return CombatSpellCastProbe.blocked(&"persistent_field_queue_limit", "Castle's persistent battlefield-field queue is full.")
-	if repeated_target and spell.size != 0 and not summon_spell:
-		return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
 	if area_target and _selection.invalid_area_rotation(spell, rotation):
 		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This Classic area spell does not support the selected orientation.")
-	var cast_level := spell.classic_tier()
-	if cast_level < 0 or cast_level > 6:
-		return CombatSpellCastProbe.fault(&"invalid_classic_spell_tier", "The scroll spell ID does not encode a valid Classic tier.")
 	if summon_spell:
 		return _context.summoning().probe_choice(state, content, caster_id, spell, scroll.power) if target_coordinates.is_empty() else _context.summoning().probe_coordinates(state, content, caster_id, spell, scroll.power, target_coordinates)
 	if phase_spell: return CombatSpellCastProbe.permitted() if target_coordinate == INVALID_COORDINATE else _context.phase().probe_destination(state, content, caster_id, spell, scroll.power, target_coordinate)

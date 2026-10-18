@@ -13,6 +13,10 @@ static func body_with_preferences(body: InteractionResponse.CombatBody, settings
 static func direct_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:
 	if body == null or not body.is_valid(): return null
 	match body.action:
+		&"begin_spell", &"begin_scroll", &"begin_item", &"begin_projectile", &"abort_cast", &"adjust_cast":
+			var selection := CombatCastSelection.from_body(body)
+			if selection == null: return null
+			return CombatIntents.targeting(body.action, selection)
 		&"set_auto":
 			return CombatIntents.set_auto(body.actor_id, body.enabled)
 		&"move", &"retreat_edge":

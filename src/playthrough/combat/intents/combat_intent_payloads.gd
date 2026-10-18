@@ -36,3 +36,27 @@ class Auto:
 	func _init(character: String, value: bool) -> void:
 		character_id = character
 		enabled = value
+
+
+class Targeting:
+	extends PlayerIntentPayload
+	var operation: StringName
+	var selection: CombatCastSelection
+
+	func _init(operation_value: StringName, selection_value: CombatCastSelection) -> void:
+		operation = operation_value
+		selection = selection_value
+
+	func is_valid() -> bool:
+		if operation not in [&"begin_spell", &"begin_scroll", &"begin_item", &"begin_projectile", &"abort_cast", &"adjust_cast"] or selection == null or selection.actor_id.is_empty():
+			return false
+		if operation == &"abort_cast":
+			return selection.action == &"cast_spell" and selection.spell_id.is_empty()
+		if not selection.is_valid():
+			return false
+		match operation:
+			&"begin_spell", &"adjust_cast": return selection.action == &"cast_spell"
+			&"begin_scroll": return selection.action == &"use_scroll"
+			&"begin_item": return selection.action == &"use_item"
+			&"begin_projectile": return selection.action == &"attack"
+		return false

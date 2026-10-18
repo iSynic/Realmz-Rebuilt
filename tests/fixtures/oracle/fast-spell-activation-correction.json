@@ -8,23 +8,27 @@
     "evidence": "source-control-flow",
     "sources": [
       {
-        "path": "src/realmz_orig/checkkeypad.c",
-        "symbol": "short checkkeypad"
-      },
-      {
         "path": "src/realmz_orig/castspell.c",
         "symbol": "short castspell"
+      },
+      {
+        "path": "src/realmz_orig/getscroll.c",
+        "symbol": "void getscroll"
+      },
+      {
+        "path": "src/realmz_orig/combatinfo-combatchoice.c",
+        "symbol": "void combatchoice"
       }
     ],
-    "observation": "Castle's Command-number Fast Spell path rejects a character whose spell points exactly equal the spell cost because it tests cost greater than or equal to spell points. It also deducts spell points before entering the cancellable ordinary target-selection path."
+    "observation": "Fast Spell follows the ordinary learned-spell source path. Castle rejects exact-cost activation through its greater-than-or-equal check and prepays learned spell points before cancellable target selection. In combat, an abort costs three movement and refunds about two thirds of learned spell points, spends no attack units, and decrements spellsofar only for learned casts. Successful targeting spends twelve movement and two half-attacks. Scroll consumption occurs at getscroll; combat item charges are committed at their source branch. These source observations do not constitute native Castle UI proof."
   },
-  "playerFacingProblem": "A character cannot spend their last legal spell points through a Fast Spell, and cancelling target selection can consume spell points without resolving an effect.",
-  "chosenBehavior": "Fast Spell activation delegates to the same typed ordinary cast path as the spellbook. Exact-cost casts are legal, and spell points, RNG, and effects commit only after a valid target response.",
+  "playerFacingProblem": "Fast Spell can reject a legal exact-cost cast, while deferring every source payment until confirmation omits Castle combat commitment and abort costs.",
+  "chosenBehavior": "Fast Spell shares the typed staged-cast workflow with the spellbook. Learned spells prepay before target selection and use Castle abort movement and 66-percent refund behavior; item charges and scroll slots are consumed before aiming and remain spent on abort. Exact-cost activation is permitted. Automatic and AI casts remain one-phase.",
   "tests": [
     {
       "path": "tests/integration/test_field_spell_workflow.gd",
       "symbol": "func run"
     }
   ],
-  "legacyQuirk": "none"
+  "legacyQuirk": "Manual combat abort costs three movement without spending attacks. Learned spells retain the lifetime-cast increment and refund 66 percent of the paid SP, rounded down, while releasing the turn spell count. Consumed item charges and scroll slots are not restored."
 }

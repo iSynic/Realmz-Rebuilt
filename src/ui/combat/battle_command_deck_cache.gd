@@ -19,12 +19,12 @@ func prepare(host: Node) -> void:
 	var profile := BattleCommandScaleController.standalone_profile(1.0)
 	for group: String in ["BattleInspectionCommandsInset", "BattlePrimaryCommandsInset", "BattleTurnCommandsInset"]:
 		await tree.process_frame
-		if _released or _prepared != deck: return
+		if _released or not is_instance_valid(deck) or _prepared != deck: return
 		var panel := deck.find_child(group, true, false) as Control
 		UiSizing.apply(panel, profile)
 		panel.remove_meta(UiSizing.PROFILE)
 	await tree.process_frame
-	if not _released and _prepared == deck: UiSizing.apply(deck, profile)
+	if not _released and is_instance_valid(deck) and _prepared == deck: UiSizing.apply(deck, profile)
 
 
 func take() -> BattleInteraction:

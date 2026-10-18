@@ -13,6 +13,7 @@ var spell_cast_count: int = 0
 var monster_cast_attempt_count: int = 0
 var staged_item_instance_id: String = ""
 var staged_item_power: int = 0
+var cast_commitment: CombatCastCommitment
 
 
 func _init(source_actor_id: String) -> void:
@@ -20,7 +21,7 @@ func _init(source_actor_id: String) -> void:
 
 
 func to_data() -> Dictionary:
-	return {
+	var data := {
 		"actorId": actor_id,
 		"action": String(action),
 		"attackIndex": attack_index,
@@ -32,10 +33,19 @@ func to_data() -> Dictionary:
 		"stagedItemInstanceId": staged_item_instance_id,
 		"stagedItemPower": staged_item_power,
 	}
+	if cast_commitment != null:
+		data["castCommitment"] = cast_commitment.to_data()
+	return data
 
 
 static func from_data(data: Variant) -> CombatTurnState:
-	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8, 10]:
+	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8, 10, 11]:
+		return null
+	var allowed_fields: Array[String] = ["actorId", "action", "attackIndex", "targetId", "physicalActionCommitted", "movementRemaining", "spellCastCount", "monsterCastAttemptCount", "stagedItemInstanceId", "stagedItemPower", "castCommitment"]
+	for key: Variant in data.keys():
+		if not key is String or key not in allowed_fields:
+			return null
+	if data.has("castCommitment") and data.size() != 11:
 		return null
 	for field: String in ["actorId", "action", "attackIndex", "targetId"]:
 		if not data.has(field):
@@ -65,6 +75,10 @@ static func from_data(data: Variant) -> CombatTurnState:
 	result.monster_cast_attempt_count = _integer(data.get("monsterCastAttemptCount", 0))
 	result.staged_item_instance_id = String(data.get("stagedItemInstanceId", ""))
 	result.staged_item_power = _integer(data.get("stagedItemPower", 0))
+	if data.has("castCommitment"):
+		result.cast_commitment = CombatCastCommitment.from_data(data["castCommitment"])
+		if result.cast_commitment == null or result.cast_commitment.selection.actor_id != result.actor_id or result.cast_commitment.reserved_spell_count and result.spell_cast_count == 0:
+			return null
 	return result
 
 

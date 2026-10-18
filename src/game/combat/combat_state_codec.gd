@@ -244,6 +244,8 @@ static func _loaded_state_is_consistent(result: CombatState) -> bool:
 	if order.is_empty() and result.turns.turn_index != 0 or not order.is_empty() and result.turns.turn_index >= order.size(): return false
 	if result.turns.active_turn != null and (result.completed or result.turns.active_turn.actor_id != result.turns.active_actor_id()): return false
 	if result.turns.active_turn != null and not result.turns.active_turn.staged_item_instance_id.is_empty() and result.roster.monster_by_id(result.turns.active_turn.actor_id) != null: return false
+	if result.turns.active_turn != null and result.turns.active_turn.cast_commitment != null:
+		if result.roster.monster_by_id(result.turns.active_turn.actor_id) != null or result.pending_reaction != null or result.pending_monster_attack != null or not result.spell_runtime.pending_death_macro_id().is_empty(): return false
 	if not _undo_is_consistent(result) or not _spell_sequence_is_consistent(result) or not _reaction_is_consistent(result): return false
 	return _pending_attack_is_consistent(result)
 

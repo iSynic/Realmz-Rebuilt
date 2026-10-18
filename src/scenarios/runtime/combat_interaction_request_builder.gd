@@ -28,6 +28,8 @@ static func friendly_collision(request_id: String) -> InteractionRequest:
 
 
 func build(request_id: String) -> InteractionRequest:
+	if CombatCastResources.pending(_game_state) != null:
+		return _pending_request(request_id)
 	_summon_previews.clear()
 	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)
 	var actions := _base_actions(combat_view)
@@ -44,6 +46,27 @@ func build(request_id: String) -> InteractionRequest:
 	var request := InteractionRequest.from_payload(request_id, InteractionRequest.COMBAT, payload)
 	if request != null:
 		request.transient_combat_view = combat_view
+	return request
+
+
+func _pending_request(request_id: String) -> InteractionRequest:
+	var preview := CombatCastResources.preview(_game_state)
+	if preview == null: return null
+	var request := CombatInteractionRequestBuilder.new(_content, preview, _rules, _rng).build(request_id)
+	if request == null: return null
+	var body := request.body as CombatRequestBody
+	var commitment := CombatCastResources.pending(_game_state)
+	body.pending_cast = CombatCastSelection.from_data(commitment.selection.to_data())
+	for actor: InteractionRequestValue.Combatant in body.combatants:
+		if actor.id != commitment.selection.actor_id: continue
+		actor.spell_points = _game_state.party.character_by_id(actor.id).spell_points
+		if commitment.selection.action == &"attack" and commitment.item.charges > 0:
+			actor.weapon_charges = commitment.item.charges - 1
+	for option: InteractionRequestValue.CastOption in body.item_casts:
+		if commitment.item != null and option.item_instance_id == commitment.item.id and commitment.item.charges > 0:
+			option.charges = commitment.item.charges - 1
+	# Choices use restored admission facts; the visible battle retains its paid resources.
+	request.transient_combat_view = CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)
 	return request
 
 

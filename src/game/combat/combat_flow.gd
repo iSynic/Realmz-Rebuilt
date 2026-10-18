@@ -15,6 +15,7 @@ var summoning: CombatFlowSummoning
 var phase: CombatFlowPhase
 var automation: CombatFlowAutomation
 var battle_setup: CombatBattleSetup
+var targeting: CombatTargetingWorkflow
 var _context: CombatContext
 
 
@@ -30,6 +31,7 @@ func _init(rules: RealmzRules) -> void:
 	automation = CombatFlowAutomation.new(_context)
 	battle_setup = CombatBattleSetup.new(_context)
 	_context.bind_collaborators(rounds, actions, reactions, magic, fields, summoning, phase, automation)
+	targeting = CombatTargetingWorkflow.new(_context)
 
 
 func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0, participant_character_ids: Array[String] = []) -> CombatFlowResult:
@@ -37,22 +39,28 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 
 
 func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null:
+		return targeting.confirm(state, content, InteractionResponse.CombatBody.new(action, actor_id, target_id), rng) if action == &"attack" else CombatTargetingWorkflow.blocked()
 	return actions.submit_action(state, content, actor_id, action, target_id, rng, allow_friendly_contact)
 
 
 func run_auto_activation_chain(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null: return CombatTargetingWorkflow.blocked()
 	return automation.run_auto_activation_chain(state, content, actor_id, rng)
 
 
 func run_persistent_auto_characters(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null: return CombatFlowResult.succeeded([])
 	return automation.run_persistent_auto_characters(state, content, rng)
 
 
 func retreat_character(state: GameState, content: RealmzContent, actor_id: String, mode: StringName, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null: return CombatTargetingWorkflow.blocked()
 	return reactions.retreat_character(state, content, actor_id, mode, destination, rng)
 
 
 func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng, auto_switch_to_melee: bool = false, friendly_collision_action: StringName = &"") -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null: return CombatTargetingWorkflow.blocked()
 	return reactions.move_character(state, content, actor_id, destination, rng, auto_switch_to_melee, friendly_collision_action)
 
 
@@ -61,15 +69,38 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 
 
 func use_spell_item(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null:
+		var body := _cast_body(&"use_item", caster_id, target_id, target_coordinate, rotation, target_ids, target_coordinates)
+		body.item_instance_id = instance_id
+		return targeting.confirm(state, content, body, rng)
 	return magic.use_spell_item(state, content, caster_id, target_id, instance_id, rng, target_coordinate, rotation, target_ids, target_coordinates)
 
 
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null:
+		var body := _cast_body(&"cast_spell", caster_id, target_id, target_coordinate, rotation, target_ids, target_coordinates)
+		body.spell_id = spell_id
+		body.power = power_level
+		return targeting.confirm(state, content, body, rng)
 	return magic.cast_spell(state, content, caster_id, target_id, spell_id, power_level, rng, target_coordinate, rotation, target_ids, target_coordinates)
 
 
 func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
+	if CombatCastResources.pending(state) != null:
+		var body := _cast_body(&"use_scroll", caster_id, target_id, target_coordinate, rotation, target_ids, target_coordinates)
+		body.scroll_slot = scroll_slot
+		return targeting.confirm(state, content, body, rng)
 	return magic.use_combat_scroll(state, content, caster_id, scroll_slot, target_id, rng, target_coordinate, rotation, target_ids, target_coordinates)
+
+
+static func _cast_body(action: StringName, actor_id: String, target_id: String, coordinate: Vector2i, rotation: int, target_ids: Array[String], coordinates: Array[Vector2i]) -> InteractionResponse.CombatBody:
+	var body := InteractionResponse.CombatBody.new(action, actor_id, target_id)
+	body.target_coordinate = coordinate
+	body.has_target_coordinate = coordinate != INVALID_COORDINATE
+	body.rotation = rotation
+	body.target_ids = target_ids
+	body.target_coordinates = coordinates
+	return body
 
 
 func continue_after_monster_death_macro(state: GameState, content: RealmzContent, rng: RealmzRng, completed_combatant_id: String = "") -> CombatFlowResult:

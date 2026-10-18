@@ -97,7 +97,7 @@ static func _scale_theme(theme: Theme, interface_size: float, font_scale: float,
 		for key: StringName in theme.get_constant_list(type_name):
 			theme.set_constant(key, type_name, roundi(theme.get_constant(key, type_name) * interface_size))
 		for key: StringName in theme.get_icon_list(type_name):
-			var image := theme.get_icon(key, type_name).get_image()
+			var image := theme.get_icon(key, type_name).get_image().duplicate() as Image
 			var scale := clampi(roundi(interface_size), 1, 3)
 			image.resize(image.get_width() * scale, image.get_height() * scale, Image.INTERPOLATE_NEAREST)
 			theme.set_icon(key, type_name, ImageTexture.create_from_image(image))

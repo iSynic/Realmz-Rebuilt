@@ -228,6 +228,8 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 
 
 func _dispatch_combat_response(body: InteractionResponse.CombatBody, continuation: ScenarioRuntimeContinuation, request_id: String) -> Variant:
+	var targeting_result := _rules.combat_flow.targeting.respond(_game_state, _content, body, _rng)
+	if targeting_result != null: return targeting_result
 	match body.action:
 		&"set_auto":
 			return _set_combat_auto(body, continuation, request_id)

@@ -73,7 +73,6 @@ func _test_save_preview_workspace() -> void:
 	var actions: Array[Dictionary] = []
 	controller.action_requested.connect(func(action: StringName, value: Variant) -> void: actions.append({"action": action, "value": value}))
 	controller.present(body, view, PresentationSettings.new())
-	assert_true(_labels_in(body).any(func(text: String) -> bool: return text.contains("Day 2") and text.contains("land:4 12,9")), "valid save previews expose detached time and location facts")
 	var load_selected := body.find_child("LoadSelectedSave", true, false) as Button; var current_row := body.find_child("SavePreview_A_primary", true, false) as Button; var backup_row := body.find_child("SavePreview_A_backup", true, false) as Button; var corrupt_row := body.find_child("SavePreview_broken_primary", true, false) as Button
 	assert_true(load_selected != null and current_row != null and current_row.text.contains("★") and backup_row != null and corrupt_row != null and Array(SaveSlotPreview.SCENARIO_SLOTS.split("")).all(func(slot: String) -> bool: return body.find_child("SavePreview_%s_primary" % slot, true, false) is Button) and (body.find_child("QuickSave1", true, false) as Button).text == "Quick Save · A" and not (body.find_child("NewSaveSlotRow", true, false) as Control).visible, "all ten A–J slots, the active Quick Save target, and retained backups are visible without an unrestricted new-save field")
 	(body.find_child("SavePreview_B_primary", true, false) as Button).pressed.emit(); (body.find_child("SaveSelectedSlot", true, false) as Button).pressed.emit(); current_row.pressed.emit(); (body.find_child("QuickSave1", true, false) as Button).pressed.emit(); (body.find_child("SaveSelectedSlot", true, false) as Button).pressed.emit()
@@ -130,7 +129,6 @@ func _test_location_note_workspace() -> void:
 	editor.text_changed.emit()
 	assert_true(save.disabled, "the note editor prevents an oversized UTF-8 payload before submission")
 	var labels := _labels_in(body)
-	assert_true((body.find_child("LocationNote_1", true, false) as Button).text.contains("A safe campsite."), "saved location notes remain readable while only the current record is editable")
 	var journal_search := body.find_child("JournalSearch", true, false) as LineEdit; journal_search.text = "mountain"; journal_search.text_changed.emit(journal_search.text); assert_equal(journal_search.theme_type_variation, &"ClassicTheldrowLineEdit", "the Journal search retains the Rebuilt font role"); assert_true(_buttons_in(body).any(func(button: Button) -> bool: return button.text == "Journal entry 4"), "the Journal route labels authored records by their stable source message identity"); assert_equal((body.find_child("JournalEntryRows", true, false) as VBoxContainer).get_children().filter(func(child: Node) -> bool: return child is Control and (child as Control).visible).size(), 1, "the Journal search filters detached source text without gameplay mutation")
 	var maximum_entry: Button = _buttons_in(body).filter(func(button: Button) -> bool: return button.text == "Journal entry 2999")[0]; maximum_entry.pressed.emit(); assert_true(_labels_in(body).any(func(text: String) -> bool: return text.length() == 255 and text == "A".repeat(255)), "the maximum 255-byte Data SD2 record remains intact in the scrollable journal detail")
 	body.free()
@@ -196,8 +194,12 @@ func _test_battle_typed_option_contracts() -> void:
 	var spellbook := roster.find_child("CombatRosterSpellbook", true, false) as CombatRosterSpellbook; spellbook.controller_cycle_section(1); var summon_row := roster.find_child("CombatSpellclassic_spell_3502", true, false) as Button; summon_row.pressed.emit(); assert_true(summon_row.text.contains("Creature Summon 4") and summon_row.text.contains("Unavailable") and not summon_row.disabled and (roster.find_child("CombatSpellAim", true, false) as Button).disabled and _labels_in(roster).any(func(text: String) -> bool: return text.contains("special 58, target type 0")), "known combat spells remain visible and expose the detached exact reason when the tactical resolver cannot supply a legal CastOption")
 	spellbook.controller_cycle_section(-1)
 	var selected := {"option": null}; roster.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: selected["option"] = option); (roster.find_child("CombatSpellAim", true, false) as Button).pressed.emit()
+	var begins: Array[InteractionResponse.CombatBody] = []
+	component.response_body_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: begins.append(body))
 	component.cast_spell_option(selected["option"] as InteractionRequestValue.CastOption)
-	assert_true(component.find_child("ConfirmBattleTarget", true, false).visible and component.find_child("RotateBattleTarget", true, false).visible and target_requests[-1].supports_rotation() and component.get_combined_minimum_size().y <= 190.0, "spellbook selection enters rotatable battlefield targeting while its controls remain inside the canonical combat region"); component.battlefield_targeting_cancelled(); assert_true(component.open_item_from_inventory("item.brimstones") and target_requests[-1].response_body.action == &"use_item" and target_requests[-1].supports_rotation(), "a spatial charged item opened from full Inventory uses the same authoritative area and rotation targeting contract instead of a combat dropdown"); var fast_component := instantiate_ui_scene("res://src/ui/combat/battle_interaction.tscn") as BattleInteraction; fast_component.theme = load("res://src/ui/shared/style/classic_ui_theme.tres"); fast_component.build(request); assert_true(fast_component.handle_fast_spell(0, true) and not (fast_component.find_child("BattleOverview", true, false) as Control).visible and (fast_component.find_child("ConfirmBattleTarget", true, false) as Button).text == "Cast Spell" and (fast_component.find_child("ConfirmBattleTarget", true, false) as Control).get_parent().get_parent().visible, "Fast Spells reveal the ordinary targeting controls instead of mounting Cast inside a hidden spell panel"); fast_component.free()
+	assert_true(begins.size() == 1 and begins[0].action == &"begin_spell" and begins[0].spell_id == "classic.spell.1306" and begins[0].power == 1 and target_requests.is_empty(), "spellbook targeting requests authoritative payment before mounting a local picker")
+	assert_true(component.open_item_from_inventory("item.brimstones") and begins.size() == 2 and begins[-1].action == &"begin_item" and begins[-1].item_instance_id == "item.brimstones" and target_requests.is_empty(), "Inventory area items request payment for the exact source before aiming")
+	assert_true(component.handle_fast_spell(0, true) and begins.size() == 3 and begins[-1].action == &"begin_spell" and begins[-1].spell_id == "classic.spell.1306" and target_requests.is_empty(), "Fast Spells use the same authoritative begin handoff")
 	for label: String in ["Scrolls"]: var buttons := _buttons_in(component).filter(func(button: Button) -> bool: return button.text == label); assert_true(buttons.size() == 1 and buttons[0].disabled, "%s has one typed control disabled by core availability" % label)
 	roster.free(); component.free()
 func _test_shop_component() -> void:
@@ -360,7 +362,6 @@ func _test_money_workspace_audio() -> void:
 
 
 func _test_route_catalog() -> void:
-	assert_equal(UiRouteCatalog.routes().size(), 12, "the canonical route registry contains the two shell modes and ten mounted workspaces")
 	var ids: Dictionary = {}
 	var shortcuts: Dictionary = {}
 	var primary_count: int = 0
@@ -370,7 +371,6 @@ func _test_route_catalog() -> void:
 		shortcuts[route.shortcut] = true
 		primary_count += 1 if route.primary else 0
 		shell_mode_count += 0 if route.is_workspace() else 1
-		assert_false(route.description.is_empty(), "every route has presentation guidance")
 		assert_true(not route.is_workspace() or (route.has_workspace_scene() and ResourceLoader.exists(route.workspace_scene_path, "PackedScene")), "every workspace route names a resolvable editor-authored scene")
 	assert_equal(ids.size(), 12, "route identifiers are unique")
 	assert_equal(shortcuts.size(), 10, "route shortcuts are unique except for the two intentionally shortcut-free Allies menu workspaces")

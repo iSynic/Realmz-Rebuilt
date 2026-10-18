@@ -83,6 +83,7 @@ func bind(component: BattleInteraction, body: CombatRequestBody, game_view: Game
 	_component.combat_items_requested.connect(func() -> void: items_requested.emit())
 	_component.combat_inventory_targeting_started.connect(func() -> void: inventory_targeting_started.emit())
 	_component.bandage_selection_changed.connect(func(target_ids: Array[String]) -> void: bandage_selection_changed.emit(target_ids))
+	component.resume_pending_cast.call_deferred()
 	_mount_fast_spell_dock(body, {})
 	if body != null: _dock_frames = func() -> void: _dock.configure(body.fast_spells, InteractionComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells))
 	_component.command_availability.set_pending(resolution_pending)

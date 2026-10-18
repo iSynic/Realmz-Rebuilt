@@ -19,6 +19,8 @@ func submit_combat_inventory_response(body: InteractionResponse.CombatBody) -> S
 		return SessionCoordinatorResult.rejected(&"invalid_inventory_combat_action", "The battle inventory operation is unavailable.")
 	if not _active_combat():
 		return SessionCoordinatorResult.rejected(&"battle_not_active", "The battle inventory operation requires an active battle.")
+	if CombatCastResources.pending(_context.state) != null:
+		return SessionCoordinatorResult.rejected(&"combat_cast_pending", "Finish or cancel the staged combat action before changing inventory.")
 	var workflow: SessionWorkflowResult
 	match body.action:
 		&"use_scenario_item":
@@ -110,6 +112,8 @@ func _submit_magic_or_combat_intent(intent: PlayerIntent) -> SessionCoordinatorR
 			return _combat_action(intent.payload as CombatIntentPayloads.Action)
 		PlayerIntent.Kind.COMBAT_MOVE:
 			return _combat_move(intent.payload as CombatIntentPayloads.Move)
+		PlayerIntent.Kind.COMBAT_TARGETING:
+			return _combat_targeting(intent.payload as CombatIntentPayloads.Targeting)
 	return null
 
 
@@ -249,6 +253,9 @@ func _use_item(intent: PlayerIntent) -> SessionCoordinatorResult:
 		target_coordinates = target.target_coordinates
 		coordinate = target.coordinate
 		rotation = target.rotation
+	var pending := CombatCastResources.pending(_context.state) if _active_combat() else null
+	if pending != null and pending.selection.action == &"use_item":
+		return _combat_result(_context.rules.combat_flow.use_spell_item(_context.state, _context.content, pending.selection.actor_id, target_id, pending.selection.item_instance_id, _context.rng, coordinate, rotation, target_ids, target_coordinates))
 	var character := _context.state.party.character_by_id(actor_id)
 	if character == null:
 		character = FieldItemWorkflow.item_owner(_context.workflow_context(), item_id)
@@ -298,6 +305,12 @@ func _combat_move(payload: CombatIntentPayloads.Move) -> SessionCoordinatorResul
 		return _combat_result(CombatCommandWorkflow.move_character(_context.workflow_context(), payload, true))
 	var result := CombatCommandWorkflow.move_character(_context.workflow_context(), payload, false)
 	return _combat_result(result)
+
+
+func _combat_targeting(payload: CombatIntentPayloads.Targeting) -> SessionCoordinatorResult:
+	if payload == null or not _active_combat():
+		return SessionCoordinatorResult.rejected(&"battle_not_active", "Combat targeting requires an active battle.")
+	return _combat_result(_context.rules.combat_flow.targeting.command(_context.state, _context.content, payload.operation, payload.selection, _context.rng))
 
 
 func _request_retreat(actor_id: String, mode: StringName, destination: Vector2i) -> SessionCoordinatorResult:

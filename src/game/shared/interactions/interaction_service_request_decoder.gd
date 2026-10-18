@@ -113,6 +113,7 @@ static func populate_combat(payload: Dictionary, result: Variant) -> bool:
 	var fields: Array[String] = ["battleId", "round", "actorId", "attackUnitsRemaining", "movementRemaining", "enemiesRemaining", "actions", "weaponMode", "weaponSwitch", "rangedAttack", "retreat", "meleeAttackReason", "targets", "combatants", "movement", "spellCasts", "spellCastReason", "fastSpells", "itemCasts", "itemCastReason", "scrollCasts", "scrollCastReason", "autoTurn", "autoCharacterIds", "delay", "bandage", "turnUndead", "undo"]
 	var allowed: Array[String] = fields.duplicate()
 	allowed.append("projectileItemInstanceId")
+	allowed.append("pendingCast")
 	if not _fields_are_exact(payload, allowed, fields) or not _optional_strings(payload, ["projectileItemInstanceId"]): return false
 	if not _required_strings(payload, ["battleId", "actorId", "weaponMode", "meleeAttackReason", "spellCastReason", "itemCastReason", "scrollCastReason"]): return false
 	if not _required_ints(payload, ["round", "attackUnitsRemaining", "movementRemaining", "enemiesRemaining"]): return false
@@ -129,6 +130,9 @@ static func populate_combat(payload: Dictionary, result: Variant) -> bool:
 	result.spell_cast_reason = payload["spellCastReason"]
 	result.item_cast_reason = payload["itemCastReason"]
 	result.scroll_cast_reason = payload["scrollCastReason"]
+	if payload.has("pendingCast"):
+		result.pending_cast = CombatCastSelection.from_data(payload["pendingCast"])
+		if result.pending_cast == null or result.pending_cast.actor_id != result.actor_id: return false
 	if not _array_is_strings(payload["actions"]) or not _array_is_strings(payload["autoCharacterIds"]): return false
 	result.actions = _strings(payload["actions"])
 	result.auto_character_ids = _strings(payload["autoCharacterIds"])

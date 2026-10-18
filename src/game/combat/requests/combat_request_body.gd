@@ -34,6 +34,7 @@ var bandage_targets: Array[InteractionRequestValue.CombatTarget] = []
 var turn_undead: InteractionRequestValue.Availability
 var turn_undead_targets: Array[InteractionRequestValue.CombatTarget] = []
 var undo: InteractionRequestValue.Availability
+var pending_cast: CombatCastSelection
 
 
 func to_data() -> Dictionary:
@@ -44,4 +45,6 @@ func to_data() -> Dictionary:
 	var data := {"battleId": battle_id, "round": round_number, "actorId": actor_id, "attackUnitsRemaining": attack_units_remaining, "movementRemaining": movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions.duplicate(), "weaponMode": String(weapon_mode), "weaponSwitch": weapon_switch.to_data(), "rangedAttack": ranged_attack.to_data(), "retreat": retreat.to_data(), "meleeAttackReason": melee_attack_reason, "targets": targets.map(func(value: InteractionRequestValue.CombatTarget) -> Dictionary: return value.to_data()), "combatants": combatants.map(func(value: InteractionRequestValue.Combatant) -> Dictionary: return value.to_data()), "movement": movement.map(func(value: InteractionRequestValue.MovementOption) -> Dictionary: return value.to_data()), "spellCasts": spell_casts.map(func(value: InteractionRequestValue.CastOption) -> Dictionary: return value.to_data()), "spellCastReason": spell_cast_reason, "fastSpells": fast_spells.map(func(value: InteractionRequestValue.FastSpell) -> Dictionary: return value.to_data()), "itemCasts": item_casts.map(func(value: InteractionRequestValue.CastOption) -> Dictionary: return value.to_data()), "itemCastReason": item_cast_reason, "scrollCasts": scroll_casts.map(func(value: InteractionRequestValue.CastOption) -> Dictionary: return value.to_data()), "scrollCastReason": scroll_cast_reason, "autoTurn": auto_turn.to_data(), "autoCharacterIds": auto_character_ids.duplicate(), "delay": delay.to_data(), "bandage": bandage_data, "turnUndead": turn_data, "undo": undo.to_data()}
 	if not projectile_item_instance_id.is_empty():
 		data["projectileItemInstanceId"] = projectile_item_instance_id
+	if pending_cast != null:
+		data["pendingCast"] = pending_cast.to_data()
 	return data

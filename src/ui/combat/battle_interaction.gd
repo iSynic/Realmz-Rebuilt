@@ -54,6 +54,7 @@ var _inspected_icon: TextureRect
 var _command_scaling := BattleCommandScaleController.new()
 var _compact := false
 var _equipped_weapon_id := ""
+var _suppress_target_abort := false
 var command_availability := BattleCommandAvailability.new()
 
 
@@ -140,7 +141,11 @@ func _build_scroll_panel(body: CombatRequestBody, actor_id: String, action_ids: 
 			var option := scroll_picker.get_selected_metadata() as InteractionRequestValue.CastOption
 			if option == null: return
 			var response_body := InteractionResponse.CombatBody.new(&"use_scroll", actor_id)
+			response_body.spell_id = option.spell_id
 			response_body.scroll_slot = option.scroll_slot
+			response_body.power = option.power
+			if not BattleCastTargetingPolicy.can_start_source(body.pending_cast, response_body): return
+			_cancel_active_targeting()
 			var mode := String(option.target_mode)
 			if mode == "automatic":
 				_inventory_scroll_panel_open = false
@@ -149,7 +154,7 @@ func _build_scroll_panel(body: CombatRequestBody, actor_id: String, action_ids: 
 			if _inventory_scroll_panel_open:
 				_inventory_scroll_panel_open = false
 				combat_inventory_targeting_started.emit()
-			var configuration := _spell_targeting_configuration(body.scroll_casts, option, response_body)
+			var configuration := BattleCastTargetingPolicy.targeting_request(body.scroll_casts, option, response_body)
 			_start_targeting(configuration, scroll_panel)
 		)
 		refresh_scroll_button.call(scroll_picker.selected)
@@ -161,7 +166,9 @@ func _build_scroll_panel(body: CombatRequestBody, actor_id: String, action_ids: 
 
 
 func aim_weapon(mode: StringName) -> void:
-	_cancel_active_targeting()
+	var attack_body := InteractionResponse.CombatBody.new(&"attack", _actor_id)
+	if not BattleCastTargetingPolicy.can_start_source(_body.pending_cast, attack_body):
+		return
 	var preparation: StringName = &""
 	if _body.weapon_mode != mode:
 		if not _body.actions.has("switch_weapon") or not _body.weapon_switch.enabled or _body.weapon_switch.target_mode != mode:
@@ -169,6 +176,7 @@ func aim_weapon(mode: StringName) -> void:
 		preparation = &"switch_weapon"
 	elif _body.actions.has("prepare_projectile"):
 		preparation = &"prepare_projectile"
+	_cancel_active_targeting()
 	if not preparation.is_empty():
 		weapon_aim_requested.emit(mode, preparation)
 		response_body_submitted.emit(InteractionResponse.CombatBody.new(preparation, _actor_id))
@@ -187,36 +195,46 @@ func aim_weapon(mode: StringName) -> void:
 
 func cast_spell_option(option: InteractionRequestValue.CastOption) -> void:
 	if option == null:
-		_cancel_active_targeting()
+		if _body.pending_cast == null:
+			_cancel_active_targeting()
 		return
-	if not _contains_spell_option(option):
+	if not BattleCastTargetingPolicy.contains_spell_option(_spell_casts, option):
 		return
-	_cancel_active_targeting()
 	var response_body := InteractionResponse.CombatBody.new(&"cast_spell", _actor_id)
 	response_body.spell_id = option.spell_id
 	response_body.power = option.power
+	if not BattleCastTargetingPolicy.can_start_source(_body.pending_cast, response_body):
+		return
+	_cancel_active_targeting()
 	if option.target_mode == &"automatic":
 		response_body_submitted.emit(response_body)
 		return
-	_start_targeting(_spell_targeting_configuration(_spell_casts, option, response_body), _spell_panel)
+	_start_targeting(BattleCastTargetingPolicy.targeting_request(_spell_casts, option, response_body), _spell_panel)
 
 
 func open_item_from_inventory(instance_id: String, open_scrolls: bool = false, from_inventory: bool = true) -> bool:
 	if open_scrolls:
 		if _scroll_casts.is_empty():
 			return false
+		if _body.pending_cast != null and _body.pending_cast.action != &"use_scroll":
+			return false
 		_cancel_active_targeting()
 		for panel: Control in _mode_panels:
 			panel.visible = false
 		(%BattleScrollPanel as Control).visible = true
+		_overview.visible = false
 		_inventory_scroll_panel_open = true
 		return true
 	for option: InteractionRequestValue.CastOption in _item_casts:
 		if option.item_instance_id != instance_id:
 			continue
-		_cancel_active_targeting()
 		var response_body := InteractionResponse.CombatBody.new(&"use_scenario_item" if option.spell_id.is_empty() else &"use_item", _actor_id)
 		response_body.item_instance_id = instance_id
+		response_body.spell_id = option.spell_id
+		response_body.power = option.power
+		if not BattleCastTargetingPolicy.can_start_source(_body.pending_cast, response_body):
+			return false
+		_cancel_active_targeting()
 		if option.target_mode in [&"automatic", &"random_power"]:
 			if option.target_mode == &"random_power" and not from_inventory:
 				weapon_ability_prepared.emit(instance_id)
@@ -224,7 +242,7 @@ func open_item_from_inventory(instance_id: String, open_scrolls: bool = false, f
 			return true
 		if from_inventory:
 			combat_inventory_targeting_started.emit()
-		_start_targeting(_spell_targeting_configuration(_item_casts, option, response_body), %BattleItemPanel as VBoxContainer)
+		_start_targeting(BattleCastTargetingPolicy.targeting_request(_item_casts, option, response_body), %BattleItemPanel as VBoxContainer)
 		return true
 	return false
 
@@ -237,7 +255,7 @@ func handle_back() -> bool:
 
 
 func close_spellbook() -> void:
-	_cancel_active_targeting()
+	if _targeting_active: combat_targeting_cancel_requested.emit()
 	for panel: Control in _mode_panels:
 		panel.visible = false
 	if _overview != null:
@@ -248,16 +266,11 @@ func close_spellbook() -> void:
 		button.grab_focus()
 
 
-func _contains_spell_option(option: InteractionRequestValue.CastOption) -> bool:
-	for candidate: InteractionRequestValue.CastOption in _spell_casts:
-		if candidate.spell_id == option.spell_id and candidate.power == option.power and candidate.target_mode == option.target_mode:
-			return true
-	return false
-
-
 func _cancel_active_targeting() -> void:
 	if _targeting_active:
+		_suppress_target_abort = true
 		combat_targeting_cancel_requested.emit()
+		_suppress_target_abort = false
 
 
 func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
@@ -283,10 +296,12 @@ func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
 			var response_body := InteractionResponse.CombatBody.new(&"cast_spell", _actor_id)
 			response_body.spell_id = binding.spell_id
 			response_body.power = binding.power
+			if not BattleCastTargetingPolicy.can_start_source(_body.pending_cast, response_body):
+				return true
 			if candidate.target_mode == &"automatic":
 				response_body_submitted.emit(response_body)
 				return true
-			_start_targeting(_spell_targeting_configuration(_spell_casts, candidate, response_body), _spell_panel)
+			_start_targeting(BattleCastTargetingPolicy.targeting_request(_spell_casts, candidate, response_body), _spell_panel)
 			return true
 	presentation_status_requested.emit("%s • No legal target is available." % summary, true)
 	presentation_sound_requested.emit(143)
@@ -306,30 +321,18 @@ func battlefield_targeting_cancelled() -> void:
 	if return_to_overview and target_parent != null:
 		target_parent.visible = false
 		_overview.visible = true
-
-
-func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.CastOption], selected: InteractionRequestValue.CastOption, response_body: InteractionResponse.CombatBody) -> CombatTargetingRequest:
-	var mode := selected.target_mode
-	var candidate_ids: Array[String] = []
-	if mode in [&"combatant", &"sequence"]:
-		for candidate: InteractionRequestValue.CombatTarget in selected.target_candidates:
-			if not candidate.id.is_empty(): candidate_ids.append(candidate.id)
-	if mode == &"combatant":
-		for candidate: InteractionRequestValue.CastOption in spell_casts:
-			if candidate.spell_id == selected.spell_id and candidate.power == selected.power and candidate.scroll_slot == selected.scroll_slot and candidate.target_mode == &"combatant" and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
-	var result := CombatTargetingRequest.new(mode, response_body)
-	result.classic_backdrops = true
-	result.candidate_ids = candidate_ids
-	result.maximum_targets = selected.maximum_targets
-	result.area_offsets = selected.area_offsets.duplicate()
-	result.area_rotation_offsets = selected.area_rotation_offsets.duplicate(true)
-	result.default_target_coordinate = selected.default_target_coordinate
-	result.legal_coordinates = selected.legal_target_coordinates.duplicate()
-	result.validation_deferred = response_body.action == &"cast_spell" and mode in [&"combatant", &"sequence"] or mode == &"area" and (result.legal_coordinates.is_empty() or result.supports_rotation())
-	return result
+	if not _suppress_target_abort and _body != null and _body.pending_cast != null:
+		var abort_body: InteractionResponse.CombatBody = _body.pending_cast.to_body()
+		abort_body.action = &"abort_cast"
+		response_body_submitted.emit(abort_body)
 
 
 func _start_targeting(configuration: CombatTargetingRequest, parent: Container) -> void:
+	if not BattleCastTargetingPolicy.can_start_source(_body.pending_cast, configuration.response_body):
+		return
+	if _body.pending_cast == null and BattleCastTargetingPolicy.requires_commitment(configuration.response_body, _body.weapon_mode):
+		response_body_submitted.emit(BattleCastTargetingPolicy.begin_response(configuration.response_body))
+		return
 	_restore_targeting_setup()
 	_targeting_parent = parent
 	_targeting_parent_was_visible = parent.visible
@@ -344,12 +347,45 @@ func _start_targeting(configuration: CombatTargetingRequest, parent: Container) 
 			_targeting_setup_controls.append(child as Control)
 	_targeting_controls = targeting_controls_scene.instantiate() as BattleTargetingControls
 	parent.add_child(_targeting_controls)
-	_targeting_controls.configure(configuration, _body, configuration.response_body.action == &"use_item" and configuration.response_body.item_instance_id == _equipped_weapon_id)
+	_targeting_controls.configure(configuration, _body, configuration.response_body.action == &"use_item" and configuration.response_body.item_instance_id == _equipped_weapon_id, BattleCastTargetingPolicy.selection_for_targeting(_body.pending_cast, configuration.response_body))
 	_targeting_controls.set_compact(_compact)
 	_targeting_controls.confirm_requested.connect(func() -> void: combat_targeting_confirm_requested.emit())
 	_targeting_controls.rotate_requested.connect(func() -> void: combat_targeting_rotate_requested.emit())
 	_targeting_controls.cancel_requested.connect(func() -> void: combat_targeting_cancel_requested.emit())
+	_targeting_controls.power_changed.connect(_adjust_pending_cast_power)
 	combat_targeting_requested.emit(configuration)
+
+
+func resume_pending_cast() -> void:
+	if not is_instance_valid(self) or _body == null or _body.pending_cast == null or _targeting_active:
+		return
+	var selection: CombatCastSelection = _body.pending_cast
+	var body := selection.to_body()
+	body.action = selection.action
+	var parent: Container
+	match selection.action:
+		&"cast_spell":
+			parent = _spell_panel
+		&"use_scroll":
+			parent = %BattleScrollPanel as VBoxContainer
+		&"use_item":
+			parent = %BattleItemPanel as VBoxContainer
+		&"attack": parent = %BattleTargetPanel as VBoxContainer
+	var request := BattleCastTargetingPolicy.pending_request(selection, body, _spell_casts, _scroll_casts, _item_casts, _body.actions.has("attack"), _body.targets)
+	if request != null:
+		_start_targeting(request, parent)
+
+
+func _adjust_pending_cast_power(power: int) -> void:
+	if _body == null or _body.pending_cast == null:
+		return
+	var selection: CombatCastSelection = _body.pending_cast
+	if selection.action != &"cast_spell" or selection.power == power:
+		return
+	var adjusted := selection.to_body()
+	adjusted.action = &"adjust_cast"
+	adjusted.power = power
+	response_body_submitted.emit(adjusted)
 
 
 func _restore_targeting_setup() -> void:
@@ -366,20 +402,19 @@ func _restore_targeting_setup() -> void:
 
 
 func inspect_combatant(combatant_id: String) -> bool:
-	for index: int in _combatants.size():
-		if _combatants[index].id == combatant_id:
-			_inspected_index = index
-			_refresh_inspected_label()
-			return true
-	return false
+	_inspected_index = CombatantFacts.find_combatant_index(_combatants, combatant_id)
+	if _inspected_index < 0:
+		return false
+	CombatantFacts.refresh_inspection(_inspected_label, _inspected_icon, _combatants, _inspected_index, _combatant_icons)
+	return true
 
 
 func open_combatant_inspection(combatant_id: String, pinned: bool = true) -> bool:
-	for combatant: InteractionRequestValue.Combatant in _combatants:
-		if combatant.id == combatant_id:
-			inspection_requested.emit(combatant, pinned)
-			return true
-	return false
+	var combatant := CombatantFacts.find_combatant(_combatants, combatant_id)
+	if combatant == null:
+		return false
+	inspection_requested.emit(combatant, pinned)
+	return true
 
 
 func _build_combatant_information(body: CombatRequestBody) -> void:
@@ -399,7 +434,6 @@ func _build_combatant_information(body: CombatRequestBody) -> void:
 	# Legal candidates are not selected targets. Keep the actor selected until
 	# the player inspects another combatant or playback supplies a real result cue.
 	inspect_combatant(_actor_id)
-	_refresh_inspected_label()
 func _bind_presentation_button(button: Button, text: String, action: StringName) -> void:
 	button.name = "CombatPresentation%s" % String(action).to_pascal_case()
 	button.text = text
@@ -415,7 +449,7 @@ func _perform_presentation_action(action: StringName) -> void:
 	if action in [&"inspect_previous", &"inspect_next"] and not _combatants.is_empty():
 		var delta := -1 if action == &"inspect_previous" else 1
 		_inspected_index = posmod(_inspected_index + delta, _combatants.size())
-		_refresh_inspected_label()
+		CombatantFacts.refresh_inspection(_inspected_label, _inspected_icon, _combatants, _inspected_index, _combatant_icons)
 		combatant_focus_requested.emit(_combatants[_inspected_index].id, true)
 		return
 	if action == &"center_active":
@@ -428,42 +462,6 @@ func _perform_presentation_action(action: StringName) -> void:
 		combat_log_requested.emit()
 	if action == &"pause":
 		pause_requested.emit()
-
-
-func _refresh_inspected_label() -> void:
-	if _inspected_label == null:
-		return
-	if _inspected_index < 0 or _inspected_index >= _combatants.size():
-		_inspected_label.text = "Shown • No combatant selected"
-		_inspected_icon.texture = null
-		_inspected_icon.visible = false
-		return
-	var combatant := _combatants[_inspected_index]
-	_inspected_icon.texture = _combatant_icons.get(combatant.id) as Texture2D
-	_inspected_icon.visible = _inspected_icon.texture != null
-	var details: Array[String] = ["HP %d/%d" % [combatant.current_health, combatant.maximum_health]]
-	if combatant.maximum_spell_points > 0: details.append("SP %d/%d" % [combatant.spell_points, combatant.maximum_spell_points])
-	details.append("AR %d" % combatant.armor)
-	details.append("MR %d" % combatant.magic_resistance)
-	if combatant.has_hit_dice: details.append("HD %d" % combatant.hit_dice)
-	if combatant.has_position_facts: details.append("Range %d%s" % [combatant.range, " • Blocked" if combatant.blocked else ""])
-	var secondary: Array[String] = []
-	if not combatant.weapon.is_empty(): secondary.append("%s%s" % [combatant.weapon, " (%d)" % combatant.weapon_charges if combatant.has_weapon_charges and combatant.weapon_charges >= 0 else ""])
-	secondary.append("Attacks %s" % combatant.attacks)
-	secondary.append("Move %d" % combatant.maximum_movement)
-	if not combatant.conditions.is_empty(): secondary.append("Conditions: %s" % ", ".join(combatant.conditions))
-	var defenses: Array[String] = []
-	if not combatant.immunities.is_empty(): defenses.append("Immune: %s" % ", ".join(combatant.immunities))
-	if not combatant.vulnerabilities.is_empty(): defenses.append("Vulnerable: %s" % ", ".join(combatant.vulnerabilities))
-	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
-	var visible_facts: Array[String] = ["HP %d/%d" % [combatant.current_health, combatant.maximum_health], "AR %d" % combatant.armor]
-	if combatant.maximum_spell_points > 0: visible_facts.append("SP %d/%d" % [combatant.spell_points, combatant.maximum_spell_points])
-	var visible_action: Array[String] = []
-	if not combatant.weapon.is_empty(): visible_action.append(combatant.weapon)
-	visible_action.append("%s attacks" % combatant.attacks)
-	visible_action.append("Move %d" % combatant.maximum_movement)
-	_inspected_label.text = "Shown • %s\n%s\n%s" % [combatant.name, " • ".join(visible_facts), " • ".join(visible_action)]
-	_inspected_label.tooltip_text = "Shown • %s\n%s\n%s%s" % [combatant.name, " • ".join(details), " • ".join(secondary), defense_line]
 
 
 func accepts_spatial_input() -> bool:

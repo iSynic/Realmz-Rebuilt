@@ -46,6 +46,8 @@ static func payload_matches(kind: PlayerIntent.Kind, payload: PlayerIntentPayloa
 			return payload is CombatIntentPayloads.Move
 		PlayerIntent.Kind.SET_COMBAT_AUTO:
 			return payload is CombatIntentPayloads.Auto
+		PlayerIntent.Kind.COMBAT_TARGETING:
+			return payload is CombatIntentPayloads.Targeting and (payload as CombatIntentPayloads.Targeting).is_valid()
 		PlayerIntent.Kind.SET_LOCATION_NOTE:
 			return payload is ExplorationIntentPayloads.LocationNote
 	return false
