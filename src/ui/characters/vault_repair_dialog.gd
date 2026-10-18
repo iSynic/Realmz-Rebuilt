@@ -8,6 +8,7 @@ var _review := false
 var _has_backup := false
 var _committing := false
 var _opener: WeakRef
+const ANDROID_PREVIEW_BACKUP_REASON := "Opening the private backup folder is unavailable in the Android preview. The verified backup remains in this app's private storage."
 
 
 func _ready() -> void:
@@ -27,10 +28,23 @@ func _ready() -> void:
 
 
 func begin_review(opener: Control) -> void:
+	title = "Repair Character Files"
 	_opener = weakref(opener)
 	present("Checking Character Files and their exact source rules…", false, false, false)
 	get_ok_button().disabled = true
+	get_cancel_button().show()
+	get_cancel_button().grab_focus()
 	operation_requested.emit(&"review")
+
+
+func begin_starter_restore(opener: Control) -> void:
+	title = "Restore starter characters"
+	_opener = weakref(opener)
+	present("Backing up Character Files and restoring missing starters…", false, false, false)
+	_committing = true
+	get_ok_button().disabled = true
+	get_cancel_button().disabled = true
+	operation_requested.emit(&"restore_starters")
 
 
 func present(details: String, review: bool, can_repair: bool, has_backup: bool) -> void:
@@ -39,12 +53,20 @@ func present(details: String, review: bool, can_repair: bool, has_backup: bool) 
 	_has_backup = has_backup
 	(%RepairDetail as TextEdit).text = details
 	get_ok_button().text = "Back up and repair" if review else "Open backup" if has_backup else "Done"
-	get_ok_button().disabled = review and not can_repair
+	var android_backup_blocked := OS.has_feature("android") and not review and has_backup
+	if android_backup_blocked:
+		get_ok_button().text = "Open backup unavailable"
+		(%RepairDetail as TextEdit).text += "\n\n" + ANDROID_PREVIEW_BACKUP_REASON
+	get_ok_button().disabled = (review and not can_repair) or android_backup_blocked
 	get_cancel_button().text = "Cancel" if review else "Done"
 	get_cancel_button().disabled = false
+	get_cancel_button().visible = review or has_backup or android_backup_blocked
 	var available := (get_parent().get_viewport().get_visible_rect().size - Vector2(32, 32)).max(Vector2.ONE)
 	popup_centered(Vector2i(Vector2(640, 420).min(available)))
-	get_cancel_button().grab_focus()
+	if get_cancel_button().visible:
+		get_cancel_button().grab_focus()
+	else:
+		get_ok_button().grab_focus()
 
 
 func committing() -> bool:
@@ -58,7 +80,7 @@ func _confirm() -> void:
 		get_ok_button().disabled = true
 		get_cancel_button().disabled = true
 		operation_requested.emit(&"repair")
-	elif _has_backup:
+	elif _has_backup and not OS.has_feature("android"):
 		operation_requested.emit(&"open_backup")
 	else:
 		hide()

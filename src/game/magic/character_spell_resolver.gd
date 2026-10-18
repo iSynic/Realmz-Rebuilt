@@ -82,8 +82,8 @@ func _reflect_character_area_targets(caster: CharacterState, selections: Array[S
 	return result
 
 
-func resolve_character_area_projectile_item(caster: CharacterState, caste: CasteDefinition, projectile_item: ItemDefinition, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
-	if caster == null or projectile_item == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not ClassicSpellSourceRules.is_application_area_projectile_item_profile(spell):
+func resolve_character_projectile_item(caster: CharacterState, caste: CasteDefinition, projectile_item: ItemDefinition, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
+	if caster == null or projectile_item == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or absi(spell.spell_class) != 9:
 		return null
 	for target: CharacterState in character_targets:
 		if target == null:
@@ -92,10 +92,11 @@ func resolve_character_area_projectile_item(caster: CharacterState, caste: Caste
 		if monster_targets[index] == null or monster_definitions[index] == null:
 			return null
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"combat.item-projectile.duration")
-	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"combat.item-projectile.damage") + projectile_item.damage_bonus
+	var item_bonus := projectile_item.damage_bonus if absi(spell.damage_type) == 9 else 0
+	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"combat.item-projectile.damage") + item_bonus
 	if caste != null and caste.gets_missile_bonus:
 		damage += rng.draw_between(1, maxi(1, caster.level / 2), &"combat.item-projectile.caste-bonus")
-	var extra_to_hit_bonus := 5 * projectile_item.damage_bonus
+	var extra_to_hit_bonus := 5 * item_bonus
 	var result := GroupSpellResolution.new(true, 0, duration, damage)
 	for target: CharacterState in character_targets:
 		result.append_target(target.id, &"character", _resolve_character_spell_character_target(caster, target, spell, power_level, cast_level, damage, duration, rng, [], extra_to_hit_bonus))

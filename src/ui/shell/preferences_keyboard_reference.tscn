@@ -73,6 +73,20 @@ theme_override_font_sizes/font_size = 16
 text = "F / C / R / H"
 autowrap_mode = 2
 
+[node name="AreaSearchAction" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Area Search (Classic shortcuts)"
+autowrap_mode = 2
+
+[node name="AreaSearchInput" type="Label" parent="General/Table"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 16
+text = "Hold A"
+autowrap_mode = 2
+
 [node name="Action4" type="Label" parent="General/Table"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -248,7 +262,7 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 16
-text = "A"
+text = "Hold A"
 autowrap_mode = 2
 
 [node name="Action6" type="Label" parent="Classic exploration/Table"]

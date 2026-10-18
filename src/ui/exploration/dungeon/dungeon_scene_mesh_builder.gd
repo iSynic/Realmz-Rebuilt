@@ -71,7 +71,7 @@ static func _completes_entering_boundary(projection: DungeonGeometryProjection, 
 	if not world_space:
 		return false
 	for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
-		if coordinates.has(coordinate + DungeonGeometryProjection.direction_vector(direction)) and projection.edge_kind_at(coordinate, direction) == &"open":
+		if coordinates.has(coordinate + DungeonGeometryProjection.direction_vector(direction)) and projection.edge_kind_at(coordinate, direction) != &"map-boundary":
 			return true
 	return false
 
@@ -90,11 +90,15 @@ static func _append_cell_surfaces(surface: MeshBuffers, cell: MapCellView, cente
 static func _append_cell_boundaries(surface: MeshBuffers, projection: DungeonGeometryProjection, coordinate: Vector2i, center: Vector3, offset: Vector2i, includes_cell: bool, coordinates: Dictionary, world_space: bool, built_doorways: Dictionary) -> void:
 	for direction: StringName in DungeonGeometryProjection.DIRECTIONS:
 		var direction_vector := DungeonGeometryProjection.direction_vector(direction)
-		if not includes_cell and (not coordinates.has(coordinate + direction_vector) or projection.edge_kind_at(coordinate, direction) != &"open"):
+		if not includes_cell and (not coordinates.has(coordinate + direction_vector) or projection.edge_kind_at(coordinate, direction) == &"map-boundary"):
 			continue
 		var edge_kind := projection.edge_kind_at(coordinate, direction)
 		var neighbor := projection.source_cell_at(coordinate + direction_vector)
-		if world_space and neighbor == null and edge_kind == &"open":
+		if world_space and neighbor == null and edge_kind != &"map-boundary":
+			continue
+		# An arch decorates a traversable boundary; it cannot cut into a solid neighbor.
+		if not boundary_allows_movement(projection, coordinate, direction):
+			_add_wall_boundary(surface, center, direction_vector, boundary_color(offset, direction_vector))
 			continue
 		var entry_edge_kind := projection.edge_kind_at(neighbor.coordinate, direction) if neighbor != null else &""
 		var edge_key := DungeonGeometryProjection.canonical_edge_key(coordinate, direction)
@@ -104,8 +108,6 @@ static func _append_cell_boundaries(surface: MeshBuffers, projection: DungeonGeo
 				built_doorways[edge_key] = true
 				_add_doorway(surface, center + _edge_offset(direction), direction in [&"east", &"west"], true, boundary_color(offset, direction_vector), true)
 			continue
-		if not boundary_allows_movement(projection, coordinate, direction):
-			_add_wall_boundary(surface, center, direction_vector, boundary_color(offset, direction_vector))
 
 
 static func _append_columns(surface: MeshBuffers, projection: DungeonGeometryProjection, cells: Array[MapCellView], coordinates: Dictionary, world_space: bool, pillar_corners: Dictionary) -> void:

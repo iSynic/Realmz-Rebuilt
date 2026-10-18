@@ -173,6 +173,9 @@ func aim_weapon(mode: StringName) -> void:
 		weapon_aim_requested.emit(mode, preparation)
 		response_body_submitted.emit(InteractionResponse.CombatBody.new(preparation, _actor_id))
 		return
+	if mode == &"missile" and _body.actions.has("fire_item"):
+		open_item_from_inventory(_body.projectile_item_instance_id, false, false)
+		return
 	var targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", _actor_id))
 	if _body.actions.has("attack"):
 		for target: InteractionRequestValue.CombatTarget in _body.targets:
@@ -562,7 +565,7 @@ func _bind_equipped_ability(weapon_button: Button) -> void:
 
 func _bind_weapon_action(button: Button, mode: StringName, command: String, label: String) -> void:
 	var current := _body.weapon_mode == mode
-	var enabled := (_body.actions.has("attack") and not _body.targets.is_empty()) or (mode == &"missile" and _body.actions.has("prepare_projectile"))
+	var enabled := (_body.actions.has("attack") and not _body.targets.is_empty()) or (mode == &"missile" and (_body.actions.has("prepare_projectile") or _body.actions.has("fire_item")))
 	if not current:
 		enabled = _body.actions.has("switch_weapon") and _body.weapon_switch.enabled and _body.weapon_switch.target_mode == mode
 	button.text = label

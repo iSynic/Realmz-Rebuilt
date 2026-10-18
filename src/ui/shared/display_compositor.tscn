@@ -1,7 +1,8 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shared/display_compositor.gd" id="1"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/startup_front_door.tscn" id="2"]
+[ext_resource type="Script" path="res://src/app/platform/android_lifecycle_host.gd" id="3"]
 
 [node name="DisplayCompositor" type="Control"]
 anchors_preset = 15
@@ -27,6 +28,11 @@ size = Vector2i(1280, 720)
 gui_embed_subwindows = true
 
 [node name="StartupFrontDoor" parent="Content" instance=ExtResource("2")]
+
+[node name="AndroidLifecycle" type="Node" parent="." node_paths=PackedStringArray("content")]
+unique_name_in_owner = true
+script = ExtResource("3")
+content = NodePath("../Content")
 
 [node name="FilterPass" type="SubViewport" parent="."]
 unique_name_in_owner = true

@@ -3,6 +3,7 @@
 class_name ClassicStarterCharacterCatalog
 extends RefCounted
 
+const PATH := "res://src/storage/characters/realmz-classic-starter-characters.json"
 const FORMAT := "realmz2.classic-starter-characters"
 const FORMAT_VERSION := 2
 const SOURCE_VERSION := "Realmz 7.1.2"

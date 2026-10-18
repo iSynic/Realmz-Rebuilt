@@ -95,6 +95,33 @@ func cast_area(state: GameState, content: RealmzContent, caster: CharacterState,
 	return commit(state, content, caster, spell, power_level, cast_level, area, rng, center, shape, "classic", "", true, [persistent_field])
 
 
+func resolve_targeted_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_id: String, state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> CombatFlowResult:
+	var effective_target_id := caster.id if spell.target_type == 5 else target_id
+	var selection := _selection.spell_target_selection(state, content, effective_target_id)
+	var field_center := state.combat.battlefield.actors.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
+	var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, field_center, 0, 1) if spell.target_type == 5 else _context.fields().queue_single_actor_field(state, caster.id, effective_target_id, spell, power_level, cast_level, rng) if spell.target_type == 1 else null
+	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and persistent_field == null:
+		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"persistent_field_queue_failed", "The self-centered item field could not be queued.")
+	var targeted: GroupSpellResolution
+	if spell.target_type == 1 and spell.cost == 0 and absi(spell.spell_class) == 9:
+		var character_targets: Array[CharacterState] = []
+		var monster_targets: Array[MonsterState] = []
+		var definitions: Array[MonsterDefinition] = []
+		if selection.kind == &"character":
+			character_targets.append(selection.character)
+		else:
+			monster_targets.append(selection.monster)
+			definitions.append(selection.monster_definition)
+		targeted = _context.magic.resolve_character_projectile_item(caster, content.characters.caste_by_id(caster.caste_id), item, character_targets, monster_targets, definitions, spell, power_level, cast_level, rng)
+	else:
+		targeted = _context.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, false, MonsterPolymorphContext.new(content, state.monster_set, state.difficulty, state.clock.day()))
+	if targeted == null or not targeted.cast:
+		if targeted != null and not targeted.error_code.is_empty():
+			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, targeted.error_code, targeted.error_message)
+		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
+	return commit(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-item", instance.id, false, [persistent_field] if persistent_field != null else [])
+
+
 func commit(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = INVALID_COORDINATE, shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = []) -> CombatFlowResult:
 	var combat := state.combat
 	if count_spell_cast:

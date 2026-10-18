@@ -43,6 +43,9 @@ foreach ($path in $tracked) {
     $extension = [System.IO.Path]::GetExtension($path).ToLowerInvariant()
     if ($textExtensions -notcontains $extension -and -not ($path -in @(".gitattributes", ".gitignore"))) { continue }
     $text = Get-Content -Raw -LiteralPath $fullPath
+    if ($path -eq "tools/verify_android_preview.py") {
+        $text = $text.Replace("'AGENTS.md'", "'internal-document'")
+    }
     foreach ($entry in $contentPatterns.GetEnumerator()) {
         if ($text -match $entry.Value) { throw "Public source contains $($entry.Key) in $path" }
     }

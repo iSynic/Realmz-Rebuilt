@@ -61,9 +61,6 @@ func character_projectile_profile(character: CharacterState, content: RealmzCont
 	if character == null or content == null:
 		return ProjectileAttackProfile.blocked(&"invalid_combat_actor", "A projectile requires an available character and content package.")
 	var combat := state.combat if state != null else null
-	# Castle tomissle and combatchoice reject Fire under any adjacent hostile pressure.
-	if combat != null and not _context.automation().hostile_adjacent_ids(state, character.id).is_empty():
-		return ProjectileAttackProfile.blocked(&"projectile_enemy_adjacent", "Cannot fire a missile weapon while an enemy is adjacent.")
 	var resolved_equipment := equipment if equipment != null else _context.equipment.combat_equipment(character, content.items.definitions())
 	if not resolved_equipment.valid:
 		return ProjectileAttackProfile.blocked(resolved_equipment.error_code, resolved_equipment.error_message)
@@ -84,9 +81,11 @@ func character_projectile_profile(character: CharacterState, content: RealmzCont
 	var spell := content.magic.spell_by_classic_id(absi(projectile_item.special_2))
 	if spell == null:
 		return ProjectileAttackProfile.blocked(&"projectile_spell_unavailable", "Projectile item '%s' references unavailable Classic spell %d." % [projectile_item.id, absi(projectile_item.special_2)])
-	var unsupported = _context.actions().projectile_spell_unavailable_reason(spell)
-	if not unsupported.is_empty():
-		return ProjectileAttackProfile.blocked(&"unsupported_projectile_spell", unsupported)
+	# Castle's normal Fire control reaches shared item targeting; only class/damage nine blocks under pressure.
+	if combat != null and (absi(spell.spell_class) == 9 or absi(spell.damage_type) == 9) and not _context.automation().hostile_adjacent_ids(state, character.id).is_empty():
+		return ProjectileAttackProfile.blocked(&"projectile_enemy_adjacent", "Cannot fire a missile weapon while an enemy is adjacent.")
+	if ClassicSpellDispositionRules.character_projectile_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
+		return ProjectileAttackProfile.blocked(&"unsupported_projectile_spell", ClassicSpellDispositionRules.unsupported_reason(spell, &"combat-item"))
 	var power := absi(projectile_item.special_1)
 	if power == 8:
 		power = combat.turns.staged_random_item_power(character.id, instance_id) if combat != null else 0

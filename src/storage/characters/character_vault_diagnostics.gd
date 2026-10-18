@@ -15,7 +15,7 @@ func unavailable_notice() -> String:
 		return ""
 	var noun := "Character File" if unavailable == 1 else "Character Files"
 	if incompatible_current_count > 0 and invalid_current_count == 0:
-		return "%d existing %s use an incompatible older format. They were preserved and cannot be loaded by this build. Starter Character Files were not installed because the vault is not empty." % [unavailable, noun]
+		return "%d existing %s use an incompatible older format. They were preserved and cannot be loaded by this build. Use Restore starter characters in Character Files to add fresh compatible starter copies." % [unavailable, noun]
 	if invalid_current_count > 0 and incompatible_current_count == 0:
-		return "%d existing %s could not be validated. They were preserved and cannot be loaded. Starter Character Files were not installed because the vault is not empty." % [unavailable, noun]
-	return "%d existing Character Files cannot be loaded: %d use an incompatible older format and %d failed validation. They were preserved. Starter Character Files were not installed because the vault is not empty." % [unavailable, incompatible_current_count, invalid_current_count]
+		return "%d existing %s could not be validated. They were preserved and cannot be loaded. Use Restore starter characters in Character Files to add fresh compatible starter copies." % [unavailable, noun]
+	return "%d existing Character Files cannot be loaded: %d use an incompatible older format and %d failed validation. They were preserved. Use Restore starter characters in Character Files to add fresh compatible starter copies." % [unavailable, incompatible_current_count, invalid_current_count]

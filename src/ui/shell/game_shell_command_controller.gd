@@ -11,6 +11,8 @@ var _buttons: Dictionary = {}
 var _configured_definitions: Dictionary = {}
 var _held_command: StringName = &""
 var _held_command_source: StringName = &""
+var _held_command_keycode: int = KEY_NONE
+var _held_command_screen: StringName = &""
 var _timer: Timer
 
 
@@ -42,7 +44,7 @@ func initialize() -> void:
 
 
 func present(game_view: GameView) -> void:
-	if not _held_command.is_empty() and (game_view == null or game_view.pending_interaction != null or not game_view.availability(_held_command).enabled):
+	if not _held_command.is_empty() and not _held_command_is_valid(_owner(), game_view):
 		_stop_held_command()
 
 
@@ -272,9 +274,39 @@ func contextual_service() -> ServiceView:
 	return null
 
 
-func _begin_held_command(command_id: StringName, source: StringName = &"pointer") -> void:
+func begin_keyboard_hold(command_id: StringName, keycode: int) -> bool:
+	if keycode == KEY_NONE or not bool(ClassicCommandCatalog.command(command_id).get("hold_repeat", false)):
+		return false
+	var owner = _owner()
+	if owner == null:
+		return false
+	var button := _buttons.get(command_id) as BaseButton
+	if button == null or button.disabled or not _held_command_is_available(owner, owner._current_view, command_id):
+		return false
+	if _held_command_source == &"keyboard" and _held_command == command_id and _held_command_keycode == keycode:
+		return true
+	_stop_held_command()
+	_begin_held_command(command_id, &"keyboard", keycode)
+	return true
+
+
+func release_keyboard_hold(keycode: int) -> void:
+	if _held_command_source == &"keyboard" and keycode != KEY_NONE and _held_command_keycode == keycode:
+		_stop_held_command()
+
+
+func release_pointer_hold() -> void:
+	if _held_command_source == &"pointer":
+		_stop_held_command()
+
+
+func _begin_held_command(command_id: StringName, source: StringName = &"pointer", keycode: int = KEY_NONE) -> void:
+	if not _held_command.is_empty():
+		_stop_held_command()
 	_held_command = command_id
 	_held_command_source = source
+	_held_command_keycode = keycode
+	_held_command_screen = _owner()._navigator.current_screen()
 	activate(command_id)
 	if not _held_command.is_empty():
 		_timer.start()
@@ -291,13 +323,15 @@ static func command_activation_sound_id(command_id: StringName, held_repeat: boo
 func _stop_held_command() -> void:
 	_held_command = &""
 	_held_command_source = &""
+	_held_command_keycode = KEY_NONE
+	_held_command_screen = &""
 	if _timer != null:
 		_timer.stop()
 	update_availability()
 
 
 func _on_button_up() -> void:
-	if should_stop_held_command_on_button_up(Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
+	if _held_command_source == &"pointer" and should_stop_held_command_on_button_up(Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
 		_stop_held_command()
 
 
@@ -319,9 +353,17 @@ func _on_timeout() -> void:
 	if _held_command.is_empty():
 		_stop_held_command()
 		return
-	if owner._current_view == null or owner._current_view.pending_interaction != null or not owner._current_view.availability(_held_command).enabled:
+	if not _held_command_is_valid(owner, owner._current_view):
 		_stop_held_command()
 		return
 	if owner.status.is_field_time_playback_active():
 		return
 	activate(_held_command, true)
+
+
+func _held_command_is_valid(owner: Variant, game_view: GameView) -> bool:
+	return not _held_command.is_empty() and _held_command_is_available(owner, game_view, _held_command) and owner._navigator.current_screen() == _held_command_screen
+
+
+func _held_command_is_available(owner: Variant, game_view: GameView, command_id: StringName) -> bool:
+	return owner != null and game_view != null and game_view.session_started and game_view.pending_interaction == null and not owner.pause_active and not owner._navigator.full_stage_overlay_visible and game_view.availability(command_id).enabled

@@ -469,6 +469,8 @@ func _best_projectile(state: GameState, content: RealmzContent, actor: Character
 					return {"action": &"prepare_projectile", "weaponMode": &"missile", "score": 330}
 		return {}
 	var best: Dictionary = {}
+	if not ClassicSpellSourceRules.is_supported_projectile_item_profile(profile.spell):
+		return best
 	for target_id: String in _opposed_actor_ids(state, actor):
 		if state.combat.roster.monster_by_id(target_id) != null and _context.reactions().projectile_target_is_valid(state.combat, content, actor.id, target_id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
 			best = _prefer(best, {"action": &"attack", "weaponMode": &"missile", "targetId": target_id, "score": 330 + _lethal_pressure(state, target_id)})

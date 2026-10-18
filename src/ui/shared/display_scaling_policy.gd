@@ -5,6 +5,15 @@ extends RefCounted
 const BASE_SIZE := Vector2i(1280, 720)
 
 
+static func within_safe_area(window_size: Vector2i, mode: String, safe_area: Rect2i) -> Dictionary:
+	var bounds := Rect2i(Vector2i.ZERO, window_size)
+	var safe := bounds.intersection(safe_area)
+	if not safe.has_area(): safe = bounds
+	var result := geometry(safe.size, mode)
+	result["screen_rect"].position += Vector2(safe.position)
+	return result
+
+
 static func geometry(window_size: Vector2i, mode: String) -> Dictionary:
 	var size := Vector2i(maxi(window_size.x, 1), maxi(window_size.y, 1))
 	if mode in [PresentationSettings.DISPLAY_RESPONSIVE, PresentationSettings.DISPLAY_INTEGER_CANVAS] or size.x < BASE_SIZE.x or size.y < BASE_SIZE.y:

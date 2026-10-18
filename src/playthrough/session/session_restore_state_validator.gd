@@ -46,8 +46,8 @@ static func combat_staged_item_is_valid(content: RealmzContent, state: GameState
 		var projectile_instance_id := equipment.missile_weapon_instance_id
 		if equipment.missile_ammunition != null and equipment.missile_ammunition.special_2 > 1100:
 			projectile_instance_id = equipment.missile_ammunition_instance_id
-		if projectile_instance_id == instance_id and state.combat.actor_statuses.character_weapon_mode(actor_id) == &"missile":
-			return rules.combat_flow.actions.projectile_spell_unavailable_reason(spell).is_empty()
+		if projectile_instance_id == instance_id and state.combat.actor_statuses.character_weapon_mode(actor_id) == &"missile" and rules.combat_flow.actions.projectile_spell_unavailable_reason(spell).is_empty():
+			return true
 	var use_probe := rules.inventory.classic_spell_item_probe(character, instance, item, spell, content.characters.race_by_id(character.race_id), content.characters.caste_by_id(character.caste_id), true)
 	if not use_probe.allowed or ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return false

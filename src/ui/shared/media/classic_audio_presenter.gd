@@ -21,12 +21,10 @@ var current_music_title: String = ""
 var last_media_diagnostic: Dictionary = {}
 var music := MusicPlaybackController.new()
 var _players: Array[AudioStreamPlayer] = []
-var _busy_players: Dictionary = {}
 var _channel_index: int = -1
 var _pending_sounds: Array[Dictionary] = []
 var _processing_sounds: bool = false
 var _waiting_player: AudioStreamPlayer
-var _waiting_for_completion := false
 var _waiting_finished_callback: Callable
 var _music_player: AudioStreamPlayer
 var _effect_seconds_remaining := 0.0
@@ -39,7 +37,6 @@ func _ready() -> void:
 		player.name = "ClassicSoundChannel%d" % (index + 1)
 		_players.append(player)
 		add_child(player)
-		player.finished.connect(func() -> void: _busy_players.erase(player))
 	_music_player = AudioStreamPlayer.new()
 	_music_player.name = "ClassicMusicChannel"
 	add_child(_music_player)
@@ -138,11 +135,7 @@ func is_blocking() -> bool:
 
 
 func is_input_blocking() -> bool:
-	if not _processing_sounds:
-		return false
-	if _waiting_player == null or _waiting_for_completion:
-		return true
-	return _pending_sounds.any(func(request: Dictionary) -> bool: return request.has("effect") or bool(request.get("waitForCompletion", false)))
+	return _processing_sounds
 
 
 func _apply_volume() -> void:
@@ -178,26 +171,20 @@ func _drain_sound_queue() -> void:
 		if player == null:
 			_pending_sounds.pop_front()
 			continue
-		# Retain four-way overlap, but do not truncate a still-audible action
-		# merely because accelerated playback has wrapped the channel ring.
-		if _busy_players.has(player):
-			_wait_for_sound(player, false)
-			return
 		_pending_sounds.pop_front()
 		_channel_index = _players.find(player)
+		# Castle misc.c::sound flushes and quiets the next channel before reuse.
+		player.stop()
 		player.stream = request["stream"] as AudioStream
 		player.play()
-		if player.playing:
-			_busy_players[player] = true
 		if bool(request["waitForCompletion"]) and player.playing:
 			_wait_for_sound(player)
 			return
 
 
-func _wait_for_sound(player: AudioStreamPlayer, wait_for_completion: bool = true) -> void:
+func _wait_for_sound(player: AudioStreamPlayer) -> void:
 	_processing_sounds = true
 	_waiting_player = player
-	_waiting_for_completion = wait_for_completion
 	_waiting_finished_callback = _on_waiting_sound_finished.bind(player)
 	player.finished.connect(_waiting_finished_callback, CONNECT_ONE_SHOT)
 	blocking_state_changed.emit(true)
@@ -207,7 +194,6 @@ func _on_waiting_sound_finished(player: AudioStreamPlayer) -> void:
 	if player != _waiting_player:
 		return
 	_waiting_player = null
-	_waiting_for_completion = false
 	_waiting_finished_callback = Callable()
 	_processing_sounds = false
 	blocking_state_changed.emit(false)
@@ -217,10 +203,6 @@ func _on_waiting_sound_finished(player: AudioStreamPlayer) -> void:
 func _next_channel() -> AudioStreamPlayer:
 	if _players.is_empty():
 		return null
-	for offset: int in range(1, _players.size() + 1):
-		var candidate := _players[(_channel_index + offset) % _players.size()]
-		if not _busy_players.has(candidate):
-			return candidate
 	return _players[(_channel_index + 1) % _players.size()]
 
 
@@ -232,10 +214,8 @@ func _stop_playing_channels() -> void:
 	if _waiting_player != null and _waiting_finished_callback.is_valid() and _waiting_player.finished.is_connected(_waiting_finished_callback):
 		_waiting_player.finished.disconnect(_waiting_finished_callback)
 	_waiting_player = null
-	_waiting_for_completion = false
 	_waiting_finished_callback = Callable()
 	_processing_sounds = false
-	_busy_players.clear()
 	for player: AudioStreamPlayer in _players:
 		player.stop()
 	if was_blocking:

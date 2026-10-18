@@ -265,7 +265,7 @@ func _bind_shell_and_settings() -> void:
 	_shell_presenter.route_changed.connect(_held_movement.stop.unbind(1))
 	_shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
 	_shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
-	_shell_presenter.vault_repair_requested.connect(character_files.request_repair)
+	_shell_presenter.vault_maintenance_requested.connect(character_files.request_maintenance)
 	_shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: character_files.restore_character(_active_content, character_id, revision_hash))
 	_shell_presenter.standalone_character_creation_requested.connect(func() -> void: character_files.begin_creation(_active_content))
 	_shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: character_files.cancel_creation(_active_content))

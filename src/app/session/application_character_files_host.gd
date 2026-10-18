@@ -156,14 +156,14 @@ func archive_character(active_content: RealmzContent, character_id: String) -> v
 	_shell.status.set_status("Character archived • immutable revisions remain recoverable")
 
 
-func request_repair(operation: StringName) -> void:
+func request_maintenance(operation: StringName) -> void:
 	if operation == &"cancel":
 		_vault.cancel_repair_review()
 	elif operation == &"open_backup":
 		var path := _vault.repair_backup_path()
 		if not path.is_empty() and OS.shell_open(path) != OK:
 			_shell.status.set_status("Could not open the backup folder • %s" % path, true)
-	elif not _vault.start_repair(operation):
+	elif not _vault.start_maintenance(operation):
 		_shell.navigator.content_presenter.characters.present_repair(_vault.last_error(), false, false, false)
 
 

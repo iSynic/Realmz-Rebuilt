@@ -15,7 +15,7 @@ signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal controller_binding_capture_requested(action_id: StringName)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
-signal vault_repair_requested(operation: StringName)
+signal vault_maintenance_requested(operation: StringName)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
@@ -89,7 +89,7 @@ func _init() -> void:
 	content_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
 	content_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
 	content_presenter.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
-	content_presenter.vault_repair_requested.connect(func(operation: StringName) -> void: vault_repair_requested.emit(operation))
+	content_presenter.vault_maintenance_requested.connect(func(operation: StringName) -> void: vault_maintenance_requested.emit(operation))
 	content_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
 	content_presenter.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
 	content_presenter.refresh_requested.connect(func() -> void: refresh_current_workspace())

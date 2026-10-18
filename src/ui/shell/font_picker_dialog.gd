@@ -7,6 +7,7 @@ signal applied(role: StringName, identity: String)
 signal import_requested(path: String)
 
 const THEME_PATH := "res://src/ui/shared/style/classic_ui_theme.tres"
+const ANDROID_PREVIEW_FONT_REASON := "Font file import is unavailable in the Android preview."
 
 var resolver := FontResolver.new()
 var _settings: PresentationSettings
@@ -28,6 +29,8 @@ func _ready() -> void:
 	(%FontUse as Button).pressed.connect(_stage_selection)
 	(%FontCancel as Button).pressed.connect(dismiss)
 	(%ImportFont as Button).pressed.connect(func() -> void:
+		if OS.has_feature("android"):
+			return
 		(%FontFiles as FileDialog).popup_centered_ratio(0.88)
 		(%FontFiles as FileDialog).get_line_edit().grab_focus()
 	)
@@ -46,6 +49,11 @@ func open(role: StringName, settings: PresentationSettings) -> void:
 	(%FontPickerTitle as Label).text = "Choose %s font" % String(role).capitalize()
 	(%FontSearch as LineEdit).text = ""
 	(%FontImportStatus as Label).text = ""
+	if OS.has_feature("android"):
+		(%ImportFont as Button).disabled = true
+		(%ImportFont as Button).text = "Font import unavailable (Android preview)"
+		(%ImportFont as Button).tooltip_text = ANDROID_PREVIEW_FONT_REASON
+		(%FontImportStatus as Label).text = ANDROID_PREVIEW_FONT_REASON
 	_compact_preview = false
 	(%ListPage as Control).visible = true
 	(%PreviewPage as Control).visible = true

@@ -3,7 +3,7 @@
 class_name CharacterVaultController
 extends RefCounted
 
-const CLASSIC_STARTER_CATALOG_PATH := "res://src/storage/characters/realmz-classic-starter-characters.json"
+const CLASSIC_STARTER_CATALOG_PATH := ClassicStarterCharacterCatalog.PATH
 
 var _repository: CharacterVaultRepository
 var _validated_records: Dictionary = {}
@@ -17,6 +17,7 @@ var _repair_cancelled := false
 var _repair_packages: Array[PackageDiscoveryResult] = []
 var _repair_application: RealmzContent
 var _repair_prepared := false
+var _starter_restore: ClassicStarterCharacterRestore
 
 
 func _init(repository: CharacterVaultRepository = null) -> void:
@@ -54,11 +55,13 @@ func configure_rule_sources(application: RealmzContent, packages: Array[PackageD
 	_repair_packages = packages.duplicate()
 
 
-func start_repair(operation: StringName) -> bool:
+func start_maintenance(operation: StringName) -> bool:
 	_operation_error = ""
 	if _repair_thread != null or _repair_application == null:
 		_operation_error = "Wait for the Character Files library to finish its current operation."
 		return false
+	if operation == &"restore_starters":
+		return _start_starter_restore()
 	if operation == &"review":
 		_repair = CharacterVaultRepair.new(CharacterVaultRepository.new(_repository.directory_path()), _repair_application, _repair_packages)
 	elif operation != &"repair" or not _repair_prepared or _repair == null or _repair.ready_names.is_empty():
@@ -81,11 +84,27 @@ func cancel_repair_review() -> void:
 	if _repair_operation == &"review": _repair_cancelled = true
 
 
+func _start_starter_restore() -> bool:
+	_repair_prepared = false
+	_repair_cancelled = false
+	_repair_operation = &"restore_starters"
+	_starter_restore = ClassicStarterCharacterRestore.new(CharacterVaultRepository.new(_repository.directory_path()), _repair_application)
+	_repair_thread = Thread.new()
+	if _repair_thread.start(_starter_restore.execute) != OK:
+		_repair_thread = null
+		_operation_error = "Could not start starter-character restoration."
+		return false
+	return true
+
+
 func poll_repair() -> Dictionary:
 	if _repair_thread == null or _repair_thread.is_alive():
 		return {}
 	var success: bool = _repair_thread.wait_to_finish()
 	_repair_thread = null
+	if _repair_operation == &"restore_starters":
+		_validated_records.clear()
+		return {"details": _starter_restore.details(), "review": false, "canRepair": false, "hasBackup": _starter_restore.backup.complete}
 	if _repair_cancelled:
 		_repair = null
 		return {}
@@ -98,6 +117,8 @@ func poll_repair() -> Dictionary:
 		details = "%d Character Files can be repaired.\n\n%s\n\nThe complete vault will be backed up before repair. New revisions preserve every original character field, and the originals remain in revision history." % [_repair.ready_names.size(), ", ".join(_repair.ready_names)] if not _repair.ready_names.is_empty() else "No Character Files need a repair that can be verified."
 	else:
 		details = "Repaired %d Character Files. Your original characters remain in revision history.\n\n%s" % [_repair.repaired_names.size(), ", ".join(_repair.repaired_names)]
+	if _repair_operation == &"review" and _repair.ready_names.is_empty():
+		details += "\n\nFor missing or older-format starter characters, use Restore starter characters in Character Files. Restoration adds fresh compatible copies; it does not convert old characters."
 	if _repair.already_ready > 0:
 		details += "\n\n%d Character Files already have their source identity." % _repair.already_ready
 	if not _repair.issues.is_empty():
@@ -108,6 +129,8 @@ func poll_repair() -> Dictionary:
 
 
 func repair_backup_path() -> String:
+	if _repair_operation == &"restore_starters":
+		return ProjectSettings.globalize_path(_starter_restore.backup.path) if _starter_restore != null and _starter_restore.backup.complete else ""
 	return ProjectSettings.globalize_path(_repair.backup.path) if _repair != null and _repair.backup.complete else ""
 
 

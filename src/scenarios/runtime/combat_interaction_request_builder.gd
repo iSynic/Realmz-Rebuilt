@@ -55,7 +55,7 @@ func _base_actions(combat_view: CombatView) -> Array[String]:
 
 
 func _request_payload(combat_view: CombatView, actions: Array[String], spell_casts: Array[Dictionary], item_casts: Array[Dictionary], scroll_casts: Array[Dictionary]) -> Dictionary:
-	return {
+	var payload := {
 		"battleId": combat_view.battle_id,
 		"round": combat_view.round_number,
 		"actorId": combat_view.active_actor_id,
@@ -85,6 +85,9 @@ func _request_payload(combat_view: CombatView, actions: Array[String], spell_cas
 		"turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": _turn_target_payloads(combat_view)},
 		"undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason},
 	}
+	if not combat_view.projectile_item_instance_id.is_empty():
+		payload["projectileItemInstanceId"] = combat_view.projectile_item_instance_id
+	return payload
 
 
 static func _weapon_switch_payload(combat_view: CombatView) -> Dictionary:
@@ -97,7 +100,7 @@ static func _weapon_switch_payload(combat_view: CombatView) -> Dictionary:
 
 static func _ranged_attack_payload(combat_view: CombatView) -> Dictionary:
 	return {
-		"enabled": combat_view.weapon_mode == &"missile" and combat_view.legal_actions.has(&"attack"),
+		"enabled": combat_view.weapon_mode == &"missile" and (combat_view.legal_actions.has(&"attack") or combat_view.legal_actions.has(&"fire_item")),
 		"reason": combat_view.ranged_attack_unavailable_reason,
 	}
 

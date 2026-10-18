@@ -111,7 +111,9 @@ static func populate_bank(payload: Dictionary, departure: bool, result: Variant)
 
 static func populate_combat(payload: Dictionary, result: Variant) -> bool:
 	var fields: Array[String] = ["battleId", "round", "actorId", "attackUnitsRemaining", "movementRemaining", "enemiesRemaining", "actions", "weaponMode", "weaponSwitch", "rangedAttack", "retreat", "meleeAttackReason", "targets", "combatants", "movement", "spellCasts", "spellCastReason", "fastSpells", "itemCasts", "itemCastReason", "scrollCasts", "scrollCastReason", "autoTurn", "autoCharacterIds", "delay", "bandage", "turnUndead", "undo"]
-	if not _fields_are_exact(payload, fields, fields): return false
+	var allowed: Array[String] = fields.duplicate()
+	allowed.append("projectileItemInstanceId")
+	if not _fields_are_exact(payload, allowed, fields) or not _optional_strings(payload, ["projectileItemInstanceId"]): return false
 	if not _required_strings(payload, ["battleId", "actorId", "weaponMode", "meleeAttackReason", "spellCastReason", "itemCastReason", "scrollCastReason"]): return false
 	if not _required_ints(payload, ["round", "attackUnitsRemaining", "movementRemaining", "enemiesRemaining"]): return false
 	if not _required_arrays(payload, ["actions", "targets", "combatants", "movement", "spellCasts", "fastSpells", "itemCasts", "scrollCasts", "autoCharacterIds"]): return false
@@ -122,6 +124,7 @@ static func populate_combat(payload: Dictionary, result: Variant) -> bool:
 	result.movement_remaining = int(payload["movementRemaining"])
 	result.enemies_remaining = int(payload["enemiesRemaining"])
 	result.weapon_mode = StringName(payload["weaponMode"])
+	result.projectile_item_instance_id = payload.get("projectileItemInstanceId", "")
 	result.melee_attack_reason = payload["meleeAttackReason"]
 	result.spell_cast_reason = payload["spellCastReason"]
 	result.item_cast_reason = payload["itemCastReason"]

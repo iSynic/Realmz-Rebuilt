@@ -142,9 +142,10 @@ func character_resists(caster_level: int, target: CharacterState, spell: SpellDe
 			return true
 	if (spell.cannot == 1 or spell.cannot > 2) and absi(spell.spell_class) != 9:
 		return false
-	for level: int in range(cast_level, 5):
-		if target.conditions.is_active(16 + level):
-			return true
+	if absi(spell.spell_class) != 9:
+		for level: int in range(cast_level, 5):
+			if target.conditions.is_active(16 + level):
+				return true
 	if (spell.spell_class == 0 or spell.spell_class == 5) and target.conditions.is_active(ConditionRules.ANIMATED):
 		return true
 	if absi(spell.spell_class) == 9:
@@ -501,9 +502,10 @@ func _monster_resists(caster_level: int, target: MonsterState, definition: Monst
 		return true
 	if (spell.cannot == 1 or spell.cannot > 2) and absi(spell.spell_class) != 9:
 		return false
-	for level: int in range(cast_level, 5):
-		if target.conditions.is_active(16 + level):
-			return true
+	if not use_projectile_defense or absi(spell.spell_class) != 9:
+		for level: int in range(cast_level, 5):
+			if target.conditions.is_active(16 + level):
+				return true
 	if (spell.spell_class == 0 or spell.spell_class == 5) and target.conditions.is_active(ConditionRules.ANIMATED):
 		return true
 	if use_projectile_defense and absi(spell.spell_class) == 9:

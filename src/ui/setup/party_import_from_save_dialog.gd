@@ -14,6 +14,7 @@ signal refresh_requested
 
 const ERROR_COLOR := Color("ef7770")
 const MUTED_COLOR := Color("9aa0a8")
+const ANDROID_PREVIEW_SAVE_REASON := "External save browsing is unavailable in the Android preview. Use saves in this installation."
 
 @onready var _empty_sources: Label = %EmptySources
 @onready var _loading_source: Label = %LoadingSource
@@ -74,6 +75,8 @@ func close_party_import() -> void:
 
 
 func _open_external_save_picker() -> void:
+	if OS.has_feature("android"):
+		return
 	_external_dialog.popup_centered(_fit_scaled_size(Vector2(900.0, 620.0)))
 
 
@@ -114,7 +117,10 @@ func _render() -> void:
 	_selected_indices.clear()
 	var phase := String(_view.get("phase", "selection"))
 	_phase_label.text = _phase_title(phase)
-	_message_label.text = _selection_limit_message if not _selection_limit_message.is_empty() else String(_view.get("message", ""))
+	var message := _selection_limit_message if not _selection_limit_message.is_empty() else String(_view.get("message", ""))
+	if OS.has_feature("android") and phase == "selection":
+		message = ANDROID_PREVIEW_SAVE_REASON if message.is_empty() else message + "\n" + ANDROID_PREVIEW_SAVE_REASON
+	_message_label.text = message
 	_message_label.modulate = ERROR_COLOR if phase == "error" or not _selection_limit_message.is_empty() else MUTED_COLOR
 	_sources_heading.visible = phase == "selection" or phase == "loading" or phase == "error"
 	_sources_scroll.visible = _sources_heading.visible
@@ -124,7 +130,10 @@ func _render() -> void:
 	_selection_actions.visible = phase == "selection" or phase == "loading" or phase == "error"
 	_review_actions.visible = phase == "review"
 	_refresh_button.disabled = phase == "loading"
-	_browse_button.disabled = phase == "loading"
+	_browse_button.disabled = phase == "loading" or OS.has_feature("android")
+	if OS.has_feature("android"):
+		_browse_button.text = "External saves unavailable (Android preview)"
+		_browse_button.tooltip_text = ANDROID_PREVIEW_SAVE_REASON
 	var sources: Array = _view.get("sources", [])
 	_empty_sources.visible = sources.is_empty() and phase == "selection"
 	_loading_source.visible = phase == "loading"

@@ -16,7 +16,7 @@ func prepare_list_layout(compact: bool) -> void:
 	if not repair_dialog.committing(): repair_dialog.hide()
 	_clear_children(character_file_list())
 	_clear_children(history_rows())
-	header_area().visible = true
+	_header_area().visible = true
 	list_area().visible = true
 	history_area().visible = true
 	inspection_area().visible = false
@@ -31,18 +31,22 @@ func prepare_list_layout(compact: bool) -> void:
 func prepare_inspection_layout() -> void:
 	(%ArchiveConfirmation as Window).hide()
 	if not repair_dialog.committing(): repair_dialog.hide()
-	header_area().visible = false
+	_header_area().visible = false
 	list_area().visible = false
 	history_area().visible = false
 	inspection_area().visible = true
 
 
-func header_area() -> VBoxContainer:
+func _header_area() -> VBoxContainer:
 	return get_node(BODY_PATH + "/VaultHeaderArea") as VBoxContainer
 
 
 func repair_button() -> Button:
 	return %RepairCharacterFiles as Button
+
+
+func restore_starters_button() -> Button:
+	return %RestoreStarterCharacters as Button
 
 
 func list_area() -> VBoxContainer:

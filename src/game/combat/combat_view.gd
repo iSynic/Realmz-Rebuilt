@@ -11,6 +11,7 @@ var movement_remaining: int = 0
 var weapon_mode: StringName = &"melee"
 var melee_weapon_id: String = ""
 var missile_weapon_id: String = ""
+var projectile_item_instance_id: String = ""
 var weapon_switch_available: bool = false
 var weapon_switch_target_mode: StringName = &""
 var weapon_switch_unavailable_reason: String = "The active combatant has no alternate weapon mode."
@@ -154,11 +155,13 @@ func _populate_weapon_actions(combat: CombatState, content: RealmzContent, comba
 		weapon_switch_target_mode = &"melee" if weapon_mode == &"missile" else &"missile"
 		weapon_switch_unavailable_reason = "" if weapon_switch_available else "The active character has no equipped Classic type-15 missile weapon."
 		var profile := combat_flow.reactions.character_projectile_profile(active_character, content, equipment, game_state) if combat_flow != null else null
+		if profile != null and profile.spell != null and not ClassicSpellSourceRules.is_supported_projectile_item_profile(profile.spell):
+			projectile_item_instance_id = profile.item_instance_id
 		if weapon_mode == &"melee" and profile != null and profile.error_code == &"projectile_enemy_adjacent":
 			weapon_switch_available = false
 			weapon_switch_unavailable_reason = profile.error_message
 		if weapon_mode != &"melee":
-			_populate_projectile_targets(combat, content, combat_flow, active_character, profile)
+			_populate_projectile_targets(combat, content, combat_flow, game_state, active_character, profile)
 		if weapon_switch_available:
 			legal_actions.append(&"switch_weapon")
 	else:
@@ -166,13 +169,20 @@ func _populate_weapon_actions(combat: CombatState, content: RealmzContent, comba
 		weapon_switch_unavailable_reason = equipment.error_message
 
 
-func _populate_projectile_targets(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, active_character: CharacterState, profile: ProjectileAttackProfile) -> void:
+func _populate_projectile_targets(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState, profile: ProjectileAttackProfile) -> void:
 	targets.clear()
 	character_targets.clear()
 	if profile == null or not profile.available:
 		ranged_attack_unavailable_reason = profile.error_message if profile != null else "Projectile rules are unavailable."
 		if profile != null and profile.error_code == &"projectile_power_roll_required":
 			legal_actions.append(&"prepare_projectile")
+		return
+	if not ClassicSpellSourceRules.is_supported_projectile_item_profile(profile.spell):
+		for option: CombatItemOptionView in combat_flow.magic.character_item_spell_options(game_state, content, active_character.id):
+			if option.item_instance_id == profile.item_instance_id:
+				legal_actions.append(&"fire_item")
+				return
+		ranged_attack_unavailable_reason = "The equipped item's effect has no available Classic target."
 		return
 	for monster: MonsterState in combat.roster.monsters():
 		if monster.current_health > 0 and monster.traitor != active_character.traitor and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):

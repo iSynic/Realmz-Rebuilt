@@ -60,7 +60,7 @@ signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
-signal vault_repair_requested(operation: StringName)
+signal vault_maintenance_requested(operation: StringName)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
@@ -190,7 +190,7 @@ func _ready() -> void:
 	_navigator.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
 	_navigator.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	_navigator.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
-	_navigator.vault_repair_requested.connect(func(operation: StringName) -> void: vault_repair_requested.emit(operation))
+	_navigator.vault_maintenance_requested.connect(func(operation: StringName) -> void: vault_maintenance_requested.emit(operation))
 	_navigator.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
 	_navigator.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
 	_navigator.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())

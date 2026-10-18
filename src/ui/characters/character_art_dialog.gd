@@ -30,6 +30,7 @@ var _name_action := ""
 var _remove_group := false
 var _selection_callback := Callable()
 var _focus_before_open: WeakRef
+const ANDROID_PREVIEW_ART_REASON := "Portrait and combat icon file or folder import is unavailable in the Android preview."
 
 
 func _ready() -> void:
@@ -250,7 +251,12 @@ func _update_actions() -> void:
 	(%RenameRace as Button).disabled = _batch or builtin or selected_group.is_empty()
 	(%RemoveRace as Button).disabled = (%RenameRace as Button).disabled
 	for button: MenuButton in [%ImportIcons, %ImportPortraits]:
-		button.disabled = _batch or selected_group.is_empty()
+		button.disabled = _batch or selected_group.is_empty() or OS.has_feature("android")
+		if OS.has_feature("android"):
+			button.text = "Import unavailable (Android preview)"
+			button.tooltip_text = ANDROID_PREVIEW_ART_REASON
+	if OS.has_feature("android") and not _batch:
+		(%LibraryStatus as Label).text = ANDROID_PREVIEW_ART_REASON
 	var indices := (%LibraryEntries as ItemList).get_selected_items()
 	var editable := not indices.is_empty()
 	for index: int in indices:
@@ -267,6 +273,9 @@ func _update_actions() -> void:
 
 
 func _open_picker(mode: int, kind: String) -> void:
+	if OS.has_feature("android"):
+		(%LibraryStatus as Label).text = ANDROID_PREVIEW_ART_REASON
+		return
 	_pick_kind = kind
 	var picker := %SourceFiles as FileDialog
 	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILES if mode == 0 else FileDialog.FILE_MODE_OPEN_DIR

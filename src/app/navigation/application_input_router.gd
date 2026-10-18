@@ -15,6 +15,9 @@ func _init(application: Variant) -> void:
 
 
 func handle_input(event: InputEvent) -> void:
+	var key_event := event as InputEventKey
+	if key_event != null and not key_event.pressed:
+		_application._shell_presenter.commands.release_keyboard_hold(ClassicKeyboardShortcuts.key_identity(key_event))
 	if _application._shell_presenter.controller.handle_navigation_modal_input(event):
 		return
 	if ApplicationLogInput.handle_input(_application, event): return
@@ -28,7 +31,6 @@ func handle_input(event: InputEvent) -> void:
 	if released_direction != Vector2i.ZERO and _application._held_movement != null:
 		if not (_application._dungeon_presenter.is_active() and _application._dungeon_presenter.handle_keyboard_release(released_direction)) and _application._held_movement.active_direction() == released_direction:
 			_application._held_movement.stop(&"keyboard")
-	var key_event := event as InputEventKey
 	if _application._shell_presenter.pause_active and not _application.lifecycle_host.has_active_interaction():
 		if event.is_action_pressed(&"realmz_back"):
 			_application._shell_presenter.handle_back()
@@ -48,14 +50,14 @@ func handle_input(event: InputEvent) -> void:
 		return
 	var mouse_button := event as InputEventMouseButton
 	if mouse_button != null and mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
-		_application._shell_presenter.commands.release()
+		_application._shell_presenter.commands.release_pointer_hold()
 	if not event.is_pressed():
 		return
 	if _handle_back_input(event, combat_pending):
 		return
 	if _application.lifecycle_host.has_active_interaction():
 		return
-	if _handle_quick_save_load_input(key_event):
+	if ApplicationSaveInput.handle_input(_application._shell_presenter, _application.session_controller.view(), key_event):
 		return
 	if _handle_classic_keyboard_input(key_event, pending):
 		_mark_handled()
@@ -587,11 +589,17 @@ func _handle_exploration_input(event: InputEvent, key_event: InputEventKey) -> v
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_rest"):
-		_application.submit_intent(ExplorationIntents.rest())
+		if key_event == null:
+			_application.submit_intent(ExplorationIntents.rest())
+		elif not key_event.echo:
+			_application._shell_presenter.commands.begin_keyboard_hold(&"rest", ClassicKeyboardShortcuts.key_identity(key_event))
 		_mark_handled()
 		return
 	if event.is_action_pressed(&"realmz_heal"):
-		_application._shell_presenter.commands.activate(&"heal")
+		if key_event == null:
+			_application._shell_presenter.commands.activate(&"heal")
+		elif not key_event.echo:
+			_application._shell_presenter.commands.begin_keyboard_hold(&"heal", ClassicKeyboardShortcuts.key_identity(key_event))
 		_mark_handled()
 		return
 	var direction := UiInputActions.movement_direction(event)
@@ -606,24 +614,6 @@ func _handle_exploration_input(event: InputEvent, key_event: InputEventKey) -> v
 
 func _mark_handled() -> void:
 	_application.get_viewport().set_input_as_handled()
-
-
-func _handle_quick_save_load_input(event: InputEventKey) -> bool:
-	var action := UiInputActions.quick_save_load_action(event)
-	if action.is_empty():
-		return false
-	var shell: GameShell = _application._shell_presenter
-	var preferences: SystemScreenController = shell.navigator.content_presenter.system_preferences
-	var view: GameView = _application.session_controller.view()
-	if action == &"save":
-		if GameShellAvailability.save_reason(view).is_empty():
-			shell.handle_system_action_requested(&"save", "quick")
-	else:
-		var preview: SaveSlotPreview = preferences.saves.active_quick_preview
-		if GameShellAvailability.load_reason(view).is_empty() and preview != null and preview.can_load:
-			shell.handle_system_action_requested(&"load", preferences.saves.active_slot_id)
-	_mark_handled()
-	return true
 
 
 func _handle_classic_keyboard_input(event: InputEventKey, pending: InteractionRequest) -> bool:
@@ -664,5 +654,5 @@ func _handle_classic_keyboard_input(event: InputEventKey, pending: InteractionRe
 		return not event.ctrl_pressed and not event.alt_pressed and not event.meta_pressed and event.physical_keycode in [KEY_W, KEY_A, KEY_S, KEY_D]
 	if event.echo: return true
 	_application._held_movement.stop()
-	ClassicKeyboardShortcuts.activate_exploration(shell, action)
+	ClassicKeyboardShortcuts.activate_exploration(shell, action, ClassicKeyboardShortcuts.key_identity(event))
 	return true

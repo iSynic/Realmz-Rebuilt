@@ -25,6 +25,7 @@ var _importing: bool = false
 var _focus_before_open: WeakRef
 var _messages: Array[String] = []
 var _remove_id := ""
+const ANDROID_PREVIEW_MUSIC_REASON := "Music file and folder import and track repair are unavailable in the Android preview."
 
 
 func _ready() -> void:
@@ -57,6 +58,7 @@ func _ready() -> void:
 	visibility_changed.connect(_apply_layout)
 	(%MusicPlaylistWindow as PanelContainer).minimum_size_changed.connect(_apply_layout, CONNECT_DEFERRED)
 	_apply_layout()
+	_apply_android_capability_state()
 	hide()
 
 
@@ -72,11 +74,15 @@ func open(settings: PresentationSettings, context: int, title: String, playing: 
 	if opening:
 		opened.emit()
 	_bind_editors()
+	_apply_android_capability_state()
 	set_playback_state(context, title, playing)
 	show()
 	if opening:
 		(%MusicTabs as TabContainer).current_tab = 0
-		(%ImportMusic as Button).grab_focus()
+		if OS.has_feature("android"):
+			(%LibraryTracks as ItemList).grab_focus()
+		else:
+			(%ImportMusic as Button).grab_focus()
 
 
 func present_library(library: MusicLibraryView, campaign: String, title: String) -> void:
@@ -128,8 +134,9 @@ func playback_baseline() -> PresentationSettings:
 func set_import_status(running: bool, message: String) -> void:
 	_importing = running
 	(%CancelImport as Button).visible = running
-	(%ImportMusic as Button).disabled = running
-	(%ImportFolder as Button).disabled = running
+	(%ImportMusic as Button).disabled = running or OS.has_feature("android")
+	(%ImportFolder as Button).disabled = running or OS.has_feature("android")
+	_apply_android_capability_state()
 	(%ImportStatus as Label).text = message
 	(%ImportStatus as Label).tooltip_text = message
 	_show_track()
@@ -227,7 +234,9 @@ func _show_track() -> void:
 	(%TrackDetails as Label).text = "%s\n%s  •  %d:%02d\nOriginal: %s" % [track.title, track.format.to_upper(), int(track.duration) / 60, int(track.duration) % 60, track.source_name] if track != null else "Select a track to preview, repair, or remove it."
 	(%PreviewTrack as Button).disabled = track == null
 	(%RemoveLibraryTrack as Button).disabled = track == null or _importing
-	(%RepairTrack as Button).disabled = track == null or _importing
+	(%RepairTrack as Button).disabled = track == null or _importing or OS.has_feature("android")
+	if OS.has_feature("android"):
+		(%RepairTrack as Button).tooltip_text = ANDROID_PREVIEW_MUSIC_REASON
 
 
 func _preview() -> void:
@@ -237,11 +246,26 @@ func _preview() -> void:
 
 
 func _open_import(folder: bool = false) -> void:
+	if OS.has_feature("android"):
+		return
 	var browser := %MusicFiles as FileDialog
 	browser.file_mode = FileDialog.FILE_MODE_OPEN_DIR if folder else FileDialog.FILE_MODE_OPEN_FILES
 	browser.title = "Import music folder" if folder else "Import music"
 	browser.popup_centered_ratio(0.88)
 	browser.get_line_edit().grab_focus()
+
+
+func _apply_android_capability_state() -> void:
+	if not is_node_ready() or not OS.has_feature("android"):
+		return
+	for button: Button in [%ImportMusic, %ImportFolder, %RepairTrack]:
+		button.disabled = true
+		button.tooltip_text = ANDROID_PREVIEW_MUSIC_REASON
+	(%ImportMusic as Button).text = "Files unavailable (Android preview)"
+	(%ImportFolder as Button).text = "Folder unavailable (Android preview)"
+	(%RepairTrack as Button).text = "Repair unavailable (Android preview)"
+	(%ImportStatus as Label).text = ANDROID_PREVIEW_MUSIC_REASON
+	(%ImportStatus as Label).tooltip_text = ANDROID_PREVIEW_MUSIC_REASON
 
 
 func _changed() -> void:

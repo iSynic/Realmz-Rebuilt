@@ -102,6 +102,9 @@ func remove_imported_campaign(campaign_id: String) -> bool:
 
 
 func start_install(package_path: String) -> bool:
+	if OS.has_feature("android") and not _is_internal_package_path(package_path):
+		_foreground_operation = PackageOperationView.new(PackageOperationView.FAILED, &"failed", 0, 0, "External scenario installation is unavailable in the Android preview.", &"android_preview", package_path, &"install_scenario")
+		return true
 	_advance_task()
 	if package_path.is_empty() or not _import_source.is_empty():
 		return false
@@ -128,6 +131,11 @@ func start_install(package_path: String) -> bool:
 	_prepared_candidate_source_path = ""
 	_prepared_candidate_campaign_id = ""
 	return _start_task(package_path, "", true)
+
+
+func _is_internal_package_path(package_path: String) -> bool:
+	var normalized := package_path.simplify_path()
+	return normalized.begins_with(BUNDLED_CAMPAIGN_ROOT + "/") or normalized.begins_with(_install_root.trim_suffix("/") + "/")
 
 
 func prewarm_last_campaign(campaigns: Array[CampaignPackageView], campaign_id: String) -> bool:

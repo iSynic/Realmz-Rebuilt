@@ -78,7 +78,7 @@ static func activate_visible(root: Node, action_id: StringName) -> bool:
 	return true
 
 
-static func activate_exploration(shell: GameShell, action: StringName) -> void:
+static func activate_exploration(shell: GameShell, action: StringName, held_keycode: int = KEY_NONE) -> void:
 	if action == &"trade":
 		shell.navigator.open_screen(&"inventory")
 		ClassicKeyboardShortcuts.activate_visible.call_deferred(shell.navigator, &"trade")
@@ -90,8 +90,17 @@ static func activate_exploration(shell: GameShell, action: StringName) -> void:
 			action = &"contextual"
 		for entry: ControllerRadialEntry in shell.commands.controller_entries():
 			if entry.id == action and entry.enabled:
-				shell.commands.activate(action)
+				if bool(ClassicCommandCatalog.command(action).get("hold_repeat", false)) and held_keycode != KEY_NONE:
+					shell.commands.begin_keyboard_hold(action, held_keycode)
+				else:
+					shell.commands.activate(action)
 				break
+
+
+static func key_identity(event: InputEventKey) -> int:
+	if event == null:
+		return KEY_NONE
+	return event.physical_keycode if event.physical_keycode != KEY_NONE else event.keycode
 
 
 static func handle_visible_action(root: Node, event: InputEventKey, scope: String) -> bool:

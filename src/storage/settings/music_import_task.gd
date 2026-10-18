@@ -28,6 +28,10 @@ func start_packaged(asset: MediaAsset, media: MediaSource, cache_root: String, h
 func _start(source: String, library_root: String, helper_root: String, display_name: String, asset: MediaAsset = null, media: MediaSource = null) -> bool:
 	if state != &"idle":
 		return false
+	if OS.has_feature("android"):
+		state = &"failed"
+		message = "Custom music import and package music conversion are unavailable in the Android preview."
+		return false
 	_root = ProjectSettings.globalize_path(library_root)
 	_job = _root.path_join("staging/import-" + Crypto.new().generate_random_bytes(12).hex_encode())
 	source_name = display_name if not display_name.is_empty() else source.get_file()

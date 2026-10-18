@@ -8,7 +8,11 @@ The old scenarios are more than maps and dialogue. They depend on a whole game's
 
 [Download the current beta for Windows, Linux, or macOS](https://github.com/iSynic/Realmz-Rebuilt/releases). Download the archive for your platform, extract it, and launch Realmz Rebuilt. The release includes the content needed for its bundled scenarios.
 
+[Beta 22 release notes](docs/beta-22.md) cover throwing-weapon repairs, held keyboard commands, sound playback, dungeon walls, and starter-character recovery.
+
 You can assemble a party and head into overland maps, 2D and first-person dungeons, authored encounters, and tactical battles. Inventory, spells, treasure, services, and saving and loading are part of the game. You can use a keyboard and mouse or play entirely with a controller. If you're starting with an empty character vault, you'll also get editable copies of six Classic starter characters.
+
+If those starters are missing or no longer compatible, open Character Files and choose Restore starter characters. Rebuilt backs up the existing vault and adds compatible starter copies while preserving your other characters.
 
 The beta includes the thirteen scenarios that ship with the Realmz Castle codebase:
 

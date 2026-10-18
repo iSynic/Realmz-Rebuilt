@@ -55,6 +55,8 @@ func start(directory: String, job_parent: String, menu_selection: int, importer_
 	report_path = ""
 	_completed = false
 	_event_offset = 0
+	if OS.has_feature("android"):
+		return _fail("Classic folder import is unavailable in the Android preview. Use the bundled scenarios.", &"android-preview.capability-unavailable")
 	if menu_selection == 0:
 		return _fail("Choose the intended Castle scenario menu position before importing.", &"classic-rule-selection.required")
 	if menu_selection < 1 or menu_selection > 32767:

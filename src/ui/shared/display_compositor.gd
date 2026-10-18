@@ -19,12 +19,16 @@ var _input_forwarder := DisplayInputForwarder.new()
 var _filter_presenter := DisplayFilterPresenter.new()
 var _world_region: Rect2
 var _world_zoom: int = 1
+var _safe_bounds := Rect2i()
 
 
 func _ready() -> void:
 	_screen.texture = _content.get_texture()
 	_filter_input.texture = _content.get_texture()
 	resized.connect(_apply_geometry)
+	%AndroidLifecycle.suspending.connect(func() -> void: _input_forwarder.cancel(_content))
+	%AndroidLifecycle.resumed.connect(_apply_geometry)
+	set_process(OS.has_feature("android"))
 	_apply_geometry()
 
 
@@ -61,7 +65,8 @@ func set_world_region(region: Rect2, zoom: int) -> void:
 
 
 func _apply_geometry() -> void:
-	_geometry = DisplayScalingPolicy.geometry(Vector2i(size.round()), _mode)
+	_safe_bounds = _available_bounds()
+	_geometry = DisplayScalingPolicy.within_safe_area(Vector2i(size.round()), _mode, _safe_bounds)
 	_content.size = _geometry["source_size"]
 	var rect: Rect2 = _geometry["screen_rect"]
 	_screen.position = rect.position
@@ -69,6 +74,19 @@ func _apply_geometry() -> void:
 	_filter_pass.size = Vector2i(rect.size.round())
 	_apply_filter()
 	geometry_changed.emit()
+
+
+func _available_bounds() -> Rect2i:
+	var bounds := Rect2i(Vector2i.ZERO, Vector2i(size.round()))
+	if OS.has_feature("android"):
+		var display_safe := DisplayServer.get_display_safe_area()
+		display_safe.position -= DisplayServer.window_get_position()
+		if bounds.intersection(display_safe).has_area(): return bounds.intersection(display_safe)
+	return bounds
+
+
+func _process(_delta: float) -> void:
+	if _available_bounds() != _safe_bounds: _apply_geometry()
 
 
 func _apply_filter() -> void:

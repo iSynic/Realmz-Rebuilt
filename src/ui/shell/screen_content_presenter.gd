@@ -10,7 +10,7 @@ signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal controller_binding_capture_requested(action_id: StringName)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
-signal vault_repair_requested(operation: StringName)
+signal vault_maintenance_requested(operation: StringName)
 signal route_requested(screen_id: StringName)
 signal refresh_requested
 signal save_previews_changed
@@ -107,9 +107,9 @@ func navigate_section(screen_id: StringName, section_name: StringName = &"", del
 
 
 func _bind_character_controller(owner_ref: WeakRef) -> void:
-	_character_controller.vault_repair_requested.connect(func(operation: StringName) -> void:
+	_character_controller.vault_maintenance_requested.connect(func(operation: StringName) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
-		if owner != null: owner.vault_repair_requested.emit(operation))
+		if owner != null: owner.vault_maintenance_requested.emit(operation))
 	_character_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:

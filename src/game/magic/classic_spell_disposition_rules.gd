@@ -136,7 +136,7 @@ static func field_character_disposition(spell: SpellDefinition) -> StringName:
 
 
 static func character_projectile_disposition(spell: SpellDefinition) -> StringName:
-	return DISPOSITION_EXECUTABLE if ClassicSpellSourceRules.is_supported_projectile_item_profile(spell) else DISPOSITION_NOT_APPLICABLE
+	return DISPOSITION_EXECUTABLE if ClassicSpellSourceRules.is_supported_projectile_item_profile(spell) else combat_item_disposition(spell)
 
 
 static func monster_projectile_disposition(spell: SpellDefinition) -> StringName:

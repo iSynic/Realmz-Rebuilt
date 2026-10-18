@@ -8,6 +8,7 @@ const FRONT_DOOR_MENU_PATH := "res://src/ui/setup/front_door_menu.tscn"
 const STARTUP_SELECTION_CONTROLLER := preload("res://src/ui/setup/campaign_startup_selection_controller.gd")
 ## Folder imports use Castle's scenario-first rule-table branch, regardless of title.
 const IMPORTED_SCENARIO_RULE_SELECTION: int = 20
+const ANDROID_PREVIEW_IMPORT_REASON := "Unavailable in the Android preview. Use the bundled scenarios."
 
 signal start_requested(package_path: String, seed: int)
 signal import_requested(directory: String, native_menu_selection: int, startup_file: String)
@@ -182,6 +183,13 @@ func bind_campaign_panel(panel: CampaignSelectionPanel) -> void:
 	import_dialog.dir_selected.connect(func(directory: String) -> void: import_requested.emit(directory, IMPORTED_SCENARIO_RULE_SELECTION, ""))
 	import_button.pressed.connect(_open_import_dialog)
 	refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
+	if OS.has_feature("android"):
+		install_button.disabled = true
+		install_button.text = "Install unavailable (Android preview)"
+		install_button.tooltip_text = ANDROID_PREVIEW_IMPORT_REASON
+		import_button.disabled = true
+		import_button.text = "Folder import unavailable (Android preview)"
+		import_button.tooltip_text = ANDROID_PREVIEW_IMPORT_REASON
 	_render_campaign_list()
 
 
@@ -242,7 +250,10 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 	_menu_layout_rect = profile.application_rect
 	if package_install_row != null:
 		package_install_row.vertical = false
-		install_button.text = "Install..." if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
+		if OS.has_feature("android"):
+			install_button.text = "Install unavailable (Android preview)"
+		else:
+			install_button.text = "Install..." if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
 	apply_modal_layouts()
 
 
@@ -393,8 +404,8 @@ func _restore_list_focus(path: String) -> void:
 
 func _render_package_operation() -> void:
 	var running: bool = package_operation_status.is_running()
-	install_button.disabled = running
-	import_button.disabled = running
+	install_button.disabled = running or OS.has_feature("android")
+	import_button.disabled = running or OS.has_feature("android")
 	refresh_button.disabled = running
 	var needs_startup: bool = _startup_selection.call("present", package_operation_status, package_operation_status.state == PackageOperationView.FAILED)
 	_package_operation.present(package_operation_status, needs_startup)
@@ -459,11 +470,15 @@ func _campaign_pressed(campaign: CampaignPackageView) -> void:
 
 
 func _open_package_dialog() -> void:
+	if OS.has_feature("android"):
+		return
 	if install_dialog != null:
 		install_dialog.popup_centered_ratio(0.7)
 
 
 func _open_import_dialog() -> void:
+	if OS.has_feature("android"):
+		return
 	if import_dialog != null:
 		import_dialog.popup_centered_ratio(0.7)
 

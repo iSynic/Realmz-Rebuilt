@@ -464,6 +464,10 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 		return CombatFlowResult.rejected(profile.error_code, profile.error_message)
 	if not profile.available:
 		return CombatFlowResult.failed(profile.error_code, profile.error_message)
+	if not ClassicSpellSourceRules.is_supported_projectile_item_profile(profile.spell):
+		if profile.spell.target_type != 1:
+			return CombatFlowResult.rejected(&"projectile_item_targeting_required", "Choose this item's battlefield targets through Fire Weapon.")
+		return _context.magic_flow().use_spell_item(state, content, actor.id, target_id, profile.item_instance_id, rng)
 	var target := combat.roster.monster_by_id(target_id)
 	if target == null or target.current_health <= 0 or target.traitor == actor.traitor:
 		return CombatFlowResult.rejected(&"invalid_projectile_target", "This source-backed projectile slice can target only a living hostile monster.")

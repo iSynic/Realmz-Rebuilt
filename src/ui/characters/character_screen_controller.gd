@@ -7,7 +7,7 @@ signal refresh_requested
 signal vault_back_requested
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
-signal vault_repair_requested(operation: StringName)
+signal vault_maintenance_requested(operation: StringName)
 
 const GOLD := Color("d5b45d")
 const MUTED := Color("9aa0a8")
@@ -77,7 +77,7 @@ func handle_vault_back() -> bool:
 	if is_instance_valid(_vault_screen) and _vault_screen.repair_dialog.visible:
 		if not _vault_screen.repair_dialog.committing():
 			_vault_screen.repair_dialog.hide()
-			vault_repair_requested.emit(&"cancel")
+			vault_maintenance_requested.emit(&"cancel")
 		return true
 	if _vault_inspection_revision_hash.is_empty():
 		return false
@@ -94,10 +94,12 @@ func present_vault(target: Control, view: GameView, appearance_textures: Diction
 	_vault_screen = screen
 	if not screen.archive_confirmation.archive_requested.is_connected(vault_archive_requested.emit):
 		screen.archive_confirmation.archive_requested.connect(vault_archive_requested.emit)
-	if not screen.repair_dialog.operation_requested.is_connected(vault_repair_requested.emit):
-		screen.repair_dialog.operation_requested.connect(vault_repair_requested.emit)
+	if not screen.repair_dialog.operation_requested.is_connected(vault_maintenance_requested.emit):
+		screen.repair_dialog.operation_requested.connect(vault_maintenance_requested.emit)
 	if not screen.repair_button().pressed.is_connected(screen.repair_dialog.begin_review.bind(screen.repair_button())):
 		screen.repair_button().pressed.connect(screen.repair_dialog.begin_review.bind(screen.repair_button()))
+	if not screen.restore_starters_button().pressed.is_connected(screen.repair_dialog.begin_starter_restore.bind(screen.restore_starters_button())):
+		screen.restore_starters_button().pressed.connect(screen.repair_dialog.begin_starter_restore.bind(screen.restore_starters_button()))
 	_vault_view = view
 	_vault_appearance_textures = appearance_textures
 	_vault_text_scale = text_scale
