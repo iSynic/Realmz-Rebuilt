@@ -29,6 +29,7 @@ var saved_party_coordinate: Vector2i = Vector2i(-1, -1)
 var saved_party_level_type: StringName = &""
 var last_battle_outcome: StringName = &"none"
 var party_setup_completed: bool = false
+var adventure_rules := AdventureRules.new()
 var difficulty: int = 0
 var monster_set: int = 0
 var experience_multiplier: float = -1.0
@@ -129,6 +130,7 @@ func restore_from_data(data: Dictionary) -> bool:
 	saved_party_level_type = loaded.saved_party_level_type
 	last_battle_outcome = loaded.last_battle_outcome
 	party_setup_completed = loaded.party_setup_completed
+	adventure_rules = loaded.adventure_rules
 	difficulty = loaded.difficulty
 	monster_set = loaded.monster_set
 	experience_multiplier = loaded.experience_multiplier
@@ -173,6 +175,7 @@ func to_data() -> Dictionary:
 	data.merge({
 		"lastBattleOutcome": String(last_battle_outcome),
 		"partySetupCompleted": party_setup_completed,
+		"adventureRules": adventure_rules.to_data(),
 		"difficulty": difficulty,
 		"monsterSet": monster_set,
 		"experienceMultiplier": experience_multiplier,
@@ -185,9 +188,10 @@ func to_data() -> Dictionary:
 	return data
 
 
-static func from_data(data: Variant) -> GameState:
-	if not data is Dictionary:
+static func from_data(raw_data: Variant) -> GameState:
+	if not raw_data is Dictionary:
 		return null
+	var data: Dictionary = raw_data
 	for field: String in ["party", "clock", "searchedCells", "worldOverlays"]:
 		if not data.has(field):
 			return null
@@ -197,6 +201,8 @@ static func from_data(data: Variant) -> GameState:
 	if party_state == null or realmz_clock == null or world_state == null or not data["searchedCells"] is Array:
 		return null
 	var state := GameState.new(party_state, realmz_clock, world_state)
+	state.adventure_rules = AdventureRules.from_data(data["adventureRules"]) if data.has("adventureRules") else AdventureRules.new()
+	if state.adventure_rules == null: return null
 	if not _restore_combat_state(state, party_state, data):
 		return null
 	if not state.scenario_progress.restore_searched_cells(data["searchedCells"]):

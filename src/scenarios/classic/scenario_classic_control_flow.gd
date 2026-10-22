@@ -68,7 +68,8 @@ static func replace_xap(definition: ScenarioDefinition, frames: Array[ScenarioFr
 static func resume_encounter(definition: ScenarioDefinition, frames: Array[ScenarioFrame]) -> ScenarioDirectiveTransition:
 	if frames.size() < 2:
 		return ScenarioDirectiveTransition.failed(&"invalid_encounter_loop", "Classic encounter exit has no issuing program frame.")
-	var encounter_context: ScenarioExecutionContext = frames.back().context()
+	var encounter_frame: ScenarioFrame = frames.back()
+	var encounter_context: ScenarioExecutionContext = encounter_frame.context()
 	for frame_index: int in range(frames.size() - 2, -1, -1):
 		var source_frame: ScenarioFrame = frames[frame_index]
 		if source_frame.kind == ScenarioFrame.ENCOUNTER:
@@ -79,8 +80,10 @@ static func resume_encounter(definition: ScenarioDefinition, frames: Array[Scena
 			continue
 		var program := definition.program_by_id(source_frame.definition_id)
 		var instruction: Variant = program.instruction_at(source_frame.cursor) if program != null else null
-		if instruction is ClassicActionDefinition and _is_issuing_encounter(instruction, encounter_context):
-			return _exit_issuing_program(frames, frame_index, source_frame, encounter_context)
+		if instruction is ClassicActionDefinition:
+			var issuing_action: ClassicActionDefinition = instruction
+			if _is_issuing_encounter(issuing_action, encounter_context):
+				return _exit_issuing_program(frames, frame_index, source_frame, encounter_context)
 	return ScenarioDirectiveTransition.failed(&"invalid_encounter_loop", "Classic encounter exit cannot find its issuing encounter instruction.")
 
 
@@ -94,7 +97,10 @@ static func _restart_program(frames: Array[ScenarioFrame]) -> ScenarioDirectiveT
 # Castle jumps to native slot 7. Compiled programs omit empty slots, so the
 # cursor is the first retained Classic instruction at or after that slot.
 static func _dropout_program(definition: ScenarioDefinition, frames: Array[ScenarioFrame]) -> ScenarioDirectiveTransition:
-	var program := definition.program_by_id(frames.back().definition_id) if not frames.is_empty() and frames.back().kind == ScenarioFrame.PROGRAM else null
+	var program: ScenarioProgramDefinition = null
+	if not frames.is_empty() and frames.back().kind == ScenarioFrame.PROGRAM:
+		var issuing_frame: ScenarioFrame = frames.back()
+		program = definition.program_by_id(issuing_frame.definition_id)
 	if program == null:
 		return ScenarioDirectiveTransition.failed(&"invalid_program_dropout", "Classic dropout has no issuing program frame.")
 	var cursor := 0

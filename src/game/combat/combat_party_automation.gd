@@ -101,7 +101,7 @@ func _execute_auto_choice(state: GameState, content: RealmzContent, actor: Chara
 
 
 func run_persistent_auto_characters(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
-	if state == null or content == null or rng == null or state.combat == null or state.combat.completed:
+	if state == null or content == null or rng == null or state.combat == null or state.combat.completed or state.combat.round_cursor != null:
 		return CombatFlowResult.succeeded([])
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
@@ -120,7 +120,7 @@ func _run_persistent_auto_unchecked(state: GameState, content: RealmzContent, rn
 
 
 func _auto_unavailable(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
-	if state == null or content == null or rng == null or state.combat == null or state.combat.completed:
+	if state == null or content == null or rng == null or state.combat == null or state.combat.completed or state.combat.round_cursor != null:
 		return CombatFlowResult.failed(&"combat_auto_unavailable", "No active battle can resolve an automatic turn.")
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null or actor.current_health <= 0 or actor.traitor or state.combat.turns.active_actor_id() != actor_id:

@@ -59,13 +59,17 @@ func to_data() -> Dictionary:
 
 
 static func from_data(value: Variant, depth: int = 0) -> ScenarioVmHandoff:
-	if not value is Dictionary or value.size() != 3 or not value.get("kind") is String or _integer(value.get("version")) != VERSION or not value.get("data") is Dictionary:
+	if not value is Dictionary:
 		return null
-	var data: Dictionary = value["data"]
+	var envelope: Dictionary = value
+	if envelope.size() != 3 or not envelope.get("kind") is String or _integer(envelope.get("version")) != VERSION or not envelope.get("data") is Dictionary:
+		return null
+	var data: Dictionary = envelope["data"]
 	var runtime_handoff := ScenarioRuntimeHandoff.from_data(data.get("runtime"), depth)
 	if runtime_handoff == null:
 		return null
-	var result := ScenarioVmHandoff.new(StringName(value["kind"]))
+	var kind_text: String = envelope["kind"]
+	var result := ScenarioVmHandoff.new(StringName(kind_text))
 	result.runtime = runtime_handoff
 	match result.kind:
 		CLASSIC_OPERATION:
@@ -95,6 +99,8 @@ static func is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapshot) -> b
 static func _integer(value: Variant) -> int:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return -1

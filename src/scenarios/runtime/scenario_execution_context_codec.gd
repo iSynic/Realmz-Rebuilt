@@ -68,49 +68,53 @@ static func encode(context: ScenarioExecutionContext) -> Dictionary:
 static func decode(value: Variant) -> ScenarioExecutionContext:
 	if not value is Dictionary:
 		return null
-	for key: Variant in value.keys():
+	var data: Dictionary = value
+	for key: Variant in data.keys():
 		if not key is String or key not in _FIELDS:
 			return null
 	var result := ScenarioExecutionContext.new()
-	if not _read_string_name(value, "callingContext", result, "calling_context"): return null
-	if not _read_string(value, "triggerId", result, "trigger_id"): return null
-	if not _read_string(value, "mapId", result, "map_id"): return null
-	if value.has("x") != value.has("y") or value.has("x") and (not _whole_number(value["x"]) or not _whole_number(value["y"])): return null
-	if value.has("x"):
-		result.coordinate = Vector2i(int(value["x"]), int(value["y"]))
+	if not _read_string_name(data, "callingContext", result, "calling_context"): return null
+	if not _read_string(data, "triggerId", result, "trigger_id"): return null
+	if not _read_string(data, "mapId", result, "map_id"): return null
+	if data.has("x") != data.has("y") or data.has("x") and (not _whole_number(data["x"]) or not _whole_number(data["y"])): return null
+	if data.has("x"):
+		var x: int = data["x"]
+		var y: int = data["y"]
+		result.coordinate = Vector2i(x, y)
 		result.has_coordinate = true
-	if not _read_nonnegative_int(value, "timedEncounterId", result, "timed_encounter_id"): return null
-	if not _read_string(value, "randomRegionId", result, "random_region_id"): return null
-	if not _read_string_name(value, "applicationHook", result, "application_hook"): return null
-	if value.has("serviceId"):
-		if not value["serviceId"] is String: return null
-		result.service_id = value["serviceId"]
+	if not _read_nonnegative_int(data, "timedEncounterId", result, "timed_encounter_id"): return null
+	if not _read_string(data, "randomRegionId", result, "random_region_id"): return null
+	if not _read_string_name(data, "applicationHook", result, "application_hook"): return null
+	if data.has("serviceId"):
+		if not data["serviceId"] is String: return null
+		result.service_id = data["serviceId"]
 		result.has_service_id = true
-	if not _read_string(value, "battleId", result, "battle_id"): return null
-	if not _read_string(value, "combatantId", result, "combatant_id"): return null
-	if value.has("classicMonsterId"):
-		if not _whole_number(value["classicMonsterId"]): return null
-		result.classic_monster_id = int(value["classicMonsterId"])
+	if not _read_string(data, "battleId", result, "battle_id"): return null
+	if not _read_string(data, "combatantId", result, "combatant_id"): return null
+	if data.has("classicMonsterId"):
+		if not _whole_number(data["classicMonsterId"]): return null
+		var classic_monster_id: int = data["classicMonsterId"]
+		result.classic_monster_id = classic_monster_id
 		result.has_classic_monster_id = true
-	if value.has("traitor"):
-		if not value["traitor"] is bool: return null
-		result.traitor = value["traitor"]
+	if data.has("traitor"):
+		if not data["traitor"] is bool: return null
+		result.traitor = data["traitor"]
 		result.has_traitor = true
-	if not _read_string_name(value, "encounterKind", result, "encounter_kind"): return null
-	if not _read_nonnegative_int(value, "encounterId", result, "encounter_id"): return null
-	if not _read_nonnegative_int(value, "encounterAttempt", result, "encounter_attempt"): return null
-	if not _read_string(value, "responseId", result, "response_id"): return null
-	if not _read_nonnegative_int(value, "optionIndex", result, "option_index"): return null
-	if not _read_string_name(value, "responseKind", result, "response_kind"): return null
-	if not _read_nonnegative_int(value, "optionSlot", result, "option_slot"): return null
-	if not _read_nonnegative_int(value, "actionIndex", result, "action_index"): return null
-	if not _read_string(value, "characterId", result, "character_id"): return null
-	if value.has("_programResolved"):
-		if value["_programResolved"] != true: return null
+	if not _read_string_name(data, "encounterKind", result, "encounter_kind"): return null
+	if not _read_nonnegative_int(data, "encounterId", result, "encounter_id"): return null
+	if not _read_nonnegative_int(data, "encounterAttempt", result, "encounter_attempt"): return null
+	if not _read_string(data, "responseId", result, "response_id"): return null
+	if not _read_nonnegative_int(data, "optionIndex", result, "option_index"): return null
+	if not _read_string_name(data, "responseKind", result, "response_kind"): return null
+	if not _read_nonnegative_int(data, "optionSlot", result, "option_slot"): return null
+	if not _read_nonnegative_int(data, "actionIndex", result, "action_index"): return null
+	if not _read_string(data, "characterId", result, "character_id"): return null
+	if data.has("_programResolved"):
+		if data["_programResolved"] != true: return null
 		result.program_resolved = true
-	if not _read_string(value, "originalProgramId", result, "original_program_id"): return null
-	if not _read_string(value, "originProgramId", result, "origin_program_id"): return null
-	if not _read_string(value, "transferredProgramId", result, "transferred_program_id"): return null
+	if not _read_string(data, "originalProgramId", result, "original_program_id"): return null
+	if not _read_string(data, "originProgramId", result, "origin_program_id"): return null
+	if not _read_string(data, "transferredProgramId", result, "transferred_program_id"): return null
 	return result
 
 
@@ -124,18 +128,24 @@ static func _read_string(data: Dictionary, key: String, target: ScenarioExecutio
 static func _read_string_name(data: Dictionary, key: String, target: ScenarioExecutionContext, property: StringName) -> bool:
 	if not data.has(key): return true
 	if not data[key] is String: return false
-	target.set(property, StringName(data[key]))
+	var text: String = data[key]
+	target.set(property, StringName(text))
 	return true
 
 
 static func _read_nonnegative_int(data: Dictionary, key: String, target: ScenarioExecutionContext, property: StringName) -> bool:
 	if not data.has(key): return true
-	if not _whole_number(data[key]) or int(data[key]) < 0: return false
-	target.set(property, int(data[key]))
+	if not _whole_number(data[key]): return false
+	var number: int = data[key]
+	if number < 0: return false
+	target.set(property, number)
 	return true
 
 
 static func _whole_number(value: Variant) -> bool:
 	if value is int:
 		return true
-	return value is float and is_equal_approx(value, round(value))
+	if not value is float:
+		return false
+	var number: float = value
+	return is_equal_approx(number, roundf(number))

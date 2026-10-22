@@ -3,6 +3,7 @@
 class_name CombatContext
 extends RefCounted
 
+var conditions: ConditionRules
 var arithmetic: RealmzArithmetic
 var inventory: InventoryRules
 var equipment: EquipmentRules
@@ -23,6 +24,7 @@ var _automation: WeakRef
 
 
 func _init(rules: RealmzRules) -> void:
+	conditions = rules.conditions
 	arithmetic = rules.arithmetic
 	inventory = rules.inventory
 	equipment = rules.equipment

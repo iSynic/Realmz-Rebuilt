@@ -27,7 +27,7 @@ func has_handler(opcode: int) -> bool:
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
-	var handler := _handlers_by_opcode.get(action.opcode) as ClassicOpcodeHandler
+	var handler: ClassicOpcodeHandler = _handlers_by_opcode.get(action.opcode)
 	if handler == null:
 		return ScenarioRuntimeOperationResult.failed(&"unsupported_classic_opcode", "Classic opcode %d has no runtime handler." % action.opcode)
 	return handler.execute(action, request_id, context)
@@ -39,8 +39,8 @@ func registration_error() -> String:
 
 func registered_opcodes() -> Array[int]:
 	var result: Array[int] = []
-	for opcode: Variant in _handlers_by_opcode.keys():
-		result.append(int(opcode))
+	for opcode: int in _handlers_by_opcode.keys():
+		result.append(opcode)
 	result.sort()
 	return result
 

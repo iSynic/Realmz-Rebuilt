@@ -33,20 +33,25 @@ class ResumedAgeAttack extends RefCounted:
 	var defeated := false
 
 var _context: CombatContext
+var boundary: CombatRoundBoundary
 
 
 func _init(context: CombatContext) -> void:
 	_context = context
+	boundary = CombatRoundBoundary.new(context)
 
 func advance_turn(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	if state == null or state.combat == null:
 		return
 	var round_advanced := state.combat.advance_turn()
+	after_turn_changed(state, content, rng, events, round_advanced)
+
+
+func after_turn_changed(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent], round_advanced: bool) -> void:
 	for field: RefCounted in state.combat.spell_runtime.decay_persistent_fields_for_phase(state.combat.turns.turn_index):
 		events.append(DomainEvent.new(&"combat_persistent_field_expired", {"slot": field.slot, "spellId": field.spell_id, "center": [field.center.x, field.center.y], "shape": field.shape, "queueIcon": field.queue_icon, "source": "classic"}))
 	if round_advanced:
-		_process_persistent_field_round_collisions(state, content, rng, events)
-		process_bleeding_round(state, rng, events)
+		boundary.begin(state, content, rng, events)
 
 
 func advance_turn_and_check_resolved(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
@@ -61,56 +66,10 @@ func skip_incapacitated_actor(state: GameState, content: RealmzContent, actor_id
 	return finish_if_resolved(state, content, events)
 
 
-func _process_persistent_field_round_collisions(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
-	var combat := state.combat
-	if combat == null or combat.battlefield == null or combat.spell_runtime.persistent_fields().is_empty():
-		return
-	var actor_ids: Array[String] = []
-	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and combat.battlefield.actors.has_actor(character.id):
-			actor_ids.append(character.id)
-	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and combat.battlefield.actors.has_actor(monster.id):
-			actor_ids.append(monster.id)
-	for actor_id: String in actor_ids:
-		var result: int = _context.fields().resolve_actor_collisions(state, content, actor_id, rng, events, false, false)
-		if result == CombatFlowFields.COLLISION_INVALID:
-			events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": actor_id, "reason": "invalid-runtime-state"}))
-	if not combat.spell_runtime.pending_death_macro_id().is_empty() and not _context.fields().begin_pending_death_macros(combat, content, events):
-		events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": combat.turns.active_actor_id(), "reason": "invalid-death-macro-queue"}))
-
-
 func process_bleeding_round(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
-	var combat := state.combat
 	for character: CharacterState in state.party.characters():
-		if not combat.actor_statuses.is_character_bleeding(character.id):
-			continue
-		if character.current_health <= -10:
-			combat.actor_statuses.set_character_bleeding(character.id, false)
-			state.set_combat_auto(character.id, false)
-			continue
-		character.current_health = _context.arithmetic.signed_16(character.current_health - 1)
-		if character.current_health < -9:
-			character.lifetime_record.record_death(true)
-			combat.actor_statuses.set_character_bleeding(character.id, false)
-			state.set_combat_auto(character.id, false)
-			_context.automation().remove_defeated_position(combat, character.id, true)
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-bleeding"}))
-			events.append(DomainEvent.new(&"combatant_bled_to_death", {"characterId": character.id, "health": character.current_health, "source": "classic"}))
-			continue
-		var roll := rng.draw(100, StringName("combat.bleeding.%s" % character.id))
-		var sound_id := 10121 if roll < 50 else 10123
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": false, "source": "classic-combat-bleeding"}))
-		events.append(DomainEvent.new(&"combatant_bleeding_progressed", {"characterId": character.id, "health": character.current_health, "roll": roll, "soundId": sound_id, "source": "classic"}))
-	if not _context.actions().bandage_candidate_ids(state).is_empty():
-		# getup.c performs a second, party-wide warning draw after every
-		# individual bleeding result when the Classic warning preference is on.
-		# Realmz Rebuilt currently preserves that default; exposing the preference
-		# itself remains owned by the settings workflow.
-		var warning_roll := rng.draw(100, &"combat.bleeding.warning-sound")
-		var warning_sound_id := 10121 if warning_roll < 50 else 10123
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": warning_sound_id, "waitForCompletion": false, "source": "classic-combat-bleeding-warning"}))
-		events.append(DomainEvent.new(&"combat_bleeding_warning", {"roll": warning_roll, "soundId": warning_sound_id, "source": "classic-default"}))
+		boundary.process_character_bleeding(state, character, rng, events)
+	boundary.append_bleeding_warning(state, rng, events)
 
 
 func continue_after_monster_death_macro(state: GameState, content: RealmzContent, rng: RealmzRng, completed_combatant_id: String = "") -> CombatFlowResult:
@@ -143,6 +102,16 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		state.combat.spell_runtime.clear_death_macro_sequence()
 		if advances_turn:
 			advance_turn(state, content, rng, events)
+	if state.combat.round_cursor != null:
+		var cursor := state.combat.round_cursor
+		if not cursor.waiting_monster_id.is_empty() and cursor.waiting_monster_id != completed_combatant_id:
+			return CombatFlowResult.failed(&"invalid_round_continuation", "The completed death macro does not match the pending round effect.")
+		cursor.waiting_monster_id = ""
+		if cursor.phase == &"prior-death-macro":
+			cursor.phase = &"battle-macro" if state.combat.macro_id < 0 else &"party"
+		boundary.resume(state, content, rng, events)
+		if state.combat.round_cursor != null:
+			return CombatFlowResult.succeeded(events)
 	_context.automation().remove_all_defeated_positions(state)
 	if state.combat.pending_reaction != null:
 		var reaction := state.combat.pending_reaction
@@ -159,6 +128,23 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		if state.combat.turns.active_actor_id() == mover_id:
 			advance_turn(state, content, rng, events)
 	if state.combat.completed or finish_if_resolved(state, content, events):
+		return CombatFlowResult.succeeded(events, true)
+	return _context.automation().process_monster_turns(state, content, rng, events)
+
+
+func continue_after_battle_macro(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
+	if state.combat.completed:
+		return CombatFlowResult.succeeded([], true)
+	var cursor := state.combat.round_cursor
+	# Older saves may already have processed fields before their suspended macro.
+	if cursor == null:
+		return _context.automation().process_monster_turns(state, content, rng, [])
+	if cursor.phase != &"battle-macro":
+		return CombatFlowResult.failed(&"invalid_round_continuation", "The battle macro has no pending round boundary.")
+	cursor.phase = &"party"
+	var events: Array[DomainEvent] = []
+	boundary.resume(state, content, rng, events)
+	if finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
@@ -455,7 +441,7 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 func finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
 	state.prune_combat_auto_characters()
 	var combat := state.combat
-	if not combat.spell_runtime.pending_death_macro_id().is_empty() or not combat.spell_runtime.macro_actor_id().is_empty():
+	if combat.round_cursor != null or not combat.spell_runtime.pending_death_macro_id().is_empty() or not combat.spell_runtime.macro_actor_id().is_empty():
 		return false
 	var enemies_alive := false
 	for character: CharacterState in state.party.characters():
@@ -487,6 +473,7 @@ func finish_classic_macro_victory(state: GameState, content: RealmzContent) -> C
 
 func complete_battle(state: GameState, _content: RealmzContent, outcome: StringName, events: Array[DomainEvent]) -> void:
 	var combat := state.combat
+	combat.round_cursor = null
 	combat.completed = true
 	combat.outcome = outcome
 	combat.turns.clear_active_turn()

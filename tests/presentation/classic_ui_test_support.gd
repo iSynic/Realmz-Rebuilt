@@ -5,6 +5,20 @@ const FIXTURE_PATH := "res://tests/fixtures/packages/realmz2-synthetic-fixture.r
 func instantiate_ui_scene(path: String) -> Node: return (load(path) as PackedScene).instantiate()
 
 
+func _create_initialized_navigator() -> ScreenNavigator:
+	var router := instantiate_ui_scene("res://src/ui/shell/screen_navigator.tscn") as ScreenNavigator
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
+	return router
+
+
+func _assert_route_regions_survive_refresh(router: ScreenNavigator, view: GameView, region_names: Array[String], message: String) -> void:
+	var regions := region_names.map(func(region_name: String) -> Node: return router.find_child(region_name, true, false))
+	var region_ids := regions.map(func(region: Node) -> int: return region.get_instance_id())
+	router.present(view)
+	assert_true(regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and region_ids == regions.map(func(region: Node) -> int: return region.get_instance_id()), message)
+
+
 func _test_encounter_dock_scaling() -> void:
 	var tree := Engine.get_main_loop() as SceneTree
 	var host := Control.new()

@@ -5,9 +5,14 @@ extends RefCounted
 
 
 static func decode(value: Variant, depth: int = 0) -> ScenarioRuntimeContinuation:
-	if depth > 32 or not value is Dictionary or value.size() != 3 or not value.get("kind") is String or value.get("version") != ScenarioRuntimeContinuation.VERSION or not value.get("data") is Dictionary:
+	if depth > 32 or not value is Dictionary:
 		return null
-	return _decode_payload(StringName(value["kind"]), value["data"], depth)
+	var envelope: Dictionary = value
+	if envelope.size() != 3 or not envelope.get("kind") is String or envelope.get("version") != ScenarioRuntimeContinuation.VERSION or not envelope.get("data") is Dictionary:
+		return null
+	var kind: String = envelope["kind"]
+	var data: Dictionary = envelope["data"]
+	return _decode_payload(StringName(kind), data, depth)
 
 
 static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> ScenarioRuntimeContinuation:
@@ -20,13 +25,17 @@ static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> S
 			var message_id := _integer(data.get("messageId"))
 			return ScenarioInteractionContinuations.textbox(message_id) if data.size() == 1 and message_id > 0 else null
 		ScenarioRuntimeContinuation.CLASSIC_PLAYER_MAP:
-			return ScenarioInteractionContinuations.player_map(data["playerMapId"]) if data.size() == 1 and data.get("playerMapId") is String and not data["playerMapId"].is_empty() else null
+			var player_map_id := _nonempty_string(data.get("playerMapId"))
+			return ScenarioInteractionContinuations.player_map(player_map_id) if data.size() == 1 and not player_map_id.is_empty() else null
 		ScenarioRuntimeContinuation.SAFE_CHOICE:
 			var option_count := _integer(data.get("optionCount"))
 			return ScenarioInteractionContinuations.safe_choice(option_count) if data.size() == 1 and option_count >= 1 and option_count <= 256 else null
 		ScenarioRuntimeContinuation.CLASSIC_CHOICE:
 			var values := _integers(data.get("values"))
-			return ScenarioInteractionContinuations.classic_choice(values, data["gosub"]) if data.size() == 2 and values.size() == 5 and data.get("gosub") is bool else null
+			if data.size() != 2 or values.size() != 5 or not data.get("gosub") is bool:
+				return null
+			var choice_gosub: bool = data["gosub"]
+			return ScenarioInteractionContinuations.classic_choice(values, choice_gosub)
 		ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER:
 			return _decode_encounter(kind, data)
 		ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER, ScenarioRuntimeContinuation.CLASSIC_PICK_LOCK, ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION:
@@ -35,7 +44,10 @@ static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> S
 			return _decode_character_selection(data)
 		ScenarioRuntimeContinuation.CLASSIC_CHARACTER_ABILITY:
 			var ability_values := _integers(data.get("values"))
-			return ScenarioInteractionContinuations.character_ability(ability_values, data["gosub"]) if data.size() == 2 and ability_values.size() == 5 and data.get("gosub") is bool else null
+			if data.size() != 2 or ability_values.size() != 5 or not data.get("gosub") is bool:
+				return null
+			var ability_gosub: bool = data["gosub"]
+			return ScenarioInteractionContinuations.character_ability(ability_values, ability_gosub)
 		ScenarioRuntimeContinuation.CLASSIC_AGE_UPDATES, ScenarioRuntimeContinuation.SAFE_AGE_UPDATES:
 			return _decode_age(kind, data)
 		ScenarioRuntimeContinuation.CLASSIC_CLOCK:
@@ -43,7 +55,9 @@ static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> S
 		ScenarioRuntimeContinuation.CLASSIC_SCRIPTED_FUMBLE:
 			var context := ScenarioExecutionContextCodec.decode(data.get("context"))
 			var message_id := _integer(data.get("messageId"))
-			return ScenarioInteractionContinuations.scripted_fumble(data["battleId"], data["actorId"], message_id, context) if data.size() == 4 and data.get("battleId") is String and not data["battleId"].is_empty() and data.get("actorId") is String and not data["actorId"].is_empty() and message_id > 0 and context != null else null
+			var battle_id := _nonempty_string(data.get("battleId"))
+			var actor_id := _nonempty_string(data.get("actorId"))
+			return ScenarioInteractionContinuations.scripted_fumble(battle_id, actor_id, message_id, context) if data.size() == 4 and not battle_id.is_empty() and not actor_id.is_empty() and message_id > 0 and context != null else null
 		ScenarioRuntimeContinuation.CLASSIC_SHOP:
 			return _decode_shop(data)
 		ScenarioRuntimeContinuation.CLASSIC_TEMPLE, ScenarioRuntimeContinuation.CLASSIC_TEMPLE_EXIT:
@@ -59,7 +73,10 @@ static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> S
 
 
 static func _decode_clock(data: Dictionary, depth: int) -> ScenarioRuntimeContinuation:
-	if data.size() != 8 or not data.has_all(["updates", "ageIndex", "scanPending", "timerIndex", "programId", "timerVm", "resumeSlot", "returnProgramId"]) or not data["updates"] is Array or data["updates"].size() > 6 or not data["scanPending"] is bool or not data["programId"] is String or not data["timerVm"] is Dictionary or not data["returnProgramId"] is String:
+	if data.size() != 8 or not data.has_all(["updates", "ageIndex", "scanPending", "timerIndex", "programId", "timerVm", "resumeSlot", "returnProgramId"]) or not data["updates"] is Array:
+		return null
+	var update_data: Array = data["updates"]
+	if update_data.size() > 6 or not data["scanPending"] is bool or not data["programId"] is String or not data["timerVm"] is Dictionary or not data["returnProgramId"] is String:
 		return null
 	var body := ScenarioClockContinuationBody.new()
 	body.age_index = _integer(data["ageIndex"])
@@ -68,14 +85,15 @@ static func _decode_clock(data: Dictionary, depth: int) -> ScenarioRuntimeContin
 	body.program_id = data["programId"]
 	body.resume_slot = _integer(data["resumeSlot"])
 	body.return_program_id = data["returnProgramId"]
-	for update: Variant in data["updates"]:
+	for update: Variant in update_data:
 		var typed := ScenarioAgeContinuations.update_from_data(update)
 		if typed == null: return null
 		body.updates.append(typed)
 	if body.age_index < 0 or body.age_index > body.updates.size() or body.timer_index < 0 or body.timer_index > 151 or body.resume_slot < 0 or body.resume_slot > 8:
 		return null
-	if not data["timerVm"].is_empty():
-		body.timer_vm = ScenarioVmSnapshot.from_data(data["timerVm"], depth + 1)
+	var timer_vm_data: Dictionary = data["timerVm"]
+	if not timer_vm_data.is_empty():
+		body.timer_vm = ScenarioVmSnapshot.from_data(timer_vm_data, depth + 1)
 		if body.timer_vm == null or body.timer_vm.halted or body.timer_vm.frames.is_empty() or not body.scan_pending or body.program_id.is_empty() or body.timer_index < 1 or body.age_index != body.updates.size(): return null
 	elif not body.program_id.is_empty() or body.age_index < 1 or body.age_index > body.updates.size():
 		return null
@@ -86,21 +104,29 @@ static func _decode_character_selection(data: Dictionary) -> ScenarioRuntimeCont
 	var count := _integer(data.get("count"))
 	if data.size() != 3 or count < 1 or count > 6 or not data.get("allowDead") is bool or not data.get("invert") is bool:
 		return null
-	return ScenarioInteractionContinuations.character_selection(count, data["allowDead"], data["invert"])
+	var allow_dead: bool = data["allowDead"]
+	var invert: bool = data["invert"]
+	return ScenarioInteractionContinuations.character_selection(count, allow_dead, invert)
 
 
 static func _decode_shop(data: Dictionary) -> ScenarioRuntimeContinuation:
 	var ranges := _integers(data.get("acceptRanges"))
-	if data.size() != 2 or not data.get("shopId") is String or data["shopId"].is_empty() or ranges.size() not in [0, 4] or ranges.size() != data["acceptRanges"].size():
+	var shop_id := _nonempty_string(data.get("shopId"))
+	if data.size() != 2 or shop_id.is_empty() or ranges.size() not in [0, 4]:
 		return null
-	return ScenarioServiceContinuations.shop(data["shopId"], ranges)
+	var accept_ranges: Variant = data["acceptRanges"]
+	if ranges.size() != _collection_size(accept_ranges):
+		return null
+	return ScenarioServiceContinuations.shop(shop_id, ranges)
 
 
 static func _decode_temple(kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:
 	var cost_percent := _integer(data.get("costPercent"))
-	if data.size() != 3 or cost_percent < -32768 or cost_percent > 32767 or not data.get("bankAvailable") is bool or not data.get("selectedCharacterId") is String or data["selectedCharacterId"].is_empty():
+	var selected_character_id := _nonempty_string(data.get("selectedCharacterId"))
+	if data.size() != 3 or cost_percent < -32768 or cost_percent > 32767 or not data.get("bankAvailable") is bool or selected_character_id.is_empty():
 		return null
-	return ScenarioServiceContinuations.temple(kind, cost_percent, data["bankAvailable"], data["selectedCharacterId"])
+	var bank_available: bool = data["bankAvailable"]
+	return ScenarioServiceContinuations.temple(kind, cost_percent, bank_available, selected_character_id)
 
 
 static func _decode_encounter(kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:
@@ -109,17 +135,21 @@ static func _decode_encounter(kind: StringName, data: Dictionary) -> ScenarioRun
 	# Classic encounter tables are zero-based; encounter 0 is authored content.
 	if encounter_id < 0 or encounter_attempt < 0 or not data.get("gosub") is bool:
 		return null
+	var gosub: bool = data["gosub"]
 	if kind == ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER:
-		return ScenarioInteractionContinuations.encounter(kind, encounter_id, data["gosub"], [], encounter_attempt) if data.size() == (3 if data.has("encounterAttempt") else 2) else null
+		return ScenarioInteractionContinuations.encounter(kind, encounter_id, gosub, [], encounter_attempt) if data.size() == (3 if data.has("encounterAttempt") else 2) else null
 	var indexes := _integers(data.get("optionIndexes"))
 	var reopen_result: Variant = data.get("reopenResult", false)
 	var expected_fields := 3 + int(data.has("encounterAttempt")) + int(data.has("reopenResult"))
-	if not reopen_result is bool or reopen_result and data["gosub"] or data.size() != expected_fields or indexes.is_empty() or indexes.size() > 10:
+	if not reopen_result is bool:
+		return null
+	var reopen: bool = reopen_result
+	if reopen and gosub or data.size() != expected_fields or indexes.is_empty() or indexes.size() > 10:
 		return null
 	for index: int in indexes:
 		if index < 0:
 			return null
-	return ScenarioInteractionContinuations.encounter(kind, encounter_id, data["gosub"], indexes, encounter_attempt, reopen_result)
+	return ScenarioInteractionContinuations.encounter(kind, encounter_id, gosub, indexes, encounter_attempt, reopen)
 
 
 static func _decode_thief(kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:
@@ -128,27 +158,34 @@ static func _decode_thief(kind: StringName, data: Dictionary) -> ScenarioRuntime
 	var attempt_field_count := 1 if data.has("encounterAttempt") else 0
 	if encounter_id < 0 or encounter_attempt < 0 or not data.get("gosub") is bool:
 		return null
+	var gosub: bool = data["gosub"]
 	if kind == ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER:
-		return ScenarioInteractionContinuations.thief_encounter(encounter_id, data["gosub"], encounter_attempt) if data.size() == 2 + attempt_field_count else null
+		return ScenarioInteractionContinuations.thief_encounter(encounter_id, gosub, encounter_attempt) if data.size() == 2 + attempt_field_count else null
 	var action_index := _integer(data.get("actionIndex"))
-	if action_index < 0 or action_index > 7 or not data.get("characterId") is String or data["characterId"].is_empty():
+	var character_id := _nonempty_string(data.get("characterId"))
+	if action_index < 0 or action_index > 7 or character_id.is_empty():
 		return null
 	if kind == ScenarioRuntimeContinuation.CLASSIC_PICK_LOCK:
-		return ScenarioInteractionContinuations.pick_lock(encounter_id, data["gosub"], action_index, data["characterId"], encounter_attempt) if data.size() == 4 + attempt_field_count and action_index in [2, 4, 6, 7] else null
-	var phase := StringName(data.get("phase", ""))
+		return ScenarioInteractionContinuations.pick_lock(encounter_id, gosub, action_index, character_id, encounter_attempt) if data.size() == 4 + attempt_field_count and action_index in [2, 4, 6, 7] else null
+	var phase: StringName = data.get("phase", "")
 	if data.size() != 7 + attempt_field_count or phase not in [&"action-message", &"trap-message"] or not data.get("succeeded") is bool or not data.get("trapPending") is bool:
 		return null
-	return ScenarioInteractionContinuations.thief_resolution(encounter_id, data["gosub"], action_index, data["characterId"], phase, data["succeeded"], data["trapPending"], encounter_attempt)
+	var succeeded: bool = data["succeeded"]
+	var trap_pending: bool = data["trapPending"]
+	return ScenarioInteractionContinuations.thief_resolution(encounter_id, gosub, action_index, character_id, phase, succeeded, trap_pending, encounter_attempt)
 
 
 static func _decode_age(kind: StringName, data: Dictionary) -> ScenarioRuntimeContinuation:
-	if data.size() != 4 or not data.has_all(["updates", "index", "value", "directive"]) or not data.get("updates") is Array or data["updates"].is_empty() or data["updates"].size() > 30 or not data.get("directive") is Dictionary:
+	if data.size() != 4 or not data.has_all(["updates", "index", "value", "directive"]) or not data.get("updates") is Array:
+		return null
+	var update_data: Array = data["updates"]
+	if update_data.is_empty() or update_data.size() > 30 or not data.get("directive") is Dictionary:
 		return null
 	var index := _integer(data.get("index"))
-	if index < 1 or index > data["updates"].size() or not _json_safe(data.get("value"), 0):
+	if index < 1 or index > update_data.size() or not _json_safe(data.get("value"), 0):
 		return null
 	var updates: Array[AgeUpdateRequestBody] = []
-	for update: Variant in data["updates"]:
+	for update: Variant in update_data:
 		var typed_update := ScenarioAgeContinuations.update_from_data(update)
 		if typed_update == null:
 			return null
@@ -162,15 +199,19 @@ static func _decode_age(kind: StringName, data: Dictionary) -> ScenarioRuntimeCo
 
 static func _decode_combat(kind: StringName, data: Dictionary, depth: int) -> ScenarioRuntimeContinuation:
 	var expected_source := ScenarioRuntimeContinuation.SAFE_COMBAT if kind in _safe_combat_kinds() else ScenarioRuntimeContinuation.CLASSIC_COMBAT
-	if not data.get("sourceKind") is String or StringName(data["sourceKind"]) != expected_source or not data.get("battleId") is String or data["battleId"].is_empty():
+	if not data.get("sourceKind") is String:
 		return null
+	var source_kind: String = data["sourceKind"]
+	if StringName(source_kind) != expected_source or _nonempty_string(data.get("battleId")).is_empty():
+		return null
+	var battle_id: String = data["battleId"]
 	var caller := ScenarioBattleCaller.from_data(data.get("battleCaller"))
 	if caller == null or expected_source == ScenarioRuntimeContinuation.SAFE_COMBAT and caller.kind != ScenarioBattleCaller.SAFE or expected_source == ScenarioRuntimeContinuation.CLASSIC_COMBAT and caller.kind != ScenarioBattleCaller.CLASSIC:
 		return null
 	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT]:
-		return ScenarioCombatContinuations.battle(kind, data["battleId"], caller) if data.size() == 3 else null
+		return ScenarioCombatContinuations.battle(kind, battle_id, caller) if data.size() == 3 else null
 	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE]:
-		return ScenarioCombatContinuations.terminal(kind, expected_source, data["battleId"], caller) if data.size() == 3 else null
+		return ScenarioCombatContinuations.terminal(kind, expected_source, battle_id, caller) if data.size() == 3 else null
 	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION]:
 		return _decode_combat_movement(kind, expected_source, data, caller)
 	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE]:
@@ -181,38 +222,50 @@ static func _decode_combat(kind: StringName, data: Dictionary, depth: int) -> Sc
 static func _decode_combat_movement(kind: StringName, source_kind: StringName, data: Dictionary, caller: ScenarioBattleCaller) -> ScenarioRuntimeContinuation:
 	var friendly := kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION]
 	var modes := ["friendly"] if friendly else ["explicit", "edge"]
-	if data.size() != 6 or not data.get("actorId") is String or data["actorId"].is_empty() or data.get("mode") not in modes or not data.get("destination") is Array or data["destination"].size() != 2:
+	var actor_id := _nonempty_string(data.get("actorId"))
+	if data.size() != 6 or actor_id.is_empty() or data.get("mode") not in modes or not data.get("destination") is Array:
 		return null
-	var x_value: Variant = _signed_integer_or_null(data["destination"][0])
-	var y_value: Variant = _signed_integer_or_null(data["destination"][1])
+	var destination_data: Array = data["destination"]
+	if destination_data.size() != 2:
+		return null
+	var x_value: Variant = _signed_integer_or_null(destination_data[0])
+	var y_value: Variant = _signed_integer_or_null(destination_data[1])
 	if x_value == null or y_value == null:
 		return null
-	var destination := Vector2i(int(x_value), int(y_value))
-	if data["mode"] == "explicit" and destination != Vector2i(-100_000, -100_000) or data["mode"] in ["edge", "friendly"] and destination == Vector2i(-100_000, -100_000):
+	var x: int = x_value
+	var y: int = y_value
+	var destination := Vector2i(x, y)
+	var mode: String = data["mode"]
+	if mode == "explicit" and destination != Vector2i(-100_000, -100_000) or mode in ["edge", "friendly"] and destination == Vector2i(-100_000, -100_000):
 		return null
+	var battle_id: String = data["battleId"]
 	if friendly:
-		return ScenarioCombatContinuations.friendly_collision(source_kind, data["battleId"], caller, data["actorId"], destination)
-	return ScenarioCombatContinuations.retreat(kind, source_kind, data["battleId"], caller, data["actorId"], StringName(data["mode"]), destination)
+		return ScenarioCombatContinuations.friendly_collision(source_kind, battle_id, caller, actor_id, destination)
+	return ScenarioCombatContinuations.retreat(kind, source_kind, battle_id, caller, actor_id, StringName(mode), destination)
 
 
 static func _decode_combat_age(kind: StringName, source_kind: StringName, data: Dictionary, caller: ScenarioBattleCaller) -> ScenarioRuntimeContinuation:
-	if data.size() != 6 or not data.get("updates") is Array or data["updates"].is_empty() or data["updates"].size() > 30:
+	if data.size() != 6 or not data.get("updates") is Array:
+		return null
+	var update_data: Array = data["updates"]
+	if update_data.is_empty() or update_data.size() > 30:
 		return null
 	var index := _integer(data.get("index"))
 	var round_before := _integer(data.get("roundBefore"))
-	if index < 1 or index > data["updates"].size() or round_before < 1:
+	if index < 1 or index > update_data.size() or round_before < 1:
 		return null
 	var updates: Array[AgeUpdateRequestBody] = []
-	for update: Variant in data["updates"]:
+	for update: Variant in update_data:
 		var typed_update := ScenarioAgeContinuations.update_from_data(update)
 		if typed_update == null:
 			return null
 		updates.append(typed_update)
-	return ScenarioCombatContinuations.age_updates(kind, source_kind, data["battleId"], caller, updates, index, round_before)
+	var battle_id: String = data["battleId"]
+	return ScenarioCombatContinuations.age_updates(kind, source_kind, battle_id, caller, updates, index, round_before)
 
 
 static func _decode_combat_macro(kind: StringName, source_kind: StringName, data: Dictionary, caller: ScenarioBattleCaller, depth: int) -> ScenarioRuntimeContinuation:
-	if not data.get("programId") is String or data["programId"].is_empty():
+	if _nonempty_string(data.get("programId")).is_empty():
 		return null
 	var macro_vm := ScenarioVmSnapshot.from_data(data.get("macroVm"), depth + 1)
 	if macro_vm == null:
@@ -225,20 +278,24 @@ static func _decode_combat_macro(kind: StringName, source_kind: StringName, data
 	body.macro_vm = macro_vm
 	if kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO]:
 		return ScenarioRuntimeContinuation.new(kind, body) if data.size() == 5 else null
-	if data.size() != 7 or not data.get("combatantId") is String or data["combatantId"].is_empty() or not data.get("resetTraitorOnComplete") is bool: return null
+	if data.size() != 7 or _nonempty_string(data.get("combatantId")).is_empty() or not data.get("resetTraitorOnComplete") is bool: return null
 	body.combatant_id = data["combatantId"]
 	body.reset_traitor_on_complete = data["resetTraitorOnComplete"]
 	return ScenarioRuntimeContinuation.new(kind, body)
 
 
 static func _decode_opcode_death_macro(data: Dictionary, depth: int) -> ScenarioRuntimeContinuation:
-	if data.size() != 5 or not data.get("battleId") is String or data["battleId"].is_empty() or not data.get("combatantId") is String or data["combatantId"].is_empty() or not data.get("programId") is String or data["programId"].is_empty():
+	var battle_id := _nonempty_string(data.get("battleId"))
+	var combatant_id := _nonempty_string(data.get("combatantId"))
+	var program_id := _nonempty_string(data.get("programId"))
+	if data.size() != 5 or battle_id.is_empty() or combatant_id.is_empty() or program_id.is_empty():
 		return null
 	var remaining := _strings(data.get("remainingCombatantIds"))
-	if remaining.size() != data["remainingCombatantIds"].size() or remaining.size() > 100:
+	var remaining_data: Variant = data["remainingCombatantIds"]
+	if remaining.size() != _collection_size(remaining_data) or remaining.size() > 100:
 		return null
 	var macro_vm := ScenarioVmSnapshot.from_data(data.get("macroVm"), depth + 1)
-	return ScenarioCombatContinuations.opcode_death_macro(data["battleId"], data["combatantId"], data["programId"], remaining, macro_vm) if macro_vm != null else null
+	return ScenarioCombatContinuations.opcode_death_macro(battle_id, combatant_id, program_id, remaining, macro_vm) if macro_vm != null else null
 
 
 static func _safe_combat_kinds() -> Array[StringName]:
@@ -262,33 +319,42 @@ static func _strings(value: Variant) -> Array[String]:
 	if not value is Array:
 		return result
 	for entry: Variant in value:
-		if not entry is String or entry.is_empty() or result.has(entry):
+		if not entry is String:
 			return []
-		result.append(entry)
+		var text: String = entry
+		if text.is_empty() or result.has(text):
+			return []
+		result.append(text)
 	return result
 
 
 static func _integer(value: Variant) -> int:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return -1
 
 
 static func _signed_integer(value: Variant) -> int:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return -100000
 
 
 static func _signed_integer_or_null(value: Variant) -> Variant:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return null
 
 
@@ -298,17 +364,36 @@ static func _json_safe(value: Variant, depth: int) -> bool:
 	if value == null or value is bool or value is int or value is float or value is String:
 		return true
 	if value is Array:
-		if value.size() > 4096:
+		var items: Array = value
+		if items.size() > 4096:
 			return false
-		for child: Variant in value:
+		for child: Variant in items:
 			if not _json_safe(child, depth + 1):
 				return false
 		return true
 	if value is Dictionary:
-		if value.size() > 4096:
+		var entries: Dictionary = value
+		if entries.size() > 4096:
 			return false
-		for key: Variant in value:
-			if not key is String or not _json_safe(value[key], depth + 1):
+		for key: Variant in entries:
+			if not key is String or not _json_safe(entries[key], depth + 1):
 				return false
 		return true
 	return false
+
+
+static func _nonempty_string(value: Variant) -> String:
+	if not value is String:
+		return ""
+	var text: String = value
+	return text
+
+
+static func _collection_size(value: Variant) -> int:
+	if value is Array:
+		var items: Array = value
+		return items.size()
+	if value is Dictionary:
+		var entries: Dictionary = value
+		return entries.size()
+	return -1

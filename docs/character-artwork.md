@@ -1,6 +1,6 @@
 # Character artwork
 
-Choose **Settings → Character Art…**, or open the artwork library while choosing a character’s appearance.
+Choose **Settings → Interface → Artwork → Open Character Art…**, or open the artwork library while choosing a character’s appearance. The Settings action is unavailable during battle. Library changes are saved separately from the preferences draft.
 
 1. Select an existing artwork race to add to its collection, or choose **New race…** to make a named collection such as Tiefling. These names organize artwork; they do not create gameplay races or change character rules.
 2. Choose **Import Portraits** or **Import Icons**, then **Choose images…** for multiple files in one directory or **Choose folder…** for all supported images directly inside a folder. Subfolders are not included.

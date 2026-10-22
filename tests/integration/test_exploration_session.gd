@@ -15,7 +15,7 @@ func run() -> void:
 		return
 	var content := loaded.content
 	_test_map_view_projection_edges(content); _test_field_heal(content); _test_scripted_party_loss(content); _test_movement_fatigue_gate(content); _test_attempted_land_move_search(content); _test_terrain_replacement_topology(content)
-	var session := GameSession.new(); assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts"); _begin_fixture_adventure(session, content)
+	var session := GameSession.new(); assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts"); _begin_standard_fixture_adventure(session, content)
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative"); assert_true(session.view().map_view.cells().size() == 625 and not session.view().map_view.random_region_bounds().is_empty(), "GameView exposes one complete bounded topology-derived window plus detached effective random-rectangle bounds at the north-west edge")
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction"); assert_true(session.view().map_view.can_move(Vector2i.LEFT), "the detached view preserves the hidden land secret's underlying passability")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates"); assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
@@ -30,7 +30,7 @@ func run() -> void:
 	_test_contextual_encounter_command(content)
 	var open_content := _open_movement_content(content)
 	var open_session := GameSession.new()
-	open_session.start(open_content, 1); _begin_fixture_adventure(open_session, open_content)
+	open_session.start(open_content, 1); _begin_standard_fixture_adventure(open_session, open_content)
 	var before_open_view := open_session.view()
 	var open_step := open_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	var open_view := open_session.view(open_step.events)
@@ -45,7 +45,7 @@ func run() -> void:
 	assert_true(hourly_view.domain_revisions.party_roster == before_hourly_view.domain_revisions.party_roster and hourly_view.domain_revisions.party_status == hourly_view.revision and hourly_view.domain_revisions.magic == hourly_view.revision and hourly_view.change_set.has_domain(ViewChangeSetScript.PARTY_STATUS) and hourly_view.change_set.has_domain(ViewChangeSetScript.MAGIC), "hourly recovery invalidates status and magic without rebuilding roster identity")
 	assert_equal([hourly_view.party_members[0].spell_points, hourly_view.domain_revisions.party, hourly_view.domain_revisions.inventory_magic, hourly_view.bestiary_entries.size()], [open_session.snapshot().game_state.party.characters()[0].spell_points, hourly_view.revision, hourly_view.revision, before_hourly_view.bestiary_entries.size()], "hourly movement refreshes mutable party and magic projections while retaining the immutable Bestiary catalog")
 	var hourly_full_session := GameSession.new(); hourly_full_session.restore(open_content, save_round_trip(open_session.snapshot())); var hourly_full_view := hourly_full_session.view(); assert_equal([hourly_view.party_members[0].spell_points, hourly_view.party_members[0].condition_values, hourly_view.availability(&"cast_spell").enabled, hourly_view.availability(&"cast_spell").reason], [hourly_full_view.party_members[0].spell_points, hourly_full_view.party_members[0].condition_values, hourly_full_view.availability(&"cast_spell").enabled, hourly_full_view.availability(&"cast_spell").reason], "incremental hourly party and spell availability match a complete restored projection")
-	var los_content := _open_movement_content(content, true); var los_session := GameSession.new(); los_session.start(los_content, 1); _begin_fixture_adventure(los_session, los_content); var initial_los_view := los_session.view(); var los_step := los_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var moved_los_view := los_session.view(los_step.events); assert_true(moved_los_view.map_view.presentation_delta != null and moved_los_view.domain_revisions.party == initial_los_view.domain_revisions.party and moved_los_view.domain_revisions.exploration == moved_los_view.revision, "LOS movement identifies its visibility-sensitive cells while retaining the ordinary shell and unchanged view domains")
+	var los_content := _open_movement_content(content, true); var los_session := GameSession.new(); los_session.start(los_content, 1); _begin_standard_fixture_adventure(los_session, los_content); var initial_los_view := los_session.view(); var los_step := los_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var moved_los_view := los_session.view(los_step.events); assert_true(moved_los_view.map_view.presentation_delta != null and moved_los_view.domain_revisions.party == initial_los_view.domain_revisions.party and moved_los_view.domain_revisions.exploration == moved_los_view.revision, "LOS movement identifies its visibility-sensitive cells while retaining the ordinary shell and unchanged view domains")
 	var restored_los_session := GameSession.new(); restored_los_session.restore(los_content, save_round_trip(los_session.snapshot())); var restored_los_view := restored_los_session.view(); var incremental_los_cells := moved_los_view.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]); var restored_los_cells := restored_los_view.map_view.cells().map(func(cell: MapCellView) -> Array: return [cell.coordinate, cell.visible, cell.visited]); assert_equal([incremental_los_cells, moved_los_view.map_view.seen_coordinates()], [restored_los_cells, restored_los_view.map_view.seen_coordinates()], "incremental LOS visibility and sight memory match a complete restored projection")
 	for action_id: Variant in full_open_view.action_availability:
 		var action := StringName(action_id)
@@ -55,7 +55,7 @@ func run() -> void:
 	_test_navigation_discovery_reuse(content)
 	_test_boat_movement(content); _test_special_dungeon_bits(content); _test_location_notes(content)
 	var diagonal_session := GameSession.new(); assert_equal(diagonal_session.start(content, 1).state, SessionStep.State.COMPLETED, "a dedicated land-diagonal session starts")
-	_begin_fixture_adventure(diagonal_session, content)
+	_begin_standard_fixture_adventure(diagonal_session, content)
 	assert_true(diagonal_session.view().map_view.can_move(Vector2i(-1, -1)), "land views expose source-backed diagonal movement availability")
 	var diagonal_step := diagonal_session.submit_intent(ExplorationIntents.move(Vector2i(-1, -1)))
 	var diagonal_view := diagonal_session.view(diagonal_step.events)
@@ -73,7 +73,7 @@ func run() -> void:
 	var diagonal_layout_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, WorldDefinition.new(layout_maps, layout_transitions), ScenarioDefinition.new([], []), [], [], [], content.characters.race_definitions(), content.characters.caste_definitions())
 	var diagonal_layout_session := GameSession.new()
 	assert_equal(diagonal_layout_session.start(diagonal_layout_content, 1).state, SessionStep.State.COMPLETED, "a diagonal Layout transition session starts")
-	_begin_fixture_adventure(diagonal_layout_session, diagonal_layout_content)
+	_begin_standard_fixture_adventure(diagonal_layout_session, diagonal_layout_content)
 	var diagonal_layout_step := diagonal_layout_session.submit_intent(ExplorationIntents.move(Vector2i(-1, -1)))
 	assert_equal(diagonal_layout_session.view().party_map_id, "land:1", "diagonal boundary input follows the compiled diagonal Layout neighbor")
 	assert_equal(diagonal_layout_session.view().party_coordinate, Vector2i(89, 89), "diagonal boundary input wraps to the opposite target corner")
@@ -136,30 +136,30 @@ func run() -> void:
 	assert_true(restored.snapshot().game_state.world.triggers.trigger_is_disabled(north_trigger_id), "save/reload preserves default one-shot Action Point state")
 
 	var keep_source := content.scenario_records.trigger_by_id("ap.fixture.destination-source"); var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])]); var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index); var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger], [], content.characters.race_definitions(), content.characters.caste_definitions())
-	var keep_session := GameSession.new(); keep_session.start(keep_content, 1); _begin_fixture_adventure(keep_session, keep_content); var kept := keep_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
+	var keep_session := GameSession.new(); keep_session.start(keep_content, 1); _begin_standard_fixture_adventure(keep_session, keep_content); var kept := keep_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
 	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes"); assert_false(keep_session.snapshot().game_state.world.triggers.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
 	var self_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 0, 0]), ClassicActionDefinition.new(1, 45, 45, 0, false, [-1, 1, 0, 0, 0]), ClassicActionDefinition.new(2, 3, 3, 0, false, [1, 0, 0, 0, 0])]); var self_trigger := TriggerDefinition.new(keep_source.id, self_program.id, keep_source.map_id, keep_source.coordinate, true, 100, TriggerDestinationDefinition.new(keep_source.map_id, keep_source.coordinate), keep_source.classic_record_index)
-	var self_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([self_program], []), [], [self_trigger], [], content.characters.race_definitions(), content.characters.caste_definitions()); var self_session := GameSession.new(); self_session.start(self_content, 1); _begin_fixture_adventure(self_session, self_content); var self_wait := self_session.submit_intent(ExplorationIntents.move(Vector2i.UP)); var self_teleported := self_session.respond(InteractionResponse.yes_no(self_wait.interaction, true)); var self_boundary := save_round_trip(self_session.snapshot())
+	var self_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([self_program], []), [], [self_trigger], [], content.characters.race_definitions(), content.characters.caste_definitions()); var self_session := GameSession.new(); self_session.start(self_content, 1); _begin_standard_fixture_adventure(self_session, self_content); var self_wait := self_session.submit_intent(ExplorationIntents.move(Vector2i.UP)); var self_teleported := self_session.respond(InteractionResponse.yes_no(self_wait.interaction, true)); var self_boundary := save_round_trip(self_session.snapshot())
 	assert_equal(self_session.restore(self_content, self_boundary).state, SessionStep.State.COMPLETED, "a yielded AP restores with its issuing cell distinct from its teleported party"); var self_completed := self_session.respond(InteractionResponse.yes_no(self_session.view().pending_interaction, true)); assert_equal([self_completed.state, self_session.view().party_coordinate, self_session.snapshot().rng_state.to_data()], [SessionStep.State.COMPLETED, Vector2i(1, 0), self_boundary.rng_state.to_data()], "a source-self header neither undoes the saved teleport nor consumes another RNG draw")
 	assert_true(_has_event(self_teleported, &"party_teleported") and not _has_event(self_completed, &"party_teleported") and not _has_event(self_completed, &"trigger_fired"), "the saved VM teleport completes once without re-firing the source AP"); var corrupt_self := save_round_trip(self_boundary); corrupt_self.continuation.exploration().coordinate = Vector2i(1, 0); assert_equal(self_session.restore(self_content, corrupt_self).error_code, &"invalid_session_continuation", "a saved AP cannot move its issuing identity to the party destination")
 	_test_classic_backout(content)
 
-	var ordered_ap_content := _duplicate_placed_ap_content(100, content); var ordered_ap_session := GameSession.new(); ordered_ap_session.start(ordered_ap_content, 1); _begin_fixture_adventure(ordered_ap_session, ordered_ap_content)
+	var ordered_ap_content := _duplicate_placed_ap_content(100, content); var ordered_ap_session := GameSession.new(); ordered_ap_session.start(ordered_ap_content, 1); _begin_standard_fixture_adventure(ordered_ap_session, ordered_ap_content)
 	var ordered_ap_step := ordered_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_equal([_event_count(ordered_ap_step, &"trigger_fired"), ordered_ap_session.rng_trace().size(), ordered_ap_session.rng_trace()[0]["range"]], [1, 1, 100], "the first eligible placed Action Point consumes Castle's chance draw even at 100 percent"); assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed"); assert_false(ordered_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
 
-	var chance_ap_content := _duplicate_placed_ap_content(1, content); var chance_ap_session := GameSession.new(); chance_ap_session.start(chance_ap_content, 1); _begin_fixture_adventure(chance_ap_session, chance_ap_content)
+	var chance_ap_content := _duplicate_placed_ap_content(1, content); var chance_ap_session := GameSession.new(); chance_ap_session.start(chance_ap_content, 1); _begin_standard_fixture_adventure(chance_ap_session, chance_ap_content)
 	var chance_ap_step := chance_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_false(_has_event(chance_ap_step, &"trigger_fired"), "a failed selected AP chance does not fall through to a later same-cell record"); assert_equal(chance_ap_session.rng_trace().size(), 1, "a positive sub-100 selected AP consumes one chance draw"); assert_equal(chance_ap_session.rng_trace()[0]["tag"], "trigger.ap.first-native", "the chance draw belongs to the first native AP")
 
-	var zero_ap_content := _duplicate_placed_ap_content(0, content); var zero_ap_session := GameSession.new(); zero_ap_session.start(zero_ap_content, 1); _begin_fixture_adventure(zero_ap_session, zero_ap_content)
+	var zero_ap_content := _duplicate_placed_ap_content(0, content); var zero_ap_session := GameSession.new(); zero_ap_session.start(zero_ap_content, 1); _begin_standard_fixture_adventure(zero_ap_session, zero_ap_content)
 	var zero_ap_step := zero_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through"); assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
 	for previously_disabled: bool in [false, true]:
 		var inactive_ap_content := _inactive_placed_ap_content(content)
 		var inactive_ap_session := GameSession.new()
 		inactive_ap_session.start(inactive_ap_content, 1)
-		_begin_fixture_adventure(inactive_ap_session, inactive_ap_content)
+		_begin_standard_fixture_adventure(inactive_ap_session, inactive_ap_content)
 		if previously_disabled:
 			inactive_ap_session._context.state.world.triggers.set_trigger_chance("ap.inactive-placed", -1)
 		var enabled_ap_step := inactive_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
@@ -171,12 +171,12 @@ func run() -> void:
 		if _has_event(inactive_ap_step, &"trigger_fired"):
 			assert_equal(_event(inactive_ap_step, &"trigger_fired").payload["triggerId"], "ap.inactive-placed", "the re-enabled AP retains its native identity")
 
-	var disabled_ap_content := _duplicate_placed_ap_content(100, content); var disabled_ap_source := GameSession.new(); disabled_ap_source.start(disabled_ap_content, 1); _begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
+	var disabled_ap_content := _duplicate_placed_ap_content(100, content); var disabled_ap_source := GameSession.new(); disabled_ap_source.start(disabled_ap_content, 1); _begin_standard_fixture_adventure(disabled_ap_source, disabled_ap_content)
 	var disabled_ap_save := disabled_ap_source.snapshot(); disabled_ap_save.game_state.world.triggers.disable_trigger("ap.first-native")
 	var disabled_ap_session := GameSession.new()
 	assert_equal(disabled_ap_session.restore(disabled_ap_content, disabled_ap_save).state, SessionStep.State.COMPLETED, "a disabled first-record fixture restores transactionally")
 	var disabled_ap_step := disabled_ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
-	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record"); assert_false(disabled_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched"); var direct_ap_session := GameSession.new(); direct_ap_session.start(content, 31); _begin_fixture_adventure(direct_ap_session, content); var direct_ap_entry := direct_ap_session.apply_debug_command(SessionDebugCommand.start_action_point("ap.fixture.message")); assert_equal([direct_ap_entry.state, direct_ap_entry.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "a direct Action Point preview enters the authored interaction"); var direct_ap_completed := direct_ap_session.respond(InteractionResponse.acknowledge(direct_ap_entry.interaction)); assert_true(direct_ap_completed.state == SessionStep.State.COMPLETED and direct_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.fixture.message"), "a completed direct Action Point preview persists its one-shot disablement"); var direct_ap_repeated := direct_ap_session.apply_debug_command(SessionDebugCommand.start_action_point("ap.fixture.message")); assert_equal([direct_ap_repeated.state, direct_ap_repeated.error_code], [SessionStep.State.FAILED, &"debug_action_point_disabled"], "a direct Action Point preview cannot replay a completed one-shot trigger")
+	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record"); assert_false(disabled_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched"); var direct_ap_session := GameSession.new(); direct_ap_session.start(content, 31); _begin_standard_fixture_adventure(direct_ap_session, content); var direct_ap_entry := direct_ap_session.apply_debug_command(SessionDebugCommand.start_action_point("ap.fixture.message")); assert_equal([direct_ap_entry.state, direct_ap_entry.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "a direct Action Point preview enters the authored interaction"); var direct_ap_completed := direct_ap_session.respond(InteractionResponse.acknowledge(direct_ap_entry.interaction)); assert_true(direct_ap_completed.state == SessionStep.State.COMPLETED and direct_ap_session.snapshot().game_state.world.triggers.trigger_is_disabled("ap.fixture.message"), "a completed direct Action Point preview persists its one-shot disablement"); var direct_ap_repeated := direct_ap_session.apply_debug_command(SessionDebugCommand.start_action_point("ap.fixture.message")); assert_equal([direct_ap_repeated.state, direct_ap_repeated.error_code], [SessionStep.State.FAILED, &"debug_action_point_disabled"], "a direct Action Point preview cannot replay a completed one-shot trigger")
 
 	var dungeon_envelope := session.snapshot()
 	dungeon_envelope.game_state.party.map_id = "dungeon:0"
@@ -200,7 +200,7 @@ func run() -> void:
 	assert_true(restored_dungeon.snapshot().game_state.world.topology.door_is_open(door_id) and restored_dungeon.view().map_view.dungeon_heading == 4, "restored session retains the opened door and Classic dungeon heading")
 
 	_test_negative_random_battle_surprise(content); var surprise_region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); surprise_region.battle_maximum = -1; var surprise_session := GameSession.new()
-	surprise_session.start(content, 1); _begin_fixture_adventure(surprise_session, content, 6); surprise_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var surprise_wait := surprise_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
+	surprise_session.start(content, 1); _begin_standard_fixture_adventure(surprise_session, content, 6); surprise_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var surprise_wait := surprise_session.submit_intent(ExplorationIntents.move(Vector2i.UP))
 	assert_equal(surprise_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "a source-backed random rectangle can yield a typed surprise choice")
 	assert_equal(surprise_wait.interaction.kind, &"yes_no", "the random surprise uses the ordinary interaction presenter ABI")
 	assert_equal(surprise_session.rng_trace()[-1]["tag"], "random-region.land:0:randlevel:rect:1.good-surprise", "Castle random-region draw order reaches the surprise roll after three door rolls")
@@ -236,7 +236,7 @@ func run() -> void:
 
 	var door_session := GameSession.new()
 	door_session.start(content, 1)
-	_begin_fixture_adventure(door_session, content)
+	_begin_standard_fixture_adventure(door_session, content)
 	door_session.submit_intent(ExplorationIntents.move(Vector2i.DOWN))
 	var first_door := door_session.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	assert_true(_has_event(first_door, &"random_door_triggered"), "a positive random-door chance invokes its XAP through the normal VM")
@@ -296,7 +296,7 @@ func _message_ids(step: SessionStep) -> Array[int]:
 func _test_location_notes(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	assert_equal(session.start(content, 17).state, SessionStep.State.COMPLETED, "a dedicated location-note session starts")
-	_begin_fixture_adventure(session, content)
+	_begin_standard_fixture_adventure(session, content)
 	var original_coordinate := session._context.state.party.coordinate
 	var initial_view := session.view()
 	assert_not_null(initial_view.current_location_note, "the detached view identifies the party's current mapped location")
@@ -349,7 +349,7 @@ func _test_location_notes(content: RealmzContent) -> void:
 
 	var capacity_seed := GameSession.new()
 	assert_equal(capacity_seed.start(content, 18).state, SessionStep.State.COMPLETED, "a dedicated capacity session starts")
-	_begin_fixture_adventure(capacity_seed, content)
+	_begin_standard_fixture_adventure(capacity_seed, content)
 	var capacity_envelope := capacity_seed.snapshot()
 	var added: int = 0
 	for y: int in 90:
@@ -374,12 +374,12 @@ func _test_location_notes(content: RealmzContent) -> void:
 
 
 func _test_classic_backout(source_content: RealmzContent) -> void:
-	var content := _classic_backout_content(source_content); var session := GameSession.new(); assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "Classic Choice backout session starts"); _begin_fixture_adventure(session, content); var waiting := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([waiting.state, waiting.interaction.kind, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, Vector2i(1, 0)], "entering the Choice AP commits its step before asking")
+	var content := _classic_backout_content(source_content); var session := GameSession.new(); assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "Classic Choice backout session starts"); _begin_standard_fixture_adventure(session, content); var waiting := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([waiting.state, waiting.interaction.kind, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, Vector2i(1, 0)], "entering the Choice AP commits its step before asking")
 	var saved := save_round_trip(session.snapshot()); var restored := GameSession.new(); assert_equal(restored.restore(content, saved).state, SessionStep.State.COMPLETED, "pending Classic Choice restores with its post-move owner"); var minutes_before_backout := restored.snapshot().game_state.clock.total_minutes(); var rng_before_backout := restored.rng_trace().size(); var backed_out := restored.respond(InteractionResponse.yes_no(restored.view().pending_interaction, true)); assert_equal([backed_out.state, restored.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i.ZERO], "selected Choice mode zero reverses the just-entered overland step"); assert_true(_has_event(backed_out, &"classic_choice_backout_completed") and _event(backed_out, &"party_moved").payload.get("source") == "classic-choice-backout", "the public session identifies the source-backed backout movement"); assert_false(_has_event(backed_out, &"trigger_disabled") or _has_event(backed_out, &"random_encounter_checked"), "backout preserves the issuing AP and skips destination-cell random checks")
 	assert_equal([restored.snapshot().game_state.clock.total_minutes(), restored.rng_trace().size()], [minutes_before_backout, rng_before_backout], "backout consumes neither additional time nor RNG"); assert_false(restored.snapshot().game_state.world.triggers.trigger_is_disabled("ap.choice-backout"), "backout leaves the Choice AP available for another entry"); var repeated := restored.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([repeated.state, repeated.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "re-entering the preserved AP asks the same authored Choice")
 	var continued := restored.respond(InteractionResponse.yes_no(repeated.interaction, false)); assert_equal([continued.state, restored.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(2, 0)], "the unselected Choice branch continues and applies the AP header destination"); assert_true(_has_event(continued, &"action_point_kept") and _event(continued, &"party_moved").payload.get("source") == "action-point-destination", "the following authored slot executes before ordinary destination handling"); assert_false(restored.snapshot().game_state.world.triggers.trigger_is_disabled("ap.choice-backout"), "the following Keep Codes instruction remains authoritative")
 	for encounter_kind: StringName in [&"simple", &"complex"]:
-		var encounter_content := _classic_backout_content(source_content, encounter_kind); var encounter_session := GameSession.new(); assert_equal(encounter_session.start(encounter_content, 1).state, SessionStep.State.COMPLETED, "%s Encounter backout session starts" % encounter_kind); _begin_fixture_adventure(encounter_session, encounter_content); var encounter_waiting := encounter_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var encounter_saved := save_round_trip(encounter_session.snapshot()); var encounter_restored := GameSession.new(); assert_equal(encounter_restored.restore(encounter_content, encounter_saved).state, SessionStep.State.COMPLETED, "pending %s Encounter restores with its post-move owner" % encounter_kind)
+		var encounter_content := _classic_backout_content(source_content, encounter_kind); var encounter_session := GameSession.new(); assert_equal(encounter_session.start(encounter_content, 1).state, SessionStep.State.COMPLETED, "%s Encounter backout session starts" % encounter_kind); _begin_standard_fixture_adventure(encounter_session, encounter_content); var encounter_waiting := encounter_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var encounter_saved := save_round_trip(encounter_session.snapshot()); var encounter_restored := GameSession.new(); assert_equal(encounter_restored.restore(encounter_content, encounter_saved).state, SessionStep.State.COMPLETED, "pending %s Encounter restores with its post-move owner" % encounter_kind)
 		var response_data: Dictionary = {"cancelled": true} if encounter_kind == &"simple" else {"action": "back"}; var encounter_backout := encounter_restored.respond(InteractionResponse.from_data(encounter_restored.view().pending_interaction.request_id, encounter_waiting.interaction.kind, response_data)); assert_equal([encounter_backout.state, encounter_restored.view().party_coordinate, _has_event(encounter_backout, &"classic_encounter_backout_completed"), encounter_restored.snapshot().game_state.world.triggers.trigger_is_disabled("ap.%s-backout" % encounter_kind)], [SessionStep.State.COMPLETED, Vector2i.ZERO, true, false], "Castle-authored %s Encounter cancellation reverses the entered land step and preserves its AP" % encounter_kind); var encounter_repeated := encounter_restored.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([encounter_repeated.state, encounter_repeated.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ENCOUNTER_CHOICE if encounter_kind == &"simple" else InteractionRequest.WORD_AND_ACTION], "re-entering the preserved %s Encounter AP asks again" % encounter_kind)
 
 
@@ -402,7 +402,7 @@ func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
 	var content := RealmzContent.new("contextual-command", source_content.package_hash, "contextual-command-content", source_content.rules_version, map.id, Vector2i.ZERO, WorldDefinition.new([map]), ScenarioDefinition.new(programs, []), [], [], [], source_content.characters.race_definitions(), source_content.characters.caste_definitions())
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "the seamless Encounter command fixture starts")
-	_begin_fixture_adventure(session, content); var facing := session.snapshot(); facing.game_state.last_move_direction = Vector2i.RIGHT; assert_equal(session.restore(content, facing).state, SessionStep.State.COMPLETED, "the fixture faces the neighboring land cell through the save boundary")
+	_begin_standard_fixture_adventure(session, content); var facing := session.snapshot(); facing.game_state.last_move_direction = Vector2i.RIGHT; assert_equal(session.restore(content, facing).state, SessionStep.State.COMPLETED, "the fixture faces the neighboring land cell through the save boundary")
 	assert_true(session.view().availability(&"contextual_encounter").enabled, "the core exposes Encounter throughout ordinary exploration")
 	session._context.rng = ScriptedRng.new([0, 32767, -32767])
 	var opened := session.submit_intent(ExplorationIntents.contextual_encounter())
@@ -421,7 +421,7 @@ func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
 func _test_map_view_projection_edges(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "the edge-projection session starts")
-	_begin_fixture_adventure(session, content)
+	_begin_standard_fixture_adventure(session, content)
 	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the north-west map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i.ZERO), "the north-west projection begins at the map edge")
 	assert_not_null(session.view().map_view.cell_at(Vector2i(24, 24)), "the north-west projection shifts inward instead of shrinking around the party"); var winter_snapshot := session.snapshot(); winter_snapshot.game_state.world.topology.set_map_landlook("land:0", 10); var winter_session := GameSession.new(); assert_equal(winter_session.restore(content, winter_snapshot).state, SessionStep.State.COMPLETED, "a save-owned seasonal landlook restores through the public session boundary"); assert_equal([winter_session.view().map_view.landlook, winter_session.view().map_view.cell_at(Vector2i.ZERO).tileset_id, winter_session.view().map_view.cell_at(Vector2i.ZERO).render_tile], [10, "landlook-10", content.world.map_by_id("land:0").topology.cell_at(Vector2i.ZERO).render_tile], "seasonal projection changes every land cell to the effective Snow atlas without changing its authored tile number")
@@ -448,7 +448,7 @@ func _test_map_view_projection_edges(content: RealmzContent) -> void:
 
 func _test_field_heal(content: RealmzContent) -> void:
 	var session := GameSession.new(); assert_equal(session.start(content, 9).state, SessionStep.State.COMPLETED, "the public Heal session starts")
-	_begin_fixture_adventure(session, content, 2); var members := session._context.state.party.characters()
+	_begin_standard_fixture_adventure(session, content, 2); var members := session._context.state.party.characters()
 	var healer := members[0]; healer.spellcaster_type = 1; healer.spell_points = 25; healer.maximum_spell_points = 25; healer.set_known_spells(["classic.spell.1506"])
 	var wounded := members[1]; wounded.current_health = 1; var before_minutes := session.snapshot().game_state.clock.total_minutes()
 	var healed := session.submit_intent(ExplorationIntents.heal()); assert_true(_has_event(healed, &"health_recovered") and _has_event(healed, &"spell_points_spent") and not healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10105), "Heal publishes recovery and spell-point events without repeating its command-start sound")
@@ -465,10 +465,10 @@ func _test_field_heal(content: RealmzContent) -> void:
 
 
 func _test_movement_fatigue_gate(content: RealmzContent) -> void:
-	var land_content := _open_movement_content(content); var land := GameSession.new(); land.start(land_content, 1); _begin_fixture_adventure(land, land_content); land._context.state.party.fatigue = 135; var land_before := JSON.stringify(land._context.state.to_data()); var land_rng_before := land.rng_trace().size(); var blocked_land := land.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var land_warning := _event(blocked_land, &"classic_notification_requested")
+	var land_content := _open_movement_content(content); var land := GameSession.new(); land.start(land_content, 1); _begin_standard_fixture_adventure(land, land_content); land._context.state.party.fatigue = 135; var land_before := JSON.stringify(land._context.state.to_data()); var land_rng_before := land.rng_trace().size(); var blocked_land := land.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var land_warning := _event(blocked_land, &"classic_notification_requested")
 	assert_equal([blocked_land.state, land_warning.payload.get("text") if land_warning != null else "", land_warning.payload.get("soundId") if land_warning != null else 0, JSON.stringify(land._context.state.to_data()), land.rng_trace().size()], [SessionStep.State.COMPLETED, "You are too tired to continue.  You need to rest.", 6000, land_before, land_rng_before], "fatigue 135 blocks ordinary land movement with Castle warning 54 without changing position, time, RNG, camp, wealth, or scenario state")
 	land._context.state.camping_allowed = false; var escaped_land := land.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([escaped_land.state, land.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(2, 1)], "Castle's exhausted-land escape hatch still permits travel where the scenario disabled camping so the party cannot be soft-locked")
-	var dungeon_source := GameSession.new(); dungeon_source.start(content, 1); _begin_fixture_adventure(dungeon_source, content); var dungeon_save := dungeon_source.snapshot(); dungeon_save.game_state.party.map_id = "dungeon:0"; dungeon_save.game_state.party.coordinate = Vector2i(2, 0); dungeon_save.game_state.party.fatigue = 135; dungeon_save.game_state.dungeon_heading = 4; var dungeon := GameSession.new(); assert_equal(dungeon.restore(content, dungeon_save).state, SessionStep.State.COMPLETED, "the exhausted dungeon fixture restores transactionally"); var dungeon_before := JSON.stringify(dungeon._context.state.to_data()); var dungeon_rng_before := dungeon.rng_trace().size(); var blocked_dungeon := dungeon.submit_intent(ExplorationIntents.overhead_dungeon_move(Vector2i.UP)); var dungeon_warning := _event(blocked_dungeon, &"classic_notification_requested")
+	var dungeon_source := GameSession.new(); dungeon_source.start(content, 1); _begin_standard_fixture_adventure(dungeon_source, content); var dungeon_save := dungeon_source.snapshot(); dungeon_save.game_state.party.map_id = "dungeon:0"; dungeon_save.game_state.party.coordinate = Vector2i(2, 0); dungeon_save.game_state.party.fatigue = 135; dungeon_save.game_state.dungeon_heading = 4; var dungeon := GameSession.new(); assert_equal(dungeon.restore(content, dungeon_save).state, SessionStep.State.COMPLETED, "the exhausted dungeon fixture restores transactionally"); var dungeon_before := JSON.stringify(dungeon._context.state.to_data()); var dungeon_rng_before := dungeon.rng_trace().size(); var blocked_dungeon := dungeon.submit_intent(ExplorationIntents.overhead_dungeon_move(Vector2i.UP)); var dungeon_warning := _event(blocked_dungeon, &"classic_notification_requested")
 	assert_equal([blocked_dungeon.state, dungeon_warning.payload.get("text") if dungeon_warning != null else "", dungeon.view().party_coordinate, dungeon.view().map_view.dungeon_heading, JSON.stringify(dungeon._context.state.to_data()), dungeon.rng_trace().size()], [SessionStep.State.COMPLETED, "You are too tired to continue.  You need to rest.", Vector2i(2, 0), 4, dungeon_before, dungeon_rng_before], "full fatigue blocks dungeon movement before overhead heading alignment and changes no location, heading, clock, RNG, or scenario state")
 
 
@@ -511,7 +511,7 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 	var baseline_content := _dungeon_special_content(source_content, cases[0])
 	var baseline := GameSession.new()
 	assert_equal(baseline.start(baseline_content, 31).state, SessionStep.State.COMPLETED, "the special dungeon-bit table starts from one public session boundary")
-	_begin_fixture_adventure(baseline, baseline_content)
+	_begin_standard_fixture_adventure(baseline, baseline_content)
 	var baseline_save := baseline.snapshot()
 	for dungeon_case: Dictionary in cases:
 		var content := _dungeon_special_content(source_content, dungeon_case)
@@ -529,24 +529,9 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 
 func _test_negative_random_battle_surprise(content: RealmzContent) -> void:
 	var region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); var original_minimum := region.battle_minimum; var original_maximum := region.battle_maximum; var original_option := region.option; region.battle_minimum = -1; region.battle_maximum = -1; region.option = 100
-	var session := GameSession.new(); session.start(content, 1); _begin_fixture_adventure(session, content, 6); session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var choice := session.submit_intent(ExplorationIntents.move(Vector2i.UP)); assert_equal(choice.state, SessionStep.State.WAITING_FOR_INTERACTION, "negative random battle offers the ordinary good-surprise choice before battle selection")
+	var session := GameSession.new(); session.start(content, 1); _begin_standard_fixture_adventure(session, content, 6); session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var choice := session.submit_intent(ExplorationIntents.move(Vector2i.UP)); assert_equal(choice.state, SessionStep.State.WAITING_FOR_INTERACTION, "negative random battle offers the ordinary good-surprise choice before battle selection")
 	var battle_step := session.respond(InteractionResponse.from_data(choice.interaction.request_id, &"yes_no", {"accepted": true})); assert_equal([_event(battle_step, &"random_encounter_triggered").payload["classicId"], _event(battle_step, &"random_encounter_triggered").payload["surprise"], _event(battle_step, &"battle_started").payload["surprise"]], [-1, -1, -1], "a signed negative random-battle ID selects its absolute battle and overrides accepted party initiative"); assert_equal(_event(battle_step, &"random_encounter_triggered").payload["battleId"], session.view().combat_view.battle_id, "the signed Classic selection resolves the corresponding positive Battle record")
 	region.battle_minimum = original_minimum; region.battle_maximum = original_maximum; region.option = original_option
-
-
-func _begin_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1) -> void:
-	if not _fixture_race_caste_available(content, "playable exploration fixture provides one race and caste"):
-		return
-	for character_index: int in range(clampi(party_size, 1, 6)):
-		var character_id := "fixture.party.member" if party_size == 1 else "fixture.party.member.%d" % (character_index + 1)
-		var character := _fixture_character(character_id, "Fixture Hero %d" % (character_index + 1), content, 10, -1)
-		assert_equal(session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
-	var started := session.submit_intent(PartyIntents.begin_adventure())
-	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
-		assert_equal(started.state, SessionStep.State.COMPLETED, "exploration content without a Start Game hook leaves party setup synchronously")
-	else:
-		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "exploration fixture reaches the Start Game hook after party setup")
-		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "exploration fixture explicitly leaves party setup")
 
 
 func _test_scripted_party_loss(source_content: RealmzContent) -> void:
@@ -559,16 +544,16 @@ func _assert_scripted_party_loss(source_content: RealmzContent, spell_loss: bool
 	spell.damage_min = 20
 	spell.damage_max = 20
 	var effect := ClassicActionDefinition.new(0, 18, 18, 0, false, [2701, 1, 0, 1, 0]) if spell_loss else ClassicActionDefinition.new(0, 16, 16, 0, false, [-20, 1, 1, 0, 0])
-	var open := _open_movement_content(source_content, false, false, "scripted-loss"); var ap := ScenarioProgramDefinition.new("ap:scripted-loss", &"trigger", "scripted-loss", [effect, ClassicActionDefinition.new(1, 24, 24, 0, false, [])]); var trigger := TriggerDefinition.new("scripted-loss", ap.id, open.start_map_id, Vector2i(2, 1), true, 100); var death := ScenarioProgramDefinition.new("xap:scripted-death-hook", &"application-hook", "party-death", [ClassicActionDefinition.new(0, 1, 1, 1, false, []), ClassicActionDefinition.new(1, 119, 119, 0, false, [])]); var hooks := ScenarioApplicationHooks.new("", death.id, "", "", ""); var content := RealmzContent.new(open.campaign_id, open.package_hash, open.content_id, open.rules_version, open.start_map_id, open.start_coordinate, open.world, ScenarioDefinition.new([ap, death], [], hooks), [MessageDefinition.new(1, "The party falls.")], [trigger], [], open.characters.race_definitions(), open.characters.caste_definitions(), [], [spell]); var session := GameSession.new(); assert_equal(session.start(content, 16).state, SessionStep.State.COMPLETED, "scripted-loss fixture starts"); _begin_fixture_adventure(session, content, 2); var entered := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_not_null(entered.interaction, "scripted-loss AP enters Party Death (state %s, error %s: %s, events %s)" % [entered.state, entered.error_code, entered.error_message, entered.events.map(func(event: DomainEvent) -> StringName: return event.kind)])
+	var open := _open_movement_content(source_content, false, false, "scripted-loss"); var ap := ScenarioProgramDefinition.new("ap:scripted-loss", &"trigger", "scripted-loss", [effect, ClassicActionDefinition.new(1, 24, 24, 0, false, [])]); var trigger := TriggerDefinition.new("scripted-loss", ap.id, open.start_map_id, Vector2i(2, 1), true, 100); var death := ScenarioProgramDefinition.new("xap:scripted-death-hook", &"application-hook", "party-death", [ClassicActionDefinition.new(0, 1, 1, 1, false, []), ClassicActionDefinition.new(1, 119, 119, 0, false, [])]); var hooks := ScenarioApplicationHooks.new("", death.id, "", "", ""); var content := RealmzContent.new(open.campaign_id, open.package_hash, open.content_id, open.rules_version, open.start_map_id, open.start_coordinate, open.world, ScenarioDefinition.new([ap, death], [], hooks), [MessageDefinition.new(1, "The party falls.")], [trigger], [], open.characters.race_definitions(), open.characters.caste_definitions(), [], [spell]); var session := GameSession.new(); assert_equal(session.start(content, 16).state, SessionStep.State.COMPLETED, "scripted-loss fixture starts"); _begin_standard_fixture_adventure(session, content, 2); var entered := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_not_null(entered.interaction, "scripted-loss AP enters Party Death (state %s, error %s: %s, events %s)" % [entered.state, entered.error_code, entered.error_message, entered.events.map(func(event: DomainEvent) -> StringName: return event.kind)])
 	if entered.interaction == null: return
-	assert_equal([entered.state, entered.interaction.body.to_data().get("prompt"), session._context.state.party.characters().map(func(member: CharacterState) -> int: return member.current_health)], [SessionStep.State.WAITING_FOR_INTERACTION, "The party falls.", [-10, -10]], "ordinary AP movement applies scripted damage, stops at Castle's total-party-loss boundary, and enters the death hook"); var pending := save_round_trip(session.snapshot()); var restored := GameSession.new(); assert_equal(restored.restore(content, pending).state, SessionStep.State.COMPLETED, "pending scripted party death restores with its suspended AP"); var resumed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction)); assert_equal([resumed.state, restored.view().session_started, restored._context.state.party.characters().map(func(member: CharacterState) -> int: return member.current_health)], [SessionStep.State.COMPLETED, true, [1, 1]], "opcode 119 revives and resumes the remaining authored AP instructions without replaying damage"); var no_hook := RealmzContent.new(open.campaign_id, open.package_hash, open.content_id, open.rules_version, open.start_map_id, open.start_coordinate, open.world, ScenarioDefinition.new([ap], []), [], [trigger], [], open.characters.race_definitions(), open.characters.caste_definitions(), [], [spell]); var doomed := GameSession.new(); assert_equal(doomed.start(no_hook, 16).state, SessionStep.State.COMPLETED, "no-hook scripted-loss fixture starts"); _begin_fixture_adventure(doomed, no_hook, 2); var closed := doomed.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_true(closed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended") and not doomed.view().session_started, "scripted total-party loss without a revival hook ends the adventure")
+	assert_equal([entered.state, entered.interaction.body.to_data().get("prompt"), session._context.state.party.characters().map(func(member: CharacterState) -> int: return member.current_health)], [SessionStep.State.WAITING_FOR_INTERACTION, "The party falls.", [-10, -10]], "ordinary AP movement applies scripted damage, stops at Castle's total-party-loss boundary, and enters the death hook"); var pending := save_round_trip(session.snapshot()); var restored := GameSession.new(); assert_equal(restored.restore(content, pending).state, SessionStep.State.COMPLETED, "pending scripted party death restores with its suspended AP"); var resumed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction)); assert_equal([resumed.state, restored.view().session_started, restored._context.state.party.characters().map(func(member: CharacterState) -> int: return member.current_health)], [SessionStep.State.COMPLETED, true, [1, 1]], "opcode 119 revives and resumes the remaining authored AP instructions without replaying damage"); var no_hook := RealmzContent.new(open.campaign_id, open.package_hash, open.content_id, open.rules_version, open.start_map_id, open.start_coordinate, open.world, ScenarioDefinition.new([ap], []), [], [trigger], [], open.characters.race_definitions(), open.characters.caste_definitions(), [], [spell]); var doomed := GameSession.new(); assert_equal(doomed.start(no_hook, 16).state, SessionStep.State.COMPLETED, "no-hook scripted-loss fixture starts"); _begin_standard_fixture_adventure(doomed, no_hook, 2); var closed := doomed.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_true(closed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended") and not doomed.view().session_started, "scripted total-party loss without a revival hook ends the adventure")
 
 
 func _test_boat_movement(source_content: RealmzContent) -> void:
 	var content := _boat_movement_content(source_content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "boat workflow session starts")
-	_begin_fixture_adventure(session, content)
+	_begin_standard_fixture_adventure(session, content)
 	var initial_minutes := session.snapshot().game_state.clock.total_minutes()
 	var board_prompt := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_not_null(board_prompt.interaction, "boardable movement yields an interaction (state %s, error %s: %s)" % [board_prompt.state, board_prompt.error_code, board_prompt.error_message])
@@ -601,11 +586,11 @@ func _test_boat_movement(source_content: RealmzContent) -> void:
 	assert_equal([stepped_ashore.state, restored_leave.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(3, 0)], "after disembarking the party may enter the shore normally")
 	var declined_session := GameSession.new()
 	declined_session.start(content, 1)
-	_begin_fixture_adventure(declined_session, content)
+	_begin_standard_fixture_adventure(declined_session, content)
 	var declined_prompt := declined_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	var declined := declined_session.respond(InteractionResponse.yes_no(declined_prompt.interaction, false))
 	assert_equal([declined.state, declined_session.view().party_coordinate, declined_session.snapshot().game_state.party_in_boat, _sound_ids(declined)], [SessionStep.State.COMPLETED, Vector2i.ZERO, false, [11]], "declining a boat retains the party and still applies Castle's target sound/time")
-	var ap_content := _boat_action_point_content(source_content); var ap_session := GameSession.new(); assert_equal(ap_session.start(ap_content, 1).state, SessionStep.State.COMPLETED, "boat action-point fixture starts"); _begin_fixture_adventure(ap_session, ap_content); var aboard_envelope := ap_session.snapshot(); aboard_envelope.game_state.party_in_boat = true; assert_equal(ap_session.restore(ap_content, aboard_envelope).state, SessionStep.State.COMPLETED, "the source-shaped fixture restores aboard its water origin")
+	var ap_content := _boat_action_point_content(source_content); var ap_session := GameSession.new(); assert_equal(ap_session.start(ap_content, 1).state, SessionStep.State.COMPLETED, "boat action-point fixture starts"); _begin_standard_fixture_adventure(ap_session, ap_content); var aboard_envelope := ap_session.snapshot(); aboard_envelope.game_state.party_in_boat = true; assert_equal(ap_session.restore(ap_content, aboard_envelope).state, SessionStep.State.COMPLETED, "the source-shaped fixture restores aboard its water origin")
 	var entered_ap := ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([entered_ap.state, ap_session.view().party_coordinate, _has_event(entered_ap, &"trigger_fired")], [SessionStep.State.COMPLETED, Vector2i(1, 0), true], "an embarked party enters a placed land action point through Castle's door-band branch")
 	var ordinary_land_block := ap_session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); assert_equal([ordinary_land_block.state, ap_session.view().party_coordinate, _sound_ids(ordinary_land_block)], [SessionStep.State.COMPLETED, Vector2i(1, 0), [-148, 11]], "the action-point exception does not let an embarked party traverse ordinary needBoat-0 terrain")
 
@@ -689,7 +674,7 @@ func _test_navigation_discovery_reuse(source_content: RealmzContent) -> void:
 	var content := _open_movement_content(source_content)
 	var session := GameSession.new()
 	session.start(content, 1)
-	_begin_fixture_adventure(session, content)
+	_begin_standard_fixture_adventure(session, content)
 	var saved := save_round_trip(session.snapshot())
 	var topology := content.world.map_by_id("open").topology
 	var revealed: Array[Vector2i] = []
@@ -712,7 +697,7 @@ func _test_stationary_projection(source_content: RealmzContent) -> void:
 	var content := _open_movement_content(source_content)
 	var session := GameSession.new()
 	session.start(content, 1)
-	_begin_fixture_adventure(session, content)
+	_begin_standard_fixture_adventure(session, content)
 	_restore_fixture_position(session, content, "open", Vector2i.ZERO, "fixture position changes through the validated save boundary")
 	for intent: PlayerIntent in [ExplorationIntents.move(Vector2i.LEFT), ExplorationIntents.toggle_search(), ExplorationIntents.search()]:
 		var previous := session.view()
@@ -732,7 +717,7 @@ func _test_passive_random_region_projection(source_content: RealmzContent) -> vo
 	var content := _open_movement_content(source_content, false, true)
 	var session := GameSession.new()
 	session.start(content, 1)
-	_begin_fixture_adventure(session, content)
+	_begin_standard_fixture_adventure(session, content)
 	session.view()
 	var fired := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	var fired_view := session.view(fired.events)
@@ -780,10 +765,10 @@ func _open_movement_content(source_content: RealmzContent, uses_los: bool = fals
 
 func _test_attempted_land_move_search(source_content: RealmzContent) -> void:
 	var content := _attempted_land_move_content(source_content)
-	var ordinary := GameSession.new(); ordinary.start(content, 1); _begin_fixture_adventure(ordinary, content); var rng_before := ordinary.rng_trace().size(); var ordinary_attempt := ordinary.submit_intent(ExplorationIntents.move(Vector2i.LEFT)); var ordinary_search := _event(ordinary_attempt, &"movement_secret_search_completed")
+	var ordinary := GameSession.new(); ordinary.start(content, 1); _begin_standard_fixture_adventure(ordinary, content); var rng_before := ordinary.rng_trace().size(); var ordinary_attempt := ordinary.submit_intent(ExplorationIntents.move(Vector2i.LEFT)); var ordinary_search := _event(ordinary_attempt, &"movement_secret_search_completed")
 	assert_true(ordinary_attempt.state == SessionStep.State.COMPLETED and ordinary.view().party_coordinate == Vector2i(1, 0) and _has_event(ordinary_attempt, &"movement_blocked") and ordinary_search != null and ordinary.rng_trace().size() == rng_before + 1, "a blocked valid land move remains in place but still performs Castle's ordinary deterministic secret check")
 	assert_false(ordinary.view().map_view.cell_at(Vector2i.ZERO).has_feature(&"secret"), "an unsuccessful ordinary check leaves the hidden land secret concealed")
-	var searching := GameSession.new(); searching.start(content, 1); _begin_fixture_adventure(searching, content); assert_equal(searching.submit_intent(ExplorationIntents.toggle_search()).state, SessionStep.State.COMPLETED, "the blocked-attempt fixture enables persistent Search mode"); var minutes_before := searching.snapshot().game_state.clock.total_minutes(); var searched_attempt := searching.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
+	var searching := GameSession.new(); searching.start(content, 1); _begin_standard_fixture_adventure(searching, content); assert_equal(searching.submit_intent(ExplorationIntents.toggle_search()).state, SessionStep.State.COMPLETED, "the blocked-attempt fixture enables persistent Search mode"); var minutes_before := searching.snapshot().game_state.clock.total_minutes(); var searched_attempt := searching.submit_intent(ExplorationIntents.move(Vector2i.LEFT))
 	assert_true(searched_attempt.state == SessionStep.State.COMPLETED and searching.view().party_coordinate == Vector2i(1, 0) and _has_event(searched_attempt, &"movement_blocked") and _has_event(searched_attempt, &"secret_discovered") and searching.view().map_view.cell_at(Vector2i.ZERO).has_feature(&"secret"), "Search mode makes the same blocked land attempt reveal the adjacent secret without admitting the party through the wall")
 	assert_equal(searching.snapshot().game_state.clock.total_minutes(), minutes_before + 30, "the attempted blocked tile pays its two outdoor time-clicks before Search mode pays Castle's separate four")
 

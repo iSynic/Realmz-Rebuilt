@@ -56,7 +56,7 @@ static func restore_party(context: SessionWorkflowContext) -> SessionWorkflowRes
 				character.conditions.set_value(condition, 0)
 		var race := context.content.characters.race_by_id(character.race_id)
 		for instance: ItemInstance in character.inventory():
-			var definition := definitions_by_id.get(instance.definition_id) as ItemDefinition
+			var definition: ItemDefinition = definitions_by_id.get(instance.definition_id)
 			if instance.equipped and definition != null and not definition.cursed_item_id.is_empty():
 				if not context.rules.equipment.force_unequip(character, instance, definition, item_definitions, race, context.state.party.conditions):
 					return SessionWorkflowResult.failed(&"debug_cursed_item_unequip_failed", "The equipped cursed item could not be removed.")

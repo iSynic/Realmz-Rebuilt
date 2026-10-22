@@ -58,6 +58,8 @@ func set_value(setting_id: StringName, value: Variant) -> void:
 		&"exploration_speed_percent": values.exploration_speed_percent = int(value)
 		&"combat_text_speed_percent": values.combat_text_speed_percent = int(value)
 		&"combat_text_background_opacity_percent": values.combat_text_background_opacity_percent = int(value)
+		&"combat_text_motion", &"combat_text_size_percent", &"combat_text_travel_logical_pixels", &"combat_text_anchor", &"combat_text_custom_offset_y_logical_pixels":
+			_set_combat_text_value(setting_id, value)
 		&"combat_playback_speed_percent": values.combat_playback_speed_percent = int(value)
 		&"indoor_party_icon": values.indoor_party_icon = int(value)
 		&"master_volume": values.master_volume = float(value)
@@ -65,3 +67,31 @@ func set_value(setting_id: StringName, value: Variant) -> void:
 		&"music_volume": values.music_volume = float(value)
 		&"interface_text_scale": values.interface_text_scale = float(value)
 		&"narrative_text_scale": values.narrative_text_scale = float(value)
+
+
+func _set_combat_text_value(setting_id: StringName, value: Variant) -> void:
+	match setting_id:
+		&"combat_text_motion":
+			if value is String:
+				values.combat_text_motion = value
+		&"combat_text_size_percent":
+			if value is int:
+				values.combat_text_size_percent = value
+			elif value is float:
+				var size_number: float = value
+				values.combat_text_size_percent = int(size_number)
+		&"combat_text_travel_logical_pixels":
+			if value is int:
+				values.combat_text_travel_logical_pixels = value
+			elif value is float:
+				var travel_number: float = value
+				values.combat_text_travel_logical_pixels = int(travel_number)
+		&"combat_text_anchor":
+			if value is String:
+				values.combat_text_anchor = value
+		&"combat_text_custom_offset_y_logical_pixels":
+			if value is int:
+				values.combat_text_custom_offset_y_logical_pixels = value
+			elif value is float:
+				var offset_y_number: float = value
+				values.combat_text_custom_offset_y_logical_pixels = int(offset_y_number)

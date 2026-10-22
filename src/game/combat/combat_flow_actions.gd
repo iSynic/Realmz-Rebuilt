@@ -93,8 +93,7 @@ func _submit_delay(state: GameState, content: RealmzContent, actor: CharacterSta
 	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
 	var round_advanced := state.combat.delay_active_actor()
 	var events: Array[DomainEvent] = []
-	if round_advanced:
-		_context.rounds().process_bleeding_round(state, rng, events)
+	_context.rounds().after_turn_changed(state, content, rng, events, round_advanced)
 	events.append(DomainEvent.new(&"combat_turn_delayed", {"actorId": actor.id, "roundAdvanced": round_advanced, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-012"}))
 	return CombatFlowResult.succeeded(events)
 
@@ -241,7 +240,7 @@ func _prepare_character_projectile(state: GameState, content: RealmzContent, act
 		instance_id = equipment.missile_ammunition_instance_id
 	prepare_character_turn(combat, actor)
 	var power := rng.draw(7, StringName("combat.projectile.%s.power" % instance_id))
-	if not combat.turns.stage_random_item_power(actor.id, instance_id, power):
+	if not combat.turns.stage_random_item_power(actor.id, instance_id, power, projectile_item.id if state.adventure_rules.free_targeting_cancellation else ""):
 		return CombatFlowResult.failed(&"projectile_power_roll_unavailable", "The projectile power could not be staged for this activation.")
 	return CombatFlowResult.succeeded([DomainEvent.new(&"combat_projectile_power_staged", {"actorId": actor.id, "itemInstanceId": instance_id, "itemId": projectile_item.id, "power": power, "source": "classic"})])
 
@@ -496,7 +495,7 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 	if resolution.total_damage > 0:
 		combat.actor_statuses.mark_attacked(target.id)
 	combat.turns.active_turn.commit_physical_action()
-	combat.turns.clear_staged_random_item_power()
+	combat.turns.consume_random_item_power(profile.item_instance_id)
 	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - 2)
 	actor.movement = maxi(0, actor.movement - 12)
 	var events: Array[DomainEvent] = []

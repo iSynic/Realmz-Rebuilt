@@ -216,6 +216,10 @@ func _is_focusable(control: Control) -> bool:
 func _adjust_value(control: Control, direction: Vector2i) -> bool:
 	if not control is Range or direction.x == 0:
 		return false
+	if control is Slider:
+		var slider: Slider = control
+		if not slider.editable:
+			return true
 	var range := control as Range
 	range.value = clampf(range.value + range.step * direction.x, range.min_value, range.max_value)
 	return true

@@ -23,7 +23,7 @@ func _test_immediate_single_target_action_preference() -> void:
 	assert_false(settings.immediate_single_target_actions, "immediate single-target actions default off")
 	settings.immediate_single_target_actions = true
 	var serialized := settings.to_data()
-	assert_equal(serialized["schemaVersion"], 27, "presentation settings serialize with schema twenty-seven")
+	assert_equal(serialized["schemaVersion"], 28, "presentation settings serialize with schema twenty-eight")
 	assert_true(serialized["immediateSingleTargetActions"], "the preference uses its stable serialized key")
 	var restored := PresentationSettings.from_data(serialized)
 	assert_true(restored != null and restored.immediate_single_target_actions, "schema-nineteen preference round-trips through serialization")

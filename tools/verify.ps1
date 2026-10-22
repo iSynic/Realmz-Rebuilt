@@ -25,7 +25,8 @@ function Invoke-GodotGate {
         [switch]$RejectTeardownLeaks
     )
 
-    $result = Invoke-StreamingProcess -FilePath $GodotPath -ArgumentList $GodotArguments -Label $Label
+    $engineLog = Join-Path ([IO.Path]::GetTempPath()) ("realmz-gate-" + [Guid]::NewGuid().ToString("N") + ".log")
+    $result = Invoke-StreamingProcess -FilePath $GodotPath -ArgumentList (@("--log-file", $engineLog) + $GodotArguments) -Label $Label
     $combined = $result.Output -join "`n"
     if ($result.ExitCode -ne 0) { throw "$Label failed with exit code $($result.ExitCode)." }
     if ($combined -match "SCRIPT ERROR:" -or $combined -match "Parse Error:") {
@@ -38,7 +39,7 @@ function Invoke-GodotGate {
 
 Invoke-GodotGate "Godot project import/script validation" @("--headless", "--path", $repoRoot, "--editor", "--quit")
 Invoke-GodotGate "Complete script compilation" @("--headless", "--path", $repoRoot, "--script", "res://tools/verify_script_compilation.gd")
-Invoke-GodotGate "Main scene smoke launch" @("--headless", "--path", $repoRoot, "--quit-after", "5")
+Invoke-GodotGate "Main scene smoke launch" @("--headless", "--path", $repoRoot, "--script", "res://tools/verification_tree.gd", "--quit-after", "5")
 Invoke-GodotGate -Label "Headless test suite" -GodotArguments @("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd") -RejectTeardownLeaks
 Invoke-GodotGate "Providence-Rebuilt package alignment" @("--headless", "--path", $repoRoot, "--script", "res://tools/providence_alignment_probe.gd")
 Invoke-GodotGate "Bundled party-setup catalogs" @("--headless", "--path", $repoRoot, "--script", "res://tools/generate_setup_catalogs.gd", "--", "--check")
@@ -82,6 +83,9 @@ if ($LASTEXITCODE -ne 0) { throw "Human-maintainability verification failed." }
 
 & "$PSScriptRoot\verify_architecture_overhaul.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Architecture-overhaul verification failed." }
+
+& "$PSScriptRoot\verify_unsafe_warnings.ps1" -GodotPath $GodotPath
+if ($LASTEXITCODE -ne 0) { throw "Unsafe-warning ratchet failed." }
 
 & "$PSScriptRoot\verify_export_contract.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Release export contract verification failed." }

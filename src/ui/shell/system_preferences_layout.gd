@@ -1,12 +1,15 @@
-## Seven-category shell for the shared System workspace.
+## Eight-category shell for the shared System workspace.
 class_name SystemPreferencesLayout
 extends SystemWorkspace
 
 signal category_selected(category: StringName)
 signal setting_changed(setting_id: StringName, value: Variant)
 signal action_requested(action_id: StringName, value: Variant)
+signal adventure_rules_changed(enabled: bool)
+signal adventure_rules_apply_requested
+signal adventure_rules_cancel_requested
 
-const PREFERENCE_SECTIONS: Array[StringName] = [&"Display", &"Interface", &"Controls", &"Audio", &"Pacing", &"Accessibility", &"Diagnostics"]
+const PREFERENCE_SECTIONS: Array[StringName] = [&"Display", &"Interface", &"Controls", &"Audio", &"Pacing", &"Adventure Rules", &"Accessibility", &"Diagnostics"]
 
 @export var setting_caption_width := 200.0
 @export var setting_field_width := 246.0
@@ -47,6 +50,12 @@ static func refresh_interface_size_feedback(workspace: Control, settings: Presen
 
 func _ready() -> void:
 	tabs().tabs_visible = false
+	var combat_text := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/CombatTextPreferences") as CombatTextPreferencesPanel
+	combat_text.setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: setting_changed.emit(setting_id, value))
+	var rules_page := adventure_rules_page()
+	rules_page.value_changed.connect(func(enabled: bool) -> void: adventure_rules_changed.emit(enabled))
+	rules_page.apply_requested.connect(func() -> void: adventure_rules_apply_requested.emit())
+	rules_page.cancel_requested.connect(func() -> void: adventure_rules_cancel_requested.emit())
 	var search := get_node("PreferencesSearch") as PreferencesSearch
 	search.bind_pages(tabs())
 	search.result_selected.connect(_focus_search_result)
@@ -106,6 +115,14 @@ func show_saves() -> void:
 	_update_screen_heading(true)
 
 
+func adventure_rules_page() -> AdventureRulesSettingsPage:
+	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Adventure Rules") as AdventureRulesSettingsPage
+
+
+func bind_adventure_rules(rules: AdventureRules, available: bool, reason: String, dirty: bool, pending: bool, status: String) -> void:
+	adventure_rules_page().bind_rules(rules, available, reason, dirty, pending, status)
+
+
 func _update_screen_heading(save_mode: bool) -> void:
 	var ancestor := get_parent()
 	while ancestor != null:
@@ -147,11 +164,12 @@ func _sync_category_rail(index: int) -> void:
 	rail.visible = not _save_mode and not _compact
 	get_node("CompactCategory").visible = not _save_mode and _compact
 	get_node("PreferencesSearch").visible = not _save_mode
-	get_node("SystemWorkspaceBody/ContextHelp").visible = not _save_mode and not _compact
+	var rules_mode := not _save_mode and _current_category() == &"Adventure Rules"
+	get_node("SystemWorkspaceBody/ContextHelp").visible = not _save_mode and not _compact and not rules_mode
 	for category_index: int in PREFERENCE_SECTIONS.size():
 		var button := get_node("SystemWorkspaceBody/SystemCategoryRail/%s" % PREFERENCE_SECTIONS[category_index]) as Button
 		button.button_pressed = not _save_mode and String(tabs().get_child(index).name) == String(PREFERENCE_SECTIONS[category_index])
-	get_node("PreferencesFooter").visible = not _save_mode
+	get_node("PreferencesFooter").visible = not _save_mode and not rules_mode
 
 
 func _show_context_help(control: Control) -> void:
@@ -265,8 +283,7 @@ func bind_command_titles(settings: PresentationSettings) -> void:
 
 func bind_pacing(settings: PresentationSettings) -> void:
 	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content")
-	_bind_combat_text_speed(root, settings.combat_text_speed_percent)
-	_bind_combat_text_background(root, settings.combat_text_background_opacity_percent)
+	(root.get_node("CombatTextPreferences") as CombatTextPreferencesPanel).bind_settings(settings)
 	_bind_toggle(root.get_node("HurrySpellResolution") as CheckButton, settings.hurry_spell_resolution, &"hurry_spell_resolution")
 	var combat := root.get_node("CombatSpeedRow/CombatPlaybackSpeedSlider") as HSlider
 	var combat_caption := root.get_node("CombatSpeedRow/CombatPlaybackSpeedCaption") as Label
@@ -293,37 +310,19 @@ func bind_pacing(settings: PresentationSettings) -> void:
 		setting_changed.emit(&"exploration_speed_percent", percent)
 	)
 
-
-func _bind_combat_text_speed(root: Node, percent: int) -> void:
-	var slider := root.get_node("CombatTextSpeedRow/CombatTextSpeedSlider") as HSlider
-	var caption := root.get_node("CombatTextSpeedRow/CombatTextSpeedCaption") as Label
-	bind_label(caption, "Scrolling combat text speed  •  %d%%" % percent, Color("e0e2e5"), 15)
-	_clear_value_changed_connections(slider)
-	slider.value = percent
-	slider.tooltip_text = "Lower values slow damage and status text without slowing combat."
-	slider.value_changed.connect(func(value: float) -> void:
-		caption.text = "Scrolling combat text speed  •  %d%%" % int(value)
-		setting_changed.emit(&"combat_text_speed_percent", int(value))
-	)
-
-
-func _bind_combat_text_background(root: Node, percent: int) -> void:
-	var slider := root.get_node("CombatTextBackgroundRow/CombatTextBackgroundSlider") as HSlider
-	var caption := root.get_node("CombatTextBackgroundRow/CombatTextBackgroundCaption") as Label
-	bind_label(caption, "Combat text background opacity  •  %d%%" % percent, Color("e0e2e5"), 15)
-	_clear_value_changed_connections(slider)
-	slider.value = percent
-	slider.tooltip_text = "Change only the backing behind combat text; letters keep their contrast."
-	slider.value_changed.connect(func(value: float) -> void:
-		caption.text = "Combat text background opacity  •  %d%%" % int(value)
-		setting_changed.emit(&"combat_text_background_opacity_percent", int(value))
-	)
-
-
 func bind_accessibility(settings: PresentationSettings, _fonts: FontResolver) -> void:
 	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content")
 	_bind_toggle(root.get_node("ReducedMotion") as CheckButton, settings.reduced_motion, &"reduced_motion")
 	_bind_toggle(root.get_node("ReducedSound") as CheckButton, settings.reduced_sound, &"reduced_sound")
+
+
+func bind_character_art(view: GameView) -> void:
+	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Interface/InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Artwork")
+	var button := root.get_node("OpenCharacterArt") as Button
+	button.disabled = view != null and view.combat_view != null and view.combat_view.outcome == &"active"
+	(root.get_node("Availability") as Label).text = "Finish the battle before importing artwork." if button.disabled else ""
+	button.tooltip_text = "Finish the battle before importing artwork." if button.disabled else "Manage portraits and combat icons. Library changes are saved separately from these preferences."
+	_bind_action(button, func() -> void: action_requested.emit(&"character_art", null))
 
 
 func bind_interface(settings: PresentationSettings, fonts: FontResolver) -> void:

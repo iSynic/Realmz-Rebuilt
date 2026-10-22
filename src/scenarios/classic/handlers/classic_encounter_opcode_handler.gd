@@ -223,7 +223,8 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 	if action.extra_code[3] != 0:
 		current["day"] = _game_state.clock.day()
 	if action.extra_code[4] > -1:
-		current["day"] = int(current.get("day", definition.day if definition != null else 0)) + action.extra_code[4]
+		var day: int = current.get("day", definition.day if definition != null else 0)
+		current["day"] = day + action.extra_code[4]
 	_game_state.scenario_progress.encounters.set_timed_override(encounter_id, current)
 	return ScenarioRuntimeOperationResult.completed(current, [DomainEvent.new(&"timed_encounter_changed", {"encounterId": encounter_id, "state": current})])
 

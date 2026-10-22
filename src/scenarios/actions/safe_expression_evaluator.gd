@@ -44,9 +44,11 @@ static func evaluate(expression: SafeExpressionDefinition, frame: ScenarioFrame,
 			var object_result := evaluate(expression.object, frame, runtime_api)
 			if not object_result["ok"]:
 				return object_result
-			if not object_result["value"] is Dictionary or not object_result["value"].has(expression.member):
+			var object_value: Variant = object_result["value"]
+			var record: Dictionary = object_value if object_value is Dictionary else {}
+			if not object_value is Dictionary or not record.has(expression.member):
 				return {"ok": false, "error": "Safe member '%s' is unavailable." % expression.member}
-			return {"ok": true, "value": object_result["value"][expression.member]}
+			return {"ok": true, "value": record[expression.member]}
 		SafeExpressionDefinition.Kind.COLLECTION:
 			return _evaluate_collection(expression, frame, runtime_api)
 	return {"ok": false, "error": "Safe expression kind is unavailable."}
@@ -83,12 +85,18 @@ static func value_matches_type(value: Variant, value_type: StringName, max_lengt
 		&"float":
 			return value is int or value is float
 		&"string":
-			return value is String and (max_length < 0 or value.length() <= max_length)
+			if not value is String:
+				return false
+			var text: String = value
+			return max_length < 0 or text.length() <= max_length
 		&"bool-array", &"int-array", &"float-array", &"string-array", &"character-snapshot-array":
-			if not value is Array or value.size() > 256 or (max_length >= 0 and value.size() > max_length):
+			if not value is Array:
+				return false
+			var items: Array = value
+			if items.size() > 256 or (max_length >= 0 and items.size() > max_length):
 				return false
 			var element_type := StringName(String(value_type).trim_suffix("-array"))
-			for entry: Variant in value:
+			for entry: Variant in items:
 				if not value_matches_type(entry, element_type):
 					return false
 			return true

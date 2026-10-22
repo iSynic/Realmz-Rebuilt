@@ -89,8 +89,10 @@ func set_command_title_visible(visible: bool, fit_art_to_button: bool = false) -
 	var divider := get_node_or_null("CommandMargin/CommandContent/CaptionBand/Divider") as Control
 	if caption != null:
 		caption.modulate.a = 1.0 if visible or _atlas == null else 0.0
+		caption.clip_text = not visible and _atlas != null
 	if divider != null:
 		divider.modulate.a = 1.0 if visible or _atlas == null else 0.0
+	update_minimum_size()
 	queue_redraw()
 
 
@@ -146,7 +148,17 @@ func _fitted_art_scale() -> int:
 
 func _get_minimum_size() -> Vector2:
 	var margin := get_node_or_null("CommandMargin") as MarginContainer
-	return margin.get_combined_minimum_size() if margin != null else Vector2.ZERO
+	if margin == null:
+		return Vector2.ZERO
+	var minimum := margin.get_combined_minimum_size()
+	var band := margin.get_node("CommandContent/CaptionBand") as Control
+	if band.visible and (_show_command_title or _atlas == null):
+		var caption := band.get_node("Caption") as Label
+		var font := caption.get_theme_font(&"font")
+		var font_size := caption.get_theme_font_size(&"font_size")
+		var caption_width := maxf(font.get_string_size("Search", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x, font.get_string_size("Stop Search", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+		minimum.x = maxf(minimum.x, ceilf(caption_width) + margin.get_theme_constant(&"margin_left") + margin.get_theme_constant(&"margin_right"))
+	return minimum
 
 
 static func remove_classic_matte(texture: Texture2D) -> Texture2D:

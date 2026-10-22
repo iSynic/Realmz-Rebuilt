@@ -15,6 +15,8 @@ var reset_traitor_on_complete: bool = true
 func wire_payload(kind: StringName) -> Dictionary:
 	if kind in [&"combat-retreat-confirmation", &"combat-friendly-collision"]:
 		return {"kind": String(kind), "battleId": battle_id, "actorId": actor_id, "mode": String(mode), "destination": [destination.x, destination.y]}
+	if kind == &"combat-round-macro":
+		return {"kind": String(kind), "battleId": battle_id, "programId": program_id}
 	if kind == &"combat-death-macro":
 		return {"kind": String(kind), "battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "resetTraitorOnComplete": reset_traitor_on_complete}
 	return {"kind": String(kind), "battleId": battle_id}

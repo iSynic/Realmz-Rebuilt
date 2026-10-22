@@ -72,6 +72,12 @@ func _init() -> void:
 
 
 func _bind_system_controller(owner_ref: WeakRef) -> void:
+	_system_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
+		var owner: Variant = owner_ref.get_ref()
+		if owner is ScreenContentPresenter:
+			var presenter: ScreenContentPresenter = owner
+			presenter.intent_submitted.emit(intent)
+	)
 	_system_controller.action_requested.connect(func(action_id: StringName, value: Variant) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:

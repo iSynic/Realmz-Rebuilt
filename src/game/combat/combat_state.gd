@@ -13,6 +13,7 @@ var classic_post_battle_sentinel: int = 0
 var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
 var pending_reaction: CombatReactionState
+var round_cursor: CombatRoundCursor
 
 var roster: CombatRosterState
 var turns: CombatTurnSequenceState

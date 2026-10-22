@@ -10,19 +10,22 @@ static func is_safe(value: Variant, depth: int = 0) -> bool:
 	if value == null or value is bool or value is int or value is String:
 		return true
 	if value is float:
-		return not is_nan(value) and not is_inf(value)
+		var number: float = value
+		return not is_nan(number) and not is_inf(number)
 	if value is Array:
-		if value.size() > 256:
+		var items: Array = value
+		if items.size() > 256:
 			return false
-		for child: Variant in value:
+		for child: Variant in items:
 			if not is_safe(child, depth + 1):
 				return false
 		return true
 	if value is Dictionary:
-		if value.size() > 256:
+		var record: Dictionary = value
+		if record.size() > 256:
 			return false
-		for key: Variant in value.keys():
-			if not key is String or not is_safe(value[key], depth + 1):
+		for key: Variant in record.keys():
+			if not key is String or not is_safe(record[key], depth + 1):
 				return false
 		return true
 	return false
@@ -38,7 +41,8 @@ static func encode(value: Variant) -> Dictionary:
 	if value is float:
 		return {"type": "float", "value": value}
 	if value is String or value is StringName:
-		return {"type": "string", "value": String(value)}
+		var text: String = value
+		return {"type": "string", "value": text}
 	if value is Array:
 		var entries: Array[Dictionary] = []
 		for child: Variant in value:
@@ -47,49 +51,61 @@ static func encode(value: Variant) -> Dictionary:
 	if not value is Dictionary:
 		push_error("Safe Action value of type %s cannot be encoded; it is saved as null." % type_string(typeof(value)))
 		return {"type": "null"}
+	var record: Dictionary = value
 	var fields: Dictionary = {}
-	var keys: Array = value.keys()
+	var keys: Array = record.keys()
 	keys.sort()
 	for key: Variant in keys:
-		fields[key] = encode(value[key])
+		fields[key] = encode(record[key])
 	return {"type": "record", "value": fields}
 
 
 ## Returns {"ok": bool, "value": Variant}; depth is bounded at 32.
 static func decode(value: Variant, depth: int = 0) -> Dictionary:
-	if depth > 32 or not value is Dictionary or not value.get("type") is String:
+	if depth > 32 or not value is Dictionary:
 		return {"ok": false}
-	match value["type"]:
+	var data: Dictionary = value
+	if not data.get("type") is String:
+		return {"ok": false}
+	match data["type"]:
 		"null":
-			return {"ok": value.size() == 1, "value": null}
+			return {"ok": data.size() == 1, "value": null}
 		"bool":
-			return {"ok": value.size() == 2 and value.get("value") is bool, "value": value.get("value")}
+			return {"ok": data.size() == 2 and data.get("value") is bool, "value": data.get("value")}
 		"int":
-			var integer: Variant = _integer(value.get("value"))
-			return {"ok": value.size() == 2 and integer != null, "value": integer}
+			var integer: Variant = _integer(data.get("value"))
+			return {"ok": data.size() == 2 and integer != null, "value": integer}
 		"float":
-			var number: Variant = value.get("value")
-			return {"ok": value.size() == 2 and (number is int or number is float) and not is_nan(float(number)) and not is_inf(float(number)), "value": float(number) if number is int or number is float else 0.0}
+			var number: Variant = data.get("value")
+			var numeric := number is int or number is float
+			var as_float: float = number if numeric else 0.0
+			return {"ok": data.size() == 2 and numeric and not is_nan(as_float) and not is_inf(as_float), "value": as_float}
 		"string":
-			return {"ok": value.size() == 2 and value.get("value") is String, "value": value.get("value")}
+			return {"ok": data.size() == 2 and data.get("value") is String, "value": data.get("value")}
 		"array":
-			if value.size() != 2 or not value.get("value") is Array or value["value"].size() > 256:
+			if data.size() != 2 or not data.get("value") is Array:
+				return {"ok": false}
+			var items: Array = data["value"]
+			if items.size() > 256:
 				return {"ok": false}
 			var entries: Array = []
-			for child: Variant in value["value"]:
+			for child: Variant in items:
 				var decoded := decode(child, depth + 1)
 				if not decoded["ok"]:
 					return {"ok": false}
 				entries.append(decoded["value"])
 			return {"ok": true, "value": entries}
 		"record":
-			if value.size() != 2 or not value.get("value") is Dictionary or value["value"].size() > 256:
+			if data.size() != 2 or not data.get("value") is Dictionary:
+				return {"ok": false}
+			var record: Dictionary = data["value"]
+			if record.size() > 256:
 				return {"ok": false}
 			var fields: Dictionary = {}
-			for key: Variant in value["value"].keys():
+			for key: Variant in record.keys():
 				if not key is String:
 					return {"ok": false}
-				var decoded := decode(value["value"][key], depth + 1)
+				var decoded := decode(record[key], depth + 1)
 				if not decoded["ok"]:
 					return {"ok": false}
 				fields[key] = decoded["value"]
@@ -100,6 +116,8 @@ static func decode(value: Variant, depth: int = 0) -> Dictionary:
 static func _integer(value: Variant) -> Variant:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return null

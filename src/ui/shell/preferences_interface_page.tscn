@@ -35,6 +35,29 @@ theme_override_constants/separation = 12
 [node name="HUD panels" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs" instance=ExtResource("1_hud_panel")]
 layout_mode = 2
 
+[node name="Artwork" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Description" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Artwork"]
+layout_mode = 2
+text = "Manage portraits and combat icons in your Character Art library."
+autowrap_mode = 2
+
+[node name="OpenCharacterArt" type="Button" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Artwork"]
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Open Character Art…"
+
+[node name="LibraryPersistence" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Artwork"]
+layout_mode = 2
+text = "Library changes are saved separately from these preferences."
+autowrap_mode = 2
+
+[node name="Availability" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Artwork"]
+layout_mode = 2
+autowrap_mode = 2
+
 [node name="InterfaceFontRow" type="BoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Text" groups=["system_setting_rows"]]
 layout_mode = 2
 

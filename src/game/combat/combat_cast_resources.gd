@@ -54,7 +54,7 @@ static func _reserve_item(caster: CharacterState, content: RealmzContent, select
 	return false
 
 
-## Used only on a detached preview or inside the atomic confirmation transaction.
+## Used by detached previews and transactional confirmation or optional free cancellation.
 static func release(state: GameState) -> bool:
 	var commitment := pending(state)
 	if commitment == null: return false

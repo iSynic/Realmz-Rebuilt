@@ -176,6 +176,7 @@ func _test_player_intent_contract() -> void:
 		CombatIntents.set_auto(character.id, true),
 		CombatIntents.targeting(&"abort_cast", CombatCastSelection.from_body(InteractionResponse.CombatBody.new(&"abort_cast", character.id))),
 		ExplorationIntents.set_location_note("The western gate."),
+		AdventureRulesIntents.set_rules(AdventureRules.new()),
 	]
 	assert_true(intents.all(func(intent: PlayerIntent) -> bool: return intent.is_valid()), "every public player-intent factory produces a payload accepted by the central kind registry")
 	var kinds: Array[int] = []

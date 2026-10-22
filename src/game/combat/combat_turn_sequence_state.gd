@@ -7,6 +7,7 @@ var round_number: int = 1
 var turn_index: int = 0
 var active_turn: CombatTurnState
 var undo_state: CombatUndoState
+var retained_item_powers: Array[CombatItemPowerRoll] = []
 
 var _roster: CombatRosterState
 var _turn_order: Array[String] = []
@@ -27,8 +28,7 @@ func set_turn_order(order: Array[String]) -> void:
 	for actor_id: String in _turn_order:
 		_actor_ids[actor_id] = true
 	turn_index = 0
-	active_turn = null
-	undo_state = null
+	_reset_activation()
 
 
 func active_actor_id() -> String:
@@ -73,8 +73,10 @@ func begin_active_turn() -> CombatTurnState:
 	return active_turn
 
 
-func stage_random_item_power(actor_id: String, instance_id: String, power: int) -> bool:
-	if active_turn == null or active_turn.actor_id != actor_id or actor_id != active_actor_id() or _roster.monster_by_id(actor_id) != null or instance_id.is_empty() or power < 1 or power > 7 or not active_turn.staged_item_instance_id.is_empty():
+func stage_random_item_power(actor_id: String, instance_id: String, power: int, retained_definition_id: String = "") -> bool:
+	if active_turn == null or active_turn.actor_id != actor_id or actor_id != active_actor_id() or _roster.monster_by_id(actor_id) != null or instance_id.is_empty() or power < 1 or power > 7 or not active_turn.staged_item_instance_id.is_empty() and retained_definition_id.is_empty():
+		return false
+	if not retained_definition_id.is_empty() and not _retain_item_power(instance_id, retained_definition_id, power):
 		return false
 	active_turn.staged_item_instance_id = instance_id
 	active_turn.staged_item_power = power
@@ -82,9 +84,14 @@ func stage_random_item_power(actor_id: String, instance_id: String, power: int) 
 
 
 func staged_random_item_power(actor_id: String, instance_id: String) -> int:
-	if active_turn == null or active_turn.actor_id != actor_id or actor_id != active_actor_id() or active_turn.staged_item_instance_id != instance_id:
+	if actor_id != active_actor_id():
 		return 0
-	return active_turn.staged_item_power
+	if active_turn != null and active_turn.actor_id == actor_id and active_turn.staged_item_instance_id == instance_id:
+		return active_turn.staged_item_power
+	for roll: CombatItemPowerRoll in retained_item_powers:
+		if roll.instance_id == instance_id:
+			return roll.power
+	return 0
 
 
 func staged_random_item_instance_id() -> String:
@@ -106,8 +113,7 @@ func begin_character_undo(actor_id: String, battlefield: BattlefieldState) -> bo
 
 
 func clear_active_turn() -> void:
-	active_turn = null
-	undo_state = null
+	_reset_activation()
 
 
 func invalidate_undo() -> void:
@@ -126,6 +132,22 @@ func append_turn_actor(actor_id: String) -> void:
 		_actor_ids[actor_id] = true
 
 
+func _retain_item_power(instance_id: String, definition_id: String, power: int) -> bool:
+	# FD-COMBAT-022: free cancellation never buys another draw for this instance.
+	for roll: CombatItemPowerRoll in retained_item_powers:
+		if roll.instance_id == instance_id:
+			return roll.definition_id == definition_id and roll.power == power
+	retained_item_powers.append(CombatItemPowerRoll.new(instance_id, definition_id, power))
+	return true
+
+
+func consume_random_item_power(instance_id: String) -> void:
+	retained_item_powers = retained_item_powers.filter(func(roll: CombatItemPowerRoll) -> bool: return roll.instance_id != instance_id)
+	if staged_random_item_instance_id() == instance_id:
+		clear_staged_random_item_power()
+
+
 func _reset_activation() -> void:
 	active_turn = null
 	undo_state = null
+	retained_item_powers.clear()

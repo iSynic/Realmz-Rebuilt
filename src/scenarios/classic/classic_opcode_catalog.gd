@@ -82,7 +82,8 @@ static func normalize(raw_opcode: int) -> int:
 
 
 static func owner(opcode: int) -> StringName:
-	return OWNER_BY_OPCODE.get(normalize(opcode), &"") as StringName
+	var result: StringName = OWNER_BY_OPCODE.get(normalize(opcode), &"")
+	return result
 
 
 static func is_owned(opcode: int) -> bool:

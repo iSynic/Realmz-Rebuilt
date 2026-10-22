@@ -98,7 +98,10 @@ func set_experience_awards(values: Dictionary) -> bool:
 	var result: Dictionary = {}
 	for character_id: Variant in values:
 		var amount: Variant = values[character_id]
-		if not character_id is String or character_id.is_empty() or not amount is int:
+		if not character_id is String:
+			return false
+		var id_text: String = character_id
+		if id_text.is_empty() or not amount is int:
 			return false
 		result[character_id] = amount
 	_experience_awards = result
@@ -136,8 +139,8 @@ func to_data() -> Dictionary:
 	var awards: Dictionary = {}
 	var award_ids: Array = _experience_awards.keys()
 	award_ids.sort()
-	for character_id: Variant in award_ids:
-		awards[String(character_id)] = _experience_awards[character_id]
+	for character_id: String in award_ids:
+		awards[character_id] = _experience_awards[character_id]
 	return {
 		"origin": String(origin),
 		"sourceId": source_id,
@@ -161,9 +164,10 @@ func to_data() -> Dictionary:
 	}
 
 
-static func from_data(data: Variant) -> ClassicRewardState:
-	if not data is Dictionary:
+static func from_data(value: Variant) -> ClassicRewardState:
+	if not value is Dictionary:
 		return null
+	var data: Dictionary = value
 	var has_battle_sequence: bool = data.has("battleStage") or data.has("bonusTreasureClassicId")
 	var has_item_detection: bool = data.has("magicDetectedItemIds")
 	if not _serialized_shape_is_valid(data, has_battle_sequence, has_item_detection):
@@ -175,17 +179,23 @@ static func from_data(data: Variant) -> ClassicRewardState:
 	var wealth := WealthState.from_data(data["initialWealth"])
 	if wealth == null:
 		return null
-	var result := ClassicRewardState.new(StringName(data["origin"]), data["sourceId"], scalars["experiencePool"], wealth)
+	var origin_text: String = data["origin"]
+	var source_text: String = data["sourceId"]
+	var experience_pool_value: int = scalars["experiencePool"]
+	var result := ClassicRewardState.new(StringName(origin_text), source_text, experience_pool_value, wealth)
 	result.experience_share = scalars["experienceShare"]
 	result.magic_detected = data["magicDetected"]
 	result.identified = data["identified"]
 	result.completion_pending = data["completionPending"]
-	result.phase = StringName(data["phase"])
+	var phase_text: String = data["phase"]
+	result.phase = StringName(phase_text)
 	result.battle_stage = scalars["battleStage"]
 	result.bonus_treasure_classic_id = scalars["bonusTreasureClassicId"]
 	if not _restore_items_and_awards(result, data, has_item_detection):
 		return null
-	if not _restore_progress(result, data, scalars["levelIndex"], scalars["spellIndex"]):
+	var loaded_level_index: int = scalars["levelIndex"]
+	var loaded_spell_index: int = scalars["spellIndex"]
+	if not _restore_progress(result, data, loaded_level_index, loaded_spell_index):
 		return null
 	return result
 
@@ -206,11 +216,17 @@ static func _serialized_shape_is_valid(data: Dictionary, has_battle_sequence: bo
 	for field: String in required:
 		if not data.has(field):
 			return false
-	if not data["origin"] is String or data["origin"].is_empty() or not data["sourceId"] is String:
+	if not data["origin"] is String:
+		return false
+	var origin_text: String = data["origin"]
+	if origin_text.is_empty() or not data["sourceId"] is String:
 		return false
 	if not data["magicDetected"] is bool or not data["identified"] is bool or not data["completionPending"] is bool:
 		return false
-	if not data["phase"] is String or StringName(data["phase"]) not in [ITEM_PHASE, LEVEL_PHASE, SPELL_PHASE]:
+	if not data["phase"] is String:
+		return false
+	var phase_text: String = data["phase"]
+	if StringName(phase_text) not in [ITEM_PHASE, LEVEL_PHASE, SPELL_PHASE]:
 		return false
 	if not data["items"] is Array or not data["experienceAwards"] is Dictionary or not data["pendingLevelResult"] is Dictionary:
 		return false
@@ -220,13 +236,14 @@ static func _serialized_shape_is_valid(data: Dictionary, has_battle_sequence: bo
 
 
 static func _scalar_values_from_data(data: Dictionary, has_battle_sequence: bool) -> Variant:
+	var battle_stage_text: String = data["battleStage"] if has_battle_sequence else ""
 	var result := {
 		"experiencePool": _integer(data["experiencePool"]),
 		"experienceShare": _integer(data["experienceShare"]),
 		"levelIndex": _integer(data["levelIndex"]),
 		"spellIndex": _integer(data["spellIndex"]),
 		"bonusTreasureClassicId": _integer(data["bonusTreasureClassicId"]) if has_battle_sequence else 0,
-		"battleStage": StringName(data["battleStage"]) if has_battle_sequence else ORDINARY_BATTLE_STAGE if data["origin"] == "battle" else NO_BATTLE_STAGE,
+		"battleStage": StringName(battle_stage_text) if has_battle_sequence else ORDINARY_BATTLE_STAGE if data["origin"] == "battle" else NO_BATTLE_STAGE,
 	}
 	if result["experiencePool"] < 0 or result["experienceShare"] < 0:
 		return null
@@ -250,7 +267,10 @@ static func _restore_items_and_awards(result: ClassicRewardState, data: Dictiona
 		loaded_items.append(item)
 	var awards: Dictionary = {}
 	for character_id: Variant in data["experienceAwards"]:
-		if not character_id is String or character_id.is_empty():
+		if not character_id is String:
+			return false
+		var id_text: String = character_id
+		if id_text.is_empty():
 			return false
 		var amount := _integer(data["experienceAwards"][character_id])
 		if amount < 0:
@@ -268,8 +288,10 @@ static func _restore_items_and_awards(result: ClassicRewardState, data: Dictiona
 
 
 static func _restore_progress(result: ClassicRewardState, data: Dictionary, loaded_level_index: int, loaded_spell_index: int) -> bool:
-	var level_ids_value: Variant = _string_array_from_data(data["levelCharacterIds"])
-	var spell_ids_value: Variant = _string_array_from_data(data["spellCharacterIds"])
+	var level_source: Array = data["levelCharacterIds"]
+	var spell_source: Array = data["spellCharacterIds"]
+	var level_ids_value: Variant = _string_array_from_data(level_source)
+	var spell_ids_value: Variant = _string_array_from_data(spell_source)
 	if level_ids_value == null or spell_ids_value == null:
 		return false
 	var level_ids: Array[String] = level_ids_value
@@ -282,7 +304,8 @@ static func _restore_progress(result: ClassicRewardState, data: Dictionary, load
 		return false
 	if result.spell_index < 0 or result.spell_index > spell_ids.size():
 		return false
-	var level_result: Variant = _normalized_level_result(data["pendingLevelResult"])
+	var pending_source: Dictionary = data["pendingLevelResult"]
+	var level_result: Variant = _normalized_level_result(pending_source)
 	if level_result == null:
 		return false
 	result.pending_level_result = level_result
@@ -316,7 +339,10 @@ static func _normalized_level_result(data: Dictionary) -> Variant:
 	for field: String in fields:
 		if not data.has(field):
 			return null
-	if not data["characterId"] is String or data["characterId"].is_empty() or not data["characterName"] is String:
+	if not data["characterId"] is String:
+		return null
+	var character_id_text: String = data["characterId"]
+	if character_id_text.is_empty() or not data["characterName"] is String:
 		return null
 	var result: Dictionary = {"characterId": data["characterId"], "characterName": data["characterName"]}
 	for field: String in ["level", "stamina", "spellPoints", "toHit", "magicResistance"]:
@@ -330,6 +356,8 @@ static func _normalized_level_result(data: Dictionary) -> Variant:
 static func _integer(value: Variant) -> int:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var real: float = value
+		if is_equal_approx(real, roundf(real)):
+			return int(real)
 	return INVALID_INTEGER

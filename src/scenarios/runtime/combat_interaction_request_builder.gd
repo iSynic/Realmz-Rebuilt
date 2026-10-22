@@ -211,7 +211,8 @@ func _item_cast_payloads(actor_id: String) -> Array[Dictionary]:
 
 func _scroll_cast_payloads(actor_id: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for option: Variant in _rules.combat_flow.magic.selection().character_scroll_options(_game_state, _content, actor_id):
+	for spell_option: CombatSpellOptionView in _rules.combat_flow.magic.selection().character_scroll_options(_game_state, _content, actor_id):
+		var option := spell_option as CombatScrollOptionView
 		var payload := {"scrollSlot": option.scroll_slot, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
 		_append_spell_target_payload(payload, option)
 		result.append(payload)
@@ -225,14 +226,16 @@ func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
 		payload["areaOffsets"] = []
 		payload["legalTargetCoordinates"] = []
 		payload["defaultTargetCoordinate"] = [-1, -1]
-		var spell := _content.magic.spell_by_id(option.spell_id)
+		var spell_id: String = option.spell_id
+		var spell := _content.magic.spell_by_id(spell_id)
 		if spell != null:
 			if not _summon_previews.has(spell.id):
 				_summon_previews[spell.id] = _rules.combat_flow.summoning.preview_definition(_game_state, _content, spell, _rng)
 			var definition: MonsterDefinition = _summon_previews[spell.id]
 			if definition != null:
 				var offsets := BattlefieldGrid.footprint_cells(Vector2i.ZERO, definition.size)
-				var anchors := _rules.combat_flow.summoning.legal_anchor_coordinates(_game_state, _content, _game_state.combat.turns.active_actor_id(), spell, option.power, definition.size)
+				var power: int = option.power
+				var anchors := _rules.combat_flow.summoning.legal_anchor_coordinates(_game_state, _content, _game_state.combat.turns.active_actor_id(), spell, power, definition.size)
 				payload["areaOffsets"] = offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
 				payload["legalTargetCoordinates"] = anchors.map(func(anchor: Vector2i) -> Array[int]: return [anchor.x, anchor.y])
 				payload["defaultTargetCoordinate"] = [anchors[0].x, anchors[0].y] if not anchors.is_empty() else [-1, -1]
@@ -244,9 +247,12 @@ func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
 	if option.target_mode == &"area":
 		payload["areaShape"] = option.area_shape
 		payload["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
-		payload["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
-		payload["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
-		payload["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
+		var area_offsets: Array[Vector2i] = option.area_offsets
+		var area_rotation_offsets: Array = option.area_rotation_offsets
+		var legal_target_coordinates: Array[Vector2i] = option.legal_target_coordinates
+		payload["areaOffsets"] = area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+		payload["areaRotationOffsets"] = area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
+		payload["legalTargetCoordinates"] = legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
 
 
 func _fast_spell_payloads(actor_id: String, spell_casts: Array[Dictionary]) -> Array[Dictionary]:
@@ -267,7 +273,10 @@ static func _fast_spell_is_available(binding: FastSpellBindingState, spell: Spel
 	if binding == null or binding.is_empty() or spell == null:
 		return false
 	for cast: Dictionary in spell_casts:
-		if cast.get("spellId") == binding.spell_id and int(cast.get("power", 0)) == binding.power:
+		if cast.get("spellId") != binding.spell_id:
+			continue
+		var cast_power: int = cast.get("power", 0)
+		if cast_power == binding.power:
 			return true
 	return false
 

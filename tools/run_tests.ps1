@@ -26,7 +26,8 @@ if ([string]::IsNullOrWhiteSpace($GodotPath)) {
 }
 
 $arguments = [System.Collections.Generic.List[string]]::new()
-@("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd", "--") | ForEach-Object { $arguments.Add($_) }
+$engineLog = Join-Path ([IO.Path]::GetTempPath()) ("realmz-focused-" + [Guid]::NewGuid().ToString("N") + ".log")
+@("--headless", "--log-file", $engineLog, "--path", $repoRoot, "--script", "res://tests/test_runner.gd", "--") | ForEach-Object { $arguments.Add($_) }
 @($Suite | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -Unique) | ForEach-Object {
     $arguments.Add("--suite")
     $arguments.Add($_)

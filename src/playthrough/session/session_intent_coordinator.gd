@@ -120,6 +120,8 @@ func _submit_magic_or_combat_intent(intent: PlayerIntent) -> SessionCoordinatorR
 func _submit_party_intent(intent: PlayerIntent) -> SessionCoordinatorResult:
 	var pending := _pending_interaction() != null
 	match intent.kind:
+		PlayerIntent.Kind.SET_ADVENTURE_RULES:
+			return AdventureRulesWorkflow.apply(_context.workflow_context(), pending, intent.payload as AdventureRulesIntents.Selection)
 		PlayerIntent.Kind.CREATE_PARTY:
 			return _workflow(LifecyclePartyWorkflow.create_party(_context.workflow_context(), pending, (intent.payload as PartyIntentPayloads.Party).members))
 		PlayerIntent.Kind.BEGIN_ADVENTURE:
@@ -290,7 +292,7 @@ func _use_scroll(payload: SpellIntentPayload) -> SessionCoordinatorResult:
 
 func _combat_action(payload: CombatIntentPayloads.Action) -> SessionCoordinatorResult:
 	if payload.action == &"retreat":
-		var probe: Variant = _context.rules.combat_flow.reactions.probe_character_retreat(_context.state.combat, _context.state.party.characters(), payload.actor_id)
+		var probe := _context.rules.combat_flow.reactions.probe_character_retreat(_context.state.combat, _context.state.party.characters(), payload.actor_id)
 		if not probe.allowed:
 			return SessionCoordinatorResult.rejected(probe.reason, probe.reason_text)
 		return _request_retreat(payload.actor_id, &"explicit", Vector2i(-100_000, -100_000))

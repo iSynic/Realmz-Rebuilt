@@ -375,14 +375,20 @@ func _bind_spell_detail(workspace: SpellsWorkspace, character: CharacterView, sp
 
 func _bind_power_rail(column: VBoxContainer, spell: SpellView) -> void:
 	(column.get_node("PowerLabel") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.power")
-	_bind_label(column.get_node("Cost") as Label, "Cost %d SP" % absi(spell.cost * _selected_power), GOLD, 12)
+	var cast_cost := DetailFormatter.cast_cost(spell, _selected_power)
+	var scroll_cost := DetailFormatter.scroll_cost(spell, _selected_power)
+	var cost_label := column.get_node("Cost") as Label
+	_bind_label(cost_label, "Cast %d SP\nScroll %d SP" % [cast_cost, scroll_cost], GOLD, 12)
+	cost_label.tooltip_text = "Cast: %d SP. Scribe: %d SP." % [cast_cost, scroll_cost]
 	var available_powers := DetailFormatter.available_powers(spell)
 	for power: int in range(1, 8):
 		var button := column.get_node("PowerButtons/SpellPower%d" % power) as Button
 		button.set_meta(&"focus_key", "spells:power:%s:%d" % [_selected_spell_id, power])
 		button.button_pressed = power == _selected_power
 		button.disabled = not available_powers.has(power)
-		button.tooltip_text = "%d SP" % absi(spell.cost * power) if not button.disabled else "This power is unavailable."
+		var cast_status := "%d SP" % DetailFormatter.cast_cost(spell, power) if DetailFormatter.cast_power_available(spell, power) else spell.field_cast.reason if spell.field_cast != null and not spell.field_cast.enabled else "unavailable at this power"
+		var scroll_status := "%d SP" % DetailFormatter.scroll_cost(spell, power) if DetailFormatter.scroll_power_available(spell, power) else spell.make_scroll.reason if spell.make_scroll != null and not spell.make_scroll.enabled else "unavailable at this power"
+		button.tooltip_text = "Cast: %s. Scribe: %s." % [cast_status, scroll_status]
 		_clear_pressed_connections(button)
 		button.pressed.connect(_select_power.bind(power))
 
@@ -395,14 +401,19 @@ func _bind_spell_action_dock(row: HBoxContainer, character: CharacterView, spell
 		_bind_bitmap_action(cast, &"spells.action.cast", "Use %s in this encounter" % spell.name, ActionAvailabilityView.new(&"encounter_spell", true, ""), func() -> void: encounter_spell_selected.emit(character.id, spell.classic_id))
 		row.get_node("MakeScrollAction").visible = false
 		return
-	_bind_bitmap_action(cast, &"spells.action.cast", "Cast %s at power %d" % [spell.name, _selected_power], spell.field_cast, func() -> void:
+	var cast_available := DetailFormatter.cast_power_available(spell, _selected_power)
+	var cast_reason := "Unavailable" if spell.field_cast == null else spell.field_cast.reason if not spell.field_cast.enabled else "This power is unavailable for casting."
+	var cast_availability := ActionAvailabilityView.new(&"cast_spell", cast_available, cast_reason)
+	var cast_tooltip := "Cast %s at power %d for %d SP" % [spell.name, _selected_power, DetailFormatter.cast_cost(spell, _selected_power)]
+	_bind_bitmap_action(cast, &"spells.action.cast", cast_tooltip, cast_availability, func() -> void:
 		intent_submitted.emit(MagicIntents.cast(spell.id, character.id, "", _selected_power))
 	)
 	var make_scroll := row.get_node("MakeScrollAction") as Button
 	make_scroll.text = "Scroll" if _compact else "Make Scroll"
 	UiSizing.minimum_size(make_scroll, Vector2(60.0 if _compact else 74.0, 0.0))
-	make_scroll.disabled = spell.make_scroll == null or not spell.make_scroll.enabled or not DetailFormatter.available_scroll_powers(spell).has(_selected_power)
-	make_scroll.tooltip_text = "Unavailable at this power" if make_scroll.disabled and spell.make_scroll != null and spell.make_scroll.enabled else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if make_scroll.disabled else "Scribe at power %d for %d SP" % [_selected_power, absi(spell.cost * 2 * _selected_power)]
+	var scroll_available := DetailFormatter.scroll_power_available(spell, _selected_power)
+	make_scroll.disabled = not scroll_available
+	make_scroll.tooltip_text = "Scribe at power %d for %d SP" % [_selected_power, DetailFormatter.scroll_cost(spell, _selected_power)] if scroll_available else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if not spell.make_scroll.enabled else "This power is unavailable for scribing."
 	_clear_pressed_connections(make_scroll)
 	if not make_scroll.disabled:
 		make_scroll.pressed.connect(func() -> void: intent_submitted.emit(MagicIntents.make_scroll(spell.id, character.id, _selected_power)))
@@ -570,6 +581,11 @@ func _select_level(level: int) -> void:
 
 
 func _select_power(power: int) -> void:
+	var character := _selected_character()
+	var spells: Array[SpellView] = _eligible_spells(character) if character != null else []
+	var matches: Array[SpellView] = spells.filter(func(spell: SpellView) -> bool: return spell.id == _selected_spell_id)
+	if matches.is_empty() or not DetailFormatter.available_powers(matches[0]).has(power):
+		return
 	_selected_power = power
 	if not _selected_spell_id.is_empty():
 		_power_by_spell[_selected_spell_id] = power

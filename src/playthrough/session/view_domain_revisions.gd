@@ -40,19 +40,22 @@ func route_revision(route_id: StringName) -> int:
 		&"combat": return combat
 		&"maps_journal", &"exploration": return exploration
 		&"system": return system
-	return int([party_roster, party_status, setup, exploration, inventory, magic, services, combat, system].max())
+	var highest: int = [party_roster, party_status, setup, exploration, inventory, magic, services, combat, system].max()
+	return highest
 
 
 func is_ordinary_exploration_update_from(previous: RefCounted) -> bool:
-	return previous != null \
-		and exploration != previous.exploration \
-		and party_roster == previous.party_roster \
-		and (party_status == previous.party_status or party_status == exploration) \
-		and setup == previous.setup \
-		and (inventory == previous.inventory or inventory == exploration) \
-		and (magic == previous.magic or magic == exploration) \
-		and services == previous.services \
-		and combat == previous.combat
+	if previous == null:
+		return false
+	var prior: ViewDomainRevisions = previous
+	return exploration != prior.exploration \
+		and party_roster == prior.party_roster \
+		and (party_status == prior.party_status or party_status == exploration) \
+		and setup == prior.setup \
+		and (inventory == prior.inventory or inventory == exploration) \
+		and (magic == prior.magic or magic == exploration) \
+		and services == prior.services \
+		and combat == prior.combat
 
 
 func synchronize_legacy_aggregates() -> void:

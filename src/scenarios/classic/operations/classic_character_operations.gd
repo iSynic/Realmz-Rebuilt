@@ -526,8 +526,11 @@ func _resolve_classic_ally_definition(classic_monster_id: int) -> MonsterDefinit
 	if definition != null:
 		return definition
 	var campaign_corrections: Variant = CLASSIC_ALLY_RECORD_CORRECTIONS.get(_content.campaign_id)
-	if campaign_corrections is Dictionary and campaign_corrections.has(classic_monster_id):
-		return _content.combat.monster_by_classic_id_for_set(int(campaign_corrections[classic_monster_id]), _game_state.monster_set)
+	if campaign_corrections is Dictionary:
+		var corrections: Dictionary = campaign_corrections
+		if corrections.has(classic_monster_id):
+			var corrected_id: int = corrections[classic_monster_id]
+			return _content.combat.monster_by_classic_id_for_set(corrected_id, _game_state.monster_set)
 	return null
 
 

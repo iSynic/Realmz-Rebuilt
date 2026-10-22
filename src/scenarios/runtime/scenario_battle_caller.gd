@@ -65,10 +65,14 @@ func to_data() -> Dictionary:
 
 
 static func from_data(value: Variant) -> ScenarioBattleCaller:
-	if not value is Dictionary or value.size() != 3 or not value.get("kind") is String or _integer(value.get("version")) != VERSION or not value.get("data") is Dictionary:
+	if not value is Dictionary:
 		return null
-	var data: Dictionary = value["data"]
-	match StringName(value["kind"]):
+	var envelope: Dictionary = value
+	if envelope.size() != 3 or not envelope.get("kind") is String or _integer(envelope.get("version")) != VERSION or not envelope.get("data") is Dictionary:
+		return null
+	var data: Dictionary = envelope["data"]
+	var kind_text: String = envelope["kind"]
+	match StringName(kind_text):
 		SAFE:
 			if data.size() != 1 or not data.get("policy") is String or data["policy"] != String(SAFE_POLICY):
 				return null
@@ -79,15 +83,23 @@ static func from_data(value: Variant) -> ScenarioBattleCaller:
 			var parsed_opcode: Variant = _integer(data.get("opcode"))
 			var parsed_mode: Variant = _integer(data.get("mode"))
 			var parsed_branch_target: Variant = _integer(data.get("branchTarget"))
-			if parsed_opcode == null or parsed_mode == null or parsed_branch_target == null or int(parsed_opcode) not in [2, 48, 56, 107]:
+			if parsed_opcode == null or parsed_mode == null or parsed_branch_target == null:
 				return null
-			return classic(int(parsed_opcode), data["gosub"], int(parsed_mode), int(parsed_branch_target))
+			var opcode: int = parsed_opcode
+			if opcode not in [2, 48, 56, 107]:
+				return null
+			var use_gosub: bool = data["gosub"]
+			var mode: int = parsed_mode
+			var branch_target: int = parsed_branch_target
+			return classic(opcode, use_gosub, mode, branch_target)
 	return null
 
 
 static func _integer(value: Variant) -> Variant:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return null

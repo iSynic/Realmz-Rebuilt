@@ -51,6 +51,26 @@ func enqueue_intent(intent: PlayerIntent) -> CombatSubmission:
 	return submission
 
 
+func submit_body(body: InteractionResponse.CombatBody) -> void:
+	if body == null: return
+	var view := _session.view()
+	var request := view.active_interaction_request() if view != null else null
+	var lifecycle_pending: bool = _lifecycle_pending.call() if _lifecycle_pending.is_valid() else false
+	if lifecycle_pending:
+		_shell.status.set_status("Finish the current dialog before changing battle equipment.", true)
+		return
+	if _session.is_busy() or _presentation.is_combat_playback_active() or _presentation.party_effect_playback.is_active():
+		_shell.status.set_status("Wait for the current combat action to finish.", true)
+		return
+	if request == null or request.kind != InteractionRequest.COMBAT or view.combat_view == null or view.combat_view.outcome != &"active":
+		_shell.status.set_status("The battle inventory request is no longer available.", true)
+		return
+	# Inventory unmounts the battlefield component; the committed view owns both
+	# scripted and direct battle requests. Simulation revalidates actor and item.
+	var submission := enqueue_response(InteractionResponse.new(request.request_id, InteractionRequest.COMBAT, body))
+	if not submission.accepted(): _present_status.call(submission.rejection)
+
+
 func enqueue_response(response: InteractionResponse) -> CombatSubmission:
 	var view := _session.view()
 	if response != null and view.pending_interaction == null and view.combat_action_request != null and response.request_id == view.combat_action_request.request_id and response.kind == InteractionRequest.COMBAT:
@@ -99,7 +119,8 @@ func abort_auto(skip_playback: bool) -> bool:
 
 func flush_auto() -> void:
 	if _queued_auto.is_empty() or _session.is_busy() or _session.resolution_failed or _flushing: return
-	if _lifecycle_pending.is_valid() and bool(_lifecycle_pending.call()): return
+	var lifecycle_pending: bool = _lifecycle_pending.call() if _lifecycle_pending.is_valid() else false
+	if lifecycle_pending: return
 	_flushing = true
 	var changes: Dictionary = {}
 	var ids: Array[String] = []

@@ -30,7 +30,7 @@ func prepare(context: SessionWorkflowContext) -> void:
 		_visited_by_map.clear()
 		_exploration_revision = world.exploration.revision()
 	for note_id: String in _notes.keys():
-		var preview := _notes[note_id] as MapView
+		var preview: MapView = _notes[note_id]
 		if world.exploration.location_note_at(preview.map_id, preview.party_coordinate) == null:
 			_notes.erase(note_id)
 			_note_visits.erase(note_id)
@@ -38,7 +38,7 @@ func prepare(context: SessionWorkflowContext) -> void:
 
 func player_map(context: SessionWorkflowContext, definition: PlayerMapDefinition) -> PlayerMapView:
 	var visited := _visited(context, definition.map_id)
-	var cached := _player_maps.get(definition.id) as PlayerMapView
+	var cached: PlayerMapView = _player_maps.get(definition.id)
 	if cached == null or _player_map_visits.get(definition.id) != visited:
 		cached = SessionMapViewBuilder.build_player_map_view(context, definition)
 		_player_maps[definition.id] = cached
@@ -50,7 +50,7 @@ func player_map(context: SessionWorkflowContext, definition: PlayerMapDefinition
 
 func location_note(context: SessionWorkflowContext, map: MapDefinition, note: LocationNoteState) -> MapView:
 	var visited := _visited(context, map.id)
-	var cached := _notes.get(note.id()) as MapView
+	var cached: MapView = _notes.get(note.id())
 	if cached == null or _note_visits.get(note.id()) != visited or cached.darkness_level != clampi(note.darkness_value, 0, 6):
 		cached = SessionMapViewBuilder.build_location_note_map_view(context, map, note)
 		_notes[note.id()] = cached

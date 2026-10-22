@@ -14,9 +14,9 @@ static func can_reuse(previous: GameView, context: SessionWorkflowContext, pendi
 	var moves := 0
 	for event: DomainEvent in events:
 		if event.kind == &"combatant_moved":
-			if event.payload.has("source") or bool(event.payload.get("automatic", true)) or String(event.payload.get("actorId", "")) != combat.turns.active_actor_id(): return false
+			if event.payload.has("source") or _payload_flag(event.payload, "automatic", true) or str(event.payload.get("actorId", "")) != combat.turns.active_actor_id(): return false
 			moves += 1
-		elif event.kind != &"sound_requested" or String(event.payload.get("source", "")) != "classic-battle-movement":
+		elif event.kind != &"sound_requested" or str(event.payload.get("source", "")) != "classic-battle-movement":
 			return false
 	return moves == 1
 
@@ -46,6 +46,7 @@ static func _copy_shell(previous: GameView, result: GameView) -> void:
 	result.character_spellcasting_blocked = previous.character_spellcasting_blocked
 	result.campaign_id = previous.campaign_id
 	result.rules_version = previous.rules_version
+	result.adventure_rules = previous.adventure_rules.copy()
 	result.party_setup_available = previous.party_setup_available
 	result.character_draft = previous.character_draft
 	result.character_draft_spell_options = previous.character_draft_spell_options
@@ -65,3 +66,8 @@ static func _copy_shell(previous: GameView, result: GameView) -> void:
 	result.current_location_note = previous.current_location_note
 	result.services = previous.services
 	result.money_workspace = previous.money_workspace
+
+
+static func _payload_flag(payload: Dictionary, key: String, fallback: bool) -> bool:
+	var value: bool = payload.get(key, fallback)
+	return value

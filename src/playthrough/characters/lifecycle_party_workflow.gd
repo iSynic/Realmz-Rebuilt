@@ -19,7 +19,9 @@ static func create_party(context: SessionWorkflowContext, pending: bool, specs: 
 		var spec: CharacterCreationSpec = specs[index]
 		var validation := _character_creation_error(context, spec, names)
 		if not validation.is_empty():
-			return SessionWorkflowResult.failed(StringName(validation["code"]), String(validation["message"]))
+			var validation_code: StringName = validation["code"]
+			var validation_message: String = validation["message"]
+			return SessionWorkflowResult.failed(validation_code, validation_message)
 		var character := _create_character_from_spec(context, spec, "party.character.%d" % (index + 1), true, created)
 		if character == null:
 			return SessionWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected a party member.")
@@ -92,7 +94,9 @@ static func generate_character_draft(context: SessionWorkflowContext, pending: b
 		names[current.name.to_lower()] = true
 	var validation := _character_creation_error(context, payload.spec, names)
 	if not validation.is_empty():
-		return SessionWorkflowResult.failed(StringName(validation["code"]), String(validation["message"]))
+		var validation_code: StringName = validation["code"]
+		var validation_message: String = validation["message"]
+		return SessionWorkflowResult.failed(validation_code, validation_message)
 	var character_id := context.state.character_draft.generated_character.id if context.state.character_draft != null and context.state.character_draft.generated_character != null else _next_party_character_id(context.state)
 	var character := _create_character_from_spec(context, payload.spec, character_id)
 	if character == null:
@@ -136,7 +140,8 @@ static func set_character_draft_spells(context: SessionWorkflowContext, pending:
 		if selected.has(spell_id) or not candidate_ids.has(spell_id):
 			return SessionWorkflowResult.failed(&"invalid_character_spell", "The selected spell is not available to this character.")
 		selected.append(spell_id)
-		spent += context.rules.characters.spell_selection_cost(candidate_ids[spell_id] as SpellDefinition)
+		var candidate: SpellDefinition = candidate_ids[spell_id]
+		spent += context.rules.characters.spell_selection_cost(candidate)
 	var total := context.rules.characters.spell_selection_total(character, caste)
 	if spent > total:
 		return SessionWorkflowResult.failed(&"character_spell_budget_exceeded", "The selected spells exceed this character's Classic selection points.")
@@ -160,7 +165,9 @@ static func prepare_character_finalize(context: SessionWorkflowContext, pending:
 	var spec := CharacterCreationSpec.new(draft.name, draft.race_id, draft.caste_id, draft.gender, draft.portrait_id, draft.combat_icon_id, draft.starting_level)
 	var validation := _character_creation_error(context, spec, names)
 	if not validation.is_empty():
-		return CharacterFinalizeWorkflowResult.failed(StringName(validation["code"]), String(validation["message"]))
+		var validation_code: StringName = validation["code"]
+		var validation_message: String = validation["message"]
+		return CharacterFinalizeWorkflowResult.failed(validation_code, validation_message)
 	var caste := context.content.characters.caste_by_id(draft.generated_character.caste_id)
 	var total := context.rules.characters.spell_selection_total(draft.generated_character, caste)
 	var spent := 0
@@ -219,7 +226,8 @@ static func character_draft_is_valid(content: RealmzContent, state: GameState, r
 	for spell_id: String in character.known_spells():
 		if not candidate_ids.has(spell_id):
 			return false
-		spent += rules.characters.spell_selection_cost(candidate_ids[spell_id] as SpellDefinition)
+		var candidate: SpellDefinition = candidate_ids[spell_id]
+		spent += rules.characters.spell_selection_cost(candidate)
 	if spent > rules.characters.spell_selection_total(character, caste):
 		return false
 	for item: ItemInstance in character.inventory():
@@ -339,8 +347,8 @@ static func _create_character_from_spec(context: SessionWorkflowContext, spec: C
 	if character == null:
 		return null
 	var appearance := _resolved_character_appearance(context, spec, race)
-	character.portrait_id = String(appearance.get("portraitId", spec.portrait_id))
-	character.combat_icon_id = String(appearance.get("combatIconId", spec.combat_icon_id))
+	character.portrait_id = str(appearance.get("portraitId", spec.portrait_id))
+	character.combat_icon_id = str(appearance.get("combatIconId", spec.combat_icon_id))
 	if add_starting_items:
 		var equipment_context := party_context.duplicate()
 		equipment_context.append(character)

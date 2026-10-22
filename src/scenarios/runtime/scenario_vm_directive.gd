@@ -119,49 +119,78 @@ func to_data() -> Dictionary:
 
 
 static func from_data(value: Variant) -> ScenarioVmDirective:
-	if not value is Dictionary or not value.get("kind") is String:
+	if not value is Dictionary:
 		return null
-	match StringName(value["kind"]):
+	var data: Dictionary = value
+	if not data.get("kind") is String:
+		return null
+	var kind_text: String = data["kind"]
+	match StringName(kind_text):
 		FINISH:
-			return finish() if value.size() == 1 else null
+			return finish() if data.size() == 1 else null
 		FINISH_TIMELINE:
-			return finish_timeline() if value.size() == 1 else null
+			return finish_timeline() if data.size() == 1 else null
 		RESUME_AFTER_ENCOUNTER:
-			return resume_after_encounter() if value.size() == 1 else null
+			return resume_after_encounter() if data.size() == 1 else null
 		RESTART_CURRENT_PROGRAM:
-			return restart_current_program() if value.size() == 1 else null
+			return restart_current_program() if data.size() == 1 else null
 		DROPOUT:
-			return dropout() if value.size() == 1 else null
+			return dropout() if data.size() == 1 else null
 		BRANCH_XAP:
-			if value.size() != 3 or not value.get("targetId") is int or not value.get("gosub") is bool:
+			if data.size() != 3 or not data.get("targetId") is int or not data.get("gosub") is bool:
 				return null
-			return branch_xap(value["targetId"], value["gosub"])
+			var target: int = data["targetId"]
+			var use_gosub: bool = data["gosub"]
+			return branch_xap(target, use_gosub)
 		BRANCH_PROGRAM:
-			var cursor_value: Variant = value.get("entryCursor", 0)
-			if value.size() not in [4, 5] or (value.size() == 5 and not value.has("entryCursor")) or not value.get("programId") is String or value["programId"].is_empty() or not value.get("gosub") is bool or not value.get("context") is Dictionary or not _whole_number(cursor_value) or cursor_value < 0 or cursor_value > 4096:
+			var cursor_value: Variant = data.get("entryCursor", 0)
+			if data.size() not in [4, 5] or (data.size() == 5 and not data.has("entryCursor")) or _nonempty_string(data.get("programId")).is_empty() or not data.get("gosub") is bool or not data.get("context") is Dictionary or not _whole_number(cursor_value) or cursor_value < 0 or cursor_value > 4096:
 				return null
-			var restored_context := ScenarioExecutionContextCodec.decode(value["context"])
-			return null if restored_context == null else branch_program_at(value["programId"], value["gosub"], restored_context, int(cursor_value))
+			var restored_context := ScenarioExecutionContextCodec.decode(data["context"])
+			var program: String = data["programId"]
+			var use_gosub: bool = data["gosub"]
+			var cursor: int = cursor_value
+			return null if restored_context == null else branch_program_at(program, use_gosub, restored_context, cursor)
 		CLOCK_TIMER_RETURN, RECHECK_PROGRAM:
-			var cursor_value: Variant = value.get("entryCursor")
-			var restored_context := ScenarioExecutionContextCodec.decode(value.get("context"))
-			if value.size() != 4 or restored_context == null or not value.get("programId") is String or value["programId"].is_empty() or not _whole_number(cursor_value) or cursor_value < 0 or cursor_value > 4096: return null
-			var directive := clock_timer_return(value["programId"], int(cursor_value), restored_context)
-			directive.kind = StringName(value["kind"])
+			var cursor_value: Variant = data.get("entryCursor")
+			var restored_context := ScenarioExecutionContextCodec.decode(data.get("context"))
+			if data.size() != 4 or restored_context == null or _nonempty_string(data.get("programId")).is_empty() or not _whole_number(cursor_value) or cursor_value < 0 or cursor_value > 4096: return null
+			var program: String = data["programId"]
+			var cursor: int = cursor_value
+			var directive := clock_timer_return(program, cursor, restored_context)
+			directive.kind = StringName(kind_text)
 			return directive
 		ENTER_ENCOUNTER:
-			var encounter_kind_value: Variant = value.get("encounterKind")
-			var encounter_id_value: Variant = value.get("encounterId")
-			if value.size() != 4 or not encounter_kind_value is String or encounter_kind_value not in ["simple", "complex"] or not _whole_number(encounter_id_value) or encounter_id_value < 0 or not value.get("gosub") is bool:
+			var encounter_kind_value: Variant = data.get("encounterKind")
+			var encounter_id_value: Variant = data.get("encounterId")
+			if data.size() != 4 or not encounter_kind_value is String or encounter_kind_value not in ["simple", "complex"] or not _whole_number(encounter_id_value) or encounter_id_value < 0 or not data.get("gosub") is bool:
 				return null
-			return enter_encounter(StringName(encounter_kind_value), int(encounter_id_value), value["gosub"])
+			var encounter_kind_text: String = encounter_kind_value
+			var encounter_id: int = encounter_id_value
+			var use_gosub: bool = data["gosub"]
+			return enter_encounter(StringName(encounter_kind_text), encounter_id, use_gosub)
 		BRANCH_ENCOUNTER_RESULT:
-			if value.size() != 5 or not value.get("programId") is String or value["programId"].is_empty() or not value.get("gosub") is bool or not value.get("context") is Dictionary or not value.get("repeatEncounter") is bool:
+			if data.size() != 5 or _nonempty_string(data.get("programId")).is_empty() or not data.get("gosub") is bool or not data.get("context") is Dictionary or not data.get("repeatEncounter") is bool:
 				return null
-			var restored_context := ScenarioExecutionContextCodec.decode(value["context"])
-			return null if restored_context == null else branch_encounter_result(value["programId"], value["gosub"], restored_context, value["repeatEncounter"])
+			var restored_context := ScenarioExecutionContextCodec.decode(data["context"])
+			var program: String = data["programId"]
+			var use_gosub: bool = data["gosub"]
+			var repeat: bool = data["repeatEncounter"]
+			return null if restored_context == null else branch_encounter_result(program, use_gosub, restored_context, repeat)
 	return null
 
 
 static func _whole_number(value: Variant) -> bool:
-	return value is int or value is float and not is_nan(value) and not is_inf(value) and value == floorf(value)
+	if value is int:
+		return true
+	if not value is float:
+		return false
+	var number: float = value
+	return not is_nan(number) and not is_inf(number) and number == floorf(number)
+
+
+static func _nonempty_string(value: Variant) -> String:
+	if not value is String:
+		return ""
+	var text: String = value
+	return text

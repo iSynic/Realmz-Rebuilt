@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/verification_tree.gd"
 
 const BUNDLED_DIRECTORY := "res://src/storage/packages/bundled_campaigns"
 const SETUP_CACHE_SCRIPT := preload("res://src/storage/packages/package_setup_cache.gd")

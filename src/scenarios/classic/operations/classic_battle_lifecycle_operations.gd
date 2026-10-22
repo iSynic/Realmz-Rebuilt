@@ -9,7 +9,7 @@ var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
 var _rules: RealmzRules
-var _rewards: RefCounted
+var _rewards: ClassicRewardOperations
 var _request_builder: CombatInteractionRequestBuilder
 var _runtime_api_ref: WeakRef
 
@@ -28,7 +28,7 @@ func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:
 
 
 func _runtime_api() -> RealmzRuntimeApi:
-	return _runtime_api_ref.get_ref() as RealmzRuntimeApi if _runtime_api_ref != null else null
+	return _runtime_api_ref.get_ref() if _runtime_api_ref != null else null
 
 
 func start_classic_battle(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
@@ -224,7 +224,7 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 	var dispatch: Variant = _dispatch_combat_response(body, continuation, request_id)
 	if dispatch is ScenarioRuntimeOperationResult:
 		return dispatch
-	var result := dispatch as CombatFlowResult
+	var result: CombatFlowResult = dispatch if dispatch is CombatFlowResult else null
 	return _continue_after_combat_result(result, body, continuation, caller, previous_round, request_id)
 
 
@@ -269,17 +269,15 @@ func _set_combat_auto(body: InteractionResponse.CombatBody, continuation: Scenar
 
 
 func _request_explicit_retreat(actor_id: String, continuation: ScenarioRuntimeContinuation, request_id: String) -> ScenarioRuntimeOperationResult:
-	var probe: Variant = _rules.combat_flow.reactions.probe_character_retreat(_game_state.combat, _game_state.party.characters(), actor_id)
-	if not probe.allowed:
-		return ScenarioRuntimeOperationResult.rejected(probe.reason, probe.reason_text)
+	var probe: CombatRetreatProbe = _rules.combat_flow.reactions.probe_character_retreat(_game_state.combat, _game_state.party.characters(), actor_id)
+	if not probe.allowed: return ScenarioRuntimeOperationResult.rejected(probe.reason, probe.reason_text)
 	return _wait_for_battle_retreat(continuation, actor_id, &"explicit", CombatFlow.INVALID_COORDINATE, request_id)
 
 
 func _request_edge_retreat(body: InteractionResponse.CombatBody, continuation: ScenarioRuntimeContinuation, request_id: String) -> Variant:
 	var destination := body.destination if body.has_destination else CombatFlow.INVALID_COORDINATE
-	var probe: Variant = _rules.combat_flow.reactions.probe_edge_retreat(_game_state.combat, body.actor_id, destination)
-	if not probe.allowed:
-		return ScenarioRuntimeOperationResult.rejected(probe.reason, probe.reason_text)
+	var probe: CombatRetreatProbe = _rules.combat_flow.reactions.probe_edge_retreat(_game_state.combat, body.actor_id, destination)
+	if not probe.allowed: return ScenarioRuntimeOperationResult.rejected(probe.reason, probe.reason_text)
 	if not probe.forced:
 		return _wait_for_battle_retreat(continuation, body.actor_id, &"edge", destination, request_id)
 	return _rules.combat_flow.retreat_character(_game_state, _content, body.actor_id, &"edge", destination, _rng)
@@ -328,7 +326,7 @@ func _continue_after_combat_result(result: CombatFlowResult, body: InteractionRe
 		var completed_events: Array[DomainEvent] = []
 		completed_events.assign(result.events)
 		return _finish_battle_with_allies(continuation.kind, caller, request_id, completed_events)
-	if _game_state.combat.turns.round_number > previous_round and _game_state.combat.macro_id < 0:
+	if _game_state.combat.round_cursor != null and _game_state.combat.round_cursor.phase == &"battle-macro":
 		return _run_battle_macro(continuation.kind, caller, result.events, request_id)
 	return _wait_for_active_battle(continuation.kind, caller, request_id, result.events)
 
@@ -407,7 +405,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 		var completed_events: Array[DomainEvent] = []
 		completed_events.assign(result.events)
 		return _finish_battle_with_allies(source_kind, caller, request_id, completed_events)
-	if _game_state.combat.turns.round_number > previous_round and _game_state.combat.macro_id < 0:
+	if _game_state.combat.round_cursor != null and _game_state.combat.round_cursor.phase == &"battle-macro":
 		return _run_battle_macro(source_kind, caller, result.events, request_id)
 	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioCombatContinuations.battle(source_kind, combat_continuation.battle_id, caller), result.events)
 
@@ -542,7 +540,10 @@ func _continue_after_battle_macro(source_kind: StringName, caller: ScenarioBattl
 	committed.append(DomainEvent.new(&"battle_macro_completed", {"battleId": _game_state.combat.battle_id, "programId": program_id, "round": _game_state.combat.turns.round_number}))
 	if _game_state.combat.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, committed)
-	return _wait_for_active_battle(source_kind, caller, request_id, committed)
+	var result := _rules.combat_flow.rounds.continue_after_battle_macro(_game_state, _content, _rng)
+	result.events = committed + result.events
+	var continuation := ScenarioCombatContinuations.battle(source_kind, _game_state.combat.battle_id, caller)
+	return _continue_after_combat_result(result, InteractionResponse.CombatBody.new(&"finish", ""), continuation, caller, _game_state.combat.turns.round_number, request_id)
 
 
 func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCaller, preceding_events: Array[DomainEvent], request_id: String) -> ScenarioRuntimeOperationResult:
@@ -559,7 +560,10 @@ func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCall
 	vm.configure(_content.scenario)
 	var death_context := ScenarioExecutionContext.calling(&"monster-death-macro")
 	death_context.set_battle(combat.battle_id)
-	death_context.set_combatant(combatant_id, int(request.get("classicMonsterId", 0)), bool(request.get("traitor", monster.traitor)), true)
+	var classic_monster_id: int = request.get("classicMonsterId", 0)
+	var traitor: bool = request.get("traitor", monster.traitor)
+	var reset_traitor: bool = request.get("resetTraitorOnComplete", true)
+	death_context.set_combatant(combatant_id, classic_monster_id, traitor, true)
 	var started := vm.start_program(program_id, death_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message, started.events)
@@ -574,8 +578,8 @@ func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCall
 		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
 	if result.state == ScenarioVmResult.State.WAITING:
 		var macro_kind := ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO if source_kind == ScenarioRuntimeContinuation.SAFE_COMBAT else ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO
-		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioCombatContinuations.macro(macro_kind, source_kind, combat.battle_id, caller, program_id, vm.snapshot(), combatant_id, bool(request.get("resetTraitorOnComplete", true))), events)
-	return _continue_after_combat_death_macro(source_kind, caller, request_id, combatant_id, program_id, events, bool(request.get("resetTraitorOnComplete", true)))
+		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioCombatContinuations.macro(macro_kind, source_kind, combat.battle_id, caller, program_id, vm.snapshot(), combatant_id, reset_traitor), events)
+	return _continue_after_combat_death_macro(source_kind, caller, request_id, combatant_id, program_id, events, reset_traitor)
 
 
 func _resume_combat_death_macro(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -616,14 +620,9 @@ func _continue_after_combat_death_macro(source_kind: StringName, caller: Scenari
 	var continued := _rules.combat_flow.continue_after_monster_death_macro(_game_state, _content, _rng, combatant_id)
 	if not continued.ok:
 		return ScenarioRuntimeOperationResult.failed(continued.error_code, continued.error_message)
-	committed.append_array(continued.events)
-	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
-		return _wait_for_combat_age_updates(source_kind, caller, request_id, committed, previous_round)
-	if not CombatActionEvents.death_macro_request(continued.events).is_empty():
-		return _run_combat_death_macro(source_kind, caller, committed, request_id)
-	if continued.completed:
-		return _finish_battle_with_allies(source_kind, caller, request_id, committed)
-	return _wait_for_active_battle(source_kind, caller, request_id, committed)
+	continued.events = committed + continued.events
+	var continuation := ScenarioCombatContinuations.battle(source_kind, combat.battle_id, caller)
+	return _continue_after_combat_result(continued, InteractionResponse.CombatBody.new(&"finish", ""), continuation, caller, previous_round, request_id)
 
 
 func _wait_for_combat_age_updates(source_kind: StringName, caller: ScenarioBattleCaller, request_id: String, events: Array[DomainEvent], round_before: int) -> ScenarioRuntimeOperationResult:
@@ -670,6 +669,6 @@ func _resume_combat_age_updates(continuation: ScenarioRuntimeContinuation, respo
 		return _run_combat_death_macro(source_kind, caller, events, request_id)
 	if continued.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, events)
-	if _game_state.combat.turns.round_number > round_before and _game_state.combat.macro_id < 0:
+	if _game_state.combat.round_cursor != null and _game_state.combat.round_cursor.phase == &"battle-macro":
 		return _run_battle_macro(source_kind, caller, events, request_id)
 	return _wait_for_active_battle(source_kind, caller, request_id, events)

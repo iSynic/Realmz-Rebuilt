@@ -185,7 +185,7 @@ func _test_session_continuation_contracts() -> void:
 		CharacterContinuations.spell_confirmation("character.1", 3), CharacterContinuations.vault_publication("character.1"),
 		InventoryContinuations.item_target(item_target), MagicContinuations.field_spell_target(spell_target), MagicContinuations.scroll_target(scroll_target), MagicContinuations.scroll_discard(scroll_discard), InventoryContinuations.drop_confirmation(drop_item),
 		InventoryContinuations.item_xap(item_xap), ServiceContinuations.interaction("bank.1", ScenarioServiceContinuations.banking()), ServiceContinuations.pooled_wealth_departure(&"warning", Vector2i.RIGHT), CharacterContinuations.age_updates(age),
-		CombatContinuations.retreat_confirmation(retreat), CombatContinuations.friendly_collision(collision), CombatContinuations.death_macro(death_macro), CombatContinuations.ally_selection(_session_combat_body("classic.battle.1")), CombatContinuations.fumble_recovery(_session_combat_body("classic.battle.1")), CombatContinuations.reward("classic.battle.1", reward_runtime),
+		CombatContinuations.retreat_confirmation(retreat), CombatContinuations.friendly_collision(collision), CombatContinuations.death_macro(death_macro), CombatContinuations.round_macro(death_macro), CombatContinuations.ally_selection(_session_combat_body("classic.battle.1")), CombatContinuations.fumble_recovery(_session_combat_body("classic.battle.1")), CombatContinuations.reward("classic.battle.1", reward_runtime),
 	]
 	var kinds: Dictionary = {}
 	for continuation: SessionContinuation in continuations:
@@ -196,7 +196,7 @@ func _test_session_continuation_contracts() -> void:
 		kinds[continuation.kind] = true
 		var unknown_data := wire.duplicate(true); unknown_data["data"]["unexpected"] = true
 		assert_equal(SessionContinuation.from_data(unknown_data), null, "%s continuation rejects unknown payload fields" % continuation.kind)
-	assert_equal([continuations.size(), kinds.size()], [21, 21], "the continuation contract covers every stable kind exactly once")
+	assert_equal([continuations.size(), kinds.size()], [22, 22], "the continuation contract covers every stable kind exactly once")
 	assert_equal(SessionContinuation.from_data(SessionContinuation.new(&"post-clock", retreat).to_data()), null, "continuation decoding rejects a mismatched payload family")
 
 
@@ -438,7 +438,7 @@ func _test_public_thief_encounter(content: RealmzContent) -> void:
 func _test_public_session_resume(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
-	_begin_fixture_adventure(session, content)
+	_begin_standard_fixture_adventure(session, content, 1, false)
 	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1), "fixture position changes through validated restore")
 	var waiting := session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT))
 	assert_equal([waiting.state, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, Vector2i(1, 1)], "movement commits before the public interaction response")
@@ -645,7 +645,7 @@ func _test_public_vm_repeated_combat_item(content: RealmzContent) -> void:
 func _test_public_continuation_matrix(content: RealmzContent) -> void:
 	var age_source := GameSession.new()
 	age_source.start(content, 1)
-	_begin_fixture_adventure(age_source, content)
+	_begin_standard_fixture_adventure(age_source, content, 1, false)
 	_restore_fixture_position(age_source, content, "land:1", Vector2i(0, 1), "fixture position changes through validated restore")
 	var age_boundary := age_source.snapshot()
 	var character := age_boundary.game_state.party.characters()[0]
@@ -996,18 +996,6 @@ func _package_macro_battle(content: RealmzContent, monster_classic_id: int) -> D
 	var blocking_tiles := range(0, 401).filter(func(tile_id: int) -> bool: return terrain_set.tile_by_id(tile_id) != null and terrain_set.tile_by_id(tile_id).blocks_los); var blocking_tile_id: int = blocking_tiles[0] if not blocking_tiles.is_empty() else -1; var tiles: Array[int] = []; tiles.resize(BattlefieldGrid.CELL_COUNT); tiles.fill(terrain_set.base_tile); var field := BattlefieldState.new(content.start_map_id, tiles); var hero1 := CharacterState.new("macro.hero1", "Hero One", 30, 30); hero1.spell_points = 50; var hero2 := CharacterState.new("macro.hero2", "Hero Two", 30, 30); hero2.spell_points = 50; var hero_los := CharacterState.new("macro.hero_los", "Hero LOS", 30, 30); var hero_range := CharacterState.new("macro.hero_range", "Hero Range", 30, 30); field.actors.place_character(hero1.id, Vector2i(48, 50)); field.actors.place_character(hero2.id, Vector2i(46, 50)); field.actors.place_character(hero_los.id, Vector2i(50, 45)); field.actors.place_character(hero_range.id, Vector2i(35, 35))
 	if blocking_tile_id >= 0: field.terrain.set_tile(Vector2i(50, 48), blocking_tile_id)
 	var monster_def := content.combat.monster_by_classic_id(monster_classic_id); var source := MonsterState.new("macro.source", monster_def.id, monster_def.name, 20, 20, 1, 1, 0, 0, 0, true, -monster_def.classic_id); source.current_health = 0; field.actors.place_monster(source.id, Vector2i(50, 50), monster_def.size); var ally := MonsterState.new("macro.ally", monster_def.id, "Ally", 20, 20, 1, 1, 0, 0, 0, true, -monster_def.classic_id); field.actors.place_monster(ally.id, Vector2i(52, 50), monster_def.size); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [hero1, hero2, hero_los, hero_range]), RealmzClock.new()); state.combat = CombatState.new("battle.macro", [source, ally], -1, field); state.combat.set_turn_order([hero1.id, hero2.id, source.id, ally.id]); return {"state": state, "source": source, "ally": ally, "hero1": hero1, "hero2": hero2, "hero_los": hero_los, "hero_range": hero_range, "monster_def": monster_def}
-func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
-	if not _fixture_race_caste_available(content, "fixture has playable race and caste data"):
-		return
-	var character := _fixture_character("fixture.party.member", "Fixture Hero", content, 10, -1)
-	var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog))
-	assert_equal(imported.state, SessionStep.State.COMPLETED, "fixture imports a deterministic party member")
-	var started := session.submit_intent(PartyIntents.begin_adventure())
-	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
-		assert_equal(started.state, SessionStep.State.COMPLETED, "fixture begins without a Start Game interaction")
-	else:
-		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "fixture reaches the Start Game interaction")
-		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "fixture completes its Start Game interaction")
 func _vm_combat_auto_session(content: RealmzContent, seed: int) -> GameSession:
 	var races := content.characters.race_definitions(); var castes := content.characters.caste_definitions()
 	if races.is_empty() or castes.is_empty(): return null

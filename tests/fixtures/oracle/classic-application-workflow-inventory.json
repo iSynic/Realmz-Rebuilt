@@ -1404,6 +1404,19 @@
           "path": "src/playthrough/session/player_intent.gd",
           "symbol": "SET_FAST_SPELL,"
         }
+      },
+      {
+        "id": "SET_ADVENTURE_RULES",
+        "classification": "implemented",
+        "workflowIds": [
+          "classic.startup.assemble-party",
+          "classic.spellcasting.choose-power-target"
+        ],
+        "exclusionId": "",
+        "evidence": {
+          "path": "src/playthrough/session/player_intent.gd",
+          "symbol": "SET_ADVENTURE_RULES,"
+        }
       }
     ],
     "interactions": [
@@ -2029,6 +2042,10 @@
         {
           "id": "difficulty-and-monster-set",
           "status": "implemented"
+        },
+        {
+          "id": "optional-free-targeting-cancellation",
+          "status": "implemented"
         }
       ],
       "castle": {
@@ -2095,7 +2112,8 @@
           "CREATE_PARTY",
           "IMPORT_VAULT_CHARACTER",
           "REMOVE_PARTY_MEMBER",
-          "SET_PARTY_SETUP_OPTIONS"
+          "SET_PARTY_SETUP_OPTIONS",
+          "SET_ADVENTURE_RULES"
         ],
         "interactionKinds": [],
         "opcodes": []
@@ -6231,7 +6249,7 @@
       "name": "Choose a spell, power, and target",
       "trigger": "Open the spellbook in field, camp, or combat context.",
       "interactionSequence": "Filter castable spells, show costs and failure reasons, choose legal power, then select character, actor, repeated actors, or battlefield area.",
-      "committedOutcome": "One complete CAST_SPELL intent owns the selection; abandoned presentation choices do not mutate simulation.",
+      "committedOutcome": "Combat targeting reserves the exact source before aiming; confirmation spends it once and invalid targets remain retryable. Classic Abort costs remain the default. The per-adventure free cancellation option (FD-COMBAT-022) restores an uncommitted reservation without rewinding RNG; its validated setting command is separate from presentation preferences.",
       "variants": [
         {
           "id": "single-character",
@@ -6255,6 +6273,10 @@
         },
         {
           "id": "workspace-entry-cue",
+          "status": "implemented"
+        },
+        {
+          "id": "optional-free-targeting-cancellation",
           "status": "implemented"
         }
       ],
@@ -6287,6 +6309,10 @@
           {
             "path": "src/playthrough/session/session_intent_coordinator.gd",
             "symbol": "func _cast_spell"
+          },
+          {
+            "path": "src/playthrough/session/adventure_rules_workflow.gd",
+            "symbol": "class_name AdventureRulesWorkflow"
           }
         ]
       },
@@ -6316,7 +6342,8 @@
           "combat"
         ],
         "intentKinds": [
-          "CAST_SPELL"
+          "CAST_SPELL",
+          "SET_ADVENTURE_RULES"
         ],
         "interactionKinds": [
           "CHARACTER_SELECTION",

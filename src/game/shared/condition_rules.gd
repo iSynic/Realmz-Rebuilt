@@ -47,21 +47,32 @@ const PARTY_WIZARDS_EYE := 4
 const PARTY_SEARCHING := 5
 
 
-func tick_character(character: CharacterState) -> Array[DomainEvent]:
+func tick_character(character: CharacterState, in_combat: bool = false, arithmetic: RealmzArithmetic = null) -> Array[DomainEvent]:
 	var events: Array[DomainEvent] = []
-	if character.conditions.is_active(REGENERATING) and character.current_health > -10 and character.current_health < character.maximum_health and not character.conditions.is_active(ANIMATED):
+	if character.conditions.is_active(REGENERATING) and (character.current_health > 0 if in_combat else character.current_health > -10) and character.current_health < character.maximum_health and not character.conditions.is_active(ANIMATED):
 		var healed := mini(absi(character.conditions.value(REGENERATING)), character.maximum_health - character.current_health)
-		character.current_health += healed
-		events.append(DomainEvent.new(&"condition_healed", {"characterId": character.id, "condition": REGENERATING, "amount": healed}))
+		if not in_combat or not character.conditions.is_active(TURNED_TO_STONE):
+			var regenerated := character.current_health + absi(character.conditions.value(REGENERATING))
+			character.current_health = mini(character.maximum_health, maxi(-10, arithmetic.signed_16(regenerated))) if arithmetic != null else character.current_health + healed
+		var payload := {"characterId": character.id, "condition": REGENERATING, "amount": absi(character.conditions.value(REGENERATING)) if in_combat else healed}
+		if in_combat: payload.merge({"health": character.current_health, "combat": true})
+		events.append(DomainEvent.new(&"condition_healed", payload))
 	for index: int in [DISEASED, POISONED]:
 		if character.conditions.is_active(index) and character.current_health > 0 and character.conditions.value(ANIMATED) > -1:
 			var damage := absi(character.conditions.value(index))
-			character.current_health -= damage
-			events.append(DomainEvent.new(&"condition_damaged", {"characterId": character.id, "condition": index, "amount": damage}))
+			character.current_health = arithmetic.signed_16(character.current_health - damage) if arithmetic != null else character.current_health - damage
+			var payload := {"characterId": character.id, "condition": index, "amount": damage}
+			if in_combat: payload.merge({"health": character.current_health, "combat": true})
+			events.append(DomainEvent.new(&"condition_damaged", payload))
 	if character.conditions.is_active(ENERGY_DRAIN) and character.current_health > 0:
-		character.spell_points = maxi(0, character.spell_points - absi(character.conditions.value(ENERGY_DRAIN)))
-	if character.conditions.is_active(ABSORBING_ENERGY) and character.maximum_spell_points > 0 and character.current_health > 0:
-		character.spell_points = mini(character.maximum_spell_points, character.spell_points + absi(character.conditions.value(ABSORBING_ENERGY)))
+		var drained := character.spell_points - absi(character.conditions.value(ENERGY_DRAIN))
+		character.spell_points = maxi(0, arithmetic.signed_16(drained) if arithmetic != null else drained)
+	if character.conditions.is_active(ABSORBING_ENERGY) and (character.maximum_spell_points != 0 if in_combat else character.maximum_spell_points > 0) and character.current_health > 0:
+		var absorbed := character.spell_points + absi(character.conditions.value(ABSORBING_ENERGY))
+		character.spell_points = mini(character.maximum_spell_points, arithmetic.signed_16(absorbed) if arithmetic != null else absorbed)
+	if in_combat and character.conditions.is_active(CONFUSED) and character.traitor:
+		character.traitor = false
+		events.append(DomainEvent.new(&"combat_allegiance_restored", {"characterIds": [character.id]}))
 	for index: int in character.conditions.decay_positive():
 		var payload := {"characterId": character.id, "condition": index}
 		if index == HELPLESS:
@@ -71,7 +82,7 @@ func tick_character(character: CharacterState) -> Array[DomainEvent]:
 	return events
 
 
-func tick_party(party: PartyState) -> Array[DomainEvent]:
+func tick_party_conditions(party: PartyState) -> Array[DomainEvent]:
 	var events: Array[DomainEvent] = []
 	for index: int in party.conditions.decay_positive():
 		events.append(DomainEvent.new(&"party_condition_expired", {"condition": index}))
@@ -81,6 +92,11 @@ func tick_party(party: PartyState) -> Array[DomainEvent]:
 		party.conditions.add(PARTY_TORCH_LIT, -1)
 		if party.conditions.value(PARTY_TORCH_LIT) == 0:
 			events.append(DomainEvent.new(&"party_condition_expired", {"condition": PARTY_TORCH_LIT}))
+	return events
+
+
+func tick_party(party: PartyState) -> Array[DomainEvent]:
+	var events := tick_party_conditions(party)
 	for character: CharacterState in party.characters():
 		events.append_array(tick_character(character))
 	for ally: MonsterState in party.allies():

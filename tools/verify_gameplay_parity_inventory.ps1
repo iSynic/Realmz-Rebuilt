@@ -14,7 +14,8 @@ if ([string]::IsNullOrWhiteSpace($GodotPath)) {
     }
 }
 
-$arguments = @("--headless", "--path", $repoRoot, "--script", "res://tools/gameplay_parity_inventory.gd")
+$engineLog = Join-Path ([IO.Path]::GetTempPath()) ("realmz-parity-" + [Guid]::NewGuid().ToString("N") + ".log")
+$arguments = @("--headless", "--log-file", $engineLog, "--path", $repoRoot, "--script", "res://tools/gameplay_parity_inventory.gd")
 if ($Write) { $arguments += @("--", "--write") }
 & $GodotPath @arguments
 if ($LASTEXITCODE -ne 0) { throw "Gameplay parity inventory verification failed." }

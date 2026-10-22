@@ -35,3 +35,6 @@ tools/providence-toolchain.local.json
 .understand/
 docs/codemap/
 docs/ui-refinement-review.md
+
+# Temporary project override written by tools/verify_unsafe_warnings.ps1.
+/override.cfg

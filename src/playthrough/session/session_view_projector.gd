@@ -103,6 +103,7 @@ static func _complete_combat_view(context: SessionWorkflowContext, pending_inter
 static func _populate_complete_identity(context: SessionWorkflowContext, result: GameView) -> void:
 	result.campaign_id = context.content.campaign_id
 	result.rules_version = context.content.rules_version
+	result.adventure_rules = context.state.adventure_rules.copy()
 	result.character_spellcasting_blocked = context.state.character_spellcasting_blocked
 	result.party_setup_available = not context.state.party_setup_completed
 
@@ -267,7 +268,7 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int, 
 	# event is published. Rebuild only the party-owned detached records at that
 	# boundary while retaining the expensive immutable campaign catalogs.
 	var refresh_party := events.any(func(event: DomainEvent) -> bool:
-		return event.kind == &"fatigue_changed" and String(event.payload.get("source", "")) == "classic" and String(event.payload.get("reason", "")) == "hour-boundary"
+		return event.kind == &"fatigue_changed" and str(event.payload.get("source", "")) == "classic" and str(event.payload.get("reason", "")) == "hour-boundary"
 	)
 	var magic_character_ids := _ordinary_magic_character_ids(events)
 	var magic_affordability_ids := _ordinary_affordability_character_ids(context, events)
@@ -335,7 +336,7 @@ func _ordinary_party_members(context: SessionWorkflowContext, refresh_party: boo
 			members.append(previous_member)
 			continue
 		status_character_ids[character.id] = true
-		var equipment := _equipment_by_character_id.get(character.id) as CharacterCombatEquipment
+		var equipment: CharacterCombatEquipment = _equipment_by_character_id.get(character.id)
 		if equipment == null:
 			equipment = context.rules.equipment.combat_equipment(character, context.content.items.definitions())
 			_equipment_by_character_id[character.id] = equipment
@@ -347,14 +348,15 @@ func _ordinary_party_members(context: SessionWorkflowContext, refresh_party: boo
 
 func _ordinary_domain_revisions(revision: int, refresh_party: bool, inventory_refresh: bool, magic_character_ids: Dictionary) -> ViewDomainRevisions:
 	var revisions := ViewDomainRevisions.new()
-	revisions.party_roster = _cached_view.domain_revisions.party_roster
-	revisions.party_status = revision if refresh_party else _cached_view.domain_revisions.party_status
-	revisions.setup = _cached_view.domain_revisions.setup
+	var previous: ViewDomainRevisions = _cached_view.domain_revisions
+	revisions.party_roster = previous.party_roster
+	revisions.party_status = revision if refresh_party else previous.party_status
+	revisions.setup = previous.setup
 	revisions.exploration = revision
-	revisions.inventory = revision if inventory_refresh else _cached_view.domain_revisions.inventory
-	revisions.magic = revision if not magic_character_ids.is_empty() else _cached_view.domain_revisions.magic
-	revisions.services = _cached_view.domain_revisions.services
-	revisions.combat = _cached_view.domain_revisions.combat
+	revisions.inventory = revision if inventory_refresh else previous.inventory
+	revisions.magic = revision if not magic_character_ids.is_empty() else previous.magic
+	revisions.services = previous.services
+	revisions.combat = previous.combat
 	revisions.system = revision
 	revisions.synchronize_legacy_aggregates()
 	return revisions
@@ -382,6 +384,7 @@ func _ordinary_game_view(context: SessionWorkflowContext, revision: int, project
 	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), projected_map, members, state.party.fatigue, state.party.pooled_wealth.gold, null)
 	result.campaign_id = _cached_view.campaign_id
 	result.rules_version = _cached_view.rules_version
+	result.adventure_rules = context.state.adventure_rules.copy()
 	result.character_spellcasting_blocked = _cached_view.character_spellcasting_blocked
 	result.party_setup_available = _cached_view.party_setup_available
 	result.character_draft = _cached_view.character_draft
@@ -439,7 +442,7 @@ static func _populate_ordinary_action_availability(result: GameView, previous: G
 static func _ordinary_magic_character_ids(events: Array[DomainEvent]) -> Dictionary:
 	var result: Dictionary = {}
 	for event: DomainEvent in events:
-		var character_id := String(event.payload.get("characterId", ""))
+		var character_id := str(event.payload.get("characterId", ""))
 		if event.kind in [&"spell_points_recovered", &"condition_expired", &"condition_healed", &"condition_damaged"] and not character_id.is_empty():
 			result[character_id] = true
 	return result
@@ -448,7 +451,7 @@ static func _ordinary_magic_character_ids(events: Array[DomainEvent]) -> Diction
 func _ordinary_affordability_character_ids(context: SessionWorkflowContext, events: Array[DomainEvent]) -> Dictionary:
 	var result: Dictionary = {}
 	for event: DomainEvent in events:
-		var character_id := String(event.payload.get("characterId", ""))
+		var character_id := str(event.payload.get("characterId", ""))
 		if character_id.is_empty():
 			continue
 		if event.kind in [&"condition_expired", &"condition_healed", &"condition_damaged"] or event.kind == &"spell_points_recovered" and _spell_affordability_crossed(context, character_id):
@@ -492,7 +495,7 @@ func _ordinary_inventory_refresh(context: SessionWorkflowContext, events: Array[
 	for event: DomainEvent in events:
 		if event.kind != &"spell_points_recovered":
 			continue
-		var character_id := String(event.payload.get("characterId", ""))
+		var character_id := str(event.payload.get("characterId", ""))
 		var current := context.state.party.character_by_id(character_id)
 		var previous := _character_view_by_id(_cached_view.party_members, character_id)
 		if current == null or previous == null or previous.spell_points >= 25 or current.spell_points < 25:
@@ -510,7 +513,7 @@ func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_ce
 	if reuse_static and _cached_map_view != null and _cached_map_id == context.state.party.map_id and _cached_map_coordinate == context.state.party.coordinate:
 		return _cached_map_view
 	var previous_map_view := _cached_map_view
-	var presentation_delta: RefCounted
+	var presentation_delta: MapPresentationDelta
 	var current_map := context.content.world.map_by_id(context.state.party.map_id)
 	# LOS movement returns every cell in the current projection, but shares
 	# unchanged immutable cell views and identifies its changed visibility edge.

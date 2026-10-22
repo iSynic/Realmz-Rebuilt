@@ -29,7 +29,7 @@ func present(page: StringName, context: String, reasons: Dictionary, slot: Strin
 	var changed_page := _page != page
 	_page = page
 	_refresh_hints()
-	%Heading.text = {&"main": "Paused", &"settings": "Settings", &"saves": "Save & Load", &"help": "Help", &"about": "About Realmz Rebuilt", &"scenario_info": "Scenario details"}.get(page, "Paused")
+	%Heading.text = {&"main": "Paused", &"saves": "Save & Load", &"help": "Help", &"about": "About Realmz Rebuilt", &"scenario_info": "Scenario details"}.get(page, "Paused")
 	%DetailText.text = details
 	%PackageStatus.text = context
 	%PackageStatus.visible = page == &"main"

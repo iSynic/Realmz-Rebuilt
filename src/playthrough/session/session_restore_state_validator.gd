@@ -39,6 +39,7 @@ static func combat_staged_item_is_valid(content: RealmzContent, state: GameState
 	if CombatCastResources.pending(state) != null:
 		var preview := CombatCastResources.preview(state)
 		return preview != null and party_inventory_is_valid(content, preview, rules) and combat_staged_item_is_valid(content, preview, rules)
+	if not _retained_item_powers_are_valid(content, state): return false
 	if state.combat == null or state.combat.turns.staged_random_item_instance_id().is_empty():
 		return true
 	var actor_id := state.combat.turns.active_actor_id()
@@ -66,6 +67,35 @@ static func combat_staged_item_is_valid(content: RealmzContent, state: GameState
 	if not use_probe.allowed or ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:
 		return false
 	return true
+
+
+static func _retained_item_powers_are_valid(content: RealmzContent, state: GameState) -> bool:
+	if state.combat == null:
+		return true
+	var staged_instance := state.combat.turns.staged_random_item_instance_id()
+	if state.combat.turns.retained_item_powers.is_empty():
+		return not state.adventure_rules.free_targeting_cancellation or staged_instance.is_empty()
+	var staged_found := staged_instance.is_empty()
+	var character := state.party.character_by_id(state.combat.turns.active_actor_id())
+	if not state.adventure_rules.free_targeting_cancellation or character == null or state.combat.completed or state.combat.turns.active_turn == null:
+		return false
+	var instances := character.inventory()
+	instances.append_array(state.combat.dropped_items.items())
+	for roll: CombatItemPowerRoll in state.combat.turns.retained_item_powers:
+		var item := content.items.item_by_id(roll.definition_id)
+		var spell := content.magic.spell_by_classic_id(absi(item.special_2)) if item != null else null
+		if item == null or absi(item.special_1) != 8 or spell == null:
+			return false
+		# A later committed action may destroy/drop the source. Its spent draw
+		# remains a tombstone until activation end, never a fabricated item.
+		for instance: ItemInstance in instances:
+			if instance.id == roll.instance_id and instance.definition_id != roll.definition_id:
+				return false
+		if staged_instance == roll.instance_id:
+			staged_found = true
+			if state.combat.turns.active_turn.staged_item_power != roll.power:
+				return false
+	return staged_found
 
 
 static func combat_vm_request_is_valid(content: RealmzContent, state: GameState, rng: RealmzRng, rules: RealmzRules, action_state: ScenarioActionState, request: InteractionRequest) -> bool:
@@ -111,15 +141,15 @@ static func shop_state_is_valid(content: RealmzContent, state: GameState) -> boo
 	if not state.location_services.active_shop_id.is_empty() and content.economy.shop_by_id(state.location_services.active_shop_id) == null:
 		return false
 	for shop_id: Variant in state.location_services.shop_buyback_overrides():
-		var shop := content.economy.shop_by_id(String(shop_id))
+		var shop := content.economy.shop_by_id(str(shop_id))
 		if shop == null:
 			return false
 		var occupied_slots: Dictionary = {}
 		for index: int in shop.item_ids().size():
 			if state.location_services.shop_quantity(shop, index) > 0: occupied_slots[shop.stock_slot(index)] = true
 		for item_id: Variant in state.location_services.shop_buyback_overrides()[shop_id]:
-			var item := content.items.item_by_id(String(item_id))
-			var slot := state.location_services.shop_buyback_slot(String(shop_id), String(item_id))
+			var item := content.items.item_by_id(str(item_id))
+			var slot := state.location_services.shop_buyback_slot(str(shop_id), str(item_id))
 			if item == null or slot < 0 or slot > 999 or slot / 200 != item.classic_id / 200 or occupied_slots.has(slot):
 				return false
 			occupied_slots[slot] = true
@@ -135,12 +165,14 @@ static func location_notes_are_valid(content: RealmzContent, state: GameState) -
 		var map := content.world.map_by_id(note.map_id)
 		if map == null or map.level_type != note.map_kind or map.level_index != note.level_index or note.native_location_id != LocationNoteState.native_id_for(map.level_index, note.coordinate) or map.topology.cell_at(note.coordinate) == null or note.text.is_empty() or not LocationNoteState.text_is_valid(note.text):
 			return false
-		counts[note.map_kind] = int(counts.get(note.map_kind, 0)) + 1
+		var previous_count: int = counts.get(note.map_kind, 0)
+		counts[note.map_kind] = previous_count + 1
 		var ordinal_key := "%s:%d" % [String(note.map_kind), note.record_ordinal]
 		if ordinals.has(ordinal_key):
 			return false
 		ordinals[ordinal_key] = true
-		if int(counts[note.map_kind]) > LocationNoteState.MAX_NOTES_PER_MAP_KIND:
+		var note_count: int = counts[note.map_kind]
+		if note_count > LocationNoteState.MAX_NOTES_PER_MAP_KIND:
 			return false
 	return true
 
@@ -149,7 +181,7 @@ static func boat_overlays_are_valid(content: RealmzContent, state: GameState) ->
 	if content == null or state == null:
 		return false
 	for key_value: Variant in state.world.topology.boat_presence_overrides().keys():
-		var key := String(key_value)
+		var key := str(key_value)
 		var separator := key.rfind(":")
 		if separator <= 0:
 			return false

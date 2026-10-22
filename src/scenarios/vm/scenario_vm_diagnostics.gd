@@ -43,7 +43,8 @@ func restore_pending_instruction(frames: Array[ScenarioFrame], definition: Scena
 			return
 		var instruction: Variant = program.instruction_at(frame.cursor - 1)
 		if instruction is ClassicActionDefinition:
-			capture_instruction(program.id, instruction)
+			var classic_instruction: ClassicActionDefinition = instruction
+			capture_instruction(program.id, classic_instruction)
 		return
 
 

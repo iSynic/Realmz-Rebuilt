@@ -49,7 +49,7 @@ func to_data() -> Dictionary:
 		"trace": trace.duplicate(true),
 		"requestCounter": request_counter,
 		"halted": halted,
-		"lastOutcome": _detached(last_outcome) if legacy_values else ScenarioValueCodec.encode(last_outcome),
+		"lastOutcome": detached(last_outcome) if legacy_values else ScenarioValueCodec.encode(last_outcome),
 		"classicRecordId": classic_record_id,
 		"nativeContext": null if native_context == null else ScenarioExecutionContextCodec.encode(native_context),
 		"secondaryDoor": secondary_door,
@@ -63,8 +63,11 @@ func to_data() -> Dictionary:
 	return data
 
 
-static func from_data(data: Variant, depth: int = 0) -> ScenarioVmSnapshot:
-	if depth > 32 or not data is Dictionary or not ((data.size() == 9 and data.get("schemaVersion") == 2) or (data.size() == 14 and (data.get("schemaVersion") == 3 or data.get("schemaVersion") == SCHEMA_VERSION) and data.get("classicRecordId") is String)):
+static func from_data(value: Variant, depth: int = 0) -> ScenarioVmSnapshot:
+	if depth > 32 or not value is Dictionary:
+		return null
+	var data: Dictionary = value
+	if not ((data.size() == 9 and data.get("schemaVersion") == 2) or (data.size() == 14 and (data.get("schemaVersion") == 3 or data.get("schemaVersion") == SCHEMA_VERSION) and data.get("classicRecordId") is String)):
 		return null
 	var typed: bool = data.get("schemaVersion") == SCHEMA_VERSION
 	for field: String in ["frames", "pendingRequest", "pendingContinuation", "trace", "requestCounter", "nativeInvocationBegun" if typed else "stepCount", "halted", "lastOutcome"]:
@@ -104,13 +107,14 @@ static func from_data(data: Variant, depth: int = 0) -> ScenarioVmSnapshot:
 	for entry: Variant in data["trace"]:
 		if not entry is Dictionary:
 			return null
-		snapshot.trace.append(entry.duplicate(true))
+		var trace_entry: Dictionary = entry
+		snapshot.trace.append(trace_entry.duplicate(true))
 	snapshot.request_counter = saved_request_counter
 	snapshot.native_invocation_begun = native_begun
 	snapshot.legacy_step_count = 0 if typed else _integer(data["stepCount"])
 	snapshot.halted = data["halted"]
 	if snapshot.legacy_values:
-		snapshot.last_outcome = _detached(data["lastOutcome"])
+		snapshot.last_outcome = detached(data["lastOutcome"])
 	else:
 		var outcome := ScenarioValueCodec.decode(data["lastOutcome"])
 		if not outcome["ok"]:
@@ -123,10 +127,19 @@ static func from_data(data: Variant, depth: int = 0) -> ScenarioVmSnapshot:
 static func _integer(value: Variant) -> int:
 	if value is int:
 		return value
-	if value is float and is_finite(value) and value == floor(value) and absf(value) <= 9_007_199_254_740_991.0:
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_finite(number) and number == floorf(number) and absf(number) <= 9_007_199_254_740_991.0:
+			return int(number)
 	return -1
 
 
-static func _detached(value: Variant) -> Variant:
-	return value.duplicate(true) if value is Array or value is Dictionary else value
+## Returns a deep copy of an Array or Dictionary value and any other value unchanged.
+static func detached(value: Variant) -> Variant:
+	if value is Array:
+		var items: Array = value
+		return items.duplicate(true)
+	if value is Dictionary:
+		var record: Dictionary = value
+		return record.duplicate(true)
+	return value

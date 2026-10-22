@@ -152,7 +152,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		var stage_rng_checkpoint := rng.checkpoint()
 		_context.actions().prepare_character_turn(state.combat, caster)
 		power_level = rng.draw(7, StringName("combat.item.power.%s" % instance.id))
-		if not state.combat.turns.stage_random_item_power(caster.id, instance.id, power_level):
+		if not state.combat.turns.stage_random_item_power(caster.id, instance.id, power_level, item.id if state.adventure_rules.free_targeting_cancellation else ""):
 			return CombatFlowSpellRollback.item(state, rng, stage_state_checkpoint, stage_rng_checkpoint, &"item_power_stage_failed", "The random item power could not be staged for targeting.")
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_item_power_staged", {"actorId": caster.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power_level, "source": "classic-item"})])
 	if spell.target_type in [3, 4] and target_coordinate == INVALID_COORDINATE:
@@ -174,7 +174,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var result := _resolve_spell_item(state, content, caster, instance, item, spell, power_level, cast_level, rng, target_id, target_coordinate, rotation, target_ids, target_coordinates, summon_spell, state_checkpoint, rng_checkpoint)
 	if not result.ok:
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
-	state.combat.turns.clear_staged_random_item_power()
+	state.combat.turns.consume_random_item_power(instance_id)
 	var events: Array[DomainEvent] = [item_used_event(caster_id, instance_id, item, spell, power_level, caster)]
 	var native_sound_id := item.sound_id + 600
 	if item.sound_id != 0:
@@ -273,7 +273,7 @@ func character_item_spell_options(state: GameState, content: RealmzContent, cast
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null:
 		return result
-	var staged_instance_id := state.combat.turns.staged_random_item_instance_id()
+	var staged_instance_id := "" if state.adventure_rules.free_targeting_cancellation else state.combat.turns.staged_random_item_instance_id()
 	for instance: ItemInstance in caster.inventory():
 		var item := content.items.item_by_id(instance.definition_id)
 		var spell := content.magic.spell_by_classic_id(item.special_2) if item != null else null

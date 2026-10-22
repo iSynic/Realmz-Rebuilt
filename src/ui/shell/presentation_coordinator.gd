@@ -33,6 +33,31 @@ var combat_text_background_opacity_percent: int = 50:
 		combat_text_background_opacity_percent = clampi(snappedi(value, 25), 0, 100)
 		if _battlefield_presenter != null:
 			_battlefield_presenter.result_text.background_opacity_percent = combat_text_background_opacity_percent
+var combat_text_motion: String = PresentationSettings.COMBAT_TEXT_FLOATING:
+	set(value):
+		combat_text_motion = PresentationSettings.COMBAT_TEXT_STATIONARY if value == PresentationSettings.COMBAT_TEXT_STATIONARY else PresentationSettings.COMBAT_TEXT_FLOATING
+		if _battlefield_presenter != null:
+			_battlefield_presenter.result_text.motion = combat_text_motion
+var combat_text_size_percent: int = 100:
+	set(value):
+		combat_text_size_percent = clampi(snappedi(value, 5), 75, 200)
+		if _battlefield_presenter != null:
+			_battlefield_presenter.result_text.size_percent = combat_text_size_percent
+var combat_text_travel_logical_pixels: int = 32:
+	set(value):
+		combat_text_travel_logical_pixels = clampi(snappedi(value, 4), 0, 64)
+		if _battlefield_presenter != null:
+			_battlefield_presenter.result_text.travel_logical_pixels = combat_text_travel_logical_pixels
+var combat_text_anchor: String = PresentationSettings.COMBAT_TEXT_ANCHOR_ABOVE_ICON:
+	set(value):
+		combat_text_anchor = PresentationSettings.COMBAT_TEXT_ANCHOR_CUSTOM if value == PresentationSettings.COMBAT_TEXT_ANCHOR_CUSTOM else PresentationSettings.COMBAT_TEXT_ANCHOR_ABOVE_ICON
+		if _battlefield_presenter != null:
+			_battlefield_presenter.result_text.anchor = combat_text_anchor
+var combat_text_custom_offset_y_logical_pixels: int = 0:
+	set(value):
+		combat_text_custom_offset_y_logical_pixels = clampi(snappedi(value, 2), -64, 64)
+		if _battlefield_presenter != null:
+			_battlefield_presenter.result_text.custom_offset_y_logical_pixels = combat_text_custom_offset_y_logical_pixels
 var _reduced_motion: bool = false
 var _dungeon_3d_enabled: bool = true
 var drawn_revision: int = -1

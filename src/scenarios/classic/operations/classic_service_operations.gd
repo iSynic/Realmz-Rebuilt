@@ -117,15 +117,20 @@ func _shop_stock_rows(shop: ShopDefinition) -> Array[Dictionary]:
 			stock.append(_shop_stock_view(item, "base:%d" % slot, slot, quantity, shop))
 	var buyback_items := _game_state.location_services.shop_buyback_items(shop.id)
 	var buyback_ids: Array = buyback_items.keys()
-	buyback_ids.sort_custom(func(left: Variant, right: Variant) -> bool:
-		return _game_state.location_services.shop_buyback_slot(shop.id, String(left)) < _game_state.location_services.shop_buyback_slot(shop.id, String(right))
+	buyback_ids.sort_custom(func(left: String, right: String) -> bool:
+		return _game_state.location_services.shop_buyback_slot(shop.id, left) < _game_state.location_services.shop_buyback_slot(shop.id, right)
 	)
-	for item_id: Variant in buyback_ids:
-		var item := _content.items.item_by_id(String(item_id))
+	for item_id: String in buyback_ids:
+		var item := _content.items.item_by_id(item_id)
 		if item != null:
 			var slot := _game_state.location_services.shop_buyback_slot(shop.id, item.id)
-			stock.append(_shop_stock_view(item, "buyback:%s" % item.id, slot, int(buyback_items[item_id]), shop))
-	stock.sort_custom(func(left: Dictionary, right: Dictionary) -> bool: return int(left["index"]) < int(right["index"]))
+			var buyback_quantity: int = buyback_items[item_id]
+			stock.append(_shop_stock_view(item, "buyback:%s" % item.id, slot, buyback_quantity, shop))
+	stock.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_index: int = left["index"]
+		var right_index: int = right["index"]
+		return left_index < right_index
+	)
 	return stock
 
 
@@ -605,7 +610,7 @@ func _first_empty_shop_slot(shop: ShopDefinition, classic_item_id: int) -> int:
 	var occupied: Dictionary = {}
 	for index: int in shop.item_ids().size():
 		if _game_state.location_services.shop_quantity(shop, index) > 0: occupied[shop.stock_slot(index)] = true
-	for item_id: Variant in _game_state.location_services.shop_buyback_items(shop.id): occupied[_game_state.location_services.shop_buyback_slot(shop.id, String(item_id))] = true
+	for item_id: String in _game_state.location_services.shop_buyback_items(shop.id): occupied[_game_state.location_services.shop_buyback_slot(shop.id, item_id)] = true
 	for slot: int in range(start, start + 200):
 		if not occupied.has(slot): return slot
 	return -1

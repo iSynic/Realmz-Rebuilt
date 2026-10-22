@@ -7,6 +7,15 @@ static func for_package(content: RealmzContent, view: GameView, seed_value: int)
 	return "Loaded %s • %s %d,%d • seed %d" % [content.campaign_id, view.party_map_id, view.party_coordinate.x, view.party_coordinate.y, seed_value]
 
 
+static func for_smoke(step: SessionStep, view: GameView, fallback: String) -> String:
+	if not view.session_started:
+		return "MCP input verified • no package loaded"
+	if step == null or step.state == SessionStep.State.FAILED:
+		return fallback
+	var roll: int = step.events[0].payload.get("roll", 0)
+	return "Search committed • roll %d • day %d %02d:%02d" % [roll, view.realmz_day, view.realmz_hour, view.realmz_minute]
+
+
 static func for_event(event: DomainEvent) -> String:
 	match event.kind:
 		&"character_draft_generated": return "Classic character roll ready for review"

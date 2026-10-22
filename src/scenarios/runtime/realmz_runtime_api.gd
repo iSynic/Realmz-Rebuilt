@@ -31,7 +31,7 @@ var _presentation_operations: ClassicPresentationOpcodeHandler
 var _world_time_operations: ClassicWorldTimeOpcodeHandler
 var _time_operations: ClassicTimeOperations
 var _encounter_operations: ClassicEncounterOpcodeHandler
-var _thief_operations: RefCounted
+var _thief_operations: ClassicThiefEncounterOperations
 var _classic_handlers: ClassicOpcodeHandlerRegistry
 var _handler_registration_error: String = ""
 var _classic_execution: ClassicExecutionState
@@ -103,30 +103,36 @@ func resolve_program_id(program_id: String) -> String:
 func execute_safe(capability: String, arguments: Dictionary, request_id: String) -> ScenarioRuntimeOperationResult:
 	match capability:
 		"core.time.advance":
-			if not _whole_number(arguments.get("minutes")) or int(arguments["minutes"]) < 0:
+			var minutes: int = arguments["minutes"] if _whole_number(arguments.get("minutes")) else -1
+			if minutes < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Advance Time requires non-negative integer minutes.")
-			return _with_age_update_interactions(ScenarioRuntimeOperationResult.completed(true, _rules.clock.advance_minutes(_game_state, _content, int(arguments["minutes"]))), request_id, ScenarioRuntimeContinuation.SAFE_AGE_UPDATES)
+			return _with_age_update_interactions(ScenarioRuntimeOperationResult.completed(true, _rules.clock.advance_minutes(_game_state, _content, minutes)), request_id, ScenarioRuntimeContinuation.SAFE_AGE_UPDATES)
 		"core.inventory.grant-item":
 			if not arguments.get("characterId") is String or not arguments.get("itemId") is String or arguments.get("identified", false) is not bool:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Grant Item requires characterId, itemId, and optional identified bool.")
-			return _battle_reward_operations.grant_item(arguments["characterId"], arguments["itemId"], arguments.get("identified", false))
+			var grant_character_id: String = arguments["characterId"]
+			var grant_item_id: String = arguments["itemId"]
+			var grant_identified: bool = arguments.get("identified", false)
+			return _battle_reward_operations.grant_item(grant_character_id, grant_item_id, grant_identified)
 		"core.economy.grant-treasure":
 			if not arguments.get("treasureId") is String:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Grant Treasure requires a stable treasureId.")
-			var treasure := _content.economy.treasure_by_id(arguments["treasureId"])
+			var treasure_id: String = arguments["treasureId"]
+			var treasure := _content.economy.treasure_by_id(treasure_id)
 			if treasure == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Treasure '%s' is unavailable." % arguments["treasureId"])
 			return _battle_reward_operations.grant_treasure_definition(treasure, request_id)
 		"core.economy.take-gold":
-			if not _whole_number(arguments.get("amount")) or int(arguments["amount"]) < 0:
+			var amount: int = arguments["amount"] if _whole_number(arguments.get("amount")) else -1
+			if amount < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Take Gold requires a non-negative integer amount.")
-			var amount := int(arguments["amount"])
 			var paid := _rules.economy.take(_game_state.party, amount, WealthState.Kind.GOLD)
 			return ScenarioRuntimeOperationResult.completed(paid, [DomainEvent.new(&"wealth_taken", {"amount": amount, "kind": WealthState.Kind.GOLD, "paid": paid, "source": "scenario-action"})])
 		"core.combat.start":
 			if not arguments.get("battleId") is String:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Start Battle requires a stable battleId.")
-			var battle := _content.combat.battle_by_id(arguments["battleId"])
+			var battle_id: String = arguments["battleId"]
+			var battle := _content.combat.battle_by_id(battle_id)
 			if battle == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Battle '%s' is unavailable." % arguments["battleId"])
 			return _battle_reward_operations.start_battle_definition(battle, request_id, "scenario-action", ScenarioBattleCaller.safe_continue())
@@ -135,16 +141,7 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Show Text requires a string 'text' argument.")
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new("message_shown", {"text": arguments["text"], "source": "scenario-action"})])
 		"core.presentation.choice":
-			if not arguments.get("prompt") is String or not arguments.get("options") is Array or arguments["options"].is_empty() or arguments["options"].size() > 256:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Choice requires a prompt and one to 256 options.")
-			var options: Array[Dictionary] = []
-			for index: int in range(arguments["options"].size()):
-				var label: Variant = arguments["options"][index]
-				if not label is String:
-					return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Choice option %d is not a string." % index)
-				options.append({"id": "choice:%d" % index, "label": label})
-			var request := InteractionRequest.from_payload(request_id, &"scenario_choice", {"prompt": arguments["prompt"], "options": options})
-			return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.safe_choice(options.size()))
+			return _safe_choice(arguments, request_id)
 		"core.state.read":
 			var state_identity := _state_identity(arguments)
 			if state_identity.is_empty():
@@ -159,6 +156,20 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new("scenario_state_changed", {"scope": state_identity[0], "ownerId": state_identity[1], "name": state_identity[2]})])
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_action_capability", "Scenario Action capability '%s' is not available." % capability)
+
+
+func _safe_choice(arguments: Dictionary, request_id: String) -> ScenarioRuntimeOperationResult:
+	var labels: Array = arguments["options"] if arguments.get("options") is Array else []
+	if not arguments.get("prompt") is String or labels.is_empty() or labels.size() > 256:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Choice requires a prompt and one to 256 options.")
+	var options: Array[Dictionary] = []
+	for index: int in range(labels.size()):
+		var label: Variant = labels[index]
+		if not label is String:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Choice option %d is not a string." % index)
+		options.append({"id": "choice:%d" % index, "label": label})
+	var request := InteractionRequest.from_payload(request_id, &"scenario_choice", {"prompt": arguments["prompt"], "options": options})
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.safe_choice(options.size()))
 
 
 func resume_safe(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String = "") -> ScenarioRuntimeOperationResult:
@@ -510,7 +521,8 @@ func _resume_character_selection(continuation: ScenarioRuntimeContinuation, resp
 	for value: Variant in requested:
 		if not value is String or picked.has(value):
 			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Character selection contains an invalid or duplicate ID.")
-		var character := _game_state.party.character_by_id(value)
+		var character_id: String = value
+		var character := _game_state.party.character_by_id(character_id)
 		if character == null or not character_continuation.allow_dead and character.current_health <= 0:
 			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Character selection includes an ineligible party member.")
 		picked.append(value)
@@ -597,4 +609,9 @@ static func _character_attribute(character: CharacterState, index: int) -> int:
 		5, 6: return character.luck
 	return 0
 static func _whole_number(value: Variant) -> bool:
-	return value is int or value is float and is_equal_approx(value, round(value))
+	if value is int:
+		return true
+	if not value is float:
+		return false
+	var number: float = value
+	return is_equal_approx(number, roundf(number))

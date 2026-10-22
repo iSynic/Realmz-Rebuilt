@@ -24,14 +24,15 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 	var height := mini(map.topology.height, projection_size.y)
 	var bounds := Rect2i(clampi(party.coordinate.x - width / 2, 0, map.topology.width - width), clampi(party.coordinate.y - height / 2, 0, map.topology.height - height), width, height)
 	var cache_key := "%s:%d:%d:%d,%d:%d,%d,%d,%d:%d" % [map.id, topology.revision(), exploration.revision(), party.coordinate.x, party.coordinate.y, bounds.position.x, bounds.position.y, bounds.size.x, bounds.size.y, int(wizard_eye)]
-	var window := window_cache.get(cache_key) as MapWindowView
+	var window: MapWindowView = window_cache.get(cache_key)
+	var delta: MapPresentationDelta = presentation_delta
 	if window == null:
-		if previous_map_view != null and previous_map_view.map_window != null and presentation_delta != null:
-			window = _patch_map_window(context, map, bounds, visible, cell_cache, previous_map_view, presentation_delta)
+		if previous_map_view != null and previous_map_view.map_window != null and delta != null:
+			window = _patch_map_window(context, map, bounds, visible, cell_cache, previous_map_view, delta)
 		else:
 			window = MapWindowView.new(bounds, {}, _complete_window_cells(context, map, bounds, visible, cell_cache))
-			if presentation_delta != null:
-				presentation_delta.complete_window_rebuild = true
+			if delta != null:
+				delta.complete_window_rebuild = true
 		if window_cache.size() >= 32:
 			window_cache.clear()
 		window_cache[cache_key] = window
@@ -53,9 +54,10 @@ static func build_map_view(context: SessionWorkflowContext, projection_size: Vec
 	return result
 
 
-static func _patch_map_window(context: SessionWorkflowContext, map: MapDefinition, bounds: Rect2i, visible: Dictionary, cell_cache: Dictionary, previous_map_view: MapView, presentation_delta: RefCounted) -> MapWindowView:
+static func _patch_map_window(context: SessionWorkflowContext, map: MapDefinition, bounds: Rect2i, visible: Dictionary, cell_cache: Dictionary, previous_map_view: MapView, presentation_delta: MapPresentationDelta) -> MapWindowView:
 	var exploration := context.state.world.exploration
-	var previous_bounds: Rect2i = previous_map_view.map_window.bounds
+	var previous_window: MapWindowView = previous_map_view.map_window
+	var previous_bounds: Rect2i = previous_window.bounds
 	presentation_delta.entered = _entered_coordinates(previous_bounds, bounds)
 	presentation_delta.exited = _entered_coordinates(bounds, previous_bounds)
 	var changed_membership: Dictionary = {}
@@ -77,7 +79,7 @@ static func _patch_map_window(context: SessionWorkflowContext, map: MapDefinitio
 		var cell := map.topology.cell_at(coordinate)
 		if cell == null:
 			continue
-		var reusable := previous_map_view.map_window.retained_cell_at(coordinate) as MapCellView
+		var reusable := previous_window.retained_cell_at(coordinate)
 		var is_visible := not map.uses_los or visible.has(coordinate)
 		var was_visited := exploration.was_visited(map.id, coordinate)
 		if map.level_type == &"dungeon" and changed_membership.has(coordinate):
@@ -88,7 +90,8 @@ static func _patch_map_window(context: SessionWorkflowContext, map: MapDefinitio
 		elif reusable != null and cell.is_path and reusable.visited != was_visited:
 			reusable = null
 		replacements[coordinate] = reusable.detached_with_visibility(is_visible, was_visited) if reusable != null else _cached_cell_view(context, map, cell, is_visible, cell_cache)
-	return previous_map_view.map_window.patched(bounds, replacements)
+	var patched_window: MapWindowView = previous_window.patched(bounds, replacements)
+	return patched_window
 
 
 static func _complete_window_cells(context: SessionWorkflowContext, map: MapDefinition, bounds: Rect2i, visible: Dictionary, cell_cache: Dictionary) -> Array[MapCellView]:
@@ -188,7 +191,7 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 
 static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefinition, cell_cache: Dictionary) -> void:
 	var signature := "%s:%d:%d:%d" % [map.id, context.state.world.topology.revision(), context.state.world.triggers.random_region_bounds_revision(), context.state.world.topology.map_landlook(map)]
-	if String(cell_cache.get(&"signature", "")) == signature:
+	if str(cell_cache.get(&"signature", "")) == signature:
 		return
 	cell_cache.clear()
 	cell_cache[&"signature"] = signature
@@ -196,7 +199,7 @@ static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefiniti
 
 static func _cached_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool, cell_cache: Dictionary) -> MapCellView:
 	var was_visited := context.state.world.exploration.was_visited(map.id, cell.coordinate)
-	var cached := cell_cache.get(cell.coordinate) as MapCellView
+	var cached: MapCellView = cell_cache.get(cell.coordinate)
 	if cached == null or cell.is_path and cached.visited != was_visited:
 		cached = build_cell_view(context, map, cell, is_visible)
 		cell_cache[cell.coordinate] = cached

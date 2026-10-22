@@ -190,7 +190,8 @@
         "InteractionServiceValueDecoder",
         "InteractionCombatValueDecoder",
         "InteractionRewardValueDecoder",
-        "InteractionSelectionValueDecoder"
+        "InteractionSelectionValueDecoder",
+        "AdventureRules"
       ],
       "tests": [
         "tests/core/test_realmz_rng.gd",
@@ -446,6 +447,7 @@
       "entryPoints": [
         "src/game/combat/combat_flow.gd",
         "src/game/combat/combat_battle_setup.gd",
+        "src/game/combat/combat_round_boundary.gd",
         "src/game/combat/combat_flow_magic.gd",
         "src/game/combat/combat_macro_spells.gd",
         "src/game/combat/combat_character_spell_resolution.gd",
@@ -474,6 +476,8 @@
         "CombatCastSourceAdmission",
         "CombatCastResponsePolicy",
         "CombatBattleSetup",
+        "CombatRoundBoundary",
+        "CombatRoundCursor",
         "CombatFlowMagic",
         "CombatMacroSpells",
         "CombatCharacterSpellResolution",
@@ -512,7 +516,8 @@
         "MonsterCatalogEntryView",
         "PersistentCombatFieldView",
         "MonsterConsumptionProbe",
-        "MonsterPolymorphResult"
+        "MonsterPolymorphResult",
+        "CombatItemPowerRoll"
       ],
       "tests": [
         "tests/core/test_combat_flow.gd",
@@ -567,7 +572,9 @@
         "CombatContinuations",
         "PlayerIntent",
         "PlayerIntentPayload",
-        "PlayerIntentRegistry"
+        "PlayerIntentRegistry",
+        "AdventureRulesIntents",
+        "AdventureRulesWorkflow"
       ],
       "tests": [
         "tests/core/test_game_session.gd",
@@ -803,7 +810,9 @@
         "WorkspaceFocusController",
         "UiRouteDefinition",
         "UiRouteCatalog",
-        "Realmz Builder"
+        "Realmz Builder",
+        "AdventureRulesPanel",
+        "AdventureRulesSettingsPage"
       ],
       "tests": [
         "tests/presentation/test_controller_support.gd",

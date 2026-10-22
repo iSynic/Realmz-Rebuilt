@@ -207,7 +207,7 @@ func _complete_pending_operation(continuation: ScenarioVmPendingContinuation, op
 		if not continuation.result_target.is_empty():
 			_frames[frame_index].set_local(continuation.result_target, operation.value)
 	else:
-		var inherited_context: ScenarioExecutionContext = _frames.back().context().for_new_program_frame() if not _frames.is_empty() else null
+		var inherited_context: ScenarioExecutionContext = _frames[-1].context().for_new_program_frame() if not _frames.is_empty() else null
 		var directive_result := _apply_classic_directive(operation.directive, inherited_context, runtime_api)
 		if directive_result.state == ScenarioVmResult.State.FAILED:
 			return _fail(directive_result.error_code, directive_result.error_message, events)
@@ -251,7 +251,7 @@ func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperat
 			if not result_target.is_empty():
 				_frames[frame_index].set_local(result_target, operation.value)
 		ScenarioVmHandoff.CLASSIC_OPERATION:
-			var context: ScenarioExecutionContext = _frames.back().context()
+			var context: ScenarioExecutionContext = _frames[-1].context()
 			var directive_result := _apply_classic_directive(operation.directive, context, runtime_api)
 			if directive_result.state == ScenarioVmResult.State.FAILED:
 				return ScenarioVmResult.failed(directive_result.error_code, directive_result.error_message, events)
@@ -274,14 +274,14 @@ func snapshot() -> ScenarioVmSnapshot:
 	result.request_counter = _request_counter
 	result.native_invocation_begun = _native_begun
 	result.halted = _halted
-	result.last_outcome = _last_outcome.duplicate(true) if _last_outcome is Array or _last_outcome is Dictionary else _last_outcome
+	result.last_outcome = ScenarioVmSnapshot.detached(_last_outcome)
 	result.classic_record_id = _classic_record_id
 	_native.write_snapshot(result)
 	return result
 
 
 func restore(value: Variant) -> bool:
-	var saved := value as ScenarioVmSnapshot
+	var saved: ScenarioVmSnapshot = value if value is ScenarioVmSnapshot else null
 	if not ScenarioVmRestoreRules.frames_are_valid(_definition, saved, CLASSIC_CALL_LIMIT, ACTION_CALL_LIMIT): return false
 	_frames.clear()
 	for frame: ScenarioFrame in saved.frames:
@@ -295,7 +295,7 @@ func restore(value: Variant) -> bool:
 	_request_counter = saved.request_counter
 	_native_begun = saved.native_invocation_begun
 	_halted = saved.halted
-	_last_outcome = saved.last_outcome.duplicate(true) if saved.last_outcome is Array or saved.last_outcome is Dictionary else saved.last_outcome
+	_last_outcome = ScenarioVmSnapshot.detached(saved.last_outcome)
 	_classic_record_id = saved.classic_record_id
 	_native.restore(saved)
 	if _classic_record_id.is_empty():
@@ -395,9 +395,9 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 		var action_call: CallScenarioActionInstruction = instruction
 		var arguments_result := SafeExpressionEvaluator.evaluate_call_arguments(action_call, frame, runtime_api)
 		if not arguments_result["ok"]:
-			return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
+			return ScenarioVmActionRules.expression_failure(arguments_result)
 		frame.cursor += 1
-		return _push_action(action_call.action_id, arguments_result["value"], action_call.result_target, ScenarioVmActionRules.calling_context(frame, program), frame.context(), true)
+		return _push_action(action_call.action_id, ScenarioVmActionRules.argument_values(arguments_result), action_call.result_target, ScenarioVmActionRules.calling_context(frame, program), frame.context(), true)
 	if not instruction is ClassicActionDefinition:
 		return ScenarioVmResult.failed(&"unknown_scenario_instruction", "Scenario program '%s' contains an unknown instruction." % program.id)
 	var action: ClassicActionDefinition = instruction
@@ -418,7 +418,7 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 				frame.cursor += 1
 			else:
 				_frames.resize(caller_index)
-				_native.restore_return_header(_frames.back())
+				_native.restore_return_header(_frames[-1])
 			diagnostics.clear_instruction()
 			return ScenarioVmResult.completed()
 		112:
@@ -457,7 +457,7 @@ func _execute_unrecognized_classic(frame: ScenarioFrame, program: ScenarioProgra
 
 func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context: ScenarioExecutionContext = null, runtime_api: RealmzRuntimeApi = null) -> ScenarioVmResult:
 	if directive != null and directive.kind == ScenarioVmDirective.RECHECK_PROGRAM: return _replace_native_record(directive)
-	if directive != null and directive.gosub and not _frames.is_empty(): _native.capture_return_header(_frames.back())
+	if directive != null and directive.gosub and not _frames.is_empty(): _native.capture_return_header(_frames[-1])
 	var transition := ScenarioClassicControlFlow.apply(directive, _definition, _frames, inherited_context, runtime_api != null)
 	return _apply_classic_transition(transition)
 
@@ -543,9 +543,9 @@ func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) 
 func _execute_action_operation(action: ScenarioActionDefinition, frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	var arguments_result := SafeExpressionEvaluator.evaluate_instruction_arguments(instruction, frame, runtime_api)
 	if not arguments_result["ok"]:
-		return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
+		return ScenarioVmActionRules.expression_failure(arguments_result)
 	var request_id := _next_request_id()
-	var operation := runtime_api.execute_safe(instruction.capability, arguments_result["value"], request_id)
+	var operation := runtime_api.execute_safe(instruction.capability, ScenarioVmActionRules.argument_values(arguments_result), request_id)
 	frame.cursor += 1
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return ScenarioVmResult.failed(operation.error_code, operation.error_message, operation.events)
@@ -564,15 +564,16 @@ func _execute_action_operation(action: ScenarioActionDefinition, frame: Scenario
 func _execute_action_call(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	var arguments_result := SafeExpressionEvaluator.evaluate_instruction_arguments(instruction, frame, runtime_api)
 	if not arguments_result["ok"]:
-		return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
+		return ScenarioVmActionRules.expression_failure(arguments_result)
+	var calling_context: StringName = frame.context_value("callingContext")
 	frame.cursor += 1
-	return _push_action(instruction.action_id, arguments_result["value"], instruction.result_target, StringName(frame.context_value("callingContext")), frame.context(), false)
+	return _push_action(instruction.action_id, ScenarioVmActionRules.argument_values(arguments_result), instruction.result_target, calling_context, frame.context(), false)
 
 
 func _execute_action_set(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	var evaluated := SafeExpressionEvaluator.evaluate(instruction.value, frame, runtime_api)
 	if not evaluated["ok"]:
-		return ScenarioVmResult.failed(&"safe_expression_failed", evaluated["error"])
+		return ScenarioVmActionRules.expression_failure(evaluated)
 	if instruction.scope == &"local":
 		frame.set_local(instruction.name, evaluated["value"])
 	else:
@@ -587,7 +588,7 @@ func _execute_action_set(frame: ScenarioFrame, instruction: SafeInstructionDefin
 func _execute_action_condition(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	var evaluated := SafeExpressionEvaluator.evaluate(instruction.condition, frame, runtime_api)
 	if not evaluated["ok"] or not evaluated["value"] is bool:
-		return ScenarioVmResult.failed(&"safe_expression_failed", evaluated.get("error", "Safe condition did not evaluate to bool."))
+		return ScenarioVmActionRules.expression_failure(evaluated, "Safe condition did not evaluate to bool.")
 	frame.cursor = frame.cursor + 1 if evaluated["value"] else instruction.target
 	return ScenarioVmResult.completed()
 
@@ -597,7 +598,7 @@ func _execute_action_return(action: ScenarioActionDefinition, instruction: SafeI
 	if instruction.value != null:
 		var evaluated := SafeExpressionEvaluator.evaluate(instruction.value, frame, runtime_api)
 		if not evaluated["ok"]:
-			return ScenarioVmResult.failed(&"safe_expression_failed", evaluated["error"])
+			return ScenarioVmActionRules.expression_failure(evaluated)
 		return_value = evaluated["value"]
 	if not SafeExpressionEvaluator.value_matches_type(return_value, action.return_type):
 		return ScenarioVmResult.failed(&"scenario_action_return_type", "Scenario Action '%s' returned a value outside its declared type." % action.id)
@@ -652,9 +653,9 @@ func _return_from_frame(value: Variant) -> void:
 		_halted = true
 		_last_outcome = value
 		return
-	if finished.counts_as_classic_call: _native.restore_return_header(_frames.back())
+	if finished.counts_as_classic_call: _native.restore_return_header(_frames[-1])
 	if finished.kind == ScenarioFrame.ACTION and not finished.return_target.is_empty():
-		_frames.back().set_local(finished.return_target, value)
+		_frames[-1].set_local(finished.return_target, value)
 
 
 

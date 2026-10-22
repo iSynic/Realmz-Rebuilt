@@ -1,0 +1,45 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="PackedScene" path="res://src/ui/shell/adventure_rules_panel.tscn" id="1_panel"]
+[ext_resource type="Script" path="res://src/ui/shell/adventure_rules_settings_page.gd" id="2_page"]
+
+[node name="Adventure Rules" type="VBoxContainer"]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+script = ExtResource("2_page")
+
+[node name="AdventureRulesScroll" type="ScrollContainer" parent="."]
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="AdventureRulesContent" type="VBoxContainer" parent="AdventureRulesScroll"]
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Heading" type="Label" parent="AdventureRulesScroll/AdventureRulesContent"]
+theme_type_variation = &"ClassicHeading"
+text = "Adventure Rules"
+
+[node name="AdventureRulesPanel" parent="AdventureRulesScroll/AdventureRulesContent" instance=ExtResource("1_panel")]
+unique_name_in_owner = true
+
+[node name="RulesDraftStatus" type="Label" parent="."]
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+text = "No pending rule changes"
+autowrap_mode = 2
+
+[node name="RulesActions" type="HBoxContainer" parent="."]
+alignment = 2
+theme_override_constants/separation = 8
+
+[node name="CancelRules" type="Button" parent="RulesActions"]
+text = "Cancel"
+theme_type_variation = &"MenuAction"
+
+[node name="ApplyRules" type="Button" parent="RulesActions"]
+text = "Apply rules"
+theme_type_variation = &"MenuAction"

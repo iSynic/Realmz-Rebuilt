@@ -180,15 +180,15 @@ static func reward_continuation_is_valid(content: RealmzContent, state: GameStat
 			return false
 	var character_ids: Dictionary = {}
 	for character_id: Variant in reward.experience_awards():
-		character_ids[String(character_id)] = true
+		character_ids[str(character_id)] = true
 	for character_id: String in reward.level_character_ids():
 		character_ids[character_id] = true
 	for character_id: String in reward.spell_character_ids():
 		character_ids[character_id] = true
 	if not reward.pending_level_result.is_empty():
-		character_ids[String(reward.pending_level_result.get("characterId", ""))] = true
+		character_ids[str(reward.pending_level_result.get("characterId", ""))] = true
 	for character_id: Variant in character_ids:
-		if String(character_id).is_empty() or state.party.character_by_id(String(character_id)) == null:
+		if str(character_id).is_empty() or state.party.character_by_id(str(character_id)) == null:
 			return false
 	if reward.phase == ClassicRewardState.ITEM_PHASE:
 		var treasure_body := request.body as TreasureRequestBody
@@ -236,3 +236,30 @@ static func ready_post_move_continuation_is_valid(content: RealmzContent, state:
 		and exploration.trigger_ids == ClassicActionPointRules.selected_placed_trigger_ids(content, map, exploration.coordinate, state.world, exploration.action_point_destination_depth > 0) \
 		and exploration.random_region_ids == state.world.triggers.random_region_ids_at(map, exploration.coordinate) \
 		and exploration.random_region_index == exploration.random_region_ids.size() - 1
+
+
+static func round_cursor_owner_is_valid(state: GameState, continuation: SessionContinuation, snapshot: ScenarioVmSnapshot) -> bool:
+	var combat := state.combat
+	if combat == null or combat.round_cursor == null: return true
+	var cursor := combat.round_cursor
+	var macro_wait := cursor.phase == &"battle-macro"
+	var subject := cursor.waiting_monster_id if not cursor.waiting_monster_id.is_empty() else combat.spell_runtime.pending_death_macro_id()
+	if not macro_wait and subject.is_empty(): return false
+	var direct := continuation.combat()
+	if direct != null:
+		if direct.battle_id != combat.battle_id: return false
+		if macro_wait:
+			return continuation.kind == &"combat-round-macro" and direct.program_id == "xap:%d" % absi(combat.macro_id)
+		return continuation.kind == &"combat-death-macro" and direct.combatant_id == subject
+	for _depth: int in 32:
+		if snapshot == null or snapshot.pending_request == null or snapshot.pending_continuation == null: return false
+		var runtime := snapshot.pending_continuation.runtime
+		if runtime == null: return false
+		var body := runtime.combat()
+		if body != null and body.battle_id == combat.battle_id:
+			if macro_wait and runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO]:
+				return body.program_id == "xap:%d" % absi(combat.macro_id)
+			if not macro_wait and runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO]:
+				return body.combatant_id == subject
+		snapshot = runtime.nested_vm()
+	return false

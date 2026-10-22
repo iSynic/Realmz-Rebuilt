@@ -18,9 +18,11 @@ static func encode(combat: CombatState) -> Dictionary:
 		"turnOrder": combat.turns.turn_order(),
 		"monsters": combat.roster.to_data(),
 		"pendingMonsterAttack": null if combat.pending_monster_attack == null else combat.pending_monster_attack.to_data(),
+		"roundCursor": null if combat.round_cursor == null else combat.round_cursor.to_data(),
 		"pendingReaction": null if combat.pending_reaction == null else combat.pending_reaction.to_data(),
 		"activeTurn": null if combat.turns.active_turn == null else combat.turns.active_turn.to_data(),
 		"undoState": null if combat.turns.undo_state == null else combat.turns.undo_state.to_data(),
+		"retainedItemPowers": combat.turns.retained_item_powers.map(func(roll: CombatItemPowerRoll) -> Dictionary: return roll.to_data()),
 		"fumbledItems": combat.dropped_items.to_data(),
 		"characterWeaponModes": combat.actor_statuses.weapon_modes_data(),
 		"guardingActorIds": combat.actor_statuses.guarding_actor_ids(),
@@ -220,6 +222,10 @@ static func _restore_inventory_and_modes(result: CombatState, data: Dictionary, 
 
 
 static func _restore_pending_state(result: CombatState, data: Dictionary) -> bool:
+	if not _restore_item_powers(result, data.get("retainedItemPowers", [])): return false
+	if data.get("roundCursor") != null:
+		result.round_cursor = CombatRoundCursor.from_data(data["roundCursor"])
+		if result.round_cursor == null: return false
 	var active_data: Variant = data.get("activeTurn")
 	if active_data != null:
 		result.turns.active_turn = CombatTurnState.from_data(active_data)
@@ -239,8 +245,27 @@ static func _restore_pending_state(result: CombatState, data: Dictionary) -> boo
 	return true
 
 
+static func _restore_item_powers(result: CombatState, data: Variant) -> bool:
+	if not data is Array:
+		return false
+	var records: Array = data
+	if records.size() > 1024:
+		return false
+	var ids: Array[String] = []
+	for value: Variant in records:
+		var roll := CombatItemPowerRoll.from_data(value)
+		if roll == null or ids.has(roll.instance_id):
+			return false
+		ids.append(roll.instance_id)
+		result.turns.retained_item_powers.append(roll)
+	if not ids.is_empty():
+		return not result.completed and not result.turns.active_actor_id().is_empty() and result.roster.monster_by_id(result.turns.active_actor_id()) == null
+	return true
+
+
 static func _loaded_state_is_consistent(result: CombatState) -> bool:
 	var order := result.turns.turn_order()
+	if not _round_cursor_is_consistent(result): return false
 	if order.is_empty() and result.turns.turn_index != 0 or not order.is_empty() and result.turns.turn_index >= order.size(): return false
 	if result.turns.active_turn != null and (result.completed or result.turns.active_turn.actor_id != result.turns.active_actor_id()): return false
 	if result.turns.active_turn != null and not result.turns.active_turn.staged_item_instance_id.is_empty() and result.roster.monster_by_id(result.turns.active_turn.actor_id) != null: return false
@@ -313,3 +338,19 @@ static func _signed_integer(value: Variant) -> int:
 	if value is int: return value
 	if value is float and is_equal_approx(value, round(value)): return int(value)
 	return -100_000
+
+
+static func _round_cursor_is_consistent(combat: CombatState) -> bool:
+	var cursor := combat.round_cursor
+	if cursor == null: return true
+	if combat.completed or combat.turns.active_turn != null or combat.pending_reaction != null or combat.pending_monster_attack != null: return false
+	if cursor.phase == &"battle-macro" and (combat.macro_id >= 0 or cursor.actor_index != 0): return false
+	if cursor.phase in [&"party", &"battle-macro"] and not cursor.waiting_monster_id.is_empty(): return false
+	if cursor.phase == &"character-fields" and cursor.actor_index > 6: return false
+	if String(cursor.phase).begins_with("monster-") and cursor.actor_index > combat.roster.monsters().size(): return false
+	if cursor.phase == &"prior-death-macro":
+		return cursor.actor_index == 0 and combat.roster.monster_by_id(cursor.waiting_monster_id) != null
+	if not cursor.waiting_monster_id.is_empty():
+		if cursor.phase not in [&"monster-poison", &"monster-energy"] or cursor.actor_index >= combat.roster.monsters().size(): return false
+		if combat.roster.monsters()[cursor.actor_index].id != cursor.waiting_monster_id: return false
+	return true

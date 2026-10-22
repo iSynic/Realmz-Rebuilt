@@ -54,9 +54,20 @@ var _load_requested: bool = false
 var _load_failed: bool = false
 var _splash_complete: bool = false
 var _route_transfer_pending: bool = false
+var _user_data_root: String = "user://"
+
+
+func configure_user_data_root(root_path: String) -> bool:
+	if is_inside_tree():
+		return false
+	_user_data_root = root_path.simplify_path() if root_path.is_absolute_path() and not root_path.contains("://") else ""
+	return not _user_data_root.is_empty()
 
 
 func _ready() -> void:
+	if _user_data_root.is_empty():
+		push_error("Startup user data requires an absolute filesystem root configured before tree entry.")
+		return
 	_startup_duration.timeout.connect(_on_startup_splash_timeout)
 	_splash_exit_delay.timeout.connect(_on_splash_exit_delay_timeout)
 	_startup_retry.pressed.connect(_retry_startup_load)
@@ -157,8 +168,8 @@ func _initialize_after_first_draw() -> void:
 	_presentation_settings_script = load(PRESENTATION_SETTINGS_PATH) as Script
 	var base_theme := load(BASE_THEME_PATH) as Theme
 	_stone_texture.texture = load(STONE_TEXTURE_PATH) as Texture2D
-	_presentation_settings = settings_repository_script.new().load_settings()
-	_font_host = (load("res://src/app/platform/application_font_host.gd") as Script).new()
+	_presentation_settings = settings_repository_script.new(_user_data_root.path_join("settings.json")).load_settings()
+	_font_host = (load("res://src/app/platform/application_font_host.gd") as Script).new(_user_data_root.path_join("fonts"))
 	var display := get_viewport().get_parent() as DisplayCompositor
 	if display != null:
 		display.configure(_presentation_settings.display_scaling_mode, _presentation_settings.pixel_art_smoothing, _presentation_settings.crt_enabled, _presentation_settings.crt_shader, _presentation_settings.crt_area)
@@ -195,6 +206,8 @@ func _finish_application_load(packed: PackedScene) -> void:
 		_show_startup_failure("Application construction failed.")
 		return
 	_application.visible = false
+	if _user_data_root != "user://":
+		_application.call("configure_user_data_root", _user_data_root)
 	_application.set_meta(&"startup_splash_suppressed", true)
 	_application.ready.connect(_on_application_ready, CONNECT_ONE_SHOT)
 	get_viewport().add_child.call_deferred(_application)
@@ -308,8 +321,9 @@ func _show_startup_failure(message: String) -> void:
 
 func _apply_initial_launch_volume() -> void:
 	var linear_volume := 1.0
-	if FileAccess.file_exists("user://settings.json"):
-		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string("user://settings.json"))
+	var settings_path := _user_data_root.path_join("settings.json")
+	if FileAccess.file_exists(settings_path):
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(settings_path))
 		if parsed is Dictionary:
 			linear_volume = clampf(float(parsed.get("masterVolume", 1.0)) * float(parsed.get("soundVolume", 1.0)), 0.0, 1.0)
 	var volume_db := linear_to_db(linear_volume) if linear_volume > 0.0 else -80.0

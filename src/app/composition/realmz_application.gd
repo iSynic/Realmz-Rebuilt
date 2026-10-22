@@ -52,6 +52,16 @@ var adventure_storage: ApplicationAdventureStorageHost
 var _spatial_layout: ApplicationSpatialLayout
 var _runtime_testing_host: RuntimeTestingHost
 var click_to_move: ClickToMoveCoordinator
+var _user_data_root_override: String = ""
+var _user_data_root_configured: bool = false
+
+
+func configure_user_data_root(root_path: String) -> bool:
+	if is_inside_tree():
+		return false
+	_user_data_root_configured = true
+	_user_data_root_override = root_path.simplify_path() if root_path.is_absolute_path() and not root_path.contains("://") else ""
+	return not _user_data_root_override.is_empty()
 
 
 func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Callable = Callable()) -> void:
@@ -61,6 +71,10 @@ func configure_lifecycle_host(save_host: SaveHostController, quit_operation: Cal
 
 
 func _ready() -> void:
+	if _user_data_root_configured and _user_data_root_override.is_empty():
+		process_mode = Node.PROCESS_MODE_DISABLED
+		push_error("Application user data requires an absolute filesystem root configured before tree entry.")
+		return
 	get_tree().set_auto_accept_quit(false)
 	UiInputActions.ensure_defaults()
 	_build_dependencies()
@@ -86,12 +100,12 @@ func _build_dependencies() -> void:
 	var preview_request := get_meta(&"development_preview_request") as DevelopmentPreviewRequest if has_meta(&"development_preview_request") else null
 	var preview_state_root := preview_request.result_path.get_basename() + "-session" if preview_request != null else ""
 	var fixture := get_meta(&"runtime_testing_fixture") as RuntimeTestingFixtureRequest if has_meta(&"runtime_testing_fixture") else null
-	var scratch_root := fixture.scratch_root if fixture != null else preview_state_root
-	_package_host = PackageHostController.new(null, scratch_root.path_join("packages")) if fixture != null else PackageHostController.new()
+	var scratch_root := _user_data_root_override if _user_data_root_configured else (fixture.scratch_root if fixture != null else preview_state_root)
+	_package_host = PackageHostController.new(null, scratch_root.path_join("packages")) if not scratch_root.is_empty() else PackageHostController.new()
 	if _save_host == null:
 		_save_host = _create_save_host(scratch_root)
 	settings_repository = SettingsRepository.new(scratch_root.path_join("settings.json")) if not scratch_root.is_empty() else SettingsRepository.new()
-	_presentation_settings = PresentationSettings.new() if not scratch_root.is_empty() else settings_repository.load_settings()
+	_presentation_settings = PresentationSettings.new() if fixture != null or preview_request != null else settings_repository.load_settings()
 	session_controller = GameSessionController.new()
 	presentation_coordinator = PresentationCoordinator.new()
 	presentation_media = PresentationMediaController.new()
@@ -116,7 +130,7 @@ func _build_dependencies() -> void:
 		presentation_coordinator,
 		presentation_media,
 		shell_presenter,
-		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if fixture != null else null,
+		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if not scratch_root.is_empty() else null,
 		character_art
 	)
 	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, shell_presenter, _combat_host.invalidate, _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content, character_art)
@@ -388,15 +402,7 @@ func _exit_tree() -> void:
 
 func _on_smoke_action_pressed() -> void:
 	_smoke_button.release_focus()
-	if not session_controller.view().session_started:
-		_status_label.text = "MCP input verified • no package loaded"
-		return
-	var step := submit_intent(ExplorationIntents.search())
-	if step == null or step.state == SessionStep.State.FAILED:
-		return
-	var roll: int = step.events[0].payload.get("roll", 0)
-	var current_view := session_controller.view()
-	_status_label.text = "Search committed • roll %d • day %d %02d:%02d" % [roll, current_view.realmz_day, current_view.realmz_hour, current_view.realmz_minute]
+	_status_label.text = ApplicationStepStatusText.for_smoke(submit_intent(ExplorationIntents.search()) if session_controller.view().session_started else null, session_controller.view(), _status_label.text)
 
 
 func _notification(what: int) -> void:
@@ -506,22 +512,8 @@ func _on_held_movement_requested(direction: Vector2i) -> void:
 
 
 func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
-	if body == null:
-		return
-	var view := session_controller.view()
-	if view == null:
-		return
-	var pending := view.pending_interaction
-	if pending != null and pending.kind == InteractionRequest.COMBAT:
-		interaction_presenter.combat.submit_body(ApplicationCombatPolicy.body_with_preferences(body, _presentation_settings))
-		return
-	if view.combat_view == null or view.combat_view.outcome != &"active":
-		return
-	var request_id := view.combat_action_request.request_id if view.combat_action_request != null else ""
-	if request_id.is_empty():
-		shell_presenter.status.set_status("The battle inventory request is no longer available.", true)
-		return
-	submit_response(InteractionResponse.new(request_id, InteractionRequest.COMBAT, ApplicationCombatPolicy.body_with_preferences(body, _presentation_settings)))
+	if body == null: return
+	_combat_host.submit_body(ApplicationCombatPolicy.body_with_preferences(body, _presentation_settings))
 
 
 func _on_battlefield_combatant_inspected(combatant_id: String) -> void:

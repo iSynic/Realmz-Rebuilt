@@ -137,6 +137,8 @@ static func _populate_magic_actions(context: SessionWorkflowContext, result: Gam
 
 
 static func populate_setup_actions(context: SessionWorkflowContext, result: GameView, blocked_by_interaction: bool, party_setup: bool, setup_member_count: int, setup_member_limit: int, draft_active: bool, battle_active: bool) -> void:
+	var rules_reason := AdventureRulesWorkflow.unavailable_reason(context, blocked_by_interaction)
+	result.set_action_availability(&"adventure_rules", rules_reason.is_empty(), rules_reason)
 	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
 	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0 and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "Add or import at least one character first.")
 	result.set_action_availability(&"import_vault_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "Vault imports are available only during party setup." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "The party is full.")
@@ -369,9 +371,7 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			item_view.actions = actions
 			if result.pending_interaction != null and result.pending_interaction.kind == InteractionRequest.SHOP:
 				actions.block_all(context_reason)
-				var shop_trade := _inventory_trade_actions(context, character, instance, definition, party, item_view.weight)
-				actions.trade_targets.assign(shop_trade["targets"])
-				actions.trade = shop_trade["availability"]
+				_apply_inventory_trade_actions(actions, context, character, instance, definition, party, item_view.weight)
 				continue
 			if not context_reason.is_empty():
 				actions.block_all(context_reason)
@@ -392,9 +392,7 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			if battle_active:
 				actions.trade = ActionAvailabilityView.new(&"trade_item", false, "Trade is unavailable during battle.")
 				continue
-			var trade := _inventory_trade_actions(context, character, instance, definition, party, item_view.weight)
-			actions.trade_targets.assign(trade["targets"])
-			actions.trade = trade["availability"]
+			_apply_inventory_trade_actions(actions, context, character, instance, definition, party, item_view.weight)
 
 
 static func _inventory_combat_probes(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, item_instance_id: String, active_actor_id: String, combat_item_options: Array[CombatItemOptionView], combat_scroll_options: Array[CombatSpellOptionView], equip_probe: InventoryActionProbe, unequip_probe: InventoryActionProbe, drop_probe: InventoryActionProbe, combat_item_reason: String) -> Dictionary:
@@ -445,7 +443,7 @@ static func _apply_inventory_item_actions(actions: InventoryItemActionsView, equ
 		actions.identify = ActionAvailabilityView.new(&"identify_item", true)
 
 
-static func _inventory_trade_actions(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, party: Array[CharacterState], item_weight: int) -> Dictionary:
+static func _apply_inventory_trade_actions(actions: InventoryItemActionsView, context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, definition: ItemDefinition, party: Array[CharacterState], item_weight: int) -> void:
 	var targets: Array[ItemTransferTargetView] = []
 	for destination: CharacterState in party:
 		if destination == character:
@@ -454,7 +452,8 @@ static func _inventory_trade_actions(context: SessionWorkflowContext, character:
 		targets.append(ItemTransferTargetView.new(destination.id, destination.name, trade_probe.allowed, trade_probe.reason, destination.carried_load, destination.carried_load + item_weight, destination.maximum_load))
 	var enabled_targets := targets.filter(func(target: ItemTransferTargetView) -> bool: return target.enabled)
 	var trade_reason := "Choose another party member." if targets.is_empty() else targets[0].reason if enabled_targets.is_empty() else ""
-	return {"targets": targets, "availability": ActionAvailabilityView.new(&"trade_item", not enabled_targets.is_empty(), trade_reason)}
+	actions.trade_targets.assign(targets)
+	actions.trade = ActionAvailabilityView.new(&"trade_item", not enabled_targets.is_empty(), trade_reason)
 
 
 static func _inventory_identify_cast(context: SessionWorkflowContext, target: CharacterState) -> Array[String]:

@@ -7,7 +7,6 @@ var _view: PauseMenuView
 var _active := false
 var _workspace := false
 var _entering_workspace := false
-var _popup: Control
 var _page: StringName = &"main"
 var _origin: StringName
 var _workspace_origin: StringName
@@ -23,8 +22,6 @@ func _init(owner: GameShell) -> void:
 	_navigator_layer = owner.navigator.z_index
 	_view.action_requested.connect(activate)
 	owner.navigator.screen_changed.connect(_on_route_changed)
-	owner.music_workspace.visibility_changed.connect(_on_popup_visibility)
-	owner.character_art.visibility_changed.connect(_on_popup_visibility)
 
 
 func _owner() -> GameShell:
@@ -77,7 +74,6 @@ func resume() -> void:
 	var owner := _owner()
 	if not _active: return
 	if owner.navigator.draft_dialog.defer_if_dirty(owner.navigator.content_presenter.system_preferences, resume): return
-	if _popup != null and _popup.visible: return
 	_view.hide()
 	_active = false
 	_workspace = false
@@ -105,13 +101,12 @@ func rebuild() -> void:
 			owner.navigator.z_index = _navigator_layer
 			owner.pause_changed.emit(false)
 		return
-	if not _view.visible and (_popup != null and _popup.visible or owner.menu_input_blocked.is_valid() and bool(owner.menu_input_blocked.call())): return
+	if not _view.visible and owner.menu_input_blocked.is_valid() and bool(owner.menu_input_blocked.call()): return
 	var slot := owner.navigator.content_presenter.system_preferences.saves.active_slot_id
 	var preview := owner.navigator.content_presenter.system_preferences.saves.active_quick_preview
 	var reasons := {&"saves": GameShellAvailability.save_reason(view), &"quick_save": GameShellAvailability.save_reason(view), &"quick_load": GameShellAvailability.load_reason(view), &"main_menu": GameShellAvailability.end_adventure_reason(view)}
 	if view.combat_view != null and view.combat_view.outcome == &"active":
 		reasons[&"saves"] = "Unavailable during battle."
-		reasons[&"character_art"] = "Finish the battle before importing artwork."
 	if preview == null:
 		reasons[&"quick_load"] = "No quicksave in slot %s." % slot
 	elif not preview.can_load:
@@ -145,7 +140,7 @@ func _detail_text() -> String:
 
 
 func poll() -> void:
-	if _active and not _view.visible and not _workspace and _popup == null:
+	if _active and not _view.visible and not _workspace:
 		rebuild()
 
 
@@ -154,17 +149,15 @@ func activate(action: StringName) -> void:
 	match action:
 		&"resume": resume()
 		&"back": back()
-		&"saves", &"settings", &"help", &"about", &"scenario_info":
+		&"saves", &"help", &"about", &"scenario_info":
 			_page = action
 			rebuild()
-		&"display", &"audio", &"accessibility", &"controls", &"interface":
-			_open_workspace(&"system", {&"display": &"Display", &"audio": &"Audio", &"accessibility": &"Accessibility", &"controls": &"Controls", &"interface": &"Interface"}[action])
+		&"settings":
+			_page = &"main"
+			_open_workspace(&"system", &"Display")
+		&"interface": _open_workspace(&"system", &"Interface")
 		&"diagnostics": _open_workspace(&"system", &"Diagnostics")
 		&"manage_saves": _open_workspace(&"save_load")
-		&"music", &"character_art":
-			_popup = owner.music_workspace if action == &"music" else owner.character_art
-			_view.hide()
-			owner.handle_system_action_requested(&"music_playlist" if action == &"music" else &"character_art", null)
 		&"quick_save": owner.handle_system_action_requested(&"save", "quick")
 		&"quick_load":
 			_view.hide()
@@ -177,7 +170,6 @@ func activate(action: StringName) -> void:
 func back() -> bool:
 	if not _active: return false
 	if _owner().navigator.content_presenter.system_preferences.close_local_picker(): return true
-	if _popup != null and _popup.visible: return false
 	if _workspace:
 		if _owner().navigator.draft_dialog.defer_if_dirty(_owner().navigator.content_presenter.system_preferences, _return_from_workspace): return true
 		_return_from_workspace()
@@ -255,9 +247,3 @@ func _on_route_changed(route: StringName) -> void:
 		_owner().navigator.z_index = 100
 		_workspace = true
 		_workspace_origin = _origin
-
-
-func _on_popup_visibility() -> void:
-	if _active and _popup != null and not _popup.visible:
-		_popup = null
-		rebuild()

@@ -26,6 +26,7 @@ var combat_view: CombatView
 var combat_action_request: InteractionRequest
 var campaign_id: String = ""
 var rules_version: String = ""
+var adventure_rules := AdventureRules.new()
 var party_setup_available: bool = false
 var character_draft: CharacterView
 var character_draft_spell_options: Array[CharacterSpellOptionView] = []

@@ -262,14 +262,14 @@ func continue_timed_encounters(events: Array[DomainEvent]) -> SessionCoordinator
 
 func _legacy_timed_encounter_is_eligible(encounter: TimedEncounterDefinition, map: MapDefinition, timed_day: int, events: Array[DomainEvent]) -> bool:
 	var effective := _context.state.scenario_progress.encounters.timed_override(encounter.id)
-	var effective_day := int(effective.get("day", encounter.day))
+	var effective_day: int = effective.get("day", encounter.day)
 	if effective_day != timed_day:
 		return false
-	var increment := int(effective.get("increment", encounter.increment))
+	var increment: int = effective.get("increment", encounter.increment)
 	effective["day"] = effective_day + increment
 	_context.state.scenario_progress.encounters.set_timed_override(encounter.id, effective)
 	events.append(DomainEvent.new(&"timed_encounter_advanced", {"encounterId": encounter.id, "day": effective_day, "nextDay": effective["day"], "source": "classic-midnight"}))
-	var chance := int(effective.get("percent", encounter.chance_percent))
+	var chance: int = effective.get("percent", encounter.chance_percent)
 	var roll := _context.rng.draw(100, StringName("timed-encounter.%d" % encounter.id))
 	var eligible := roll <= chance and timed_encounter_requirements_met(encounter, map)
 	events.append(DomainEvent.new(&"timed_encounter_checked", {"encounterId": encounter.id, "roll": roll, "chancePercent": chance, "eligible": eligible}))

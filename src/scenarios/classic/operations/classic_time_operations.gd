@@ -22,6 +22,11 @@ func bind_runtime_api(runtime: RealmzRuntimeApi) -> void:
 	_runtime_ref = weakref(runtime)
 
 
+func _runtime_api() -> RealmzRuntimeApi:
+	var runtime_api: RealmzRuntimeApi = _runtime_ref.get_ref()
+	return runtime_api
+
+
 func opcode_ids() -> Array[int]:
 	return [63]
 
@@ -49,7 +54,7 @@ func resume(continuation: ScenarioRuntimeContinuation, response: InteractionResp
 		if _timer_call_depth >= TIMER_CALL_LIMIT:
 			return ScenarioRuntimeOperationResult.failed(&"clock_timer_depth", "Nested timed programs exceeded the engine safety bound.")
 		_timer_call_depth += 1
-		var result := vm.resume(response, _runtime_ref.get_ref())
+		var result := vm.resume(response, _runtime_api())
 		_timer_call_depth -= 1
 		return _after_timer(body, vm, result, request_id)
 	if body.age_index < 1:
@@ -70,8 +75,8 @@ func complete_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperati
 	if _timer_call_depth >= TIMER_CALL_LIMIT:
 		return ScenarioRuntimeOperationResult.failed(&"clock_timer_depth", "Nested timed programs exceeded the engine safety bound.")
 	_timer_call_depth += 1
-	var operation: ScenarioRuntimeOperationResult = _runtime_ref.get_ref().complete_party_defeat_handoff(handoff.nested_handoff.runtime)
-	var result := operation if operation.state == ScenarioRuntimeOperationResult.State.FAILED else _after_timer(body, vm, vm.resume_handoff(handoff.nested_handoff, operation, _runtime_ref.get_ref()), "clock.handoff")
+	var operation: ScenarioRuntimeOperationResult = _runtime_api().complete_party_defeat_handoff(handoff.nested_handoff.runtime)
+	var result := operation if operation.state == ScenarioRuntimeOperationResult.State.FAILED else _after_timer(body, vm, vm.resume_handoff(handoff.nested_handoff, operation, _runtime_api()), "clock.handoff")
 	_timer_call_depth -= 1
 	return result
 
@@ -119,7 +124,7 @@ func _continue_refresh(body: ScenarioClockContinuationBody, events: Array[Domain
 		if _timer_call_depth >= TIMER_CALL_LIMIT:
 			return ScenarioRuntimeOperationResult.failed(&"clock_timer_depth", "Nested timed programs exceeded the engine safety bound.")
 		_timer_call_depth += 1
-		var result := vm.run(_runtime_ref.get_ref())
+		var result := vm.run(_runtime_api())
 		_timer_call_depth -= 1
 		result.events = events + result.events
 		return _after_timer(body, vm, result, request_id)

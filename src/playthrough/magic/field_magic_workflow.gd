@@ -172,9 +172,9 @@ static func commit_field_scroll(context: SessionWorkflowContext, character_id: S
 	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
 		return SessionWorkflowResult.rejected(&"invalid_scroll_target", "The scroll target selection contains an unavailable or duplicate character.")
-	if (selected_value as Dictionary).size() != field_spell_target_count(context, spell, power):
-		return SessionWorkflowResult.rejected(&"invalid_scroll_target", "The scroll target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
+	if selected.size() != field_spell_target_count(context, spell, power):
+		return SessionWorkflowResult.rejected(&"invalid_scroll_target", "The scroll target selection has the wrong number of characters.")
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
 	var resolution := FieldMagicResolver.resolve(context, character, selected, spell, power, false, allow_empty)
 	if resolution == null or not resolution.cast:
@@ -279,9 +279,9 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
 		return SessionWorkflowResult.rejected(&"invalid_field_spell_target", "The spell target selection contains an unavailable or duplicate character.")
-	if (selected_value as Dictionary).size() != field_spell_target_count(context, spell, power):
-		return SessionWorkflowResult.rejected(&"invalid_field_spell_target", "The spell target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
+	if selected.size() != field_spell_target_count(context, spell, power):
+		return SessionWorkflowResult.rejected(&"invalid_field_spell_target", "The spell target selection has the wrong number of characters.")
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
 	var resolution := FieldMagicResolver.resolve(context, character, selected, spell, power, true, allow_empty)
 	if resolution == null or not resolution.cast:

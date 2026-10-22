@@ -501,6 +501,8 @@ func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> Se
 		return finish_with_age_updates(events, "combat-monster-turns")
 	if not _context.event_payload(continued.events, &"monster_death_macro_requested").is_empty():
 		return _context.scenario().start_session_death_macro(events)
+	if _context.state.combat.round_cursor != null and _context.state.combat.round_cursor.phase == &"battle-macro":
+		return SessionBattleMacroWorkflow.start(_context, events)
 	if continued.completed:
 		return _context.scenario().finish_direct_battle(events)
 	return SessionCoordinatorResult.completed(events)
@@ -624,6 +626,8 @@ func finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
 		return finish_with_age_updates(result.events, &"combat-monster-turns")
 	if not _context.event_payload(result.events, &"monster_death_macro_requested").is_empty():
 		return _context.scenario().start_session_death_macro(result.events)
+	if _context.state.combat != null and _context.state.combat.round_cursor != null and _context.state.combat.round_cursor.phase == &"battle-macro":
+		return SessionBattleMacroWorkflow.start(_context, result.events)
 	var pending := _context.state.combat.pending_reaction if _context.state.combat != null else null
 	if pending != null and pending.awaits_friendly_collision_choice():
 		var collision := CombatContinuationBody.new()

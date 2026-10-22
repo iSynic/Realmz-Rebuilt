@@ -4,8 +4,8 @@ class_name ClassicBattleRewardOperations
 extends ClassicOpcodeHandler
 
 
-var _battle: RefCounted
-var _rewards: RefCounted
+var _battle: ClassicBattleLifecycleOperations
+var _rewards: ClassicRewardOperations
 
 
 func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules: RealmzRules) -> void:

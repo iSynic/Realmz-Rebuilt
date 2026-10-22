@@ -54,7 +54,9 @@ func execute(trigger_context: Variant, trigger: TriggerDefinition, events: Array
 	var continuation: ExplorationContinuationBody = trigger_context.continuation
 	continuation.active_trigger_id = trigger.id
 	_context.classic_execution.begin_trigger(trigger)
-	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, trigger_context.map.id, trigger_context.coordinate, true)
+	var trigger_map_id: String = trigger_context.map.id
+	var trigger_coordinate: Vector2i = trigger_context.coordinate
+	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, trigger_map_id, trigger_coordinate, true)
 	var started := _context.scenario_vm.start_program(trigger.program_id, execution_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		_context.session_continuation.clear()

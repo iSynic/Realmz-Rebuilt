@@ -148,6 +148,8 @@ func finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEven
 			_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
 	if not _context.session_continuation.is_empty():
+		if _context.session_continuation.kind == &"combat-round-macro":
+			return SessionBattleMacroWorkflow.finish(_context, events)
 		if _context.session_continuation.kind == &"combat-death-macro":
 			return continue_session_death_macro(events)
 		if _context.session_continuation.kind == &"item-xap":
@@ -266,7 +268,7 @@ static func _events_have(events: Array[DomainEvent], kind: StringName) -> bool:
 
 static func events_keep_trigger(events: Array[DomainEvent], trigger_id: String) -> bool:
 	for event: DomainEvent in events:
-		if event.kind == &"action_point_kept" and String(event.payload.get("triggerId", "")) == trigger_id:
+		if event.kind == &"action_point_kept" and str(event.payload.get("triggerId", "")) == trigger_id:
 			return true
 	return false
 
@@ -292,11 +294,14 @@ func start_session_death_macro(preceding_events: Array[DomainEvent]) -> SessionC
 	continuation_body.battle_id = combat.battle_id
 	continuation_body.combatant_id = combatant_id
 	continuation_body.program_id = program_id
-	continuation_body.reset_traitor_on_complete = bool(request.get("resetTraitorOnComplete", true))
+	var reset_traitor: bool = request.get("resetTraitorOnComplete", true)
+	continuation_body.reset_traitor_on_complete = reset_traitor
 	_context.set_continuation(CombatContinuations.death_macro(continuation_body))
 	var death_context := ScenarioExecutionContext.calling(&"monster-death-macro")
 	death_context.set_battle(combat.battle_id)
-	death_context.set_combatant(combatant_id, int(request.get("classicMonsterId", 0)), bool(request.get("traitor", monster.traitor)), true)
+	var classic_monster_id: int = request.get("classicMonsterId", 0)
+	var traitor: bool = request.get("traitor", monster.traitor)
+	death_context.set_combatant(combatant_id, classic_monster_id, traitor, true)
 	var started := _context.scenario_vm.start_program(program_id, death_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		_context.session_continuation.clear()
@@ -341,6 +346,8 @@ func continue_session_death_macro(events: Array[DomainEvent]) -> SessionCoordina
 		return _context.responses().finish_with_age_updates(events, "combat-monster-turns")
 	if not _event_payload(continued.events, &"monster_death_macro_requested").is_empty():
 		return start_session_death_macro(events)
+	if _context.state.combat.round_cursor != null and _context.state.combat.round_cursor.phase == &"battle-macro":
+		return SessionBattleMacroWorkflow.start(_context, events)
 	if continued.completed:
 		return finish_direct_battle(events)
 	return SessionCoordinatorResult.completed(events)

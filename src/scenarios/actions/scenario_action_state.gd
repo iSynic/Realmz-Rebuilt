@@ -32,13 +32,19 @@ func to_data() -> Dictionary:
 
 
 static func from_data(data: Variant) -> ScenarioActionState:
-	if not data is Dictionary or data.size() > MAX_ENTRIES:
+	if not data is Dictionary:
+		return null
+	var entries: Dictionary = data
+	if entries.size() > MAX_ENTRIES:
 		return null
 	var state := ScenarioActionState.new()
-	for key: Variant in data.keys():
-		if not key is String or key.is_empty():
+	for key: Variant in entries.keys():
+		if not key is String:
 			return null
-		var decoded := ScenarioValueCodec.decode(data[key])
+		var key_text: String = key
+		if key_text.is_empty():
+			return null
+		var decoded := ScenarioValueCodec.decode(entries[key])
 		if not decoded["ok"]:
 			return null
 		state._values[key] = decoded["value"]

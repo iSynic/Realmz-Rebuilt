@@ -65,7 +65,8 @@ func _interaction_request(request_id: String, selected_character_id: String = ""
 			"transfers": transfers,
 		})
 	if selected_character_id.is_empty() and not characters.is_empty():
-		selected_character_id = String(characters[0]["id"])
+		var first_character: Dictionary = characters[0]
+		selected_character_id = first_character["id"]
 	return InteractionRequest.from_payload(request_id, InteractionRequest.BANK, {
 		"selectedCharacterId": selected_character_id,
 		"pooledWealth": _game_state.party.pooled_wealth.to_data(),

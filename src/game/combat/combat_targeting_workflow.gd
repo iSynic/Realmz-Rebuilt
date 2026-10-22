@@ -26,6 +26,8 @@ func command(state: GameState, content: RealmzContent, operation: StringName, se
 	var commitment := CombatCastResources.pending(state)
 	if operation == &"abort_cast":
 		if commitment == null: return blocked()
+		if state.adventure_rules.free_targeting_cancellation:
+			return _cancel_without_cost(state, content)
 		CombatCastResources.abort(state)
 		return CombatFlowResult.succeeded([])
 	if operation == &"adjust_cast": return _adjust_power(state, content, selection)
@@ -38,10 +40,26 @@ func command(state: GameState, content: RealmzContent, operation: StringName, se
 	if not probe.allowed: return probe.denial_result()
 	var checkpoint := state.to_data()
 	_context.actions().prepare_character_turn(state.combat, state.party.character_by_id(selection.actor_id))
+	if state.adventure_rules.free_targeting_cancellation:
+		state.combat.turns.clear_staged_random_item_power()
 	if not CombatCastResources.reserve(state, content, normalized):
 		if not state.restore_from_data(checkpoint): return CombatFlowResult.failed(&"cast_rollback_failed", "The failed combat reservation could not be restored.")
 		return CombatFlowResult.failed(&"cast_reservation_failed", "The selected combat source could not be committed.")
-	state.combat.turns.invalidate_undo()
+	if not state.adventure_rules.free_targeting_cancellation:
+		state.combat.turns.invalidate_undo()
+	return CombatFlowResult.succeeded([])
+
+
+## FD-COMBAT-022 is opt-in; Castle's default Abort arithmetic stays separate.
+func _cancel_without_cost(state: GameState, content: RealmzContent) -> CombatFlowResult:
+	if not commitment_is_valid(state, content):
+		return CombatFlowResult.failed(&"cast_restoration_failed", "The reserved combat source no longer matches its pending action; targeting remains pending.")
+	var checkpoint := state.to_data()
+	if not CombatCastResources.release(state):
+		if not state.restore_from_data(checkpoint):
+			return CombatFlowResult.failed(&"cast_rollback_failed", "The failed cancellation could not restore its pending action.")
+		return CombatFlowResult.failed(&"cast_restoration_failed", "The reserved combat source could not be restored; targeting remains pending.")
+	state.combat.turns.clear_staged_random_item_power()
 	return CombatFlowResult.succeeded([])
 
 

@@ -4,7 +4,7 @@ class_name SaveEnvelope
 extends SessionSnapshot
 
 const FORMAT: String = "realmz2-save"
-const FORMAT_VERSION: int = 7
+const FORMAT_VERSION: int = 8
 const MAX_MAP_PREVIEW_BYTES: int = 256 * 1024
 
 var map_preview_jpeg: PackedByteArray = PackedByteArray()
@@ -52,17 +52,17 @@ static func from_snapshot(snapshot: SessionSnapshot, preview_jpeg: PackedByteArr
 
 
 static func from_data(data: Variant) -> SaveEnvelope:
+	var version := _integer(data.get("formatVersion")) if data is Dictionary else -1
 	var fields: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "battleReturnContinuation", "sessionInteraction"]
-	if data is Dictionary and (data.get("formatVersion") == 6 or data.get("formatVersion") == FORMAT_VERSION): fields.append("classicExecution")
+	if version in [6, 7, 8]: fields.append("classicExecution")
 	if not data is Dictionary or data.size() != fields.size() + (1 if data.has("mapPreviewJpeg") else 0) + (1 if data.has("characterArt") else 0):
 		return null
 	for field: String in fields:
 		if not data.has(field):
 			return null
-	var version := _integer(data["formatVersion"])
-	if data["format"] != FORMAT or version not in [5, 6, FORMAT_VERSION]:
+	if data["format"] != FORMAT or version not in [5, 6, 7, FORMAT_VERSION]:
 		return null
-	if not _clock_shape_is_valid(data["gameState"], version):
+	if not _clock_shape_is_valid(data["gameState"], version) or not _rules_shape_is_valid(data["gameState"], version):
 		return null
 	var preview_jpeg := PackedByteArray()
 	if data.has("mapPreviewJpeg"):
@@ -90,7 +90,7 @@ static func from_data(data: Variant) -> SaveEnvelope:
 		return null
 	# ADR 0026: v5/v6 predate VM schema 4. v7 may still carry an unrestored
 	# legacy VM copied from an older envelope; restore applies its coercion.
-	if version < FORMAT_VERSION and not vm_state.legacy_values:
+	if version < 7 and not vm_state.legacy_values:
 		return null
 	var typed_continuation := SessionContinuation.from_data(data["sessionContinuation"]) if not data["sessionContinuation"].is_empty() else null
 	if not data["sessionContinuation"].is_empty() and typed_continuation == null:
@@ -165,3 +165,18 @@ static func _json_safe(value: Variant, depth: int) -> bool:
 				return false
 		return true
 	return false
+
+
+static func _rules_shape_is_valid(value: Variant, version: int) -> bool:
+	if not value is Dictionary: return false
+	var state: Dictionary = value
+	var rules := AdventureRules.from_data(state.get("adventureRules", {"freeTargetingCancellation": false}))
+	if rules == null or version >= 8 and not state.has("adventureRules"): return false
+	var combat: Variant = state.get("combat")
+	if version < 8 and rules.free_targeting_cancellation: return false
+	if combat == null: return true
+	if not combat is Dictionary: return false
+	var battle: Dictionary = combat
+	if version < 8:
+		return battle.get("roundCursor") == null and battle.get("retainedItemPowers", []) == []
+	return battle.has("roundCursor") and battle.has("retainedItemPowers")

@@ -85,6 +85,10 @@ func _init() -> void:
 	setup_controller.campaign_library.settings_requested.connect(func() -> void: open_screen(&"system", false, &"Display"))
 	setup_controller.campaign_library.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
 	content_presenter.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	route_exiting.connect(func(screen_id: StringName) -> void:
+		if screen_id in [&"system", &"save_load"]:
+			content_presenter.system_preferences.discard_adventure_rules_draft()
+	)
 	content_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
 	content_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
 	content_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))

@@ -22,9 +22,16 @@ static func copy_update(update: AgeUpdateRequestBody) -> AgeUpdateRequestBody:
 static func update_from_data(value: Variant) -> AgeUpdateRequestBody:
 	if not value is Dictionary:
 		return null
-	var request := InteractionRequest.age_update("continuation.age", value)
+	var data: Dictionary = value
+	var request := InteractionRequest.age_update("continuation.age", data)
 	return null if request == null else request.body as AgeUpdateRequestBody
 
 
 static func detached_value(value: Variant) -> Variant:
-	return value.duplicate(true) if value is Array or value is Dictionary else value
+	if value is Array:
+		var items: Array = value
+		return items.duplicate(true)
+	if value is Dictionary:
+		var record: Dictionary = value
+		return record.duplicate(true)
+	return value

@@ -1,0 +1,307 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/combat_text_preferences_panel.gd" id="1_panel"]
+[ext_resource type="Script" path="res://src/ui/shell/combat_text_preferences_preview.gd" id="2_preview"]
+
+[node name="CombatTextPreferences" type="MarginContainer"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+script = ExtResource("1_panel")
+
+[node name="Columns" type="BoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+vertical = false
+theme_override_constants/separation = 16
+
+[node name="ControlsColumn" type="VBoxContainer" parent="Columns"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 7
+
+[node name="CombatTextHeading" type="Label" parent="Columns/ControlsColumn"]
+layout_mode = 2
+text = "Combat text"
+theme_override_font_sizes/font_size = 26
+
+[node name="CombatTextSpeedGroup" type="VBoxContainer" parent="Columns/ControlsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="CombatTextSpeedRow" type="BoxContainer" parent="Columns/ControlsColumn/CombatTextSpeedGroup" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CombatTextSpeedCaption" type="Label" parent="Columns/ControlsColumn/CombatTextSpeedGroup/CombatTextSpeedRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Scrolling text speed"
+
+[node name="CombatTextSpeedValue" type="Label" parent="Columns/ControlsColumn/CombatTextSpeedGroup/CombatTextSpeedRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "100%"
+
+[node name="CombatTextSpeedSlider" type="HSlider" parent="Columns/ControlsColumn/CombatTextSpeedGroup"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_bottom = NodePath("../../CombatTextBackgroundGroup/CombatTextBackgroundSlider")
+min_value = 25.0
+max_value = 200.0
+step = 25.0
+value = 100.0
+tick_count = 8
+ticks_on_borders = true
+tooltip_text = "Lower values keep words visible longer. Travel distance and battle animation speed are separate."
+
+[node name="CombatTextSpeedGuidance" type="Label" parent="Columns/ControlsColumn/CombatTextSpeedGroup"]
+layout_mode = 2
+text = "Lower = longer · separate from travel and animation."
+
+[node name="CombatTextBackgroundGroup" type="VBoxContainer" parent="Columns/ControlsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="CombatTextBackgroundRow" type="BoxContainer" parent="Columns/ControlsColumn/CombatTextBackgroundGroup" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CombatTextBackgroundCaption" type="Label" parent="Columns/ControlsColumn/CombatTextBackgroundGroup/CombatTextBackgroundRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Background opacity"
+
+[node name="CombatTextBackgroundValue" type="Label" parent="Columns/ControlsColumn/CombatTextBackgroundGroup/CombatTextBackgroundRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "50%"
+
+[node name="CombatTextBackgroundSlider" type="HSlider" parent="Columns/ControlsColumn/CombatTextBackgroundGroup"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_top = NodePath("../../CombatTextSpeedGroup/CombatTextSpeedSlider")
+focus_neighbor_bottom = NodePath("../../CombatTextMotionRow/CombatTextMotion")
+min_value = 0.0
+max_value = 100.0
+step = 25.0
+value = 50.0
+tick_count = 5
+ticks_on_borders = true
+tooltip_text = "At 0%, only outlined words remain."
+
+[node name="CombatTextBackgroundGuidance" type="Label" parent="Columns/ControlsColumn/CombatTextBackgroundGroup"]
+layout_mode = 2
+text = "0% shows outlined words only."
+
+[node name="CombatTextMotionRow" type="BoxContainer" parent="Columns/ControlsColumn" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CombatTextMotionCaption" type="Label" parent="Columns/ControlsColumn/CombatTextMotionRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Motion"
+
+[node name="CombatTextMotion" type="OptionButton" parent="Columns/ControlsColumn/CombatTextMotionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_top = NodePath("../../CombatTextBackgroundGroup/CombatTextBackgroundSlider")
+focus_neighbor_bottom = NodePath("../../CombatTextSizeGroup/CombatTextSizeSlider")
+fit_to_longest_item = false
+item_count = 2
+popup/item_0/text = "Floating"
+popup/item_0/id = 0
+popup/item_1/text = "Stationary"
+popup/item_1/id = 1
+selected = 0
+theme_type_variation = &"ClassicTheldrowOptionButton"
+tooltip_text = "Stationary keeps combat text in place and disables travel distance without changing its saved value."
+
+[node name="CombatTextSizeGroup" type="VBoxContainer" parent="Columns/ControlsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="CombatTextSizeRow" type="BoxContainer" parent="Columns/ControlsColumn/CombatTextSizeGroup" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CombatTextSizeCaption" type="Label" parent="Columns/ControlsColumn/CombatTextSizeGroup/CombatTextSizeRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Text size"
+
+[node name="CombatTextSizeValue" type="Label" parent="Columns/ControlsColumn/CombatTextSizeGroup/CombatTextSizeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "100%"
+
+[node name="CombatTextSizeSlider" type="HSlider" parent="Columns/ControlsColumn/CombatTextSizeGroup"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_top = NodePath("../../CombatTextMotionRow/CombatTextMotion")
+focus_neighbor_bottom = NodePath("../../CombatTextTravelGroup/CombatTextTravelSlider")
+min_value = 75.0
+max_value = 200.0
+step = 5.0
+value = 100.0
+tooltip_text = "Scales the combat text independently of travel speed and distance."
+
+[node name="CombatTextSizeGuidance" type="Label" parent="Columns/ControlsColumn/CombatTextSizeGroup"]
+layout_mode = 2
+text = "75–200% · 5% steps"
+
+[node name="CombatTextTravelGroup" type="VBoxContainer" parent="Columns/ControlsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="CombatTextTravelRow" type="BoxContainer" parent="Columns/ControlsColumn/CombatTextTravelGroup" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CombatTextTravelCaption" type="Label" parent="Columns/ControlsColumn/CombatTextTravelGroup/CombatTextTravelRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Travel distance"
+
+[node name="CombatTextTravelValue" type="Label" parent="Columns/ControlsColumn/CombatTextTravelGroup/CombatTextTravelRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "32 logical map px"
+
+[node name="CombatTextTravelSlider" type="HSlider" parent="Columns/ControlsColumn/CombatTextTravelGroup"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_top = NodePath("../../CombatTextSizeGroup/CombatTextSizeSlider")
+focus_neighbor_bottom = NodePath("../../CombatTextAnchorRow/CombatTextAnchor")
+min_value = 0.0
+max_value = 64.0
+step = 4.0
+value = 32.0
+tooltip_text = "0–64 logical map px in 4 px steps. Stationary disables this control but retains its value."
+
+[node name="CombatTextTravelGuidance" type="Label" parent="Columns/ControlsColumn/CombatTextTravelGroup"]
+layout_mode = 2
+text = "Logical map px · disabled while Stationary; value retained."
+
+[node name="CombatTextAnchorRow" type="BoxContainer" parent="Columns/ControlsColumn" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CombatTextAnchorCaption" type="Label" parent="Columns/ControlsColumn/CombatTextAnchorRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Anchor"
+
+[node name="CombatTextAnchor" type="OptionButton" parent="Columns/ControlsColumn/CombatTextAnchorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_top = NodePath("../../CombatTextTravelGroup/CombatTextTravelSlider")
+focus_neighbor_bottom = NodePath("../../CombatTextOffsetGroup/CombatTextOffsetSlider")
+fit_to_longest_item = false
+item_count = 2
+popup/item_0/text = "Above icon"
+popup/item_0/id = 0
+popup/item_1/text = "Custom"
+popup/item_1/id = 1
+selected = 0
+theme_type_variation = &"ClassicTheldrowOptionButton"
+tooltip_text = "Above icon uses the existing combat text anchor. Custom applies a vertical offset from the icon center."
+
+[node name="CombatTextOffsetGroup" type="VBoxContainer" parent="Columns/ControlsColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="CombatTextOffsetRow" type="BoxContainer" parent="Columns/ControlsColumn/CombatTextOffsetGroup" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="CombatTextOffsetCaption" type="Label" parent="Columns/ControlsColumn/CombatTextOffsetGroup/CombatTextOffsetRow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "Y offset from icon center"
+
+[node name="CombatTextOffsetValue" type="Label" parent="Columns/ControlsColumn/CombatTextOffsetGroup/CombatTextOffsetRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+horizontal_alignment = 2
+text = "0 logical map px"
+
+[node name="CombatTextOffsetSlider" type="HSlider" parent="Columns/ControlsColumn/CombatTextOffsetGroup"]
+custom_minimum_size = Vector2(240, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+focus_neighbor_top = NodePath("../../CombatTextAnchorRow/CombatTextAnchor")
+focus_neighbor_bottom = NodePath("../../../PreviewColumn/CombatTextReset")
+min_value = -64.0
+max_value = 64.0
+step = 2.0
+value = 0.0
+editable = false
+tooltip_text = "Logical map px in 2 px steps. Negative values move up. Disabled while Above icon is selected; value is retained."
+
+[node name="CombatTextOffsetGuidance" type="Label" parent="Columns/ControlsColumn/CombatTextOffsetGroup"]
+layout_mode = 2
+text = "Logical map px · −64 to +64 · step 2 · negative Y moves up."
+
+[node name="CombatTextOffsetStateGuidance" type="Label" parent="Columns/ControlsColumn/CombatTextOffsetGroup"]
+layout_mode = 2
+text = "Disabled for Above icon; value retained."
+
+[node name="PreviewColumn" type="VBoxContainer" parent="Columns"]
+custom_minimum_size = Vector2(0, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 10
+
+[node name="PreviewHeading" type="Label" parent="Columns/PreviewColumn"]
+layout_mode = 2
+text = "Live preview"
+theme_override_font_sizes/font_size = 20
+
+[node name="CombatTextPreview" type="Control" parent="Columns/PreviewColumn"]
+custom_minimum_size = Vector2(220, 140)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+script = ExtResource("2_preview")
+
+[node name="CombatTextPreviewGuidance" type="Label" parent="Columns/PreviewColumn"]
+layout_mode = 2
+text = "Try these settings before applying them."
+autowrap_mode = 2
+
+[node name="CombatTextReset" type="Button" parent="Columns/PreviewColumn"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+focus_neighbor_top = NodePath("../../ControlsColumn/CombatTextOffsetGroup/CombatTextOffsetSlider")
+text = "Reset combat text"
+tooltip_text = "Restore the combat text defaults in this draft. Apply saves them; Cancel discards them."

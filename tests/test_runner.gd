@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/verification_tree.gd"
 
 const SUITES: Array[Script] = [
 	preload("res://tests/core/test_game_session.gd"),

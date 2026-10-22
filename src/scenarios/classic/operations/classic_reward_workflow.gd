@@ -31,8 +31,9 @@ func resume_reward(continuation: ScenarioRuntimeContinuation, response: Interact
 	return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
 
 static func _reward_error(error: Dictionary) -> ScenarioRuntimeOperationResult:
-	var code := StringName(error["code"])
-	return ScenarioRuntimeOperationResult.rejected(code, error["message"]) if String(code) in PLAYER_INPUT_ERROR_CODES else ScenarioRuntimeOperationResult.failed(code, error["message"])
+	var code: StringName = error["code"]
+	var message: String = error["message"]
+	return ScenarioRuntimeOperationResult.rejected(code, message) if String(code) in PLAYER_INPUT_ERROR_CODES else ScenarioRuntimeOperationResult.failed(code, message)
 
 func begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0, leading_items: Array[ItemInstance] = [], item_magic_detected: Array[bool] = []) -> ScenarioRuntimeOperationResult:
 	if wealth == null or item_ids.size() + leading_items.size() > ClassicRewardState.MAX_PENDING_ITEMS or not item_magic_detected.is_empty() and item_magic_detected.size() != item_ids.size():
@@ -60,7 +61,8 @@ func begin_reward(origin: StringName, source_id: String, total_experience: int, 
 	_game_state.party.pooled_wealth.gems += scaled_wealth.gems
 	_game_state.party.pooled_wealth.jewelry += scaled_wealth.jewelry
 	for character: CharacterState in experience_awards.recipients:
-		character.experience += int(experience_awards.awards[character.id])
+		var award: int = experience_awards.awards[character.id]
+		character.experience += award
 	var events: Array[DomainEvent] = [DomainEvent.new(&"reward_opened", {"origin": String(origin), "sourceId": source_id, "experiencePool": reward.experience_pool, "experienceShare": reward.experience_share, "experienceByCharacter": experience_awards.awards, "wealth": scaled_wealth.to_data(), "itemCount": reward.items().size()})]
 	if reward.items().is_empty() and scaled_wealth.gold == 0 and scaled_wealth.gems == 0 and scaled_wealth.jewelry == 0 and scaled_experience == 0:
 		return _complete_reward(reward, request_id, events)
@@ -522,7 +524,7 @@ func _resume_reward_level(reward: ClassicRewardState, response: InteractionRespo
 	var body := response.body as InteractionResponse.LevelUpBody
 	if response.kind != InteractionRequest.LEVEL_UP or body == null or body.action != &"continue" or body.character_id != reward.pending_level_result.get("characterId"):
 		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "The level result must be acknowledged by its character ID.")
-	var character_id := String(reward.pending_level_result.get("characterId", ""))
+	var character_id: String = reward.pending_level_result.get("characterId", "")
 	reward.pending_level_result.clear()
 	var character := _game_state.party.character_by_id(character_id)
 	# Drain every level earned by this reward before advancing to the next
@@ -562,7 +564,7 @@ func _resume_reward_spells(reward: ClassicRewardState, response: InteractionResp
 	var caste: CasteDefinition = null if character == null else _content.characters.caste_by_id(character.caste_id)
 	if character == null or caste == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward_progression", "The spell-selection character is unavailable.")
-	var candidates: Dictionary = {}
+	var candidates: Dictionary[String, SpellDefinition] = {}
 	for spell: SpellDefinition in _reward_spell_candidates(character, caste):
 		candidates[spell.id] = spell
 	var selected: Array[String] = []
@@ -634,8 +636,8 @@ func _reward_state_is_valid(reward: ClassicRewardState) -> bool:
 	for item: ItemInstance in reward.items():
 		if _content.items.item_by_id(item.definition_id) == null:
 			return false
-	for character_id: Variant in reward.experience_awards():
-		if _game_state.party.character_by_id(String(character_id)) == null:
+	for character_id: String in reward.experience_awards():
+		if _game_state.party.character_by_id(character_id) == null:
 			return false
 	for character_id: String in reward.level_character_ids():
 		if _game_state.party.character_by_id(character_id) == null:
@@ -643,7 +645,8 @@ func _reward_state_is_valid(reward: ClassicRewardState) -> bool:
 	for character_id: String in reward.spell_character_ids():
 		if _game_state.party.character_by_id(character_id) == null:
 			return false
-	if not reward.pending_level_result.is_empty() and _game_state.party.character_by_id(String(reward.pending_level_result.get("characterId", ""))) == null:
+	var pending_character_id: String = reward.pending_level_result.get("characterId", "")
+	if not reward.pending_level_result.is_empty() and _game_state.party.character_by_id(pending_character_id) == null:
 		return false
 	return true
 
@@ -686,4 +689,5 @@ func grant_item(character_id: String, item_id: String, identified: bool) -> Scen
 
 
 static func _whole_number(value: Variant) -> bool:
-	return value is int or value is float and is_equal_approx(value, round(value))
+	var real: float = value if value is float else NAN
+	return value is int or value is float and is_equal_approx(real, roundf(real))

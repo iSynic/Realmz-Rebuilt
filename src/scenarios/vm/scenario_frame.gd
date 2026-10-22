@@ -70,7 +70,10 @@ func has_iterator() -> bool:
 
 
 func current_iterator() -> Dictionary:
-	return {} if _iterators.is_empty() else _iterators.back().duplicate(true)
+	if _iterators.is_empty():
+		return {}
+	var iterator: Dictionary = _iterators.back()
+	return iterator.duplicate(true)
 
 
 func update_current_iterator(iterator: Dictionary) -> void:
@@ -100,14 +103,20 @@ func to_data(typed_values: bool = true) -> Dictionary:
 
 ## VM schema 4 frames carry type-tagged values (ADR 0026); `typed_values`
 ## false reads schema 2/3 raw JSON values.
-static func from_data(data: Variant, typed_values: bool = true) -> ScenarioFrame:
-	if not data is Dictionary or data.size() != 9 + (1 if data.has("nativeReturnDestination") else 0):
+static func from_data(value: Variant, typed_values: bool = true) -> ScenarioFrame:
+	if not value is Dictionary:
+		return null
+	var data: Dictionary = value
+	if data.size() != 9 + (1 if data.has("nativeReturnDestination") else 0):
 		return null
 	for field: String in ["kind", "definitionId", "cursor", "returnTarget", "countsAsClassicCall", "parameters", "locals", "context", "iterators"]:
 		if not data.has(field):
 			return null
 	var saved_cursor := _integer(data["cursor"])
-	if data["kind"] not in ["program", "action", "encounter"] or not data["definitionId"] is String or data["definitionId"].is_empty() or saved_cursor < 0 or not data["returnTarget"] is String or not data["countsAsClassicCall"] is bool:
+	if data["kind"] not in ["program", "action", "encounter"] or not data["definitionId"] is String:
+		return null
+	var definition_id: String = data["definitionId"]
+	if definition_id.is_empty() or saved_cursor < 0 or not data["returnTarget"] is String or not data["countsAsClassicCall"] is bool:
 		return null
 	var parameters: Variant = _decoded(data["parameters"], typed_values)
 	var locals: Variant = _decoded(data["locals"], typed_values)
@@ -117,7 +126,8 @@ static func from_data(data: Variant, typed_values: bool = true) -> ScenarioFrame
 	var context := ScenarioExecutionContextCodec.decode(data["context"])
 	if context == null:
 		return null
-	var frame := ScenarioFrame.new(StringName(data["kind"]), data["definitionId"], saved_cursor)
+	var frame_kind: String = data["kind"]
+	var frame := ScenarioFrame.new(StringName(frame_kind), definition_id, saved_cursor)
 	frame.return_target = data["returnTarget"]
 	frame.counts_as_classic_call = data["countsAsClassicCall"]
 	frame._parameters = parameters
@@ -126,9 +136,10 @@ static func from_data(data: Variant, typed_values: bool = true) -> ScenarioFrame
 	if data.get("nativeReturnDestination") != null:
 		frame.native_return_destination = _return_destination(data["nativeReturnDestination"])
 		if frame.native_return_destination == null: return null
-	for iterator: Variant in iterators:
-		if not iterator is Dictionary:
+	for iterator_value: Variant in iterators:
+		if not iterator_value is Dictionary:
 			return null
+		var iterator: Dictionary = iterator_value
 		if not typed_values:
 			# Legacy JSON returned the VM-owned loop counters as floats.
 			for field: String in ["beginTarget", "index"]:
@@ -142,28 +153,52 @@ static func from_data(data: Variant, typed_values: bool = true) -> ScenarioFrame
 func coerce_declared_parameters(action: ScenarioActionDefinition) -> void:
 	for declared: ScenarioActionParameter in action.parameters():
 		var value: Variant = _parameters.get(declared.name)
-		if declared.value_type == &"int" and value is float and is_finite(value) and value == floor(value):
-			_parameters[declared.name] = int(value)
+		if declared.value_type != &"int" or not value is float:
+			continue
+		var number: float = value
+		if is_finite(number) and number == floorf(number):
+			_parameters[declared.name] = int(number)
 
 
 static func _decoded(value: Variant, typed_values: bool) -> Variant:
 	if not typed_values:
-		return value.duplicate(true) if value is Dictionary or value is Array else value
+		if value is Dictionary:
+			var record: Dictionary = value
+			return record.duplicate(true)
+		if value is Array:
+			var items: Array = value
+			return items.duplicate(true)
+		return value
 	var decoded := ScenarioValueCodec.decode(value)
 	return decoded["value"] if decoded["ok"] else null
 
 
 static func _return_destination(value: Variant) -> TriggerDestinationDefinition:
-	if not value is Dictionary or value.size() != 3 or not value.get("mapId") is String or value["mapId"].is_empty(): return null
+	if not value is Dictionary: return null
+	var data: Dictionary = value
+	if data.size() != 3 or not data.get("mapId") is String: return null
+	var map_id: String = data["mapId"]
+	if map_id.is_empty(): return null
 	for field: String in ["x", "y"]:
-		var number: Variant = value.get(field)
-		if not (number is int or number is float and is_finite(number) and number == floor(number)) or number < -2_147_483_648 or number > 2_147_483_647: return null
-	return TriggerDestinationDefinition.new(value["mapId"], Vector2i(value["x"], value["y"]))
+		var number: Variant = data.get(field)
+		if not (number is int or number is float and _finite_whole(number)) or number < -2_147_483_648 or number > 2_147_483_647: return null
+	var x: int = data["x"]
+	var y: int = data["y"]
+	return TriggerDestinationDefinition.new(map_id, Vector2i(x, y))
+
+
+static func _finite_whole(value: Variant) -> bool:
+	if not value is float:
+		return false
+	var number: float = value
+	return is_finite(number) and number == floorf(number)
 
 
 static func _integer(value: Variant) -> int:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return -1

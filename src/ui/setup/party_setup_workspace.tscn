@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/party_setup_workspace.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/party_setup_party_slot.tscn" id="4_slot"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="2_sheet"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/character_creation_appearance_step.tscn" id="3_appearance"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/adventure_rules_panel.tscn" id="5_adventure_rules"]
 
 [sub_resource type="StyleBoxFlat" id="SetupSurface"]
 content_margin_left = 10.0
@@ -301,6 +302,10 @@ size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 text_overrun_behavior = 3
+
+[node name="AdventureRulesPanel" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartyBody/PartySetupOptions" instance=ExtResource("5_adventure_rules")]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="PartyFooter" type="BoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
 unique_name_in_owner = true

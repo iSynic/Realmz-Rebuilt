@@ -8,22 +8,44 @@ static func level(spell: SpellView) -> int:
 
 
 static func available_powers(spell: SpellView) -> Array[int]:
-	if not spell.power_levels.is_empty():
-		return spell.power_levels
-	var result: Array[int] = [1]
+	var result: Array[int] = []
+	for power: int in spell.power_levels:
+		if not result.has(power):
+			result.append(power)
+	for power: int in spell.scroll_power_levels:
+		if not result.has(power):
+			result.append(power)
+	result.sort()
 	return result
 
 
 static func available_scroll_powers(spell: SpellView) -> Array[int]:
-	if not spell.scroll_power_levels.is_empty():
-		return spell.scroll_power_levels
-	var result: Array[int] = [1]
-	return result
+	return spell.scroll_power_levels
 
 
 static func valid_power(spell: SpellView, preferred: int) -> int:
 	var powers := available_powers(spell)
-	return preferred if powers.has(preferred) else powers[0]
+	if powers.has(preferred):
+		return preferred
+	# With no supplied legal power, retain a bounded display value. The empty
+	# availability lists still keep every selector button disabled.
+	return clampi(preferred, 1, 7) if powers.is_empty() else powers[0]
+
+
+static func cast_power_available(spell: SpellView, power: int) -> bool:
+	return spell.field_cast != null and spell.field_cast.enabled and spell.power_levels.has(power)
+
+
+static func scroll_power_available(spell: SpellView, power: int) -> bool:
+	return spell.make_scroll != null and spell.make_scroll.enabled and spell.scroll_power_levels.has(power)
+
+
+static func cast_cost(spell: SpellView, power: int) -> int:
+	return absi(spell.cost * power)
+
+
+static func scroll_cost(spell: SpellView, power: int) -> int:
+	return absi(spell.cost * 2 * power)
 
 
 static func scaled_pair(

@@ -7,6 +7,7 @@ const WORKSPACE_SCENE_PATH := "res://src/ui/shell/system_workspace.tscn"
 
 signal action_requested(action_id: StringName, value: Variant)
 signal controller_binding_capture_requested(action_id: StringName)
+signal intent_submitted(intent: PlayerIntent)
 
 const GOLD := Color("d5b45d")
 const CYAN := Color("8fcfd1")
@@ -23,6 +24,14 @@ var _settings_media: ClassicMediaCatalog
 var cancel_binding_capture: Callable
 var commit_preferences: Callable
 var _draft_error := ""
+var _rules_baseline := AdventureRules.new()
+var _rules_values := AdventureRules.new()
+var _rules_submission: AdventureRules
+var _rules_initialized := false
+var _rules_available := false
+var _rules_reason := ""
+var _rules_error := ""
+var _rules_campaign_id := ""
 var _display_settings: PresentationSettings
 var font_resolver := FontResolver.new()
 var _controller_draft: ControllerPreferences
@@ -55,9 +64,6 @@ func navigate_section(section_name: StringName = &"", delta: int = 0) -> bool:
 		current = wrapi(current + delta, 0, categories.size())
 		show_category(categories[current])
 		return true
-	if section_name == &"Audio & Pacing":
-		show_category(&"Audio")
-		return true
 	if categories.has(section_name):
 		show_category(section_name)
 		return true
@@ -67,8 +73,8 @@ func navigate_section(section_name: StringName = &"", delta: int = 0) -> bool:
 func show_category(category: StringName) -> void:
 	if _workspace == null:
 		return
-	if category == &"Audio & Pacing":
-		category = &"Audio"
+	if _selected_workspace_mode == &"Adventure Rules" and category != &"Adventure Rules":
+		discard_adventure_rules_draft()
 	_workspace.call("show_category", category)
 	_selected_workspace_mode = category
 
@@ -76,8 +82,17 @@ func show_category(category: StringName) -> void:
 func show_saves() -> void:
 	if _workspace == null or not _has_active_session:
 		return
+	discard_adventure_rules_draft()
 	_workspace.call("show_saves")
 	_selected_workspace_mode = &"Save & Load"
+
+
+func discard_adventure_rules_draft() -> void:
+	if _rules_initialized:
+		_rules_values = _rules_baseline.copy()
+	_rules_submission = null
+	_rules_error = ""
+	_refresh_adventure_rules()
 
 
 func indoor_icon_picker() -> IndoorPartyIconPicker:
@@ -151,6 +166,7 @@ func refresh_preferences() -> void:
 	_bind_hud_settings(settings)
 	_bind_controls(settings)
 	_workspace.call("bind_diagnostics", settings)
+	_refresh_adventure_rules()
 	refresh_draft_footer()
 
 
@@ -184,18 +200,7 @@ func present(target: Control, view: GameView, settings: PresentationSettings, me
 		_workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as SystemWorkspace
 		parent.add_child(_workspace)
 		_workspace.prepare(_layout_profile == UiLayoutProfile.COMPACT)
-	if _workspace.has_signal("category_selected") and not _workspace.has_meta("system_category_observer"):
-		_workspace.connect("category_selected", func(category: StringName) -> void: _selected_workspace_mode = category)
-		_workspace.set_meta("system_category_observer", true)
-	if _workspace.has_signal("setting_changed") and not _workspace.has_meta("system_setting_observer"):
-		_workspace.connect("setting_changed", stage_setting)
-		_workspace.set_meta("system_setting_observer", true)
-	if _workspace.has_signal("action_requested") and not _workspace.has_meta("system_action_observer"):
-		_workspace.connect("action_requested", func(action_id: StringName, value: Variant) -> void: action_requested.emit(action_id, value))
-		_workspace.set_meta("system_action_observer", true)
-	if not _workspace.has_meta("interface_size_feedback_observer"):
-		_workspace.resized.connect(_refresh_interface_size_feedback)
-		_workspace.set_meta("interface_size_feedback_observer", true)
+	_bind_workspace_observers()
 	if _workspace.has_method("tabs"):
 		(_workspace.call("tabs") as TabContainer).set_tab_disabled(0, not _has_active_session)
 	if not _has_active_session and _selected_workspace_mode == &"Save & Load":
@@ -204,6 +209,8 @@ func present(target: Control, view: GameView, settings: PresentationSettings, me
 		_bind_header(view)
 	else:
 		_workspace.campaign_context().text = ""
+	_bind_adventure_rules_view(view)
+	(_workspace as SystemPreferencesLayout).bind_character_art(view)
 	saves.present(_workspace, view, screen != null)
 	_live_settings = settings
 	_settings_media = media if _has_active_session else null
@@ -226,6 +233,113 @@ func present(target: Control, view: GameView, settings: PresentationSettings, me
 		_workspace.call("show_saves")
 	else:
 		_workspace.call("show_category", _selected_workspace_mode)
+	_refresh_adventure_rules()
+
+
+func _bind_workspace_observers() -> void:
+	if _workspace.has_signal("category_selected") and not _workspace.has_meta("system_category_observer"):
+		_workspace.connect("category_selected", _on_category_selected)
+		_workspace.set_meta("system_category_observer", true)
+	if _workspace.has_signal("adventure_rules_changed") and not _workspace.has_meta("system_rules_observer"):
+		_workspace.connect("adventure_rules_changed", _stage_adventure_rules)
+		_workspace.connect("adventure_rules_apply_requested", apply_adventure_rules_draft)
+		_workspace.connect("adventure_rules_cancel_requested", discard_adventure_rules_draft)
+		_workspace.set_meta("system_rules_observer", true)
+	if _workspace.has_signal("setting_changed") and not _workspace.has_meta("system_setting_observer"):
+		_workspace.connect("setting_changed", stage_setting)
+		_workspace.set_meta("system_setting_observer", true)
+	if _workspace.has_signal("action_requested") and not _workspace.has_meta("system_action_observer"):
+		_workspace.connect("action_requested", func(action_id: StringName, value: Variant) -> void: action_requested.emit(action_id, value))
+		_workspace.set_meta("system_action_observer", true)
+	if not _workspace.has_meta("interface_size_feedback_observer"):
+		_workspace.resized.connect(_refresh_interface_size_feedback)
+		_workspace.set_meta("interface_size_feedback_observer", true)
+
+
+func _on_category_selected(category: StringName) -> void:
+	if _selected_workspace_mode == &"Adventure Rules" and category != &"Adventure Rules":
+		discard_adventure_rules_draft()
+	_selected_workspace_mode = category
+
+
+func _bind_adventure_rules_view(view: GameView) -> void:
+	var incoming := AdventureRules.new()
+	var campaign_id := ""
+	if view != null and view.session_started:
+		incoming = view.adventure_rules.copy()
+		campaign_id = view.campaign_id
+		var availability := view.availability(&"adventure_rules")
+		_rules_available = availability != null and availability.enabled
+		_rules_reason = "" if availability == null else availability.reason
+		if availability == null:
+			_rules_reason = "Adventure Rules are unavailable in this context."
+	else:
+		_rules_available = false
+		_rules_reason = "Select and prepare a campaign before changing Adventure Rules."
+	if not _rules_initialized or campaign_id != _rules_campaign_id:
+		_rules_campaign_id = campaign_id
+		_rules_baseline = incoming.copy()
+		_rules_values = incoming.copy()
+		_rules_submission = null
+		_rules_error = ""
+		_rules_initialized = true
+	elif _rules_submission != null and incoming.to_data() == _rules_submission.to_data():
+		_rules_baseline = incoming.copy()
+		_rules_values = incoming.copy()
+		_rules_submission = null
+		_rules_error = ""
+	elif _rules_submission != null:
+		_rules_submission = null
+		_rules_error = _rules_reason if not _rules_reason.is_empty() else "The rules update was not accepted. Review availability and try again."
+	elif not _rules_dirty():
+		_rules_baseline = incoming.copy()
+		_rules_values = incoming.copy()
+	_refresh_adventure_rules()
+
+
+func _stage_adventure_rules(enabled: bool) -> void:
+	if not _rules_available or _rules_submission != null or not _rules_initialized:
+		return
+	_rules_values = _rules_baseline.copy() if not _rules_dirty() else _rules_values.copy()
+	_rules_values.free_targeting_cancellation = enabled
+	_rules_error = ""
+	_refresh_adventure_rules()
+
+
+func apply_adventure_rules_draft() -> void:
+	if not _rules_available or _rules_submission != null or not _rules_dirty():
+		return
+	_rules_submission = _rules_values.copy()
+	_rules_error = ""
+	_refresh_adventure_rules()
+	intent_submitted.emit(AdventureRulesIntents.set_rules(_rules_submission))
+	if _rules_submission != null:
+		_rules_submission = null
+		_rules_error = "The rules update was not accepted. Review availability and try again."
+		_refresh_adventure_rules()
+
+
+func _rules_dirty() -> bool:
+	return _rules_initialized and _rules_values.to_data() != _rules_baseline.to_data()
+
+
+func _refresh_adventure_rules() -> void:
+	var system_layout := _workspace as SystemPreferencesLayout
+	if system_layout == null:
+		return
+	var busy := _rules_submission != null
+	var status := _rules_error
+	if status.is_empty():
+		if busy:
+			status = "Applying rules to this adventure…"
+		elif _rules_dirty():
+			status = "Unsaved Adventure Rules changes"
+		else:
+			status = "No pending rule changes"
+	var reason := _rules_reason
+	if busy:
+		reason = "Waiting for this adventure to confirm the update."
+	system_layout.bind_adventure_rules(_rules_values, _rules_available and not busy, reason, _rules_dirty(), busy, status)
 
 
 func _bind_header(view: GameView) -> void:

@@ -142,6 +142,11 @@ func apply_initial_settings() -> void:
 	_presentation.set_reduced_motion(_settings.reduced_motion)
 	_presentation.combat_text_speed_percent = _settings.combat_text_speed_percent
 	_presentation.combat_text_background_opacity_percent = _settings.combat_text_background_opacity_percent
+	_presentation.combat_text_motion = _settings.combat_text_motion
+	_presentation.combat_text_size_percent = _settings.combat_text_size_percent
+	_presentation.combat_text_travel_logical_pixels = _settings.combat_text_travel_logical_pixels
+	_presentation.combat_text_anchor = _settings.combat_text_anchor
+	_presentation.combat_text_custom_offset_y_logical_pixels = _settings.combat_text_custom_offset_y_logical_pixels
 	_presentation.set_combat_playback_speed_percent(_settings.combat_playback_speed_percent)
 	_presentation.set_hurry_spell_resolution(_settings.hurry_spell_resolution)
 	_presentation.set_exploration_speed_percent(_settings.exploration_speed_percent)

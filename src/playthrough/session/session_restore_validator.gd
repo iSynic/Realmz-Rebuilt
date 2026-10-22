@@ -134,6 +134,8 @@ static func _restore_continuations(content: RealmzContent, snapshot: SessionSnap
 		return SessionRestoreResult.failed(&"invalid_session_continuation", "The saved session continuation is invalid.")
 	if replacement_continuation.is_empty() and replacement_session_interaction != null:
 		return SessionRestoreResult.failed(&"invalid_session_interaction", "The saved session interaction has no owning continuation.")
+	if not SessionScenarioRestoreValidator.round_cursor_owner_is_valid(candidate.state, replacement_continuation, candidate.scenario_vm.snapshot()):
+		return SessionRestoreResult.failed(&"invalid_round_continuation", "The saved combat round has no matching macro continuation.")
 	candidate.continuation = replacement_continuation
 	candidate.battle_return_continuation = replacement_battle_return
 	candidate.session_interaction = replacement_session_interaction
@@ -166,6 +168,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			return _valid_friendly_collision(continuation, state, vm_interaction, session_interaction)
 		&"age-updates":
 			return _valid_age_continuation(content, state, continuation, vm_interaction, session_interaction)
+		&"combat-round-macro":
+			return _valid_round_macro(state, continuation, vm_interaction, session_interaction)
 		&"combat-death-macro":
 			return _valid_combat_death_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"combat-ally-selection":
@@ -527,3 +531,9 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 			return exploration.active_random_program_id.is_empty() and content.scenario.program_by_id(exploration.active_timed_program_id) != null
 		return exploration.random_battle_stage.is_empty() and exploration.active_random_region_id.is_empty() and not exploration.active_random_program_id.is_empty() and content.scenario.program_by_id(exploration.active_random_program_id) != null
 	return exploration.random_battle_stage.is_empty() and exploration.active_random_region_id.is_empty() and exploration.active_random_program_id.is_empty() and exploration.active_timed_program_id.is_empty()
+
+
+static func _valid_round_macro(state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var body := continuation.combat()
+	var combat := state.combat
+	return body != null and combat != null and not combat.completed and combat.round_cursor != null and combat.round_cursor.phase == &"battle-macro" and body.battle_id == combat.battle_id and body.program_id == "xap:%d" % absi(combat.macro_id) and vm_interaction != null and session_interaction == null

@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 27
+const SCHEMA_VERSION: int = 28
 const INDOOR_PARTY_ICON_COUNT: int = 120
 const DEFAULT_INDOOR_PARTY_ICON: int = 72
 const MUSIC_SLOT_COUNT: int = 20
@@ -43,6 +43,12 @@ const MENU_VISIBLE: String = "visible"
 const MENU_HOVER: String = "hover"
 const MENU_HIDDEN: String = "hidden"
 const MENU_MODES: Array[String] = [MENU_VISIBLE, MENU_HOVER, MENU_HIDDEN]
+const COMBAT_TEXT_FLOATING: String = "floating"
+const COMBAT_TEXT_STATIONARY: String = "stationary"
+const COMBAT_TEXT_MOTIONS: Array[String] = [COMBAT_TEXT_FLOATING, COMBAT_TEXT_STATIONARY]
+const COMBAT_TEXT_ANCHOR_ABOVE_ICON: String = "above-icon"
+const COMBAT_TEXT_ANCHOR_CUSTOM: String = "custom"
+const COMBAT_TEXT_ANCHORS: Array[String] = [COMBAT_TEXT_ANCHOR_ABOVE_ICON, COMBAT_TEXT_ANCHOR_CUSTOM]
 
 var master_volume: float = 1.0
 var sound_volume: float = 1.0
@@ -72,6 +78,11 @@ var exploration_speed_percent: int = 100
 var combat_playback_speed_percent: int = 100
 var combat_text_speed_percent: int = 100
 var combat_text_background_opacity_percent: int = 50
+var combat_text_motion: String = COMBAT_TEXT_FLOATING
+var combat_text_size_percent: int = 100
+var combat_text_travel_logical_pixels: int = 32
+var combat_text_anchor: String = COMBAT_TEXT_ANCHOR_ABOVE_ICON
+var combat_text_custom_offset_y_logical_pixels: int = 0
 var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
@@ -118,6 +129,11 @@ func copy_from(other: PresentationSettings) -> void:
 	combat_playback_speed_percent = other.combat_playback_speed_percent
 	combat_text_speed_percent = other.combat_text_speed_percent
 	combat_text_background_opacity_percent = other.combat_text_background_opacity_percent
+	combat_text_motion = other.combat_text_motion
+	combat_text_size_percent = other.combat_text_size_percent
+	combat_text_travel_logical_pixels = other.combat_text_travel_logical_pixels
+	combat_text_anchor = other.combat_text_anchor
+	combat_text_custom_offset_y_logical_pixels = other.combat_text_custom_offset_y_logical_pixels
 	hurry_spell_resolution = other.hurry_spell_resolution
 	show_exploration_minimap = other.show_exploration_minimap
 	classic_exploration_visibility = other.classic_exploration_visibility
@@ -166,6 +182,11 @@ func to_data() -> Dictionary:
 		"combatPlaybackSpeedPercent": combat_playback_speed_percent,
 		"combatTextSpeedPercent": combat_text_speed_percent,
 		"combatTextBackgroundOpacityPercent": combat_text_background_opacity_percent,
+		"combatTextMotion": combat_text_motion,
+		"combatTextSizePercent": combat_text_size_percent,
+		"combatTextTravelLogicalPixels": combat_text_travel_logical_pixels,
+		"combatTextAnchor": combat_text_anchor,
+		"combatTextCustomOffsetYLogicalPixels": combat_text_custom_offset_y_logical_pixels,
 		"hurrySpellResolution": hurry_spell_resolution,
 		"showExplorationMinimap": show_exploration_minimap,
 		"classicExplorationVisibility": classic_exploration_visibility,
@@ -239,6 +260,8 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 	if data.has("combatTextSpeedPercent") and not _stepped_number_is_valid(data["combatTextSpeedPercent"], 25, 200):
 		return false
 	if data.has("combatTextBackgroundOpacityPercent") and not _stepped_number_is_valid(data["combatTextBackgroundOpacityPercent"], 0, 100):
+		return false
+	if not _combat_text_fields_are_valid(data, schema_version):
 		return false
 	if schema_version >= 12 and not data.get("lastCampaignId") is String:
 		return false
@@ -325,11 +348,29 @@ static func _music_fields_are_valid(data: Dictionary) -> bool:
 	return true
 
 
-static func _stepped_number_is_valid(value: Variant, minimum: int, maximum: int) -> bool:
+static func _stepped_number_is_valid(value: Variant, minimum: int, maximum: int, step: int = 25) -> bool:
 	if not value is int and not value is float:
 		return false
 	var number := int(value)
-	return float(number) == float(value) and number >= minimum and number <= maximum and number % 25 == 0
+	return step > 0 and float(number) == float(value) and number >= minimum and number <= maximum and (number - minimum) % step == 0
+
+
+static func _combat_text_fields_are_valid(data: Dictionary, schema_version: int) -> bool:
+	var required := schema_version >= 28
+	for key: String in ["combatTextMotion", "combatTextSizePercent", "combatTextTravelLogicalPixels", "combatTextAnchor", "combatTextCustomOffsetYLogicalPixels"]:
+		if required and not data.has(key):
+			return false
+	if data.has("combatTextMotion") and (not data["combatTextMotion"] is String or data["combatTextMotion"] not in COMBAT_TEXT_MOTIONS):
+		return false
+	if data.has("combatTextSizePercent") and not _stepped_number_is_valid(data["combatTextSizePercent"], 75, 200, 5):
+		return false
+	if data.has("combatTextTravelLogicalPixels") and not _stepped_number_is_valid(data["combatTextTravelLogicalPixels"], 0, 64, 4):
+		return false
+	if data.has("combatTextAnchor") and (not data["combatTextAnchor"] is String or data["combatTextAnchor"] not in COMBAT_TEXT_ANCHORS):
+		return false
+	if data.has("combatTextCustomOffsetYLogicalPixels") and not _stepped_number_is_valid(data["combatTextCustomOffsetYLogicalPixels"], -64, 64, 2):
+		return false
+	return true
 
 
 static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
@@ -365,6 +406,8 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.classic_keyboard_shortcuts = bool(data.get("classicKeyboardShortcuts", false))
 	settings.window_mode = String(data.get("windowMode", WINDOWED))
 	_read_pacing(settings, data)
+	if _schema_version_from_data(data) >= 28:
+		_read_combat_text_settings(settings, data)
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
 	settings.custom_fog_tile_enabled = bool(data.get("customFogTileEnabled", false))
@@ -390,6 +433,33 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	if int(data.get("schemaVersion", 1)) == 14:
 		settings.controller.add_top_menu_default_if_available()
 	return settings
+
+
+static func _read_combat_text_settings(settings: PresentationSettings, data: Dictionary) -> void:
+	var motion: Variant = data["combatTextMotion"]
+	if motion is String:
+		settings.combat_text_motion = motion
+	var size: Variant = data["combatTextSizePercent"]
+	if size is int:
+		settings.combat_text_size_percent = size
+	elif size is float:
+		var size_number: float = size
+		settings.combat_text_size_percent = int(size_number)
+	var travel: Variant = data["combatTextTravelLogicalPixels"]
+	if travel is int:
+		settings.combat_text_travel_logical_pixels = travel
+	elif travel is float:
+		var travel_number: float = travel
+		settings.combat_text_travel_logical_pixels = int(travel_number)
+	var anchor: Variant = data["combatTextAnchor"]
+	if anchor is String:
+		settings.combat_text_anchor = anchor
+	var offset_y: Variant = data["combatTextCustomOffsetYLogicalPixels"]
+	if offset_y is int:
+		settings.combat_text_custom_offset_y_logical_pixels = offset_y
+	elif offset_y is float:
+		var offset_y_number: float = offset_y
+		settings.combat_text_custom_offset_y_logical_pixels = int(offset_y_number)
 
 
 static func _read_pacing(settings: PresentationSettings, data: Dictionary) -> void:

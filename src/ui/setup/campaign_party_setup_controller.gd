@@ -31,6 +31,9 @@ var _inspection: PartySetupInspectionController
 var _assembly: PartySetupAssemblyController
 var _creation: PartySetupCharacterCreationController
 var _party_import_dialog: PartyImportFromSaveDialog
+var _adventure_rules_error := ""
+var _adventure_rules_feedback_revision := -1
+var _adventure_rules_campaign_id := ""
 
 
 func _init() -> void:
@@ -101,6 +104,9 @@ func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
 	party_list.import_requested.connect(_assembly.import_stored_character)
 	setup_message = setup_overlay.get_node("%SetupMessage") as Label
 	party_setup_options = setup_overlay.get_node("%PartySetupOptions") as VBoxContainer
+	var adventure_rules_panel := setup_overlay.get_node("%AdventureRulesPanel") as AdventureRulesPanel
+	adventure_rules_panel.value_changed.connect(_on_adventure_rules_changed)
+	_bind_adventure_rules(view)
 	party_guidance_label = setup_overlay.get_node("%PartyLevelGuidance") as Label
 	monster_set_option = setup_overlay.get_node("%MonsterSetOption") as OptionButton
 	monster_set_option.item_selected.connect(_assembly.party_setup_option_changed)
@@ -183,6 +189,7 @@ func party_import_focus_root() -> Node:
 
 func set_view(next_view: GameView) -> void:
 	view = next_view
+	_bind_adventure_rules(view)
 	if setup_overlay != null and setup_overlay.visible:
 		_creation.refresh_setup_options()
 
@@ -304,6 +311,7 @@ func handle_back() -> bool:
 
 func present(next_view: GameView) -> void:
 	view = next_view
+	_bind_adventure_rules(view)
 	if view == null or not view.party_setup_available:
 		return
 	if awaiting_draft_generation and view.character_draft != null:
@@ -315,3 +323,45 @@ func present(next_view: GameView) -> void:
 		_creation.refresh_setup_options()
 		if setup_overlay.visible and not setup_inspection_character_id.is_empty():
 			_inspection.render_setup_character_inspection()
+
+
+func _bind_adventure_rules(next_view: GameView) -> void:
+	if setup_overlay == null:
+		return
+	var campaign_id := next_view.campaign_id if next_view != null and next_view.session_started else ""
+	if campaign_id != _adventure_rules_campaign_id or (next_view != null and _adventure_rules_feedback_revision != next_view.revision):
+		_adventure_rules_campaign_id = campaign_id
+		_adventure_rules_error = ""
+		_adventure_rules_feedback_revision = -1
+	var panel := setup_overlay.get_node_or_null("%AdventureRulesPanel") as AdventureRulesPanel
+	if panel == null:
+		return
+	if next_view == null or not next_view.session_started:
+		panel.bind_rules(AdventureRules.new(), false, "Select and prepare a campaign before changing Adventure Rules.")
+		return
+	var availability := next_view.availability(&"adventure_rules")
+	var reason := "" if availability == null else availability.reason
+	if availability == null:
+		reason = "Adventure Rules are unavailable in this context."
+	elif availability.enabled and not _adventure_rules_error.is_empty():
+		reason = _adventure_rules_error
+	panel.bind_rules(next_view.adventure_rules, availability != null and availability.enabled, reason)
+
+
+func _on_adventure_rules_changed(enabled: bool) -> void:
+	if view == null or not view.session_started:
+		return
+	var availability := view.availability(&"adventure_rules")
+	if availability == null or not availability.enabled:
+		_bind_adventure_rules(view)
+		return
+	var rules := view.adventure_rules.copy()
+	rules.free_targeting_cancellation = enabled
+	var submitted_revision := view.revision
+	_adventure_rules_error = ""
+	_adventure_rules_feedback_revision = -1
+	intent_submitted.emit(AdventureRulesIntents.set_rules(rules))
+	if view == null or view.revision == submitted_revision or view.adventure_rules.free_targeting_cancellation != enabled:
+		_adventure_rules_error = "The rules update was not accepted. Review availability and try again."
+		_adventure_rules_feedback_revision = submitted_revision
+		_bind_adventure_rules(view)

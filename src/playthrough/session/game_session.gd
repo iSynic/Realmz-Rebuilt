@@ -9,11 +9,11 @@ var _context: SessionContext = SessionContext.new()
 var navigation: SessionNavigationQuery = SessionNavigationQuery.new(_context)
 var _started: bool = false
 var _view_projector := SessionViewProjector.new()
-var _exploration_coordinator: RefCounted
-var _scenario_coordinator: RefCounted
-var _response_coordinator: RefCounted
-var _debug_coordinator: RefCounted
-var _intent_coordinator: RefCounted
+var _exploration_coordinator: SessionExplorationCoordinator
+var _scenario_coordinator: SessionScenarioCoordinator
+var _response_coordinator: SessionResponsesCoordinator
+var _debug_coordinator: SessionDebugCoordinator
+var _intent_coordinator: SessionIntentCoordinator
 var _debug_operation_active: bool = false
 
 
@@ -161,7 +161,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return _set_combat_auto(intent)
 	if _pending_interaction() != null or _context.scenario_vm.is_active():
 		return SessionStep.failed(_context.current_revision(), &"interaction_pending", "Respond to the pending interaction first.")
-	if not _context.state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.IMPORT_SAVED_PARTY, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS]:
+	if not _context.state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.IMPORT_SAVED_PARTY, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, PlayerIntent.Kind.SET_ADVENTURE_RULES]:
 		return SessionStep.failed(_context.current_revision(), &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
 	if _context.state.combat != null and not _context.state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE, PlayerIntent.Kind.COMBAT_TARGETING, PlayerIntent.Kind.EQUIP_ITEM, PlayerIntent.Kind.UNEQUIP_ITEM, PlayerIntent.Kind.SPLIT_ITEM, PlayerIntent.Kind.JOIN_ITEM, PlayerIntent.Kind.DROP_ITEM]:
 		return SessionStep.failed(_context.current_revision(), &"battle_in_progress", "Resolve the active battle before returning to exploration.")
@@ -350,8 +350,8 @@ func _latch_deferred_reference_fault(code: StringName, message: String) -> Sessi
 	var failure := _context.scenario_vm.diagnostics.failure_context() if _context.scenario_vm != null else {}
 	if failure.is_empty() or failure.get("errorCode") != String(code) or failure.get("errorMessage") != message:
 		return null
-	var program_id := String(failure.get("programId", ""))
-	var slot := int(failure.get("slot", -1))
+	var program_id: String = failure.get("programId", "")
+	var slot: int = failure.get("slot", -1)
 	var warning := _context.content.compatibility_warning_for(&"scenario-program", program_id, slot)
 	if warning == null:
 		for candidate: ScenarioCompatibilityWarning in _context.content.compatibility_warnings:
@@ -364,7 +364,8 @@ func _latch_deferred_reference_fault(code: StringName, message: String) -> Sessi
 	for value: Variant in failure.get("operands", []):
 		if value is int:
 			operands.append(value)
-	_context.runtime_fault = SessionRuntimeFault.new(_context.content.campaign_id, program_id, slot, int(failure.get("opcode", 0)), operands, target_kind, target_id, code, message)
+	var opcode: int = failure.get("opcode", 0)
+	_context.runtime_fault = SessionRuntimeFault.new(_context.content.campaign_id, program_id, slot, opcode, operands, target_kind, target_id, code, message)
 	return _context.runtime_fault
 
 

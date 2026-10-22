@@ -74,7 +74,7 @@ func _test_pause_menu_contracts() -> void:
 	shell.controller.pause.move(Vector2i.DOWN)
 	assert_equal(shell.controller.pause.selected_label(), "Settings", "after returning from Save & Load, Down advances to Settings")
 	shell.controller.pause.confirm()
-	assert_equal((pause.find_child("Heading", true, false) as Label).text, "Settings", "confirming Settings opens that Pause page")
+	assert_true(shell.navigator.current_screen() == &"system" and shell.controller.pause.workspace_is_open() and not shell.controller.pause.is_open(), "confirming Settings opens the full editor directly over the retained Pause backdrop")
 	shell.controller.pause.back()
 	assert_equal(shell.controller.pause.selected_label(), "Settings", "returning from Settings restores its parent Pause selection")
 	shell.controller.pause.move(Vector2i.DOWN)
@@ -137,9 +137,7 @@ func _test_classic_click_modal() -> void:
 
 
 func _test_startup_party_setup_composition() -> void:
-	var router := instantiate_ui_scene("res://src/ui/shell/screen_navigator.tscn") as ScreenNavigator
-	(Engine.get_main_loop() as SceneTree).root.add_child(router)
-	router.initialize()
+	var router := _create_initialized_navigator()
 	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(1280, 720))
 	router.setup_controller.character_creation.set_standalone_character_creation_available(true)
@@ -171,9 +169,7 @@ func _test_startup_party_setup_composition() -> void:
 
 
 func _test_package_operation_presentation() -> void:
-	var router := instantiate_ui_scene("res://src/ui/shell/screen_navigator.tscn") as ScreenNavigator
-	(Engine.get_main_loop() as SceneTree).root.add_child(router)
-	router.initialize()
+	var router := _create_initialized_navigator()
 	var canceled := [0]
 	var retried: Array[String] = []
 	router.cancel_package_requested.connect(func() -> void: canceled[0] += 1)
@@ -201,8 +197,7 @@ func _test_package_operation_presentation() -> void:
 
 
 func _test_primary_workspace_lifecycle() -> void:
-	var router := instantiate_ui_scene("res://src/ui/shell/screen_navigator.tscn") as ScreenNavigator; (Engine.get_main_loop() as SceneTree).root.add_child(router)
-	router.initialize()
+	var router := _create_initialized_navigator()
 	var view := GameView.new(1, true, null)
 	view.campaign_id = "workspace-fixture"
 	view.rules_version = "realmz-classic-1"
@@ -222,45 +217,21 @@ func _test_primary_workspace_lifecycle() -> void:
 			continue
 		var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ScreenFrame if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_footer := spell_screen.find_child("WorkspaceFooter", true, false) as Control if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; var services_done := router.find_child("MoneyDone", true, false) as Button if route_id == &"services" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"vault", &"inventory", &"services"]) and (route_id != &"spells" or spell_footer != null and spell_footer.get_parent().name == &"WorkspaceColumn" and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"services" or services_done != null and services_done.visible and services_done.get_parent().name == &"MoneyPartyArea") and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory and Party Wealth Done into fixed records, opens the current Character, and gives Spells a fixed in-flow action footer without a redundant route heading" % route_id)
 		if route_id == &"inventory":
-			var inventory_regions := [router.find_child("InventoryMainSplit", true, false), router.find_child("InventoryItemBrowser", true, false), router.find_child("InventoryCharacterCommandRail", true, false), router.find_child("InventoryItemInspector", true, false)]
-			var inventory_region_ids := inventory_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(inventory_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and inventory_region_ids == inventory_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Inventory rerenders records inside stable scene-authored regions")
+			_assert_route_regions_survive_refresh(router, view, ["InventoryMainSplit", "InventoryItemBrowser", "InventoryCharacterCommandRail", "InventoryItemInspector"], "Inventory rerenders records inside stable scene-authored regions")
 		if route_id == &"character":
-			var character_regions := [router.find_child("PartyOrderArea", true, false), router.find_child("CharacterSheetArea", true, false)]
-			var character_region_ids := character_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(character_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and character_region_ids == character_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Character rerenders records inside stable scene-authored regions")
+			_assert_route_regions_survive_refresh(router, view, ["PartyOrderArea", "CharacterSheetArea"], "Character rerenders records inside stable scene-authored regions")
 		if route_id in [&"allies", &"bestiary"]:
-			var creature_regions := [router.find_child("CreatureColumns", true, false), router.find_child("CreatureListPanel", true, false), router.find_child("CreatureDetailPanel", true, false)]
-			var creature_region_ids := creature_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(creature_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and creature_region_ids == creature_regions.map(func(region: Node) -> int: return region.get_instance_id()), "%s rerenders records inside stable scene-authored regions" % route_id)
+			_assert_route_regions_survive_refresh(router, view, ["CreatureColumns", "CreatureListPanel", "CreatureDetailPanel"], "%s rerenders records inside stable scene-authored regions" % route_id)
 		if route_id == &"services":
-			var money_regions := [router.find_child("MoneyColumn", true, false), router.find_child("MoneyPoolPane", true, false), router.find_child("MoneyPartyPane", true, false), router.find_child("MoneySwapPane", true, false)]
-			var money_region_ids := money_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(money_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and money_region_ids == money_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Party Wealth rerenders records inside stable scene-authored regions")
+			_assert_route_regions_survive_refresh(router, view, ["MoneyColumn", "MoneyPoolPane", "MoneyPartyPane", "MoneySwapPane"], "Party Wealth rerenders records inside stable scene-authored regions")
 		if route_id == &"journal":
-			var journal_regions := [router.find_child("MapsNotesSummary", true, false), router.find_child("MapsNotesTabs", true, false), router.find_child("Places", true, false), router.find_child("Maps", true, false), router.find_child("Journal", true, false)]
-			var journal_region_ids := journal_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(journal_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and journal_region_ids == journal_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Maps / Notes rerenders records inside stable scene-authored tab regions")
+			_assert_route_regions_survive_refresh(router, view, ["MapsNotesSummary", "MapsNotesTabs", "Places", "Maps", "Journal"], "Maps / Notes rerenders records inside stable scene-authored tab regions")
 		if route_id == &"spells":
-			var spell_regions := [router.find_child("Caster", true, false), router.find_child("Sections", true, false), router.find_child("SpellcastingBlockedNotice", true, false), router.find_child("ClassicSpellbookWorkspace", true, false)]
-			var spell_region_ids := spell_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(spell_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and spell_region_ids == spell_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Spells rerenders records inside stable scene-authored regions")
+			_assert_route_regions_survive_refresh(router, view, ["Caster", "Sections", "SpellcastingBlockedNotice", "ClassicSpellbookWorkspace"], "Spells rerenders records inside stable scene-authored regions")
 		if route_id == &"system":
-			var system_regions := [router.find_child("SystemSummary", true, false), router.find_child("SystemWorkspaceTabs", true, false), router.find_child("Save & Load", true, false), router.find_child("Display", true, false), router.find_child("Audio", true, false), router.find_child("Pacing", true, false), router.find_child("Accessibility", true, false), router.find_child("Controls", true, false), router.find_child("Diagnostics", true, false)]
-			var system_region_ids := system_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(system_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and system_region_ids == system_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Preferences and Game rerenders records inside stable scene-authored tab regions")
+			_assert_route_regions_survive_refresh(router, view, ["SystemSummary", "SystemWorkspaceTabs", "Save & Load", "Display", "Audio", "Pacing", "Accessibility", "Controls", "Diagnostics"], "Preferences and Game rerenders records inside stable scene-authored tab regions")
 		if route_id == &"vault":
-			var vault_regions := [router.find_child("VaultHeaderArea", true, false), router.find_child("VaultListArea", true, false), router.find_child("VaultHistoryArea", true, false), router.find_child("VaultInspectionArea", true, false)]
-			var vault_region_ids := vault_regions.map(func(region: Node) -> int: return region.get_instance_id())
-			router.present(view)
-			assert_true(vault_regions.all(func(region: Node) -> bool: return is_instance_valid(region)) and vault_region_ids == vault_regions.map(func(region: Node) -> int: return region.get_instance_id()), "Character Files rerenders records inside stable scene-authored regions")
+			_assert_route_regions_survive_refresh(router, view, ["VaultHeaderArea", "VaultListArea", "VaultHistoryArea", "VaultInspectionArea"], "Character Files rerenders records inside stable scene-authored regions")
 	assert_equal(entered, [&"character", &"allies", &"bestiary", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"save_load", &"exploration", &"save_load", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace"); router.open_screen(&"save_load"); var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()); router.set_media_catalog(media); var retained_system_tabs := router.find_child("SystemWorkspaceTabs", true, false); router.set_media_catalog(media); assert_true(retained_system_tabs != null and router.find_child("SystemWorkspaceTabs", true, false) == retained_system_tabs, "reusing one effective media catalog preserves the mounted route content instead of rebuilding it during ordinary movement events"); (router.find_child("RouteBackAction", true, false) as Button).pressed.emit(); assert_equal([router.current_screen(), (router.get_node("SaveModalShield") as Control).visible], [&"combat", false], "Back returns to combat and releases the save modal shield")
 	var setup_view := GameView.new(2, true, null); setup_view.campaign_summary = CampaignSummaryView.new(); setup_view.campaign_summary.campaign_id = "workspace-fixture"; setup_view.campaign_summary.title = "Workspace Scenario"; setup_view.campaign_summary.version = "6.0.0"; setup_view.campaign_summary.author = "Fantasoft"; setup_view.campaign_summary.restriction_description = "Up to six adventurers."; setup_view.campaign_summary.recommended_party_levels = 18; setup_view.campaign_summary.guidance_authored = true
 	setup_view.party_setup_available = true

@@ -38,7 +38,7 @@ func probe_item(state: GameState, content: RealmzContent, caster_id: String, ins
 	if ClassicSpellConditionRules.is_combat_persistent_field_spell(spell) and not combat.spell_runtime.can_queue_persistent_field():
 		return CombatSpellCastProbe.blocked(&"persistent_field_queue_limit", "Castle's persistent battlefield-field queue is full.")
 	var staged_instance_id := combat.turns.staged_random_item_instance_id()
-	if not staged_instance_id.is_empty() and staged_instance_id != instance.id:
+	if not state.adventure_rules.free_targeting_cancellation and not staged_instance_id.is_empty() and staged_instance_id != instance.id:
 		return CombatSpellCastProbe.blocked(&"random_item_target_pending", "Finish targeting the random-power item already staged for this activation.")
 	# An unstaged random-power item is a valid source; target validation follows after power preparation.
 	return CombatSpellCastProbe.permitted()

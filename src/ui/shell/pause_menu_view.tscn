@@ -148,42 +148,6 @@ layout_mode = 2
 action_id = &"quit"
 caption = "Quit"
 
-[node name="Settings" type="VBoxContainer" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages"]
-visible = false
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 10
-
-[node name="Display" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages/Settings" instance=ExtResource("2_action")]
-layout_mode = 2
-action_id = &"display"
-caption = "Display"
-
-[node name="Audio" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages/Settings" instance=ExtResource("2_action")]
-layout_mode = 2
-action_id = &"audio"
-caption = "Audio & Pacing"
-
-[node name="Accessibility" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages/Settings" instance=ExtResource("2_action")]
-layout_mode = 2
-action_id = &"accessibility"
-caption = "Accessibility"
-
-[node name="Controls" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages/Settings" instance=ExtResource("2_action")]
-layout_mode = 2
-action_id = &"controls"
-caption = "Controls"
-
-[node name="Music" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages/Settings" instance=ExtResource("2_action")]
-layout_mode = 2
-action_id = &"music"
-caption = "Music library"
-
-[node name="CharacterArt" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages/Settings" instance=ExtResource("2_action")]
-layout_mode = 2
-action_id = &"character_art"
-caption = "Character Art"
-
 [node name="Saves" type="VBoxContainer" parent="Layer/Surface/Margin/Column/EntriesScroll/Pages"]
 visible = false
 layout_mode = 2

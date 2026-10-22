@@ -501,7 +501,9 @@ func handle_system_action_requested(action_id: StringName, value: Variant) -> vo
 			if not _navigator.draft_dialog.defer_if_dirty(_navigator.content_presenter.system_preferences, handle_system_action_requested.bind(&"music_playlist", null)):
 				music_workspace.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
 		&"choose_interface_font": font_picker.open(&"interface", _navigator.content_presenter.system_preferences.draft_settings())
-		&"character_art": character_art.open_library()
+		&"character_art":
+			if current_view == null or current_view.combat_view == null or current_view.combat_view.outcome != &"active":
+				character_art.open_library()
 		&"choose_narrative_font": font_picker.open(&"narrative", _navigator.content_presenter.system_preferences.draft_settings())
 		&"click_to_move_toggle": click_to_move_enabled_changed.emit(not _presentation_settings.click_to_move_enabled)
 		&"combat_log": combat_log_requested.emit()

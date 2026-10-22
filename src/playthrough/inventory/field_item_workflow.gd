@@ -183,9 +183,9 @@ static func commit_field_spell_item(context: SessionWorkflowContext, character_i
 	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
 		return SessionWorkflowResult.rejected(&"invalid_item_use_target", "The item target selection contains an unavailable or duplicate character.")
-	if (selected_value as Dictionary).size() != field_item_target_count(context, spell, power):
-		return SessionWorkflowResult.rejected(&"invalid_item_use_target", "The item target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
+	if selected.size() != field_item_target_count(context, spell, power):
+		return SessionWorkflowResult.rejected(&"invalid_item_use_target", "The item target selection has the wrong number of characters.")
 	# The charge is spent before resolution, so a resolution failure restores it.
 	var state_checkpoint := context.state.to_data()
 	var rng_checkpoint := context.rng.checkpoint()

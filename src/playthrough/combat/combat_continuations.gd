@@ -29,3 +29,7 @@ static func reward(battle_id: String, runtime_continuation: ScenarioRuntimeConti
 	body.battle_id = battle_id
 	body.runtime_continuation = runtime_continuation.copy() if runtime_continuation != null else null
 	return SessionContinuation.new(&"combat-reward", body)
+
+
+static func round_macro(body: CombatContinuationBody) -> SessionContinuation:
+	return SessionContinuation.new(&"combat-round-macro", body)

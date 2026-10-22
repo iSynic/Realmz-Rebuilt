@@ -22,7 +22,8 @@ func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:
 
 
 func _runtime_api() -> RealmzRuntimeApi:
-	return _runtime_api_ref.get_ref() as RealmzRuntimeApi if _runtime_api_ref != null else null
+	var runtime_api: Variant = _runtime_api_ref.get_ref() if _runtime_api_ref != null else null
+	return runtime_api if runtime_api is RealmzRuntimeApi else null
 
 
 func opcode_ids() -> Array[int]:

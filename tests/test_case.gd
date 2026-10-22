@@ -68,6 +68,24 @@ func _fixture_race_caste_available(content: RealmzContent, assertion_message: St
 	return not races.is_empty() and not castes.is_empty()
 
 
+func _begin_standard_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1, number_single_member_name: bool = true) -> void:
+	if not _fixture_race_caste_available(content, "fixture content provides playable Race and Caste definitions"):
+		return
+	for character_index: int in range(clampi(party_size, 1, 6)):
+		var member_number := character_index + 1
+		var character_id := "fixture.party.member" if party_size == 1 else "fixture.party.member.%d" % member_number
+		var display_name := "Fixture Hero %d" % member_number if number_single_member_name or party_size > 1 else "Fixture Hero"
+		var character := _fixture_character(character_id, display_name, content, 10, -1)
+		var imported := session.submit_intent(PartyIntents.import_vault_character(character.id, "1".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog))
+		assert_equal(imported.state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
+	var started := session.submit_intent(PartyIntents.begin_adventure())
+	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
+		assert_equal(started.state, SessionStep.State.COMPLETED, "fixture begins synchronously when Start Game is absent")
+	else:
+		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "fixture reaches the Start Game hook after party setup")
+		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "fixture acknowledges the Start Game hook and enters the adventure")
+
+
 func _fixture_interaction_payload(request: InteractionRequest, include_ally_selection: bool = true) -> Dictionary:
 	if include_ally_selection and request.kind == InteractionRequest.ALLY_SELECTION:
 		return {"selectedIds": []}

@@ -56,12 +56,12 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 	var turns := combat.turns
 	var roster := combat.roster
 	var actor_statuses := combat.actor_statuses
-	if not spell_runtime.pending_death_macro_id().is_empty(): return CombatFlowResult.succeeded(events)
+	if combat.round_cursor != null or not spell_runtime.pending_death_macro_id().is_empty(): return CombatFlowResult.succeeded(events)
 	# The order may grow while this loop is active when a monster casts a
 	# multi-summon or a death macro adds combatants. Bound the scan by the
 	# authoritative actor capacities instead of the order's stale entry count.
 	var guard := MAX_MONSTERS + state.party.characters().size()
-	while guard > 0 and not combat.completed and spell_runtime.pending_death_macro_id().is_empty():
+	while guard > 0 and combat.round_cursor == null and not combat.completed and spell_runtime.pending_death_macro_id().is_empty():
 		var actor_id := turns.active_actor_id()
 		var monster := roster.monster_by_id(actor_id)
 		if monster == null:

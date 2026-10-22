@@ -84,9 +84,12 @@ func to_data() -> Dictionary:
 
 
 static func from_data(value: Variant, depth: int = 0) -> ScenarioRuntimeHandoff:
-	if depth > 32 or not value is Dictionary or value.size() != 3 or not value.get("kind") is String or _integer(value.get("version")) != VERSION or not value.get("data") is Dictionary or value["kind"] != String(PARTY_DEFEAT):
+	if depth > 32 or not value is Dictionary:
 		return null
-	var data: Dictionary = value["data"]
+	var envelope: Dictionary = value
+	if envelope.size() != 3 or not envelope.get("kind") is String or _integer(envelope.get("version")) != VERSION or not envelope.get("data") is Dictionary or envelope["kind"] != String(PARTY_DEFEAT):
+		return null
+	var data: Dictionary = envelope["data"]
 	if data.get("sourceKind") == String(CLASSIC_CLOCK):
 		if data.size() != 3 or not _bounded_clock_handoffs(data): return null
 		var continuation := ScenarioRuntimeContinuation.from_data(data.get("clockContinuation"), depth)
@@ -99,30 +102,43 @@ static func from_data(value: Variant, depth: int = 0) -> ScenarioRuntimeHandoff:
 		for entry: Variant in data["extraCode"]:
 			if _integer(entry) == null:
 				return null
-			extra.append(int(entry))
+			var extra_value: int = entry
+			extra.append(extra_value)
 		var ids: Array[String] = []
 		for entry: Variant in data["targetIds"]:
 			if not entry is String:
 				return null
 			ids.append(entry)
-		var health := character_defeat(int(data["opcode"]), extra, ids, int(data["nextIndex"]))
-		return health if health.source_kind == StringName(data["sourceKind"]) and health.effect_fields_are_valid() else null
-	if data.size() != 3 or not data.get("battleId") is String or data["battleId"].is_empty() or not data.get("sourceKind") is String or data["sourceKind"] not in [String(CLASSIC_COMBAT), String(SAFE_COMBAT)]:
+		var opcode: int = data["opcode"]
+		var next_index: int = data["nextIndex"]
+		var effect_source_kind: String = data["sourceKind"]
+		var health := character_defeat(opcode, extra, ids, next_index)
+		return health if health.source_kind == StringName(effect_source_kind) and health.effect_fields_are_valid() else null
+	if data.size() != 3 or not data.get("battleId") is String:
 		return null
+	var battle_id: String = data["battleId"]
+	if battle_id.is_empty() or not data.get("sourceKind") is String or data["sourceKind"] not in [String(CLASSIC_COMBAT), String(SAFE_COMBAT)]:
+		return null
+	var source_kind_text: String = data["sourceKind"]
 	var parsed_caller := ScenarioBattleCaller.from_data(data.get("caller"))
 	if parsed_caller == null:
 		return null
-	var result := party_defeat(data["battleId"], StringName(data["sourceKind"]), parsed_caller)
+	var result := party_defeat(battle_id, StringName(source_kind_text), parsed_caller)
 	return result if result.caller_matches_source() else null
 
 
 static func _bounded_clock_handoffs(data: Dictionary) -> bool:
 	for depth: int in 32:
 		var nested: Variant = data.get("nestedHandoff")
-		if not nested is Dictionary or not nested.get("data") is Dictionary: return false
-		var runtime: Variant = nested["data"].get("runtime")
-		if not runtime is Dictionary or not runtime.get("data") is Dictionary: return false
-		data = runtime["data"]
+		if not nested is Dictionary: return false
+		var nested_handoff: Dictionary = nested
+		if not nested_handoff.get("data") is Dictionary: return false
+		var nested_data: Dictionary = nested_handoff["data"]
+		var runtime: Variant = nested_data.get("runtime")
+		if not runtime is Dictionary: return false
+		var runtime_continuation: Dictionary = runtime
+		if not runtime_continuation.get("data") is Dictionary: return false
+		data = runtime_continuation["data"]
 		if data.get("sourceKind") != String(CLASSIC_CLOCK): return true
 	return false
 
@@ -147,6 +163,8 @@ func effect_fields_are_valid() -> bool:
 static func _integer(value: Variant) -> Variant:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
-		return int(value)
+	if value is float:
+		var number: float = value
+		if is_equal_approx(number, roundf(number)):
+			return int(number)
 	return null
