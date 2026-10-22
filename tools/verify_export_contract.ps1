@@ -50,7 +50,7 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
     if ($body -notmatch ('(?m)^platform="' + [regex]::Escape($expected.Value) + '"$') -or $body -notmatch '(?m)^script_export_mode=2$') {
         throw "Release preset $($expected.Key) must target $($expected.Value) with compiled script export."
     }
-    foreach ($requiredExclusion in @("addons/godot_mcp/**", "addons/realmz_builder/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "**/AGENTS.md", "README.md", "CONTRIBUTING.md")) {
+    foreach ($requiredExclusion in @("addons/godot_mcp/**", "addons/realmz_builder/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "**/AGENTS.md", "README.md", "CONTRIBUTING.md", "src/storage/packages/bundled_campaigns/program-restoration.json", "src/storage/packages/bundled_campaigns/program-inventory.json", "src/storage/packages/bundled_campaigns/program-audit-findings.json", "src/storage/packages/bundled_campaigns/complete-records.json", "src/storage/packages/bundled_campaigns/complete-records-inventory.json", "src/storage/packages/bundled_campaigns/complete-records-baseline.provenance.json")) {
         if (-not $body.Contains($requiredExclusion)) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
@@ -96,22 +96,40 @@ if ($projectSettings -match '(?m)^\s*[^;\r\n]*addons/godot_mcp/.*_service\.gd') 
 if (-not (Test-Path -LiteralPath $ciPath -PathType Leaf)) {
     throw "The native release CI matrix is missing."
 }
-$ci = Get-Content -Raw -LiteralPath $ciPath
+# Shared native export steps live in composite actions; each workflow must
+# call them, and their text counts as part of that workflow's contract.
+$nativeActionPath = Join-Path $repoRoot ".github/actions/native-runtime/action.yml"
+$lfsActionPath = Join-Path $repoRoot ".github/actions/lfs-pull/action.yml"
+foreach ($actionPath in @($nativeActionPath, $lfsActionPath)) {
+    if (-not (Test-Path -LiteralPath $actionPath -PathType Leaf)) { throw "Release CI composite action is missing: $actionPath" }
+}
+$nativeAction = Get-Content -Raw -LiteralPath $nativeActionPath
+if (-not (Get-Content -Raw -LiteralPath $lfsActionPath).Contains("git lfs pull")) { throw "The cached LFS action must pull every LFS object." }
+$ciSource = Get-Content -Raw -LiteralPath $ciPath
+foreach ($callerContract in @("uses: ./.github/actions/native-runtime", "uses: ./.github/actions/lfs-pull")) {
+    if (-not $ciSource.Contains($callerContract)) { throw "Release CI must call its shared composite action: $callerContract" }
+}
+$ci = $ciSource + "`n" + $nativeAction
 foreach ($artifactPath in @("dist/windows", "dist/linux", "dist/macos")) {
     if (-not $ci.Contains("artifactPath: $artifactPath")) { throw "Release CI does not upload the complete $artifactPath directory." }
 }
 foreach ($requiredStep in @("verify_release_artifact.ps1", "Launch exported Windows runtime", "Launch exported Linux runtime", "Launch exported macOS runtime", 'path: ${{ matrix.artifactPath }}')) {
     if (-not $ci.Contains($requiredStep)) { throw "Release CI is missing required artifact/native-smoke contract: $requiredStep" }
 }
-foreach ($requiredCiContract in @("lfs: true", "fetch-depth: 1", "verify_public_source.ps1", "Realmz Rebuilt.exe", "Realmz Rebuilt.x86_64", "Realmz Rebuilt.zip", "realmz-rebuilt-windows-x86_64", "realmz-rebuilt-linux-x86_64", "realmz-rebuilt-macos-universal")) {
+foreach ($requiredCiContract in @("fetch-depth: 1", "verify_public_source.ps1", "Realmz Rebuilt.exe", "Realmz Rebuilt.x86_64", "Realmz Rebuilt.zip", "realmz-rebuilt-windows-x86_64", "realmz-rebuilt-linux-x86_64", "realmz-rebuilt-macos-universal")) {
     if (-not $ci.Contains($requiredCiContract)) { throw "Release CI is missing required public-release contract: $requiredCiContract" }
 }
 if (-not (Test-Path -LiteralPath $releaseWorkflowPath -PathType Leaf)) { throw "The tag draft-prerelease workflow is missing." }
-$releaseWorkflow = Get-Content -Raw -LiteralPath $releaseWorkflowPath
+$releaseSource = Get-Content -Raw -LiteralPath $releaseWorkflowPath
+foreach ($callerContract in @("uses: ./.github/actions/native-runtime", "uses: ./.github/actions/lfs-pull")) {
+    if (-not $releaseSource.Contains($callerContract)) { throw "Tag workflow must call its shared composite action: $callerContract" }
+}
+if ($releaseSource -notmatch 'softprops/action-gh-release@[0-9a-f]{40} # v3\.') { throw "Tag workflow must pin softprops/action-gh-release v3 to a full commit SHA." }
+$releaseWorkflow = $releaseSource + "`n" + $nativeAction
 foreach ($requiredReleaseContract in @('tags:', '"v*"', "draft: true", "prerelease: true", "SHA256SUMS", "realmz-rebuilt-windows-x86_64.zip", "realmz-rebuilt-linux-x86_64.tar.gz", "realmz-rebuilt-macos-universal.zip")) {
     if (-not $releaseWorkflow.Contains($requiredReleaseContract)) { throw "Tag workflow is missing required draft-prerelease contract: $requiredReleaseContract" }
 }
-foreach ($existingReleaseContract in @('Inspect existing release state', 'Refresh existing release assets', "if: steps.release_state.outputs.exists == 'true'", "if: steps.release_state.outputs.exists == 'false'", 'draft: ${{ steps.release_state.outputs.draft }}', 'prerelease: ${{ steps.release_state.outputs.prerelease }}', 'make_latest: ${{ steps.release_state.outputs.make_latest }}', 'fail_on_unmatched_files: true', 'softprops/action-gh-release@v3')) {
+foreach ($existingReleaseContract in @('Inspect existing release state', 'Refresh existing release assets', "if: steps.release_state.outputs.exists == 'true'", "if: steps.release_state.outputs.exists == 'false'", 'draft: ${{ steps.release_state.outputs.draft }}', 'prerelease: ${{ steps.release_state.outputs.prerelease }}', 'make_latest: ${{ steps.release_state.outputs.make_latest }}', 'fail_on_unmatched_files: true')) {
     if (-not $releaseWorkflow.Contains($existingReleaseContract)) { throw "Tag workflow is missing existing-release preservation: $existingReleaseContract" }
 }
 foreach ($workflow in @($ci, $releaseWorkflow)) {
@@ -170,6 +188,11 @@ $schemaV6Path = Join-Path $repoRoot "contracts/realmz2/realmz2-package-v6.schema
 $expectedV6Hash = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "contracts/realmz2/realmz2-package-v6.schema.sha256")).Trim()
 if ((Get-FileHash -LiteralPath $schemaV6Path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedV6Hash -or -not $repositorySource.Contains($expectedV6Hash)) {
     throw "Realmz 2.0 schema v6 mirror or runtime identity drift."
+}
+$schemaV7Path = Join-Path $repoRoot "contracts/realmz2/realmz2-package-v7.schema.json"
+$expectedV7Hash = (Get-Content -Raw -LiteralPath (Join-Path $repoRoot "contracts/realmz2/realmz2-package-v7.schema.sha256")).Trim()
+if ((Get-FileHash -LiteralPath $schemaV7Path -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedV7Hash -or -not $repositorySource.Contains($expectedV7Hash)) {
+    throw "Realmz 2.0 schema v7 mirror or runtime identity drift."
 }
 
 if (-not (Test-Path -LiteralPath $featureSchemaPath) -or -not (Test-Path -LiteralPath $featureSchemaHashPath)) {

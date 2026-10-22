@@ -4,6 +4,7 @@ class_name ScenarioProgressState
 extends RefCounted
 
 const JOURNAL_MESSAGE_CAPACITY: int = 3000
+const QUEST_CAPACITY: int = 128
 
 var _party: PartyState
 var encounters := ScenarioEncounterState.new()
@@ -34,7 +35,7 @@ func quest_is_set(quest_id: int) -> bool:
 
 
 func set_quest_value(quest_id: int, value: int) -> bool:
-	if quest_id < 0 or quest_id >= 100:
+	if quest_id < 0 or quest_id >= QUEST_CAPACITY:
 		return false
 	_quest_values[quest_id] = clampi(value, -32_768, 32_767)
 	return true
@@ -131,7 +132,7 @@ func _restore_quests(value: Variant) -> bool:
 			return false
 		var quest_id: int = String(key).to_int()
 		var quest_value := _signed_integer(value[key])
-		if quest_id < 0 or quest_id >= 100 or quest_value < -32_768 or quest_value > 32_767:
+		if quest_id < 0 or quest_id >= QUEST_CAPACITY or quest_value < -32_768 or quest_value > 32_767:
 			return false
 		_quest_values[quest_id] = quest_value
 	return true

@@ -33,7 +33,7 @@ additive content boundary before restoring a detached session. Party and item
 state, shop quantity/buyback overrides, progress, pending interactions and
 continuations, and RNG must survive unchanged. Only the package hash changes in
 the copied envelope. A different existing destination is never overwritten; an
-identical retry is accepted. Arbitrary package mismatches and older save formats
+identical retry is accepted. Arbitrary package mismatches and save v1-v4
 remain rejected. No failed AP is rewound or replayed by the update: use a valid
 save from before the failure and approach the repaired shop normally.
 
@@ -61,3 +61,6 @@ coverage, not campaign completion certification.
 scratch directory after `--`. It uses isolated installs and saves to exercise
 explicit updates, backups, stock state, pending shop continuations, rejection,
 idempotent retries, and negative-ID entry. It never reads or writes player saves.
+Its corrected targets are no longer the shipped bundles, so it is retired from
+the gate, and saves from the three pre-shop revisions no longer update to the
+current bundles.

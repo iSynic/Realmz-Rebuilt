@@ -57,7 +57,7 @@ var _category_group := ButtonGroup.new()
 var _category_buttons: Array[ClassicBitmapButton] = []
 var _shopper_buttons: Dictionary = {}
 var _detail_popover: CanvasLayer
-var _browser_layout = preload("res://src/ui/services/shop_browser_layout.gd").new()
+var _browser_layout := preload("res://src/ui/services/shop_browser_layout.gd").new()
 var _browser: Control
 var _row_height: float
 var _route_size: Vector2

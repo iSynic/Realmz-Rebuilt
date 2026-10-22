@@ -23,9 +23,14 @@ static func _validate_snapshot_header(content: RealmzContent, snapshot: SessionS
 		return SessionRestoreResult.failed(&"package_mismatch", "The save belongs to a different package build.")
 	if snapshot.rules_version != content.rules_version:
 		return SessionRestoreResult.failed(&"rules_mismatch", "The save uses a different Realmz rules version.")
+	if not SessionNativeHeaderRestoreRules.is_valid(content, snapshot):
+		return SessionRestoreResult.failed(&"invalid_classic_execution", "The saved native header or selected Action Point is unavailable or inconsistent.")
 	var saved_map := content.world.map_by_id(snapshot.game_state.party.map_id)
 	if saved_map == null or saved_map.topology.cell_at(snapshot.game_state.party.coordinate) == null:
 		return SessionRestoreResult.failed(&"invalid_saved_location", "The saved party location is unavailable.")
+	var combat := snapshot.game_state.combat
+	if combat != null and combat.battlefield != null and content.world.map_by_id(combat.battlefield.map_id) == null:
+		return SessionRestoreResult.failed(&"invalid_saved_battlefield", "The saved battlefield source map is unavailable.")
 	return null
 
 
@@ -37,7 +42,7 @@ static func _restore_core(content: RealmzContent, snapshot: SessionSnapshot) -> 
 	var replacement_action_state := ScenarioActionState.from_data(snapshot.scenario_action_state.to_data())
 	if replacement_state == null or replacement_action_state == null:
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved game or Scenario Action state is invalid.")
-	var replacement_rules := RealmzRules.new()
+	var replacement_rules := RealmzRules.new(content.package_schema_version >= 7)
 	var state_error := _validate_restored_state(content, replacement_state, replacement_rules)
 	if state_error != null:
 		return state_error
@@ -51,14 +56,22 @@ static func _restore_core(content: RealmzContent, snapshot: SessionSnapshot) -> 
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
 	if not SessionScenarioRestoreValidator.thief_vm_continuation_is_valid(content, replacement_state, replacement_rng.snapshot(), replacement_vm):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM Thief Encounter continuation is invalid.")
+	if not SessionScenarioRestoreValidator.native_operation_continuation_is_valid(content, replacement_state, replacement_vm.snapshot()):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved clock or scripted-fumble continuation is invalid.")
 	if not SessionScenarioRestoreValidator.combat_vm_continuation_is_valid(replacement_state, replacement_rules, replacement_vm.snapshot()):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM friendly-collision continuation is invalid.")
 	if not SessionRestoreStateValidator.combat_vm_request_is_valid(content, replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm.pending_request()):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved combat request does not match authoritative combat state.")
-	return SessionRestoreResult.succeeded(SessionRestoreCandidate.new(replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm, SessionContinuation.new(), SessionContinuation.new(), null, snapshot.view_revision))
+	return SessionRestoreResult.succeeded(SessionRestoreCandidate.new(replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm, SessionContinuation.new(), SessionContinuation.new(), null, snapshot.view_revision, snapshot.classic_execution))
 
 
 static func _validate_restored_state(content: RealmzContent, replacement_state: GameState, replacement_rules: RealmzRules) -> SessionRestoreResult:
+	if content.package_schema_version >= 7 and not SessionRestoreStateValidator.selected_character_rules_are_valid(content, replacement_state):
+		return SessionRestoreResult.failed(&"unavailable_character_rules", "A saved character's selected race or class is unavailable in this campaign package.")
+	if content.package_schema_version >= 7 and replacement_state.combat != null:
+		for monster: MonsterState in replacement_state.combat.roster.monsters():
+			if monster.classic_route_id == MonsterState.UNKNOWN_CLASSIC_ROUTE_ID:
+				return SessionRestoreResult.failed(&"invalid_game_state", "The saved battle lacks its original signed monster routing identities.")
 	if not content.combat.available_monster_sets().has(replacement_state.monster_set):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved game selects a monster set unavailable in this package.")
 	if replacement_state.party_setup_completed and replacement_state.experience_multiplier < 0.0:
@@ -110,7 +123,7 @@ static func _restore_continuations(content: RealmzContent, snapshot: SessionSnap
 		return SessionRestoreResult.failed(&"invalid_battle_return_continuation", "A battle return continuation requires an active battle.")
 	if candidate.state.combat != null and not replacement_battle_return.is_empty():
 		var battle_exploration := replacement_battle_return.exploration()
-		if replacement_battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or not _valid_post_time_continuation(content, candidate.state, replacement_battle_return, null, null):
+		if replacement_battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or battle_exploration.timed_scan_pending or battle_exploration.midnight_recovery_pending or not _valid_post_time_continuation(content, candidate.state, replacement_battle_return, null, null, true):
 			return SessionRestoreResult.failed(&"invalid_battle_return_continuation", "The saved battle return references an unavailable exploration continuation.")
 	var replacement_session_interaction: InteractionRequest = null
 	if snapshot.session_interaction != null:
@@ -189,7 +202,7 @@ static func _valid_application_continuation(content: RealmzContent, state: GameS
 			if application.hook != ScenarioApplicationHooks.PARTY_DEATH or not application.service_id.is_empty() or application.suspended_owner == null:
 				return false
 			var saved := application.suspended_vm
-			return ScenarioVm.handoff_is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.runtime) and suspended_scenario_owner_is_valid(content, state, application.suspended_owner, saved)
+			return ScenarioVmHandoff.is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.runtime) and suspended_scenario_owner_is_valid(content, state, application.suspended_owner, saved)
 	return false
 
 
@@ -456,12 +469,12 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 	if cell == null or exploration.random_region_ids != state.world.triggers.random_region_ids_at(map, exploration.coordinate):
 		return false
 	# A started AP or contextual Encounter can change the entry marker before yielding.
-	var expected_triggers := ExplorationContinuationWorkflow.first_placed_trigger_ids(content, cell)
+	var expected_triggers := ClassicActionPointRules.first_placed_trigger_ids(content, cell)
 	if not exploration.active_random_program_id.is_empty():
 		if exploration.trigger_ids.is_empty():
 			expected_triggers.clear()
 	elif exploration.active_trigger_id.is_empty() and exploration.trigger_index == 0:
-		expected_triggers = ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, map, exploration.coordinate, state.world, exploration.action_point_destination_depth > 0)
+		expected_triggers = ClassicActionPointRules.selected_placed_trigger_ids(content, map, exploration.coordinate, state.world, exploration.action_point_destination_depth > 0)
 	if exploration.trigger_ids != expected_triggers:
 		return false
 	# An active AP retains its issuing cell after its program moves the party.
@@ -489,15 +502,21 @@ static func suspended_scenario_owner_is_valid(content: RealmzContent, state: Gam
 	return _valid_session_continuation(content, state, owner, sentinel, null)
 
 
-static func _valid_post_time_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+static func _valid_post_time_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest, battle_return: bool = false) -> bool:
 	if continuation == null or continuation.kind != &"post-clock":
 		return false
 	var exploration := continuation.exploration()
-	if exploration == null or exploration.timed_day < 0 or exploration.timed_encounter_index < 0 or exploration.timed_encounter_index > content.scenario_records.timed_encounters().size() or exploration.resume_kind not in [&"completed", &"move", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"camp-departure-second", &"heal"]:
+	if exploration == null or not RealmzClock.valid_component(exploration.timed_day) or exploration.timed_encounter_index < 0 or exploration.timed_encounter_index > content.scenario_records.timed_encounters().size() or exploration.resume_kind not in [&"completed", &"move", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"camp-departure-second", &"heal"]:
 		return false
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
-	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.random_region_ids != state.world.triggers.random_region_ids_at(map, exploration.coordinate) or exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size() or exploration.direction.x < -1 or exploration.direction.x > 1 or exploration.direction.y < -1 or exploration.direction.y > 1:
+	if cell == null or exploration.random_region_ids != state.world.triggers.random_region_ids_at(map, exploration.coordinate) or exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size() or exploration.direction.x < -1 or exploration.direction.x > 1 or exploration.direction.y < -1 or exploration.direction.y > 1:
+		return false
+	if battle_return:
+		var field := state.combat.battlefield if state.combat != null else null
+		if field == null or field.map_id != map.id or field.source_origin + field.map_shift / BattlefieldBuilder.SCALE + Vector2i(15, 15) != exploration.coordinate:
+			return false
+	elif state.party.map_id != map.id or state.party.coordinate != exploration.coordinate:
 		return false
 	if exploration.resume_kind in [&"completed", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"heal"] and exploration.direction != Vector2i.ZERO or exploration.resume_kind in [&"move", &"camp-departure-second"] and exploration.direction == Vector2i.ZERO:
 		return false

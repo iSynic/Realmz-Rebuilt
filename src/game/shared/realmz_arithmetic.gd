@@ -4,6 +4,15 @@ class_name RealmzArithmetic
 extends RefCounted
 
 
+func signed_8(value: int) -> int:
+	var wrapped := value & 0xff
+	return wrapped - 0x100 if wrapped >= 0x80 else wrapped
+
+
+func unsigned_8(value: int) -> int:
+	return value & 0xff
+
+
 func signed_16(value: int) -> int:
 	var wrapped := value & 0xffff
 	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped

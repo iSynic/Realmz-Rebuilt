@@ -1,0 +1,68 @@
+# Clock and combat-script compatibility
+
+This batch corrects execution against Rebuilt baseline `5a1fe6f6519b271a631195033458f72371dcc511` and the Realmz Castle codebase at `491816ad60037394f92c428e99c004494d3c28b3`. Providence remains the sole native decoder. The accepted schema-v7 compiler `49aec55e045cad2bd15b94489727fcf74f96d77a`, application identity `82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad`, campaign archives, original bytes and approved corrections are unchanged.
+
+## Clock behavior
+
+`RealmzClock` owns signed day, hour and minute components. Opcode 63 mode 1 assigns each field except its exact `-1` sentinel. Mode 2 adds days and hours, carries hours once, then adds and carries minutes once. It does not borrow negative values or repeatedly normalize large components. Unmatched modes still call the zero-time refresh. Opcode 64, day-dependent combat scaling, scheduling and display read these components rather than a normalized elapsed-minute projection.
+
+The refresh processes hour 24 as midnight: it increments the day, ages characters and scans timers. Direct day assignment alone does not simulate elapsed days. Zero-time refresh grants no ordinary fatigue, hourly SP recovery or half-day healing. Ordinary one/five-minute timeclicks retain their separate carry and recovery order. Signed components survive persistence without normalization.
+
+Timers retain an explicit pending-scan flag, cursor, current day/map eligibility, native ordering, 151-row limit, compare-before-zero-day termination, rescheduling and RNG. Day zero is a real scan. Each time stage establishes its own midnight fact; accumulated events cannot restart an already completed scan or recovery. Nested timer scripts, age acknowledgements and Party Death suspension preserve their exact continuation. Castle's shared `infodoor` behavior is observable: after timer loading, opcode 63 resumes at its original following native slot in the last timer-loaded record and resets its native GOSUB and encounter-repetition state. Enclosing Scenario Action calls remain separate owners. The VM records that last Classic record independently of diagnostic traces.
+
+A timer load replaces the shared destination header while retaining the selected AP. Opcode 20's marked destination replaces the current record immediately, before its following slots or the next timer eligibility check. AP selection replaces the header and selected identity before chance admission, including disabled and failed-chance APs. Normal timer completion applies its header before returning; mode 1 never performs default AP removal. The outer AP resumes the last loaded record at the original following slot and uses the current selected AP for implicit Keep/erase/default removal. Secondary-door, no-second-door and early-return facts remain invocation-local. The outer movement retains its original marker decision, preventing a second AP activation after a normal-tile midnight step. Accumulated destination events cannot request the same check twice.
+
+Immediate opcode20 rechecks preserve a GOSUB or Encounter established within that invocation; only a new timer entry resets the abandoned outer call/repetition state. A GOSUB return restores its captured destination header while leaving the selected AP global. The saved return header is content-validated at full restore. Opcode111 with no Classic caller falls through, including after opcode63 resets the former GOSUB stack. An early opcode37 return skips that invocation's default AP removal and header completion; it does not mark its separate clock caller early.
+
+The header uses a typed map/coordinate under FD-CLOCK-002. Castle's mode-1 dungeon path reads stale outdoor position/level globals; those unrelated stale values do not establish a coherent destination. Rebuilt uses the current typed timer load location and bounds the later header access. This is a documented safety correction, not a claim of dungeon-global parity.
+
+Application hooks, random-door calls, door-item XAPs and Contextual Encounter retain their explicit mode-1 invocation through the same completion path. Castle's `buttonchoice.c` invokes a door item with mode 1; its caller and saved acknowledgement retain the final header without repeating the charge. Nested timer events cannot trigger a second caller-owned AP recheck. Party Death revival retains the established typed suspended effect and caller under FD-SCENARIO-026: Castle's clobbered death-hook instruction record can revisit119 with an inactive monster context. Shared destination state still changes normally, but restoring the safe VM continuation does not repeat that unsafe record substitution. This edge is source-derived safety behavior, not claimed native continuation parity.
+
+Controlled native evidence covers all 80 distinct stored operand vectors in the complete corpus plus nine explicit edges, and eight following-slot/branch/GOSUB combinations. Rebuilt compares the resulting clock, aging, stamina, SP, fatigue, following slots, timer markers and RNG. Eleven source instructions with unavailable Extra Code rows are separately accounted for; they cannot supply invented clock operands.
+
+Arithmetic is checked within signed 32-bit components. An overflowing attempted clock edit leaves its clock unchanged and emits only a compatibility diagnostic. This is a safety boundary for undefined native arithmetic, not a restriction on valid negative or noncanonical time. See FD-CLOCK-001.
+
+## Scripted fumbles
+
+Opcode 122 checks the actual Classic spell and physical context before authored media. Combat turn state retains those facts separately from whether the activation previously committed an attack. Learned, scroll and item cast reservation, Abort, scripted opcode 17, inherited opcode-18 context and direct/queued death-macro completion own their respective transitions. Ordinary lethal casts retain `inspell` through the last queued death macro, including saved nested acknowledgements after an earlier physical attack. Completing each death macro clears `physical`; starting a new activation resets its context. Rebuilt retains its existing enabled-fumble ruleset and the exact-instance/remaining-charge recovery correction.
+
+Eligible authored sound precedes text; positive text waits before weapon removal. Unarmed and cursed-weapon outcomes return from that script invocation. A full recovery queue continues without removal, and its guard precedes curse handling. Cursed handling uses the application warning and sound 6000. Failed actual removal remains an invariant failure. Scripted fumbles consume no natural-fumble draw. Nine controlled Castle guard/weapon cases and Rebuilt's suspended-text, exact-instance, reservation/Abort and nested-macro fixtures cover these boundaries.
+
+Existing single-target and source-cell ray macro policy is exercised through physical and queued spell death dispatch, nested acknowledgements, resistance, dead source cells and save/resume. A ray is not extrapolated from the source cell. These are bounded execution cases, not exhaustive monster-macro parity.
+
+## Relocation during combat
+
+The native Bywater Battle 191 / alternate monster 41 / XAP 111 / opcode 37 fixture commits Land 5 at `(62,10)` while leaving combat active. Its `loadland` also overwrites the shared terrain and party occupancy arrays; the next native movement fails. That destructive shared-array result does not define a coherent battlefield to reproduce.
+
+Under FD-COMBAT-021, opcodes 20, 37 and 45 commit their valid authored world destination while retaining the last coherent typed battlefield for this unsafe active-combat reload. Actors, terrain, fields, initiative and RNG are not regenerated or repositioned. Opcode 37 returns from its invocation; opcode 20 retains destination AP rechecks; opcode 45 does not add one. Subsequent world operations use the new destination. Rendering, collision, movement and targeting continue to use the retained battlefield and its independent source identity.
+
+A relocated random battle's pending source-travel continuation is validated against its battlefield origin, not the destination. On exit it cannot replay an old movement or random-region cursor over the committed relocation. Normal victory, retreat and terminal defeat retain their existing rewards/lifecycle rules; relocation itself grants none.
+
+## Saves and compatibility
+
+This batch introduced save v6; ADR 0026 later moved the writer to v7, and the strict reader accepts v5 through v7. V5's nonnegative recorded minute total decodes to its equivalent components without script execution or elapsed-time effects. V6 stores exact components, timer scan state, Classic execution guards, one session-global header/selected AP and VM snapshot schema 3's last-record and invocation facts. Snapshot schema 2 remains readable. Character Files v2 and package schema v7 are unchanged.
+
+V5 cannot recover execution history it never recorded. Its physical guard retains its recorded `physicalActionCommitted` meaning, and an existing cast commitment establishes the spell guard. A controlled Bywater case demonstrates that this may differ from a v6 global physical flag inherited from other combat activity. Genuine v5 queued-macro states can also lack the ambient spell guard; a death queue alone does not establish it because fields and other sources share that queue. Hybrid v5 fixtures retaining v6 guard fields verify reader/write behavior, not recovery of legacy history. These limitations are explicit; loading does not reconstruct past attacks, replay macros or claim recovery of lost state. New execution boundaries produce the new recorded facts.
+
+Loading never writes a save. Normal saves and explicit pinned Update Save copies use the existing verified temporary-write/readback and backup workflow and write the current format (v7). Existing package-delta receipts and bindings remain unchanged. Older builds reject newer formats; preserved v5 files and backups remain readable by those builds. The 53 available supported package routes are rechecked; four unavailable older media/shop endpoints remain unverified. No terminal fault is cleared and no unavailable unsaved state is reconstructed.
+
+## Reproduction and evidence boundaries
+
+Run `tools/verify_clock_combat_compatibility.ps1` with explicit Godot, native receipt, complete clock-vector inputs and a fresh external output root. Supplying the exact Bywater archive and a disposable combat checkpoint additionally runs session transfer/exit/save checks. The wrapper rejects engine errors and leaks even if Godot exits zero. The ordinary aggregate remains `tools/verify.ps1`; the focused native-comparison command does not replace it.
+
+The source inventory retains all 40 `D:/Scenarios` folders, 25 separately pinned contexts and 13 bundled revisions: 78 appearances, 76 distinct archives. Native bytes and every clock/fumble site remain accounted for. Static occurrence counts do not establish gameplay coverage.
+
+Proof modes remain separate:
+
+| Evidence | Scope |
+|---|---|
+| Castle source and controlled native execution | Exact clock/carry/refresh, return-slot, fumble guards and demonstrated relocation corruption |
+| Direct VM and detached save fixtures | Nested timers, age/Party Death handoff, fumble media ordering, macro contexts, signed persistence and rejection |
+| Ordinary session commands in prepared fixtures | Attacks dispatching death macros, movement triggering Mithril AP 62, later timer scan/reschedule, Guard, movement and battle exits |
+| Visible fixture routes | Bywater relocation/Guard/movement, Mithril timer aftermath, Half Truth Battle 52 and exact facing media; explicit preparations are recorded |
+
+Mithril AP 62 is natively unmarked at the examined cell. The visible fixture explicitly enables its marker and positions the clock boundary; it is not evidence of natural campaign reachability. Timer 4's unavailable macro completes quietly after its actual scan and rescheduling. Half Truth facing preparation is separate from the unchanged full-battle capture.
+
+The missing-text/sound caller replay reaches Trouble AP 7's authored battle and preserves save/readback state. Its teardown warnings reproduce on the unchanged baseline; that harness is bounded behavioral evidence, not a clean lifecycle acceptance. The source-absent Prelude `cicn -130` has acquisition callers but no established picture-display caller, so display fallback remains unverified. The natural-fumble fixture records an ordinary attack and exact dropped weapon; setup and post-attack screens were inspected, but the transient Fumble overlay was not captured.
+
+Matched preparation/save/readback and ordinary clock/non-due-timer microbenchmarks retain raw samples and first versus warm timings. They show no reliable performance-change claim; no opcode-63 timing is inferred from a baseline that did not implement the same work. Private source content and detailed receipts remain external. MAD, exhaustive campaign playthroughs/media, macOS execution and nonexistent native fields remain outside this acceptance.

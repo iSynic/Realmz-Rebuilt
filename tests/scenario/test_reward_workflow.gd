@@ -54,7 +54,7 @@ func _test_treasure_carried_item_drop(content: RealmzContent) -> void:
 	assert_equal([dropped.state, character.inventory().size(), dropped.interaction.body.to_data()["characters"][0]["itemCount"], dropped.interaction.body.to_data()["characters"][0]["enabled"], dropped.interaction.body.to_data()["items"][0]["instanceId"], rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.WAITING, 29, 29, true, pending_id, draws_before], "Treasure Drop frees recipient capacity without consuming or changing pending loot or RNG")
 	assert_true(dropped.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_dropped" and event.payload.get("instanceId") == "reward.drop.0") and dropped.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 655), "committed Treasure Drop emits one exact-instance event and Castle's drop cue")
 	var repeated := api.resume_safe(dropped.continuation, InteractionResponse.from_data(dropped.interaction.request_id, dropped.interaction.kind, {"action": "drop", "instanceId": "reward.drop.0", "characterId": character.id}), "reward.drop.repeat")
-	assert_equal([repeated.error_code, character.inventory().size()], [&"reward_drop_unavailable", 29], "a stale Treasure Drop cannot remove a second carried item")
+	assert_equal([repeated.error_code, repeated.is_rejection, character.inventory().size()], [&"reward_drop_unavailable", true, 29], "a stale Treasure Drop cannot remove a second carried item")
 
 
 func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
@@ -76,7 +76,7 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 	assert_true(bool(opened.interaction.body.to_data()["characters"][2]["enabled"]), "FD-ECONOMY-002 permits an exact-instance assignment that lands precisely at maximum load")
 	var pending_item: Dictionary = opened.interaction.body.to_data()["items"][0]
 	var rejected := api.resume_safe(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "assign", "instanceId": pending_item["instanceId"], "characterId": blocked.id}), "reward.retry")
-	assert_equal(rejected.error_code, &"reward_assignment_unavailable", "capacity rejection cannot mutate or consume the pending exact instance")
+	assert_equal([rejected.error_code, rejected.is_rejection], [&"reward_assignment_unavailable", true], "capacity rejection cannot mutate or consume the pending exact instance")
 	assert_equal([blocked.inventory().size(), caster.inventory().size(), party.pooled_wealth.gold], [0, 0, 25], "a rejected assignment leaves all reward state unchanged")
 
 	var detected := api.resume_safe(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "detect", "characterId": caster.id}), "reward.detected")

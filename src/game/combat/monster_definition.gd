@@ -33,6 +33,7 @@ var icon_id: int
 var spell_points: int
 var experience: int
 var death_macro: int
+var native_complete_record: bool = false
 var _type_flags: Array[int]
 var _saves: Array[int]
 var _spell_immunities: Array[int]
@@ -104,3 +105,7 @@ func item_id_at(slot: int) -> String:
 
 func attacks() -> Array[MonsterAttackDefinition]:
 	return _attacks.duplicate()
+
+
+func has_death_macro() -> bool:
+	return death_macro != 0 if native_complete_record else death_macro > 0

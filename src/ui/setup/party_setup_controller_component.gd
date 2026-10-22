@@ -13,7 +13,7 @@ var _state: RefCounted
 var character_art_dialog: CharacterArtDialog:
 	get: return _state.character_art_dialog
 
-var _campaign_library:
+var _campaign_library: CampaignLibraryController:
 	get: return _state.campaign_library
 var _host: Control:
 	get: return _state.host

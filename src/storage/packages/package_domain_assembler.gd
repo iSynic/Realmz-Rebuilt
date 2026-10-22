@@ -46,12 +46,14 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	if not content.has("campaign") or not content["campaign"] is Dictionary or content["campaign"].get("id") != manifest["campaignId"]:
 		_reject("Content campaign identity does not match the manifest.")
 		return null
+	var native_records := _decode_classic_records(content, int(manifest.schemaVersion))
+	if not error_message().is_empty(): return null
 	var content_decoder := PackageContentDecoder.new(_diagnostic)
 	var story_content := _decode_story_content(content_decoder, content, world, trusted_install)
 	if story_content == null:
 		return null
 	var media_validator := PackageMediaValidatorResolver.new(_diagnostic)
-	var rules_content := _decode_rules_content(content_decoder, media_validator, content, media_assets, trusted_install, application_content, application_media_assets, allow_deferred)
+	var rules_content := _decode_rules_content(content_decoder, media_validator, content, media_assets, trusted_install, application_content, application_media_assets, allow_deferred, native_records)
 	if rules_content == null:
 		return null
 	var scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
@@ -61,7 +63,7 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
 	reference_validator.clear_warnings()
 	reference_validator.warnings.append_array(media_validator.warnings)
-	if not _validate_content_references(reference_validator, scenario_definition, story_content, rules_content, allow_deferred, validate_references):
+	if not _validate_content_references(reference_validator, scenario_definition, story_content, rules_content, allow_deferred, validate_references, native_records):
 		return null
 	var world_content := _decode_world_content(PackageWorldDecoder.new(_diagnostic), reference_validator, world, scenario_definition, rules_content, trusted_install, allow_deferred, validate_references)
 	if world_content == null:
@@ -71,10 +73,24 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 		return null
 	var start_coordinate: Vector2i = start_coordinate_value
 	var result := RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], manifest["start"]["mapId"], start_coordinate, world_content.definition, scenario_definition, story_content.messages, world_content.triggers, story_content.simple_encounters, rules_content.races, rules_content.castes, rules_content.items, rules_content.spells, rules_content.monsters, rules_content.battles, rules_content.treasures, rules_content.shops, story_content.complex_encounters, story_content.thief_encounters, story_content.timed_encounters, story_content.option_labels, story_content.campaign, rules_content.appearance_options, rules_content.monster_sets, reference_validator.warnings, allow_deferred, rules_content.media)
-	result.transfer_catalog = PackageTransferCatalog.build(content, application_content)
+	result.transfer_catalog = PackageTransferCatalog.build(content, application_content, native_records)
 	result.application_package_hash = application_content.package_hash if application_content != null else ""
 	result.setup_rules_identity = _setup_rules_identity(content, media_assets, result.application_package_hash)
+	result.package_schema_version = int(manifest["schemaVersion"])
+	if native_records != null:
+		var native_error := PackageClassicRecordBinding.bind(result, native_records, media_assets)
+		if not native_error.is_empty():
+			_reject(native_error)
+			return null
 	return result
+
+
+func _decode_classic_records(content: Dictionary, schema_version: int, setup: bool = false) -> ClassicRecordCatalog:
+	if schema_version < 7:
+		if content.has("classicRecords"): _reject("Classic record facts require schema v7.")
+		return null
+	var decoder := PackageClassicRecordDecoder.new(_diagnostic)
+	return decoder.decode_setup(content.get("classicRecords")) if setup else decoder.decode(content.get("classicRecords"))
 
 
 func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, world: Dictionary, trusted_install: bool) -> StoryContent:
@@ -82,10 +98,10 @@ func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, 
 	result.campaign = decoder.decode_campaign_definition(content["campaign"])
 	var messages_value: Variant = decoder.decode_messages(content.get("messages"))
 	var option_labels_value: Variant = decoder.decode_option_labels(content.get("optionLabels"))
-	var simple_value: Variant = decoder.decode_simple_encounters(content.get("simpleEncounters"))
+	var simple_value: Variant = decoder.decode_simple_encounters(content.get("simpleEncounters"), int(content["schemaVersion"]))
 	var complex_value: Variant = decoder.decode_complex_encounters(content.get("complexEncounters"))
 	var thief_value: Variant = decoder.decode_thief_encounters(content.get("thiefEncounters"))
-	var timed_value: Variant = decoder.decode_timed_encounters(content.get("timedEncounters"))
+	var timed_value: Variant = decoder.decode_timed_encounters(content.get("timedEncounters"), int(content["schemaVersion"]))
 	if result.campaign == null or messages_value == null or option_labels_value == null or simple_value == null or complex_value == null or thief_value == null or timed_value == null:
 		return null
 	if not trusted_install and CanonicalJson.encode(content.get("timedEncounters")) != CanonicalJson.encode(world.get("timedEncounters")):
@@ -100,7 +116,8 @@ func _decode_story_content(decoder: PackageContentDecoder, content: Dictionary, 
 	result.message_ids = {}
 	for message: MessageDefinition in result.messages:
 		result.message_ids[message.id] = true
-	_normalize_missing_encounter_prompts(result.messages, result.message_ids, result.simple_encounters, result.complex_encounters)
+	if int(content["schemaVersion"]) < 7:
+		_normalize_missing_encounter_prompts(result.messages, result.message_ids, result.simple_encounters, result.complex_encounters)
 	return result
 
 
@@ -109,19 +126,21 @@ func assemble_setup(manifest: Dictionary, content: Dictionary, media_assets: Arr
 	if application_content == null or application_content.rules_version != manifest["engine"]["rulesVersion"]:
 		_reject("The application character library is required for scenario setup.")
 		return null
+	var native_records := _decode_classic_records(content, int(manifest.schemaVersion), true)
+	if not error_message().is_empty(): return null
 	var decoder := PackageContentDecoder.new(_diagnostic)
 	var campaign := decoder.decode_campaign_definition(content.get("campaign", {}))
-	var races: Variant = decoder.decode_races(content.get("races"))
-	var castes: Variant = decoder.decode_castes(content.get("castes"))
+	var races: Variant = decoder.decode_races(content.get("races"), native_records != null)
+	var castes: Variant = decoder.decode_castes(content.get("castes"), native_records != null)
 	var items: Variant = decoder.decode_items(content.get("items"))
 	var spells: Variant = decoder.decode_spells(content.get("spells"))
 	if campaign == null or campaign.id != manifest["campaignId"] or races == null or castes == null or items == null or spells == null:
 		_reject("The scenario character catalog is malformed.")
 		return null
-	var catalogs := _compose_catalogs(races, castes, items, spells, media_assets, application_content, application_media)
+	var catalogs := _compose_catalogs(races, castes, items, spells, media_assets, application_content, application_media, native_records)
 	if catalogs.is_empty(): return null
 	var references := PackageCrossReferenceValidator.new(_diagnostic)
-	if not references.validate_rule_references(catalogs.races, catalogs.castes, catalogs.items, catalogs.spells, [], [], [], [], {}, manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1")): return null
+	if not references.validate_rule_references(catalogs.races, catalogs.castes, catalogs.items, catalogs.spells, [], [], [], [], {}, manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1"), native_records): return null
 	var resolver := PackageMediaValidatorResolver.new(_diagnostic)
 	var appearances := resolver.resolve_character_appearance_options(catalogs["media"], catalogs["races"])
 	if not resolver.error_message().is_empty(): return null
@@ -133,7 +152,13 @@ func assemble_setup(manifest: Dictionary, content: Dictionary, media_assets: Arr
 		_reject("Manifest start location is malformed.")
 		return null
 	var setup := RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], Vector2i(int(start["x"]), int(start["y"])), null, null, [], [], [], catalogs["races"], catalogs["castes"], catalogs["items"], catalogs["spells"], [], [], [], [], [], [], [], [], campaign, appearances, sets, [], manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1"), catalogs["media"])
-	setup.transfer_catalog = PackageTransferCatalog.build(content, application_content)
+	setup.package_schema_version = int(manifest.schemaVersion)
+	setup.transfer_catalog = PackageTransferCatalog.build(content, application_content, native_records)
+	if native_records != null:
+		var binding_error := PackageClassicRuleSelectionBinding.bind(setup, native_records)
+		if not binding_error.is_empty():
+			_reject(binding_error)
+			return null
 	setup.application_package_hash = application_content.package_hash
 	setup.setup_rules_identity = _setup_rules_identity(content, media_assets, application_content.package_hash)
 	return ScenarioSetupCatalog.new(setup, application_content.package_hash)
@@ -152,9 +177,9 @@ static func _setup_rules_identity(content: Dictionary, media_assets: Array[Media
 	return CanonicalJson.encode(projection).sha256_text()
 
 
-func _decode_rules_content(decoder: PackageContentDecoder, media_validator: PackageMediaValidatorResolver, content: Dictionary, scenario_media: Array[MediaAsset], trusted_install: bool, application_content: RealmzContent, application_media: Array[MediaAsset], allow_deferred: bool) -> RulesContent:
-	var races_value: Variant = decoder.decode_races(content.get("races"))
-	var castes_value: Variant = decoder.decode_castes(content.get("castes"))
+func _decode_rules_content(decoder: PackageContentDecoder, media_validator: PackageMediaValidatorResolver, content: Dictionary, scenario_media: Array[MediaAsset], trusted_install: bool, application_content: RealmzContent, application_media: Array[MediaAsset], allow_deferred: bool, native_records: ClassicRecordCatalog) -> RulesContent:
+	var races_value: Variant = decoder.decode_races(content.get("races"), native_records != null)
+	var castes_value: Variant = decoder.decode_castes(content.get("castes"), native_records != null)
 	var items_value: Variant = decoder.decode_items(content.get("items"))
 	var spells_value: Variant = decoder.decode_spells(content.get("spells"))
 	var monsters_value: Variant = decoder.decode_monsters(content.get("monsters"), allow_deferred, int(content["schemaVersion"]))
@@ -164,7 +189,7 @@ func _decode_rules_content(decoder: PackageContentDecoder, media_validator: Pack
 	var shops_value: Variant = decoder.decode_shops(content.get("shops"))
 	if races_value == null or castes_value == null or items_value == null or spells_value == null or monsters_value == null or monster_sets_value == null or battles_value == null or treasures_value == null or shops_value == null:
 		return null
-	var catalogs := _compose_catalogs(races_value, castes_value, items_value, spells_value, scenario_media, application_content, application_media)
+	var catalogs := _compose_catalogs(races_value, castes_value, items_value, spells_value, scenario_media, application_content, application_media, native_records)
 	if catalogs.is_empty():
 		return null
 	var result := RulesContent.new()
@@ -178,7 +203,7 @@ func _decode_rules_content(decoder: PackageContentDecoder, media_validator: Pack
 	result.battles = battles_value
 	result.treasures = treasures_value
 	result.shops = shops_value
-	var all_monsters: Variant = _all_monsters(result.monsters, result.monster_sets, trusted_install)
+	var all_monsters: Variant = _all_monsters(result.monsters, result.monster_sets, trusted_install or allow_deferred)
 	if all_monsters == null:
 		return null
 	if not trusted_install and not media_validator.validate_monster_media(all_monsters, result.media, allow_deferred):
@@ -187,7 +212,7 @@ func _decode_rules_content(decoder: PackageContentDecoder, media_validator: Pack
 	return result
 
 
-func _all_monsters(monsters: Array[MonsterDefinition], monster_sets: Dictionary, trusted_install: bool) -> Variant:
+func _all_monsters(monsters: Array[MonsterDefinition], monster_sets: Dictionary, allow_partial_sets: bool) -> Variant:
 	var result: Array[MonsterDefinition] = monsters.duplicate()
 	var base_ids := _definition_ids(monsters)
 	for set_id: Variant in monster_sets:
@@ -196,7 +221,7 @@ func _all_monsters(monsters: Array[MonsterDefinition], monster_sets: Dictionary,
 		for monster: MonsterDefinition in set_monsters:
 			covered_ids["classic.monster.%d" % monster.classic_id] = true
 			result.append(monster)
-		if trusted_install:
+		if allow_partial_sets:
 			continue
 		if covered_ids.size() != base_ids.size():
 			_reject("Monster set %d does not define every packaged Classic monster." % int(set_id))
@@ -208,14 +233,14 @@ func _all_monsters(monsters: Array[MonsterDefinition], monster_sets: Dictionary,
 	return result
 
 
-func _validate_content_references(validator: PackageCrossReferenceValidator, scenario: ScenarioDefinition, story: StoryContent, rules: RulesContent, allow_deferred: bool, validate_references: bool) -> bool:
+func _validate_content_references(validator: PackageCrossReferenceValidator, scenario: ScenarioDefinition, story: StoryContent, rules: RulesContent, allow_deferred: bool, validate_references: bool, native_records: ClassicRecordCatalog) -> bool:
 	if not validate_references:
 		return true
 	if not validator.validate_scenario_references(scenario, story.message_ids, story.simple_encounters, story.complex_encounters, story.thief_encounters, rules.items, rules.spells, rules.media, allow_deferred):
 		return false
 	if not validator.validate_timed_encounter_references(scenario, story.timed_encounters, allow_deferred):
 		return false
-	if not validator.validate_rule_references(rules.races, rules.castes, rules.items, rules.spells, rules.monsters, rules.battles, rules.treasures, rules.shops, story.message_ids, allow_deferred):
+	if not validator.validate_rule_references(rules.races, rules.castes, rules.items, rules.spells, rules.monsters, rules.battles, rules.treasures, rules.shops, story.message_ids, allow_deferred, native_records):
 		return false
 	for set_id: Variant in rules.monster_sets:
 		if not validator.validate_monster_record_references(rules.monster_sets[set_id], rules.items, rules.spells, allow_deferred):
@@ -243,7 +268,7 @@ func _decode_world_content(decoder: PackageWorldDecoder, validator: PackageCross
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
-	var player_maps_value: Variant = decoder.decode_player_maps(world.get("playerMaps"), maps, rules.media, allow_deferred)
+	var player_maps_value: Variant = decoder.decode_player_maps(world.get("playerMaps"), maps, rules.media, allow_deferred, int(world["schemaVersion"]))
 	if player_maps_value == null:
 		return null
 	var transitions_value: Variant = decoder.decode_transitions(world.get("transitions"), maps)
@@ -294,26 +319,28 @@ func _validate_start(manifest: Dictionary, world: WorldContent, validator: Packa
 				if not validator.defer_or_reject(allow_deferred, &"trigger", trigger.id, "postAction", -1, &"map", trigger.post_action_location.map_id, "Trigger '%s' references an unavailable post-action map." % trigger.id):
 					return null
 			elif destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
-				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
-				return null
+				if not validator.defer_or_reject(allow_deferred, &"trigger", trigger.id, "postAction.coordinate", -1, &"map-cell", "%s:%s" % [destination_map.id, trigger.post_action_location.coordinate], "Trigger '%s' references an unavailable post-action location." % trigger.id):
+					return null
 	return start_coordinate
 
 
-func _compose_catalogs(races_value: Variant, castes_value: Variant, items_value: Variant, spells_value: Variant, scenario_media: Array[MediaAsset], application_content: RealmzContent, application_media: Array[MediaAsset]) -> Dictionary:
+func _compose_catalogs(races_value: Variant, castes_value: Variant, items_value: Variant, spells_value: Variant, scenario_media: Array[MediaAsset], application_content: RealmzContent, application_media: Array[MediaAsset], native_records: ClassicRecordCatalog = null) -> Dictionary:
 	var races: Array[RaceDefinition] = []
 	var castes: Array[CasteDefinition] = []
 	var items: Array[ItemDefinition] = []
 	var spells: Array[SpellDefinition] = []
 	if application_content != null:
-		races.assign(application_content.characters.race_definitions())
-		castes.assign(application_content.characters.caste_definitions())
-		items.assign(application_content.items.definitions())
+		if not PackageClassicRuleSelectionBinding.family_is_native(native_records, &"races"): races.assign(application_content.characters.race_definitions())
+		if not PackageClassicRuleSelectionBinding.family_is_native(native_records, &"castes"): castes.assign(application_content.characters.caste_definitions())
+		for item: ItemDefinition in application_content.items.definitions():
+			# Castle loaditem dispatches 800+ exclusively to the selected scenario's NI table.
+			if native_records == null or item.classic_id < 800: items.append(item)
 		spells.assign(application_content.magic.definitions())
 	_overlay_definitions(races, races_value)
 	_overlay_definitions(castes, castes_value)
 	_overlay_definitions(items, items_value)
 	_overlay_definitions(spells, spells_value)
-	if races.size() != 30 or castes.size() != 30:
+	if races.size() != 30 and not PackageClassicRuleSelectionBinding.family_is_native(native_records, &"races") or castes.size() != 30 and not PackageClassicRuleSelectionBinding.family_is_native(native_records, &"castes"):
 		_reject("The effective application-plus-scenario Race and Caste catalogs must each contain all 30 Classic records.")
 		return {}
 	var effective_media := PackageMediaComposer.compose(scenario_media, application_media)

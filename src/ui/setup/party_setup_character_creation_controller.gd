@@ -117,7 +117,7 @@ func render_creator_step() -> void:
 	_update_creator_actions()
 
 func _build_creator_identity() -> void:
-	var step = _step_scene(identity_step_scene_path).instantiate()
+	var step := _step_scene(identity_step_scene_path).instantiate()
 	creator_page.add_child(step)
 	var allowed_levels: Array[int] = []
 	var maximum_level := view.campaign_summary.maximum_level if view != null and view.campaign_summary != null else 0
@@ -158,7 +158,7 @@ func _selected_appearance(control: OptionButton, portrait: bool) -> CharacterApp
 
 
 func _build_creator_review() -> void:
-	var step = _step_scene(review_step_scene_path).instantiate()
+	var step := _step_scene(review_step_scene_path).instantiate()
 	creator_page.add_child(step)
 	review_label = step.status_label()
 	_update_creator_review()

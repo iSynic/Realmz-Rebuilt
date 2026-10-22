@@ -173,9 +173,9 @@ func _camp() -> SessionCoordinatorResult:
 	var result := ExplorationTimeWorkflow.toggle_camp(_context.workflow_context())
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
-	if not _context.state.party_camping and result.timed_day == 0:
+	if not _context.state.party_camping and not result.timed_scan_pending:
 		return _context.responses().finish_with_age_updates(result.events, &"completed")
-	_context.exploration().set_post_time_continuation(result.map, "camp-entry-second" if _context.state.party_camping else "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
+	_context.exploration().set_post_time_continuation(result.map, "camp-entry-second" if _context.state.party_camping else "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
 
@@ -183,7 +183,7 @@ func _rest() -> SessionCoordinatorResult:
 	var result := ExplorationTimeWorkflow.rest(_context.workflow_context())
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
-	_context.exploration().set_post_time_continuation(result.map, "rest-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
+	_context.exploration().set_post_time_continuation(result.map, "rest-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
 
@@ -193,7 +193,7 @@ func _heal() -> SessionCoordinatorResult:
 	var result := ExplorationTimeWorkflow.heal(_context.workflow_context())
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
-	_context.exploration().set_post_time_continuation(result.map, "heal", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
+	_context.exploration().set_post_time_continuation(result.map, "heal", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
 
@@ -201,7 +201,7 @@ func _search() -> SessionCoordinatorResult:
 	var result := ExplorationSearchWorkflow.search(_context.workflow_context())
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
-	_context.exploration().set_post_time_continuation(result.map, "area-search-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
+	_context.exploration().set_post_time_continuation(result.map, "area-search-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
 
@@ -404,7 +404,7 @@ func _magic_transition(result: MagicTransitionResult) -> SessionCoordinatorResul
 	if result == null:
 		return SessionCoordinatorResult.rejected(&"invalid_workflow_result", "The magic workflow returned no result.")
 	if not result.ok:
-		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message) if result.is_rejection else SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if not result.completed and (result.continuation == null or result.continuation.is_empty() or result.interaction == null):
 		return SessionCoordinatorResult.rejected(&"invalid_workflow_result", "The magic workflow returned an incomplete interaction transition.")
 	return _context.responses().finish_magic_transition(result)

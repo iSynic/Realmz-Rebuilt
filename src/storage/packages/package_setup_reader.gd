@@ -10,7 +10,7 @@ func read(path: String, cache_root: String, application: RealmzContent, applicat
 	result.source_path = path
 	if application == null: return result
 	var archive := ZIPReader.new()
-	if archive.open(path) != OK: return result
+	if _reader.open_bounded(archive, path) != OK: return result
 	var manifest_value: Variant = _reader.read_document(archive, "manifest.json")
 	var entries_value: Variant = _reader.entries(archive)
 	if not manifest_value is Dictionary or not entries_value is Array:
@@ -61,6 +61,10 @@ func _read_documents(archive: ZIPReader, manifest: Dictionary) -> Dictionary:
 			for field: String in ["campaign", "races", "castes", "items", "spells"]:
 				if not parsed.has(field): return {}
 				compact[field] = parsed[field]
+			if int(manifest.schemaVersion) >= 7:
+				var facts: Variant = parsed.get("classicRecords")
+				if not facts is Dictionary or not facts.has_all(["sources", "ruleSelection"]): return {}
+				compact["classicRecords"] = {"sources": facts.sources, "ruleSelection": facts.ruleSelection}
 			var sets: Variant = parsed.get("monsterSets", [])
 			if not sets is Array: return {}
 			compact["monsterSets"] = []

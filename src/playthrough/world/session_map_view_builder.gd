@@ -121,7 +121,7 @@ static func build_player_map_view(context: SessionWorkflowContext, definition: P
 			for x: int in range(definition.start.x, definition.start.x + tile_count):
 				var cell := source_map.topology.cell_at(Vector2i(x, y))
 				if cell != null:
-					cells.append(build_cell_view(context, source_map, cell, true))
+					cells.append(build_cell_view(context, source_map, cell, true, true))
 	return PlayerMapView.new(definition, cells, player_map_shows_party(definition, source_map, context.state.party.map_id, context.state.party.coordinate), context.state.party.coordinate, true)
 
 
@@ -145,7 +145,7 @@ static func player_map_shows_party(definition: PlayerMapDefinition, source_map: 
 	return Rect2i(definition.start - Vector2i.ONE, Vector2i(visible_tiles + 1, visible_tiles + 1)).has_point(party_coordinate)
 
 
-static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool) -> MapCellView:
+static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool, acquired_map: bool = false) -> MapCellView:
 	cell = map.topology.effective_cell_at(cell.coordinate, context.state.world)
 	var feature_kinds: Array[StringName] = []
 	var feature_orientations: Dictionary = {}
@@ -172,13 +172,16 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 	var tileset_id := "landlook-%d" % effective_landlook if map.level_type == &"land" and effective_landlook >= 0 else cell.tileset_id
 	var render_tile := cell.render_tile
 	var overlay_asset_id := cell.overlay_asset_id
-	if map.level_type == &"land" and context.state.world.topology.has_terrain_override(map.id, cell.coordinate):
-		var raw_tile := context.state.world.topology.classic_tile_for(map.id, cell)
-		overlay_asset_id = ClassicLandTileRules.special_overlay(raw_tile)
-		if not overlay_asset_id.is_empty():
+	if map.level_type == &"land":
+		var replaced := context.state.world.topology.has_terrain_override(map.id, cell.coordinate)
+		var raw_tile := context.state.world.topology.classic_tile_for(map.id, cell) if replaced else cell.native_tile_value if cell.native_tile_supplied else cell.render_tile
+		var icon_overlay := ClassicLandTileRules.special_overlay(raw_tile)
+		if not icon_overlay.is_empty():
+			overlay_asset_id = ClassicLandTileRules.player_map_overlay(raw_tile) if acquired_map else icon_overlay
 			var terrain_set := context.content.world.battle_terrain_set_for_map(map, context.state.world)
 			render_tile = cell.render_tile if terrain_set == null else terrain_set.base_tile
-		else:
+		elif replaced:
+			overlay_asset_id = ""
 			render_tile = ClassicLandTileRules.normalized_tile(raw_tile)
 	return MapCellView.new(cell.coordinate, context.state.world.topology.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.exploration.was_visited(map.id, cell.coordinate), not cell.trigger_ids().is_empty(), context.state.world.triggers.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
 

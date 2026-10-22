@@ -62,6 +62,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 	active_turn.target_id = target.id
 	active_turn.movement_remaining = 0
 	active_turn.physical_action_committed = true
+	active_turn.classic_physical_active = true
 	combat.actor_statuses.set_guarding(monster.id, false)
 	var resolution := _context.magic.resolve_monster_projectile(monster, projectile_item, target, projectile_spell, 1, rng)
 	if resolution == null:

@@ -54,7 +54,8 @@ func set_bounds_edges(edges: Array[int]) -> bool:
 
 func contains(authored_bounds: Rect2i, coordinate: Vector2i) -> bool:
 	if not bounds_overridden:
-		return authored_bounds.has_point(coordinate)
+		# Direct comparisons preserve signed/inverted native edges without normalizing them.
+		return coordinate.x >= authored_bounds.position.x and coordinate.x < authored_bounds.end.x and coordinate.y >= authored_bounds.position.y and coordinate.y < authored_bounds.end.y
 	return coordinate.x >= bounds_left and coordinate.x <= bounds_right and coordinate.y >= bounds_top and coordinate.y <= bounds_bottom
 
 

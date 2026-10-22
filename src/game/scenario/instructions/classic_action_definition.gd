@@ -10,6 +10,7 @@ var operand_id: int
 var gosub: bool
 var extra_code: Array[int]
 var extra_code_fault: ClassicExtraCodeFault
+var native_extra_code_reference: bool = false
 
 
 func _init(action_slot: int, raw: int, normalized: int, id_value: int, is_gosub: bool, e_code: Array[int]) -> void:

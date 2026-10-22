@@ -45,6 +45,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"map_redraw_requested", {"source": "classic"})])
 		62:
 			if _content.requires_deferred_references and not _content.has_media_resource("TEXT", action.operand_id):
+				if _content.classic_records != null and _content.classic_records.can_prove_resource_absence("TEXT", action.operand_id):
+					return ClassicCompatibility.skip(&"scrolling-text", "TEXT", action.operand_id)
 				return ScenarioRuntimeOperationResult.failed(&"unknown_media_resource", "Classic opcode 62 references unavailable TEXT resource %d." % action.operand_id)
 			return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.ACKNOWLEDGE, {
 				"prompt": "",
@@ -94,6 +96,8 @@ func _show_message(action: ClassicActionDefinition, request_id: String) -> Scena
 	var message_id := absi(action.operand_id)
 	var message := _content.scenario_records.message_by_id(message_id)
 	if message == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data SD2", message_id):
+			return ClassicCompatibility.skip(&"message", "Data SD2", message_id)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 1 references unavailable message %d." % action.operand_id)
 	var event := DomainEvent.new(&"message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})
 	if action.operand_id <= 0:
@@ -118,6 +122,8 @@ func _show_random_message(action: ClassicActionDefinition, request_id: String) -
 	var message_id := absi(selected_id)
 	var message := _content.scenario_records.message_by_id(message_id)
 	if message == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data SD2", message_id):
+			return ClassicCompatibility.skip(&"random-message", "Data SD2", message_id)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 19 has no available message.")
 	var event := DomainEvent.new(&"message_shown", {
 		"messageId": message_id,
@@ -135,3 +141,21 @@ func _show_random_message(action: ClassicActionDefinition, request_id: String) -
 		"journalEligible": journal_eligible,
 		"journalRecorded": journal_eligible and _game_state.scenario_progress.journal_message_is_recorded(message_id),
 	}), ScenarioInteractionContinuations.textbox(message_id), [event])
+
+
+func resume_textbox(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
+	var acknowledgement := response.body as InteractionResponse.AcknowledgeBody
+	if response.kind != &"acknowledge" or acknowledgement == null:
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic textbox response must acknowledge the displayed message.")
+	if not acknowledgement.take_note:
+		return ScenarioRuntimeOperationResult.completed(true)
+	var message_id := (continuation.body as ScenarioTextContinuationBody).message_id
+	if not ScenarioProgressState.journal_message_id_is_valid(message_id):
+		return ScenarioRuntimeOperationResult.failed(&"journal_message_unrepresentable", "Classic message %d cannot be stored in the 3,000-entry journal flag table." % message_id)
+	var already_recorded := _game_state.scenario_progress.journal_message_is_recorded(message_id)
+	if not _game_state.scenario_progress.record_journal_message(message_id):
+		return ScenarioRuntimeOperationResult.failed(&"journal_record_failed", "Classic message %d could not be recorded in the journal." % message_id)
+	var events: Array[DomainEvent] = []
+	if not already_recorded:
+		events.append(DomainEvent.new(&"journal_entry_recorded", {"messageId": message_id}))
+	return ScenarioRuntimeOperationResult.completed(true, events)

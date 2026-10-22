@@ -29,6 +29,11 @@ func run() -> void:
 	var state := GameState.new(PartyState.new(loaded.content.start_map_id, loaded.content.start_coordinate, []), RealmzClock.new())
 	var api := RealmzRuntimeApi.new(loaded.content, state, RealmzRng.for_oracle(1), ScenarioActionState.new())
 	vm.configure(imported)
+	imported.classic_records = ClassicRecordCatalog.new()
+	assert_equal(vm.start_program("xap:-1").state, ScenarioVmResult.State.COMPLETED, "native unavailable entry is an empty target")
+	assert_equal(vm.run(api).state, ScenarioVmResult.State.COMPLETED, "empty native entry completes without an interaction or fault")
+	imported.classic_records = null
+	assert_equal(vm.start_program("xap:-1").error_code, &"unknown_scenario_program", "authored definitions retain missing-program failure")
 	vm.start_program("xap:1")
 	assert_equal(vm.run(api).state, ScenarioVmResult.State.COMPLETED, "an unrelated program remains executable")
 	vm.start_program("xap:2")
@@ -60,7 +65,7 @@ func run() -> void:
 
 func _test_extra_code_tail_guard(document: Dictionary, api: RealmzRuntimeApi, state: GameState) -> void:
 	var guarded := document.duplicate(true)
-	guarded["schemaVersion"] = 5
+	guarded["schemaVersion"] = 7.0
 	guarded["extraCodeTail"] = {"rowId": 2463, "availableBytes": 6}
 	var instruction: Dictionary = guarded["programs"][1]["instructions"][0]
 	instruction.merge({"rawOpcode": 12, "opcode": 12, "id": 2463, "gosub": false, "extraCode": null}, true)

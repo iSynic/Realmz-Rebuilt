@@ -5,6 +5,7 @@ extends RefCounted
 var _fingerprints: Dictionary = {}
 var _scenario_owned: Dictionary = {}
 var _application_fingerprints: Dictionary = {}
+var _projection_fingerprints: Dictionary = {}
 
 
 func record(kind: StringName, id: String, fingerprint: String, scenario_owned: bool) -> void:
@@ -18,6 +19,22 @@ func inherit_application(application: ContentTransferCatalog) -> void:
 	if application != null:
 		_fingerprints = application._fingerprints.duplicate()
 		_application_fingerprints = application._fingerprints.duplicate()
+		_projection_fingerprints = application._projection_fingerprints.duplicate()
+
+
+func record_projection(kind: StringName, id: String, digest: String) -> void:
+	_projection_fingerprints["%s:%s" % [kind, id]] = digest
+
+
+func exclude_definition(kind: StringName, id: String) -> void:
+	var key := "%s:%s" % [kind, id]
+	_fingerprints.erase(key)
+	_scenario_owned.erase(key)
+	_projection_fingerprints.erase(key)
+
+
+func projection_fingerprint(kind: StringName, id: String) -> String:
+	return _projection_fingerprints.get("%s:%s" % [kind, id], "")
 
 
 func is_scenario_specific(kind: StringName, id: String) -> bool:

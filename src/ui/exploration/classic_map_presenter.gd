@@ -435,7 +435,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_texture_rect_region(atlas_texture, rect, Rect2(region))
 	var overlay_texture := _textures.image_texture(cell.overlay_asset_id)
 	if overlay_texture != null:
-		draw_texture_rect(overlay_texture, rect, false)
+		draw_texture_rect(overlay_texture, MapTextureCache.land_overlay_rect(rect, _media.asset_by_id(cell.overlay_asset_id)), false)
 	if dark:
 		draw_rect(rect, Color(0.0, 0.0, 0.0, MapPresentationGeometry.darkness_overlay_alpha(saved_darkness_level)), true)
 

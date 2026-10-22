@@ -210,6 +210,7 @@ function Get-MacroSpellDisposition {
     if ($null -eq $Spell) { return "missing-spell" }
     if ([int] $Spell.queueIcon -ne 0) { return "queued-field" }
     if ([int] $Spell.targetType -eq 0) { return "repeated-target" }
+    if ([int] $Spell.targetType -in @(1, 6)) { return "source-cell" }
     if ([int] $Spell.targetType -in @(3, 4, 9, 10, 12)) { return "executable-immediate" }
     return "unsupported-target"
 }

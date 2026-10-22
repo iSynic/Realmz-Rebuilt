@@ -29,18 +29,25 @@ var _inventory_operations: ClassicInventoryOperations
 var _service_operations: ClassicServiceOperations
 var _presentation_operations: ClassicPresentationOpcodeHandler
 var _world_time_operations: ClassicWorldTimeOpcodeHandler
+var _time_operations: ClassicTimeOperations
 var _encounter_operations: ClassicEncounterOpcodeHandler
 var _thief_operations: RefCounted
 var _classic_handlers: ClassicOpcodeHandlerRegistry
 var _handler_registration_error: String = ""
+var _classic_execution: ClassicExecutionState
+var native_action_points: ClassicActionPointOperations
+## Nonserialized weak claim on the current run's shared ScenarioStepBudget.
+var step_budget_ref: WeakRef
 
 
-func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action_state: ScenarioActionState, rules: RealmzRules = null) -> void:
+func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action_state: ScenarioActionState, rules: RealmzRules = null, native_execution: ClassicExecutionState = null) -> void:
 	_content = content
 	_game_state = game_state
 	_rng = rng
 	_action_state = action_state
-	_rules = rules if rules != null else RealmzRules.new()
+	_classic_execution = native_execution if native_execution != null else ClassicExecutionState.new()
+	native_action_points = ClassicActionPointOperations.new(content, game_state, rng, _classic_execution)
+	_rules = rules if rules != null else RealmzRules.new(content.package_schema_version >= 7)
 	_character_operations = ClassicCharacterOperations.new(_content, _game_state, _rng, _rules)
 	_battle_reward_operations = ClassicBattleRewardOperations.new(_content, _game_state, _rng, _rules)
 	_battle_reward_operations.bind_runtime_api(self)
@@ -51,22 +58,41 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 	_service_operations = ClassicServiceOperations.new(_content, _game_state, _rng, _rules)
 	_presentation_operations = ClassicPresentationOpcodeHandler.new(_content, _game_state, _rng)
 	_world_time_operations = ClassicWorldTimeOpcodeHandler.new(_content, _game_state, _rng)
+	_time_operations = ClassicTimeOperations.new(_content, _game_state, _rng, _rules)
+	_time_operations.bind_runtime_api(self)
 	_encounter_operations = ClassicEncounterOpcodeHandler.new(_content, _game_state)
 	_thief_operations = ClassicThiefEncounterOperations.new(_content, _game_state, _rng, _rules, _encounter_operations)
 	_classic_handlers = ClassicOpcodeHandlerRegistry.new()
-	for handler: ClassicOpcodeHandler in [_control_flow_operations, _character_operations, _inventory_operations, _service_operations, _combat_operations, _battle_reward_operations, _presentation_operations, _world_time_operations, _encounter_operations]:
+	for handler: ClassicOpcodeHandler in [_control_flow_operations, _character_operations, _inventory_operations, _service_operations, _combat_operations, _battle_reward_operations, _presentation_operations, _world_time_operations, _time_operations, _encounter_operations]:
 		if not _classic_handlers.register(handler):
 			_handler_registration_error = _classic_handlers.registration_error()
 			break
 
 
+func classic_execution() -> ClassicExecutionState:
+	return _classic_execution
+
+
 func execute_classic(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
+	if _classic_execution.header_replaced and context != null and (not context.trigger_id.is_empty() or context.is_native_mode_one()):
+		context = context.copy()
+		context.trigger_id = _classic_execution.trigger_id
+	# Castle does not read these combat-only operands outside a battle.
+	var unavailable := ClassicCompatibility.missing_extra_code(_content, action, context) if action.opcode not in [121, 123, 124, 125] or _game_state.combat != null else null
+	if unavailable != null: return unavailable
 	if action.extra_code_fault != null and (action.opcode not in [121, 123, 124, 125] or _game_state.combat != null):
 		return ScenarioRuntimeOperationResult.failed(&"malformed_classic_extra_code", action.extra_code_fault.message())
 	if not _handler_registration_error.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_opcode_registry", _handler_registration_error)
 	if _classic_handlers.has_handler(action.opcode):
-		return _classic_handlers.execute(action, request_id, ScenarioExecutionContext.empty() if context == null else context)
+		var turn := _game_state.combat.turns.active_turn if _game_state.combat != null else null
+		# newland's monster-macro branch inherits inspell; only resolvespell owns it.
+		var owns_spell_context := action.opcode == 17 and (context == null or context.combatant_id.is_empty() and context.calling_context not in [&"battle-macro", &"monster-death-macro"])
+		if turn != null and owns_spell_context: turn.classic_spell_active = true
+		var result := _classic_handlers.execute(action, request_id, ScenarioExecutionContext.empty() if context == null else context)
+		if turn != null and owns_spell_context: turn.classic_spell_active = false
+		_classic_execution.observe(action.opcode, result.events)
+		return result
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_classic_opcode", "No Realmz Runtime API operation owns Classic opcode %d." % action.opcode)
 
 
@@ -146,7 +172,7 @@ func resume_safe(continuation: ScenarioRuntimeContinuation, response: Interactio
 			var option_count: int = choice_continuation.option_count
 			var choice := response.body as InteractionResponse.ChoiceBody
 			if response.kind != &"scenario_choice" or choice == null or choice.index < 0 or choice.index >= option_count:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Scenario choice response must identify an available option.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Scenario choice response must identify an available option.")
 			return ScenarioRuntimeOperationResult.completed(choice.index)
 		ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
 			return _battle_reward_operations.resume(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
@@ -188,12 +214,16 @@ func request_available_bank(request_id: String) -> ScenarioRuntimeOperationResul
 
 
 static func party_defeat_handoff_is_valid(content: RealmzContent, state: GameState, handoff: ScenarioRuntimeHandoff) -> bool:
+	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_CLOCK:
+		return ClassicTimeOperations.handoff_is_valid(content, state, handoff)
 	if handoff != null and handoff.source_kind in [ScenarioRuntimeHandoff.CLASSIC_HEALTH, ScenarioRuntimeHandoff.CLASSIC_SPELL]:
 		return ClassicHealthOperations.handoff_is_valid(state, handoff) and (handoff.source_kind != ScenarioRuntimeHandoff.CLASSIC_SPELL or content.magic.spell_by_classic_id(handoff.effect_extra_code[0]) != null and handoff.effect_extra_code[1] >= 0)
 	return ClassicBattleRewardOperations.party_defeat_handoff_is_valid(content, state, handoff)
 
 
 func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:
+	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_CLOCK:
+		return _time_operations.complete_handoff(handoff) if party_defeat_handoff_is_valid(_content, _game_state, handoff) else ScenarioRuntimeOperationResult.failed(&"invalid_clock_handoff", "The suspended clock no longer matches its timed program.")
 	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_SPELL:
 		if not party_defeat_handoff_is_valid(_content, _game_state, handoff):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_party_defeat_handoff", "The suspended Classic spell no longer matches the party.")
@@ -219,6 +249,8 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 	if continuation == null or response == null or not response.is_supported_kind():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	match continuation.kind:
+		ScenarioRuntimeContinuation.CLASSIC_CLOCK:
+			return _time_operations.resume(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_AGE_UPDATES:
 			return _resume_age_update_interactions(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER:
@@ -233,28 +265,16 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			return _thief_operations.resume_resolution(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE:
 			if response.kind != &"acknowledge":
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Acknowledgement response has the wrong kind.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Acknowledgement response has the wrong kind.")
 			return ScenarioRuntimeOperationResult.completed(true)
+		ScenarioRuntimeContinuation.CLASSIC_SCRIPTED_FUMBLE:
+			return _combat_operations.resume_scripted_fumble(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_TEXTBOX:
-			var acknowledgement := response.body as InteractionResponse.AcknowledgeBody
-			if response.kind != &"acknowledge" or acknowledgement == null:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox response must acknowledge the displayed message.")
-			if not acknowledgement.take_note:
-				return ScenarioRuntimeOperationResult.completed(true)
-			var message_id := (continuation.body as ScenarioTextContinuationBody).message_id
-			if not ScenarioProgressState.journal_message_id_is_valid(message_id):
-				return ScenarioRuntimeOperationResult.failed(&"journal_message_unrepresentable", "Classic message %d cannot be stored in the 3,000-entry journal flag table." % message_id)
-			var already_recorded := _game_state.scenario_progress.journal_message_is_recorded(message_id)
-			if not _game_state.scenario_progress.record_journal_message(message_id):
-				return ScenarioRuntimeOperationResult.failed(&"journal_record_failed", "Classic message %d could not be recorded in the journal." % message_id)
-			var events: Array[DomainEvent] = []
-			if not already_recorded:
-				events.append(DomainEvent.new(&"journal_entry_recorded", {"messageId": message_id}))
-			return ScenarioRuntimeOperationResult.completed(true, events)
+			return _presentation_operations.resume_textbox(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_PLAYER_MAP:
 			var map_acknowledgement := response.body as InteractionResponse.AcknowledgeBody
 			if response.kind != &"acknowledge" or map_acknowledgement == null or map_acknowledgement.take_note:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic player-map display requires an empty acknowledgement response.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic player-map display requires an empty acknowledgement response.")
 			var player_map_id := (continuation.body as ScenarioTextContinuationBody).player_map_id
 			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.exploration.has_map(player_map_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic player-map continuation references unavailable acquired content.")
@@ -290,7 +310,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 
 func _resume_age_update_interactions(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	if response.kind != InteractionRequest.AGE_UPDATE or not response.body is InteractionResponse.EmptyBody:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
 	var age := continuation.body as ScenarioAgeContinuationBody
 	var updates := age.updates
 	var index := age.index
@@ -313,22 +333,22 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Simple Encounter is unavailable.")
 	var choice := response.body as InteractionResponse.ChoiceBody
 	if response.kind != &"encounter_choice" or choice == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response has the wrong kind.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Simple Encounter response has the wrong kind.")
 	if choice.cancelled:
 		if not encounter.can_back_out:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Simple Encounter cannot be cancelled.")
+			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "This Simple Encounter cannot be cancelled.")
 		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
 	var selected_index := choice.index
 	var option_indexes := choice_continuation.option_indexes
 	if not option_indexes.is_empty():
 		if selected_index < 0 or selected_index >= option_indexes.size() or not _whole_number(option_indexes[selected_index]):
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the available choices.")
+			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Simple Encounter response index is outside the available choices.")
 		selected_index = int(option_indexes[selected_index])
 	var selected := encounter.response_at(selected_index)
 	if selected == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
 	if selected.is_classic_eliminated(encounter.id):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Classic Simple Encounter choice has been eliminated.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "This Classic Simple Encounter choice has been eliminated.")
 	_game_state.scenario_progress.encounters.record_attempt(&"simple", encounter.id)
 	var attempt := choice_continuation.encounter_attempt + (0 if choice_continuation.reopen_result else 1)
 	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index).set_encounter_attempt(attempt)
@@ -344,7 +364,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Complex Encounter is unavailable.")
 	var selection := response.body as InteractionResponse.ComplexEncounterBody
 	if response.kind != &"complex_encounter" or selection == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex Encounter response requires an action.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Complex Encounter response requires an action.")
 	var action := String(selection.action)
 	var outcome := 0
 	var attempt := choice_continuation.encounter_attempt + 1
@@ -353,7 +373,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 	match action:
 		"back":
 			if not encounter.can_back_out:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
 			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
 		"choice":
 			var selected_slots := selection.selected_slots.duplicate()
@@ -361,29 +381,29 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 				selected_slots.append(selection.slot)
 			var validation_error := _complex_choice_validation_error(encounter, selected_slots)
 			if not validation_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", validation_error)
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", validation_error)
 			var exact_match := _complex_choice_is_exact(encounter, selected_slots)
 			outcome = encounter.action_result if exact_match else 4
 			context.option_slot = selected_slots[0] if selected_slots.size() == 1 else -1
 			events.append(DomainEvent.new(&"complex_action_set_selected", {"encounterId": encounter.id, "selectedSlots": selected_slots, "exactMatch": exact_match}))
 		"word":
 			if selection.word.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex word response requires text.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Complex word response requires text.")
 			outcome = _complex_word_outcome(encounter, selection.word)
 		"spell":
 			if selection.classic_spell_id == 0 or not _character_knows_classic_spell(selection.character_id, selection.classic_spell_id):
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex spell response requires an eligible living caster and known Classic spell.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Complex spell response requires an eligible living caster and known Classic spell.")
 			var spell := _content.magic.spell_by_classic_id(absi(selection.classic_spell_id))
 			outcome = _complex_spell_outcome(encounter.spell_ids(), encounter.spell_results(), selection.classic_spell_id, spell.spell_class)
 		"item":
 			if selection.classic_item_id == 0 or not _character_owns_classic_item(selection.character_id, selection.instance_id, selection.classic_item_id):
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex item response requires an exact carried item and eligible living owner.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Complex item response requires an exact carried item and eligible living owner.")
 			var item_id := selection.classic_item_id
 			outcome = _complex_catalog_outcome(encounter.item_ids(), encounter.item_results(), item_id)
 		"thief":
 			return _thief_operations.begin(encounter, choice_continuation.gosub, request_id, choice_continuation.encounter_attempt)
 		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex Encounter action '%s' is unavailable." % action)
+			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Complex Encounter action '%s' is unavailable." % action)
 	if outcome == 4 and encounter.max_times > 1 and attempt >= encounter.max_times:
 		outcome = 3
 	if outcome < 1 or outcome > 4:
@@ -460,7 +480,7 @@ func _state_identity(arguments: Dictionary) -> Array[String]:
 func _resume_classic_choice(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != &"yes_no" or body == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic choice response requires an accepted bool.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic choice response requires an accepted bool.")
 	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
 	var values := choice_continuation.values
 	if values.size() < 5:
@@ -481,18 +501,18 @@ func _resume_classic_choice(continuation: ScenarioRuntimeContinuation, response:
 func _resume_character_selection(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.SelectionBody
 	if response.kind != &"character_selection" or body == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection response requires characterIds.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Character selection response requires characterIds.")
 	var character_continuation := continuation.body as ScenarioCharacterContinuationBody
 	var requested: Array[String] = body.character_ids
 	if requested.size() != character_continuation.count:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection returned the wrong number of characters.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Character selection returned the wrong number of characters.")
 	var picked: Array[String] = []
 	for value: Variant in requested:
 		if not value is String or picked.has(value):
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection contains an invalid or duplicate ID.")
+			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Character selection contains an invalid or duplicate ID.")
 		var character := _game_state.party.character_by_id(value)
 		if character == null or not character_continuation.allow_dead and character.current_health <= 0:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection includes an ineligible party member.")
+			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Character selection includes an ineligible party member.")
 		picked.append(value)
 	var selected := picked
 	if character_continuation.invert:
@@ -508,12 +528,14 @@ func _resume_character_selection(continuation: ScenarioRuntimeContinuation, resp
 func _resume_character_ability(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.SelectionBody
 	if response.kind != &"character_selection" or body == null or body.character_ids.size() != 1:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic ability check requires one selected character.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic ability check requires one selected character.")
 	var character := _game_state.party.character_by_id(body.character_ids[0])
 	var character_continuation := continuation.body as ScenarioCharacterContinuationBody
 	var values := character_continuation.values
-	if character == null or character.current_health <= 0 or values.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic ability check selected an unavailable character.")
+	if values.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic ability-check continuation is malformed.")
+	if character == null or character.current_health <= 0:
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic ability check selected an unavailable character.")
 	_game_state.scenario_progress.set_selected_character_ids([character.id])
 	var check_index := int(values[0])
 	var modifier := int(values[1])

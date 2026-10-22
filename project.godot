@@ -45,3 +45,7 @@ enabled=PackedStringArray("res://addons/realmz_builder/plugin.cfg")
 
 renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
+
+[debug]
+
+gdscript/warnings/untyped_declaration=2

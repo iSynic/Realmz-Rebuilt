@@ -81,6 +81,8 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 		2:
 			var message := _content.scenario_records.message_by_id(values[4])
 			if message == null:
+				if ClassicCompatibility.source_unavailable(_content, "Data SD2", values[4]):
+					return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.finish())
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic item branch references unavailable message %d." % values[4])
 			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item possession branch has an invalid failure mode.")
@@ -119,15 +121,23 @@ func _branch_on_item_charges(action: ClassicActionDefinition) -> ScenarioRuntime
 func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 22 requires a five-value Extra Code row.")
-	var source := _content.items.item_by_classic_id(absi(action.extra_code[0]))
+	var native_source := action.extra_code[0] if _content.classic_records != null else absi(action.extra_code[0])
+	var source := _content.items.item_by_classic_id(native_source)
 	if source == null:
+		if ClassicCompatibility.item_source_unavailable(_content, native_source):
+			return ClassicCompatibility.skip(&"item-mutation", "Data NI", native_source)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic item mutation references unavailable item %d." % action.extra_code[0])
 	var operation := action.extra_code[2]
 	var maximum := action.extra_code[1]
+	if _content.classic_records != null and maximum <= 0:
+		return ClassicCompatibility.skip(&"item-mutation-empty-count", "Data NI", native_source)
 	if maximum < 0 or operation not in [1, 2, 3]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_item_mutation", "Classic item mutation has an invalid count or operation.")
-	var replacement := _content.items.item_by_classic_id(absi(action.extra_code[4])) if operation == 3 else null
+	var native_replacement := action.extra_code[4] if _content.classic_records != null else absi(action.extra_code[4])
+	var replacement := _content.items.item_by_classic_id(native_replacement) if operation == 3 else null
 	if operation == 3 and replacement == null:
+		if ClassicCompatibility.item_source_unavailable(_content, native_replacement):
+			return ClassicCompatibility.skip(&"item-replacement", "Data NI", native_replacement)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic item replacement is unavailable.")
 	var changed := 0
 	for character: CharacterState in _game_state.party.characters():
@@ -226,8 +236,12 @@ func _configure_banking() -> ScenarioRuntimeOperationResult:
 func _mutate_shop(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 4:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 51 requires a five-value Extra Code row.")
-	var shop := _content.economy.shop_by_classic_id(absi(action.extra_code[0]))
+	# Castle loadshop(mode) keeps the current shop for zero and otherwise seeks mode directly.
+	var record_id := action.extra_code[0] if _content.package_schema_version >= 7 else absi(action.extra_code[0])
+	var shop := _content.economy.shop_by_id(_game_state.location_services.active_shop_id) if _content.package_schema_version >= 7 and record_id == 0 else _content.economy.shop_by_classic_id(record_id)
 	if shop == null:
+		if _content.package_schema_version >= 7 and record_id == 0 or ClassicCompatibility.source_unavailable(_content, "Data SD", record_id):
+			return ClassicCompatibility.skip(&"unavailable-shop-mutation", "Data SD", record_id)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic shop mutation references unavailable shop %d." % action.extra_code[0])
 	var inflation := maxi(0, _game_state.location_services.shop_inflation(shop) + action.extra_code[1])
 	_game_state.location_services.set_shop_inflation(shop, inflation)

@@ -37,7 +37,8 @@ static func classic(opcode_value: int, use_gosub: bool, battle_mode: int, target
 
 func copy() -> ScenarioBattleCaller:
 	var duplicate := from_data(to_data())
-	assert(duplicate != null, "A live typed battle caller must round-trip through its wire codec")
+	if duplicate == null:
+		push_error("A live typed battle caller must round-trip through its wire codec.")
 	return duplicate
 
 

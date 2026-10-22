@@ -5,6 +5,32 @@ var _checks := 0
 var _failures := 0
 var _results: Array[Dictionary] = []
 var _save_root: String
+var _program_mode := false
+var _compression_mode := false
+var _payment_mode := false
+var _record_old_hash := ""
+
+
+# Current bundles admit marker-era saves through the complete-record route; adapt its pair API to the probe's policy checks.
+class RecordPolicy extends RefCounted:
+	var last_error := ""
+	var _update: CompleteRecordSaveUpdate
+	var _old_hash: String
+
+	func _init(update: CompleteRecordSaveUpdate, old_hash: String) -> void:
+		_update = update
+		_old_hash = old_hash
+
+	func eligible(campaign_id: String, old_hash: String, current_hash: String) -> bool:
+		return _update.eligible(campaign_id, old_hash, current_hash)
+
+	func validate_archives(content: RealmzContent) -> bool:
+		var valid := not _update.validate_archives(content, _old_hash).is_empty()
+		last_error = _update.last_error
+		return valid
+
+	func updated_slot_id(source_slot: String, backup: bool, package_hash: String) -> String:
+		return _update.updated_slot_id(source_slot, backup, package_hash)
 
 
 class WriteFailureRepository extends SaveRepository:
@@ -25,14 +51,17 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
-	if args.size() != 2 or not args[0].is_absolute_path() or not args[1].is_absolute_path() or DirAccess.dir_exists_absolute(args[1]) or FileAccess.file_exists(args[1]):
-		printerr("Usage: -- <retained-original-directory> <new-absolute-scratch-directory>")
+	if args.size() not in [2, 3] or (args.size() == 3 and args[2] not in ["programs", "compression", "payment"]) or not args[0].is_absolute_path() or not args[1].is_absolute_path() or DirAccess.dir_exists_absolute(args[1]) or FileAccess.file_exists(args[1]):
+		printerr("Usage: -- <retained-original-directory> <new-absolute-scratch-directory> [programs|compression|payment]")
 		quit(2)
 		return
 	if DirAccess.make_dir_recursive_absolute(args[1]) != OK:
 		quit(2)
 		return
-	print("ISOLATED: thirteen pinned stock marker save updates; scratch packages/saves only")
+	_program_mode = args.size() == 3 and args[2] == "programs"
+	_compression_mode = args.size() == 3 and args[2] == "compression"
+	_payment_mode = args.size() == 3 and args[2] == "payment"
+	print("ISOLATED: pinned stock save updates; scratch packages/saves only; program-mode=", _program_mode)
 	_save_root = args[1].path_join("saves")
 	var repository := PackageRepository.new()
 	var app := repository.load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
@@ -42,10 +71,14 @@ func _run() -> void:
 	repository.set_application_content(app.content, app.media.assets())
 	var catalog: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(MarkerSaveUpdate.CATALOG_PATH))
 	for entry: Dictionary in catalog.scenarios:
+		if _payment_mode and entry.campaignId != PaymentSaveUpdate.restoration().campaignId:
+			continue
+		if _program_mode and not entry.has("programAuditRestoration"):
+			continue
 		_check_campaign(repository, entry, args[0], args[1])
 	repository.close()
 	var output := FileAccess.open(args[1].path_join("result.json"), FileAccess.WRITE)
-	output.store_string(JSON.stringify({"checks": _checks, "failures": _failures, "campaigns": _results}, "\t"))
+	output.store_string(JSON.stringify({"checks": _checks, "failures": _failures, "mode": args[2] if args.size() == 3 else "markers", "campaigns": _results}, "\t"))
 	output.close()
 	print("MARKER_SAVE_UPDATE checks=%d failures=%d" % [_checks, _failures])
 	call_deferred("quit", 0 if _failures == 0 else 1)
@@ -56,8 +89,9 @@ func _check_campaign(repository: PackageRepository, entry: Dictionary, originals
 	var installed_root := scratch.path_join("packages")
 	var source_path := originals.path_join(entry.file)
 	var source_hash := FileAccess.get_sha256(source_path)
-	if not _check(source_hash == entry.nativeTileRefresh.previousPackage.archiveSha256, "retained original matches approved bytes"):
+	if not _check(source_hash == _previous(entry).archiveSha256, "retained original matches approved bytes"):
 		return
+	_record_old_hash = _previous(entry).packageHash
 	var installed := repository.install_package(source_path, installed_root)
 	if not _check(installed.is_ok(), "original installs: " + installed.error_message):
 		return
@@ -70,8 +104,8 @@ func _check_campaign(repository: PackageRepository, entry: Dictionary, originals
 	if session == null:
 		return
 	var saves := SaveRepository.new(_save_root)
-	var policy := MarkerSaveUpdate.new(installed_root)
-	var host := SaveHostController.new(saves, null, null, policy)
+	var policy: Variant = _policy(installed_root)
+	var host := _host(saves, installed_root)
 	var jpeg := Image.create_empty(320, 320, false, Image.FORMAT_RGB8).save_jpg_to_buffer(0.72)
 	_check(host.save(old_content, "A", session.snapshot(), jpeg), "primary writes with thumbnail")
 	var snapshot := session.snapshot()
@@ -85,7 +119,7 @@ func _check_campaign(repository: PackageRepository, entry: Dictionary, originals
 	for backup: bool in [false, true]:
 		_verify_copy(host, saves, old_content, current, "A", backup)
 	_check(SaveEnvelope.from_snapshot(session.snapshot()).to_data() == active_before and host.active_slot(current) == "J", "active adventure and Quick Save target stay unchanged")
-	_check(not policy.eligible(entry.campaignId, "f".repeat(64), entry.packageHash) and not policy.eligible("imported-example", old_content.package_hash, entry.packageHash), "unlisted predecessor and imported campaign reject")
+	_check(not policy.eligible(entry.campaignId, "f".repeat(64), current.package_hash) and not policy.eligible("imported-example", old_content.package_hash, current.package_hash), "unlisted predecessor and imported campaign reject")
 	_check(FileAccess.get_sha256(source_path) == source_hash and FileAccess.get_sha256(installed.installed_path) == source_hash, "retained and installed originals stay byte-identical")
 	if entry.campaignId == "scenario-city-of-bywater":
 		_check_failures(repository, host, saves, old_content, current, source_path, installed_root, scratch)
@@ -203,15 +237,15 @@ func _check_failures(repository: PackageRepository, host: SaveHostController, sa
 	invalid.gameState.party.mapId = "missing-map"
 	_check(saves.save(old_content.campaign_id, "invalid-state", SaveEnvelope.from_data(invalid)), "invalid-location fixture writes")
 	_check(host.update_save(current, "invalid-state").is_empty() and host.last_error().contains("restore"), "invalid replacement state rejects before publication")
-	var missing_policy := MarkerSaveUpdate.new(scratch.path_join("missing-packages"))
+	var missing_policy: Variant = _policy(scratch.path_join("missing-packages"))
 	_check(not missing_policy.validate_archives(current) and missing_policy.last_error.contains("missing"), "missing original package has actionable failure")
-	var write_failure := SaveHostController.new(WriteFailureRepository.new(_save_root), null, null, MarkerSaveUpdate.new(installed_root))
+	var write_failure := _host(WriteFailureRepository.new(_save_root), installed_root)
 	_check(write_failure.update_save(current, "A", true).is_empty(), "failed copy publication rejects")
 	var readback_root := scratch.path_join("readback-failure")
 	var readback_saves := ReadbackFailureRepository.new(readback_root)
 	_check(readback_saves.save(old_content.campaign_id, "source", original, original.map_preview_jpeg), "readback fixture source writes")
-	var readback_failure := SaveHostController.new(readback_saves, null, null, MarkerSaveUpdate.new(installed_root))
-	_check(readback_failure.update_save(current, "source").is_empty() and not FileAccess.file_exists(readback_root.path_join(current.campaign_id).path_join(MarkerSaveUpdate.new().updated_slot_id("source", false, current.package_hash) + ".r2save")), "failed readback removes only the unpublished copy")
+	var readback_failure := _host(readback_saves, installed_root)
+	_check(readback_failure.update_save(current, "source").is_empty() and not FileAccess.file_exists(readback_root.path_join(current.campaign_id).path_join(_policy("").updated_slot_id("source", false, current.package_hash) + ".r2save")), "failed readback removes only the unpublished copy")
 	var bad_root := scratch.path_join("rejected-packages")
 	var installed := repository.install_package(source, bad_root)
 	if not _check(installed.is_ok(), "isolated rejection package installs"):
@@ -222,8 +256,22 @@ func _check_failures(repository: PackageRepository, host: SaveHostController, sa
 	var receipt: Dictionary = JSON.parse_string(receipt_bytes.get_string_from_utf8())
 	receipt["applicationPackageHash"] = "f".repeat(64)
 	_write_bytes(receipt_path, JSON.stringify(receipt).to_utf8_buffer())
-	var rejected := MarkerSaveUpdate.new(bad_root)
-	_check(not rejected.validate_archives(current) and rejected.last_error.contains("receipt"), "wrong application receipt rejects")
+	var rejected: Variant = _policy(bad_root)
+	_check(rejected.validate_archives(current), "older application receipt fully revalidates")
+	var refreshed: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(receipt_path))
+	_check(refreshed.applicationPackageHash == ApplicationLibraryIdentity.PACKAGE_HASH and refreshed.decoderVersion == PackageRepository.DECODER_VERSION, "refreshed receipt binds current validation")
+	receipt["applicationPackageHash"] = ApplicationLibraryIdentity.PACKAGE_HASH
+	receipt["decoderVersion"] = PackageRepository.DECODER_VERSION - 1
+	_write_bytes(receipt_path, JSON.stringify(receipt).to_utf8_buffer())
+	_check(rejected.validate_archives(current), "older decoder receipt fully revalidates")
+	receipt["decoderVersion"] = PackageRepository.DECODER_VERSION
+	receipt["schemaHash"] = PackageRepository.SCHEMA_V6_HASH if receipt.schemaHash == PackageRepository.EXPECTED_SCHEMA_HASH else PackageRepository.EXPECTED_SCHEMA_HASH
+	_write_bytes(receipt_path, JSON.stringify(receipt).to_utf8_buffer())
+	_check(not rejected.validate_archives(current), "receipt schema drift rejects")
+	receipt["schemaHash"] = JSON.parse_string(receipt_bytes.get_string_from_utf8()).schemaHash
+	receipt["decoderVersion"] = PackageRepository.DECODER_VERSION + 1
+	_write_bytes(receipt_path, JSON.stringify(receipt).to_utf8_buffer())
+	_check(not rejected.validate_archives(current), "future decoder receipt rejects")
 	_write_bytes(receipt_path, "{}".to_utf8_buffer())
 	_check(not rejected.validate_archives(current), "malformed receipt rejects")
 	_write_bytes(receipt_path, receipt_bytes)
@@ -236,12 +284,29 @@ func _check_failures(repository: PackageRepository, host: SaveHostController, sa
 
 
 func _check_corrected_archive_failure(current: RealmzContent, installed_root: String, scratch: String) -> void:
-	var entry := MarkerSaveUpdate.new(installed_root).transition(current.campaign_id, current.package_hash)
+	var entry: Dictionary = CompressionPackageDelta.correction(current.campaign_id, current.package_hash) if _compression_mode else (ProgramPackageDelta.correction(current.campaign_id, current.package_hash) if _program_mode else CompleteRecordPackageDelta.correction(current.campaign_id, current.package_hash))
 	var bad_bundle := scratch.path_join("rejected-bundle")
 	DirAccess.make_dir_recursive_absolute(bad_bundle)
 	var bytes := FileAccess.get_file_as_bytes(MarkerSaveUpdate.BUNDLE_ROOT.path_join(entry.file))
 	_write_bytes(bad_bundle.path_join(entry.file), bytes + PackedByteArray([0]))
-	_check(not MarkerSaveUpdate.new(installed_root, bad_bundle).validate_archives(current), "altered corrected archive rejects")
+	_check(not _policy(installed_root, bad_bundle).validate_archives(current), "altered corrected archive rejects")
+
+
+func _previous(entry: Dictionary) -> Dictionary:
+	if _payment_mode:
+		return PaymentSaveUpdate.restoration().previousPackage
+	return entry.sourceCompression.previousPackage if _compression_mode else (entry.programAuditRestoration.previousPackage if _program_mode else entry.nativeTileRefresh.previousPackage)
+
+
+func _policy(installed_root: String, bundle_root: String = MarkerSaveUpdate.BUNDLE_ROOT) -> Variant:
+	if _payment_mode:
+		return PaymentSaveUpdate.new(installed_root, bundle_root)
+	return CompressionSaveUpdate.new(installed_root, bundle_root) if _compression_mode else (ProgramSaveUpdate.new(installed_root, bundle_root) if _program_mode else RecordPolicy.new(CompleteRecordSaveUpdate.new(installed_root, bundle_root), _record_old_hash))
+
+
+func _host(saves: SaveRepository, installed_root: String) -> SaveHostController:
+	# Every policy reads the scratch installation; a default would consult the player's real user://packages.
+	return SaveHostController.new(saves, HalfTruthMediaSaveUpdate.new(installed_root.path_join("scenario-half-truth").path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")), ShopSaveUpdate.new(installed_root), MarkerSaveUpdate.new(installed_root), PaymentSaveUpdate.new(installed_root), ProgramSaveUpdate.new(installed_root), CompressionSaveUpdate.new(installed_root), CompleteRecordSaveUpdate.new(installed_root))
 
 
 func _save_path(campaign: String, slot: String) -> String:

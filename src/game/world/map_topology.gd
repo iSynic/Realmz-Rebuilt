@@ -345,7 +345,7 @@ func _decode_compact_cell(index: int, coordinate: Vector2i) -> MapCell:
 			&"" if feature_row[2] == null else StringName(feature_row[2]),
 			&"" if feature_row[3] == null else StringName(feature_row[3])
 		))
-	return MapCell.new(
+	var cell := MapCell.new(
 		"%s:cell:%d,%d" % [_compact_map_id, coordinate.x, coordinate.y],
 		coordinate,
 		String(row[0]),
@@ -370,6 +370,9 @@ func _decode_compact_cell(index: int, coordinate: Vector2i) -> MapCell:
 		int(row[12]),
 		bool(flags & 256)
 	)
+	cell.native_tile_supplied = not _classic_tile_values.is_empty()
+	cell.native_tile_value = _classic_tile_values[index] if cell.native_tile_supplied else 0
+	return cell
 
 
 func find_path(origin: Vector2i, destination: Vector2i, world_state: WorldState, level_type: StringName) -> Array[Vector2i]:

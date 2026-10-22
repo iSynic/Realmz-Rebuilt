@@ -116,7 +116,6 @@ func _run() -> void:
 		var suite: RealmzTestCase = suite_script.new()
 		if requested_cases.is_empty():
 			await suite.run()
-			if suite_script.resource_path.ends_with("test_classic_ui_system.gd"): await suite.call("_test_application_quit_composition")
 		else:
 			var selected_methods := _selected_test_methods(suite, requested_cases)
 			var shared_arguments: Array = []
@@ -142,6 +141,10 @@ func _run() -> void:
 		for failure: String in suite.failures:
 			failure_count += 1
 			printerr("FAIL %s: %s" % [suite_script.resource_path, failure])
+	if requested_fragments.is_empty() and requested_cases.is_empty():
+		for method_name: String in _unreferenced_test_methods(selected_suites):
+			failure_count += 1
+			printerr("FAIL %s is defined but no suite run() calls it, so complete runs skip it." % method_name)
 	if failure_count == 0:
 		print("PASS: %d assertions across %d suites" % [assertion_count, selected_suites.size()])
 		quit(0)
@@ -166,3 +169,21 @@ func _selected_test_methods(suite: RealmzTestCase, fragments: Array[String]) -> 
 			if String(method["name"]).contains(fragment) and not selected.has(method):
 				selected.append(method)
 	return selected
+
+
+func _unreferenced_test_methods(suite_scripts: Array[Script]) -> Array[String]:
+	var sources: Dictionary = {}
+	var names: Dictionary = {}
+	for suite_script: Script in suite_scripts:
+		var script := suite_script
+		while script != null:
+			sources[script.resource_path] = script.source_code
+			script = script.get_base_script()
+		for method: Dictionary in _test_methods(suite_script.new()):
+			names[String(method["name"])] = true
+	var combined := "\n".join(PackedStringArray(sources.values()))
+	var unreferenced: Array[String] = []
+	for method_name: String in names:
+		if combined.count(method_name + "(") < 2:
+			unreferenced.append(method_name)
+	return unreferenced

@@ -10,10 +10,6 @@ signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
 signal combat_spellbook_back_requested
 signal combat_bandage_target_selected(character_id: String)
 
-const CLASSIC_PORTRAIT_STAGE_SIZE := Vector2i(50, 50)
-const CLASSIC_DEATH_HEALTH := -10
-const CLASSIC_PORTRAIT_SHADE_CICN := 2019
-const CLASSIC_DEATH_MARKER_CICN := 2015
 const ROSTER_CONDITION_ICONS := preload("res://src/ui/shell/roster_condition_icons.gd")
 
 @export var member_row_scene: PackedScene
@@ -27,7 +23,7 @@ const ROSTER_CONDITION_ICONS := preload("res://src/ui/shell/roster_condition_ico
 @onready var _selection_cursor_label: Label = %CharacterSelectionCursorCount
 
 var _media: ClassicMediaCatalog
-var _portrait_composites: Dictionary = {}
+var _portrait_presenter := PartyRosterPortraits.new()
 var _condition_icon_textures: Dictionary = {}
 var _selected_character_id: String = ""
 var _current_view: GameView
@@ -63,7 +59,7 @@ func _process(_delta: float) -> void:
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
-	_portrait_composites.clear()
+	_portrait_presenter.set_media_catalog(media)
 	_condition_icon_textures.clear()
 
 
@@ -77,8 +73,8 @@ func present(view: GameView, selected_character_id: String = "") -> void:
 			var next: CharacterView = view.party_members[index]
 			var record := _party_list.get_node("Position%d/Member" % (index + 1)) as PartyRosterMemberRow
 			var row := record.character_button()
-			var previous_shade := 2 if previous.current_health <= CLASSIC_DEATH_HEALTH else 1 if previous.current_health < 1 else 0
-			var next_shade := 2 if next.current_health <= CLASSIC_DEATH_HEALTH else 1 if next.current_health < 1 else 0
+			var previous_shade := _portrait_presenter.health_shade(previous.current_health)
+			var next_shade := _portrait_presenter.health_shade(next.current_health)
 			if previous.id == next.id and previous.portrait_id == next.portrait_id and previous_shade == next_shade and row.has_meta("effect_tween"):
 				retained_effects[next.id] = row.get_meta("native_portrait", row.icon)
 	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -142,7 +138,7 @@ func present_combat_spellbook(actor_id: String, options: Array[InteractionReques
 	_spellbook.present(actor_id, options, _current_view, size.x)
 
 
-func present_playback_health(health_by_id: Dictionary) -> void:
+func present_playback_health(health_by_id: Dictionary, retain_active_effects: bool = false) -> void:
 	if _current_view == null or _combat_spellbook_active:
 		return
 	for character: CharacterView in _current_view.party_members:
@@ -150,8 +146,16 @@ func present_playback_health(health_by_id: Dictionary) -> void:
 		if _playback_health.get(character.id) == health: continue
 		var row := _character_row(character.id)
 		if row != null:
+			var previous_health := int(_playback_health.get(character.id, character.current_health))
 			_playback_health[character.id] = health
 			_bind_character_text(row, character, health)
+			if _portrait_presenter.health_shade(previous_health) != _portrait_presenter.health_shade(health) and not (retain_active_effects and row.has_meta("effect_tween")):
+				finish_character_effect(character.id)
+				var portrait := _portrait_presenter.roster_portrait_texture(character, health)
+				row.set_meta("native_portrait", portrait)
+				var profile := UiSizing.profile_for(row)
+				if profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(profile)
+				else: row.icon = portrait
 
 
 func close_combat_spellbook() -> void:
@@ -194,7 +198,7 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row.set_meta("base_tooltip", base_tooltip)
 	row.set_meta("condition_values", character.condition_values.duplicate())
 	_bind_character_text(row, character)
-	var portrait := _roster_portrait_texture(character)
+	var portrait := _portrait_presenter.roster_portrait_texture(character)
 	row.set_meta("native_portrait", portrait)
 	if portrait != null:
 		row.icon = portrait
@@ -225,7 +229,7 @@ func _bind_character_text(row: Button, character: CharacterView, current_health:
 		current_health = character.current_health
 	var state_text := _condition_summary(character.condition_values)
 	if state_text.is_empty():
-		state_text = "READY" if character.current_health > 0 else "DOWN"
+		state_text = "READY" if current_health > 0 else "DOWN"
 	var record := row.get_meta("roster_record") as PartyRosterMemberRow
 	if record != null:
 		record.bind_character(character, current_health, state_text)
@@ -456,6 +460,13 @@ func cancel_character_effects() -> void:
 			_set_character_effect_frame(row, row.get_meta("effect_base_portrait") as Texture2D, 0)
 
 
+func finish_character_effect(character_id: String) -> void:
+	var row := _character_row(character_id)
+	if row != null and row.has_meta("effect_tween"):
+		(row.get_meta("effect_tween") as Tween).kill()
+		_set_character_effect_frame(row, row.get_meta("effect_base_portrait") as Texture2D, 0)
+
+
 func _character_row(character_id: String) -> Button:
 	for node: Node in _party_list.find_children("*", "Button", true, false):
 		if node.has_meta("character_id") and String(node.get_meta("character_id")) == character_id:
@@ -474,11 +485,7 @@ func _set_character_effect_frame(row: Button, base_icon: Texture2D, resource_id:
 		if restored_profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(restored_profile)
 		else: row.icon = base_icon
 		return
-	var image := Image.create(CLASSIC_PORTRAIT_STAGE_SIZE.x, CLASSIC_PORTRAIT_STAGE_SIZE.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color.TRANSPARENT)
-	_blend_centered(image, base_icon)
-	_blend_centered(image, _resource_texture(resource_id))
-	row.set_meta("native_portrait", ImageTexture.create_from_image(image))
+	row.set_meta("native_portrait", _portrait_presenter.effect_portrait_texture(base_icon, resource_id))
 	var profile := UiSizing.profile_for(row)
 	if profile != null: (row.get_parent() as PartyRosterMemberRow).apply_ui_sizing(profile)
 	else: row.icon = row.get_meta("native_portrait") as Texture2D
@@ -489,55 +496,6 @@ func _add_empty(text: String) -> void:
 	_position_index += 1
 	row.text = text
 	row.show()
-
-
-func _portrait_texture(asset_id: String) -> Texture2D:
-	if _media == null or asset_id.is_empty():
-		return null
-	var asset := _media.asset_by_id(asset_id)
-	if asset == null or not asset.is_picture():
-		return null
-	return _media.image_texture(asset)
-
-
-func _roster_portrait_texture(character: CharacterView) -> Texture2D:
-	var state := 2 if character.current_health <= CLASSIC_DEATH_HEALTH else 1 if character.current_health < 1 else 0
-	var cache_key := "%s|%d" % [character.portrait_id, state]
-	if _portrait_composites.has(cache_key):
-		return _portrait_composites[cache_key] as Texture2D
-	var portrait := _portrait_texture(character.portrait_id)
-	if portrait == null and state == 0:
-		return null
-	var image := Image.create(CLASSIC_PORTRAIT_STAGE_SIZE.x, CLASSIC_PORTRAIT_STAGE_SIZE.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color.TRANSPARENT)
-	_blend_centered(image, portrait)
-	if state > 0:
-		_blend_centered(image, _resource_texture(CLASSIC_PORTRAIT_SHADE_CICN))
-	if state == 2:
-		_blend_centered(image, _resource_texture(CLASSIC_DEATH_MARKER_CICN))
-	var composite := ImageTexture.create_from_image(image)
-	_portrait_composites[cache_key] = composite
-	return composite
-
-
-func _resource_texture(resource_id: int) -> Texture2D:
-	if _media == null:
-		return null
-	var asset := _media.asset_by_resource("cicn", resource_id)
-	return _media.image_texture(asset) if asset != null and asset.is_picture() else null
-
-
-static func _blend_centered(destination: Image, texture: Texture2D) -> void:
-	if texture == null:
-		return
-	var source := texture.get_image()
-	if source == null or source.is_empty():
-		return
-	var width := mini(source.get_width(), destination.get_width())
-	var height := mini(source.get_height(), destination.get_height())
-	var source_position := Vector2i((source.get_width() - width) / 2, (source.get_height() - height) / 2)
-	var destination_position := Vector2i((destination.get_width() - width) / 2, (destination.get_height() - height) / 2)
-	destination.blend_rect(source, Rect2i(source_position, Vector2i(width, height)), destination_position)
 
 
 func _condition_summary(values: Array[int]) -> String:

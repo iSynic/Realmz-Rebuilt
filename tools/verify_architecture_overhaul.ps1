@@ -80,6 +80,7 @@ $oversizedFiles = 0
 $oversizedFunctions = 0
 $oversizedClasses = 0
 $crossObjectPrivateCalls = 0
+$crossObjectPrivateFieldAccesses = 0
 $genericPreloadAliases = 0
 
 foreach ($file in $productionFiles) {
@@ -102,6 +103,26 @@ foreach ($file in $productionFiles) {
         if ($match.Groups[1].Value -ne "self") {
             $crossObjectPrivateCalls++
         }
+    }
+    # Field reads and writes count too. Access through a variable typed as the
+    # file's own class_name (factories, codecs) is same-class and allowed.
+    $className = [regex]::Match($content, '(?m)^class_name (\w+)').Groups[1].Value
+    $declaredTypes = @{}
+    foreach ($match in [regex]::Matches($content, '\bvar (\w+)\s*(?::\s*(\w+))?\s*:?=\s*(\w+)\.(?:new|from_data)\(')) {
+        $declaredTypes[$match.Groups[1].Value] = $match.Groups[3].Value
+    }
+    # Typed variables, parameters, loop variables and `as` casts all declare a type.
+    foreach ($match in [regex]::Matches($content, '(?:\bvar|\bfor|[(,])\s*(\w+)\s*:\s*(\w+)')) {
+        if (-not $declaredTypes.ContainsKey($match.Groups[1].Value)) { $declaredTypes[$match.Groups[1].Value] = $match.Groups[2].Value }
+    }
+    foreach ($match in [regex]::Matches($content, '(?m)\bvar (\w+)\s*:=[^\r\n]*\bas (\w+)\s*$')) {
+        if (-not $declaredTypes.ContainsKey($match.Groups[1].Value)) { $declaredTypes[$match.Groups[1].Value] = $match.Groups[2].Value }
+    }
+    foreach ($match in [regex]::Matches($content, '\b([A-Za-z_][A-Za-z0-9_]*)\._[A-Za-z][A-Za-z0-9_]*\b(?!\s*\()')) {
+        $owner = $match.Groups[1].Value
+        if ($owner -eq "self") { continue }
+        if ($className -and ($owner -eq $className -or $declaredTypes[$owner] -eq $className)) { continue }
+        $crossObjectPrivateFieldAccesses++
     }
     $genericPreloadAliases += [regex]::Matches(
         $content,
@@ -286,6 +307,7 @@ Add-MigrationCeilingFailure "oversizedProductionFiles" $oversizedFiles
 Add-MigrationCeilingFailure "oversizedFunctions" $oversizedFunctions
 Add-MigrationCeilingFailure "oversizedTopLevelClasses" $oversizedClasses
 Add-MigrationCeilingFailure "crossObjectPrivateCalls" $crossObjectPrivateCalls
+Add-MigrationCeilingFailure "crossObjectPrivateFieldAccesses" $crossObjectPrivateFieldAccesses
 Add-MigrationCeilingFailure "genericPreloadAliases" $genericPreloadAliases
 Add-MigrationCeilingFailure "majorSurfacesWithoutScene" $surfacesWithoutScene
 Add-MigrationCeilingFailure "majorSurfacesWithoutPreview" $surfacesWithoutPreview
@@ -294,7 +316,7 @@ Add-MigrationCeilingFailure "missingFeatureDirectories" $missingFeatureDirectori
 Add-MigrationCeilingFailure "unexpectedFeatureDirectories" $unexpectedFeatureDirectories
 Add-MigrationCeilingFailure "misplacedRootProductionFiles" $misplacedRootProductionFiles
 
-Write-Host "Architecture overhaul: files=$oversizedFiles/$($budget.migrationCeilings.oversizedProductionFiles)->0, functions=$oversizedFunctions/$($budget.migrationCeilings.oversizedFunctions)->0, classes=$oversizedClasses/$($budget.migrationCeilings.oversizedTopLevelClasses)->0, cross-private=$crossObjectPrivateCalls/$($budget.migrationCeilings.crossObjectPrivateCalls)->0, generic-aliases=$genericPreloadAliases/$($budget.migrationCeilings.genericPreloadAliases)->0, missing-scenes=$surfacesWithoutScene/$($budget.migrationCeilings.majorSurfacesWithoutScene)->0, missing-previews=$surfacesWithoutPreview/$($budget.migrationCeilings.majorSurfacesWithoutPreview)->0, shell-markers=$shellModeMarkerScenes/$($budget.migrationCeilings.shellModeMarkerScenes)->0, missing-feature-dirs=$missingFeatureDirectories/$($budget.migrationCeilings.missingFeatureDirectories)->0, unexpected-feature-dirs=$unexpectedFeatureDirectories/$($budget.migrationCeilings.unexpectedFeatureDirectories)->0, misplaced-root-files=$misplacedRootProductionFiles/$($budget.migrationCeilings.misplacedRootProductionFiles)->0."
+Write-Host "Architecture overhaul: files=$oversizedFiles/$($budget.migrationCeilings.oversizedProductionFiles)->0, functions=$oversizedFunctions/$($budget.migrationCeilings.oversizedFunctions)->0, classes=$oversizedClasses/$($budget.migrationCeilings.oversizedTopLevelClasses)->0, cross-private=$crossObjectPrivateCalls/$($budget.migrationCeilings.crossObjectPrivateCalls)->0, cross-private-fields=$crossObjectPrivateFieldAccesses/$($budget.migrationCeilings.crossObjectPrivateFieldAccesses)->0, generic-aliases=$genericPreloadAliases/$($budget.migrationCeilings.genericPreloadAliases)->0, missing-scenes=$surfacesWithoutScene/$($budget.migrationCeilings.majorSurfacesWithoutScene)->0, missing-previews=$surfacesWithoutPreview/$($budget.migrationCeilings.majorSurfacesWithoutPreview)->0, shell-markers=$shellModeMarkerScenes/$($budget.migrationCeilings.shellModeMarkerScenes)->0, missing-feature-dirs=$missingFeatureDirectories/$($budget.migrationCeilings.missingFeatureDirectories)->0, unexpected-feature-dirs=$unexpectedFeatureDirectories/$($budget.migrationCeilings.unexpectedFeatureDirectories)->0, misplaced-root-files=$misplacedRootProductionFiles/$($budget.migrationCeilings.misplacedRootProductionFiles)->0."
 if ($failures.Count -gt 0) {
     foreach ($failure in $failures) { Write-Error $failure }
     exit 1

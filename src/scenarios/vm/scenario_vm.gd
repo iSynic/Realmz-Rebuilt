@@ -19,11 +19,13 @@ var _pending_request: InteractionRequest
 var _pending_continuation: ScenarioVmPendingContinuation
 var _trace: Array[Dictionary] = []
 var _request_counter: int = 0
-var _step_count: int = 0
+var _native_begun: bool = false
 var _execution_step_limit: int = EXECUTION_STEP_LIMIT
 var _halted: bool = true
 var _last_outcome: Variant
 var _debug_program: ScenarioProgramDefinition
+var _classic_record_id: String = ""
+var _native := ScenarioNativeInvocation.new()
 var diagnostics := VmDiagnostics.new()
 
 
@@ -35,15 +37,17 @@ func configure(definition: ScenarioDefinition, execution_step_limit: int = EXECU
 
 
 func reset() -> void:
+	_native = ScenarioNativeInvocation.new()
 	_frames.clear()
 	_pending_request = null
 	_pending_continuation = null
 	_trace.clear()
 	_request_counter = 0
-	_step_count = 0
+	_native_begun = false
 	_halted = true
 	_last_outcome = null
 	_debug_program = null
+	_classic_record_id = ""
 	diagnostics.clear()
 
 
@@ -53,12 +57,20 @@ func start_program(program_id: String, context: ScenarioExecutionContext = null)
 	if _pending_request != null or not _frames.is_empty():
 		return ScenarioVmResult.failed(&"scenario_already_running", "A scenario program is already active.")
 	if _definition.program_by_id(program_id) == null:
+		if _definition.native_program_is_unavailable(program_id):
+			_halted = true
+			_native_begun = false
+			_last_outcome = null
+			diagnostics.clear()
+			_append_trace({"event": "classic-unavailable-entry", "programId": program_id})
+			return ScenarioVmResult.completed()
 		return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program '%s' is unavailable." % program_id)
 	var frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
+	_native.start(context)
 	frame.set_context(ScenarioExecutionContext.empty() if context == null else context)
 	_frames.append(frame)
 	_halted = false
-	_step_count = 0
+	_native_begun = false
 	_last_outcome = null
 	_append_trace({"event": "start", "programId": program_id})
 	return ScenarioVmResult.completed()
@@ -72,22 +84,34 @@ func start_debug_instruction(instruction: ClassicActionDefinition, context: Scen
 	frame.set_context(ScenarioExecutionContext.empty() if context == null else context)
 	_frames.append(frame)
 	_halted = false
-	_step_count = 0
+	_native_begun = false
 	_last_outcome = null
 	_append_trace({"event": "debug-start", "opcode": instruction.opcode, "id": instruction.operand_id})
 	return ScenarioVmResult.completed()
 
 
 func run(runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
-	if _halted:
+	_native.bind(runtime_api)
+	var budget := ScenarioStepBudget.shared(runtime_api, _execution_step_limit)
+	if not _native_begun and not _halted and _native.context != null:
+		runtime_api.native_action_points.begin()
+	if _halted and not _native.header_pending():
 		return ScenarioVmResult.completed([], _last_outcome)
 	if _pending_request != null:
 		return ScenarioVmResult.failed(&"interaction_pending", "The Scenario VM is waiting for interaction '%s'." % _pending_request.request_id)
 	var events: Array[DomainEvent] = []
-	while not _frames.is_empty():
-		_step_count += 1
-		if _step_count > _execution_step_limit:
+	while not _frames.is_empty() or _native.header_pending():
+		_native_begun = true
+		if not budget.consume():
 			return _fail(&"scenario_step_limit", "Scenario execution exceeded %s steps." % _execution_step_limit, events)
+		if _frames.is_empty():
+			var completion := _native.complete(runtime_api)
+			events.append_array(completion.events)
+			if completion.state == ScenarioRuntimeOperationResult.State.FAILED: return _fail(completion.error_code, completion.error_message, events)
+			if completion.directive != null:
+				var replaced := _replace_native_record(completion.directive)
+				if replaced.state == ScenarioVmResult.State.FAILED: return _fail(replaced.error_code, replaced.error_message, events)
+			continue
 		var frame: ScenarioFrame = _frames.back()
 		var result: ScenarioVmResult
 		match frame.kind:
@@ -107,6 +131,8 @@ func run(runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 
 
 func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	_native.bind(runtime_api)
+	var _run_budget := ScenarioStepBudget.shared(runtime_api, _execution_step_limit)
 	if _pending_request == null:
 		return ScenarioVmResult.failed(&"no_interaction_pending", "The Scenario VM has no interaction to resume.")
 	if response == null or response.request_id != _pending_request.request_id:
@@ -141,6 +167,7 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 			return ScenarioVmResult.failed(operation.error_code, operation.error_message)
 		_pending_request = null
 		_pending_continuation = null
+		events.append_array(operation.events)
 		return _fail(operation.error_code, operation.error_message, events)
 	_pending_request = null
 	_pending_continuation = null
@@ -156,7 +183,7 @@ func complete_debug_victory(runtime_api: RealmzRuntimeApi, events: Array[DomainE
 		return ScenarioVmResult.failed(&"invalid_vm_continuation", "Debug victory cannot bypass a nested combat continuation.")
 	var operation := runtime_api.complete_debug_victory(continuation.runtime, _next_request_id(), events)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+		return ScenarioVmResult.failed(operation.error_code, operation.error_message, operation.events)
 	_append_trace({"event": "debug-victory", "requestId": _pending_request.request_id, "kind": String(continuation.kind)})
 	_pending_request = null
 	_pending_continuation = null
@@ -192,6 +219,8 @@ func _complete_pending_operation(continuation: ScenarioVmPendingContinuation, op
 
 
 func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperationResult, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	_native.bind(runtime_api)
+	var _run_budget := ScenarioStepBudget.shared(runtime_api, _execution_step_limit)
 	if _halted or _frames.is_empty() or _pending_request != null:
 		return ScenarioVmResult.failed(&"invalid_vm_handoff", "The suspended Scenario VM is unavailable.")
 	if handoff == null or operation == null or operation.state == ScenarioRuntimeOperationResult.State.FAILED:
@@ -202,6 +231,9 @@ func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperat
 		if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 			_pending_request = operation.interaction
 			_pending_request.request_id = _next_request_id()
+			var nested := operation.continuation.nested_vm() if operation.continuation != null else null
+			if nested != null and not nested.rekey_pending_request(_pending_request.request_id):
+				return ScenarioVmResult.failed(&"invalid_nested_request", "The nested timed interaction cannot adopt its resumed request identity.")
 			_pending_continuation = ScenarioVmPendingContinuation.classic(operation.continuation)
 			_append_trace({"event": "yield", "requestId": _pending_request.request_id, "kind": String(_pending_request.kind)})
 			return ScenarioVmResult.waiting(operation.interaction, operation.events)
@@ -240,48 +272,73 @@ func snapshot() -> ScenarioVmSnapshot:
 	result.pending_continuation = _pending_continuation.copy() if _pending_continuation != null else null
 	result.trace = _trace.duplicate(true)
 	result.request_counter = _request_counter
-	result.step_count = _step_count
+	result.native_invocation_begun = _native_begun
 	result.halted = _halted
 	result.last_outcome = _last_outcome.duplicate(true) if _last_outcome is Array or _last_outcome is Dictionary else _last_outcome
+	result.classic_record_id = _classic_record_id
+	_native.write_snapshot(result)
 	return result
 
 
 func restore(value: Variant) -> bool:
 	var saved := value as ScenarioVmSnapshot
-	if saved == null or _definition == null or saved.frames.size() > CLASSIC_CALL_LIMIT + ACTION_CALL_LIMIT + 1:
-		return false
-	var action_depth := 0
-	var classic_depth := 0
-	for frame: ScenarioFrame in saved.frames:
-		if frame.kind == ScenarioFrame.PROGRAM:
-			var program := _definition.program_by_id(frame.definition_id)
-			if program == null or frame.cursor > program.instruction_count():
-				return false
-			if frame.counts_as_classic_call:
-				classic_depth += 1
-		elif frame.kind == ScenarioFrame.ACTION:
-			var action := _definition.action_by_id(frame.definition_id)
-			if action == null or frame.cursor > action.program.instruction_count():
-				return false
-			action_depth += 1
-		else:
-			var context := frame.context()
-			if frame.kind != ScenarioFrame.ENCOUNTER or frame.cursor not in [0, 1] or context.encounter_kind not in [&"simple", &"complex"] or context.encounter_id < 0 or frame.definition_id != "%s:%d" % [context.encounter_kind, context.encounter_id]:
-				return false
-			if frame.counts_as_classic_call: classic_depth += 1
-	if action_depth > ACTION_CALL_LIMIT or classic_depth > CLASSIC_CALL_LIMIT:
-		return false
+	if not ScenarioVmRestoreRules.frames_are_valid(_definition, saved, CLASSIC_CALL_LIMIT, ACTION_CALL_LIMIT): return false
 	_frames.clear()
 	for frame: ScenarioFrame in saved.frames:
-		_frames.append(ScenarioFrame.from_data(frame.to_data()))
+		var restored := ScenarioFrame.from_data(frame.to_data())
+		if saved.legacy_values and restored.kind == ScenarioFrame.ACTION:
+			restored.coerce_declared_parameters(_definition.action_by_id(restored.definition_id))
+		_frames.append(restored)
 	_pending_request = InteractionRequest.from_data(saved.pending_request.to_data()) if saved.pending_request != null else null
 	_pending_continuation = saved.pending_continuation.copy() if saved.pending_continuation != null else null
 	_trace = saved.trace.duplicate(true)
 	_request_counter = saved.request_counter
-	_step_count = saved.step_count
+	_native_begun = saved.native_invocation_begun
 	_halted = saved.halted
 	_last_outcome = saved.last_outcome.duplicate(true) if saved.last_outcome is Array or saved.last_outcome is Dictionary else saved.last_outcome
+	_classic_record_id = saved.classic_record_id
+	_native.restore(saved)
+	if _classic_record_id.is_empty():
+		for frame: ScenarioFrame in _frames:
+			if frame.kind == ScenarioFrame.PROGRAM: _classic_record_id = frame.definition_id
 	return true
+
+
+func classic_record_id() -> String:
+	return _classic_record_id
+
+
+func native_header_suppressed() -> bool:
+	return _native.secondary_door or _native.returned_early
+
+
+func native_recheck_suppressed() -> bool:
+	return _native.no_second_door
+
+
+func _replace_native_record(directive: ScenarioVmDirective) -> ScenarioVmResult:
+	if directive.kind == ScenarioVmDirective.FINISH_TIMELINE:
+		_frames.clear()
+		_halted = true
+		return ScenarioVmResult.completed()
+	var program := _definition.program_by_id(directive.program_id)
+	if directive.kind not in [ScenarioVmDirective.CLOCK_TIMER_RETURN, ScenarioVmDirective.RECHECK_PROGRAM] or program == null: return ScenarioVmResult.failed(&"invalid_timed_recheck", "The native invocation's selected Action Point program is unavailable.")
+	_classic_record_id = program.id
+	var previous: ScenarioFrame = _frames.back() if not _frames.is_empty() else null
+	var frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program.id, directive.entry_cursor)
+	frame.set_context(directive.context)
+	if previous == null:
+		_frames.append(frame)
+	else:
+		frame.counts_as_classic_call = previous.counts_as_classic_call
+		_frames[_frames.size() - 1] = frame
+	if _native.returned_early: _frames.clear()
+	_halted = _frames.is_empty()
+	return ScenarioVmResult.completed()
+
+
+func returned_early() -> bool:
+	return _native.returned_early
 
 
 func trace() -> Array[Dictionary]:
@@ -300,18 +357,6 @@ static func _is_reward_continuation(continuation: ScenarioVmPendingContinuation)
 	return continuation != null and continuation.runtime != null and continuation.runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD
 
 
-static func handoff_is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapshot) -> bool:
-	if saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null or handoff == null or handoff.runtime == null:
-		return false
-	match handoff.kind:
-		ScenarioVmHandoff.CLASSIC_OPERATION:
-			return saved.frames.back().kind == ScenarioFrame.PROGRAM
-		ScenarioVmHandoff.SAFE_OPERATION:
-			var frame_index: int = handoff.frame_index
-			return frame_index >= 0 and frame_index < saved.frames.size() and saved.frames[frame_index].kind == ScenarioFrame.ACTION
-	return false
-
-
 func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	var resolution_failure := _resolve_program_frame(frame, runtime_api)
 	if resolution_failure != null:
@@ -319,6 +364,7 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 	var program := _debug_program if frame.definition_id == DEBUG_PROGRAM_ID else _definition.program_by_id(frame.definition_id)
 	if program == null:
 		return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program '%s' disappeared during execution." % frame.definition_id)
+	_classic_record_id = program.id
 	if frame.cursor >= program.instruction_count():
 		_return_from_frame(null)
 		return ScenarioVmResult.completed()
@@ -330,6 +376,10 @@ func _resolve_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		var original_program_id := frame.definition_id
 		var resolved_program_id := runtime_api.resolve_program_id(original_program_id)
 		if _definition.program_by_id(resolved_program_id) == null:
+			if _definition.native_program_is_unavailable(resolved_program_id):
+				_append_trace({"event": "classic-unavailable-program", "programId": resolved_program_id, "sourceProgramId": original_program_id})
+				_return_from_frame(null)
+				return ScenarioVmResult.completed()
 			return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program override for '%s' references unavailable program '%s'." % [original_program_id, resolved_program_id])
 		var resolved_context := frame.context()
 		resolved_context.mark_program_resolved(original_program_id, resolved_program_id)
@@ -347,7 +397,7 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 		if not arguments_result["ok"]:
 			return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
 		frame.cursor += 1
-		return _push_action(action_call.action_id, arguments_result["value"], action_call.result_target, _calling_context(frame, program), frame.context(), true)
+		return _push_action(action_call.action_id, arguments_result["value"], action_call.result_target, ScenarioVmActionRules.calling_context(frame, program), frame.context(), true)
 	if not instruction is ClassicActionDefinition:
 		return ScenarioVmResult.failed(&"unknown_scenario_instruction", "Scenario program '%s' contains an unknown instruction." % program.id)
 	var action: ClassicActionDefinition = instruction
@@ -357,21 +407,18 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 	_append_trace({"event": "execute-classic", "programId": program.id, "cursor": frame.cursor, "slot": action.slot, "rawOpcode": action.raw_opcode, "opcode": action.opcode, "id": action.operand_id})
 	match action.opcode:
 		39:
-			var target_id := "xap:%d" % action.operand_id
-			if _definition.program_by_id(target_id) == null:
-				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic opcode 39 references unavailable XAP %d." % action.operand_id)
-			var replacement := ScenarioFrame.new(ScenarioFrame.PROGRAM, target_id)
-			replacement.counts_as_classic_call = frame.counts_as_classic_call
-			var transfer_context := frame.context()
-			transfer_context.mark_program_transfer(program.id, target_id)
-			replacement.set_context(transfer_context)
-			_frames[_frames.size() - 1] = replacement
-			_append_trace({"event": "classic-transfer", "programId": target_id})
-			diagnostics.clear_instruction()
-			return ScenarioVmResult.completed()
+			var result := _apply_classic_transition(ScenarioClassicControlFlow.replace_xap(_definition, _frames, frame, action.operand_id, action.slot))
+			if result.state != ScenarioVmResult.State.FAILED:
+				diagnostics.clear_instruction()
+			return result
 		111:
 			_append_trace({"event": "classic-return", "programId": program.id})
-			_return_from_frame(null)
+			var caller_index := ScenarioVmRestoreRules.classic_caller_index(_frames)
+			if caller_index < 0:
+				frame.cursor += 1
+			else:
+				_frames.resize(caller_index)
+				_native.restore_return_header(_frames.back())
 			diagnostics.clear_instruction()
 			return ScenarioVmResult.completed()
 		112:
@@ -381,9 +428,10 @@ func _execute_program_instruction(frame: ScenarioFrame, program: ScenarioProgram
 			return ScenarioVmResult.completed()
 	var request_id := _next_request_id()
 	var operation := runtime_api.execute_classic(action, request_id, frame.context())
+	operation = _native.after_operation(action, operation, frame.context(), runtime_api)
 	frame.cursor += 1
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+		return ScenarioVmResult.failed(operation.error_code, operation.error_message, operation.events)
 	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 		_pending_request = operation.interaction
 		_pending_continuation = ScenarioVmPendingContinuation.classic(operation.continuation)
@@ -408,7 +456,13 @@ func _execute_unrecognized_classic(frame: ScenarioFrame, program: ScenarioProgra
 
 
 func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context: ScenarioExecutionContext = null, runtime_api: RealmzRuntimeApi = null) -> ScenarioVmResult:
+	if directive != null and directive.kind == ScenarioVmDirective.RECHECK_PROGRAM: return _replace_native_record(directive)
+	if directive != null and directive.gosub and not _frames.is_empty(): _native.capture_return_header(_frames.back())
 	var transition := ScenarioClassicControlFlow.apply(directive, _definition, _frames, inherited_context, runtime_api != null)
+	return _apply_classic_transition(transition)
+
+
+func _apply_classic_transition(transition: ScenarioDirectiveTransition) -> ScenarioVmResult:
 	if transition.is_failed():
 		return ScenarioVmResult.failed(transition.error_code, transition.error_message)
 	for entry: Dictionary in transition.trace_entries:
@@ -436,7 +490,11 @@ func _execute_encounter_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeAp
 	var request_id := _next_request_id()
 	var operation := runtime_api.request_classic_encounter(context.encounter_kind, context.encounter_id, request_id, context)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+		return ScenarioVmResult.failed(operation.error_code, operation.error_message, operation.events)
+	if operation.state == ScenarioRuntimeOperationResult.State.COMPLETED:
+		frame.cursor = 1
+		var directive_result := _apply_classic_directive(operation.directive, context, runtime_api)
+		return directive_result if directive_result.state == ScenarioVmResult.State.FAILED else ScenarioVmResult.completed(operation.events)
 	if operation.state != ScenarioRuntimeOperationResult.State.WAITING:
 		return ScenarioVmResult.failed(&"invalid_encounter_branch", "Scenario encounter frame did not produce an interaction.")
 	_pending_request = operation.interaction
@@ -469,9 +527,9 @@ func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) 
 			frame.cursor = instruction.target
 			return ScenarioVmResult.completed()
 		SafeInstructionDefinition.Kind.BEGIN_FOR_EACH:
-			return _begin_for_each(frame, instruction, runtime_api)
+			return ScenarioVmActionRules.begin_for_each(frame, instruction, runtime_api)
 		SafeInstructionDefinition.Kind.NEXT_FOR_EACH:
-			return _next_for_each(frame, instruction)
+			return ScenarioVmActionRules.next_for_each(frame, instruction)
 		SafeInstructionDefinition.Kind.RETURN:
 			return _execute_action_return(action, instruction, frame, runtime_api)
 		SafeInstructionDefinition.Kind.HALT:
@@ -490,7 +548,7 @@ func _execute_action_operation(action: ScenarioActionDefinition, frame: Scenario
 	var operation := runtime_api.execute_safe(instruction.capability, arguments_result["value"], request_id)
 	frame.cursor += 1
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+		return ScenarioVmResult.failed(operation.error_code, operation.error_message, operation.events)
 	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 		_pending_request = operation.interaction
 		_pending_continuation = ScenarioVmPendingContinuation.safe(operation.continuation, _frames.size() - 1, instruction.result_target)
@@ -541,7 +599,7 @@ func _execute_action_return(action: ScenarioActionDefinition, instruction: SafeI
 		if not evaluated["ok"]:
 			return ScenarioVmResult.failed(&"safe_expression_failed", evaluated["error"])
 		return_value = evaluated["value"]
-	if not _value_matches_type(return_value, action.return_type):
+	if not SafeExpressionEvaluator.value_matches_type(return_value, action.return_type):
 		return ScenarioVmResult.failed(&"scenario_action_return_type", "Scenario Action '%s' returned a value outside its declared type." % action.id)
 	_return_from_frame(return_value)
 	return ScenarioVmResult.completed()
@@ -570,9 +628,9 @@ func _push_action(action_id: String, arguments: Dictionary, return_target: Strin
 	if arguments.size() != parameters.size():
 		return ScenarioVmResult.failed(&"scenario_action_arguments", "Scenario Action '%s' received the wrong argument set." % action_id)
 	for parameter: ScenarioActionParameter in parameters:
-		if not arguments.has(parameter.name) or not _value_matches_type(arguments[parameter.name], parameter.value_type, parameter.max_length):
+		if not arguments.has(parameter.name) or not SafeExpressionEvaluator.value_matches_type(arguments[parameter.name], parameter.value_type, parameter.max_length):
 			return ScenarioVmResult.failed(&"scenario_action_arguments", "Scenario Action '%s' received an invalid '%s' argument." % [action_id, parameter.name])
-	if _action_call_depth() >= ACTION_CALL_LIMIT:
+	if ScenarioVmActionRules.action_call_depth(_frames) >= ACTION_CALL_LIMIT:
 		return ScenarioVmResult.failed(&"scenario_action_call_limit", "Scenario Action call stack exceeded 32 frames.")
 	var frame := ScenarioFrame.new(ScenarioFrame.ACTION, action_id)
 	frame.return_target = return_target
@@ -581,7 +639,7 @@ func _push_action(action_id: String, arguments: Dictionary, return_target: Strin
 	context.calling_context = calling_context
 	frame.set_context(context)
 	_frames.append(frame)
-	_append_trace({"event": "call-action", "actionId": action_id, "depth": _action_call_depth()})
+	_append_trace({"event": "call-action", "actionId": action_id, "depth": ScenarioVmActionRules.action_call_depth(_frames)})
 	return ScenarioVmResult.completed()
 
 
@@ -594,45 +652,11 @@ func _return_from_frame(value: Variant) -> void:
 		_halted = true
 		_last_outcome = value
 		return
+	if finished.counts_as_classic_call: _native.restore_return_header(_frames.back())
 	if finished.kind == ScenarioFrame.ACTION and not finished.return_target.is_empty():
 		_frames.back().set_local(finished.return_target, value)
 
 
-func _begin_for_each(frame: ScenarioFrame, instruction: SafeInstructionDefinition, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
-	var evaluated := SafeExpressionEvaluator.evaluate(instruction.collection, frame, runtime_api)
-	if not evaluated["ok"] or not evaluated["value"] is Array:
-		return ScenarioVmResult.failed(&"safe_expression_failed", evaluated.get("error", "For-each input is not an array."))
-	var values: Array = evaluated["value"]
-	if values.size() > 256:
-		return ScenarioVmResult.failed(&"safe_array_limit", "For-each input exceeds 256 entries.")
-	if values.is_empty():
-		frame.cursor = instruction.target
-		return ScenarioVmResult.completed()
-	frame.push_iterator({"beginTarget": frame.cursor, "index": 0, "values": values.duplicate(true), "itemName": instruction.item_name, "hadPrevious": frame.has_local(instruction.item_name), "previous": frame.local(instruction.item_name)})
-	frame.set_local(instruction.item_name, values[0])
-	frame.cursor += 1
-	return ScenarioVmResult.completed()
-
-
-func _next_for_each(frame: ScenarioFrame, instruction: SafeInstructionDefinition) -> ScenarioVmResult:
-	if not frame.has_iterator():
-		return ScenarioVmResult.failed(&"invalid_safe_program", "For-each continuation has no active iterator.")
-	var iterator: Dictionary = frame.current_iterator()
-	if iterator.get("beginTarget") != instruction.target:
-		return ScenarioVmResult.failed(&"invalid_safe_program", "For-each continuation target does not match its iterator.")
-	iterator["index"] += 1
-	if iterator["index"] < iterator["values"].size():
-		frame.set_local(iterator["itemName"], iterator["values"][iterator["index"]])
-		frame.update_current_iterator(iterator)
-		frame.cursor = instruction.target + 1
-		return ScenarioVmResult.completed()
-	frame.pop_iterator()
-	if iterator["hadPrevious"]:
-		frame.set_local(iterator["itemName"], iterator["previous"])
-	else:
-		frame.erase_local(iterator["itemName"])
-	frame.cursor += 1
-	return ScenarioVmResult.completed()
 
 
 func _pop_classic_caller_below_top() -> void:
@@ -643,28 +667,7 @@ func _pop_classic_caller_below_top() -> void:
 			return
 
 
-func _action_call_depth() -> int:
-	var count := 0
-	for frame: ScenarioFrame in _frames:
-		if frame.kind == ScenarioFrame.ACTION:
-			count += 1
-	return count
 
-
-func _calling_context(frame: ScenarioFrame, program: ScenarioProgramDefinition) -> StringName:
-	var explicit: Variant = frame.context_value("callingContext")
-	if explicit is String and not explicit.is_empty():
-		return StringName(explicit)
-	match program.owner_kind:
-		&"simple-encounter-result", &"complex-encounter-result":
-			return &"encounter"
-		&"trigger", &"extra-action-point":
-			return &"action"
-	return &""
-
-
-static func _value_matches_type(value: Variant, value_type: StringName, max_length: int = -1) -> bool:
-	return SafeExpressionEvaluator.value_matches_type(value, value_type, max_length)
 
 
 func _next_request_id() -> String:

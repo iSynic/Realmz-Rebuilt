@@ -45,9 +45,12 @@ static func suspended(host_handoff: ScenarioRuntimeHandoff, committed_events: Ar
 	return result
 
 
-static func failed(code: StringName, message: String) -> ScenarioRuntimeOperationResult:
+## `committed_events` are effects already applied before the failure, such as
+## a nested VM's earlier instructions; they publish with the committed failure.
+static func failed(code: StringName, message: String, committed_events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
 	var result := ScenarioRuntimeOperationResult.new()
 	result.state = State.FAILED
+	result.events.assign(committed_events)
 	result.error_code = code
 	result.error_message = message
 	return result

@@ -3,8 +3,11 @@
 class_name MonsterState
 extends RefCounted
 
+const UNKNOWN_CLASSIC_ROUTE_ID := -32_769
+
 var id: String
 var definition_id: String
+var classic_route_id: int = UNKNOWN_CLASSIC_ROUTE_ID
 var name: String
 var hit_dice: int
 var current_health: int
@@ -27,9 +30,10 @@ var _loot_item_ids: Array[String] = []
 var _loot_magic_detected: Array[bool] = []
 
 
-func _init(instance_id: String, source_definition_id: String, display_name: String, health: int, max_health: int, hd: int = 1, dexterity: int = 1, armor_rating: int = 0, magic_resist: int = 0, spell_energy: int = 0, is_traitor: bool = true) -> void:
+func _init(instance_id: String, source_definition_id: String, display_name: String, health: int, max_health: int, hd: int = 1, dexterity: int = 1, armor_rating: int = 0, magic_resist: int = 0, spell_energy: int = 0, is_traitor: bool = true, route_identity: int = UNKNOWN_CLASSIC_ROUTE_ID) -> void:
 	id = instance_id
 	definition_id = source_definition_id
+	classic_route_id = route_identity
 	name = display_name
 	current_health = health
 	maximum_health = max_health
@@ -139,6 +143,8 @@ func to_data() -> Dictionary:
 	}
 	if _saves_initialized:
 		result["saves"] = _saves.duplicate()
+	if classic_route_id != UNKNOWN_CLASSIC_ROUTE_ID:
+		result["classicRouteId"] = classic_route_id
 	return result
 
 
@@ -204,12 +210,17 @@ static func _numeric_fields_from_data(data: Dictionary) -> Variant:
 		return null
 	if result["currentHealth"] < -32_768 or result["currentHealth"] > 32_767:
 		return null
-	if result["maximumSpellPoints"] < 0 or result["maximumSpellPoints"] > 32_767 or result["spellPoints"] < -32_768 or result["spellPoints"] > 32_767:
+	if result["maximumSpellPoints"] < -32_768 or result["maximumSpellPoints"] > 32_767 or result["spellPoints"] < -32_768 or result["spellPoints"] > 32_767:
 		return null
 	return result
 
 
 static func _restore_optional_fields(result: MonsterState, data: Dictionary) -> bool:
+	if data.has("classicRouteId"):
+		var route_id := _integer(data.classicRouteId)
+		if route_id < -32_768 or route_id > 32_767:
+			return false
+		result.classic_route_id = route_id
 	result.icon_id = _integer(data.get("iconId", 0))
 	result.surrender_percent = _integer(data.get("surrenderPercent", 0))
 	if result.icon_id == -100_000 or result.surrender_percent == -100_000:

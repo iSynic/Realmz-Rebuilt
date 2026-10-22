@@ -10,14 +10,15 @@ var rules: RealmzRules
 var scenario_vm: ScenarioVm
 var scenario_action_state: ScenarioActionState
 var runtime_api: RealmzRuntimeApi
+var classic_execution := ClassicExecutionState.new()
 var session_continuation: SessionContinuation
 var battle_return_continuation: SessionContinuation
 var session_interaction: InteractionRequest
 var runtime_fault: SessionRuntimeFault
 var _view_revision: int
-var _exploration_coordinator: RefCounted
-var _scenario_coordinator: RefCounted
-var _responses_coordinator: RefCounted
+var _exploration_coordinator: SessionExplorationCoordinator
+var _scenario_coordinator: SessionScenarioCoordinator
+var _responses_coordinator: SessionResponsesCoordinator
 
 
 func _init(
@@ -40,6 +41,7 @@ func _init(
 	scenario_vm = value_scenario_vm
 	scenario_action_state = value_action_state
 	runtime_api = value_runtime_api
+	if runtime_api != null: classic_execution = runtime_api.classic_execution()
 	session_continuation = value_continuation if value_continuation != null else SessionContinuation.new()
 	battle_return_continuation = value_battle_return if value_battle_return != null else SessionContinuation.new()
 	session_interaction = value_interaction
@@ -51,11 +53,12 @@ func begin(content_library: RealmzContent, initial_seed: int) -> void:
 	state = GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, []), RealmzClock.new())
 	state.world.exploration.mark_visited(content.start_map_id, content.start_coordinate)
 	rng = RealmzRng.new(initial_seed)
-	rules = RealmzRules.new()
+	rules = RealmzRules.new(content.package_schema_version >= 7)
 	scenario_action_state = ScenarioActionState.new()
 	scenario_vm = ScenarioVm.new()
 	scenario_vm.configure(content.scenario)
-	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules)
+	classic_execution = ClassicExecutionState.new()
+	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules, classic_execution)
 	session_continuation.clear()
 	battle_return_continuation.clear()
 	session_interaction = null
@@ -70,7 +73,8 @@ func restore(content_library: RealmzContent, candidate: SessionRestoreCandidate)
 	rules = candidate.rules
 	scenario_action_state = candidate.scenario_action_state
 	scenario_vm = candidate.scenario_vm
-	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules)
+	classic_execution = candidate.classic_execution
+	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules, classic_execution)
 	session_continuation = candidate.continuation
 	battle_return_continuation = candidate.battle_return_continuation
 	session_interaction = candidate.session_interaction
@@ -85,7 +89,8 @@ func reset_scenario_execution() -> void:
 	runtime_fault = null
 	scenario_vm = ScenarioVm.new()
 	scenario_vm.configure(content.scenario)
-	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules)
+	classic_execution = ClassicExecutionState.new()
+	runtime_api = RealmzRuntimeApi.new(content, state, rng, scenario_action_state, rules, classic_execution)
 
 
 func clear() -> void:
@@ -114,7 +119,7 @@ func create_snapshot() -> SessionSnapshot:
 		return null
 	var continuation := null if session_continuation.is_empty() else SessionContinuation.from_data(session_continuation.to_data())
 	var battle_return := null if battle_return_continuation.is_empty() else SessionContinuation.from_data(battle_return_continuation.to_data())
-	return SessionSnapshot.new(content.campaign_id, content.package_hash, content.rules_version, current_revision(), saved_state, rng.snapshot(), saved_vm, saved_actions, continuation, battle_return, saved_interaction)
+	return SessionSnapshot.new(content.campaign_id, content.package_hash, content.rules_version, current_revision(), saved_state, rng.snapshot(), saved_vm, saved_actions, continuation, battle_return, saved_interaction, classic_execution)
 
 
 func current_revision() -> int:
@@ -130,22 +135,22 @@ func set_revision(value: int) -> void:
 	_view_revision = value
 
 
-func bind_coordinators(exploration: RefCounted, scenario: RefCounted, responses: RefCounted) -> void:
+func bind_coordinators(exploration: SessionExplorationCoordinator, scenario: SessionScenarioCoordinator, responses: SessionResponsesCoordinator) -> void:
 	assert(exploration != null and scenario != null and responses != null, "A session operation requires its complete coordinator set")
 	_exploration_coordinator = exploration
 	_scenario_coordinator = scenario
 	_responses_coordinator = responses
 
 
-func exploration() -> RefCounted:
+func exploration() -> SessionExplorationCoordinator:
 	return _exploration_coordinator
 
 
-func scenario() -> RefCounted:
+func scenario() -> SessionScenarioCoordinator:
 	return _scenario_coordinator
 
 
-func responses() -> RefCounted:
+func responses() -> SessionResponsesCoordinator:
 	return _responses_coordinator
 
 

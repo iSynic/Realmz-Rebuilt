@@ -226,7 +226,7 @@ func publish_revision(record: CharacterVaultRecord) -> bool:
 	if verified == null or verified.revision_hash != record.revision_hash:
 		_delete_file(temp_path)
 		return _fail("Character revision verification failed.")
-	var replace_error := _replace_with_backup(temp_path, record_path, backup_path)
+	var replace_error := BackupRotation.replace(temp_path, record_path, backup_path)
 	if not replace_error.is_empty():
 		return _fail("Could not install the character revision: %s" % replace_error)
 	return _write_current_hash(record.character_id, record.revision_hash)
@@ -383,44 +383,10 @@ func _write_current_hash(character_id: String, revision_hash: String) -> bool:
 	file.store_string(CanonicalJson.encode({"characterId": character_id, "revisionHash": revision_hash}))
 	file.flush()
 	file.close()
-	var replace_error := _replace_with_backup(temp_path, index_path, backup_path)
+	var replace_error := BackupRotation.replace(temp_path, index_path, backup_path)
 	if not replace_error.is_empty():
 		return _fail("Could not install the current character revision index: %s" % replace_error)
 	return true
-
-
-func _replace_with_backup(temporary: String, primary: String, backup: String) -> String:
-	var staged_backup := backup + ".rotation"
-	if FileAccess.file_exists(staged_backup) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(staged_backup)):
-		_delete_file(temporary)
-		return "A prior backup rotation is still present; refusing to overwrite it."
-	var staged_previous_backup := false
-	if FileAccess.file_exists(backup):
-		var stage_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(staged_backup))
-		if stage_error != OK:
-			_delete_file(temporary)
-			return "Could not preserve the previous backup (error %d)." % stage_error
-		staged_previous_backup = true
-	var moved_primary := false
-	if FileAccess.file_exists(primary):
-		var backup_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(primary), ProjectSettings.globalize_path(backup))
-		if backup_error != OK:
-			if staged_previous_backup:
-				DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
-			_delete_file(temporary)
-			return "Could not move the current file to its backup (error %d)." % backup_error
-		moved_primary = true
-	var install_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(primary))
-	if install_error != OK:
-		if moved_primary:
-			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(primary))
-		if staged_previous_backup:
-			DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
-		_delete_file(temporary)
-		return "Could not install the verified file (error %d)." % install_error
-	if staged_previous_backup:
-		_delete_file(staged_backup)
-	return ""
 
 
 func _read_current_hash(character_id: String) -> String:

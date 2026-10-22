@@ -44,7 +44,7 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 	if not selection.error_code.is_empty():
 		return SessionCoordinatorResult.failed(selection.error_code, selection.error_message, events)
 	if _context.content.scenario.program_by_id(selection.program_id) == null:
-		if selection.used_default_program:
+		if selection.used_default_program or _context.content.scenario.native_program_is_unavailable(selection.program_id):
 			events.append(DomainEvent.new(&"contextual_encounter_unavailable", {"mapId": map.id, "coordinate": encounter_coordinate, "programId": selection.program_id}))
 			return SessionCoordinatorResult.completed(events)
 		return SessionCoordinatorResult.failed(&"unknown_random_door_program", "Encounter selected unavailable program '%s'." % selection.program_id, events)
@@ -88,7 +88,7 @@ func _select_contextual_encounter(map: MapDefinition, encounter_coordinate: Vect
 
 
 func _start_contextual_encounter_program(map: MapDefinition, encounter_coordinate: Vector2i, selection: ContextualEncounterSelection, events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var execution_context := ScenarioExecutionContext.trigger(&"action", "", map.id, encounter_coordinate, true).set_random_region(selection.region_id)
+	var execution_context := ScenarioExecutionContext.trigger(&"contextual-encounter", "", map.id, encounter_coordinate, true).set_random_region(selection.region_id)
 	var started := _context.scenario_vm.start_program(selection.program_id, execution_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		_context.session_continuation.clear()
@@ -105,28 +105,28 @@ func _start_contextual_encounter_program(map: MapDefinition, encounter_coordinat
 	_context.session_continuation.clear()
 	return SessionCoordinatorResult.completed(events)
 
-func set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:
-	_context.set_continuation(ExplorationContinuationWorkflow.post_time(_context.workflow_context(), map, StringName(resume_kind), direction, check_random, timed_day, timed_coordinate))
+func set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1), timed_scan_pending: bool = false) -> void:
+	_context.set_continuation(ExplorationContinuationWorkflow.post_time(_context.workflow_context(), map, StringName(resume_kind), direction, check_random, timed_day, timed_coordinate, timed_scan_pending))
 
 
 func continue_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var exploration = _context.session_continuation.exploration()
+	var exploration := _context.session_continuation.exploration()
 	if _context.session_continuation.kind != &"post-clock" or exploration == null:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
-	var active_timed_program_id = exploration.active_timed_program_id
+	var active_timed_program_id := exploration.active_timed_program_id
 	if not active_timed_program_id.is_empty() and not rebase_post_time_location():
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_timed_encounter_location", "The completed timed encounter left the party at an unavailable location.", events)
 	if not exploration.active_random_program_id.is_empty():
 		return complete_random_program(events)
-	var map = _context.content.world.map_by_id(exploration.map_id)
+	var map := _context.content.world.map_by_id(exploration.map_id)
 	if map == null or _context.state.party.map_id != map.id or _context.state.party.coordinate != exploration.coordinate:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
 	if not active_timed_program_id.is_empty():
 		exploration.active_timed_program_id = ""
-	var timed_step = continue_timed_encounters(events)
+	var timed_step := continue_timed_encounters(events)
 	if timed_step != null:
 		return timed_step
 	map = _context.content.world.map_by_id(exploration.map_id)
@@ -134,26 +134,28 @@ func continue_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_timed_encounter_location", "Timed encounter continuation references an unavailable map.", events)
 	if exploration.check_random:
-		var random_step = continue_random_regions(map, events)
+		var random_step := continue_random_regions(map, events)
 		if random_step != null:
 			return random_step
 	return complete_post_time(events)
 
 
 func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var exploration = _context.session_continuation.exploration()
+	var exploration := _context.session_continuation.exploration()
 	if _context.session_continuation.kind != &"post-clock" or exploration == null:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
-	var resume_kind = exploration.resume_kind
-	var direction = exploration.direction
+	var resume_kind := exploration.resume_kind
+	var direction := exploration.direction
+	var movement_marker_pending: bool = exploration.movement_marker_pending
 	_context.session_continuation.clear()
 	if resume_kind == &"move":
 		return finish_exploration_movement(ExplorationMovementWorkflow.commit(_context.workflow_context(), direction, events))
 	if resume_kind == &"camp-departure-second":
 		return finish_exploration_movement(ExplorationMovementWorkflow.complete_land_camp_departure(_context.workflow_context(), direction, events))
 	if resume_kind == &"post-move":
-		var map = _context.content.world.map_by_id(_context.state.party.map_id)
+		if not movement_marker_pending: return SessionCoordinatorResult.completed(events)
+		var map := _context.content.world.map_by_id(_context.state.party.map_id)
 		set_post_move_continuation(map, _context.state.party.coordinate)
 		return continue_post_move(events)
 	if resume_kind in [&"attempt-search-completed", &"attempt-search-post-move"]:
@@ -161,10 +163,13 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		if not search_result.ok:
 			return SessionCoordinatorResult.failed(search_result.error_code, search_result.error_message, search_result.events)
 		var final_resume_kind := &"post-move" if resume_kind == &"attempt-search-post-move" else &"completed"
+		movement_marker_pending = movement_marker_pending or _context.events_have(search_result.events, &"secret_discovered")
 		if search_result.check_random:
-			set_post_time_continuation(search_result.map, final_resume_kind, Vector2i.ZERO, true, search_result.timed_day, _context.state.party.coordinate)
+			set_post_time_continuation(search_result.map, final_resume_kind, Vector2i.ZERO, true, search_result.timed_day, _context.state.party.coordinate, search_result.timed_scan_pending)
+			_context.session_continuation.exploration().movement_marker_pending = movement_marker_pending
 			return _context.responses().finish_with_age_updates(search_result.events, &"post-clock", _context.session_continuation.copy())
 		if final_resume_kind == &"post-move":
+			if not movement_marker_pending: return SessionCoordinatorResult.completed(search_result.events)
 			set_post_move_continuation(search_result.map, _context.state.party.coordinate)
 			return continue_post_move(search_result.events)
 		return SessionCoordinatorResult.completed(search_result.events)
@@ -172,19 +177,19 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		var result := ExplorationSearchWorkflow.complete_area_search(_context.workflow_context(), events)
 		if not result.ok:
 			return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
-		set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
+		set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
 		return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"camp-entry-second":
 		var camp_result := ExplorationTimeWorkflow.complete_camp_entry(_context.workflow_context(), events)
 		if not camp_result.ok:
 			return SessionCoordinatorResult.failed(camp_result.error_code, camp_result.error_message, camp_result.events)
-		set_post_time_continuation(camp_result.map, "completed", Vector2i.ZERO, camp_result.check_random, camp_result.timed_day, _context.state.party.coordinate)
+		set_post_time_continuation(camp_result.map, "completed", Vector2i.ZERO, camp_result.check_random, camp_result.timed_day, _context.state.party.coordinate, camp_result.timed_scan_pending)
 		return _context.responses().finish_with_age_updates(camp_result.events, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"rest-second":
 		var rest_result := ExplorationTimeWorkflow.complete_rest(_context.workflow_context(), events)
 		if not rest_result.ok:
 			return SessionCoordinatorResult.failed(rest_result.error_code, rest_result.error_message, rest_result.events)
-		set_post_time_continuation(rest_result.map, "completed", Vector2i.ZERO, rest_result.check_random, rest_result.timed_day, _context.state.party.coordinate)
+		set_post_time_continuation(rest_result.map, "completed", Vector2i.ZERO, rest_result.check_random, rest_result.timed_day, _context.state.party.coordinate, rest_result.timed_scan_pending)
 		return _context.responses().finish_with_age_updates(rest_result.events, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"heal":
 		var heal_result := ExplorationTimeWorkflow.complete_heal(_context.workflow_context(), events)
@@ -195,47 +200,45 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 
 
 func continue_timed_encounters(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var exploration = _context.session_continuation.exploration()
+	var exploration := _context.session_continuation.exploration()
 	if _context.session_continuation.kind != &"post-clock" or exploration == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Timed encounters require a post-clock continuation.", events)
-	var timed_day = exploration.timed_day
-	if timed_day <= 0:
+	var timed_day := exploration.timed_day
+	if not exploration.timed_scan_pending:
 		return null
-	var encounters = _context.content.scenario_records.timed_encounters()
+	var encounters := _context.content.scenario_records.timed_encounters()
 	while exploration.timed_encounter_index < encounters.size():
-		var index = exploration.timed_encounter_index
-		var encounter = encounters[index]
+		var index := exploration.timed_encounter_index
+		var encounter := encounters[index]
 		exploration.timed_encounter_index = index + 1
-		var effective = _context.state.scenario_progress.encounters.timed_override(encounter.id)
-		var effective_day = int(effective.get("day", encounter.day))
-		if effective_day != timed_day:
-			continue
-		var increment = int(effective.get("increment", encounter.increment))
-		effective["day"] = effective_day + increment
-		_context.state.scenario_progress.encounters.set_timed_override(encounter.id, effective)
-		events.append(DomainEvent.new(&"timed_encounter_advanced", {"encounterId": encounter.id, "day": effective_day, "nextDay": effective["day"], "source": "classic-midnight"}))
-		var chance = int(effective.get("percent", encounter.chance_percent))
-		var roll = _context.rng.draw(100, StringName("timed-encounter.%d" % encounter.id))
-		var map = _context.content.world.map_by_id(_context.state.party.map_id)
+		var eligible := false
+		var map := _context.content.world.map_by_id(_context.state.party.map_id)
 		if map == null:
-			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(&"invalid_timed_encounter_location", "Timed encounter eligibility references an unavailable map.", events)
-		var eligible = roll <= chance and timed_encounter_requirements_met(encounter, map)
-		events.append(DomainEvent.new(&"timed_encounter_checked", {"encounterId": encounter.id, "roll": roll, "chancePercent": chance, "eligible": eligible}))
+		if encounter.native_facts != null:
+			var checked := ClassicTimedEncounterRules.check(encounter, _context.content, _context.state, _context.rng, map, exploration.timed_check_coordinate, _context.state.clock.day())
+			events.append_array(checked.events)
+			if checked.stop_scan: break
+			eligible = checked.eligible
+		else:
+			eligible = _legacy_timed_encounter_is_eligible(encounter, map, timed_day, events)
 		if not eligible:
 			continue
 		apply_pending_midnight_recovery(events)
 		if _context.content.scenario.program_by_id(encounter.program_id) == null:
+			if _context.content.scenario.native_xap_is_unavailable(encounter.classic_macro_id):
+				events.append(DomainEvent.new(&"classic_reference_skipped", {"operation": "timed-macro", "nativePath": "Data ED3", "nativeId": encounter.classic_macro_id, "encounterId": encounter.id}))
+				continue
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(&"unknown_timed_encounter_program", "Timed Encounter %d references unavailable XAP program '%s'." % [encounter.id, encounter.program_id], events)
 		exploration.active_timed_program_id = encounter.program_id
 		events.append(DomainEvent.new(&"timed_encounter_triggered", {"encounterId": encounter.id, "classicMacroId": encounter.classic_macro_id, "programId": encounter.program_id}))
-		var context = ScenarioExecutionContext.trigger(&"action", "", map.id, exploration.timed_check_coordinate, true).set_timed_encounter(encounter.id)
-		var started = _context.scenario_vm.start_program(encounter.program_id, context)
+		var context := ScenarioExecutionContext.trigger(&"action", "", map.id, exploration.timed_check_coordinate, true).set_timed_encounter(encounter.id)
+		var started := _context.scenario_vm.start_program(encounter.program_id, context)
 		if started.state == ScenarioVmResult.State.FAILED:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(started.error_code, started.error_message, events)
-		var result = _context.scenario_vm.run(_context.runtime_api)
+		var result := _context.scenario_vm.run(_context.runtime_api)
 		events.append_array(result.events)
 		if result.state == ScenarioVmResult.State.SUSPENDED:
 			return _context.scenario().begin_scenario_handoff(result, events)
@@ -253,7 +256,24 @@ func continue_timed_encounters(events: Array[DomainEvent]) -> SessionCoordinator
 			return SessionCoordinatorResult.failed(&"invalid_timed_encounter_location", "The completed timed encounter left the party at an unavailable location.", events)
 	apply_pending_midnight_recovery(events)
 	exploration.timed_day = 0
+	exploration.timed_scan_pending = false
 	return null
+
+
+func _legacy_timed_encounter_is_eligible(encounter: TimedEncounterDefinition, map: MapDefinition, timed_day: int, events: Array[DomainEvent]) -> bool:
+	var effective := _context.state.scenario_progress.encounters.timed_override(encounter.id)
+	var effective_day := int(effective.get("day", encounter.day))
+	if effective_day != timed_day:
+		return false
+	var increment := int(effective.get("increment", encounter.increment))
+	effective["day"] = effective_day + increment
+	_context.state.scenario_progress.encounters.set_timed_override(encounter.id, effective)
+	events.append(DomainEvent.new(&"timed_encounter_advanced", {"encounterId": encounter.id, "day": effective_day, "nextDay": effective["day"], "source": "classic-midnight"}))
+	var chance := int(effective.get("percent", encounter.chance_percent))
+	var roll := _context.rng.draw(100, StringName("timed-encounter.%d" % encounter.id))
+	var eligible := roll <= chance and timed_encounter_requirements_met(encounter, map)
+	events.append(DomainEvent.new(&"timed_encounter_checked", {"encounterId": encounter.id, "roll": roll, "chancePercent": chance, "eligible": eligible}))
+	return eligible
 
 
 func apply_pending_midnight_recovery(events: Array[DomainEvent]) -> void:
@@ -292,20 +312,11 @@ func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 
 func _prepare_post_move_context(events: Array[DomainEvent]) -> PostMoveContext:
 	var post_move := PostMoveContext.new()
-	var exploration = _context.session_continuation.exploration()
+	var exploration := _context.session_continuation.exploration()
 	if _context.session_continuation.kind != &"post-move" or exploration == null:
 		_context.session_continuation.clear()
 		post_move.terminal_result = SessionCoordinatorResult.failed(&"invalid_session_continuation", "Post-movement topology continuation is unavailable.", events)
 		return post_move
-	# Castle's opcode 20 rechecks every destination; seconddoor only blocks header relocation.
-	if _context.events_have(events, &"destination_trigger_recheck_requested"):
-		var requested_map = _context.content.world.map_by_id(_context.state.party.map_id)
-		if requested_map == null:
-			_context.session_continuation.clear()
-			post_move.terminal_result = SessionCoordinatorResult.failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
-			return post_move
-		set_post_move_continuation(requested_map, _context.state.party.coordinate, 1)
-		exploration = _context.session_continuation.exploration()
 	post_move.continuation = exploration
 	post_move.map = _context.content.world.map_by_id(exploration.map_id)
 	post_move.coordinate = exploration.coordinate
@@ -324,7 +335,7 @@ func _resume_completed_post_move_trigger(post_move: PostMoveContext, events: Arr
 	var exploration := post_move.continuation
 	var active_trigger_id := exploration.active_trigger_id
 	if not active_trigger_id.is_empty():
-		var completed_trigger = _context.content.scenario_records.trigger_by_id(active_trigger_id)
+		var completed_trigger := _context.content.scenario_records.trigger_by_id(active_trigger_id)
 		if completed_trigger == null:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
@@ -336,7 +347,10 @@ func _resume_completed_post_move_trigger(post_move: PostMoveContext, events: Arr
 			return SessionCoordinatorResult.completed(events)
 		_context.scenario().finalize_completed_trigger(completed_trigger, events)
 		if _context.scenario().apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
-			var destination_map = _context.content.world.map_by_id(_context.state.party.map_id)
+			if _context.scenario_vm.native_recheck_suppressed():
+				_context.session_continuation.clear()
+				return SessionCoordinatorResult.completed(events)
+			var destination_map := _context.content.world.map_by_id(_context.state.party.map_id)
 			set_post_move_continuation(destination_map, _context.state.party.coordinate, 1)
 			return continue_post_move(events)
 		exploration.active_trigger_id = ""
@@ -348,22 +362,23 @@ func _run_next_post_move_trigger(post_move: PostMoveContext, events: Array[Domai
 	var exploration := post_move.continuation
 	var trigger_ids := exploration.trigger_ids
 	while exploration.trigger_index < trigger_ids.size():
-		var trigger_index = exploration.trigger_index
+		var trigger_index := exploration.trigger_index
 		var trigger_id: String = String(trigger_ids[trigger_index])
-		var trigger = _context.content.scenario_records.trigger_by_id(trigger_id)
+		var trigger := _context.content.scenario_records.trigger_by_id(trigger_id)
+		if trigger != null: _context.classic_execution.begin_trigger(trigger)
 		if trigger == null or _context.state.world.triggers.trigger_is_disabled(trigger_id):
 			exploration.trigger_index = trigger_ids.size()
 			break
-		var trigger_chance = _context.state.world.triggers.trigger_chance(trigger.id, trigger.chance_percent)
+		var trigger_chance := _context.state.world.triggers.trigger_chance(trigger.id, trigger.chance_percent)
 		if (not trigger.active and not _context.state.world.triggers.trigger_chance_is_overridden(trigger_id)) or trigger_chance < 1:
 			exploration.trigger_index = trigger_ids.size()
 			break
-		var chance_roll = _context.rng.draw(100, StringName("trigger.%s" % trigger.id))
+		var chance_roll := _context.rng.draw(100, StringName("trigger.%s" % trigger.id))
 		if chance_roll > trigger_chance:
 			exploration.trigger_index = trigger_ids.size()
 			break
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
-		var step = SessionActionPointCoordinator.new(_context, self).execute(post_move, trigger, events)
+		var step := SessionActionPointCoordinator.new(_context, self).execute(post_move, trigger, events)
 		if step != null:
 			return step
 	return null
@@ -398,18 +413,18 @@ func continue_exploration_continuation(events: Array[DomainEvent]) -> SessionCoo
 func continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	if not _context.state.random_encounters_enabled:
 		return null
-	var exploration = _context.session_continuation.exploration()
+	var exploration := _context.session_continuation.exploration()
 	if exploration == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Random encounters require an exploration continuation.", events)
-	var region_ids = exploration.random_region_ids
+	var region_ids := exploration.random_region_ids
 	while exploration.random_region_index >= 0:
-		var region_index = exploration.random_region_index
+		var region_index := exploration.random_region_index
 		var region_id: String = String(region_ids[region_index])
-		var region = map.random_region_by_id(region_id)
+		var region := map.random_region_by_id(region_id)
 		if region == null:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Random-region continuation references unavailable content.", events)
-		var effective = _context.state.world.triggers.random_region(region)
+		var effective := _context.state.world.triggers.random_region(region)
 		var region_step := _check_random_region(map, exploration, region, effective, events)
 		if region_step != null:
 			return region_step
@@ -420,8 +435,8 @@ func continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> 
 
 
 func _check_random_region(map: MapDefinition, exploration: ExplorationContinuationBody, region: RandomEncounterRegion, effective: RandomRegionState, events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var roll = _context.rng.draw(10_000, StringName("random-region.%s" % region.id))
-	var triggered = roll <= effective.chance_ten_thousand
+	var roll := _context.rng.draw(10_000, StringName("random-region.%s" % region.id))
+	var triggered := roll <= effective.chance_ten_thousand
 	events.append(DomainEvent.new("random_encounter_checked", {"regionId": region.id, "roll": roll, "chanceTenThousand": effective.chance_ten_thousand, "triggered": triggered}))
 	if not triggered:
 		return null
@@ -435,25 +450,25 @@ func _check_random_region(map: MapDefinition, exploration: ExplorationContinuati
 
 
 func _run_random_door(map: MapDefinition, exploration: ExplorationContinuationBody, region: RandomEncounterRegion, effective: RandomRegionState, events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var door_ids = region.random_doors()
-	var door_percents = effective.random_door_percents()
+	var door_ids := region.random_doors()
+	var door_percents := effective.random_door_percents()
 	for door_index: int in door_ids.size():
-		var door_roll = _context.rng.draw(100, StringName("random-region.%s.door.%d" % [region.id, door_index]))
-		var door_fired = door_roll <= absi(door_percents[door_index])
+		var door_roll := _context.rng.draw(100, StringName("random-region.%s.door.%d" % [region.id, door_index]))
+		var door_fired := door_roll <= absi(door_percents[door_index])
 		events.append(DomainEvent.new(&"random_door_checked", {"regionId": region.id, "doorIndex": door_index, "programId": "xap:%d" % door_ids[door_index], "roll": door_roll, "chancePercent": door_percents[door_index], "triggered": door_fired}))
 		if not door_fired:
 			continue
 		effective.consume_random_door(door_index)
 		_context.state.world.triggers.set_random_region(effective)
-		var program_id = "xap:%d" % door_ids[door_index]
+		var program_id := "xap:%d" % door_ids[door_index]
 		exploration.active_random_program_id = program_id
 		events.append(DomainEvent.new(&"random_door_triggered", {"regionId": region.id, "programId": program_id, "oneShot": door_percents[door_index] > 0}))
-		var context = ScenarioExecutionContext.trigger(&"action", "", map.id, _context.state.party.coordinate, true).set_random_region(region.id)
-		var started = _context.scenario_vm.start_program(program_id, context)
+		var context := ScenarioExecutionContext.trigger(&"action", "", map.id, _context.state.party.coordinate, true).set_random_region(region.id)
+		var started := _context.scenario_vm.start_program(program_id, context)
 		if started.state == ScenarioVmResult.State.FAILED:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(started.error_code, started.error_message, events)
-		var result = _context.scenario_vm.run(_context.runtime_api)
+		var result := _context.scenario_vm.run(_context.runtime_api)
 		events.append_array(result.events)
 		if result.state == ScenarioVmResult.State.SUSPENDED:
 			return _context.scenario().begin_scenario_handoff(result, events)
@@ -462,35 +477,24 @@ func _run_random_door(map: MapDefinition, exploration: ExplorationContinuationBo
 		if result.state == ScenarioVmResult.State.FAILED:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
-		if _context.events_have(result.events, &"destination_trigger_recheck_requested"):
-			return _recheck_random_door_destination(events)
 		return complete_random_program(events)
 	return null
 
 
-func _recheck_random_door_destination(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var requested_map = _context.content.world.map_by_id(_context.state.party.map_id)
-	if requested_map == null:
-		_context.session_continuation.clear()
-		return SessionCoordinatorResult.failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
-	set_post_move_continuation(requested_map, _context.state.party.coordinate, 1)
-	return continue_post_move(events)
-
-
 func _begin_random_battle_or_choice(exploration: ExplorationContinuationBody, region: RandomEncounterRegion, events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var good_surprise_roll = _context.rng.draw(100, StringName("random-region.%s.good-surprise" % region.id))
+	var good_surprise_roll := _context.rng.draw(100, StringName("random-region.%s.good-surprise" % region.id))
 	if good_surprise_roll < region.option:
-		var message = _context.content.scenario_records.message_by_id(absi(region.text_id))
-		var prompt = message.text if message != null else "Take the advantage and enter battle?"
+		var message := _context.content.scenario_records.message_by_id(absi(region.text_id))
+		var prompt := message.text if message != null else "Take the advantage and enter battle?"
 		exploration.active_random_region_id = region.id
 		exploration.random_battle_stage = &"surprise-choice"
-		var request_id = "random-surprise:%s:%d" % [region.id, _context.rng.snapshot().draw_count]
+		var request_id := "random-surprise:%s:%d" % [region.id, _context.rng.snapshot().draw_count]
 		_context.session_interaction = InteractionRequest.from_payload(request_id, &"yes_no", {"prompt": prompt, "yesLabel": "Enter battle", "noLabel": "Avoid battle", "regionId": region.id})
 		if region.sound_id > 0:
 			events.append(DomainEvent.new(&"audio_requested", {"soundId": region.sound_id}))
 		return SessionCoordinatorResult.waiting(_context.session_interaction, events)
-	var bad_surprise_roll = _context.rng.draw(100, StringName("random-region.%s.bad-surprise" % region.id))
-	var surprise = -1 if bad_surprise_roll < 10 else 0
+	var bad_surprise_roll := _context.rng.draw(100, StringName("random-region.%s.bad-surprise" % region.id))
+	var surprise := -1 if bad_surprise_roll < 10 else 0
 	return start_random_battle(region, surprise, events)
 
 
@@ -514,7 +518,7 @@ func finish_exploration_movement(result: ExplorationMovementWorkflow.MovementTra
 		return _begin_boat_choice(result)
 	if not result.post_clock:
 		return SessionCoordinatorResult.completed(result.events)
-	set_post_time_continuation(result.map, result.resume_kind, result.direction, result.check_random, result.timed_day, result.timed_coordinate)
+	set_post_time_continuation(result.map, result.resume_kind, result.direction, result.check_random, result.timed_day, result.timed_coordinate, result.timed_scan_pending)
 	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 
 
@@ -547,9 +551,13 @@ func start_random_battle(region: RandomEncounterRegion, surprise: int, events: A
 	var battle_id := _context.rng.draw_between_classic(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
 	var battle := _context.content.combat.battle_by_classic_id(absi(battle_id))
 	if battle == null:
+		if ClassicCompatibility.source_unavailable(_context.content, "Data BD", absi(battle_id)):
+			return _cancel_random_battle(events, absi(battle_id))
 		_context.session_interaction = null
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"unknown_random_battle", "Random rectangle '%s' selected unavailable battle %d." % [region.id, battle_id], events)
+	if _context.content.classic_records != null and ClassicCompatibility.unsafe_battle(_context.content, _context.state, battle, null) != null:
+		return _cancel_random_battle(events, absi(battle_id))
 	var effective_surprise := -1 if battle_id < 0 else surprise
 	events.append(DomainEvent.new(&"random_encounter_triggered", {"regionId": region.id, "battleId": battle.id, "classicId": battle_id, "textId": region.text_id, "soundId": region.sound_id, "surprise": effective_surprise}))
 	var battle_result := _context.rules.combat_flow.start_battle(_context.state, _context.content, battle, _context.rng, effective_surprise)
@@ -574,4 +582,13 @@ func start_random_battle(region: RandomEncounterRegion, surprise: int, events: A
 	_context.session_continuation.clear()
 	if battle_result.completed:
 		return _context.scenario().finish_direct_battle(events)
+	return SessionCoordinatorResult.completed(events)
+
+
+func _cancel_random_battle(events: Array[DomainEvent], native_id: int) -> SessionCoordinatorResult:
+	_context.session_interaction = null
+	events.append(DomainEvent.new(&"classic_reference_skipped", {"operation": "unsafe-random-battle", "nativePath": "Data BD", "nativeId": native_id}))
+	if _context.session_continuation.kind == &"post-clock":
+		return complete_post_time(events)
+	_context.session_continuation.clear()
 	return SessionCoordinatorResult.completed(events)

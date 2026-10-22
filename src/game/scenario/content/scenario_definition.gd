@@ -7,6 +7,22 @@ var _programs: Dictionary = {}
 var _actions: Dictionary = {}
 var _application_hooks: ScenarioApplicationHooks
 var _classic_fallthrough: bool = false
+var classic_records: ClassicRecordCatalog
+
+
+func native_xap_is_unavailable(native_id: int) -> bool:
+	return classic_records != null and classic_records.lookup("Data ED3", native_id, "extra-action-points").availability != ClassicRecordCatalog.Availability.COMPLETE
+
+
+func native_program_is_unavailable(program_id: String) -> bool:
+	if classic_records == null: return false
+	var parts := program_id.split(":")
+	if parts.size() == 2 and parts[0] == "xap" and parts[1].is_valid_int():
+		return native_xap_is_unavailable(int(parts[1]))
+	if parts.size() == 4 and parts[0] in ["simple", "complex"] and parts[1].is_valid_int() and parts[2] == "result" and parts[3].is_valid_int():
+		var path := "Data ED" if parts[0] == "simple" else "Data ED2"
+		return int(parts[3]) not in range(4) or classic_records.lookup(path, int(parts[1])).availability != ClassicRecordCatalog.Availability.COMPLETE
+	return false
 
 
 func _init(programs: Array[ScenarioProgramDefinition], actions: Array[ScenarioActionDefinition], application_hooks: ScenarioApplicationHooks = null, classic_fallthrough: bool = false) -> void:

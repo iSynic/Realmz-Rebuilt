@@ -67,6 +67,13 @@ foreach ($relativePath in $realmzPackages) {
     if ($attribute -notmatch ': filter: lfs$') { throw "$relativePath is not governed by Git LFS." }
 }
 
+$publicManifest = Get-Content -Raw -LiteralPath (Join-Path $repoRoot "tools/public-source-manifest.json") | ConvertFrom-Json
+foreach ($lfsPath in @($publicManifest.publicLfsPaths)) {
+    if ($tracked -notcontains $lfsPath) { throw "Public LFS path is not tracked: $lfsPath" }
+    $attribute = (& git -C $repoRoot check-attr filter -- $lfsPath).Trim()
+    if ($attribute -notmatch ': filter: lfs$') { throw "$lfsPath is not governed by Git LFS." }
+}
+
 $largeBlobs = @(& git -C $repoRoot ls-tree -r -l HEAD | ForEach-Object {
     if ($_ -match '^\d+\s+blob\s+[0-9a-f]+\s+(\d+)\s+(.+)$' -and [long]$Matches[1] -gt 10MB) { $Matches[2] }
 })

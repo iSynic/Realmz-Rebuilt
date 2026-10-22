@@ -175,7 +175,7 @@ func decode_shops(value: Variant) -> Variant:
 		result.append(ShopDefinition.new(record["id"], integers["classicId"], item_ids, quantities, integers["inflationPercent"], slots))
 	return result
 
-func decode_simple_encounters(value: Variant) -> Variant:
+func decode_simple_encounters(value: Variant, schema_version: int = 3) -> Variant:
 	if not value is Array:
 		_reject("Simple Encounters must be an array.")
 		return null
@@ -190,9 +190,12 @@ func decode_simple_encounters(value: Variant) -> Variant:
 			_reject("Simple Encounter identity, choices, or Classic fields are malformed.")
 			return null
 		var responses: Array[SimpleEncounterResponse] = []
+		if schema_version >= 7 and record["responses"].size() != 4:
+			_reject("A v7 Simple Encounter must retain all four native choice slots.")
+			return null
 		var response_ids: Dictionary = {}
 		for response: Variant in record["responses"]:
-			if not response is Dictionary or not _exact_fields(response, ["id", "label", "resultProgramId"]) or not response["id"] is String or response["id"].is_empty() or response_ids.has(response["id"]) or not response["label"] is String or response["label"].is_empty() or not response["resultProgramId"] is String or response["resultProgramId"].is_empty():
+			if not response is Dictionary or not _exact_fields(response, ["id", "label", "resultProgramId"]) or not response["id"] is String or response["id"].is_empty() or response_ids.has(response["id"]) or not response["label"] is String or (schema_version < 7 and response["label"].is_empty()) or not response["resultProgramId"] is String or response["resultProgramId"].is_empty():
 				_reject("Simple Encounter %d contains a malformed or duplicate response." % encounter_id)
 				return null
 			response_ids[response["id"]] = true
@@ -287,7 +290,7 @@ func decode_thief_encounters(value: Variant) -> Variant:
 		encounters.append(ThiefEncounterDefinition.new(scalars["id"], type_flags_value, modifiers_value, success_codes_value, failure_codes_value, success_text_value, failure_text_value, success_sounds_value, failure_sounds_value, scalars["spellId"], scalars["lowDamage"], scalars["highDamage"], scalars["tumblers"], prompts_value, prompt_sounds_value))
 	return encounters
 
-func decode_timed_encounters(value: Variant) -> Variant:
+func decode_timed_encounters(value: Variant, schema_version: int = 3) -> Variant:
 	if not value is Array:
 		_reject("Timed Encounters must be an array.")
 		return null
@@ -306,7 +309,7 @@ func decode_timed_encounters(value: Variant) -> Variant:
 			_reject("Timed Encounter definition is malformed.")
 			return null
 		var integers: Dictionary = integers_value
-		if integers["id"] < 0 or ids.has(integers["id"]) or integers["classicMacroId"] < 0 or not _integers_in_range(integers, integer_fields.slice(1), -32768, 32767):
+		if integers["id"] < 0 or ids.has(integers["id"]) or (schema_version < 7 and integers["classicMacroId"] < 0) or not _integers_in_range(integers, integer_fields.slice(1), -32768, 32767):
 			_reject("Timed Encounter identity or Classic fields are malformed.")
 			return null
 		ids[integers["id"]] = true

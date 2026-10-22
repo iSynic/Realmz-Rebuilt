@@ -4,15 +4,18 @@ class_name ExplorationContinuationWorkflow
 extends RefCounted
 
 
-static func post_time(context: SessionWorkflowContext, map: MapDefinition, resume_kind: StringName, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> SessionContinuation:
+static func post_time(context: SessionWorkflowContext, map: MapDefinition, resume_kind: StringName, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1), timed_scan_pending: bool = false) -> SessionContinuation:
 	var cell := map.topology.cell_at(context.state.party.coordinate)
 	var exploration := ExplorationContinuationBody.new()
 	exploration.map_id = map.id
 	exploration.coordinate = context.state.party.coordinate
 	exploration.timed_day = timed_day
+	exploration.timed_scan_pending = timed_scan_pending or timed_day != 0
+	if resume_kind in [&"post-move", &"attempt-search-post-move"]:
+		exploration.movement_marker_pending = map.topology.action_point_is_marked(context.state.party.coordinate, context.state.world)
 	exploration.timed_encounter_index = 0
 	exploration.active_timed_program_id = ""
-	exploration.midnight_recovery_pending = timed_day > 0
+	exploration.midnight_recovery_pending = exploration.timed_scan_pending
 	exploration.timed_check_coordinate = timed_coordinate
 	exploration.check_random = check_random
 	var region_ids: Array[String] = [] if cell == null else context.state.world.triggers.random_region_ids_at(map, context.state.party.coordinate)
@@ -30,7 +33,7 @@ static func post_move(context: SessionWorkflowContext, map: MapDefinition, coord
 	var exploration := ExplorationContinuationBody.new()
 	exploration.map_id = map.id
 	exploration.coordinate = coordinate
-	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, map, coordinate, context.state.world, destination_depth > 0))
+	exploration.trigger_ids.assign(ClassicActionPointRules.selected_placed_trigger_ids(context.content, map, coordinate, context.state.world, destination_depth > 0))
 	exploration.trigger_index = 0
 	exploration.active_trigger_id = ""
 	var region_ids := context.state.world.triggers.random_region_ids_at(map, coordinate)
@@ -88,26 +91,6 @@ static func timed_encounter_requirements_met(context: SessionWorkflowContext, en
 	if encounter.required_y > -1 and coordinate.y != encounter.required_y:
 		return false
 	return true
-
-
-static func selected_placed_trigger_ids(content: RealmzContent, map: MapDefinition, coordinate: Vector2i, world_state: WorldState, destination_recheck: bool = false) -> Array[String]:
-	if not map.topology.action_point_is_marked(coordinate, world_state, destination_recheck):
-		return []
-	return first_placed_trigger_ids(content, map.topology.cell_at(coordinate))
-
-
-static func first_placed_trigger_ids(content: RealmzContent, cell: MapCell) -> Array[String]:
-	var selected_id := ""
-	var selected_record_index := 2_147_483_647
-	for trigger_id: String in cell.trigger_ids():
-		var trigger := content.scenario_records.trigger_by_id(trigger_id)
-		if trigger != null and trigger.classic_record_index < selected_record_index:
-			selected_id = trigger.id
-			selected_record_index = trigger.classic_record_index
-	var selected_ids: Array[String] = []
-	if not selected_id.is_empty():
-		selected_ids.append(selected_id)
-	return selected_ids
 
 
 static func _party_has_classic_item(context: SessionWorkflowContext, classic_item_id: int) -> bool:

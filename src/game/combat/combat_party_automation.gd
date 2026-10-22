@@ -47,7 +47,7 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	var visited_anchors: Array[Vector2i] = [state.combat.battlefield.actors.actor_position(actor.id)]
 	var starting_round := state.combat.turns.round_number
 	var operation_count := 0
-	var previous_processing = _context.processing_auto
+	var previous_processing := _context.processing_auto
 	_context.processing_auto = true
 	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.turns.active_actor_id() == actor_id and state.combat.turns.round_number == starting_round:
 		operation_count += 1

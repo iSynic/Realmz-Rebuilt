@@ -46,7 +46,7 @@ func _prepare_character_monster_attack(attacker: CharacterState, equipment: Char
 			attempt.type_damage += attacker.special_value(index)
 	chance -= defender.armor
 	chance += AttackPolicy.defender_condition_modifier(defender.conditions, true)
-	chance -= int(float(maxi(0, realmz_day)) / 120.0)
+	chance -= int(float(realmz_day) / 120.0)
 	attempt.chance = maxi(5, chance)
 	attempt.roll = rng.draw(100, &"combat.attack.hit")
 	attempt.hit = attempt.roll <= attempt.chance or defender.conditions.is_active(ConditionRules.HELPLESS)

@@ -9,6 +9,7 @@ const CLASSIC_COMBAT: StringName = &"classic-combat"
 const SAFE_COMBAT: StringName = &"safe-combat"
 const CLASSIC_HEALTH: StringName = &"classic-health"
 const CLASSIC_SPELL: StringName = &"classic-spell"
+const CLASSIC_CLOCK: StringName = &"classic-clock"
 
 var kind: StringName
 var battle_id: String
@@ -18,10 +19,20 @@ var effect_opcode: int
 var effect_extra_code: Array[int] = []
 var effect_target_ids: Array[String] = []
 var effect_next_index: int
+var clock_continuation: ScenarioRuntimeContinuation
+var nested_handoff: ScenarioVmHandoff
 
 
 func _init(handoff_kind: StringName = &"") -> void:
 	kind = handoff_kind
+
+
+static func clock_timer(continuation: ScenarioRuntimeContinuation, nested: ScenarioVmHandoff) -> ScenarioRuntimeHandoff:
+	var result := ScenarioRuntimeHandoff.new(PARTY_DEFEAT)
+	result.source_kind = CLASSIC_CLOCK
+	result.clock_continuation = continuation
+	result.nested_handoff = nested
+	return result
 
 
 static func party_defeat(battle: String, source: StringName, battle_caller: ScenarioBattleCaller) -> ScenarioRuntimeHandoff:
@@ -44,11 +55,14 @@ static func character_defeat(opcode: int, extra_code: Array[int], target_ids: Ar
 
 func copy() -> ScenarioRuntimeHandoff:
 	var duplicate := from_data(to_data())
-	assert(duplicate != null, "A live typed runtime handoff must round-trip through its wire codec")
+	if duplicate == null:
+		push_error("A live typed runtime handoff must round-trip through its wire codec.")
 	return duplicate
 
 
 func to_data() -> Dictionary:
+	if kind == PARTY_DEFEAT and source_kind == CLASSIC_CLOCK:
+		return {"kind": String(kind), "version": VERSION, "data": {"sourceKind": String(source_kind), "clockContinuation": clock_continuation.to_data(), "nestedHandoff": nested_handoff.to_data()}}
 	if kind == PARTY_DEFEAT and source_kind in [CLASSIC_HEALTH, CLASSIC_SPELL]:
 		if not effect_fields_are_valid():
 			return {}
@@ -69,10 +83,15 @@ func to_data() -> Dictionary:
 	}
 
 
-static func from_data(value: Variant) -> ScenarioRuntimeHandoff:
-	if not value is Dictionary or value.size() != 3 or not value.get("kind") is String or _integer(value.get("version")) != VERSION or not value.get("data") is Dictionary or value["kind"] != String(PARTY_DEFEAT):
+static func from_data(value: Variant, depth: int = 0) -> ScenarioRuntimeHandoff:
+	if depth > 32 or not value is Dictionary or value.size() != 3 or not value.get("kind") is String or _integer(value.get("version")) != VERSION or not value.get("data") is Dictionary or value["kind"] != String(PARTY_DEFEAT):
 		return null
 	var data: Dictionary = value["data"]
+	if data.get("sourceKind") == String(CLASSIC_CLOCK):
+		if data.size() != 3 or not _bounded_clock_handoffs(data): return null
+		var continuation := ScenarioRuntimeContinuation.from_data(data.get("clockContinuation"), depth)
+		var nested := ScenarioVmHandoff.from_data(data.get("nestedHandoff"), depth + 1)
+		return clock_timer(continuation, nested) if continuation != null and continuation.body is ScenarioClockContinuationBody and nested != null else null
 	if data.get("sourceKind") in [String(CLASSIC_HEALTH), String(CLASSIC_SPELL)]:
 		if data.size() != 5 or _integer(data.get("opcode")) == null or not data.get("extraCode") is Array or not data.get("targetIds") is Array or _integer(data.get("nextIndex")) == null:
 			return null
@@ -95,6 +114,17 @@ static func from_data(value: Variant) -> ScenarioRuntimeHandoff:
 		return null
 	var result := party_defeat(data["battleId"], StringName(data["sourceKind"]), parsed_caller)
 	return result if result.caller_matches_source() else null
+
+
+static func _bounded_clock_handoffs(data: Dictionary) -> bool:
+	for depth: int in 32:
+		var nested: Variant = data.get("nestedHandoff")
+		if not nested is Dictionary or not nested.get("data") is Dictionary: return false
+		var runtime: Variant = nested["data"].get("runtime")
+		if not runtime is Dictionary or not runtime.get("data") is Dictionary: return false
+		data = runtime["data"]
+		if data.get("sourceKind") != String(CLASSIC_CLOCK): return true
+	return false
 
 
 func caller_matches_source() -> bool:

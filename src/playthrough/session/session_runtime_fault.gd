@@ -55,4 +55,6 @@ func to_data() -> Dictionary:
 
 
 func display_message() -> String:
+	if target_kind == &"scenario-instruction":
+		return "Scenario content fault in %s slot %d (opcode %d): %s Load a saved adventure or return to the main menu." % [program_id, slot, opcode, error_message]
 	return "Scenario content fault in %s slot %d (opcode %d): unavailable %s '%s'. Load a saved adventure or return to the main menu." % [program_id, slot, opcode, String(target_kind).replace("-", " "), target_id]

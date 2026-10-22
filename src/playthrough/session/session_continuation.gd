@@ -71,7 +71,8 @@ func copy() -> SessionContinuation:
 	if is_empty():
 		return SessionContinuation.new()
 	var duplicate := from_data(to_data())
-	assert(duplicate != null, "A live typed continuation must round-trip through its wire codec")
+	if duplicate == null:
+		push_error("A live typed continuation must round-trip through its wire codec.")
 	return duplicate
 
 

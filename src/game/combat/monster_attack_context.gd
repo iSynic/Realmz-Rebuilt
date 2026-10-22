@@ -13,7 +13,7 @@ var defender_armor: int = -1
 
 func _init(weapon: ItemDefinition = null, day: int = 0, attacks_from_behind: bool = false, target_luck: int = 0, dragon_hide: bool = false, target_armor: int = -1) -> void:
 	attacker_weapon = weapon
-	realmz_day = maxi(0, day)
+	realmz_day = day
 	behind = attacks_from_behind
 	defender_luck = target_luck
 	party_dragon_hide = dragon_hide

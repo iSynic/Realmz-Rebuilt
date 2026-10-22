@@ -48,12 +48,16 @@ func validate_archives(content: RealmzContent) -> bool:
 		return _fail("The original campaign package is missing. Restore its retained installation before updating this save.")
 	if FileAccess.get_sha256(old_path) != previous.archiveSha256 or FileAccess.get_sha256(new_path) != entry.archiveSha256:
 		return _fail("The original or corrected campaign archive does not match the approved marker update.")
-	var receipt_store := PackageInstallReceiptStore.new([PackageRepository.EXPECTED_SCHEMA_HASH, PackageRepository.SCHEMA_V4_HASH, PackageRepository.SCHEMA_V5_HASH, PackageRepository.SCHEMA_V6_HASH], PackageRepository.DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
-	var receipt := receipt_store.read(old_path)
-	if receipt.is_empty() or receipt_store.requires_application_revalidation or receipt.get("campaignId") != content.campaign_id or receipt.get("packageHash") != previous.packageHash or receipt.get("archiveSha256") != previous.archiveSha256:
-		return _fail("The original installation receipt is missing or incompatible. Validate the retained original package with the current application library before updating this save.")
+	var installation_error := SaveUpdateInstallation.validate(old_path, content.campaign_id, previous.packageHash, previous.archiveSha256)
+	if not installation_error.is_empty():
+		return _fail(installation_error)
 	var old_files := _read_archive(old_path)
 	var new_files := _read_archive(new_path)
+	if not CompressionPackageDelta.reverse_manifest(new_files, content.campaign_id, content.package_hash):
+		return _fail("The source-compression revision differs from its approved delta.")
+	var program := ProgramPackageDelta.correction(content.campaign_id, content.package_hash)
+	if not program.is_empty() and not ProgramPackageDelta.reverse_payloads(new_files, program):
+		return _fail("The subsequent native source retention differs from its approved delta.")
 	if old_files.is_empty() or old_files.keys() != new_files.keys():
 		return _fail("The marker update changed the package inventory.")
 	for path: String in old_files:
@@ -82,7 +86,23 @@ func _load_catalog() -> void:
 		if rows.size() != 1 or entry.get("campaignId") != String(entry.file).trim_suffix(".realmz2") or transitions.has(entry.campaignId):
 			return
 		var row: Dictionary = rows[0]
-		if refresh.get("operation") != "correct-classic-map-markers" or refresh.get("receiptFile") != "native-map-triggers.json" or previous.get("packageHash") != row.sourcePackageHash or previous.get("archiveSha256") != row.sourceSha256 or entry.get("packageHash") != row.outputPackageHash or entry.get("archiveSha256") != row.outputSha256:
+		var marker_identity: Dictionary = entry
+		var compression := CompressionPackageDelta.correction(entry.campaignId, entry.packageHash)
+		if entry.has("sourceCompression"):
+			if compression.is_empty() or entry.archiveSha256 != compression.archiveSha256 or entry.sourceCompression.previousPackage != compression.previousPackage:
+				return
+			marker_identity = compression.previousPackage
+		if entry.has("programAuditRestoration"):
+			var program := ProgramPackageDelta.correction(entry.campaignId, entry.packageHash)
+			if program.is_empty() or marker_identity.archiveSha256 != program.archiveSha256 or entry.programAuditRestoration.previousPackage != program.previousPackage:
+				return
+			marker_identity = program.previousPackage
+		if entry.has("programRestoration"):
+			var payment := PaymentSaveUpdate.restoration()
+			if payment.is_empty() or entry.campaignId != payment.campaignId or marker_identity.packageHash != payment.packageHash or marker_identity.archiveSha256 != payment.archiveSha256 or entry.programRestoration.previousPackage != payment.previousPackage:
+				return
+			marker_identity = payment.previousPackage
+		if refresh.get("operation") != "correct-classic-map-markers" or refresh.get("receiptFile") != "native-map-triggers.json" or previous.get("packageHash") != row.sourcePackageHash or previous.get("archiveSha256") != row.sourceSha256 or marker_identity.get("packageHash") != row.outputPackageHash or marker_identity.get("archiveSha256") != row.outputSha256:
 			return
 		var transition_entry := entry.duplicate(true)
 		transition_entry["previousPackage"] = previous.duplicate(true)
@@ -99,11 +119,19 @@ func _validate_documents(old_files: Dictionary, new_files: Dictionary, correctio
 		var after: Variant = JSON.parse_string((new_files[name] as PackedByteArray).get_string_from_utf8())
 		if not before is Dictionary or not after is Dictionary or before.get("schemaVersion") != correction.previousDocuments[name].schemaVersion or after.get("schemaVersion") != 6:
 			return false
-		after["schemaVersion"] = before.schemaVersion
 		old_documents[name] = before
 		new_documents[name] = after
+	var manifest: Dictionary = JSON.parse_string((new_files["manifest.json"] as PackedByteArray).get_string_from_utf8())
+	var program := ProgramPackageDelta.correction(manifest.campaignId, manifest.packageHash)
+	if not program.is_empty() and not ProgramPackageDelta.reverse_documents(new_documents, program):
+		return false
+	for name: String in DOCUMENTS:
+		new_documents[name]["schemaVersion"] = old_documents[name].schemaVersion
 	var world: Dictionary = new_documents["world.json"]
 	var scenario: Dictionary = new_documents["scenario.json"]
+	var payment := PaymentSaveUpdate.restoration()
+	if correction.outputPackageHash == payment.get("previousPackage", {}).get("packageHash") and not PaymentSaveUpdate.remove_addition(scenario):
+		return false
 	var maps: Dictionary = {}
 	for map: Dictionary in world.maps:
 		if not map.has("classicTileValues"):

@@ -3,6 +3,8 @@
 class_name MonsterRules
 extends RefCounted
 
+var _arithmetic := RealmzArithmetic.new()
+
 
 const RANDOM_WEAPON_TABLES: Array = [
 	[[0, 50, 10], [51, 60, 20], [61, 70, 71], [71, 95, 75], [96, 100, 24]],
@@ -40,7 +42,7 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 	armor -= 2 * difficulty
 	agility += difficulty
 	var multiplier := 1.0 + float(difficulty) * 0.33
-	spell_points = int(float(spell_points) * multiplier)
+	spell_points = _arithmetic.signed_16(int(float(spell_points) * multiplier))
 	stamina = maxi(1, int(float(stamina) * multiplier))
 	var denominator := 180 - 30 * difficulty
 	if denominator > 0:
@@ -68,7 +70,8 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	var agility := maxi(1, definition.agility + rng.draw(3, StringName("battle.monster.%s.agility" % instance_id)) - 2)
 	var spell_points := definition.spell_points
 	var variation := int(float(spell_points) / 10.0)
-	spell_points += rng.draw_between(-variation, variation, StringName("battle.monster.%s.spell-points" % instance_id))
+	var spell_reason := StringName("battle.monster.%s.spell-points" % instance_id)
+	spell_points += rng.draw_between_classic(-variation, variation, spell_reason) if definition.native_complete_record else rng.draw_between(-variation, variation, spell_reason)
 	var stamina := definition.stamina_bonus
 	for die: int in definition.hit_dice:
 		stamina += rng.draw(8, StringName("battle.monster.%s.stamina.%d" % [instance_id, die]))
@@ -78,7 +81,7 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	armor -= 3 * difficulty
 	agility += difficulty
 	var multiplier := 1.0 + float(difficulty) * 0.40
-	spell_points = int(float(spell_points) * multiplier)
+	spell_points = _arithmetic.signed_16(int(float(spell_points) * multiplier))
 	stamina = maxi(1, int(float(stamina) * multiplier))
 	var denominator := 180 - 30 * difficulty
 	if denominator > 0:
@@ -97,18 +100,30 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	return result
 
 
-func polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, context: MonsterPolymorphContext, rng: RealmzRng, failure: Array[String] = []) -> String:
-	if target == null or target_definition == null or context == null or rng == null or not context.has_eligible_definition(target_definition.size):
-		return ""
+func polymorph_monster(target: MonsterState, target_definition: MonsterDefinition, context: MonsterPolymorphContext, rng: RealmzRng) -> MonsterPolymorphResult:
+	if target == null or target_definition == null or context == null or context.content == null or rng == null:
+		return MonsterPolymorphResult.failed(&"invalid_polymorph_context", "Polymorph requires its target, catalog and randomness.")
+	if not context.has_eligible_definition(target_definition.size):
+		return MonsterPolymorphResult.new()
 	var definition: MonsterDefinition = null
 	while definition == null:
 		var candidate: MonsterDefinition = context.definition_for_classic_roll(rng.draw(200, &"magic.polymorph.candidate"))
 		if candidate != null and candidate.size == target_definition.size and candidate.hit_dice > 0 and candidate.can_summon == 1:
+			var probe := MonsterConsumptionProbe.inspect(context.content, candidate, MonsterConsumptionProbe.Construction.POLYMORPH)
+			if probe.outcome == MonsterConsumptionProbe.Outcome.PACKAGE_DEFECT:
+				return MonsterPolymorphResult.failed(&"missing_monster_dependency", probe.reason)
+			if probe.outcome == MonsterConsumptionProbe.Outcome.AUTHORED_UNSAFE:
+				var unchanged := MonsterPolymorphResult.new()
+				unchanged.outcome = MonsterPolymorphResult.Outcome.AUTHORED_UNSAFE
+				return unchanged
 			var table_error := random_weapon_table_error(candidate)
-			if not table_error.is_empty():
-				failure.append(table_error)
-				return ""
+			if not candidate.native_complete_record and not table_error.is_empty():
+				return MonsterPolymorphResult.failed(&"invalid_random_weapon_table", table_error)
 			definition = candidate
+	return _apply_polymorph(target, definition, context, rng)
+
+
+func _apply_polymorph(target: MonsterState, definition: MonsterDefinition, context: MonsterPolymorphContext, rng: RealmzRng) -> MonsterPolymorphResult:
 	var old_definition_id := target.definition_id
 	var old_traitor := target.traitor
 	var old_summoned := target.summoned
@@ -123,7 +138,7 @@ func polymorph_monster(target: MonsterState, target_definition: MonsterDefinitio
 	armor -= 2 * context.difficulty
 	agility += context.difficulty
 	var multiplier := 1.0 + float(context.difficulty) * 0.33
-	var spell_points := int(float(definition.spell_points) * multiplier)
+	var spell_points := _arithmetic.signed_16(int(float(definition.spell_points) * multiplier))
 	stamina = maxi(1, int(float(stamina) * multiplier))
 	var denominator: int = 180 - 30 * context.difficulty
 	if denominator > 0:
@@ -152,13 +167,16 @@ func polymorph_monster(target: MonsterState, target_definition: MonsterDefinitio
 		if int(old_conditions[index]) > -1:
 			target.conditions.set_value(index, int(old_conditions[index]))
 	target.set_loot_item_ids(definition.item_ids())
-	return old_definition_id
+	var result := MonsterPolymorphResult.new()
+	result.outcome = MonsterPolymorphResult.Outcome.TRANSFORMED
+	result.previous_definition_id = old_definition_id
+	return result
 
 
 static func random_weapon_table_error(definition: MonsterDefinition) -> String:
 	if definition == null or definition.random_weapon_table <= 10:
 		return ""
-	return "Monster '%s' (Classic %d) selects random weapon table %d; Classic supports tables 1 through 10." % [definition.id, definition.classic_id, definition.random_weapon_table]
+	return "Monster '%s' (Classic %d) selects random weapon table %d; The pinned Castle table has nine rows; Rebuilt retains its documented table-10 alias." % [definition.id, definition.classic_id, definition.random_weapon_table]
 
 
 static func _set_runtime_loot(monster: MonsterState, definition: MonsterDefinition) -> void:

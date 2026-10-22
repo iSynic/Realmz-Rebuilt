@@ -6,6 +6,8 @@ import sys
 import zipfile
 
 from verify_bundled_native_tiles import reconstruct_previous_documents
+from verify_trouble_payment import restoration, remove_addition
+from verify_program_restoration import correction_for, reverse_current_documents
 
 
 def digest(data):
@@ -29,6 +31,13 @@ def verify(root):
         with zipfile.ZipFile(path) as archive:
             content = json.loads(archive.read("content.json"))
             scenario = json.loads(archive.read("scenario.json"))
+            correction = correction_for(root, entry["campaignId"], entry["packageHash"])
+            source_paths = {row["path"] for row in correction["recipe"]["payloadAdditions"]} if correction else set()
+            assets = json.loads(archive.read("assets/index.json"))["assets"]
+            source_index = next(row for row in assets if row["kind"] == "classic-source-index")
+            native_sources = json.loads(archive.read(source_index["path"]))["sources"]
+            native_shop_rows = next(row["byteLength"] for row in native_sources if row["nativePath"] == "Data SD") // 3002
+            manifest = json.loads(archive.read("manifest.json"))
             shops = {s["classicId"] for s in content["shops"]}
             for program in scenario["programs"]:
                 for action in program["instructions"]:
@@ -38,6 +47,9 @@ def verify(root):
                     elif op in (51, 73) and action.get("extraCode"):
                         target = abs(action["extraCode"][0])
                     else:
+                        continue
+                    if target not in shops and target >= native_shop_rows and "realmz.scenario.deferred-references-v1" in manifest["capabilities"]:
+                        print(f"{entry['name']} preserves {program['id']} slot {action['slot']} with native unavailable shop {target} (source rows {native_shop_rows}).")
                         continue
                     assert target in shops, f"{entry['name']} {program['id']} slot {action['slot']}: missing shop {target}"
                     site_count += 1
@@ -56,13 +68,18 @@ def verify(root):
                 old_documents = reconstruct_previous_documents(archive, receipt_row)
                 old_content = json.loads(old_documents["content.json"])
                 old_scenario = json.loads(old_documents["scenario.json"])
+                current_documents = {name: json.loads(archive.read(name)) for name in
+                                     ("content.json", "scenario.json", "world.json", "assets/index.json")}
+                reverse_current_documents(archive, current_documents, root)
+                if "programRestoration" in entry:
+                    remove_addition(current_documents["scenario.json"], restoration(root))
                 old_content_comparable = dict(old_content)
-                current_content_comparable = dict(content)
+                current_content_comparable = dict(current_documents["content.json"])
                 old_content_comparable.pop("schemaVersion", None)
                 current_content_comparable.pop("schemaVersion", None)
                 assert digest(canonical(old_content_comparable)) == digest(canonical(current_content_comparable)), "native refresh changed gameplay content"
                 added_program_ids = {row["programId"] for row in receipt_row["restoredEmptyRecords"]}
-                current_programs = [program for program in scenario["programs"]
+                current_programs = [program for program in current_documents["scenario.json"]["programs"]
                                     if program["id"] not in added_program_ids]
                 assert sorted(old_scenario["programs"], key=lambda p: p["id"]) == sorted(
                     current_programs, key=lambda p: p["id"]
@@ -72,7 +89,7 @@ def verify(root):
                 payloads = {name: old_documents[name] for name in old_documents
                             if name not in ("content.json", "manifest.json")}
                 payloads.update({name: archive.read(name) for name in archive.namelist()
-                                 if name.startswith("assets/media/")})
+                                 if name.startswith("assets/media/") and name not in source_paths})
                 identities = "".join(name + "\0" + digest(payloads[name]) + "\n"
                                      for name in sorted(payloads))
                 assert digest(identities.encode()) == repair["unchangedPayloadsSha256"], "unrelated package payload changed"

@@ -40,6 +40,12 @@ const STRENGTH_BONUSES_BY_BRAWN := {
 	30: Vector2i(40, 8),
 }
 
+var _native_values: bool
+
+
+func _init(native_values: bool = false) -> void:
+	_native_values = native_values
+
 
 func strength_bonuses(brawn: int, maximum_damage_bonus: int) -> StrengthResult:
 	var bonuses: Vector2i = Vector2i(-20, 0) if brawn < 4 else STRENGTH_BONUSES_BY_BRAWN.get(brawn, Vector2i.ZERO)
@@ -49,22 +55,31 @@ func strength_bonuses(brawn: int, maximum_damage_bonus: int) -> StrengthResult:
 func create_character(character_id: String, character_name: String, race: RaceDefinition, caste: CasteDefinition, gender: int, rng: RealmzRng, include_initial_items: bool = true, starting_level: int = 1) -> CharacterState:
 	if race == null or caste == null or rng == null or not STARTING_LEVELS.has(starting_level):
 		return null
+	# Castle indexes agerange[minimumagegroup - 1] without checking its bounds.
+	# Preserve the profile, but refuse this unsafe creation attempt before drawing.
+	if _native_values and (caste.minimum_age_group < 1 or caste.minimum_age_group > 5):
+		return null
 	var attributes := _roll_creation_attributes(race, caste, gender, rng)
 	var save_values := _creation_save_values(race, caste)
 	var special_values := _creation_special_values(race)
 	_apply_creation_age_profile(attributes, save_values, race, caste)
 	_apply_creation_special_bonuses(special_values, rng)
-	var vitality_bonus := mini(maxi(0, attributes[4] - 16), caste.maximum_stamina_bonus)
-	var maximum_health := rng.draw(maxi(1, caste.progression.initial_stamina_die()), &"character.create.stamina") + vitality_bonus
+	var vitality_bonus := _stamina_bonus(attributes[4], caste.maximum_stamina_bonus)
+	var maximum_health := _native_short(_draw_die(rng, caste.progression.initial_stamina_die(), &"character.create.stamina") + vitality_bonus)
 	var result := CharacterState.new(character_id, character_name, maximum_health, maximum_health)
 	_populate_created_character(result, attributes, save_values, special_values, race, caste, gender, starting_level)
 	var selected_age_range := race.age_range(clampi(caste.minimum_age_group - 1, 0, 4))
-	if selected_age_range.y >= selected_age_range.x and selected_age_range.y > 0:
+	if _native_values:
+		result.age_days = rng.draw_between_classic(selected_age_range.x, selected_age_range.y, &"character.create.age") * 365
+	elif selected_age_range.y >= selected_age_range.x and selected_age_range.y > 0:
 		result.age_days = rng.draw_between(selected_age_range.x, selected_age_range.y, &"character.create.age") * 365
 	_configure_spellcaster(result, caste, rng, starting_level)
 	_initialize_abilities(result, race, caste)
+	if _native_values:
+		_pin_character_statistics(result)
 	for _index: int in starting_level - 1:
-		if level_up(result, race, caste, rng) == null:
+		var advanced := level_up(result, race, caste, rng)
+		if advanced == null or advanced.state != LevelUpResult.State.COMPLETED:
 			return null
 	if include_initial_items:
 		add_initial_items(result, caste)
@@ -75,27 +90,28 @@ func _roll_creation_attributes(race: RaceDefinition, caste: CasteDefinition, gen
 	var attributes: Array[int] = []
 	for index: int in ATTRIBUTE_COUNT:
 		var rolled := rng.draw_between(1, 18, StringName("character.create.attribute.%d" % index)) + race.attribute_bonus(index) + caste.attributes.attribute_bonus(index)
-		rolled = clampi(rolled, caste.attributes.attribute_minimum(index), caste.attributes.attribute_maximum(index))
-		rolled = clampi(rolled, race.attribute_minimum(index), race.attribute_maximum(index))
-		attributes.append(rolled)
+		rolled = _pin_attribute(rolled, caste.attributes.attribute_minimum(index), caste.attributes.attribute_maximum(index))
+		rolled = _pin_attribute(rolled, race.attribute_minimum(index), race.attribute_maximum(index))
+		attributes.append(_creation_attribute(rolled))
 	# Castle's seven-iteration loop aliases its final profile offset back to Luck,
 	# consumes the roll, and never assigns the value. The draw is observable in
 	# every later creation roll, so the deterministic session must retain it.
 	rng.draw_between(1, 18, &"character.create.attribute.discarded")
 	if gender == 2:
-		attributes[0] -= 1
-		attributes[3] += 1
-		attributes[2] += 1
+		attributes[0] = _creation_attribute(attributes[0] - 1)
+		attributes[3] = _creation_attribute(attributes[3] + 1)
+		attributes[2] = _creation_attribute(attributes[2] + 1)
 	else:
-		attributes[0] += 1
-		attributes[3] -= 1
+		attributes[0] = _creation_attribute(attributes[0] + 1)
+		attributes[3] = _creation_attribute(attributes[3] - 1)
 	return attributes
 
 
 func _creation_save_values(race: RaceDefinition, caste: CasteDefinition) -> Array[int]:
 	var save_values: Array[int] = []
 	for index: int in 8:
-		save_values.append(50 + race.save_bonus(index) + caste.attributes.save_bonus(index))
+		var value := 50 + race.save_bonus(index) + caste.attributes.save_bonus(index)
+		save_values.append(_signed_16(value) if _native_values else value)
 	return save_values
 
 
@@ -111,19 +127,50 @@ func _apply_creation_age_profile(attributes: Array[int], save_values: Array[int]
 	for age_index: int in age_group_count:
 		var age_change := race.age_change(age_index)
 		for attribute_index: int in ATTRIBUTE_COUNT:
-			attributes[attribute_index] += age_change[attribute_index]
+			attributes[attribute_index] = _creation_attribute(attributes[attribute_index] + age_change[attribute_index])
 		for save_index: int in 7:
-			save_values[save_index] += age_change[8 + save_index]
+			var value := save_values[save_index] + age_change[8 + save_index]
+			save_values[save_index] = _signed_16(value) if _native_values else value
 	for index: int in ATTRIBUTE_COUNT:
-		attributes[index] = clampi(attributes[index], caste.attributes.attribute_minimum(index), caste.attributes.attribute_maximum(index))
-		attributes[index] = clampi(attributes[index], race.attribute_minimum(index), race.attribute_maximum(index))
+		attributes[index] = _pin_attribute(attributes[index], caste.attributes.attribute_minimum(index), caste.attributes.attribute_maximum(index))
+		attributes[index] = _creation_attribute(attributes[index])
+		attributes[index] = _creation_attribute(_pin_attribute(attributes[index], race.attribute_minimum(index), race.attribute_maximum(index)))
+
+
+func _pin_attribute(value: int, low: int, high: int) -> int:
+	if not _native_values:
+		return clampi(value, low, high)
+	# newcharacter.c: pin narrows the argument, then applies these tests in order.
+	return mini(maxi(_signed_16(value), low), high)
+
+
+func _creation_attribute(value: int) -> int:
+	return ((value + 128) & 0xff) - 128 if _native_values else value
+
+
+func _draw_die(rng: RealmzRng, sides: int, tag: StringName) -> int:
+	return rng.draw_classic(_signed_16(sides), tag) if _native_values else rng.draw(maxi(1, sides), tag)
+
+
+func _nonzero_native(value: int) -> bool:
+	return value != 0 if _native_values else value > 0
+
+
+func _stamina_bonus(vitality: int, maximum_bonus: int) -> int:
+	if _native_values and vitality <= 16:
+		return 0
+	return mini(maxi(0, vitality - 16), maximum_bonus)
+
+
+func _native_short(value: int) -> int:
+	return _signed_16(value) if _native_values else value
 
 
 func _apply_creation_special_bonuses(special_values: Array[int], rng: RealmzRng) -> void:
 	for threshold: int in [80, 90, 95]:
 		if rng.draw(100, StringName("character.create.special-bonus.%d.roll" % threshold)) > threshold:
 			var special_index := rng.draw_between(0, 7, StringName("character.create.special-bonus.%d.index" % threshold))
-			special_values[special_index] += 1
+			special_values[special_index] = _native_short(special_values[special_index] + 1)
 
 
 func _populate_created_character(result: CharacterState, attributes: Array[int], save_values: Array[int], special_values: Array[int], race: RaceDefinition, caste: CasteDefinition, gender: int, starting_level: int) -> void:
@@ -141,22 +188,22 @@ func _populate_created_character(result: CharacterState, attributes: Array[int],
 	result.vitality = attributes[4]
 	result.luck = attributes[5]
 	var strength := strength_bonuses(result.brawn, caste.attributes.maximum_damage_bonus())
-	result.to_hit = caste.progression.initial_to_hit() + strength.to_hit_bonus
-	result.damage_bonus = strength.damage_bonus
-	result.dodge = 2 * result.agility + caste.progression.initial_dodge()
+	result.to_hit = _native_short(caste.progression.initial_to_hit() + strength.to_hit_bonus)
+	result.damage_bonus = _native_short(strength.damage_bonus)
+	result.dodge = _native_short(2 * result.agility + caste.progression.initial_dodge())
 	result.armor = 0
 	if result.agility > 14:
 		result.armor -= 2 * (14 - result.agility)
-	result.magic_resistance = int(float(result.knowledge + result.judgment) / 10.0) * caste.magic_resistance_multiplier + race.magic_resistance
-	result.two_hand = clampi(race.two_hand_bonus + caste.two_hand_bonus, 0, 100)
-	result.missile = race.missile_bonus + caste.progression.initial_missile() if caste.can_use_missile else 0
+	result.magic_resistance = _native_short(_native_short(int(float(result.knowledge + result.judgment) / 10.0) * caste.magic_resistance_multiplier) + race.magic_resistance)
+	result.two_hand = _native_short(race.two_hand_bonus + caste.two_hand_bonus) if _native_values else clampi(race.two_hand_bonus + caste.two_hand_bonus, 0, 100)
+	result.missile = _native_short(race.missile_bonus + caste.progression.initial_missile()) if caste.can_use_missile else 0
 	result.hand_to_hand = caste.progression.initial_hand_to_hand()
-	result.maximum_movement = race.base_movement + caste.movement_bonus
+	result.maximum_movement = _native_short(race.base_movement + caste.movement_bonus)
 	result.movement = result.maximum_movement
-	result.normal_attacks = mini(race.base_attacks + caste.bonus_attacks, 2 * race.maximum_attacks)
+	result.normal_attacks = _native_short(race.base_attacks + caste.bonus_attacks) if _native_values else mini(race.base_attacks + caste.bonus_attacks, 2 * race.maximum_attacks)
 	result.attacks_remaining = result.normal_attacks
-	result.maximum_load = maxi(500, result.brawn * result.brawn * 20)
-	result.money.gold = maxi(0, caste.start_money)
+	result.maximum_load = _maximum_load(result.brawn)
+	result.money.gold = caste.start_money & 0xffff if _native_values else maxi(0, caste.start_money)
 	for index: int in 8:
 		result.set_save_value(index, save_values[index])
 		result.set_special_value(index, special_values[index])
@@ -230,39 +277,83 @@ func battle_experience(character: CharacterState, race: RaceDefinition, share: i
 func level_up(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng) -> LevelUpResult:
 	if character == null or race == null or caste == null or rng == null:
 		return null
-	character.level += 1
+	if not _native_values:
+		return _apply_level_up(character, race, caste, rng)
+	var candidate := CharacterStateCodec.copy(character)
+	var candidate_rng := rng.fork()
+	if candidate == null or candidate_rng == null:
+		return null
+	var result := _apply_level_up(candidate, race, caste, candidate_rng)
+	var encoded := CharacterStateCodec.encode(candidate)
+	var readback := CharacterStateCodec.decode(encoded)
+	if readback == null or CharacterStateCodec.encode(readback) != encoded:
+		return LevelUpResult.unsafe_candidate()
+	if not rng.rollback(candidate_rng.checkpoint()):
+		return null
+	_commit_level_up(character, candidate)
+	return result
+
+
+func _commit_level_up(character: CharacterState, candidate: CharacterState) -> void:
+	character.level = candidate.level
+	character.normal_attacks = candidate.normal_attacks
+	character.attacks_remaining = candidate.attacks_remaining
+	character.conditions = candidate.conditions
+	character.to_hit = candidate.to_hit
+	character.dodge = candidate.dodge
+	character.hand_to_hand = candidate.hand_to_hand
+	character.missile = candidate.missile
+	character.spellcaster_type = candidate.spellcaster_type
+	character.spell_points = candidate.spell_points
+	character.maximum_spell_points = candidate.maximum_spell_points
+	character.current_health = candidate.current_health
+	character.maximum_health = candidate.maximum_health
+	character.magic_resistance = candidate.magic_resistance
+	character.two_hand = candidate.two_hand
+	character.damage_bonus = candidate.damage_bonus
+	for index: int in 14:
+		character.set_ability_value(index, candidate.ability_value(index), false)
+
+
+func _apply_level_up(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng) -> LevelUpResult:
+	character.level = _native_short(character.level + 1)
 	# Castle consumes this registration-era roll even though the open-source
 	# registration branch no longer changes the character.
 	rng.draw(100, &"character.level.registration-check")
-	character.normal_attacks = race.base_attacks + caste.bonus_attacks
+	character.normal_attacks = _native_short(race.base_attacks + caste.bonus_attacks)
 	for required_level: int in caste.progression.attack_levels():
-		if required_level > 0 and required_level <= character.level:
-			character.normal_attacks += 1
-	character.normal_attacks = mini(character.normal_attacks, 2 * race.maximum_attacks)
+		if _nonzero_native(required_level) and required_level <= character.level:
+			character.normal_attacks = _native_short(character.normal_attacks + 1)
+	character.normal_attacks = _native_short(mini(character.normal_attacks, 2 * race.maximum_attacks))
 	character.attacks_remaining = character.normal_attacks
 	for index: int in ConditionSet.CHARACTER_COUNT:
 		if caste.attributes.condition_level(index) == character.level:
 			var current_condition := character.conditions.value(index)
-			character.conditions.set_value(index, -1 if current_condition > -1 else current_condition - 1)
-	character.to_hit += caste.progression.level_to_hit()
-	character.dodge += caste.progression.level_dodge()
-	character.hand_to_hand += caste.progression.level_hand_to_hand()
-	if caste.progression.level_missile() > 0:
-		character.missile += rng.draw(caste.progression.level_missile(), &"character.level.missile")
-	character.spellcaster_type = _level_spellcaster_type(caste)
+			character.conditions.set_value(index, -1 if current_condition > -1 else _native_short(current_condition - 1))
+	character.to_hit = _native_short(character.to_hit + caste.progression.level_to_hit())
+	character.dodge = _native_short(character.dodge + caste.progression.level_dodge())
+	character.hand_to_hand = _native_short(character.hand_to_hand + caste.progression.level_hand_to_hand())
+	if _nonzero_native(caste.progression.level_missile()):
+		character.missile = _native_short(character.missile + _draw_die(rng, caste.progression.level_missile(), &"character.level.missile"))
+	character.spellcaster_type = _level_spellcaster_type(caste, character.spellcaster_type)
 	var spell_gain := _level_spell_points(character, caste, rng)
-	character.spell_points += spell_gain
-	character.maximum_spell_points += spell_gain
-	var vitality_bonus := mini(maxi(0, character.vitality - 16), caste.maximum_stamina_bonus)
-	var stamina_gain := rng.draw(maxi(1, caste.progression.level_stamina_die()), &"character.level.stamina") + vitality_bonus
-	character.current_health += stamina_gain
-	character.maximum_health += stamina_gain
+	character.spell_points = _native_short(character.spell_points + spell_gain)
+	character.maximum_spell_points = _native_short(character.maximum_spell_points + spell_gain)
+	var vitality_bonus := _stamina_bonus(character.vitality, caste.maximum_stamina_bonus)
+	var stamina_gain := _native_short(_draw_die(rng, caste.progression.level_stamina_die(), &"character.level.stamina") + vitality_bonus)
+	character.current_health = _native_short(character.current_health + stamina_gain)
+	character.maximum_health = _native_short(character.maximum_health + stamina_gain)
 	var magic_gain := 1 if rng.draw(100, &"character.level.magic-resistance") <= character.judgment + character.knowledge + character.vitality else 0
-	character.magic_resistance += magic_gain
+	character.magic_resistance = _native_short(character.magic_resistance + magic_gain)
 	for index: int in 14:
 		var ability_die := caste.progression.level_ability_die(index)
-		if ability_die > 0:
-			character.set_ability_value(index, character.ability_value(index) + rng.draw(ability_die, StringName("character.level.ability.%d" % index)))
+		if _nonzero_native(ability_die):
+			character.set_ability_value(index, _native_short(character.ability_value(index) + _draw_die(rng, ability_die, StringName("character.level.ability.%d" % index))), not _native_values)
+	_pin_character_statistics(character)
+	return LevelUpResult.new(stamina_gain, spell_gain, caste.progression.level_to_hit(), magic_gain)
+
+
+func _pin_character_statistics(character: CharacterState) -> void:
 	for index: int in 12:
 		character.set_ability_value(index, clampi(character.ability_value(index), 0, 100))
 	character.dodge = clampi(character.dodge, 0, 100)
@@ -271,12 +362,16 @@ func level_up(character: CharacterState, race: RaceDefinition, caste: CasteDefin
 	character.two_hand = clampi(character.two_hand, 0, 100)
 	character.damage_bonus = clampi(character.damage_bonus, 0, 200)
 	character.hand_to_hand = clampi(character.hand_to_hand, 0, 200)
-	return LevelUpResult.new(stamina_gain, spell_gain, caste.progression.level_to_hit(), magic_gain)
+
+
+func _maximum_load(brawn: int) -> int:
+	var value := brawn * brawn * 20
+	return maxi(500, value & 0xffff if _native_values else value)
 
 
 func recalculate_movement(character: CharacterState, race: RaceDefinition, movement_bonus: int = 0) -> int:
 	character.carried_load = maxi(0, character.carried_load)
-	character.maximum_load = maxi(500, character.brawn * character.brawn * 20)
+	character.maximum_load = _maximum_load(character.brawn)
 	var movement := 1.0 + (float(character.maximum_load - character.carried_load) / float(character.maximum_load)) * float(race.base_movement)
 	if character.conditions.is_active(2):
 		movement -= character.conditions.value(2)
@@ -328,15 +423,16 @@ func _configure_spellcaster(character: CharacterState, caste: CasteDefinition, r
 	var rows := caste.progression.spellcaster_rows()
 	for index: int in mini(3, rows.size()):
 		var row := rows[index]
-		if row.y <= 0:
+		if not _nonzero_native(row.y):
 			continue
 		character.spellcaster_type = index + 1
 		character.maximum_spell_attacks = 1
 		if effective_starting_level >= row.y:
 			match character.spellcaster_type:
-				1: character.maximum_spell_points = 4 + character.knowledge + rng.draw(maxi(1, character.judgment), &"character.create.spell-points")
-				2: character.maximum_spell_points = 4 + character.judgment + rng.draw(maxi(1, character.knowledge), &"character.create.spell-points")
-				3: character.maximum_spell_points = 10 + rng.draw(maxi(1, character.judgment + character.knowledge), &"character.create.spell-points")
+				1: character.maximum_spell_points = 4 + character.knowledge + _draw_die(rng, character.judgment, &"character.create.spell-points")
+				2: character.maximum_spell_points = 4 + character.judgment + _draw_die(rng, character.knowledge, &"character.create.spell-points")
+				3: character.maximum_spell_points = 10 + _draw_die(rng, character.judgment + character.knowledge, &"character.create.spell-points")
+		character.maximum_spell_points = _native_short(character.maximum_spell_points)
 	character.spell_points = character.maximum_spell_points
 
 
@@ -346,7 +442,7 @@ func _initialize_abilities(character: CharacterState, race: RaceDefinition, cast
 		var ability := initial_value + race.ability_bonus(index) if initial_value != 0 else 0
 		ability += _ability_attribute_modifier(STRENGTH_ABILITY_MODIFIERS, index, character.brawn) if initial_value != 0 else 0
 		ability += _ability_attribute_modifier(AGILITY_ABILITY_MODIFIERS, index, character.agility) if initial_value != 0 else 0
-		character.set_ability_value(index, ability)
+		character.set_ability_value(index, _native_short(ability), not _native_values)
 	for index: int in 12:
 		character.set_ability_value(index, clampi(character.ability_value(index), 0, 100))
 
@@ -361,12 +457,12 @@ func _ability_attribute_modifier(table: Dictionary, ability_index: int, attribut
 	return int(values[value_index])
 
 
-func _level_spellcaster_type(caste: CasteDefinition) -> int:
+func _level_spellcaster_type(caste: CasteDefinition, previous_type: int = 0) -> int:
 	var rows := caste.progression.spellcaster_rows()
 	for index: int in mini(3, rows.size()):
-		if rows[index].y > 0:
+		if _nonzero_native(rows[index].y):
 			return index + 1
-	return 0
+	return previous_type if _native_values else 0
 
 
 func _apply_age_change(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, age_group: int, direction: int) -> void:
@@ -404,10 +500,12 @@ static func _signed_32(value: int) -> int:
 func _level_spell_points(character: CharacterState, caste: CasteDefinition, rng: RealmzRng) -> int:
 	if character.level <= 1 or character.spellcaster_type < 1:
 		return 0
+	if _native_values and character.spellcaster_type > 3:
+		return 0
 	var rows := caste.progression.spellcaster_rows()
 	var row_index := character.spellcaster_type - 1
-	if row_index >= rows.size() or rows[row_index].y <= 0 or rows[row_index].y > character.level:
+	if row_index >= rows.size() or not _native_values and rows[row_index].y <= 0 or rows[row_index].y > character.level:
 		return 0
 	if character.spellcaster_type == 1:
-		return character.level + rng.draw(maxi(1, character.knowledge + int(float(character.judgment) / 2.0)), &"character.level.spell-points")
-	return character.level + rng.draw(maxi(1, character.judgment + int(float(character.knowledge) / 2.0)), &"character.level.spell-points")
+		return _native_short(character.level + _draw_die(rng, character.knowledge + int(float(character.judgment) / 2.0), &"character.level.spell-points"))
+	return _native_short(character.level + _draw_die(rng, character.judgment + int(float(character.knowledge) / 2.0), &"character.level.spell-points"))

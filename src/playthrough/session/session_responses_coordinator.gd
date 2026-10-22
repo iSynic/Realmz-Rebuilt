@@ -55,14 +55,14 @@ func respond_session_interaction(response: InteractionResponse) -> SessionCoordi
 
 
 func _respond_random_surprise_choice(response: InteractionResponse) -> SessionCoordinatorResult:
-	var surprise_body = response.body as InteractionResponse.YesNoBody
+	var surprise_body := response.body as InteractionResponse.YesNoBody
 	if response.kind != &"yes_no" or surprise_body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
-	var exploration = _context.session_continuation.exploration()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
+	var exploration := _context.session_continuation.exploration()
 	if exploration == null or exploration.random_battle_stage != &"surprise-choice":
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The random encounter choice has no matching continuation.")
-	var map = _context.content.world.map_by_id(exploration.map_id)
-	var region_id = exploration.active_random_region_id
+	var map := _context.content.world.map_by_id(exploration.map_id)
+	var region_id := exploration.active_random_region_id
 	var region: RandomEncounterRegion = null if map == null else map.random_region_by_id(region_id)
 	if region == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The random encounter choice references unavailable content.")
@@ -78,7 +78,7 @@ func _respond_random_surprise_choice(response: InteractionResponse) -> SessionCo
 			return _context.exploration().complete_post_time(events)
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.completed(events)
-	var next_step = _context.exploration().continue_random_regions(map, events)
+	var next_step := _context.exploration().continue_random_regions(map, events)
 	if next_step != null:
 		return next_step
 	if _context.session_continuation.kind == &"post-clock":
@@ -90,8 +90,10 @@ func _respond_random_surprise_choice(response: InteractionResponse) -> SessionCo
 func _respond_boat_choice(response: InteractionResponse) -> SessionCoordinatorResult:
 	var choice := _context.session_continuation.boat()
 	var answer := response.body as InteractionResponse.YesNoBody
-	if response.kind != InteractionRequest.YES_NO or answer == null or choice == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "The Classic boat movement choice requires a yes/no response.")
+	if choice == null:
+		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The Classic boat movement choice is unavailable.")
+	if response.kind != InteractionRequest.YES_NO or answer == null:
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "The Classic boat movement choice requires a yes/no response.")
 	if _context.state.party.map_id != choice.source_map_id or _context.state.party.coordinate != choice.source_coordinate:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The party moved before the Classic boat choice resumed.")
 	var movement := _context.content.world.probe_movement(choice.source_map_id, choice.source_coordinate, choice.direction, _context.state.world, _context.state.party_in_boat)
@@ -118,20 +120,20 @@ func _respond_boat_choice(response: InteractionResponse) -> SessionCoordinatorRe
 
 
 func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionCoordinatorResult:
-	var service = _context.session_continuation.service()
+	var service := _context.session_continuation.service()
 	if service == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The pooled-wealth departure continuation is unavailable.")
 	if service.stage == &"warning":
 		return _respond_pooled_wealth_warning(response, service)
 	if service.stage == &"distribution":
 		return _respond_pooled_wealth_distribution(response, service)
-	return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
+	return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
 
 
 func _respond_pooled_wealth_warning(response: InteractionResponse, service: ServiceContinuationBody) -> SessionCoordinatorResult:
-	var warning_body = response.body as InteractionResponse.YesNoBody
+	var warning_body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or warning_body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth departure requires a yes/no response.")
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Pooled-wealth departure requires a yes/no response.")
 	if warning_body.accepted:
 		service.stage = &"distribution"
 		_context.session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % _context.next_revision())
@@ -143,13 +145,13 @@ func _respond_pooled_wealth_warning(response: InteractionResponse, service: Serv
 
 
 func _respond_pooled_wealth_distribution(response: InteractionResponse, service: ServiceContinuationBody) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.BankBody
+	var body := response.body as InteractionResponse.BankBody
 	if response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
-	var action = String(body.action)
-	var selected_character_id = body.character_id
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
+	var action := String(body.action)
+	var selected_character_id := body.character_id
 	if not selected_character_id.is_empty() and _context.state.party.character_by_id(selected_character_id) == null:
-		return SessionCoordinatorResult.failed(&"unknown_money_target", "The selected pooled-wealth character is unavailable.")
+		return SessionCoordinatorResult.rejected(&"unknown_money_target", "The selected pooled-wealth character is unavailable.")
 	match action:
 		"leave":
 			return _leave_pooled_wealth_behind(service.direction, true)
@@ -164,7 +166,7 @@ func _respond_pooled_wealth_distribution(response: InteractionResponse, service:
 
 
 func _leave_pooled_wealth_behind(direction: Vector2i, with_done_sound: bool) -> SessionCoordinatorResult:
-	var discarded = _context.state.party.pooled_wealth.to_data()
+	var discarded := _context.state.party.pooled_wealth.to_data()
 	_context.state.party.pooled_wealth = WealthState.new()
 	_context.session_interaction = null
 	_context.session_continuation.clear()
@@ -175,9 +177,9 @@ func _leave_pooled_wealth_behind(direction: Vector2i, with_done_sound: bool) -> 
 
 
 func _pool_departure_wealth(selected_character_id: String) -> SessionCoordinatorResult:
-	var probe = _context.rules.economy.pool_probe(_context.state.party)
+	var probe := _context.rules.economy.pool_probe(_context.state.party)
 	if not probe.allowed:
-		return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
+		return SessionCoordinatorResult.rejected(&"money_action_unavailable", probe.reason)
 	_context.rules.economy.pool_party_wealth(_context.state.party)
 	_context.recalculate_party_movement()
 	return _continue_pooled_wealth_distribution(selected_character_id, [
@@ -187,9 +189,9 @@ func _pool_departure_wealth(selected_character_id: String) -> SessionCoordinator
 
 
 func _share_departure_wealth(selected_character_id: String) -> SessionCoordinatorResult:
-	var probe = _context.rules.economy.share_probe(_context.state.party)
+	var probe := _context.rules.economy.share_probe(_context.state.party)
 	if not probe.allowed:
-		return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
+		return SessionCoordinatorResult.rejected(&"money_action_unavailable", probe.reason)
 	_context.rules.economy.share_pooled_wealth(_context.state.party)
 	_context.recalculate_party_movement()
 	return _continue_pooled_wealth_distribution(selected_character_id, [
@@ -200,19 +202,19 @@ func _share_departure_wealth(selected_character_id: String) -> SessionCoordinato
 
 func _transfer_departure_wealth(body: InteractionResponse.BankBody, action: String) -> SessionCoordinatorResult:
 	if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Pooled-wealth Swap requires character, denomination, and amount.")
-	var character = _context.state.party.character_by_id(body.character_id)
-	var kind = _context.money_kind(body.denomination)
-	var amount = body.amount
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Pooled-wealth Swap requires character, denomination, and amount.")
+	var character := _context.state.party.character_by_id(body.character_id)
+	var kind := _context.money_kind(body.denomination)
+	var amount := body.amount
 	if character == null or kind < 0:
-		return SessionCoordinatorResult.failed(&"unknown_money_target", "The selected pooled-wealth transfer is unavailable.")
+		return SessionCoordinatorResult.rejected(&"unknown_money_target", "The selected pooled-wealth transfer is unavailable.")
 	if amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
-		return SessionCoordinatorResult.failed(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
-	var to_character = action == "to-character"
-	var probe = _context.rules.economy.transfer_probe(_context.state.party, character, kind as WealthState.Kind, amount, to_character)
+		return SessionCoordinatorResult.rejected(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+	var to_character := action == "to-character"
+	var probe := _context.rules.economy.transfer_probe(_context.state.party, character, kind as WealthState.Kind, amount, to_character)
 	if not probe.allowed:
-		return SessionCoordinatorResult.failed(&"money_action_unavailable", probe.reason)
-	var transferred = _context.rules.economy.transfer_pool_to_character(_context.state.party, character, kind as WealthState.Kind, amount) if to_character else _context.rules.economy.transfer_character_to_pool(_context.state.party, character, kind as WealthState.Kind, amount)
+		return SessionCoordinatorResult.rejected(&"money_action_unavailable", probe.reason)
+	var transferred := _context.rules.economy.transfer_pool_to_character(_context.state.party, character, kind as WealthState.Kind, amount) if to_character else _context.rules.economy.transfer_character_to_pool(_context.state.party, character, kind as WealthState.Kind, amount)
 	if not transferred:
 		return SessionCoordinatorResult.failed(&"money_action_unavailable", "The selected pooled-wealth transfer is no longer available.")
 	_context.recalculate_party_movement()
@@ -232,61 +234,61 @@ func _pooled_wealth_departure_distribution_request(request_id: String, selected_
 
 
 func _respond_item_use_target(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.SelectionBody
+	var body := response.body as InteractionResponse.SelectionBody
 	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Item use requires an ordered characterIds array.")
-	var target_ids = body.character_ids.duplicate()
-	var targeting = _context.session_continuation.targeting()
-	var saved_continuation = _context.session_continuation.copy()
-	var saved_interaction = _context.session_interaction
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Item use requires an ordered characterIds array.")
+	var target_ids := body.character_ids.duplicate()
+	var targeting := _context.session_continuation.targeting()
+	var saved_continuation := _context.session_continuation.copy()
+	var saved_interaction := _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = finish_magic_transition(FieldItemWorkflow.resume_field_spell_item(_context.workflow_context(), targeting, target_ids))
-	if completed.state == SessionCoordinatorResult.State.FAILED:
+	var completed := finish_magic_transition(FieldItemWorkflow.resume_field_spell_item(_context.workflow_context(), targeting, target_ids))
+	if completed.state == SessionCoordinatorResult.State.FAILED and not completed.commit_failure:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
 	return completed
 
 
 func _respond_field_spell_target(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.SelectionBody
+	var body := response.body as InteractionResponse.SelectionBody
 	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Field casting requires an ordered characterIds array.")
-	var target_ids = body.character_ids.duplicate()
-	var targeting = _context.session_continuation.targeting()
-	var saved_continuation = _context.session_continuation.copy()
-	var saved_interaction = _context.session_interaction
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Field casting requires an ordered characterIds array.")
+	var target_ids := body.character_ids.duplicate()
+	var targeting := _context.session_continuation.targeting()
+	var saved_continuation := _context.session_continuation.copy()
+	var saved_interaction := _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = finish_magic_transition(FieldMagicWorkflow.resume_field_spell(_context.workflow_context(), targeting, target_ids))
-	if completed.state == SessionCoordinatorResult.State.FAILED:
+	var completed := finish_magic_transition(FieldMagicWorkflow.resume_field_spell(_context.workflow_context(), targeting, target_ids))
+	if completed.state == SessionCoordinatorResult.State.FAILED and not completed.commit_failure:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
 	return completed
 
 
 func _respond_scroll_target(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.SelectionBody
+	var body := response.body as InteractionResponse.SelectionBody
 	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Scroll use requires an ordered characterIds array.")
-	var target_ids = body.character_ids.duplicate()
-	var targeting = _context.session_continuation.targeting()
-	var saved_continuation = _context.session_continuation.copy()
-	var saved_interaction = _context.session_interaction
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Scroll use requires an ordered characterIds array.")
+	var target_ids := body.character_ids.duplicate()
+	var targeting := _context.session_continuation.targeting()
+	var saved_continuation := _context.session_continuation.copy()
+	var saved_interaction := _context.session_interaction
 	_context.session_continuation.clear()
 	_context.session_interaction = null
-	var completed = finish_magic_transition(FieldMagicWorkflow.resume_field_scroll(_context.workflow_context(), targeting, target_ids))
-	if completed.state == SessionCoordinatorResult.State.FAILED:
+	var completed := finish_magic_transition(FieldMagicWorkflow.resume_field_scroll(_context.workflow_context(), targeting, target_ids))
+	if completed.state == SessionCoordinatorResult.State.FAILED and not completed.commit_failure:
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
 	return completed
 
 
 func _respond_scroll_discard(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.YesNoBody
+	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Discarding a scroll requires a yes/no response.")
-	var targeting = _context.session_continuation.targeting()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Discarding a scroll requires a yes/no response.")
+	var targeting := _context.session_continuation.targeting()
 	var result := FieldMagicWorkflow.discard_field_scroll(_context.workflow_context(), targeting, body.accepted)
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
@@ -308,10 +310,12 @@ func begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperati
 
 
 func _respond_runtime_service(response: InteractionResponse) -> SessionCoordinatorResult:
-	var service = _context.session_continuation.service()
+	var service := _context.session_continuation.service()
 	if service == null or service.runtime_continuation == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The pending service has no runtime continuation.")
-	var result = _context.runtime_api.resume_classic(service.runtime_continuation, response, response.request_id)
+	var result := _context.runtime_api.resume_classic(service.runtime_continuation, response, response.request_id)
+	if result.is_rejection:
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
@@ -324,27 +328,27 @@ func _respond_runtime_service(response: InteractionResponse) -> SessionCoordinat
 
 
 func _respond_drop_item(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.YesNoBody
+	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Dropping an item requires a yes/no response.")
-	var targeting = _context.session_continuation.targeting()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Dropping an item requires a yes/no response.")
+	var targeting := _context.session_continuation.targeting()
 	if targeting == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The item awaiting drop confirmation is unavailable.")
-	var character_id = targeting.character_id
-	var instance_id = targeting.instance_id
-	var character = _context.state.party.character_by_id(character_id)
-	var instance = _context.item_instance(character, instance_id)
+	var character_id := targeting.character_id
+	var instance_id := targeting.instance_id
+	var character := _context.state.party.character_by_id(character_id)
+	var instance := _context.item_instance(character, instance_id)
 	var definition: ItemDefinition = null if instance == null else _context.content.items.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The item awaiting drop confirmation is unavailable.")
-	var probe = _context.rules.inventory.classic_drop_probe(character, instance)
+	var probe := _context.rules.inventory.classic_drop_probe(character, instance)
 	if not probe.allowed:
-		return SessionCoordinatorResult.failed(&"item_cannot_drop", probe.reason)
+		return SessionCoordinatorResult.rejected(&"item_cannot_drop", probe.reason)
 	_context.session_interaction = null
 	_context.session_continuation.clear()
 	if not body.accepted:
 		return SessionCoordinatorResult.completed(_single_event(DomainEvent.new(&"item_drop_declined", {"characterId": character.id, "instanceId": instance.id})))
-	var removed = _context.rules.inventory.remove_item(character, instance.id, definition)
+	var removed := _context.rules.inventory.remove_item(character, instance.id, definition)
 	if removed == null:
 		return SessionCoordinatorResult.failed(&"item_drop_failed", "The item could not be removed from inventory.")
 	return SessionCoordinatorResult.completed([
@@ -354,13 +358,13 @@ func _respond_drop_item(response: InteractionResponse) -> SessionCoordinatorResu
 
 
 func _respond_character_spell_confirmation(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.YesNoBody
+	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Starting-spell confirmation requires a yes/no response.")
-	var application = _context.session_continuation.character_spell_confirmation()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Starting-spell confirmation requires a yes/no response.")
+	var application := _context.session_continuation.character_spell_confirmation()
 	if application == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The character awaiting starting-spell confirmation is unavailable.")
-	var character_id = application.character_id
+	var character_id := application.character_id
 	if _context.state.character_draft == null or _context.state.character_draft.generated_character == null or _context.state.character_draft.generated_character.id != character_id:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The character awaiting starting-spell confirmation is unavailable.")
 	_context.session_interaction = null
@@ -371,14 +375,14 @@ func _respond_character_spell_confirmation(response: InteractionResponse) -> Ses
 
 
 func _respond_character_vault_publication(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.YesNoBody
+	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Character-vault publication requires a yes/no response.")
-	var application = _context.session_continuation.character_vault_publication()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Character-vault publication requires a yes/no response.")
+	var application := _context.session_continuation.character_vault_publication()
 	if application == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The character awaiting vault publication is unavailable.")
-	var character_id = application.character_id
-	var character = _context.state.party.character_by_id(character_id)
+	var character_id := application.character_id
+	var character := _context.state.party.character_by_id(character_id)
 	if _context.state.party_setup_completed or character == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The character awaiting vault publication is unavailable.")
 	_context.session_interaction = null
@@ -389,36 +393,48 @@ func _respond_character_vault_publication(response: InteractionResponse) -> Sess
 
 
 func _respond_session_retreat(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.YesNoBody
+	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
-	var continuation = _context.session_continuation.combat()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
+	var continuation := _context.session_continuation.combat()
 	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.turns.active_actor_id() != continuation.actor_id:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The character awaiting Escape confirmation is unavailable.")
+	var pending_interaction := _context.session_interaction
+	var pending_continuation := _context.session_continuation.copy()
 	_context.session_interaction = null
 	_context.session_continuation.clear()
 	if not body.accepted:
 		return SessionCoordinatorResult.completed(_single_event(DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation.actor_id, "mode": String(continuation.mode), "source": "classic"})))
-	var result = _context.rules.combat_flow.retreat_character(_context.state, _context.content, continuation.actor_id, continuation.mode, continuation.destination, _context.rng)
-	return finish_combat_result(result)
+	var result := _context.rules.combat_flow.retreat_character(_context.state, _context.content, continuation.actor_id, continuation.mode, continuation.destination, _context.rng)
+	return _finish_prompted_combat_result(result, pending_interaction, pending_continuation)
 
 
 func _respond_session_friendly_collision(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.ChoiceBody
+	var body := response.body as InteractionResponse.ChoiceBody
 	if response.kind != InteractionRequest.INDEXED_CHOICE or body == null or not body.cancelled and body.index not in [0, 1]:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "The Classic friendly-collision choice requires Swap Positions, Attack Friend, or Back out.")
-	var continuation = _context.session_continuation.combat()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "The Classic friendly-collision choice requires Swap Positions, Attack Friend, or Back out.")
+	var continuation := _context.session_continuation.combat()
 	if continuation == null or _context.state.combat == null or _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id or _context.state.combat.turns.active_actor_id() != continuation.actor_id or _context.rules.combat_flow.reactions.friendly_collision_target_id(_context.state, continuation.actor_id, continuation.destination).is_empty():
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The adjacent ally awaiting a collision choice is unavailable.")
+	var pending_interaction := _context.session_interaction
+	var pending_continuation := _context.session_continuation.copy()
 	_context.session_interaction = null
 	_context.session_continuation.clear()
 	var action := &"cancel" if body.cancelled else &"swap" if body.index == 0 else &"attack"
-	var result = _context.rules.combat_flow.move_character(_context.state, _context.content, continuation.actor_id, continuation.destination, _context.rng, false, action)
+	var result := _context.rules.combat_flow.move_character(_context.state, _context.content, continuation.actor_id, continuation.destination, _context.rng, false, action)
+	return _finish_prompted_combat_result(result, pending_interaction, pending_continuation)
+
+
+## A rejected prompted combat action keeps its prompt so the player can choose again.
+func _finish_prompted_combat_result(result: CombatFlowResult, pending_interaction: InteractionRequest, pending_continuation: SessionContinuation) -> SessionCoordinatorResult:
+	if result.is_rejection:
+		_context.session_interaction = pending_interaction
+		_context.set_continuation(pending_continuation)
 	return finish_combat_result(result)
 
 
 func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionCoordinatorResult:
-	var updates = CharacterAgingResult.update_bodies(events)
+	var updates := CharacterAgingResult.update_bodies(events)
 	if updates.is_empty():
 		if resume_kind == &"post-move":
 			_context.set_continuation(resume_continuation.copy())
@@ -429,7 +445,7 @@ func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName
 		if resume_kind == &"combat-monster-turns":
 			return _continue_after_session_combat_age_update(events)
 		return SessionCoordinatorResult.completed(events)
-	var age = AgeContinuationBody.new()
+	var age := AgeContinuationBody.new()
 	for update: AgeUpdateRequestBody in updates:
 		age.updates.append(InteractionRequest.age_update_body("session.age-copy", update).body as AgeUpdateRequestBody)
 	age.index = 1
@@ -443,12 +459,12 @@ func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName
 
 func _respond_session_age_update(response: InteractionResponse) -> SessionCoordinatorResult:
 	if response.kind != InteractionRequest.AGE_UPDATE or response.body is not InteractionResponse.EmptyBody:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
-	var age = _context.session_continuation.age()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
+	var age := _context.session_continuation.age()
 	if age == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The age-update queue is unavailable.")
-	var updates = age.updates
-	var index = age.index
+	var updates := age.updates
+	var index := age.index
 	if updates.is_empty() or index < 1 or index > updates.size():
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The age-update queue is unavailable.")
 	var acknowledged: AgeUpdateRequestBody = updates[index - 1]
@@ -459,8 +475,8 @@ func _respond_session_age_update(response: InteractionResponse) -> SessionCoordi
 		_context.session_interaction = InteractionRequest.age_update_body(_session_age_update_request_id(next_payload, index), next_payload)
 		events.append(CharacterAgingResult.sound_event_for_update(next_payload))
 		return SessionCoordinatorResult.waiting(_context.session_interaction, events)
-	var resume_kind = age.resume_kind
-	var resume_continuation = age.resume_continuation
+	var resume_kind := age.resume_kind
+	var resume_continuation := age.resume_continuation
 	_context.session_interaction = null
 	_context.session_continuation.clear()
 	if resume_kind == &"post-move":
@@ -477,7 +493,7 @@ func _respond_session_age_update(response: InteractionResponse) -> SessionCoordi
 
 
 func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var continued = _context.rules.combat_flow.continue_after_age_update(_context.state, _context.content, _context.rng)
+	var continued := _context.rules.combat_flow.continue_after_age_update(_context.state, _context.content, _context.rng)
 	if not continued.ok:
 		return SessionCoordinatorResult.failed(continued.error_code, continued.error_message, events)
 	events.append_array(continued.events)
@@ -495,10 +511,10 @@ func _session_age_update_request_id(update: AgeUpdateRequestBody, index: int) ->
 
 
 func _respond_session_ally_selection(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.AllySelectionBody
+	var body := response.body as InteractionResponse.AllySelectionBody
 	if response.kind != &"ally_selection" or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Ally selection requires selectedIds.")
-	var continuation = _context.session_continuation.combat()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Ally selection requires selectedIds.")
+	var continuation := _context.session_continuation.combat()
 	if continuation == null or _context.state.combat == null or not _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The completed battle is unavailable for ally selection.")
 	# Development saves from before the Castle body-count correction can retain an
@@ -508,7 +524,9 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionCo
 		_context.session_interaction = null
 		_context.session_continuation.clear()
 		return _context.scenario().finish_direct_battle_recovery(_no_events())
-	var result = _context.rules.combat_flow.apply_ally_selection(_context.state, _context.content, body.selected_ids)
+	var result := _context.rules.combat_flow.apply_ally_selection(_context.state, _context.content, body.selected_ids)
+	if result.is_rejection:
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message)
 	_context.session_interaction = null
@@ -519,13 +537,15 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionCo
 
 
 func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionCoordinatorResult:
-	var body = response.body as InteractionResponse.TreasureBody
+	var body := response.body as InteractionResponse.TreasureBody
 	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or body == null:
-		return SessionCoordinatorResult.failed(&"invalid_interaction_response", "Fumbled-weapon recovery requires a treasure-distribution response.")
-	var continuation = _context.session_continuation.combat()
+		return SessionCoordinatorResult.rejected(&"invalid_interaction_response", "Fumbled-weapon recovery requires a treasure-distribution response.")
+	var continuation := _context.session_continuation.combat()
 	if continuation == null or _context.state.combat == null or not _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The completed battle is unavailable for fumbled-weapon recovery.")
-	var result = _context.rules.combat_flow.apply_fumble_recovery(_context.state, _context.content, body.action, body.instance_id, body.character_id)
+	var result := _context.rules.combat_flow.apply_fumble_recovery(_context.state, _context.content, body.action, body.instance_id, body.character_id)
+	if result.is_rejection:
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message)
 	_context.session_interaction = null
@@ -536,14 +556,16 @@ func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionC
 
 
 func _respond_session_battle_reward(response: InteractionResponse) -> SessionCoordinatorResult:
-	var continuation = _context.session_continuation.reward()
+	var continuation := _context.session_continuation.reward()
 	if continuation == null or _context.state.combat == null or not _context.state.combat.completed or _context.state.combat.battle_id != continuation.battle_id:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The completed battle is unavailable for reward distribution.")
 	if continuation.runtime_continuation == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The battle reward continuation is unavailable.")
-	var return_continuation = _context.battle_return_continuation.copy()
-	var battle_outcome = _context.state.combat.outcome
-	var result = _context.runtime_api.resume_classic(continuation.runtime_continuation, response, response.request_id)
+	var return_continuation := _context.battle_return_continuation.copy()
+	var battle_outcome := _context.state.combat.outcome
+	var result := _context.runtime_api.resume_classic(continuation.runtime_continuation, response, response.request_id)
+	if result.is_rejection:
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
@@ -559,7 +581,7 @@ func finish_magic_transition(result: MagicTransitionResult) -> SessionCoordinato
 	if result == null:
 		return SessionCoordinatorResult.failed(&"invalid_workflow_result", "The magic workflow returned no result.")
 	if not result.ok:
-		return SessionCoordinatorResult.failed(result.error_code, result.error_message)
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message) if result.is_rejection else SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if result.completed:
 		if result.process_age_updates:
 			return _finish_magic_workflow(SessionWorkflowResult.completed(result.events))
@@ -594,6 +616,8 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordina
 
 
 func finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
+	if result.is_rejection:
+		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():

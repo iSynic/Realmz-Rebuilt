@@ -12,6 +12,7 @@ var definition_id: String
 var cursor: int = 0
 var return_target: String = ""
 var counts_as_classic_call: bool = false
+var native_return_destination: TriggerDestinationDefinition
 var _parameters: Dictionary = {}
 var _locals: Dictionary = {}
 var _context: ScenarioExecutionContext = ScenarioExecutionContext.empty()
@@ -81,22 +82,26 @@ func pop_iterator() -> Dictionary:
 	return {} if _iterators.is_empty() else _iterators.pop_back()
 
 
-func to_data() -> Dictionary:
-	return {
+func to_data(typed_values: bool = true) -> Dictionary:
+	var data := {
 		"kind": String(kind),
 		"definitionId": definition_id,
 		"cursor": cursor,
 		"returnTarget": return_target,
 		"countsAsClassicCall": counts_as_classic_call,
-		"parameters": _parameters.duplicate(true),
-		"locals": _locals.duplicate(true),
+		"parameters": ScenarioValueCodec.encode(_parameters) if typed_values else _parameters.duplicate(true),
+		"locals": ScenarioValueCodec.encode(_locals) if typed_values else _locals.duplicate(true),
 		"context": ScenarioExecutionContextCodec.encode(_context),
-		"iterators": _iterators.duplicate(true),
+		"iterators": ScenarioValueCodec.encode(_iterators) if typed_values else _iterators.duplicate(true),
+		"nativeReturnDestination": null if native_return_destination == null else {"mapId": native_return_destination.map_id, "x": native_return_destination.coordinate.x, "y": native_return_destination.coordinate.y},
 	}
+	return data
 
 
-static func from_data(data: Variant) -> ScenarioFrame:
-	if not data is Dictionary:
+## VM schema 4 frames carry type-tagged values (ADR 0026); `typed_values`
+## false reads schema 2/3 raw JSON values.
+static func from_data(data: Variant, typed_values: bool = true) -> ScenarioFrame:
+	if not data is Dictionary or data.size() != 9 + (1 if data.has("nativeReturnDestination") else 0):
 		return null
 	for field: String in ["kind", "definitionId", "cursor", "returnTarget", "countsAsClassicCall", "parameters", "locals", "context", "iterators"]:
 		if not data.has(field):
@@ -104,7 +109,10 @@ static func from_data(data: Variant) -> ScenarioFrame:
 	var saved_cursor := _integer(data["cursor"])
 	if data["kind"] not in ["program", "action", "encounter"] or not data["definitionId"] is String or data["definitionId"].is_empty() or saved_cursor < 0 or not data["returnTarget"] is String or not data["countsAsClassicCall"] is bool:
 		return null
-	if not data["parameters"] is Dictionary or not data["locals"] is Dictionary or not data["context"] is Dictionary or not data["iterators"] is Array:
+	var parameters: Variant = _decoded(data["parameters"], typed_values)
+	var locals: Variant = _decoded(data["locals"], typed_values)
+	var iterators: Variant = _decoded(data["iterators"], typed_values)
+	if not parameters is Dictionary or not locals is Dictionary or not data["context"] is Dictionary or not iterators is Array:
 		return null
 	var context := ScenarioExecutionContextCodec.decode(data["context"])
 	if context == null:
@@ -112,14 +120,45 @@ static func from_data(data: Variant) -> ScenarioFrame:
 	var frame := ScenarioFrame.new(StringName(data["kind"]), data["definitionId"], saved_cursor)
 	frame.return_target = data["returnTarget"]
 	frame.counts_as_classic_call = data["countsAsClassicCall"]
-	frame._parameters = data["parameters"].duplicate(true)
-	frame._locals = data["locals"].duplicate(true)
+	frame._parameters = parameters
+	frame._locals = locals
 	frame._context = context
-	for iterator: Variant in data["iterators"]:
+	if data.get("nativeReturnDestination") != null:
+		frame.native_return_destination = _return_destination(data["nativeReturnDestination"])
+		if frame.native_return_destination == null: return null
+	for iterator: Variant in iterators:
 		if not iterator is Dictionary:
 			return null
+		if not typed_values:
+			# Legacy JSON returned the VM-owned loop counters as floats.
+			for field: String in ["beginTarget", "index"]:
+				if iterator.has(field): iterator[field] = _integer(iterator[field])
 		frame._iterators.append(iterator.duplicate(true))
 	return frame
+
+
+## Restores declared int parameters that schema 2/3 JSON decoded as whole
+## floats. Locals have no declared types and keep their decoded values.
+func coerce_declared_parameters(action: ScenarioActionDefinition) -> void:
+	for declared: ScenarioActionParameter in action.parameters():
+		var value: Variant = _parameters.get(declared.name)
+		if declared.value_type == &"int" and value is float and is_finite(value) and value == floor(value):
+			_parameters[declared.name] = int(value)
+
+
+static func _decoded(value: Variant, typed_values: bool) -> Variant:
+	if not typed_values:
+		return value.duplicate(true) if value is Dictionary or value is Array else value
+	var decoded := ScenarioValueCodec.decode(value)
+	return decoded["value"] if decoded["ok"] else null
+
+
+static func _return_destination(value: Variant) -> TriggerDestinationDefinition:
+	if not value is Dictionary or value.size() != 3 or not value.get("mapId") is String or value["mapId"].is_empty(): return null
+	for field: String in ["x", "y"]:
+		var number: Variant = value.get(field)
+		if not (number is int or number is float and is_finite(number) and number == floor(number)) or number < -2_147_483_648 or number > 2_147_483_647: return null
+	return TriggerDestinationDefinition.new(value["mapId"], Vector2i(value["x"], value["y"]))
 
 
 static func _integer(value: Variant) -> int:

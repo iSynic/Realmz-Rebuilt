@@ -218,9 +218,12 @@ func _resolve_original(key: String) -> void:
 		_scenario_hashes[key] = hash
 		_scenario_assets[key] = asset
 		_scenario_media[key] = _media.package_media
+		var stock_source := _stock.source_playlist(hash) if _stock != null else 0
+		if stream == null and stock_source != 0:
+			stream = _stock.stream(stock_source)
 		if stream == null:
 			stream = _media.audio_stream(asset)
-		title = asset.label
+		title = _stock.title(stock_source) if stock_source != 0 else asset.label
 	else:
 		_scenario_hashes.erase(key)
 		_scenario_assets.erase(key)

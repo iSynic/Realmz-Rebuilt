@@ -72,8 +72,7 @@ func write(package_path: String, content: RealmzContent, archive_sha256: String,
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		last_error = "Package receipt failed typed readback."
 		return false
-	if FileAccess.file_exists(receipt_path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(receipt_path))
+	# Rename replaces the previous receipt directly, so it is never absent.
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(receipt_path)) != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		last_error = "Could not atomically commit the package receipt."

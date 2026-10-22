@@ -46,11 +46,11 @@ func opcode_ids() -> Array[int]:
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		6:
-			return _configure_classic_shop(action.operand_id, request_id)
+			return _configure_classic_shop(action.operand_id, request_id, context)
 		32:
 			return _configure_temple(action)
 		73:
-			return _configure_shop(action, request_id)
+			return _configure_shop(action, request_id, context)
 	return super.execute(action, request_id, context)
 
 
@@ -241,9 +241,11 @@ func _request_shop(classic_shop_id: int, request_id: String, accept_ranges: Arra
 	return request_shop_definition(shop, request_id, accept_ranges)
 
 
-func _configure_classic_shop(classic_shop_id: int, request_id: String) -> ScenarioRuntimeOperationResult:
+func _configure_classic_shop(classic_shop_id: int, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var shop := _content.economy.shop_by_classic_id(absi(classic_shop_id))
 	if shop == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data SD", absi(classic_shop_id)):
+			return ClassicCompatibility.cancel_interaction(&"unavailable-shop", "Data SD", absi(classic_shop_id), context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 6 references unavailable shop %d." % classic_shop_id)
 	var accept_ranges: Array[int] = [0, 0, 0, 0]
 	if not _game_state.location_services.set_active_shop(shop.id, accept_ranges):
@@ -253,11 +255,13 @@ func _configure_classic_shop(classic_shop_id: int, request_id: String) -> Scenar
 	return ScenarioRuntimeOperationResult.completed(shop.id, _shop_available_events(shop.id, accept_ranges))
 
 
-func _configure_shop(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+func _configure_shop(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 73 requires a five-value Extra Code row.")
 	var shop := _content.economy.shop_by_classic_id(absi(action.extra_code[0]))
 	if shop == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data SD", absi(action.extra_code[0])):
+			return ClassicCompatibility.cancel_interaction(&"unavailable-shop", "Data SD", absi(action.extra_code[0]), context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 73 references unavailable shop %d." % action.extra_code[0])
 	var accept_ranges: Array[int] = [action.extra_code[1], action.extra_code[2], action.extra_code[3], action.extra_code[4]]
 	if not _game_state.location_services.set_active_shop(shop.id, accept_ranges):
@@ -279,7 +283,7 @@ func _configure_temple(action: ClassicActionDefinition) -> ScenarioRuntimeOperat
 func _resume_shop(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.ShopBody
 	if response.kind != &"shop_action" or body == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop response requires an action string.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Shop response requires an action string.")
 	var service := continuation.body as ScenarioServiceContinuationBody
 	var shop := _content.economy.shop_by_id(service.shop_id)
 	if shop == null:
@@ -300,42 +304,42 @@ func _resume_shop(continuation: ScenarioRuntimeContinuation, response: Interacti
 		"pool", "share", "to-pool", "to-character", MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
 			return _shop_money_action(shop, continuation, body, request_id)
 		_:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_shop_action", "Shop action '%s' is unavailable." % body.action)
+			return ScenarioRuntimeOperationResult.rejected(&"unknown_shop_action", "Shop action '%s' is unavailable." % body.action)
 
 
 func _shop_money_action(shop: ShopDefinition, continuation: ScenarioRuntimeContinuation, body: InteractionResponse.ShopBody, request_id: String) -> ScenarioRuntimeOperationResult:
 	var movement_error := _money.movement_context_error()
 	if not movement_error.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_money_context", movement_error)
 	var events: Array[DomainEvent] = []
 	match body.action:
 		&"pool":
 			var probe := _rules.economy.pool_probe(_game_state.party)
 			if not probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 			_rules.economy.pool_party_wealth(_game_state.party)
 			events.append(DomainEvent.new(&"wealth_pooled", {"source": "classic-shop", "wealth": _game_state.party.pooled_wealth.to_data()}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-shop-pool"}))
 		&"share":
 			var probe := _rules.economy.share_probe(_game_state.party)
 			if not probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 			_rules.economy.share_pooled_wealth(_game_state.party)
 			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-shop", "remaining": _game_state.party.pooled_wealth.to_data()}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-shop-share"}))
 		&"to-pool", &"to-character":
 			if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop Swap requires character, denomination, and amount.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Shop Swap requires character, denomination, and amount.")
 			var character := _game_state.party.character_by_id(body.character_id)
 			var kind := ClassicMoneyTransferSupport.wealth_kind(body.denomination)
 			if character == null or kind < 0:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_money_target", "The selected Shop transfer is unavailable.")
+				return ScenarioRuntimeOperationResult.rejected(&"unknown_money_target", "The selected Shop transfer is unavailable.")
 			if body.amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
-				return ScenarioRuntimeOperationResult.failed(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
 			var to_character := body.action == &"to-character"
 			var probe := _rules.economy.transfer_probe(_game_state.party, character, kind as WealthState.Kind, body.amount, to_character)
 			if not probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 			var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, body.amount) if to_character else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, body.amount)
 			if not transferred:
 				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", "The selected Shop transfer is no longer available.")
@@ -344,10 +348,10 @@ func _shop_money_action(shop: ShopDefinition, continuation: ScenarioRuntimeConti
 		MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
 			var rate := MoneyChangingRules.rate(body.action)
 			if not body.character_id.is_empty() or body.denomination != String(rate.source) or body.amount != rate.source_amount:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_money_increment", "The money-changing amount does not match the Castle rate.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "The money-changing amount does not match the Castle rate.")
 			var probe := MoneyChangingRules.probe(_game_state.party, true, body.action)
 			if not probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 			MoneyChangingRules.convert(_game_state.party, true, body.action)
 			events.append(DomainEvent.new(&"wealth_changed", {"source": "classic-shop", "action": String(body.action), "from": String(rate.source), "spent": rate.source_amount, "to": String(rate.result), "received": rate.result_amount}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10129, "waitForCompletion": body.action == MoneyChangingRules.JEWELRY_TO_GEMS, "source": "classic-shop-change"}))
@@ -357,17 +361,17 @@ func _shop_money_action(shop: ShopDefinition, continuation: ScenarioRuntimeConti
 
 func _buy_shop_item(shop: ShopDefinition, continuation: ScenarioRuntimeContinuation, body: InteractionResponse.ShopBody, request_id: String) -> ScenarioRuntimeOperationResult:
 	if body.character_id.is_empty() or body.stock_key.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop buy requires stock identity and characterId.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Shop buy requires stock identity and characterId.")
 	var stock_entry := resolve_shop_stock(shop, body.stock_key)
 	if stock_entry == null or stock_entry.quantity < 1:
-		return ScenarioRuntimeOperationResult.failed(&"shop_item_unavailable", "The selected shop item is out of stock.")
+		return ScenarioRuntimeOperationResult.rejected(&"shop_item_unavailable", "The selected shop item is out of stock.")
 	var character := _game_state.party.character_by_id(body.character_id)
 	var item := stock_entry.item
 	if character == null or item == null or character.inventory().size() >= InventoryRules.MAX_ITEMS or character.carried_load + item.instance_weight(item.initial_charges) > character.maximum_load:
-		return ScenarioRuntimeOperationResult.failed(&"inventory_full", "The selected character cannot carry this item.")
+		return ScenarioRuntimeOperationResult.rejected(&"inventory_full", "The selected character cannot carry this item.")
 	var price := _rules.economy.shop_buy_price(item, _game_state.location_services.shop_inflation(shop))
 	if not _rules.economy.take(_game_state.party, price, WealthState.Kind.GOLD):
-		return ScenarioRuntimeOperationResult.failed(&"insufficient_gold", "The party cannot afford this item.")
+		return ScenarioRuntimeOperationResult.rejected(&"insufficient_gold", "The party cannot afford this item.")
 	var instance := _rules.inventory.add_item(character, item, _game_state.next_instance_id("shop.item"), true)
 	if instance == null:
 		_game_state.party.pooled_wealth.gold += price
@@ -382,27 +386,27 @@ func _buy_shop_item(shop: ShopDefinition, continuation: ScenarioRuntimeContinuat
 
 func _sell_shop_item(shop: ShopDefinition, continuation: ScenarioRuntimeContinuation, body: InteractionResponse.ShopBody, request_id: String) -> ScenarioRuntimeOperationResult:
 	if body.character_id.is_empty() or body.instance_id.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop sell requires characterId and instanceId.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Shop sell requires characterId and instanceId.")
 	var character := _game_state.party.character_by_id(body.character_id)
 	if character == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The shop sale character is unavailable.")
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_character", "The shop sale character is unavailable.")
 	var instance: ItemInstance = null
 	for candidate: ItemInstance in character.inventory():
 		if candidate.id == body.instance_id:
 			instance = candidate
 			break
 	if instance == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_item_instance", "The sold item instance is unavailable.")
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_item_instance", "The sold item instance is unavailable.")
 	var item := _content.items.item_by_id(instance.definition_id)
 	if item == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_item", "The sold item definition is unavailable.")
 	if instance.equipped:
-		return ScenarioRuntimeOperationResult.failed(&"equipped_item", "Unequip this item before selling it.")
+		return ScenarioRuntimeOperationResult.rejected(&"equipped_item", "Unequip this item before selling it.")
 	var service := continuation.body as ScenarioServiceContinuationBody
 	var accept_ranges: Array[int] = []
 	accept_ranges.assign(service.accept_ranges)
 	if not ClassicServiceOperations.shop_accepts_item(item, accept_ranges):
-		return ScenarioRuntimeOperationResult.failed(&"shop_rejects_item", "This shop does not accept the selected item.")
+		return ScenarioRuntimeOperationResult.rejected(&"shop_rejects_item", "This shop does not accept the selected item.")
 	var price := _rules.economy.shop_sell_price(item, instance, _game_state.location_services.shop_inflation(shop))
 	if _rules.inventory.remove_item(character, instance.id, item) == null:
 		return ScenarioRuntimeOperationResult.failed(&"shop_sale_failed", "The selected item could not be removed.")
@@ -420,21 +424,21 @@ func _sell_shop_item(shop: ShopDefinition, continuation: ScenarioRuntimeContinua
 
 func _identify_shop_item(shop: ShopDefinition, continuation: ScenarioRuntimeContinuation, body: InteractionResponse.ShopBody, request_id: String) -> ScenarioRuntimeOperationResult:
 	if body.character_id.is_empty() or body.instance_id.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop identification requires characterId and instanceId.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Shop identification requires characterId and instanceId.")
 	var character := _game_state.party.character_by_id(body.character_id)
 	if character == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The identification character is unavailable.")
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_character", "The identification character is unavailable.")
 	var instance: ItemInstance = null
 	for candidate: ItemInstance in character.inventory():
 		if candidate.id == body.instance_id:
 			instance = candidate
 			break
 	if instance == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_item_instance", "The identification item is unavailable.")
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_item_instance", "The identification item is unavailable.")
 	if instance.identified:
-		return ScenarioRuntimeOperationResult.failed(&"already_identified", "This item is already identified.")
+		return ScenarioRuntimeOperationResult.rejected(&"already_identified", "This item is already identified.")
 	if not _rules.economy.take(_game_state.party, 20, WealthState.Kind.GOLD):
-		return ScenarioRuntimeOperationResult.failed(&"insufficient_gold", "Identification costs 20 gold.")
+		return ScenarioRuntimeOperationResult.rejected(&"insufficient_gold", "Identification costs 20 gold.")
 	instance.identified = true
 	return _continue_shop(shop, continuation, request_id, [
 		DomainEvent.new(&"item_identified", {"shopId": shop.id, "instanceId": instance.id, "characterId": character.id, "price": 20, "source": "classic-shop"}),
@@ -452,14 +456,14 @@ func _continue_shop(shop: ShopDefinition, continuation: ScenarioRuntimeContinuat
 func _resume_temple(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.TempleBody
 	if response.kind != InteractionRequest.TEMPLE or body == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple response requires an action.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Temple response requires an action.")
 	var operation := String(body.action)
 	var service := continuation.body as ScenarioServiceContinuationBody
 	var cost_percent := service.cost_percent
 	var selected_character_id := service.selected_character_id
 	if not body.character_id.is_empty():
 		if _game_state.party.character_by_id(body.character_id) == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The selected temple character is unavailable.")
+			return ScenarioRuntimeOperationResult.rejected(&"unknown_character", "The selected temple character is unavailable.")
 		selected_character_id = body.character_id
 	var next_continuation := ScenarioServiceContinuations.temple(ScenarioRuntimeContinuation.CLASSIC_TEMPLE, cost_percent, service.bank_available, selected_character_id)
 	match operation:
@@ -475,10 +479,10 @@ func _resume_temple(continuation: ScenarioRuntimeContinuation, response: Interac
 		"pool":
 			var movement_error := _money.movement_context_error()
 			if not movement_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_money_context", movement_error)
 			var pool_probe := _rules.economy.pool_probe(_game_state.party)
 			if not pool_probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", pool_probe.reason)
+				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", pool_probe.reason)
 			_rules.economy.pool_party_wealth(_game_state.party)
 			_money.recalculate_party_movement()
 			return ScenarioRuntimeOperationResult.waiting(temple_request(cost_percent, request_id, selected_character_id), next_continuation, [
@@ -488,10 +492,10 @@ func _resume_temple(continuation: ScenarioRuntimeContinuation, response: Interac
 		"share":
 			var movement_error := _money.movement_context_error()
 			if not movement_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_money_context", movement_error)
 			var share_probe := _rules.economy.share_probe(_game_state.party)
 			if not share_probe.allowed:
-				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", share_probe.reason)
+				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", share_probe.reason)
 			_rules.economy.share_pooled_wealth(_game_state.party)
 			_money.recalculate_party_movement()
 			return ScenarioRuntimeOperationResult.waiting(temple_request(cost_percent, request_id, selected_character_id), next_continuation, [
@@ -500,18 +504,18 @@ func _resume_temple(continuation: ScenarioRuntimeContinuation, response: Interac
 			])
 		"service":
 			return _apply_temple_service(next_continuation, body, request_id)
-	return ScenarioRuntimeOperationResult.failed(&"unknown_temple_action", "Temple action '%s' is unavailable." % operation)
+	return ScenarioRuntimeOperationResult.rejected(&"unknown_temple_action", "Temple action '%s' is unavailable." % operation)
 
 
 func _apply_temple_service(continuation: ScenarioRuntimeContinuation, body: InteractionResponse.TempleBody, request_id: String) -> ScenarioRuntimeOperationResult:
 	if body.character_id.is_empty() or body.service_id.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple service requires characterId and serviceId.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Temple service requires characterId and serviceId.")
 	var character := _game_state.party.character_by_id(body.character_id)
 	var service_id := StringName(body.service_id)
 	if character == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_character", "Temple service target is unavailable.")
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_character", "Temple service target is unavailable.")
 	if not TempleRules.SERVICE_IDS.has(service_id):
-		return ScenarioRuntimeOperationResult.failed(&"unknown_temple_service", "Temple service '%s' is unavailable." % service_id)
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_temple_service", "Temple service '%s' is unavailable." % service_id)
 	var service := continuation.body as ScenarioServiceContinuationBody
 	var cost := _rules.temple.service_cost(service_id, service.cost_percent)
 	var next_continuation := ScenarioServiceContinuations.temple(ScenarioRuntimeContinuation.CLASSIC_TEMPLE, service.cost_percent, service.bank_available, character.id)
@@ -531,7 +535,7 @@ func _apply_temple_service(continuation: ScenarioRuntimeContinuation, body: Inte
 func _resume_temple_exit(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple exit requires a yes/no response.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Temple exit requires a yes/no response.")
 	if body.accepted:
 		var service := continuation.body as ScenarioServiceContinuationBody
 		return ScenarioRuntimeOperationResult.waiting(

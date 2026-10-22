@@ -11,13 +11,17 @@ on:
       - 'tools/verify_scenario_importer_platform.ps1'
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
+          - os: windows-2022
             target: x86_64-pc-windows-msvc
             name: windows
           - os: ubuntu-latest
@@ -31,23 +35,24 @@ jobs:
             name: macos-arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Build pinned native converter
         shell: pwsh
         run: |
           ./tools/build_release_importer.ps1 -Target '${{ matrix.target }}' -WorkRoot "$env:RUNNER_TEMP/converter-build" -OutputRoot "$env:RUNNER_TEMP/importer"
           ./tools/package_scenario_importer.ps1 -ImporterRoot "$env:RUNNER_TEMP/importer" -OutputPath 'importer-${{ matrix.name }}.zip'
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: importer-${{ matrix.name }}
           path: importer-${{ matrix.name }}.zip
           if-no-files-found: error
   universal:
     needs: build
+    timeout-minutes: 30
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: importer-macos-*
           merge-multiple: true
@@ -72,7 +77,7 @@ jobs:
           $arm | ConvertTo-Json -Depth 16 | Set-Content arm64/build-manifest.json
           ./tools/verify_scenario_importer_platform.ps1 -ExpectedPlatform macos -Target $arm.buildIdentity.target -ExecutablePath arm64/providence-native-adapter
           ./tools/package_scenario_importer.ps1 -ImporterRoot arm64 -OutputPath importer-macos.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: importer-macos
           path: importer-macos.zip

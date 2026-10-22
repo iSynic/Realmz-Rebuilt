@@ -19,7 +19,7 @@ func _init(owner: RefCounted) -> void:
 	_owner_ref = weakref(owner)
 
 
-func _owner():
+func _owner() -> PartySetupCharacterCreationController:
 	return _owner_ref.get_ref()
 
 
@@ -29,7 +29,7 @@ func reset_pages() -> void:
 
 
 func build() -> void:
-	var owner = _owner()
+	var owner := _owner()
 	assert(owner.appearance_step_scene != null, "The party-setup workspace must export its appearance step scene.")
 	var selected_asset_ids: Array[String] = []
 	if not owner.draft_portrait_id.is_empty():
@@ -63,7 +63,7 @@ func build() -> void:
 	_refresh_preview(owner)
 
 
-func _populate_option_control(owner, control: OptionButton, options: Array[CharacterAppearanceOptionView], portrait: bool) -> void:
+func _populate_option_control(owner: PartySetupCharacterCreationController, control: OptionButton, options: Array[CharacterAppearanceOptionView], portrait: bool) -> void:
 	control.clear()
 	for option: CharacterAppearanceOptionView in options:
 		_add_option(owner, control, option)
@@ -76,7 +76,7 @@ func _populate_option_control(owner, control: OptionButton, options: Array[Chara
 		owner.draft_combat_icon_id = String(control.get_item_metadata(control.selected))
 
 
-func _bind_strip(step: CharacterCreationAppearanceStep, owner, control: OptionButton, options: Array[CharacterAppearanceOptionView], portrait: bool) -> void:
+func _bind_strip(step: CharacterCreationAppearanceStep, owner: PartySetupCharacterCreationController, control: OptionButton, options: Array[CharacterAppearanceOptionView], portrait: bool) -> void:
 	var prefix := "Portrait" if portrait else "CombatIcon"
 	var rows_host := step.get_node("%%%sRows" % prefix) as VBoxContainer
 	var previous := step.get_node("%%%sPrevious" % prefix) as Button
@@ -115,7 +115,7 @@ func _bind_strip(step: CharacterCreationAppearanceStep, owner, control: OptionBu
 		row.option_selected.connect(func(option_id: String) -> void: _select_thumbnail(control, option_id, portrait))
 
 
-func _rows(owner, options: Array[CharacterAppearanceOptionView]) -> Array[Dictionary]:
+func _rows(owner: PartySetupCharacterCreationController, options: Array[CharacterAppearanceOptionView]) -> Array[Dictionary]:
 	var rows: Array[Dictionary] = []
 	var ordered_races: Array[DefinitionOptionView] = []
 	if owner.view != null:
@@ -153,7 +153,7 @@ func _rows(owner, options: Array[CharacterAppearanceOptionView]) -> Array[Dictio
 	return rows
 
 
-func _bind_group_filter(step: CharacterCreationAppearanceStep, owner, portraits: Array[CharacterAppearanceOptionView], icons: Array[CharacterAppearanceOptionView]) -> void:
+func _bind_group_filter(step: CharacterCreationAppearanceStep, owner: PartySetupCharacterCreationController, portraits: Array[CharacterAppearanceOptionView], icons: Array[CharacterAppearanceOptionView]) -> void:
 	var control := step.get_node("%ArtworkGroupFilter") as OptionButton
 	control.clear()
 	control.add_item("All artwork")
@@ -177,7 +177,7 @@ func _bind_group_filter(step: CharacterCreationAppearanceStep, owner, portraits:
 	control.item_selected.connect(_select_art_group.bind(control))
 
 
-func _filtered_options(owner, options: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
+func _filtered_options(owner: PartySetupCharacterCreationController, options: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
 	var result: Array[CharacterAppearanceOptionView] = []
 	var race_id := _race_id_for_name(owner, _selected_art_group)
 	for option: CharacterAppearanceOptionView in options:
@@ -214,7 +214,7 @@ func _has_imported_group(option_id: String, group_name: String) -> bool:
 	return false
 
 
-func _race_id_for_name(owner, group_name: String) -> String:
+func _race_id_for_name(owner: PartySetupCharacterCreationController, group_name: String) -> String:
 	if owner.view == null or group_name.is_empty():
 		return ""
 	for race: DefinitionOptionView in owner.view.race_options:
@@ -256,12 +256,12 @@ func _select_art_group(index: int, control: OptionButton) -> void:
 
 
 func _artwork_library_dismissed() -> void:
-	var owner = _owner()
+	var owner := _owner()
 	if owner != null and owner.setup_mode == &"creator" and owner.creator_step == 2 and owner.setup_overlay != null and owner.setup_overlay.visible:
 		owner.render_creator_step()
 
 
-func _prune_retained_options(owner) -> void:
+func _prune_retained_options(owner: PartySetupCharacterCreationController) -> void:
 	var selected_ids := [owner.draft_portrait_id, owner.draft_combat_icon_id]
 	for option_id: String in _retained_imported_options.keys():
 		if not selected_ids.has(option_id):
@@ -285,7 +285,7 @@ func _change_page(delta: int, portrait: bool) -> void:
 
 
 func _select_thumbnail(control: OptionButton, option_id: String, portrait: bool) -> void:
-	var owner = _owner()
+	var owner := _owner()
 	for index: int in control.item_count:
 		if String(control.get_item_metadata(index)) != option_id:
 			continue
@@ -300,7 +300,7 @@ func _select_thumbnail(control: OptionButton, option_id: String, portrait: bool)
 		return
 
 
-func _sorted_options(owner, source: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
+func _sorted_options(owner: PartySetupCharacterCreationController, source: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
 	var result := source.duplicate()
 	result.sort_custom(func(left: CharacterAppearanceOptionView, right: CharacterAppearanceOptionView) -> bool:
 		var left_recommended := left.is_recommended_for(owner.selected_race_id)
@@ -312,7 +312,7 @@ func _sorted_options(owner, source: Array[CharacterAppearanceOptionView]) -> Arr
 	return result
 
 
-static func _add_option(owner, control: OptionButton, option: CharacterAppearanceOptionView) -> void:
+static func _add_option(owner: PartySetupCharacterCreationController, control: OptionButton, option: CharacterAppearanceOptionView) -> void:
 	var texture := owner.appearance_textures().get(option.id) as Texture2D
 	if texture != null:
 		control.add_icon_item(texture, option.label)
@@ -323,7 +323,7 @@ static func _add_option(owner, control: OptionButton, option: CharacterAppearanc
 	control.set_item_tooltip(index, option.label)
 
 
-func _select_default(owner, control: OptionButton, selected_id: String, portrait: bool) -> void:
+func _select_default(owner: PartySetupCharacterCreationController, control: OptionButton, selected_id: String, portrait: bool) -> void:
 	if control.item_count == 0:
 		return
 	var target_id := selected_id
@@ -348,7 +348,7 @@ func _select_default(owner, control: OptionButton, selected_id: String, portrait
 	control.select(0)
 
 
-func _portrait_selected(owner) -> void:
+func _portrait_selected(owner: PartySetupCharacterCreationController) -> void:
 	if not owner.combat_icon_touched and owner.combat_icon_option != null:
 		var portrait_value := selected(owner.portrait_option, true)
 		if portrait_value != null:
@@ -362,12 +362,12 @@ func _portrait_selected(owner) -> void:
 	_refresh_preview(owner)
 
 
-func _combat_icon_selected(owner) -> void:
+func _combat_icon_selected(owner: PartySetupCharacterCreationController) -> void:
 	owner.combat_icon_touched = true
 	_refresh_preview(owner)
 
 
-func _refresh_preview(owner) -> void:
+func _refresh_preview(owner: PartySetupCharacterCreationController) -> void:
 	if owner.portrait_preview != null:
 		var portrait_id := String(owner.portrait_option.get_item_metadata(owner.portrait_option.selected)) if owner.portrait_option != null and owner.portrait_option.selected >= 0 else ""
 		owner.portrait_preview.texture = owner.appearance_textures().get(portrait_id) as Texture2D
@@ -390,7 +390,7 @@ func option_by_id(option_id: String, portrait: bool) -> CharacterAppearanceOptio
 
 
 func _options(portrait: bool) -> Array[CharacterAppearanceOptionView]:
-	var owner = _owner()
+	var owner := _owner()
 	var options: Array[CharacterAppearanceOptionView] = []
 	if owner.view != null:
 		options.assign(owner.view.portrait_options if portrait else owner.view.combat_icon_options)
@@ -421,7 +421,7 @@ func _options(portrait: bool) -> Array[CharacterAppearanceOptionView]:
 	return options
 
 
-func _selected_id(owner, portrait: bool) -> String:
+func _selected_id(owner: PartySetupCharacterCreationController, portrait: bool) -> String:
 	return owner.draft_portrait_id if portrait else owner.draft_combat_icon_id
 
 
@@ -430,7 +430,7 @@ static func _contains_option(options: Array[CharacterAppearanceOptionView], opti
 
 
 func _open_character_art() -> void:
-	var owner = _owner()
+	var owner := _owner()
 	var group_name := ""
 	if owner.view != null:
 		for race: DefinitionOptionView in owner.view.race_options:
@@ -442,7 +442,7 @@ func _open_character_art() -> void:
 
 
 func _select_imported_art(id: String, kind: String) -> void:
-	var owner = _owner()
+	var owner := _owner()
 	if kind == "portrait":
 		owner.draft_portrait_id = id
 		_portrait_page = 0

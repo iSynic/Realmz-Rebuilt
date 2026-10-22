@@ -1,0 +1,3814 @@
+{
+  "kind": "realmz-rebuilt.independent-certified-record-quarantine",
+  "formatVersion": 1,
+  "intakeSha256": "5a11ab3a79e34774d85ef8ec2ccaa6b06132d13ebc42dbe102bad511cdc800ba",
+  "castleRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+  "castleEvidence": {
+    "src/realmz_orig/structs.h": {
+      "lines": [
+        125,
+        130,
+        159,
+        170
+      ],
+      "supports": "Native battle and monster field layout; 2-byte native alignment yields 346/210-byte records.",
+      "sha256": "939f08c2eca0aa059de01d550668890c73dd293261bab71c6bc7cca4051626cf"
+    },
+    "src/realmz_orig/convert.c": {
+      "lines": [
+        272,
+        279
+      ],
+      "supports": "Battle shorts are endian-converted; signed native field interpretation.",
+      "sha256": "6f0079ea46f7e370639232a755328c26d6a1167ae9e1d28184e7643f48ce5c97"
+    },
+    "src/realmz_orig/combatsetup.c": {
+      "lines": [
+        103,
+        104,
+        300,
+        302,
+        306
+      ],
+      "supports": "Indexed full-record battle/monster reads; zero-HD monsters skipped.",
+      "sha256": "6172421cb3e7bd1194e8ab4aa523db9dc89e7fd1741d7d29a6f1075d1ba3f3ad"
+    },
+    "src/realmz_orig/getup.c": {
+      "lines": [
+        75,
+        78
+      ],
+      "supports": "Only negative battle macro activates abs(target) XAP.",
+      "sha256": "7d064f3ed3ba692e0fbe1487bcbe1c733daeb18ef18633d32d1423df9e57fdb5"
+    },
+    "src/realmz_orig/killbody.c": {
+      "supports": "Nonzero monster todoondeath selects its death-macro behavior; raw signed value retained here.",
+      "sha256": "5d117c9548298c86b77d8c79993f2f02e4a8fb4d3aa429be0dd6db9334cb2c53"
+    }
+  },
+  "historicalCertification": {
+    "revision": "1154e04bcc49153fec76b051b4184c294df75e85",
+    "path": "crates/providence-core/src/codecs/classic_record_extents.rs",
+    "sha256": "d92ddf7882ddaea75f1b60d089539d605d7b84492ea269c7e7b56ecac3cebdb4",
+    "role": "Existing manually reviewed source-specific exclusion identities; no compiler decoder or projection was used to derive this inventory."
+  },
+  "policy": {
+    "rawPreservation": "Every byte remains in the exact native-source annex.",
+    "runtimeProjection": "Only unchanged imported rows matching the exact source/range/row hashes may receive this disposition.",
+    "programs": "No AP, XAP, Simple result, Complex result, or program instruction is excluded by this catalog.",
+    "semantics": "Complete byte framing does not establish a usable authored runtime definition. These exclusions are explicit safety quarantines, not Castle EOF semantics or reachability pruning."
+  },
+  "campaigns": [
+    {
+      "campaignId": "scenario-assault-on-giant-mountain",
+      "sourceTreeSha256": "b61fae14575e27a1e6ee3c3262fbc2dba57237f857c08edac4e2008770927c5f",
+      "baselineArchiveSha256": "9be2a50ea98da5ce79144768fe84f4aa1e21af1152efd4f570c38be56bceda11",
+      "baselinePackageHash": "44de42201952febb5320dd0933b352b816cebd117c6f3d5f64dcda39c5d0c8b8",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-castle-in-the-clouds",
+      "sourceTreeSha256": "f54a111a39e9384c45a90ce7138615e75b6a6e830efa8ffdc9006b19e79e7356",
+      "baselineArchiveSha256": "43a5c1bfeea78bad2a997694ba703e2813d74be81d40a7fb11f7cd39f936377a",
+      "baselinePackageHash": "8616163f005e8facdc8a4cbbaa10c7f6b2c4f362cc565cc4cf6421b0f6498de1",
+      "certifiedRanges": 1,
+      "excludedCompleteRecords": 15,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-city-of-bywater",
+      "sourceTreeSha256": "0475f7c4ddfb891d1487ba05337ef6de2a1336478565c69fe629d3c9c39172b4",
+      "baselineArchiveSha256": "b8d22d64c9f34210f05a8bf06a118260e77ec7bb2cadab2762c88edaab9163f1",
+      "baselinePackageHash": "26d73a87fccb55befe0dc510fb620b535fbd521ff70ea6d88bfdd67ea5711389",
+      "certifiedRanges": 1,
+      "excludedCompleteRecords": 18,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-destroy-the-necronomicon",
+      "sourceTreeSha256": "b3ab25c0cd216b06db6d4345f9c67beeae20ad1eb19d637284944e0cd1cd737c",
+      "baselineArchiveSha256": "e1c199fb44e3b5280b79433d4c4aa09540cc38abf228ca6050487342f59f9702",
+      "baselinePackageHash": "f2fde15520a7b8c488936f75e422959659aec6add4f8fb35ec99204b1c6a1dd7",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-grilochs-revenge",
+      "sourceTreeSha256": "6522528b6b1abf20f2416bc3ac41c979b506eda6f451642b9d2957c839e9b032",
+      "baselineArchiveSha256": "ecb2277f56074edbf2696441ecd43945cedb8763af91f52420471f41e6db1c46",
+      "baselinePackageHash": "a5662fcf210504339d8170b7189487d9f0f874ebd3d8b55594d4c5e1478c5970",
+      "certifiedRanges": 2,
+      "excludedCompleteRecords": 80,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-half-truth",
+      "sourceTreeSha256": "90b7f0b51e9c4fd6097b0413e79c031bf89a12cbef6d740cc681c5bf1871878f",
+      "baselineArchiveSha256": "e9c7c1ca211ba9672c0ad1000be8d86be782d0cff70b363ce0d67aa3f819ea2b",
+      "baselinePackageHash": "c68c78ac6201e246cd7d3deb391bd9a0fad712b8c25dc37778e8074c1a8548c3",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-mithril-vault",
+      "sourceTreeSha256": "d351cb67b8e205350a796841ff550a44915f7638395dec5ea88dabbfc791a895",
+      "baselineArchiveSha256": "72678fc3366a5f37e68a56e5ab488ef651f5ad35be0dcdb374d05987da706906",
+      "baselinePackageHash": "681a90529ddaae25425405ca090ce9e1d989c523d4c783061c66b823d0997764",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-prelude-to-pestilence",
+      "sourceTreeSha256": "b125e2cd0adcbfdcb1b160b0a4455650a9c4ee5714ebe29fac192ed2b1796df2",
+      "baselineArchiveSha256": "70c063a2a2dde5847dc7e8284f295bae8c3d0625f874e0ad7f43bdb09d0337ba",
+      "baselinePackageHash": "a93377fe0e8f029d3451ea593fb6650b7a4c482524f62832adbc3fbc44094c78",
+      "certifiedRanges": 2,
+      "excludedCompleteRecords": 109,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-trouble-in-the-sword-lands",
+      "sourceTreeSha256": "37323a206ea0daf412502fabdd76fa426f1920c5e75a6effd6018dcfe783de71",
+      "baselineArchiveSha256": "7cee6240e1097398dc5ebee65f6e2bc2ac0cfb27d0f61241d6bf88ee251ee744",
+      "baselinePackageHash": "d23364bddb505d34da718a19a822adf83b17364993a8ef77eb4577fe06d5971b",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-twin-sands-of-time",
+      "sourceTreeSha256": "688fef4c7a390f3f36f3a60ed2f205e0f157f5b806d0ba751eb622dec7b0675d",
+      "baselineArchiveSha256": "44f7db4b7442caef748e19393d9c8da8945f13dee8e4fdcc648398d36123728e",
+      "baselinePackageHash": "320da7e47cb18e5e15650e1bfb26b0a432ab953175ef46c6444d0631618f4662",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-war-in-the-sword-lands",
+      "sourceTreeSha256": "50dee61551c4f0c01ab1140eed021a3c292efda3b71a12041b3c8bf7f0891105",
+      "baselineArchiveSha256": "2026a436f70699fb8afb0dcd9b79898c350abb2e29b265535b80989a5e3b982b",
+      "baselinePackageHash": "fa80219a1ce7e39e2866cc1b4d0d5d04afdb9e2fd0e645e4ae55936241aa0b9f",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-white-dragon",
+      "sourceTreeSha256": "a424392bd2830fea27cb8732036572f354269c494fca9090d726fd719f0a2b81",
+      "baselineArchiveSha256": "1f8b8fc7d9aca2f59ced9e5a3df91cd9302b517855e6a648b92bfdb0012ee829",
+      "baselinePackageHash": "5d666c3d0220f204bf844f040566b322e3f47e9c10f92d97c04e8771d22a5025",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    },
+    {
+      "campaignId": "scenario-wrath-of-the-mind-lords",
+      "sourceTreeSha256": "2f534111ee7e9274eaec7ab7160b7d754dce643e0a374a6cf45a79db9317556d",
+      "baselineArchiveSha256": "f28b7c9b6a257079605f916fb343aab70a0a7c984427662f8498c8aca3fa27ea",
+      "baselinePackageHash": "03b0c6a8099e1cfe4f257e8c4e1a3ef949fa2faa76720b5182c7d486496bac74",
+      "certifiedRanges": 0,
+      "excludedCompleteRecords": 0,
+      "baselineRemovalRequired": false
+    }
+  ],
+  "ranges": [
+    {
+      "campaignId": "scenario-castle-in-the-clouds",
+      "nativePath": "Data BD",
+      "sourceSha256": "6aca0d77976d4055c64f6424343066b196189fdc2325a02ff4fb82239331c7f9",
+      "sourceBytes": 84424,
+      "family": "battle",
+      "setId": null,
+      "recordBytes": 346,
+      "firstRecord": 229,
+      "endRecordExclusive": 244,
+      "completeRecords": 15,
+      "startOffset": 79234,
+      "endOffsetExclusive": 84424,
+      "retainedRangeSha256": "bdf473652f0a822fd8dc3e3befd025a97ab11e2bce435279136df102182956f6",
+      "residualBytes": 0,
+      "residualSha256": null,
+      "reason": "Castle in the Clouds Data BD foreign-tail provenance audit",
+      "historicalCertifiedSourceSha256": "6aca0d77976d4055c64f6424343066b196189fdc2325a02ff4fb82239331c7f9",
+      "ownerSourceEquivalence": null,
+      "baselinePresentRecordIds": [],
+      "rows": [
+        {
+          "record": 229,
+          "offset": 79234,
+          "bytes": 346,
+          "sha256": "e9081021e282af1937fb5b10be951c806425feff208e3e499a455b560f796920",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 129
+          },
+          "macroFieldOffset": 79578,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 230,
+          "offset": 79580,
+          "bytes": 346,
+          "sha256": "d03a544e8f18375f6d8701e923b73ded752be52fc52aff9f4c3e08bc479aace1",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 79924,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 231,
+          "offset": 79926,
+          "bytes": 346,
+          "sha256": "3c59107a03a18aeb4d12a04030d8ad4013b4c0ac7eba3629c9aed3a57ded24dd",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 80270,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 232,
+          "offset": 80272,
+          "bytes": 346,
+          "sha256": "95ab9fb7b2aacf860544d71a4d01599d645ed65223acce9d9fddb8969d6bce94",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 80616,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 233,
+          "offset": 80618,
+          "bytes": 346,
+          "sha256": "319d86171c108c512b0f8ff71740da934239a8ed614373cd735bb0dfa0ca10fb",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 128,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 80962,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 234,
+          "offset": 80964,
+          "bytes": 346,
+          "sha256": "36d4aa5183831e48ca5d064a8ded373d8c40499afe41e8a043bab2271990c907",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 81308,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 235,
+          "offset": 81310,
+          "bytes": 346,
+          "sha256": "58bf71e428b51b6dd5b0fb739f068b58e5624140dc20d4367ee442c765cb02f8",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 145,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 81654,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 236,
+          "offset": 81656,
+          "bytes": 346,
+          "sha256": "eeae16c52f2ff9cda06f73199e3c43504e3f5b3db501ed1fbfcc98493aa93384",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 82000,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 237,
+          "offset": 82002,
+          "bytes": 346,
+          "sha256": "ccd96cf6cd8f661179ae1c3aeb356c4863ce1e68886cf2245eba852ffc8da22a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 82346,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 238,
+          "offset": 82348,
+          "bytes": 346,
+          "sha256": "ccd96cf6cd8f661179ae1c3aeb356c4863ce1e68886cf2245eba852ffc8da22a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 82692,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 239,
+          "offset": 82694,
+          "bytes": 346,
+          "sha256": "ccd96cf6cd8f661179ae1c3aeb356c4863ce1e68886cf2245eba852ffc8da22a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 83038,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 240,
+          "offset": 83040,
+          "bytes": 346,
+          "sha256": "ccd96cf6cd8f661179ae1c3aeb356c4863ce1e68886cf2245eba852ffc8da22a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 83384,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 241,
+          "offset": 83386,
+          "bytes": 346,
+          "sha256": "ccd96cf6cd8f661179ae1c3aeb356c4863ce1e68886cf2245eba852ffc8da22a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 83730,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 242,
+          "offset": 83732,
+          "bytes": 346,
+          "sha256": "ccd96cf6cd8f661179ae1c3aeb356c4863ce1e68886cf2245eba852ffc8da22a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 129,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 84076,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 243,
+          "offset": 84078,
+          "bytes": 346,
+          "sha256": "7d7e741a0dba541ffe9df29d009e53bbe1e006fae091b273f2bbf9058ca80274",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 84422,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-city-of-bywater",
+      "nativePath": "Data MD",
+      "sourceSha256": "26988273232a0f6ae85e7fbbf2c1e51af62e3cbeeb3527273b0e873a4087f3ea",
+      "sourceBytes": 32550,
+      "family": "monster",
+      "setId": 0,
+      "recordBytes": 210,
+      "firstRecord": 137,
+      "endRecordExclusive": 155,
+      "completeRecords": 18,
+      "startOffset": 28770,
+      "endOffsetExclusive": 32550,
+      "retainedRangeSha256": "d96c29128f9351670b807f78911661804c68e0654a6d552385d7bff9362aca2c",
+      "residualBytes": 0,
+      "residualSha256": null,
+      "reason": "City of Bywater Data MD post-terminator payload audit",
+      "historicalCertifiedSourceSha256": "b1badaf44c9e48f51f143310bce20b28a18f779b1e4fb9914993885e40c746bf",
+      "ownerSourceEquivalence": {
+        "referenceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+        "referencePath": "base/Realmz/Scenarios/City of Bywater/Data MD",
+        "referenceSha256": "b1badaf44c9e48f51f143310bce20b28a18f779b1e4fb9914993885e40c746bf",
+        "ownerSha256": "26988273232a0f6ae85e7fbbf2c1e51af62e3cbeeb3527273b0e873a4087f3ea",
+        "sourceBytes": 32550,
+        "identicalRangeStart": 28770,
+        "identicalRangeEndExclusive": 32550,
+        "identicalRangeSha256": "d96c29128f9351670b807f78911661804c68e0654a6d552385d7bff9362aca2c",
+        "precedingByteDifferences": [
+          {
+            "offset": 13066,
+            "record": 62,
+            "referenceByte": 254,
+            "ownerByte": 231
+          },
+          {
+            "offset": 13067,
+            "record": 62,
+            "referenceByte": 255,
+            "ownerByte": 231
+          },
+          {
+            "offset": 13068,
+            "record": 62,
+            "referenceByte": 0,
+            "ownerByte": 100
+          },
+          {
+            "offset": 13069,
+            "record": 62,
+            "referenceByte": 1,
+            "ownerByte": 100
+          },
+          {
+            "offset": 13070,
+            "record": 62,
+            "referenceByte": 2,
+            "ownerByte": 100
+          },
+          {
+            "offset": 13071,
+            "record": 62,
+            "referenceByte": 3,
+            "ownerByte": 15
+          },
+          {
+            "offset": 14790,
+            "record": 70,
+            "referenceByte": 1,
+            "ownerByte": 0
+          },
+          {
+            "offset": 14791,
+            "record": 70,
+            "referenceByte": 165,
+            "ownerByte": 0
+          },
+          {
+            "offset": 14792,
+            "record": 70,
+            "referenceByte": 2,
+            "ownerByte": 0
+          },
+          {
+            "offset": 14793,
+            "record": 70,
+            "referenceByte": 110,
+            "ownerByte": 0
+          },
+          {
+            "offset": 14795,
+            "record": 70,
+            "referenceByte": 218,
+            "ownerByte": 0
+          }
+        ],
+        "conclusion": "The complete excluded range is byte-identical. All eleven owner corrections precede it and must remain unchanged."
+      },
+      "baselinePresentRecordIds": [],
+      "rows": [
+        {
+          "record": 137,
+          "offset": 28770,
+          "bytes": 210,
+          "sha256": "0e7d7d44b133a62c80e052a3507aa104c058b0f022a6fc03a326bb9e1a33d041",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 82,
+            "iconId": 0,
+            "deathMacro": -62,
+            "nameBytesHex": "00000001000000000052f35affc26730ffc2ffb00050000200000a10130012281900010200000000"
+          },
+          "macroFieldOffset": 28936,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 138,
+          "offset": 28980,
+          "bytes": 210,
+          "sha256": "88d625b20fb23b70e7054448bb3c7ad121e1729cfd9c9b05a311e5a63dad688f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 100,
+            "nameBytesHex": "0000000000000000000000000000000000000000000000000000070b130113391900e3e4e3e3b9e1"
+          },
+          "macroFieldOffset": 29146,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 139,
+          "offset": 29190,
+          "bytes": 210,
+          "sha256": "bd1bbd57194aa2edefc2f583606ce42faef2d6b4bc495be30705089cf04baaa2",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 225,
+            "attackCount": -107,
+            "iconId": 16338,
+            "deathMacro": -6197,
+            "nameBytesHex": "e6e5e5c0d1e7e8cbe6e5c5e400ab2cbb92efe2e7cbcbcbe6e6e5c5e5c5e4e4bfbfe2e1e6e6e5c5e5"
+          },
+          "macroFieldOffset": 29356,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 140,
+          "offset": 29400,
+          "bytes": 210,
+          "sha256": "be27c8cc0e336f9c321bcc9a1bfbeb385ec531cb128d0f5d39a5fd0dab11b50f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 197,
+            "attackCount": -31,
+            "iconId": -10304,
+            "deathMacro": -28308,
+            "nameBytesHex": "d028928072f00260e481ab8187ab313155fffcfbacffffffffffffabf8acffe0abff81ff8881555c"
+          },
+          "macroFieldOffset": 29566,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 141,
+          "offset": 29610,
+          "bytes": 210,
+          "sha256": "9041bff2b2a11117bd2399f7843b721768b205f4ef41962adb4955764f69708b",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 85,
+            "attackCount": -84,
+            "iconId": -32768,
+            "deathMacro": 30809,
+            "nameBytesHex": "00d005b6506d22b238c0e9e6c5e7d1cbeaff00ad649f8dd6c0c5e4e3e5e7cbffd100ad6c3f96dfe0"
+          },
+          "macroFieldOffset": 29776,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 142,
+          "offset": 29820,
+          "bytes": 210,
+          "sha256": "4b0fe9ab9f8371b0b3d283c8f88c0fd2d6b86460d8b0e89144bdcd045c694b3a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 228,
+            "attackCount": -31,
+            "iconId": -10643,
+            "deathMacro": -14907,
+            "nameBytesHex": "e3e4c0e8d1cbe7e5e6e3c5009d4d2b925fd023208d493f92d6c0ffe8d1cbe7e5e6ea000b24a6723e"
+          },
+          "macroFieldOffset": 29986,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 143,
+          "offset": 30030,
+          "bytes": 210,
+          "sha256": "a3cadd0c8577cf655efbfb264c61a4fcb9c52c405eb892137dcdc5c43d1e63d4",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 210,
+            "attackCount": -76,
+            "iconId": -14907,
+            "deathMacro": -14907,
+            "nameBytesHex": "e5e6e2bfe3e3e4c5c5e5e5e5e6e6e6d1eaead025fad2b6456c02e0c5e6e6cbcbe7e7e7e7e7e8d1d1"
+          },
+          "macroFieldOffset": 30196,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 144,
+          "offset": 30240,
+          "bytes": 210,
+          "sha256": "0863435d99668dc73d7abb1168d1825f5bd2e93f81fcc7c94d2f21be11ea29d9",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 233,
+            "attackCount": 10,
+            "iconId": -21419,
+            "deathMacro": 991,
+            "nameBytesHex": "ff90071000c0ffac56eafdf4e6e500a001c0028067ff80ffd11000d005692002500000a0e7e9d1ff"
+          },
+          "macroFieldOffset": 30406,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 145,
+          "offset": 30450,
+          "bytes": 210,
+          "sha256": "fc199958807e723f1d21318d6f18a18867c2ba90f4ddb76bcf26673bd63b0e61",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": -63,
+            "iconId": 11556,
+            "deathMacro": -16413,
+            "nameBytesHex": "e1e1e1e2c0cbe7e5e6e3c5e2bf001d49bb96dfe0e7e7e7e8e6e6cbcbc5e5c5e5bfe3e3e4d030009d"
+          },
+          "macroFieldOffset": 30616,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 146,
+          "offset": 30660,
+          "bytes": 210,
+          "sha256": "259ab424a60b62bc4deb51c53b2fd0bfe9b212f23185fb4518b10b68daa4879b",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 77,
+            "attackCount": 109,
+            "iconId": -14875,
+            "deathMacro": 26922,
+            "nameBytesHex": "d01c0874010109c0c0fffc5be0fbe8eae900a000106040e0fcfcab5680f988ab5c80ffe0fbfffcff"
+          },
+          "macroFieldOffset": 30826,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 147,
+          "offset": 30870,
+          "bytes": 210,
+          "sha256": "c1b6b8a46cf3b3f056684bb881aa836b17d898ed5cb65bb0ec383e469c7f2de8",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 192,
+            "attackCount": -84,
+            "iconId": 8848,
+            "deathMacro": -7196,
+            "nameBytesHex": "e5e5c5c5d232db60b6e06e49db62bb6592dbbbd6db6eb754b07a0f5555c0d11fd807aed56dbc48a6"
+          },
+          "macroFieldOffset": 31036,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 148,
+          "offset": 31080,
+          "bytes": 210,
+          "sha256": "7c0bd5e88da045ecd4a9fe9fdf8b81949d418d31539122e9eab47045e8f76660",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 183,
+            "attackCount": -30,
+            "iconId": -24028,
+            "deathMacro": 1022,
+            "nameBytesHex": "acfc5cab80ffe031053b80861448b4eba7b40100e0fc815531ac5c55fbffacacfcfffffb7ab00393"
+          },
+          "macroFieldOffset": 31246,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 149,
+          "offset": 31290,
+          "bytes": 210,
+          "sha256": "a30f52496a7ec8c9312d2fb133661b2b7590a65e4b10ac33fe2a022ab949a29e",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 85,
+            "attackCount": -32,
+            "iconId": 19890,
+            "deathMacro": 3787,
+            "nameBytesHex": "6e554d3d725bb76fd2d9fdb479e4d9187b61c9122404c899344292449012c0006dffb01009000000"
+          },
+          "macroFieldOffset": 31456,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 150,
+          "offset": 31500,
+          "bytes": 210,
+          "sha256": "646c7f588a284d2160a5d7554d69debd38a3a2336507162dd62fc435397ae3e7",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 97,
+            "attackCount": 0,
+            "iconId": -32592,
+            "deathMacro": 1023,
+            "nameBytesHex": "3d000040907034ff7019ff90037fff7034ff704fff704fff704fff704fff704fffa0004ebe702fff"
+          },
+          "macroFieldOffset": 31666,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 151,
+          "offset": 31710,
+          "bytes": 210,
+          "sha256": "3cf26dcdfcff1f9c453b8b8dff66feba5f87015051a50792e0432bc41bc5f28f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 160,
+            "attackCount": 96,
+            "iconId": 30640,
+            "deathMacro": -84,
+            "nameBytesHex": "fdfafefc000000a472ddc6b0af10e040ef967dee6c8060ffa0fffeacf400000102d0000065001e00"
+          },
+          "macroFieldOffset": 31876,
+          "macroTargetHasCompleteNativeXap": true,
+          "presentInBaseline": false
+        },
+        {
+          "record": 152,
+          "offset": 31920,
+          "bytes": 210,
+          "sha256": "49f413f1a2cd61e4d330758d4884db7bcfd97246e8379caed377a0977056d39d",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 4,
+            "attackCount": -22,
+            "iconId": -17269,
+            "deathMacro": 8672,
+            "nameBytesHex": "81fb8181fbff81faeafefbacfdfad0064db36de9b3c9c081feffacfbfafdf9053b2a57d6beb001c0"
+          },
+          "macroFieldOffset": 32086,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 153,
+          "offset": 32130,
+          "bytes": 210,
+          "sha256": "ca2891b5f708aa7fd15f1084dfaf25c58938ff2942f25e7655151c6ae6f26449",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 128,
+            "attackCount": 5,
+            "iconId": -32513,
+            "deathMacro": 775,
+            "nameBytesHex": "3052d00357b8458ca400a0fff4fe8112000203c0e0ffacf956fefb81049d289f729580fffe0021d1"
+          },
+          "macroFieldOffset": 32296,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 154,
+          "offset": 32340,
+          "bytes": 210,
+          "sha256": "5cfb0d56e31f016e67506f3ff97e3f29857bbe99ed1f197c4def520388bb79da",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "006c696d6520576f726d00776c657200000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 32506,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-grilochs-revenge",
+      "nativePath": "Data MD",
+      "sourceSha256": "6a1496e62e7c0b96c4d5b6e532c2a8c8d99fdbbd54048b73ba386dbb2e43df6d",
+      "sourceBytes": 52710,
+      "family": "monster",
+      "setId": 0,
+      "recordBytes": 210,
+      "firstRecord": 175,
+      "endRecordExclusive": 251,
+      "completeRecords": 76,
+      "startOffset": 36750,
+      "endOffsetExclusive": 52710,
+      "retainedRangeSha256": "ddc0ccda9938bc2af58db4513753bfcc418a4750df84b33f1ee4fbf40a8f4e65",
+      "residualBytes": 0,
+      "residualSha256": null,
+      "reason": "Grilochs Revenge Data MD foreign-tail provenance audit",
+      "historicalCertifiedSourceSha256": "6a1496e62e7c0b96c4d5b6e532c2a8c8d99fdbbd54048b73ba386dbb2e43df6d",
+      "ownerSourceEquivalence": null,
+      "baselinePresentRecordIds": [],
+      "rows": [
+        {
+          "record": 175,
+          "offset": 36750,
+          "bytes": 210,
+          "sha256": "23f574437a78ed18a60094a9d393363e5f18ee6c3c08b1271c1b190e3e6d7149",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 134,
+            "attackCount": 111,
+            "iconId": 31101,
+            "deathMacro": -23639,
+            "nameBytesHex": "afaeafaeaeafb1b5b9bdbfc1c1bfbcb9b5b0aba9a7a8abadb1b4b5b5b0acaaa9aaa9a8a7a5a7a8a9"
+          },
+          "macroFieldOffset": 36916,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 176,
+          "offset": 36960,
+          "bytes": 210,
+          "sha256": "b2ed4faecd55ef0f7e9095bcf010e68dca5f594d7815703fd893c865166daf49",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 169,
+            "attackCount": 105,
+            "iconId": 29298,
+            "deathMacro": -24926,
+            "nameBytesHex": "a3a2a2a09d9994918e8b8a8a8b8c8e8d8b8884838280807d7c7c7e80828382807f7e7f8081848584"
+          },
+          "macroFieldOffset": 37126,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 177,
+          "offset": 37170,
+          "bytes": 210,
+          "sha256": "119bcda8b3f1d37e0ee4e3e3bbbeaed95db363677e6d305bc7f7bf1dff3efba7",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 132,
+            "attackCount": 114,
+            "iconId": 27499,
+            "deathMacro": -24932,
+            "nameBytesHex": "99999b9e9d9b989591908f8e8d8d8e909494959390909092929393928e8b8884817f7a777471706f"
+          },
+          "macroFieldOffset": 37336,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 178,
+          "offset": 37380,
+          "bytes": 210,
+          "sha256": "12ca8cd171950da43db35f5b8cb0043a69fdb232ab2390702120e1230a19c293",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 111,
+            "attackCount": 118,
+            "iconId": 30583,
+            "deathMacro": -28787,
+            "nameBytesHex": "8e8e8c8d8f8f92918d8a8685848584848381807b79766f6b67646463626364686a6a696866636261"
+          },
+          "macroFieldOffset": 37546,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 179,
+          "offset": 37590,
+          "bytes": 210,
+          "sha256": "e5502ac6dcebd60807e7cfc77d164c13f59d28044a37190b7ffe03003e9395d3",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 97,
+            "attackCount": 112,
+            "iconId": -26472,
+            "deathMacro": -29558,
+            "nameBytesHex": "8485878a8b8987848180807e7b787573747577787c7e7e7b7a7978797978767574777a7c7d7d7c7b"
+          },
+          "macroFieldOffset": 37756,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 180,
+          "offset": 37800,
+          "bytes": 210,
+          "sha256": "19232c9a26c5533ee0c6315848c11b818796316f26e741a951afc18829714e2f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 124,
+            "attackCount": -124,
+            "iconId": -26211,
+            "deathMacro": 28267,
+            "nameBytesHex": "625e5a575553555555595755524d4a484645413f3e3d3f41444544444345494e51555858595a5a5b"
+          },
+          "macroFieldOffset": 37966,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 181,
+          "offset": 38010,
+          "bytes": 210,
+          "sha256": "0f14642dce04ecb04f67a631fe404e638d9297c01350138a246a0bc096db50c0",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 91,
+            "attackCount": 107,
+            "iconId": -25957,
+            "deathMacro": -30582,
+            "nameBytesHex": "8783807e7b7a77757373737476767675727172757a7d808081817f7f7e7b7775737172737679797a"
+          },
+          "macroFieldOffset": 38176,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 182,
+          "offset": 38220,
+          "bytes": 210,
+          "sha256": "1494950a8ebdb039d56d28299aa75157f80b8fd9240be8ac8b19581d633016f1",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 120,
+            "attackCount": 97,
+            "iconId": -25954,
+            "deathMacro": -31358,
+            "nameBytesHex": "81828381807e7b7c7d808180807e7c7876726c6863615f5f606268686665615e5d5c5c5b5859595b"
+          },
+          "macroFieldOffset": 38386,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 183,
+          "offset": 38430,
+          "bytes": 210,
+          "sha256": "537e546aed71de484e1be01744069f0cdf347cd5e25af6358a8334a57c958b77",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 93,
+            "attackCount": 74,
+            "iconId": -23903,
+            "deathMacro": -29555,
+            "nameBytesHex": "94959696969693928f8d8c8a8a8b8d919495928f8c89898a8a898685858587898a87848180828387"
+          },
+          "macroFieldOffset": 38596,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 184,
+          "offset": 38640,
+          "bytes": 210,
+          "sha256": "263839d51acab3b0c2b379cc49d6c2c512d6d5164eab44503228c57b8b02c0db",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 136,
+            "attackCount": 127,
+            "iconId": -27760,
+            "deathMacro": 28781,
+            "nameBytesHex": "696b6f73767b7c7a78777777797b7a767677797f808384838180818083848485868684807e7a7675"
+          },
+          "macroFieldOffset": 38806,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 185,
+          "offset": 38850,
+          "bytes": 210,
+          "sha256": "949a366eb2a323290852d50f336f8940d8c49f40a7e2112631249590e73e3e4f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 116,
+            "attackCount": 120,
+            "iconId": 30072,
+            "deathMacro": -32129,
+            "nameBytesHex": "757778787876777a7c80807f7e7b7777797a7e80808182817f7c7875737376798084888d8e8d8c8d"
+          },
+          "macroFieldOffset": 39016,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 186,
+          "offset": 39060,
+          "bytes": 210,
+          "sha256": "6778afe47bba4b0dc97c1eb0f91bd667553af1a4068551fb14502ee62b2e367a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 144,
+            "attackCount": -94,
+            "iconId": -24671,
+            "deathMacro": 23132,
+            "nameBytesHex": "605f5d5c5a585a5c616567696967615d5752524f52575b61656868676462626365676767696e7376"
+          },
+          "macroFieldOffset": 39226,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 187,
+          "offset": 39270,
+          "bytes": 210,
+          "sha256": "3d339265a18f0e170d2ed78e4b1e81b021225410d551015bdb650391613a3792",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 118,
+            "attackCount": 116,
+            "iconId": 32379,
+            "deathMacro": 21080,
+            "nameBytesHex": "62646565625f5d5b5a5a5c5f6367696c6d6d6c6a6a6b6d6f6e7173787c7d7f7c7a787778797f8287"
+          },
+          "macroFieldOffset": 39436,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 188,
+          "offset": 39480,
+          "bytes": 210,
+          "sha256": "1ee55836adb2022965a418169dd2a6469be62eab8faae6f3aded063c3e87b42f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 139,
+            "attackCount": -111,
+            "iconId": -25447,
+            "deathMacro": 22613,
+            "nameBytesHex": "5557585b5c5f61626361605e5c5b5a5b5c5d60626262626161616365696d6f7375777774716e6d6c"
+          },
+          "macroFieldOffset": 39646,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 189,
+          "offset": 39690,
+          "bytes": 210,
+          "sha256": "14ed27b0a7b7d2d8a34163148da2f0ddd18ac9d8a5e65448d2836a221490eb4e",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 109,
+            "attackCount": -112,
+            "iconId": -23131,
+            "deathMacro": 23133,
+            "nameBytesHex": "575455545658595a5b5d5e5e5e5d5c5b5b5d5f6365676764615f5c58575756565757595a5d60605f"
+          },
+          "macroFieldOffset": 39856,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 190,
+          "offset": 39900,
+          "bytes": 210,
+          "sha256": "b7c7e74959b1dc1a400144ed7d9d29f62b326742a7c4a517da4dfc8de0d9674c",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 93,
+            "attackCount": 122,
+            "iconId": -28525,
+            "deathMacro": 32125,
+            "nameBytesHex": "7d7b78777473737275777779787774726f6b6a6868686a6f72757a7d7b7b7a77797b7d8081828488"
+          },
+          "macroFieldOffset": 40066,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 191,
+          "offset": 40110,
+          "bytes": 210,
+          "sha256": "247aa6139c4d624f800e3001638e458cb9371b09622f51dc012783e422ee54b6",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 139,
+            "attackCount": -124,
+            "iconId": 28524,
+            "deathMacro": -28013,
+            "nameBytesHex": "99999996928f8c898684838485878a8d919394928f8b8a8a89898888898a8b8a8988858483848689"
+          },
+          "macroFieldOffset": 40276,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 192,
+          "offset": 40320,
+          "bytes": 210,
+          "sha256": "34b51bc9e10901a8d1e171c346d3fb8102e470019fe5b1bbadc86cba3a1fbd5d",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 138,
+            "attackCount": 120,
+            "iconId": 27239,
+            "deathMacro": -28527,
+            "nameBytesHex": "9194979ba1a6abadadacaaa9aaabacadadaeb1b1b2b2b0afacabacacafb1b0afafaca8a7a5a19f9c"
+          },
+          "macroFieldOffset": 40486,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 193,
+          "offset": 40530,
+          "bytes": 210,
+          "sha256": "e08d7d7d13ea3c1cfb8dcf67e61f26bc536ffdfca8d18e0937e03b681d552edf",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 156,
+            "attackCount": -99,
+            "iconId": 25187,
+            "deathMacro": -27243,
+            "nameBytesHex": "8f8d8d8c8d8c8d909193949494949495989b9ea0a2a5a5a7a9a8a8a7a7a7a6aaadb0b5b9bab9b7b2"
+          },
+          "macroFieldOffset": 40696,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 194,
+          "offset": 40740,
+          "bytes": 210,
+          "sha256": "c499fbebb9bac3c1156ab1f737d4631c33ff88e570eb971bdfbf898546293830",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 175,
+            "attackCount": -73,
+            "iconId": 20817,
+            "deathMacro": -31353,
+            "nameBytesHex": "8e8e909295979b9e9e9f9fa1a3a6a6a6a5a2a3a3a4a7abafb3b6b5b4b0b0afadadacacaeb0b2b4b7"
+          },
+          "macroFieldOffset": 40906,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 195,
+          "offset": 40950,
+          "bytes": 210,
+          "sha256": "c8e0850c344edd84fe98bde8630d50a243b6520d5fd513dc977991787d70a2ad",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 182,
+            "attackCount": -66,
+            "iconId": 22873,
+            "deathMacro": -32125,
+            "nameBytesHex": "7e7e7d7c7c78767471717174787b7d7c7b7a7b7c7e7e7f7f8084878b8c8e8f9093979c9fa2a2a3a5"
+          },
+          "macroFieldOffset": 41116,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 196,
+          "offset": 41160,
+          "bytes": 210,
+          "sha256": "e84624ac4426fe3a6214b3111e5c310e120e033e07ebde957c2ce3f979c62ab2",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 165,
+            "attackCount": -92,
+            "iconId": 27498,
+            "deathMacro": 28013,
+            "nameBytesHex": "70747777777574737273727372737677797c7d7d7e7f818485878887868687888787848282808082"
+          },
+          "macroFieldOffset": 41326,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 197,
+          "offset": 41370,
+          "bytes": 210,
+          "sha256": "b46550e1f5d66e6fff914fa78b145f87ae5c5f1c578a95f5dc329a2c487f8224",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 133,
+            "attackCount": -112,
+            "iconId": -29555,
+            "deathMacro": 31614,
+            "nameBytesHex": "7d7c7d808084868688898a8d8e8f908f8e8d8d8e8e8e8e8c8987878687898c8d8a8887858482817f"
+          },
+          "macroFieldOffset": 41536,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 198,
+          "offset": 41580,
+          "bytes": 210,
+          "sha256": "e3dd4c8c5c9fb3dae5a6e8177a2f7ffd4fce7c89f3de59427c5678c65e8d54ba",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 125,
+            "attackCount": 120,
+            "iconId": -28783,
+            "deathMacro": -31871,
+            "nameBytesHex": "818383838281807e7e7f7e7e7c7a7a777678797a7a767471727372716e6b69676868696969686766"
+          },
+          "macroFieldOffset": 41746,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 199,
+          "offset": 41790,
+          "bytes": 210,
+          "sha256": "9b3089d7c9ace65a5447bdc1cfe906385514344305e9d8db37853bd2f0dcaa6f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 102,
+            "attackCount": 86,
+            "iconId": -26470,
+            "deathMacro": -19020,
+            "nameBytesHex": "b1afacacaaa9aaabacaaa6a19f9e9c9c98938f8b8988878584828180818080807f7e7b7978757574"
+          },
+          "macroFieldOffset": 41956,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 200,
+          "offset": 42000,
+          "bytes": 210,
+          "sha256": "835d6a9b55e96f49fdce8f74af84656ec14cc301bb71c68177857b9c0aea3e74",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 114,
+            "attackCount": 102,
+            "iconId": 29556,
+            "deathMacro": -18247,
+            "nameBytesHex": "b1afaeaeaeaca8a5a3a2a2a1a19f9d9b9a9a9a9b9a9896928f8c898784807f7d7a7879797b7c7a77"
+          },
+          "macroFieldOffset": 42166,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 201,
+          "offset": 42210,
+          "bytes": 210,
+          "sha256": "0c22f9f4fe8b063fbe620dd37f57bb95c920e1e921956e687af13376d75b6527",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 115,
+            "attackCount": 94,
+            "iconId": 29558,
+            "deathMacro": -18505,
+            "nameBytesHex": "babbbdbbbbbbbbbdbebfbfbebcbab8b6b4b1afaeadacacabacadaeaca9a5a3a2a4a29f9b98959494"
+          },
+          "macroFieldOffset": 42376,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 202,
+          "offset": 42420,
+          "bytes": 210,
+          "sha256": "15ddee0edafeba4e0610020cb70fd8a2e77e2334eac2350ba727ead4650bbb17",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00617700742046726f67006465720000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 42586,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 203,
+          "offset": 42630,
+          "bytes": 210,
+          "sha256": "b957c33b46b06ae358dc758fd3581cd2ac7f6a15c31c377f2fc6ed5eeff4522c",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00617700742046726f67006465720000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 42796,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 204,
+          "offset": 42840,
+          "bytes": 210,
+          "sha256": "3725294d337f745b507b5373d1eac444d3a75e3c680b50e6c481ff9c57f56d54",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 1,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "646262605d5d5d5c5b5a575858585a5e6164666768676a6a686766666768696c6d70727374737271"
+          },
+          "macroFieldOffset": 43006,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 205,
+          "offset": 43050,
+          "bytes": 210,
+          "sha256": "c723b4ba3466f0f561cadb95f7a611deef26453354d1fd4d1c4d8899d9c2378d",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 114,
+            "attackCount": -119,
+            "iconId": -27243,
+            "deathMacro": 26213,
+            "nameBytesHex": "61615f5d5d5d5e5f605f5f605f5d5a5755525354545657595c5d5d5a565453525251505151525251"
+          },
+          "macroFieldOffset": 43216,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 206,
+          "offset": 43260,
+          "bytes": 210,
+          "sha256": "f2ab11ec3a9ac23a5c9c4c69125a402c877998072b70b7f606dd9e730288a69a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 81,
+            "attackCount": 108,
+            "iconId": -19790,
+            "deathMacro": 25959,
+            "nameBytesHex": "6a6c6b6a696765636363636566696c6f71716f6c6a6866666463626161626262605e5d5c5b5d5d5e"
+          },
+          "macroFieldOffset": 43426,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 207,
+          "offset": 43470,
+          "bytes": 210,
+          "sha256": "8c1d6f1f77aedc6037a0fc9e575a96ec43ba6b2330bdaaa69e615abaea66d25f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 95,
+            "attackCount": 97,
+            "iconId": -17222,
+            "deathMacro": 29295,
+            "nameBytesHex": "66636264666a6c6d6b6663605d5d5b5958585a5a5d5d5d5c5a585757595c5d5e5e5d5c595754524e"
+          },
+          "macroFieldOffset": 43636,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 208,
+          "offset": 43680,
+          "bytes": 210,
+          "sha256": "2de760874ac3dc9d532780e8e3f8ab63a9d235b8c83f5a375496f4498e8d0cf1",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 78,
+            "attackCount": 86,
+            "iconId": -24669,
+            "deathMacro": -22618,
+            "nameBytesHex": "9a9593908d8c89898a8b8d8d8b8884817f7f808081807f7c7a77726e6a65636364676a6e70706e6d"
+          },
+          "macroFieldOffset": 43846,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 209,
+          "offset": 43890,
+          "bytes": 210,
+          "sha256": "e5b4d01e079d96d66b2be19f7b2e5931326b03cc0501570b6d8ba11ae6ecf963",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 105,
+            "attackCount": 113,
+            "iconId": 32640,
+            "deathMacro": -27497,
+            "nameBytesHex": "9f9f9c9a95929192949698989a9997938e8a8583828385888c8c8e8d8885817e7c7b7a797a7e8083"
+          },
+          "macroFieldOffset": 44056,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 210,
+          "offset": 44100,
+          "bytes": 210,
+          "sha256": "fe24dfefa1fbcf371459f44f0b37711b1e649a939e751f1323604680de3d1a38",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 133,
+            "attackCount": 107,
+            "iconId": 22614,
+            "deathMacro": -27754,
+            "nameBytesHex": "a0a3a5a6a6a4a2a19e9ea0a3a7acb1b5b7b8b5b1adaaa9a8a7a8aaafb2b6b8b6b4b1adabacacadaf"
+          },
+          "macroFieldOffset": 44266,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 211,
+          "offset": 44310,
+          "bytes": 210,
+          "sha256": "c8388ae520f57e61c7888f72d89b181ff1af798d7516ed0bf72d8f8dee82c019",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 175,
+            "attackCount": -95,
+            "iconId": 30836,
+            "deathMacro": 31867,
+            "nameBytesHex": "797c81868d9192918d8a8684858686888d91969a9c9d9c9b9a9b9d9fa2a5a9abacacaaa8a5a3a2a1"
+          },
+          "macroFieldOffset": 44476,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 212,
+          "offset": 44520,
+          "bytes": 210,
+          "sha256": "24ad533fc060b5e30ec797c02ef142fc732899a78704ad4f35e9909e63ca149a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 162,
+            "attackCount": -89,
+            "iconId": 25700,
+            "deathMacro": 24928,
+            "nameBytesHex": "5b5c5c5d6063676c7174747574747575797c7e818385858482808080808083888e959a9b9a989593"
+          },
+          "macroFieldOffset": 44686,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 213,
+          "offset": 44730,
+          "bytes": 210,
+          "sha256": "ffa88f366263c7c2db2b37c3d021d8dce1e1204eaecd966279608193e8333e01",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 146,
+            "attackCount": -71,
+            "iconId": -32126,
+            "deathMacro": 26473,
+            "nameBytesHex": "67656565656668696a6b6c6b6a6764615f5e5e5e6064676c6b6a6964646362636365686d7377787b"
+          },
+          "macroFieldOffset": 44896,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 214,
+          "offset": 44940,
+          "bytes": 210,
+          "sha256": "5cffba65d8142d4b9ef9843caf5778c9ab97c52d794926cd7b685761f670569e",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 123,
+            "attackCount": -118,
+            "iconId": -32125,
+            "deathMacro": 25187,
+            "nameBytesHex": "6464615e5b5a5958595c606467666664605f5e5d5a5a5a5b5e62666564636161616363656767696a"
+          },
+          "macroFieldOffset": 45106,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 215,
+          "offset": 45150,
+          "bytes": 210,
+          "sha256": "5f314e36d591053f95e6e5be949d8ab761f2240a462cf3274d087d011a01d24c",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 106,
+            "attackCount": 110,
+            "iconId": -18765,
+            "deathMacro": 26216,
+            "nameBytesHex": "707272716f6d6b686765646366696c6f706f6f6d6d6c6d707172747576777574726e6e6d6d6e7276"
+          },
+          "macroFieldOffset": 45316,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 216,
+          "offset": 45360,
+          "bytes": 210,
+          "sha256": "a353b86230a2aca474857ee9734bfdf21f8a1dcb52bc51feddb42efa3f383397",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 121,
+            "attackCount": 111,
+            "iconId": -24673,
+            "deathMacro": -32128,
+            "nameBytesHex": "7a7b7f80818280807e7c7b7b7a797a797a797876736e6c6a696a6b6c717476767371706e6c686562"
+          },
+          "macroFieldOffset": 45526,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 217,
+          "offset": 45570,
+          "bytes": 210,
+          "sha256": "0b584434669acb7e4e83185e126cf18f0ccc146ec3f9586b07a4c387b2b172a4",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 99,
+            "attackCount": 107,
+            "iconId": -30840,
+            "deathMacro": -19021,
+            "nameBytesHex": "afaeadadadadadadacaaa7a3a09e9f9fa1a6a7a7a6a4a2a09e9a96938e8c8e8f919292908d8a8785"
+          },
+          "macroFieldOffset": 45736,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 218,
+          "offset": 45780,
+          "bytes": 210,
+          "sha256": "97d0862f4dc6460b5ca514d2f5f30cff8d6cb72a943318e262d5d0d97fc9f5d9",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 132,
+            "attackCount": 123,
+            "iconId": 24673,
+            "deathMacro": -19020,
+            "nameBytesHex": "aba7a6a4a5a8acaeafb0aeadabaaa7a19d9997989a9d9f9f9e9c9a98979695949392939394949290"
+          },
+          "macroFieldOffset": 45946,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 219,
+          "offset": 45990,
+          "bytes": 210,
+          "sha256": "25a151be2c7bd3ed57aaadd4b845d9e691907011e3979b806ed04d87f3a2fba3",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 139,
+            "attackCount": 122,
+            "iconId": 20048,
+            "deathMacro": -24156,
+            "nameBytesHex": "a6a8a8a8a5a1a0a1a4a8aeb1b4b6b6b8b9bbbdbdbebfc0c1c3c4c4c1c0bcb9b6b4b6b8bcbfbfbfbd"
+          },
+          "macroFieldOffset": 46156,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 220,
+          "offset": 46200,
+          "bytes": 210,
+          "sha256": "2b2d0a07adf30d7c672b0526c738b967fddd204f0197a6c7c005f7e4478d323a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 188,
+            "attackCount": -85,
+            "iconId": 25955,
+            "deathMacro": 29043,
+            "nameBytesHex": "808184848386878889898a898b8d8f9293939291909293989da0a2a2a1a1a2a3a2a09c9a9b9da2a6"
+          },
+          "macroFieldOffset": 46366,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 221,
+          "offset": 46410,
+          "bytes": 210,
+          "sha256": "a59c4715c174f02bdfc8188490c7fc845aa3a552ab71ea7c26979df7513d991d",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 170,
+            "attackCount": -82,
+            "iconId": 26725,
+            "deathMacro": 24672,
+            "nameBytesHex": "5d5e5f60616061605e5f5f62666a6d71737474767a7b7c797777787c7f838586868587888a8c8b8c"
+          },
+          "macroFieldOffset": 46576,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 222,
+          "offset": 46620,
+          "bytes": 210,
+          "sha256": "22adcb074887202a8339399d43280829bbf12fb5b20141243b4940e46257c2bc",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 140,
+            "attackCount": -95,
+            "iconId": -26730,
+            "deathMacro": 24157,
+            "nameBytesHex": "5d5f6164686969676667666664605f5f5f6263646564626262636565646464656665656462605f5f"
+          },
+          "macroFieldOffset": 46786,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 223,
+          "offset": 46830,
+          "bytes": 210,
+          "sha256": "e994174ac575cf46509f95fcf097014cb501f2fc4c49d8e04131b48dc54de431",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 97,
+            "attackCount": 126,
+            "iconId": -28271,
+            "deathMacro": 31095,
+            "nameBytesHex": "73726f6c6c6b6c6d6c6b6a686563646564646463656665635f5b5857565658585b5e6062615f5d5b"
+          },
+          "macroFieldOffset": 46996,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 224,
+          "offset": 47040,
+          "bytes": 210,
+          "sha256": "5480cd4d4a592e6d06b1fb6e93498373844430bcd38b061b0768a1f03b65e606",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 90,
+            "attackCount": 91,
+            "iconId": -17990,
+            "deathMacro": -31097,
+            "nameBytesHex": "8583807f7f7e7f808083848583807c79767574747576797c7f8181807d7a7774726f6d6d6e6f6e6e"
+          },
+          "macroFieldOffset": 47206,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 225,
+          "offset": 47250,
+          "bytes": 210,
+          "sha256": "684b6068d90ad31a2117c420baccf8fba279a7bef77227f27d1fdfe95b19b13f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 109,
+            "attackCount": 92,
+            "iconId": -27243,
+            "deathMacro": -28525,
+            "nameBytesHex": "9b9b9b999593908d8b89898a8d90949697948f8a85817f7c7978797a7c7c7c7a7976747271727477"
+          },
+          "macroFieldOffset": 47416,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 226,
+          "offset": 47460,
+          "bytes": 210,
+          "sha256": "7585746f725f14a29afe58a7061ceb44eb4e688434b8b27eaee91aee090897ae",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 120,
+            "attackCount": 109,
+            "iconId": 31610,
+            "deathMacro": -18767,
+            "nameBytesHex": "adafb1b6bbbebfbdb9b4b1aeadadadaeb1b4b6b6b6b4b2aeaaa8a8aaaeb2b2b2b0adaba7a3a09b98"
+          },
+          "macroFieldOffset": 47626,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 227,
+          "offset": 47670,
+          "bytes": 210,
+          "sha256": "462b1cea08772b3b0ee598d90716120f17fcf94dc729df2e0a5f312b0c623ee1",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 152,
+            "attackCount": -126,
+            "iconId": 23388,
+            "deathMacro": -17223,
+            "nameBytesHex": "aeababa9a9ababadadaeaeaba8a4a19fa0a3a6a8a8a7a6a39e9a95908f8c8c8f92969b9d9c999590"
+          },
+          "macroFieldOffset": 47836,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 228,
+          "offset": 47880,
+          "bytes": 210,
+          "sha256": "ee83eb459efb025c5f693e8d818063b2e4c5b08b70bfce4c471ac82decef3c02",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 140,
+            "attackCount": -110,
+            "iconId": 22362,
+            "deathMacro": -30580,
+            "nameBytesHex": "8e8c8a8786878b9095999c9ea0a0a09e9b9b9c9da2a8afb5babebdbab6b1afadadacacaeafb2b4b5"
+          },
+          "macroFieldOffset": 48046,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 229,
+          "offset": 48090,
+          "bytes": 210,
+          "sha256": "dd4220d143bdf276fe1b55049bfb1b17b4a73e9cc6c88720a28fe0893952572a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00617700742046726f67006465720000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 48256,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 230,
+          "offset": 48300,
+          "bytes": 210,
+          "sha256": "a55514461686632be78d7286524bee2d6b06d6e1dbf4d1db2b096eb044aa4a24",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 6420,
+            "nameBytesHex": "000000000032000000000000000000000000000000000000000000000000007d0000000000000000"
+          },
+          "macroFieldOffset": 48466,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 231,
+          "offset": 48510,
+          "bytes": 210,
+          "sha256": "b78e0cf3ca8db8a58dd9e0669130e7e694d5034034b6e0d4fbd7648796efedc4",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 25182,
+            "nameBytesHex": "59585857595c5e5f5d5b5755555658595b5c5d5d5b5a5754514e4d4d4f51555a5d5e5b5753515151"
+          },
+          "macroFieldOffset": 48676,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 232,
+          "offset": 48720,
+          "bytes": 210,
+          "sha256": "9106304e756d7cbb3177b8809735fc424489746f72f36cb32368fc1727b4ba45",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 81,
+            "attackCount": 103,
+            "iconId": -23646,
+            "deathMacro": 31352,
+            "nameBytesHex": "6d6c6c6c6e6e6e6d6c6b6864615c5a585757595d6064635f5c585454535252505254565959585553"
+          },
+          "macroFieldOffset": 48886,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 233,
+          "offset": 48930,
+          "bytes": 210,
+          "sha256": "e7ab0e804a05b81128ee07c8bdd146de179077f0eafee20c465cc66c2535ba23",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 81,
+            "attackCount": 82,
+            "iconId": -18244,
+            "deathMacro": -20563,
+            "nameBytesHex": "a6a29e9997969597999c9e9c97948f8a8987868382828386868684817f7c7a7b7c7c7c7b7a787574"
+          },
+          "macroFieldOffset": 49096,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 234,
+          "offset": 49140,
+          "bytes": 210,
+          "sha256": "9320c379f0dbe419f169b6461511756c0d989653117ac212778c27f707aae550",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 112,
+            "attackCount": 84,
+            "iconId": 32383,
+            "deathMacro": -28523,
+            "nameBytesHex": "9d9b9896939394929293969a9da0a1a19f9c9b9a9b9e9fa0a1a09e9e9b9895908c898a8a8c8f9294"
+          },
+          "macroFieldOffset": 49306,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 235,
+          "offset": 49350,
+          "bytes": 210,
+          "sha256": "4dabfa423a849a60299f6e416dbfeb60d871b3f1958bd69d204317d5b2a2ae3c",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 144,
+            "attackCount": 106,
+            "iconId": 25958,
+            "deathMacro": -20821,
+            "nameBytesHex": "adb0b1b1b0aca9a7a6a7a9aaacadafb0b0b1b0aeaba7a7a6a7acb0b6bab8b6b3afafaeadabaaaaac"
+          },
+          "macroFieldOffset": 49516,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 236,
+          "offset": 49560,
+          "bytes": 210,
+          "sha256": "fec4f3098a35d317bbe4dd9e3fc6ebbc3e40a7fc6de799fa5f596b6f5ec04937",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 176,
+            "attackCount": -92,
+            "iconId": 22869,
+            "deathMacro": -28269,
+            "nameBytesHex": "9ea2a5a9acaeafafaea9a5a3a2a5a8aeb3b5b5b2afaca9a7a39f9b99999b9d9fa09d999794939393"
+          },
+          "macroFieldOffset": 49726,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 237,
+          "offset": 49770,
+          "bytes": 210,
+          "sha256": "56a91de50c760b3071b967242e188565c6387c5eb158250acfe7e91359fbc5e0",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 148,
+            "attackCount": -92,
+            "iconId": 24669,
+            "deathMacro": 31609,
+            "nameBytesHex": "6f6e6e73787e80807f7d7a797976737171757a81888a8c8d8e8f9295999b9ea1a4a6a9abaaa9a6a2"
+          },
+          "macroFieldOffset": 49936,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 238,
+          "offset": 49980,
+          "bytes": 210,
+          "sha256": "8a4d79d49a771d8afb188f4ae0fe97d4a9f2701e3b11c32fd85ca908f117ecc6",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 160,
+            "attackCount": -90,
+            "iconId": -32382,
+            "deathMacro": 23385,
+            "nameBytesHex": "575755514f4e5053585d606060606162646668696a6c6f71737472706d6a696b6f747a7e7e7d7c7b"
+          },
+          "macroFieldOffset": 50146,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 239,
+          "offset": 50190,
+          "bytes": 210,
+          "sha256": "54342cf18f92275ad73474633795da78ec8acba0321bb76dd2887b6d579fee65",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 124,
+            "attackCount": -90,
+            "iconId": -24419,
+            "deathMacro": 18250,
+            "nameBytesHex": "4f4d4b4b4a4b4b4a494848494b4b4b494744424244474d525758585858595a59575555575b5f6467"
+          },
+          "macroFieldOffset": 50356,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 240,
+          "offset": 50400,
+          "bytes": 210,
+          "sha256": "601736e7065824f4a4b906bc00cbef62bd16d831465c49496a8908c7eb39f73e",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 105,
+            "attackCount": 116,
+            "iconId": -22358,
+            "deathMacro": 26984,
+            "nameBytesHex": "6362625f5b57514e4d4d4f5256585a595756555555524f4d4d4f5154555554525150515253525253"
+          },
+          "macroFieldOffset": 50566,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 241,
+          "offset": 50610,
+          "bytes": 210,
+          "sha256": "e37b9d2891afb11846f9aedc52b24872693ec0789c86423a4f62b49f264d1690",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 84,
+            "attackCount": 93,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 50776,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 242,
+          "offset": 50820,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 50986,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 243,
+          "offset": 51030,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 51196,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 244,
+          "offset": 51240,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 51406,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 245,
+          "offset": 51450,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 51616,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 246,
+          "offset": 51660,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 51826,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 247,
+          "offset": 51870,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 52036,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 248,
+          "offset": 52080,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 52246,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 249,
+          "offset": 52290,
+          "bytes": 210,
+          "sha256": "9e33403d6e41598a790d339e0efdb72ed9b1700e04655543a888a30a50c9f517",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 52456,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 250,
+          "offset": 52500,
+          "bytes": 210,
+          "sha256": "a2613d47d30d7e3ef444a3271158b48cb2c0de32b2c024422f45c2d1b9fbc253",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00617700742046726f67006465720000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 52666,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-grilochs-revenge",
+      "nativePath": "Data MD1",
+      "sourceSha256": "176c493a4e21e420eded7370fadd2eb298629ef17ed1618459f9526373ff6c99",
+      "sourceBytes": 36750,
+      "family": "monster",
+      "setId": 1,
+      "recordBytes": 210,
+      "firstRecord": 171,
+      "endRecordExclusive": 175,
+      "completeRecords": 4,
+      "startOffset": 35910,
+      "endOffsetExclusive": 36750,
+      "retainedRangeSha256": "aba34dcd0da043453dc3a16733fd6a0e55e6c94d0a6abb751dd66a10c80efcd6",
+      "residualBytes": 0,
+      "residualSha256": null,
+      "reason": "Grilochs Revenge Data MD1 post-terminator payload audit",
+      "historicalCertifiedSourceSha256": "176c493a4e21e420eded7370fadd2eb298629ef17ed1618459f9526373ff6c99",
+      "ownerSourceEquivalence": null,
+      "baselinePresentRecordIds": [],
+      "rows": [
+        {
+          "record": 171,
+          "offset": 35910,
+          "bytes": 210,
+          "sha256": "8ac7cbf28a6e838835ee4b4a8ab974f9aefa90bf869f6659d1baa5304ae48c7e",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 252,
+            "attackCount": -127,
+            "iconId": 2556,
+            "deathMacro": -1028,
+            "nameBytesHex": "fcfcfbfcfcfbacfcfcfbfcfcfbfb81fbfcfc00fbf9fcfffb00fcfefbfffcfffb02acfcfbfdfcfffb"
+          },
+          "macroFieldOffset": 36076,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 172,
+          "offset": 36120,
+          "bytes": 210,
+          "sha256": "134be201deb3fecb5c20cc6be49b49780815f2eb27725d97c11c7fc13e80191d",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 4,
+            "attackCount": -5,
+            "iconId": 251,
+            "deathMacro": 2732,
+            "nameBytesHex": "81acfcfcacfbfbfcfdfb0c81fbfcacfcfcacfcfcacfcfbfcfcfb00fcfdfb04fcfbfcfbfcfefb02fc"
+          },
+          "macroFieldOffset": 36286,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 173,
+          "offset": 36330,
+          "bytes": 210,
+          "sha256": "4e3f6dd254a258b43fee0cf1dafedbeaa71e2375d358d4f64101199e06e74474",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 255,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "456e64206f66206c6973740065720000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 36496,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 174,
+          "offset": 36540,
+          "bytes": 210,
+          "sha256": "b44a0c2400283d382caa2c6d46821318b92f6bbc78b4907cc0c42454f24b0f86",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 0,
+            "iconId": 0,
+            "deathMacro": 0,
+            "nameBytesHex": "00617700742046726f67006465720000000000000000000000000000000000000000000000000000"
+          },
+          "macroFieldOffset": 36706,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-prelude-to-pestilence",
+      "nativePath": "Data BD",
+      "sourceSha256": "4a49bc7491cefdc5148ce3a755716e8c14f6086b797f1fd69bd6fd823b25f5e1",
+      "sourceBytes": 75774,
+      "family": "battle",
+      "setId": null,
+      "recordBytes": 346,
+      "firstRecord": 111,
+      "endRecordExclusive": 219,
+      "completeRecords": 108,
+      "startOffset": 38406,
+      "endOffsetExclusive": 75774,
+      "retainedRangeSha256": "f9614c524e577ca9e22d79d47bc3ce4bb0457d3d3e964016c8309e266d908677",
+      "residualBytes": 0,
+      "residualSha256": null,
+      "reason": "Prelude to Pestilence Data BD foreign-tail provenance audit",
+      "historicalCertifiedSourceSha256": "4a49bc7491cefdc5148ce3a755716e8c14f6086b797f1fd69bd6fd823b25f5e1",
+      "ownerSourceEquivalence": null,
+      "baselinePresentRecordIds": [],
+      "rows": [
+        {
+          "record": 111,
+          "offset": 38406,
+          "bytes": 346,
+          "sha256": "2a08a8ac04211df5557d718d5e9f0a80eecb39c6a86678f0f7f56b39797405cc",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 75
+          },
+          "macroFieldOffset": 38750,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 112,
+          "offset": 38752,
+          "bytes": 346,
+          "sha256": "143f85db8b3fe8ea1e6983fe3fad2e035809a707926265b048f6b869bed01a6f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -14591,
+            "nonzeroGridCells": 137
+          },
+          "macroFieldOffset": 39096,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 113,
+          "offset": 39098,
+          "bytes": 346,
+          "sha256": "3b3a6e58eea11cc661cd7029159d16ccba464c9e6b5d937c371ddcc1a8c6ed16",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -23273,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 39442,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 114,
+          "offset": 39444,
+          "bytes": 346,
+          "sha256": "0212f3a63a42df5af0a67bcbe583850124ab242559e7621aee468fdbad5f63c9",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 20688,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 39788,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 115,
+          "offset": 39790,
+          "bytes": 346,
+          "sha256": "6feff033be773e52dca61ae81a8c26fbe76a124c910a7e0ad6cef46429b3f474",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 21061,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 40134,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 116,
+          "offset": 40136,
+          "bytes": 346,
+          "sha256": "34b82d75beae98a9b02e2ea57ee4195c6c6fdd37d56186617f4fd08cd090fdc5",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 12663,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 40480,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 117,
+          "offset": 40482,
+          "bytes": 346,
+          "sha256": "bae42bf3d069fb2813a3d96792b8d9ea1fb686db9caf938147c85a20173e61ae",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -9812,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 40826,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 118,
+          "offset": 40828,
+          "bytes": 346,
+          "sha256": "9440bf864669e8bb9b07b06c12a32d3489521613ab6c897bc65c681dec720765",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 13162,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 41172,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 119,
+          "offset": 41174,
+          "bytes": 346,
+          "sha256": "e806a2fd63554d045edac4236e25c28522f47f96739da279f3cd0e14727ded1a",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 12888,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 41518,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 120,
+          "offset": 41520,
+          "bytes": 346,
+          "sha256": "452fef0f7a470d969cc99c2cda2f3dd8561d374105b623e5d61387ef181cada6",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -27414,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 41864,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 121,
+          "offset": 41866,
+          "bytes": 346,
+          "sha256": "f8692225e6adb4d544bb209dfde03e3607b9a179700e497155cdea233c36db52",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -15239,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 42210,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 122,
+          "offset": 42212,
+          "bytes": 346,
+          "sha256": "e71f107a42cfb9113342e8a21417f13b3a81aa4ae756ba48cfb330a8b9ebef0b",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 2897,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 42556,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 123,
+          "offset": 42558,
+          "bytes": 346,
+          "sha256": "edd7cb93c3d29dda8936018a6e0c1a40c6c153d6c55834c420f0666bcc867347",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 7359,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 42902,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 124,
+          "offset": 42904,
+          "bytes": 346,
+          "sha256": "b2bc4e5ebc2bc5f32e9434cd199e09b9cfafe92df4a1d08ac07960d6b10f5683",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 17481,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 43248,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 125,
+          "offset": 43250,
+          "bytes": 346,
+          "sha256": "16e32b3be976f0c1493456c752e439cb3face69a66a22a851bd8c767a5699129",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 24213,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 43594,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 126,
+          "offset": 43596,
+          "bytes": 346,
+          "sha256": "29047257580e6d345ecb7452588e0376d1d235e9a7ce12f7653850eb730029b6",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 23885,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 43940,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 127,
+          "offset": 43942,
+          "bytes": 346,
+          "sha256": "339e30a2345e319519c075aeed15dd2aa8e0bdcd0f8d1cf4a733acca42d707bd",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 426,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 44286,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 128,
+          "offset": 44288,
+          "bytes": 346,
+          "sha256": "04486315906515ea2959a573485c07a1f91c1f00603ca42c1ceaab6efba3a23f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 20364,
+            "nonzeroGridCells": 167
+          },
+          "macroFieldOffset": 44632,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 129,
+          "offset": 44634,
+          "bytes": 346,
+          "sha256": "4fc93233a4e76f3f2023709ca2b103e41aa58f81ec84347f4ea4a4cafdc234df",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -11843,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 44978,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 130,
+          "offset": 44980,
+          "bytes": 346,
+          "sha256": "f855ad6974ae316dda032fc46810ac1d4635f39c8012c3c8d65883f3a2a5a8c9",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 31888,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 45324,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 131,
+          "offset": 45326,
+          "bytes": 346,
+          "sha256": "f841cd76d2d0ef5ff2fe515e6da939103a44bdd3c2e8966505bc8add78b86b81",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -5584,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 45670,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 132,
+          "offset": 45672,
+          "bytes": 346,
+          "sha256": "2b17b9b88ac24d38200a3bef071c0be5989775f5f95c7b35eacc31add19b6ef8",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 21813,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 46016,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 133,
+          "offset": 46018,
+          "bytes": 346,
+          "sha256": "e46ed812d7271e51a658e21437184cd43978c2a3b46405a24a148363589497ee",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 25500,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 46362,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 134,
+          "offset": 46364,
+          "bytes": 346,
+          "sha256": "1e130382050894fa625d1f589c13d239fbc7d18bcebeb285eaadc5543eea860d",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 7518,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 46708,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 135,
+          "offset": 46710,
+          "bytes": 346,
+          "sha256": "55c0a924f21604f17fe1e034b72575452e2ce9e3420f0089736d8ce008337db5",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -18811,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 47054,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 136,
+          "offset": 47056,
+          "bytes": 346,
+          "sha256": "6fc78354d554ace627dee4a314d9c5a88c1dfcc061ba2fa60c73c31a8f23cc01",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -6549,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 47400,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 137,
+          "offset": 47402,
+          "bytes": 346,
+          "sha256": "e6cce7cc286b81ab5ce815489818492a2efaf12216d24515632ebbaf684e1fd9",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 12754,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 47746,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 138,
+          "offset": 47748,
+          "bytes": 346,
+          "sha256": "3115a245fd343b5a82a4931101f395eb8fd5b511e10f1c286ee60a04aa23dbc8",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -3220,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 48092,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 139,
+          "offset": 48094,
+          "bytes": 346,
+          "sha256": "d3047dd372e0d3d734efaedeaf59b18da05eb43c160155b0ade7187ad1c22ad2",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -20938,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 48438,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 140,
+          "offset": 48440,
+          "bytes": 346,
+          "sha256": "90acd4746720c762cbe4b64945358783230284b459b52c9b8bae65340c3190e5",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 26555,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 48784,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 141,
+          "offset": 48786,
+          "bytes": 346,
+          "sha256": "0a899cbe3fbf5e13f9f822274a2250d124b8d54fddaa44f9922787f023527c93",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -2072,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 49130,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 142,
+          "offset": 49132,
+          "bytes": 346,
+          "sha256": "2e31440cf71f545b711749512f0225a26df92921ffa2fde19ac78ada1a6ca747",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -31088,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 49476,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 143,
+          "offset": 49478,
+          "bytes": 346,
+          "sha256": "5a56c238655363066785a66b9c377eb4aa72403de3c795681f270bcf8bae3cc9",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -17625,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 49822,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 144,
+          "offset": 49824,
+          "bytes": 346,
+          "sha256": "461fbcea83c067db1633f1e7e7fc6e611e83bf6e942a7d531aa020829736c36f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": -23598,
+            "nonzeroGridCells": 169
+          },
+          "macroFieldOffset": 50168,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 145,
+          "offset": 50170,
+          "bytes": 346,
+          "sha256": "b67647d4e0d40edf06b9dee93bb3b50c9c989705f5471b777a8037c8bb585bdb",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 10254,
+            "nonzeroGridCells": 168
+          },
+          "macroFieldOffset": 50514,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 146,
+          "offset": 50516,
+          "bytes": 346,
+          "sha256": "9b99de9dd36cc4d82bbf711bc02ebe90995d594147b1ea76b7f2bb72089d1df8",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 108
+          },
+          "macroFieldOffset": 50860,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 147,
+          "offset": 50862,
+          "bytes": 346,
+          "sha256": "7136a6690a20708b3bc84994f39d2adda36f7df29eed5a1e0ae6a1ae9b84edcb",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 516,
+            "nonzeroGridCells": 5
+          },
+          "macroFieldOffset": 51206,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 148,
+          "offset": 51208,
+          "bytes": 346,
+          "sha256": "dd4598b106b2da9a8bd2807dbd0c6bc1b662d5230c8fecb35d2422bb454c34be",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 4
+          },
+          "macroFieldOffset": 51552,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 149,
+          "offset": 51554,
+          "bytes": 346,
+          "sha256": "e9f49625fe9b006f925227dc95e7564c38ed7deb704998cf0a9df39ac980b59e",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 9
+          },
+          "macroFieldOffset": 51898,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 150,
+          "offset": 51900,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 52244,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 151,
+          "offset": 52246,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 52590,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 152,
+          "offset": 52592,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 52936,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 153,
+          "offset": 52938,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 53282,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 154,
+          "offset": 53284,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 53628,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 155,
+          "offset": 53630,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 53974,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 156,
+          "offset": 53976,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 54320,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 157,
+          "offset": 54322,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 54666,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 158,
+          "offset": 54668,
+          "bytes": 346,
+          "sha256": "1dd2480283a213d2c9a8b23c86cb9e384f75ee81d07c5af3ebcde1d3c0502235",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 26
+          },
+          "macroFieldOffset": 55012,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 159,
+          "offset": 55014,
+          "bytes": 346,
+          "sha256": "ac0af3820cb8f314b90f8b5b8c05f0ff634dfd764815132c9d94a7983ce310ef",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 7
+          },
+          "macroFieldOffset": 55358,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 160,
+          "offset": 55360,
+          "bytes": 346,
+          "sha256": "6481ed1816c4f6196a09cd4216505acf78dc53ed78669464d9b0e6119d651ccd",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 9
+          },
+          "macroFieldOffset": 55704,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 161,
+          "offset": 55706,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 56050,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 162,
+          "offset": 56052,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 56396,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 163,
+          "offset": 56398,
+          "bytes": 346,
+          "sha256": "b75b489f8a6e4db9cfb07bb615e03cb45ca3f506a0a6cf3ba0f4ff14343f17ca",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 5
+          },
+          "macroFieldOffset": 56742,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 164,
+          "offset": 56744,
+          "bytes": 346,
+          "sha256": "22cf53b36eb946f6eba937326fb85ad8c855c1e766ce7a340653fc5b92b736f2",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 17
+          },
+          "macroFieldOffset": 57088,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 165,
+          "offset": 57090,
+          "bytes": 346,
+          "sha256": "a88c550a0d5f0d1b3f187281f46ae0605ee54d39769198693585352ff03cae0f",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 5
+          },
+          "macroFieldOffset": 57434,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 166,
+          "offset": 57436,
+          "bytes": 346,
+          "sha256": "881de66f7cd26042617b88f4f6358a01e3ef48fa7a53d1816b9416683015dd4c",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 3
+          },
+          "macroFieldOffset": 57780,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 167,
+          "offset": 57782,
+          "bytes": 346,
+          "sha256": "6f92017836fca69bb021db5480f7a0dc66bfa483934be79685c48b78e9c0ad98",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 1
+          },
+          "macroFieldOffset": 58126,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 168,
+          "offset": 58128,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 58472,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 169,
+          "offset": 58474,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 58818,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 170,
+          "offset": 58820,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 59164,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 171,
+          "offset": 59166,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 59510,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 172,
+          "offset": 59512,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 59856,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 173,
+          "offset": 59858,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 60202,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 174,
+          "offset": 60204,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 60548,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 175,
+          "offset": 60550,
+          "bytes": 346,
+          "sha256": "d3b85a689eb3bd5519296950d4e57b9b6eb998006acb5c0c0b1a2a43cdf083b0",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 1
+          },
+          "macroFieldOffset": 60894,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 176,
+          "offset": 60896,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 61240,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 177,
+          "offset": 61242,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 61586,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 178,
+          "offset": 61588,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 61932,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 179,
+          "offset": 61934,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 62278,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 180,
+          "offset": 62280,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 62624,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 181,
+          "offset": 62626,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 62970,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 182,
+          "offset": 62972,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 63316,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 183,
+          "offset": 63318,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 63662,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 184,
+          "offset": 63664,
+          "bytes": 346,
+          "sha256": "665054ff41d513ec9436ac1360de60355dcb01515286c89dd7ed66708b8782cc",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 22
+          },
+          "macroFieldOffset": 64008,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 185,
+          "offset": 64010,
+          "bytes": 346,
+          "sha256": "6220ce5f4dd1f1e9c813c4302b0e5e2ca536b370feae7282b2f39b990d05b7a4",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 4
+          },
+          "macroFieldOffset": 64354,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 186,
+          "offset": 64356,
+          "bytes": 346,
+          "sha256": "ade583c245f6b4e70d1f3a4ec547f72d6292efe36765bc14f9b41ce314a59b35",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 3
+          },
+          "macroFieldOffset": 64700,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 187,
+          "offset": 64702,
+          "bytes": 346,
+          "sha256": "1f4c5cc8b564aabc280ef74276dbb5300f17976417616958e7666d362e0057dd",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 14
+          },
+          "macroFieldOffset": 65046,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 188,
+          "offset": 65048,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 65392,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 189,
+          "offset": 65394,
+          "bytes": 346,
+          "sha256": "41c62090dbcbbcc79da7ae3d64ff2c3c37a475cb08f23646ecedfbf032889320",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 19
+          },
+          "macroFieldOffset": 65738,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 190,
+          "offset": 65740,
+          "bytes": 346,
+          "sha256": "26f81edc3fb75bcb0036618aa066e44dc6b8a74defdbd63eda3a44886558d790",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 13
+          },
+          "macroFieldOffset": 66084,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 191,
+          "offset": 66086,
+          "bytes": 346,
+          "sha256": "751b258f65cd2c1ce4e5d619010abd08122b916ce716cba4ad4f3a62dbd3da2b",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 8
+          },
+          "macroFieldOffset": 66430,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 192,
+          "offset": 66432,
+          "bytes": 346,
+          "sha256": "7e2ed894c95e0d8f74446e9d3f541d41cd58be10fe94d3c37d4eb3c8b88080fe",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 10
+          },
+          "macroFieldOffset": 66776,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 193,
+          "offset": 66778,
+          "bytes": 346,
+          "sha256": "e03b048fe32a476915c9636fae4a6cf831bd162416df293ac9ef9398728c8fbd",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 1
+          },
+          "macroFieldOffset": 67122,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 194,
+          "offset": 67124,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 67468,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 195,
+          "offset": 67470,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 67814,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 196,
+          "offset": 67816,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 68160,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 197,
+          "offset": 68162,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 68506,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 198,
+          "offset": 68508,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 68852,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 199,
+          "offset": 68854,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 69198,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 200,
+          "offset": 69200,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 69544,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 201,
+          "offset": 69546,
+          "bytes": 346,
+          "sha256": "42b4f40e18766aaecee7a6fb8ace2eead68d18978442ae4f99baac63036acf26",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 1
+          },
+          "macroFieldOffset": 69890,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 202,
+          "offset": 69892,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 70236,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 203,
+          "offset": 70238,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 70582,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 204,
+          "offset": 70584,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 70928,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 205,
+          "offset": 70930,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 71274,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 206,
+          "offset": 71276,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 71620,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 207,
+          "offset": 71622,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 71966,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 208,
+          "offset": 71968,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 72312,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 209,
+          "offset": 72314,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 72658,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 210,
+          "offset": 72660,
+          "bytes": 346,
+          "sha256": "9d4b5ec2d351e5bc61b94c1431cfe72a72addc89d66a7c71f0c57b53150bd251",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 1
+          },
+          "macroFieldOffset": 73004,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 211,
+          "offset": 73006,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 73350,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 212,
+          "offset": 73352,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 73696,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 213,
+          "offset": 73698,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 74042,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 214,
+          "offset": 74044,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 74388,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 215,
+          "offset": 74390,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 74734,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 216,
+          "offset": 74736,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 75080,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 217,
+          "offset": 75082,
+          "bytes": 346,
+          "sha256": "f7b74bf682e6dc378bb1b90a5064ec9827a2e23e4e4781b7f9a5bc183b0a3eea",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 75426,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        },
+        {
+          "record": 218,
+          "offset": 75428,
+          "bytes": 346,
+          "sha256": "93cca8c838fea81e91e3db2f47779cf73414199ab215f85dbc95abe4c372f374",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "battleMacro": 0,
+            "nonzeroGridCells": 0
+          },
+          "macroFieldOffset": 75772,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-prelude-to-pestilence",
+      "nativePath": "Data MD-1",
+      "sourceSha256": "d36b2de09c45d27fed70617f27cbecb88b0678e7367104f99c563f984a24db2f",
+      "sourceBytes": 36120,
+      "family": "monster",
+      "setId": -1,
+      "recordBytes": 210,
+      "firstRecord": 171,
+      "endRecordExclusive": 172,
+      "completeRecords": 1,
+      "startOffset": 35910,
+      "endOffsetExclusive": 36120,
+      "retainedRangeSha256": "3338157cd8b4ea9ef5ed5d5120ff014fc1177c5837621c384512f2cfa99b9b34",
+      "residualBytes": 0,
+      "residualSha256": null,
+      "reason": "Prelude to Pestilence Data MD-1 post-terminator payload audit",
+      "historicalCertifiedSourceSha256": "d36b2de09c45d27fed70617f27cbecb88b0678e7367104f99c563f984a24db2f",
+      "ownerSourceEquivalence": null,
+      "baselinePresentRecordIds": [],
+      "rows": [
+        {
+          "record": 171,
+          "offset": 35910,
+          "bytes": 210,
+          "sha256": "3338157cd8b4ea9ef5ed5d5120ff014fc1177c5837621c384512f2cfa99b9b34",
+          "disposition": "retained-raw-certified-foreign-range-not-runtime-definition",
+          "nativeFields": {
+            "hitDice": 0,
+            "attackCount": 88,
+            "iconId": 4687,
+            "deathMacro": -28881,
+            "nameBytesHex": "500151f2124fef0010557a797a727a5f594f58062210e4815381e58948c12e01134ead18222d405b"
+          },
+          "macroFieldOffset": 36076,
+          "macroTargetHasCompleteNativeXap": false,
+          "presentInBaseline": false
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "campaigns": 13,
+    "affectedCampaigns": 4,
+    "ranges": 6,
+    "completeRecords": 222,
+    "baselineRecordsRemoved": 0
+  },
+  "limitations": [
+    "This verifies independently pinned identities, native layouts, exact row bytes and baseline absence. It does not freshly establish the original foreign-content provenance behind the six historical certifications.",
+    "Hook candidates retain literal native values even in inert foreign rows; their presence is not evidence of gameplay execution."
+  ]
+}

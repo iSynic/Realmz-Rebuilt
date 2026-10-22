@@ -13,7 +13,7 @@ func clear_warnings() -> void:
 	warnings.clear()
 
 
-func validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], monsters: Array[MonsterDefinition], battles: Array[BattleDefinition], treasures: Array[TreasureDefinition], shops: Array[ShopDefinition], message_ids: Dictionary, allow_deferred: bool = false) -> bool:
+func validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], monsters: Array[MonsterDefinition], battles: Array[BattleDefinition], treasures: Array[TreasureDefinition], shops: Array[ShopDefinition], message_ids: Dictionary, allow_deferred: bool = false, native_records: ClassicRecordCatalog = null) -> bool:
 	var race_ids := _definition_ids(races)
 	var caste_ids := _definition_ids(castes)
 	var item_ids := _definition_ids(items)
@@ -21,13 +21,11 @@ func validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteD
 	for race: RaceDefinition in races:
 		for caste_id: String in race.eligible_caste_ids:
 			if not caste_ids.has(caste_id):
-				_reject("Race '%s' eligibleCasteIds references unavailable caste '%s'." % [race.id, caste_id])
-				return false
+				if not _unavailable(PackageClassicRuleSelectionBinding.rule_is_absent(native_records, &"castes", caste_id), &"race", race.id, "eligibleCasteIds", -1, &"caste", caste_id, "Race '%s' eligibleCasteIds references unavailable caste '%s'." % [race.id, caste_id]): return false
 	for caste: CasteDefinition in castes:
 		for race_id: String in caste.eligible_race_ids:
 			if not race_ids.has(race_id):
-				_reject("Caste '%s' eligibleRaceIds references unavailable race '%s'." % [caste.id, race_id])
-				return false
+				if not _unavailable(PackageClassicRuleSelectionBinding.rule_is_absent(native_records, &"races", race_id), &"caste", caste.id, "eligibleRaceIds", -1, &"race", race_id, "Caste '%s' eligibleRaceIds references unavailable race '%s'." % [caste.id, race_id]): return false
 	for item: ItemDefinition in items:
 		if not item.cursed_item_id.is_empty() and not item_ids.has(item.cursed_item_id):
 			if not _unavailable(allow_deferred, &"item", item.id, "cursedItemId", -1, &"item", item.cursed_item_id, "Item '%s' references unavailable cursed item '%s'." % [item.id, item.cursed_item_id]): return false
@@ -148,6 +146,9 @@ func _validate_scenario_programs(scenario: ScenarioDefinition, encounter_ids: Di
 			if instruction.extra_code_fault != null:
 				if not _unavailable(allow_deferred, &"scenario-program", program.id, "extraCode", instruction.slot, &"extra-code", instruction.extra_code_fault.row_id, instruction.extra_code_fault.message()): return false
 				continue
+			if ClassicOpcodeCatalog.reads_extra_code(instruction.opcode) and instruction.extra_code.size() < 5:
+				if not _unavailable(allow_deferred, &"scenario-program", program.id, "extraCode", instruction.slot, &"extra-code", instruction.operand_id, "Scenario program '%s' slot %d requires unavailable Data EDCD row %d." % [program.id, instruction.slot, instruction.operand_id]): return false
+				continue
 			match instruction.opcode:
 				65:
 					var values: Array[int] = instruction.extra_code
@@ -185,16 +186,23 @@ func _validate_scenario_programs(scenario: ScenarioDefinition, encounter_ids: Di
 					if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, instruction.slot, 75, instruction.extra_code[3], instruction.extra_code[4], allow_deferred):
 						return false
 				85:
-					var mode: int = instruction.extra_code[0]
-					var low_id: int = instruction.extra_code[1]
-					var high_id: int = instruction.extra_code[2]
-					if mode not in [0, 1, 2] or low_id < 0 or high_id < low_id or high_id > 32_767:
-						return _reject("Scenario program '%s' opcode 85 has an invalid Classic destination range." % program.id)
-					if instruction.extra_code[4] != 0 and not message_ids.has(absi(instruction.extra_code[4])):
-						if not _unavailable(allow_deferred, &"scenario-program", program.id, "extraCode[4]", instruction.slot, &"message", absi(instruction.extra_code[4]), "Scenario program '%s' opcode 85 references unavailable message %d." % [program.id, instruction.extra_code[4]]): return false
-					for target_id: int in range(low_id, high_id + 1):
-						if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, instruction.slot, 85, mode, target_id, allow_deferred):
-							return false
+					if not _validate_random_branch(scenario, encounter_ids, complex_ids, message_ids, program, instruction, allow_deferred):
+						return false
+	return true
+
+
+func _validate_random_branch(scenario: ScenarioDefinition, encounter_ids: Dictionary, complex_ids: Dictionary, message_ids: Dictionary, program: ScenarioProgramDefinition, instruction: ClassicActionDefinition, allow_deferred: bool) -> bool:
+	var mode: int = instruction.extra_code[0]
+	var low_id: int = instruction.extra_code[1]
+	var high_id: int = instruction.extra_code[2]
+	if mode not in [0, 1, 2] or low_id < 0 or high_id < low_id or high_id > 32_767:
+		if not _unavailable(allow_deferred, &"scenario-program", program.id, "extraCode[0..2]", instruction.slot, &"classic-operand", mode, "Scenario program '%s' opcode 85 has an invalid Classic destination range (%d, %d, %d)." % [program.id, mode, low_id, high_id]): return false
+		return true
+	if instruction.extra_code[4] != 0 and not message_ids.has(absi(instruction.extra_code[4])):
+		if not _unavailable(allow_deferred, &"scenario-program", program.id, "extraCode[4]", instruction.slot, &"message", absi(instruction.extra_code[4]), "Scenario program '%s' opcode 85 references unavailable message %d." % [program.id, instruction.extra_code[4]]): return false
+	for target_id: int in range(low_id, high_id + 1):
+		if not _validate_branch_destination(scenario, encounter_ids, complex_ids, program.id, instruction.slot, 85, mode, target_id, allow_deferred):
+			return false
 	return true
 
 
@@ -212,7 +220,7 @@ func _validate_branch_destination(scenario: ScenarioDefinition, encounter_ids: D
 			if complex_ids.has(target_id):
 				return true
 			return _unavailable(allow_deferred, &"scenario-program", program_id, "branch", slot, &"complex-encounter", target_id, "Scenario program '%s' opcode %d references unavailable Complex Encounter %d." % [program_id, opcode, target_id])
-	return _reject("Scenario program '%s' opcode %d has invalid destination mode %d." % [program_id, opcode, mode])
+	return _unavailable(allow_deferred, &"scenario-program", program_id, "branchMode", slot, &"classic-operand", mode, "Scenario program '%s' opcode %d has invalid destination mode %d." % [program_id, opcode, mode])
 
 
 func validate_timed_encounter_references(scenario: ScenarioDefinition, encounters: Array[TimedEncounterDefinition], allow_deferred: bool = false) -> bool:
@@ -238,10 +246,10 @@ func validate_random_region_references(maps: Array[MapDefinition], scenario: Sce
 					if not _unavailable(allow_deferred, &"random-rectangle", region.id, "randomDoors[%d]" % index, -1, &"xap", doors[index], "Random rectangle '%s' references unavailable XAP %d." % [region.id, doors[index]]): return false
 			if region.battle_minimum == 0:
 				continue
-			var selected_bounds := RealmzRng.classic_between_bounds(region.battle_minimum, region.battle_maximum)
-			for battle_id: int in range(selected_bounds.x, selected_bounds.y + 1):
-				if not battle_ids.has(absi(battle_id)):
-					if not _unavailable(allow_deferred, &"random-rectangle", region.id, "battleRange", -1, &"battle", absi(battle_id), "Random rectangle '%s' references unavailable battle %d." % [region.id, battle_id]): return false
+			for bounds: Vector2i in RealmzRng.classic_between_intervals(region.battle_minimum, region.battle_maximum):
+				for battle_id: int in range(bounds.x, bounds.y + 1):
+					if not battle_ids.has(absi(battle_id)):
+						if not _unavailable(allow_deferred, &"random-rectangle", region.id, "battleRange", -1, &"battle", absi(battle_id), "Random rectangle '%s' references unavailable battle %d." % [region.id, battle_id]): return false
 	return true
 
 func validate_player_map_opcode_references(scenario: ScenarioDefinition, world: WorldDefinition, allow_deferred: bool = false) -> bool:
@@ -251,7 +259,7 @@ func validate_player_map_opcode_references(scenario: ScenarioDefinition, world: 
 			var instruction: Variant = program.instruction_at(index)
 			if not instruction is ClassicActionDefinition:
 				continue
-			if instruction.extra_code_fault != null:
+			if instruction.extra_code_fault != null or (ClassicOpcodeCatalog.reads_extra_code(instruction.opcode) and instruction.extra_code.size() < 5):
 				continue
 			match instruction.opcode:
 				44:

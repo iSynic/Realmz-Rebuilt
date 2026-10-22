@@ -37,7 +37,7 @@ static func search(context: SessionWorkflowContext) -> ExplorationTimeWorkflow.C
 	# four field timeclicks. Its separate outer timeclick and random check resume
 	# only after this phase's timed/random continuation has settled.
 	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 4, ExplorationTimeWorkflow.classic_time_scale(current_map), true))
-	return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
+	return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day)
 
 
 static func search_after_land_movement_attempt(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ExplorationTimeWorkflow.ClockTransitionResult:
@@ -79,7 +79,7 @@ static func search_after_land_movement_attempt(context: SessionWorkflowContext, 
 	var previous_day := context.state.clock.day()
 	if searching:
 		events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 4, ExplorationTimeWorkflow.classic_time_scale(current_map), true))
-	return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, searching, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
+	return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, searching, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day)
 
 
 static func complete_area_search(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ExplorationTimeWorkflow.ClockTransitionResult:
@@ -90,7 +90,7 @@ static func complete_area_search(context: SessionWorkflowContext, preceding_even
 	events.assign(preceding_events)
 	var previous_day := context.state.clock.day()
 	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 1, ExplorationTimeWorkflow.classic_time_scale(current_map), true))
-	return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
+	return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day)
 
 
 static func toggle_search(context: SessionWorkflowContext) -> SessionWorkflowResult:

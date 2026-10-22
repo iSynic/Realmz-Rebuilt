@@ -72,5 +72,9 @@ $attributesPath = Join-Path $destinationPath ".gitattributes"
 $attributes = Get-Content -Raw -LiteralPath $attributesPath
 if (-not $attributes.Contains("*.realmz2 binary")) { throw "Public staging could not locate the package attribute boundary." }
 $attributes = $attributes.Replace("*.realmz2 binary", "*.realmz2 filter=lfs diff=lfs merge=lfs -text")
+foreach ($lfsPath in @($manifest.publicLfsPaths)) {
+    $lfsRule = "$lfsPath filter=lfs diff=lfs merge=lfs -text"
+    if (-not $attributes.Contains($lfsRule)) { $attributes = $attributes.TrimEnd() + "`n" + $lfsRule + "`n" }
+}
 [System.IO.File]::WriteAllText($attributesPath, $attributes, [System.Text.UTF8Encoding]::new($false))
 Write-Host "Public staging populated from explicit manifest: files=$copied destination=$destinationPath"

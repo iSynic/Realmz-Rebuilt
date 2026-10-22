@@ -7,8 +7,9 @@ const EXPECTED_SCHEMA_HASH: String = "05ced7b000683f53e6220b9ac8f7d41c801e7e2c78
 const SCHEMA_V4_HASH: String = "78b1e34503fd44fe7ce79d8225f09e36f303e8bf6c62dfbe3145472c5feaf307"
 const SCHEMA_V5_HASH: String = "ab3aca6322599dc348e48ddf82cffc99568bbbf598927ccba9377b24b396943c"
 const SCHEMA_V6_HASH: String = "5f7cbc80444bca4630f2989cfef4339a7c5ea6fe4c3af687f41c43280c33e439"
-const SCHEMA_HASHES: Dictionary = {3: EXPECTED_SCHEMA_HASH, 4: SCHEMA_V4_HASH, 5: SCHEMA_V5_HASH, 6: SCHEMA_V6_HASH}
-const DECODER_VERSION: int = 13
+const SCHEMA_V7_HASH: String = "b6af98b0541dd1bb34e06ca6644c6eb4e898d6da93ceffd4b182ef65339c6750"
+const SCHEMA_HASHES: Dictionary = {3: EXPECTED_SCHEMA_HASH, 4: SCHEMA_V4_HASH, 5: SCHEMA_V5_HASH, 6: SCHEMA_V6_HASH, 7: SCHEMA_V7_HASH}
+const DECODER_VERSION: int = 15
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -26,7 +27,7 @@ const DEFERRED_PACKAGE_CAPABILITIES: Array[String] = [
 
 var _last_error: String = ""
 var _package_cache := PackageGraphCache.new()
-var _receipt_store := PackageInstallReceiptStore.new([EXPECTED_SCHEMA_HASH, SCHEMA_V4_HASH, SCHEMA_V5_HASH, SCHEMA_V6_HASH], DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
+var _receipt_store := PackageInstallReceiptStore.new([EXPECTED_SCHEMA_HASH, SCHEMA_V4_HASH, SCHEMA_V5_HASH, SCHEMA_V6_HASH, SCHEMA_V7_HASH], DECODER_VERSION, ApplicationLibraryIdentity.PACKAGE_HASH)
 var _archive_reader := PackageArchiveReader.new()
 var _document_cache := PackageDocumentCache.new(EXPECTED_SCHEMA_HASH, DECODER_VERSION)
 var _manifest_discovery := PackageManifestDiscovery.new(SCHEMA_HASHES, SUPPORTED_CAPABILITIES, DEFERRED_PACKAGE_CAPABILITIES, _archive_reader)
@@ -71,9 +72,9 @@ func load_package(path: String, progress_callback: Callable = Callable(), cancel
 		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
 	_report_progress(progress_callback, &"opening", 0, 1)
 	var archive := ZIPReader.new()
-	var open_error := archive.open(path)
+	var open_error := _archive_reader.open_bounded(archive, path)
 	if open_error != OK:
-		return PackageLoadResult.failed("package_open_failed", "Could not open package '%s' (error %d)." % [path, open_error])
+		return PackageLoadResult.failed("package_open_failed", _archive_reader.last_error if not _archive_reader.last_error.is_empty() else "Could not open package '%s' (error %d)." % [path, open_error])
 	var result := _load_open_archive(archive, path, progress_callback, cancel_callback)
 	archive.close()
 	if result.is_ok():
@@ -120,7 +121,17 @@ func install_package(source_path: String, install_root: String = "user://package
 			return PackageInstallResult.succeeded(source_path, installed_source)
 		return PackageInstallResult.failed(installed_source.error_code, installed_source.error_message)
 	_report_progress(progress_callback, &"validating-source", 0, 1)
-	var source := load_package(source_path, progress_callback, cancel_callback)
+	var root_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(install_root))
+	if root_error != OK:
+		return PackageInstallResult.failed("package_install_directory_failed", "Could not create the package installation directory (error %d)." % root_error)
+	var staged_path := _staging_path(install_root, "source")
+	var result := _install_staged_source(source_path, staged_path, install_root, progress_callback, cancel_callback)
+	_delete_file(staged_path)
+	return result
+
+
+func _install_staged_source(source_path: String, staged_path: String, install_root: String, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
+	var source := _load_staged_copy(source_path, staged_path, progress_callback, cancel_callback)
 	if not source.is_ok():
 		return PackageInstallResult.failed(source.error_code, source.error_message)
 	if _cancel_requested(cancel_callback):
@@ -134,62 +145,30 @@ func install_package(source_path: String, install_root: String = "user://package
 	var target_path := campaign_root.path_join("%s.realmz2" % source.content.package_hash)
 	if FileAccess.file_exists(target_path):
 		return _resolve_existing_install(source_path, target_path, install_root, source, progress_callback, cancel_callback)
-	return _commit_package_install(source_path, target_path, source, progress_callback, cancel_callback)
+	return _commit_package_install(staged_path, target_path, source, progress_callback)
 
 
-func _resolve_existing_install(source_path: String, target_path: String, install_root: String, source: PackageLoadResult, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
-	if _same_package_path(source_path, target_path):
-		if not _receipt_store.write(target_path, source.content, _archive_reader.sha256_file(target_path), source.schema_hash):
-			return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
-		_report_progress(progress_callback, &"complete", 1, 1)
-		return PackageInstallResult.succeeded(target_path, source)
-	var existing := _load_installed_package(target_path, install_root, progress_callback, cancel_callback)
-	if existing == null:
-		existing = load_package(target_path, progress_callback, cancel_callback)
-		if existing.is_ok() and not _receipt_store.write(target_path, existing.content, _archive_reader.sha256_file(target_path), existing.schema_hash):
-			return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
-	if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
-		_report_progress(progress_callback, &"complete", 1, 1)
-		return PackageInstallResult.succeeded(target_path, existing)
-	return PackageInstallResult.failed("package_install_collision", "An invalid package already occupies the immutable installation path.")
-
-
-func _commit_package_install(source_path: String, target_path: String, source: PackageLoadResult, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
-	_report_progress(progress_callback, &"copying-package", 0, 1)
-	var temporary_path := target_path + ".installing"
-	if FileAccess.file_exists(temporary_path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+## Validates an app-owned copy of an untrusted archive and records the SHA-256
+## of the exact bytes validation read. Hashing the source again afterward would
+## miss a file swapped between validation and hashing.
+func _load_staged_copy(source_path: String, staged_path: String, progress_callback: Callable, cancel_callback: Callable) -> PackageLoadResult:
 	var source_bytes := FileAccess.get_file_as_bytes(source_path)
 	if source_bytes.is_empty():
-		return PackageInstallResult.failed("package_install_read_failed", "Could not read the source package for installation.")
-	var temporary := FileAccess.open(temporary_path, FileAccess.WRITE)
-	if temporary == null:
-		return PackageInstallResult.failed("package_install_write_failed", "Could not open the temporary package installation file.")
-	temporary.store_buffer(source_bytes)
-	temporary.flush()
-	temporary.close()
-	if _cancel_requested(cancel_callback):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
-		return PackageInstallResult.failed(&"package_cancelled", "Package operation cancelled.")
-	_report_progress(progress_callback, &"validating-install", 0, 1)
+		return PackageLoadResult.failed("package_install_read_failed", "Could not read the source package for installation.")
 	var archive_sha256 := _archive_reader.sha256(source_bytes)
-	var installed_bytes := FileAccess.get_file_as_bytes(temporary_path)
-	if installed_bytes.size() != source_bytes.size() or _archive_reader.sha256(installed_bytes) != archive_sha256:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
-		return PackageInstallResult.failed("package_install_readback_failed", "Temporary package installation failed byte-for-byte readback validation.")
-	var rename_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(target_path))
-	if rename_error != OK:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
-		return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the verified package (error %d)." % rename_error)
-	if not _receipt_store.write(target_path, source.content, archive_sha256, source.schema_hash):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(target_path))
-		return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
-	var installed := PackageLoadResult.succeeded(source.content, PackageMediaCatalog.new(target_path, source.content.package_hash, source.media.assets()), source.schema_hash)
-	var receipt := _receipt_store.read(target_path)
-	if not receipt.is_empty():
-		_package_cache.retain_candidate(_receipt_store.cache_key(target_path, receipt), installed)
-	_report_progress(progress_callback, &"complete", 1, 1)
-	return PackageInstallResult.succeeded(target_path, installed)
+	var staged := FileAccess.open(staged_path, FileAccess.WRITE)
+	if staged == null:
+		return PackageLoadResult.failed("package_install_write_failed", "Could not open the temporary package installation file.")
+	staged.store_buffer(source_bytes)
+	staged.flush()
+	staged.close()
+	var staged_bytes := FileAccess.get_file_as_bytes(staged_path)
+	if staged_bytes.size() != source_bytes.size() or _archive_reader.sha256(staged_bytes) != archive_sha256:
+		return PackageLoadResult.failed("package_install_readback_failed", "Temporary package installation failed byte-for-byte readback validation.")
+	var result := load_package(staged_path, progress_callback, cancel_callback)
+	if result.is_ok():
+		result.archive_sha256 = archive_sha256
+	return result
 
 
 func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryResult]:
@@ -202,6 +181,71 @@ func discover_campaigns(search_roots: Array[String]) -> Array[PackageDiscoveryRe
 
 func _same_package_path(left: String, right: String) -> bool:
 	return ProjectSettings.globalize_path(left).simplify_path().to_lower() == ProjectSettings.globalize_path(right).simplify_path().to_lower()
+
+
+func _resolve_existing_install(source_path: String, target_path: String, install_root: String, source: PackageLoadResult, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
+	var same_path := _same_package_path(source_path, target_path)
+	if not same_path:
+		var existing := _load_installed_package(target_path, install_root, progress_callback, cancel_callback)
+		if existing != null:
+			return _existing_install_result(target_path, existing, source, progress_callback)
+	# A receipt may name only bytes that validation read: the validated source
+	# when the occupant still matches it, otherwise a validated occupant copy.
+	var validated := source
+	if _archive_reader.sha256_file(target_path) != source.archive_sha256:
+		if same_path:
+			return PackageInstallResult.failed("package_install_source_changed", "The package changed while it was being validated.")
+		var staged_path := _staging_path(install_root, "occupant")
+		validated = _load_staged_copy(target_path, staged_path, progress_callback, cancel_callback)
+		_delete_file(staged_path)
+		if not validated.is_ok() or validated.content.package_hash != source.content.package_hash:
+			return _existing_install_result(target_path, validated, source, progress_callback)
+		if _archive_reader.sha256_file(target_path) != validated.archive_sha256:
+			return PackageInstallResult.failed("package_install_source_changed", "The installed package changed while it was being validated.")
+	if not _receipt_store.write(target_path, validated.content, validated.archive_sha256, validated.schema_hash):
+		return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
+	return _existing_install_result(target_path, _located_at(validated, target_path), source, progress_callback)
+
+
+func _existing_install_result(target_path: String, existing: PackageLoadResult, source: PackageLoadResult, progress_callback: Callable) -> PackageInstallResult:
+	if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
+		_report_progress(progress_callback, &"complete", 1, 1)
+		return PackageInstallResult.succeeded(target_path, existing)
+	return PackageInstallResult.failed("package_install_collision", "An invalid package already occupies the immutable installation path.")
+
+
+func _commit_package_install(staged_path: String, target_path: String, source: PackageLoadResult, progress_callback: Callable) -> PackageInstallResult:
+	_report_progress(progress_callback, &"copying-package", 0, 1)
+	var rename_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_path), ProjectSettings.globalize_path(target_path))
+	if rename_error != OK:
+		return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the verified package (error %d)." % rename_error)
+	if not _receipt_store.write(target_path, source.content, source.archive_sha256, source.schema_hash):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(target_path))
+		return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
+	var installed := _located_at(source, target_path)
+	var receipt := _receipt_store.read(target_path)
+	if not receipt.is_empty():
+		_package_cache.retain_candidate(_receipt_store.cache_key(target_path, receipt), installed)
+	_report_progress(progress_callback, &"complete", 1, 1)
+	return PackageInstallResult.succeeded(target_path, installed)
+
+
+## Rebinds a validated result's media reads to the archive's installed path.
+func _located_at(result: PackageLoadResult, path: String) -> PackageLoadResult:
+	var located := PackageLoadResult.succeeded(result.content, PackageMediaCatalog.new(path, result.content.package_hash, result.media.assets()), result.schema_hash)
+	located.archive_sha256 = result.archive_sha256
+	return located
+
+
+## Concurrent installs (a background campaign preparation and a foreground
+## start) share one install root, so each staged copy needs its own name.
+func _staging_path(install_root: String, role: String) -> String:
+	return install_root.trim_suffix("/").path_join("%s-%d-%d.installing" % [role, OS.get_thread_caller_id(), Time.get_ticks_usec()])
+
+
+func _delete_file(path: String) -> void:
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
 func _load_installed_package(path: String, install_root: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageLoadResult:
@@ -240,9 +284,9 @@ func _load_installed_package(path: String, install_root: String, progress_callba
 	if _cancel_requested(cancel_callback):
 		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
 	var archive := ZIPReader.new()
-	var open_error := archive.open(path)
+	var open_error := _archive_reader.open_bounded(archive, path)
 	if open_error != OK:
-		return PackageLoadResult.failed(&"package_open_failed", "Could not open installed package '%s' (error %d)." % [path, open_error])
+		return PackageLoadResult.failed(&"package_open_failed", _archive_reader.last_error if not _archive_reader.last_error.is_empty() else "Could not open installed package '%s' (error %d)." % [path, open_error])
 	var result := _load_open_archive(archive, path, progress_callback, cancel_callback, receipt, cached_documents)
 	archive.close()
 	if result.is_ok():
@@ -309,24 +353,33 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 			return _validation_failure()
 	var runtime_assets := _media_validator.construct_assets(asset_document)
 	if trusted_receipt.is_empty():
-		var effective_assets := PackageMediaComposer.compose(runtime_assets, _application_media_assets)
-		if not _media_validator.validate_effective_assets(effective_assets):
-			_last_error = _media_validator.error_message()
-			return _validation_failure()
-		if not _media_validator.validate_presentation_capabilities(manifest, content_document, effective_assets):
-			_last_error = _media_validator.error_message()
-			return _validation_failure()
-		if not _media_validator.validate_render_references(effective_assets, world_document, manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1")):
-			_last_error = _media_validator.error_message()
+		if not _validate_effective_assets(runtime_assets, manifest, content_document, world_document):
 			return _validation_failure()
 	_report_progress(progress_callback, &"constructing-content", 0, 1)
 	var runtime_content := _domain_assembler.assemble(manifest, content_document, world_document, scenario_document, runtime_assets, not trusted_receipt.is_empty(), _application_content, _application_media_assets)
 	if runtime_content == null:
 		_last_error = _domain_assembler.error_message()
 		return _validation_failure()
+	if int(manifest["schemaVersion"]) >= 7:
+		_last_error = PackageClassicRecordBinding.validate_source_receipt(archive, runtime_content.classic_records, runtime_assets)
+		if not _last_error.is_empty(): return _validation_failure()
 	if cached_documents.is_empty() and trusted_receipt.has("archiveSha256"):
 		_document_cache.write(source_path, trusted_receipt["archiveSha256"], documents, manifest["schemaHash"])
 	return PackageLoadResult.succeeded(runtime_content, PackageMediaCatalog.new(source_path, manifest["packageHash"], runtime_assets), manifest["schemaHash"])
+
+
+func _validate_effective_assets(runtime_assets: Array[MediaAsset], manifest: Dictionary, content_document: Dictionary, world_document: Dictionary) -> bool:
+	var effective_assets := PackageMediaComposer.compose(runtime_assets, _application_media_assets)
+	if not _media_validator.validate_effective_assets(effective_assets):
+		_last_error = _media_validator.error_message()
+		return false
+	if not _media_validator.validate_presentation_capabilities(manifest, content_document, effective_assets):
+		_last_error = _media_validator.error_message()
+		return false
+	if not _media_validator.validate_render_references(effective_assets, world_document, manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1")):
+		_last_error = _media_validator.error_message()
+		return false
+	return true
 
 
 static func package_capability_error(capability: Variant) -> String:

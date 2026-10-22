@@ -48,13 +48,13 @@ func drop(body: InteractionResponse.TreasureBody, events: Array[DomainEvent]) ->
 	var race := _content.characters.race_by_id(character.race_id)
 	var caste := _content.characters.caste_by_id(character.caste_id)
 	if race == null or caste == null:
-		return {"code": "reward_drop_unavailable", "message": "The character's movement rules are unavailable."}
+		return {"code": "reward_drop_rules_unavailable", "message": "The character's movement rules are unavailable."}
 	if item.equipped:
 		var unequipped := _rules.equipment.unequip_classic(character, item, definition, _content.items.definitions(), race, _game_state.party.conditions)
 		if not unequipped.allowed:
 			return {"code": "reward_drop_unavailable", "message": unequipped.reason}
 	if _rules.inventory.remove_item(character, item.id, definition) == null:
-		return {"code": "reward_drop_unavailable", "message": "The selected item could not be dropped."}
+		return {"code": "reward_drop_failed", "message": "The selected item could not be dropped."}
 	_rules.characters.recalculate_movement(character, race, caste.movement_bonus)
 	events.append(DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": item.id, "itemId": definition.id}))
 	events.append(DomainEvent.new(&"sound_requested", {"soundId": 655, "waitForCompletion": false, "source": "classic-treasure-drop"}))

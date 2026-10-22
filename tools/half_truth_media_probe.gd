@@ -39,7 +39,17 @@ func _run() -> void:
 	var exact_keys := 0
 	var decoded_images := 0
 	var text_resources := 0
+	var alias_tilesets := 0
 	for asset: MediaAsset in package.media.assets():
+		# Indexed landlook tilesets carry no exact key; they resolve through the landlook alias to their exact PICT art.
+		if asset.resource_type.is_empty() and asset.is_tileset() and asset.id.begins_with("landlook-"):
+			var alias := media.asset_by_id(asset.id)
+			if alias == null or alias.sha256 != asset.sha256 or media.map_atlas(asset.id) == null:
+				printerr("LANDLOOK_ALIAS_UNAVAILABLE ", asset.id)
+				quit(1)
+				return
+			alias_tilesets += 1
+			continue
 		if asset.resource_type.is_empty() or media.asset_by_resource(asset.resource_type, asset.resource_id) != asset:
 			printerr("EXACT_RESOURCE_UNAVAILABLE ", asset.id)
 			quit(1)
@@ -71,13 +81,13 @@ func _run() -> void:
 			return
 	for resource_id: int in [306, 307, 308]:
 		var atlas := media.asset_by_resource("PICT", resource_id)
-		if atlas == null or media.map_atlas(atlas.id) == null:
+		if atlas == null or media.map_atlas("landlook-%d" % (resource_id - 300)) == null:
 			printerr("LANDLOOK_UNAVAILABLE ", resource_id)
 			quit(1)
 			return
-	if exact_keys != 464 or decoded_images != 404 or text_resources != 4:
-		printerr("MEDIA_INVENTORY_CHANGED ", exact_keys, " ", decoded_images, " ", text_resources)
+	if exact_keys != 464 or decoded_images != 404 or text_resources != 4 or alias_tilesets != 3:
+		printerr("MEDIA_INVENTORY_CHANGED ", exact_keys, " ", decoded_images, " ", text_resources, " ", alias_tilesets)
 		quit(1)
 		return
-	print("HALF_TRUTH_MEDIA_PROBE_PASS ", JSON.stringify({"packageHash": content.package_hash, "exactKeys": exact_keys, "decodedImages": decoded_images, "textResources": text_resources, "overlayIds": overlay_ids.size(), "landlookAtlases": 3}))
+	print("HALF_TRUTH_MEDIA_PROBE_PASS ", JSON.stringify({"packageHash": content.package_hash, "exactKeys": exact_keys, "decodedImages": decoded_images, "textResources": text_resources, "aliasTilesets": alias_tilesets, "overlayIds": overlay_ids.size(), "landlookAtlases": 3}))
 	quit(0)

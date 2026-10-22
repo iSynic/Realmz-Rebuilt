@@ -47,9 +47,9 @@ func validate_archives(content: RealmzContent) -> bool:
 	var new_path := _bundle_root.path_join(entry.file)
 	if FileAccess.get_sha256(old_path) != entry.oldArchiveSha256 or FileAccess.get_sha256(new_path) != entry.newArchiveSha256:
 		return _fail("The original or corrected campaign archive does not match the verified shop update.")
-	var receipt: Variant = JSON.parse_string(FileAccess.get_file_as_string(old_path + ".receipt.json"))
-	if not receipt is Dictionary or receipt.get("kind") != "realmz2.install-receipt" or receipt.get("campaignId") != content.campaign_id or receipt.get("packageHash") != entry.oldPackageHash or receipt.get("archiveSha256") != entry.oldArchiveSha256 or receipt.get("applicationPackageHash") != ApplicationLibraryIdentity.PACKAGE_HASH:
-		return _fail("The original campaign installation must be validated with the current application library before updating its save.")
+	var installation_error := SaveUpdateInstallation.validate(old_path, content.campaign_id, entry.oldPackageHash, entry.oldArchiveSha256)
+	if not installation_error.is_empty():
+		return _fail(installation_error)
 	var old_files := _read_archive(old_path)
 	var new_files := _read_archive(new_path)
 	if old_files.is_empty() or old_files.keys() != new_files.keys():

@@ -2205,7 +2205,7 @@
         ],
         "tests": []
       },
-    "providence": {
+      "providence": {
         "status": "complete",
         "sources": [
           {
@@ -3251,6 +3251,14 @@
         {
           "id": "timed-event",
           "status": "implemented"
+        },
+        {
+          "id": "signed-clock63",
+          "status": "implemented"
+        },
+        {
+          "id": "zero-time-midnight-refresh",
+          "status": "implemented"
         }
       ],
       "castle": {
@@ -3674,6 +3682,10 @@
         },
         {
           "id": "destination-recheck",
+          "status": "implemented"
+        },
+        {
+          "id": "active-combat-relocation",
           "status": "implemented"
         }
       ],
@@ -4273,6 +4285,14 @@
         },
         {
           "id": "no-trigger",
+          "status": "implemented"
+        },
+        {
+          "id": "day-zero-scan",
+          "status": "implemented"
+        },
+        {
+          "id": "nested-clock-timer-return",
           "status": "implemented"
         }
       ],
@@ -7899,6 +7919,10 @@
         {
           "id": "sound-ordering",
           "status": "implemented"
+        },
+        {
+          "id": "scripted-fumble122-context",
+          "status": "implemented"
         }
       ],
       "castle": {
@@ -8577,7 +8601,7 @@
         ],
         "tests": []
       },
-    "providence": {
+      "providence": {
         "status": "complete",
         "sources": [
           {
@@ -8785,6 +8809,10 @@
         },
         {
           "id": "capacity-rejection",
+          "status": "implemented"
+        },
+        {
+          "id": "scripted-exact-instance",
           "status": "implemented"
         }
       ],
@@ -9017,7 +9045,7 @@
         ],
         "tests": []
       },
-    "providence": {
+      "providence": {
         "status": "complete",
         "sources": [
           {
@@ -9605,6 +9633,14 @@
         },
         {
           "id": "write-failure",
+          "status": "implemented"
+        },
+        {
+          "id": "legacy-v5-read",
+          "status": "implemented"
+        },
+        {
+          "id": "exact-components-v6-write",
           "status": "implemented"
         }
       ],
@@ -11253,14 +11289,38 @@
       "interactionSequence": "Browse local primary, backup or named saves or an external file; validate its exact immutable package; review eligibility and excluded possessions; select heroes and append them atomically, or cancel without mutation.",
       "committedOutcome": "Detached heroes retain progression, wounds and compatible possessions while the source adventure stays unchanged and the destination starts with fresh world state.",
       "variants": [
-        {"id": "portable-party", "status": "implemented"},
-        {"id": "partial-or-all-ineligible", "status": "implemented"},
-        {"id": "capacity-duplicates-and-stale-review", "status": "implemented"},
-        {"id": "equipment-and-magic-cleanup", "status": "implemented"},
-        {"id": "lasting-state-without-recovery", "status": "implemented"},
-        {"id": "invalid-or-missing-source", "status": "implemented"},
-        {"id": "pending-state-isolation", "status": "implemented"},
-        {"id": "controller-browser-review-and-startup", "status": "implemented"}
+        {
+          "id": "portable-party",
+          "status": "implemented"
+        },
+        {
+          "id": "partial-or-all-ineligible",
+          "status": "implemented"
+        },
+        {
+          "id": "capacity-duplicates-and-stale-review",
+          "status": "implemented"
+        },
+        {
+          "id": "equipment-and-magic-cleanup",
+          "status": "implemented"
+        },
+        {
+          "id": "lasting-state-without-recovery",
+          "status": "implemented"
+        },
+        {
+          "id": "invalid-or-missing-source",
+          "status": "implemented"
+        },
+        {
+          "id": "pending-state-isolation",
+          "status": "implemented"
+        },
+        {
+          "id": "controller-browser-review-and-startup",
+          "status": "implemented"
+        }
       ],
       "castle": {
         "oracle": "not-required",
@@ -11278,8 +11338,14 @@
       "simulation": {
         "status": "complete",
         "owners": [
-          {"path": "src/playthrough/characters/party_transfer_rules.gd", "symbol": "static func prepare"},
-          {"path": "src/playthrough/characters/party_transfer_workflow.gd", "symbol": "static func import_selected"}
+          {
+            "path": "src/playthrough/characters/party_transfer_rules.gd",
+            "symbol": "static func prepare"
+          },
+          {
+            "path": "src/playthrough/characters/party_transfer_workflow.gd",
+            "symbol": "static func import_selected"
+          }
         ]
       },
       "persistence": {
@@ -11288,22 +11354,45 @@
       "presentation": {
         "status": "functional",
         "owners": [
-          {"path": "src/ui/setup/party_import_from_save_dialog.gd", "symbol": "func show_party_import"},
-          {"path": "src/app/session/application_party_import_host.gd", "symbol": "func import_selected"}
+          {
+            "path": "src/ui/setup/party_import_from_save_dialog.gd",
+            "symbol": "func show_party_import"
+          },
+          {
+            "path": "src/app/session/application_party_import_host.gd",
+            "symbol": "func import_selected"
+          }
         ]
       },
-      "liveEvidence": ["synthetic", "route-harness"],
+      "liveEvidence": [
+        "synthetic",
+        "route-harness"
+      ],
       "related": {
         "routeIds": [],
-        "intentKinds": ["IMPORT_SAVED_PARTY"],
+        "intentKinds": [
+          "IMPORT_SAVED_PARTY"
+        ],
         "interactionKinds": [],
         "opcodes": []
       },
       "tests": [
-        {"path": "tests/infrastructure/test_save_repository.gd", "symbol": "func run"},
-        {"path": "tests/integration/test_party_order_workflow.gd", "symbol": "func _test_saved_party_admission"},
-        {"path": "tests/presentation/test_realmz_builder_previews.gd", "symbol": "func run"},
-        {"path": "tests/presentation/test_controller_support.gd", "symbol": "func _test_qwerty_draft_commit_cancel_and_layout"}
+        {
+          "path": "tests/infrastructure/test_save_repository.gd",
+          "symbol": "func run"
+        },
+        {
+          "path": "tests/integration/test_party_order_workflow.gd",
+          "symbol": "func _test_saved_party_admission"
+        },
+        {
+          "path": "tests/presentation/test_realmz_builder_previews.gd",
+          "symbol": "func run"
+        },
+        {
+          "path": "tests/presentation/test_controller_support.gd",
+          "symbol": "func _test_qwerty_draft_commit_cancel_and_layout"
+        }
       ],
       "differentialCaseIds": [],
       "reachability": {

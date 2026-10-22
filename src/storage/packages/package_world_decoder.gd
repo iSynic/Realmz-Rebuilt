@@ -168,7 +168,7 @@ func _decode_map_record(record: Variant, trigger_ids: Dictionary, battle_terrain
 	if level_index < 0 or not level_type is String or level_type not in ["land", "dungeon"]:
 		_reject("Map '%s' has an invalid Classic level index." % record["id"])
 		return null
-	var regions_value: Variant = _construct_random_regions(record.get("randomRectangles"), width, height, record["id"])
+	var regions_value: Variant = _construct_random_regions(record.get("randomRectangles"), width, height, record["id"], schema_version)
 	if regions_value == null:
 		return null
 	var regions: Array[RandomEncounterRegion] = regions_value
@@ -216,11 +216,16 @@ func _decode_classic_tile_values(record: Dictionary, cell_count: int, schema_ver
 		if not raw_tiles is Array or raw_tiles.size() != cell_count:
 			_reject("Map '%s' must retain one native Classic tile value per topology cell." % record["id"])
 			return null
+		# Every map cell passes through here on each load, so convert once per value.
+		classic_tiles.resize(cell_count)
+		var index := 0
 		for raw_tile: Variant in raw_tiles:
-			if not _is_integer(raw_tile) or _integer(raw_tile) < -32768 or _integer(raw_tile) > 32767:
+			var tile := int(raw_tile) if _is_integer(raw_tile) else -32769
+			if tile < -32768 or tile > 32767:
 				_reject("Map '%s' contains an invalid native Classic tile value." % record["id"])
 				return null
-			classic_tiles.append(_integer(raw_tile))
+			classic_tiles[index] = tile
+			index += 1
 	elif record.has("classicTileValues"):
 		_reject("Native Classic tile values require package schema v6.")
 		return null
@@ -264,13 +269,15 @@ func _construct_land_tile_profile(value: Variant, map_id: String, role: String) 
 func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, trigger_ids: Dictionary, region_ids: Dictionary, level_type: StringName) -> bool:
 	if not value is Array or value.size() != 13:
 		return _reject("Map '%s' compact topology row %d is malformed." % [map_id, cell_index])
+	# Runs once per topology cell during installation: convert each validated
+	# integer once and skip ID-list allocation for the common empty lists.
 	var row: Array = value
-	if not row[0] is String or row[0].is_empty() or not _is_integer(row[1]) or _integer(row[1]) < 0 or not _is_integer(row[2]) or _integer(row[2]) < 0 or _integer(row[2]) > 511:
+	if not row[0] is String or row[0].is_empty() or not _is_integer(row[1]) or int(row[1]) < 0 or not _is_integer(row[2]) or int(row[2]) < 0 or int(row[2]) > 511:
 		return _reject("Map '%s' compact topology row %d has malformed terrain facts." % [map_id, cell_index])
 	if row[3] != null and not _is_integer(row[3]):
 		return _reject("Map '%s' compact topology row %d has malformed movement sound." % [map_id, cell_index])
-	var cell_triggers_value: Variant = _string_array(row[4], "compact cell trigger IDs")
-	var random_rects_value: Variant = _string_array(row[5], "compact cell random rectangle IDs")
+	var cell_triggers_value: Variant = row[4] if row[4] is Array and row[4].is_empty() else _string_array(row[4], "compact cell trigger IDs")
+	var random_rects_value: Variant = row[5] if row[5] is Array and row[5].is_empty() else _string_array(row[5], "compact cell random rectangle IDs")
 	if cell_triggers_value == null or random_rects_value == null:
 		return false
 	for trigger_id: String in cell_triggers_value:
@@ -299,11 +306,10 @@ func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, tri
 		if not edge_value is Array or edge_value.size() != 4:
 			return _reject("Map '%s' compact topology row %d contains a malformed edge." % [map_id, cell_index])
 		var edge: Array = edge_value
-		if not edge[0] is String or not EDGE_KINDS.has(edge[0]) or not _is_integer(edge[1]) or _integer(edge[1]) < 0 or _integer(edge[1]) > 7:
+		if not edge[0] is String or not EDGE_KINDS.has(edge[0]) or not _is_integer(edge[1]) or int(edge[1]) < 0 or int(edge[1]) > 7:
 			return _reject("Map '%s' compact topology row %d contains invalid edge facts." % [map_id, cell_index])
-		for reference_index: int in [2, 3]:
-			if edge[reference_index] != null and (not edge[reference_index] is String or edge[reference_index].is_empty()):
-				return _reject("Map '%s' compact topology row %d contains an invalid edge reference." % [map_id, cell_index])
+		if edge[2] != null and (not edge[2] is String or edge[2].is_empty()) or edge[3] != null and (not edge[3] is String or edge[3].is_empty()):
+			return _reject("Map '%s' compact topology row %d contains an invalid edge reference." % [map_id, cell_index])
 		var door_id := "" if edge[2] == null else String(edge[2])
 		var secret_id := "" if edge[3] == null else String(edge[3])
 		if not door_id.is_empty() and feature_kinds_by_id.get(door_id) != "door":
@@ -312,17 +318,17 @@ func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, tri
 			return _reject("Topology edge references unknown secret '%s'." % secret_id)
 	if not _is_integer(row[8]) or not row[9] is String or row[9].is_empty() or row[10] != null and (not row[10] is String or row[10].is_empty()):
 		return _reject("Map '%s' compact topology row %d has malformed render facts." % [map_id, cell_index])
-	if not _is_integer(row[11]) or _integer(row[11]) < 0 or _integer(row[11]) > 2 or not _is_integer(row[12]) or _integer(row[12]) < 0:
+	if not _is_integer(row[11]) or int(row[11]) < 0 or int(row[11]) > 2 or not _is_integer(row[12]) or int(row[12]) < 0:
 		return _reject("Map '%s' compact topology row %d has malformed Classic movement facts." % [map_id, cell_index])
-	var boat_requirement := _integer(row[11])
-	var flags := _integer(row[2])
+	var boat_requirement := int(row[11])
+	var flags := int(row[2])
 	if bool(flags & 8) != (boat_requirement == 2) or bool(flags & 64) != (boat_requirement != 0):
 		return _reject("Map '%s' compact topology row %d has contradictory boat facts." % [map_id, cell_index])
-	if level_type == &"dungeon" and (boat_requirement != 0 or _integer(row[12]) != 0):
+	if level_type == &"dungeon" and (boat_requirement != 0 or int(row[12]) != 0):
 		return _reject("Dungeon map '%s' compact topology row %d contains land-only movement facts." % [map_id, cell_index])
 	return true
 
-func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset], allow_deferred: bool = false) -> Variant:
+func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset], allow_deferred: bool = false, schema_version: int = 3) -> Variant:
 	if not value is Array or value.size() > 20:
 		_reject("World player maps must be an array of no more than twenty records.")
 		return null
@@ -338,20 +344,23 @@ func decode_player_maps(value: Variant, maps: Array[MapDefinition], media_assets
 	var fields: Array[String] = ["id", "classicId", "name", "unavailableName", "mode", "mapId", "start", "iconSize", "pictureAssetId", "scrollingTextAssetId", "partyMarkerAssetId", "pictureRect", "markers", "note"]
 	var modes: Array[String] = ["scrolling-text", "picture", "land-crop", "dungeon-crop"]
 	for value_record: Variant in value:
-		var player_map := _decode_player_map_record(value_record, fields, modes, maps_by_id, assets_by_id, ids, classic_ids, allow_deferred)
+		var player_map := _decode_player_map_record(value_record, fields, modes, maps_by_id, assets_by_id, ids, classic_ids, allow_deferred, schema_version)
 		if player_map == null:
 			return null
 		result.append(player_map)
 	result.sort_custom(func(left: PlayerMapDefinition, right: PlayerMapDefinition) -> bool: return left.classic_id < right.classic_id)
 	return result
 
-func _decode_player_map_record(value_record: Variant, fields: Array[String], modes: Array[String], maps_by_id: Dictionary, assets_by_id: Dictionary, ids: Dictionary, classic_ids: Dictionary, allow_deferred: bool) -> PlayerMapDefinition:
+func _decode_player_map_record(value_record: Variant, fields: Array[String], modes: Array[String], maps_by_id: Dictionary, assets_by_id: Dictionary, ids: Dictionary, classic_ids: Dictionary, allow_deferred: bool, schema_version: int) -> PlayerMapDefinition:
 	if not value_record is Dictionary:
 		_reject("Player-map definition is not an object.")
 		return null
 	var record: Dictionary = value_record
-	if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or ids.has(record["id"]) or not _is_integer(record["classicId"]) or not record["name"] is String or record["name"].is_empty() or not record["unavailableName"] is String or not record["mode"] is String or record["mode"] not in modes or not _is_integer(record["iconSize"]) or _integer(record["iconSize"]) <= 0 or not record["note"] is String:
+	if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or ids.has(record["id"]) or not _is_integer(record["classicId"]) or not record["name"] is String or record["name"].is_empty() or not record["unavailableName"] is String or not record["mode"] is String or record["mode"] not in modes or not _is_integer(record["iconSize"]) or not record["note"] is String:
 		_reject("Player-map definition is malformed or duplicated.")
+		return null
+	if _integer(record["iconSize"]) <= 0 and (schema_version < 7 or record["mode"] != "scrolling-text"):
+		_reject("Image-backed player maps require a positive native icon size.")
 		return null
 	var classic_id := _integer(record["classicId"])
 	if classic_id < 0 or classic_id > 19 or classic_ids.has(classic_id):
@@ -360,13 +369,8 @@ func _decode_player_map_record(value_record: Variant, fields: Array[String], mod
 	if not record["start"] is Dictionary or not _exact_fields(record["start"], ["x", "y"]) or not _is_integer(record["start"]["x"]) or not _is_integer(record["start"]["y"]):
 		_reject("Player-map start coordinate is malformed.")
 		return null
-	if not record["pictureRect"] is Dictionary or not _exact_fields(record["pictureRect"], ["top", "left", "bottom", "right"]):
-		_reject("Player-map picture rectangle is malformed.")
-		return null
-	for field: String in ["top", "left", "bottom", "right"]:
-		if not _is_integer(record["pictureRect"][field]):
-			_reject("Player-map picture rectangle is malformed.")
-			return null
+	var rect: Variant = _player_map_rectangle(record["pictureRect"])
+	if rect == null: return null
 	var mode := StringName(record["mode"])
 	var map_id := "" if record["mapId"] == null else String(record["mapId"])
 	var picture_asset_id := "" if record["pictureAssetId"] == null else String(record["pictureAssetId"])
@@ -385,7 +389,8 @@ func _decode_player_map_record(value_record: Variant, fields: Array[String], mod
 			return null
 	if mode == PlayerMapDefinition.PICTURE:
 		var picture_map := maps_by_id.get(map_id) as MapDefinition
-		if picture_map == null and (not allow_deferred or not _classic_map_reference_matches(map_id, &"land") and not _classic_map_reference_matches(map_id, &"dungeon")) or not _player_map_asset_matches_or_defer(assets_by_id.get(picture_asset_id), picture_asset_id, "PICT", null, allow_deferred) or not _player_map_asset_matches_or_defer(party_marker_asset, party_marker_asset_id, "cicn", 138, allow_deferred) or not scrolling_text_asset_id.is_empty():
+		var missing_legacy_map := schema_version < 7 and picture_map == null and (not allow_deferred or not _classic_map_reference_matches(map_id, &"land") and not _classic_map_reference_matches(map_id, &"dungeon"))
+		if missing_legacy_map or not _player_map_asset_matches_or_defer(assets_by_id.get(picture_asset_id), picture_asset_id, "PICT", null, allow_deferred) or not _player_map_asset_matches_or_defer(party_marker_asset, party_marker_asset_id, "cicn", 138, allow_deferred) or not scrolling_text_asset_id.is_empty():
 			_reject("Picture-backed player map references unavailable PICT media.")
 			return null
 	elif mode == PlayerMapDefinition.SCROLLING_TEXT:
@@ -400,8 +405,17 @@ func _decode_player_map_record(value_record: Variant, fields: Array[String], mod
 		return null
 	ids[record["id"]] = true
 	classic_ids[classic_id] = true
-	var rect: Dictionary = record["pictureRect"]
-	return PlayerMapDefinition.new(record["id"], classic_id, record["name"], record["unavailableName"], mode, map_id, Vector2i(_integer(record["start"]["x"]), _integer(record["start"]["y"])), _integer(record["iconSize"]), picture_asset_id, scrolling_text_asset_id, party_marker_asset_id, Rect2i(_integer(rect["left"]), _integer(rect["top"]), _integer(rect["right"]) - _integer(rect["left"]), _integer(rect["bottom"]) - _integer(rect["top"])), markers_value, record["note"])
+	return PlayerMapDefinition.new(record["id"], classic_id, record["name"], record["unavailableName"], mode, map_id, Vector2i(_integer(record["start"]["x"]), _integer(record["start"]["y"])), _integer(record["iconSize"]), picture_asset_id, scrolling_text_asset_id, party_marker_asset_id, rect, markers_value, record["note"])
+
+func _player_map_rectangle(value: Variant) -> Variant:
+	if not value is Dictionary or not _exact_fields(value, ["top", "left", "bottom", "right"]):
+		_reject("Player-map picture rectangle is malformed.")
+		return null
+	for field: String in ["top", "left", "bottom", "right"]:
+		if not _is_integer(value[field]):
+			_reject("Player-map picture rectangle is malformed.")
+			return null
+	return Rect2i(_integer(value.left), _integer(value.top), _integer(value.right) - _integer(value.left), _integer(value.bottom) - _integer(value.top))
 
 func _decode_player_map_markers(value: Variant, crop: bool, assets_by_id: Dictionary, allow_deferred: bool) -> Variant:
 	if not value is Array or value.size() > 10 or not crop and not value.is_empty():
@@ -445,16 +459,24 @@ func _classic_map_reference_matches(map_id: String, expected_type: StringName) -
 	var parts := map_id.split(":")
 	return parts.size() == 2 and parts[0] == String(expected_type) and parts[1].is_valid_int()
 
-func _construct_random_regions(value: Variant, width: int, height: int, map_id: String) -> Variant:
+func _construct_random_regions(value: Variant, width: int, height: int, map_id: String, schema_version: int) -> Variant:
 	if not value is Array:
 		_reject("Map '%s' random rectangles must be an array." % map_id)
 		return null
 	var regions: Array[RandomEncounterRegion] = []
 	var ids: Dictionary = {}
+	var native_slots: Dictionary = {}
 	for record: Variant in value:
 		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or ids.has(record["id"]):
 			_reject("Map '%s' contains a malformed or duplicate random rectangle." % map_id)
 			return null
+		var identity: String = record["id"]
+		if identity.begins_with(map_id + ":rect:") or identity.begins_with(map_id + ":randlevel:rect:"):
+			var suffix := identity.get_slice(":rect:", 1)
+			if not suffix.is_valid_int() or int(suffix) < 0 or int(suffix) >= 20 or native_slots.has(int(suffix)):
+				_reject("Map '%s' contains an invalid or duplicate Classic random-rectangle slot." % map_id)
+				return null
+			native_slots[int(suffix)] = true
 		for field: String in ["top", "left", "bottom", "right", "chanceTenThousand", "option", "soundId", "textId"]:
 			if not _is_integer(record.get(field)):
 				_reject("Random rectangle '%s' field '%s' is malformed." % [record["id"], field])
@@ -465,7 +487,8 @@ func _construct_random_regions(value: Variant, width: int, height: int, map_id: 
 		var right := _integer(record["right"])
 		var chance := _integer(record["chanceTenThousand"])
 		var classic_scalars := {"chance": chance, "option": _integer(record["option"]), "sound": _integer(record["soundId"]), "text": _integer(record["textId"])}
-		if top < 0 or left < 0 or bottom < top or right < left or bottom >= height or right >= width or not _integers_in_range(classic_scalars, ["chance", "option", "sound", "text"], -32768, 32767) or not record.get("only") is bool:
+		var invalid_bounds := not _integers_in_range({"top": top, "left": left, "bottom": bottom, "right": right}, ["top", "left", "bottom", "right"], -32768, 32767) if schema_version >= 7 else top < 0 or left < 0 or bottom < top or right < left or bottom >= height or right >= width
+		if invalid_bounds or not _integers_in_range(classic_scalars, ["chance", "option", "sound", "text"], -32768, 32767) or not record.get("only") is bool:
 			_reject("Random rectangle '%s' bounds or flags are malformed." % record["id"])
 			return null
 		var battle_range_value: Variant = _integer_array(record.get("battleRange"), 2, "battle range")

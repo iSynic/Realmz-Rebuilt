@@ -19,9 +19,9 @@ var spell_areas: SpellAreaRules
 var combat_flow: CombatFlow
 
 
-func _init() -> void:
+func _init(native_values: bool = false) -> void:
 	arithmetic = RealmzArithmetic.new()
-	characters = CharacterRules.new()
+	characters = CharacterRules.new(native_values)
 	conditions = ConditionRules.new()
 	inventory = InventoryRules.new()
 	equipment = EquipmentRules.new(inventory, characters)

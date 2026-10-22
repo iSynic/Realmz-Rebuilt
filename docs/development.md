@@ -32,6 +32,7 @@ Change a fact in the lowest boundary that owns its meaning. Do not add a forward
 - Resolve application and scenario content by exact resource type and ID, with a scenario-owned exact-key overlay before application fallback.
 - Keep gameplay state out of scenes and presentation state out of saves.
 - Move paired `.uid` files and rewrite resource paths atomically when renaming Godot files.
+- Every GDScript variable, parameter and return is statically typed; `project.godot` treats `untyped_declaration` as an error outside `addons`, and the aggregate gate compiles every script to enforce it. Use `:=` only when the right side has a static type, and type collaborator accessors with their concrete classes rather than `RefCounted` or `Variant`.
 
 ## UI changes
 

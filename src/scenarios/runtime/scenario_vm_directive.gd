@@ -12,6 +12,8 @@ const ENTER_ENCOUNTER: StringName = &"enter-encounter"
 const BRANCH_ENCOUNTER_RESULT: StringName = &"branch-encounter-result"
 const RESTART_CURRENT_PROGRAM: StringName = &"restart-current-program"
 const DROPOUT: StringName = &"dropout"
+const CLOCK_TIMER_RETURN: StringName = &"clock-timer-return"
+const RECHECK_PROGRAM: StringName = &"recheck-program"
 
 var kind: StringName
 var target_id: int = -1
@@ -84,6 +86,14 @@ static func dropout() -> ScenarioVmDirective:
 	return ScenarioVmDirective.new(DROPOUT)
 
 
+static func clock_timer_return(program: String, cursor: int, frame_context: ScenarioExecutionContext = null) -> ScenarioVmDirective:
+	var directive := ScenarioVmDirective.new(CLOCK_TIMER_RETURN)
+	directive.program_id = program
+	directive.entry_cursor = cursor
+	directive.context = ScenarioExecutionContext.empty() if frame_context == null else frame_context.copy()
+	return directive
+
+
 func copy() -> ScenarioVmDirective:
 	return from_data(to_data())
 
@@ -94,6 +104,8 @@ func to_data() -> Dictionary:
 			return {"kind": String(kind)}
 		BRANCH_XAP:
 			return {"kind": String(kind), "targetId": target_id, "gosub": gosub}
+		CLOCK_TIMER_RETURN, RECHECK_PROGRAM:
+			return {"kind": String(kind), "programId": program_id, "entryCursor": entry_cursor, "context": ScenarioExecutionContextCodec.encode(context)}
 		BRANCH_PROGRAM:
 			var data := {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": ScenarioExecutionContextCodec.encode(context)}
 			if entry_cursor != 0:
@@ -130,6 +142,13 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 				return null
 			var restored_context := ScenarioExecutionContextCodec.decode(value["context"])
 			return null if restored_context == null else branch_program_at(value["programId"], value["gosub"], restored_context, int(cursor_value))
+		CLOCK_TIMER_RETURN, RECHECK_PROGRAM:
+			var cursor_value: Variant = value.get("entryCursor")
+			var restored_context := ScenarioExecutionContextCodec.decode(value.get("context"))
+			if value.size() != 4 or restored_context == null or not value.get("programId") is String or value["programId"].is_empty() or not _whole_number(cursor_value) or cursor_value < 0 or cursor_value > 4096: return null
+			var directive := clock_timer_return(value["programId"], int(cursor_value), restored_context)
+			directive.kind = StringName(value["kind"])
+			return directive
 		ENTER_ENCOUNTER:
 			var encounter_kind_value: Variant = value.get("encounterKind")
 			var encounter_id_value: Variant = value.get("encounterId")

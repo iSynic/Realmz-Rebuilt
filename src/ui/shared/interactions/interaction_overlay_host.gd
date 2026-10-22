@@ -53,7 +53,7 @@ func close_all() -> void:
 
 
 func release() -> void:
-	for overlay in [_modal_shield, _nested_modal, _side_workspace_panel, _encounter_dock_panel, _application_workspace_panel]:
+	for overlay: Control in [_modal_shield, _nested_modal, _side_workspace_panel, _encounter_dock_panel, _application_workspace_panel]:
 		if is_instance_valid(overlay):
 			overlay.queue_free()
 	_modal_shield = null
@@ -194,6 +194,16 @@ func apply_layout() -> void:
 	_apply_nested_modal_layout()
 
 
+func prepare_initial_focus(scroll: ScrollContainer, preferred: Control) -> void:
+	scroll.scroll_horizontal = 0
+	scroll.scroll_vertical = 0
+	var first := preferred if preferred != null else _first_focusable(controller_focus_root())
+	if first != null:
+		first.grab_focus()
+	scroll.scroll_horizontal = 0
+	scroll.scroll_vertical = 0
+
+
 func controller_focus_root() -> Control:
 	for candidate: Control in [_nested_modal, _application_workspace_panel, _side_workspace_panel, _encounter_dock_panel]:
 		if candidate != null and is_instance_valid(candidate) and candidate.is_visible_in_tree():
@@ -203,6 +213,16 @@ func controller_focus_root() -> Control:
 
 static func modal_shield_target_index(shield_index: int, presenter_index: int) -> int:
 	return maxi(0, presenter_index - 1 if shield_index < presenter_index else presenter_index)
+
+
+static func _first_focusable(parent: Node) -> Control:
+	for child: Node in parent.get_children():
+		if child is Control and (child as Control).visible and (child as Control).focus_mode != Control.FOCUS_NONE and not (child is BaseButton and (child as BaseButton).disabled):
+			return child as Control
+		var nested := _first_focusable(child)
+		if nested != null:
+			return nested
+	return null
 
 
 func _apply_nested_modal_layout() -> void:

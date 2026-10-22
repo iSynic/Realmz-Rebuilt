@@ -26,10 +26,11 @@ var _draft_error := ""
 var _display_settings: PresentationSettings
 var font_resolver := FontResolver.new()
 var _controller_draft: ControllerPreferences
-var _controller_capture_action: StringName = &""
-var _controller_live_text: String = ""
-var controller: SystemControllerBindings:
-	get: return SystemControllerBindings.new(self)
+var controller := SystemControllerBindings.new(self)
+var controller_draft: ControllerPreferences:
+	get: return _controller_draft
+var workspace: SystemWorkspace:
+	get: return _workspace
 
 
 func _init() -> void:
@@ -84,7 +85,7 @@ func indoor_icon_picker() -> IndoorPartyIconPicker:
 
 
 func close_local_picker() -> bool:
-	if not _controller_capture_action.is_empty():
+	if not controller.capture_action.is_empty():
 		_cancel_capture()
 		return true
 	var picker := indoor_icon_picker()
@@ -92,7 +93,7 @@ func close_local_picker() -> bool:
 
 
 func has_dirty_draft() -> bool:
-	return _draft.is_dirty() or not _controller_capture_action.is_empty()
+	return _draft.is_dirty() or not controller.capture_action.is_empty()
 
 
 func draft_settings() -> PresentationSettings:
@@ -105,14 +106,14 @@ func discard_draft() -> void:
 		return
 	_draft.reset(_live_settings)
 	_controller_draft = _draft.values.controller
-	_controller_capture_action = &""
+	controller.capture_action = &""
 	_draft_error = ""
 	refresh_preferences()
 
 
 func apply_draft() -> bool:
 	_draft_error = _draft.validation_error()
-	if not _controller_capture_action.is_empty():
+	if not controller.capture_action.is_empty():
 		_draft_error = "Finish or cancel controller capture before applying."
 	if _draft_error.is_empty() and not commit_preferences.is_valid():
 		_draft_error = "Settings storage is unavailable. Your changes are still here."
@@ -159,7 +160,7 @@ func refresh_draft_footer() -> void:
 	var footer := _workspace.get_node("PreferencesFooter")
 	var error := _draft_error if not _draft_error.is_empty() else _draft.validation_error()
 	(footer.get_node("DraftStatus") as Label).text = error if not error.is_empty() else "Unsaved changes" if has_dirty_draft() else "No unsaved changes"
-	(footer.get_node("Apply") as Button).disabled = not has_dirty_draft() or not _draft.validation_error().is_empty() or not _controller_capture_action.is_empty()
+	(footer.get_node("Apply") as Button).disabled = not has_dirty_draft() or not _draft.validation_error().is_empty() or not controller.capture_action.is_empty()
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -331,7 +332,7 @@ func _bind_controller_editor(root: TabContainer) -> void:
 	_bind_controller_slider(tuning.get_node("RightDeadZone") as HSlider, tuning.get_node("RightDeadZoneLabelRow/Value") as Label, _controller_draft.right_stick_dead_zone, "Right stick dead zone", func(value: float) -> void: _controller_draft.right_stick_dead_zone = value)
 	_bind_controller_slider(tuning.get_node("RepeatInitial") as HSlider, tuning.get_node("RepeatInitialLabelRow/Value") as Label, _controller_draft.repeat_initial_ms, "UI repeat start delay", func(value: float) -> void: _controller_draft.repeat_initial_ms = int(value))
 	_bind_controller_slider(tuning.get_node("RepeatInterval") as HSlider, tuning.get_node("RepeatIntervalLabelRow/Value") as Label, _controller_draft.repeat_interval_ms, "UI repeat interval", func(value: float) -> void: _controller_draft.repeat_interval_ms = int(value))
-	(tuning.get_node("LiveInput") as Label).text = "Live input • %s" % (_controller_live_text if not _controller_live_text.is_empty() else "move or press a controller control")
+	(tuning.get_node("LiveInput") as Label).text = "Live input • %s" % (controller.live_text if not controller.live_text.is_empty() else "move or press a controller control")
 	var conflicts := _controller_draft.conflicts()
 	var reachable := _controller_draft.required_navigation_is_reachable()
 	var status := bindings.get_node("BindingStatus") as Label
@@ -409,9 +410,9 @@ static func _clear(parent: Node) -> void:
 
 
 func _cancel_capture() -> void:
-	if _controller_capture_action.is_empty():
+	if controller.capture_action.is_empty():
 		return
 	if cancel_binding_capture.is_valid():
 		cancel_binding_capture.call()
-	_controller_capture_action = &""
+	controller.capture_action = &""
 	refresh_controller_editor()

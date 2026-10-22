@@ -55,21 +55,25 @@ func to_data() -> Dictionary:
 	return {"kind": String(kind), "version": VERSION, "data": data}
 
 
-static func from_data(value: Variant) -> ScenarioVmPendingContinuation:
+static func from_data(value: Variant, depth: int = 0) -> ScenarioVmPendingContinuation:
 	if not value is Dictionary or value.size() != 3 or not value.get("kind") is String or _integer(value.get("version")) != VERSION or not value.get("data") is Dictionary:
 		return null
 	var data: Dictionary = value["data"]
-	var runtime_continuation := ScenarioRuntimeContinuation.from_data(data.get("runtime"))
+	var runtime_continuation := ScenarioRuntimeContinuation.from_data(data.get("runtime"), depth)
 	if runtime_continuation == null:
 		return null
-	match StringName(value["kind"]):
+	var result := ScenarioVmPendingContinuation.new(StringName(value["kind"]))
+	result.runtime = runtime_continuation
+	match result.kind:
 		CLASSIC_OPERATION:
-			return classic(runtime_continuation) if data.size() == 1 else null
+			return result if data.size() == 1 else null
 		SAFE_OPERATION:
 			var parsed_frame_index := _integer(data.get("frameIndex"))
 			if data.size() != 3 or parsed_frame_index < 0 or not data.get("resultTarget") is String:
 				return null
-			return safe(runtime_continuation, parsed_frame_index, data["resultTarget"])
+			result.frame_index = parsed_frame_index
+			result.result_target = data["resultTarget"]
+			return result
 	return null
 
 

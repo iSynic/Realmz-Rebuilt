@@ -92,10 +92,15 @@ func without_encounter() -> ScenarioExecutionContext:
 
 func for_new_program_frame() -> ScenarioExecutionContext:
 	var result := copy()
-	result.calling_context = &""
+	if result.calling_context not in [&"battle-macro", &"monster-death-macro", &"contextual-encounter", &"item"]:
+		result.calling_context = &""
 	result.program_resolved = false
 	result.origin_program_id = ""
 	return result
+
+
+func is_native_mode_one() -> bool:
+	return timed_encounter_id >= 0 or not application_hook.is_empty() or not random_region_id.is_empty() or calling_context in [&"contextual-encounter", &"item"]
 
 
 func set_thief_action(selected_action_index: int, selected_character_id: String) -> ScenarioExecutionContext:

@@ -44,9 +44,9 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		64:
 			return _branch_on_game_time(action)
 		72:
-			return _branch_on_quest_range(action)
+			return _branch_on_quest_range(action, context)
 		77:
-			return _branch_on_quest_value(action)
+			return _branch_on_quest_value(action, context)
 		78:
 			return _branch_on_faced_tile_semantic(action)
 		85:
@@ -135,6 +135,8 @@ func _branch_on_faced_tile_source_defect(action: ClassicActionDefinition, contex
 func _branch_on_quest(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 46 requires a five-value Extra Code row.")
+	if _content.package_schema_version >= 7 and (action.extra_code[0] < 0 or action.extra_code[0] >= ClassicCompatibility.quest_limit(_content)):
+		return ClassicCompatibility.cancel_interaction(&"unavailable-quest-test", "quest-slots", action.extra_code[0], context)
 	var is_set := _game_state.scenario_progress.quest_is_set(action.extra_code[0])
 	var condition := action.extra_code[1]
 	var should_branch := condition == 2 or condition == 1 and is_set or condition == 0 and not is_set
@@ -146,21 +148,23 @@ func _branch_on_game_time(action: ClassicActionDefinition) -> ScenarioRuntimeOpe
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 64 requires a five-value Extra Code row.")
 	var day_limit := action.extra_code[0]
 	var hour_limit := action.extra_code[1]
-	if day_limit < -1 or hour_limit < -1 or hour_limit > 23:
+	if _content.package_schema_version < 7 and (day_limit < -1 or hour_limit < -1 or hour_limit > 23):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_game_time_test", "Classic opcode 64 has an invalid day or hour limit.")
 	var before_or_equal := (day_limit == -1 or _game_state.clock.day() <= day_limit) and (hour_limit == -1 or _game_state.clock.hour() <= hour_limit)
 	var target_id := action.extra_code[3] if before_or_equal else action.extra_code[4]
-	var branch := _branch_xap(target_id, action.gosub)
+	var branch := ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(target_id, action.gosub)) if _content.package_schema_version >= 7 else _branch_xap(target_id, action.gosub)
 	branch.events.append(DomainEvent.new(&"game_time_branch_checked", {"day": _game_state.clock.day(), "hour": _game_state.clock.hour(), "dayLimit": day_limit, "hourLimit": hour_limit, "beforeOrEqual": before_or_equal, "targetId": target_id}))
 	return branch
 
 
-func _branch_on_quest_range(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+func _branch_on_quest_range(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 72 requires a five-value Extra Code row.")
 	var first := action.extra_code[0]
 	var last := action.extra_code[1]
-	if first < 0 or first >= 100 or last < 0 or last >= 100:
+	if first < 0 or first >= ClassicCompatibility.quest_limit(_content) or last < 0 or last >= ClassicCompatibility.quest_limit(_content):
+		if _content.package_schema_version >= 7:
+			return ClassicCompatibility.cancel_interaction(&"unavailable-quest-range", "quest-slots", first, context)
 		return ScenarioRuntimeOperationResult.failed(&"invalid_quest_range", "Classic opcode 72 references quests outside 0 through 99.")
 	var all_set := true
 	for quest_id: int in range(first, last + 1):
@@ -180,28 +184,31 @@ func _branch_to_random_destination(action: ClassicActionDefinition) -> ScenarioR
 	var mode := action.extra_code[0]
 	var low_id := action.extra_code[1]
 	var high_id := action.extra_code[2]
-	if mode not in [0, 1, 2] or low_id < 0 or high_id < low_id:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_random_branch", "Classic opcode 85 requires a destination mode and an inclusive nonnegative range.")
+	if mode not in [0, 1, 2] or (_content.classic_records == null and low_id < 0) or (_content.package_schema_version < 7 and high_id < low_id):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_random_branch", "Classic opcode 85 requires a destination mode and an ordered inclusive range.")
 	var events: Array[DomainEvent] = []
 	if action.extra_code[3] != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic-opcode-85"}))
 	if action.extra_code[4] != 0:
 		var message := _content.scenario_records.message_by_id(absi(action.extra_code[4]))
-		if message == null:
+		if message == null and not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(action.extra_code[4])):
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 85 references unavailable message %d." % action.extra_code[4])
-		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-85"}))
-	var target_id := _rng.draw_between(low_id, high_id, &"classic.opcode85.destination")
+		if message != null:
+			events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-85"}))
+	var target_id := _rng.draw_between_classic(low_id, high_id, &"classic.opcode85.destination") if _content.package_schema_version >= 7 else _rng.draw_between(low_id, high_id, &"classic.opcode85.destination")
 	var branch := _branch_to_destination(mode, target_id, action.gosub)
 	branch.events.append_array(events)
 	branch.events.append(DomainEvent.new(&"random_destination_selected", {"mode": mode, "lowId": low_id, "highId": high_id, "targetId": target_id, "source": "classic-opcode-85"}))
 	return branch
 
 
-func _branch_on_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+func _branch_on_quest_value(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 77 requires a five-value Extra Code row.")
 	var quest_id := action.extra_code[0]
-	if quest_id < 0 or quest_id >= 100:
+	if quest_id < 0 or quest_id >= ClassicCompatibility.quest_limit(_content):
+		if _content.package_schema_version >= 7:
+			return ClassicCompatibility.cancel_interaction(&"unavailable-quest-test", "quest-slots", quest_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 77 references quest %d outside 0 through 99." % quest_id)
 	var matched := _game_state.scenario_progress.quest_value(quest_id) >= action.extra_code[1]
 	var target_id := action.extra_code[4] if matched else action.extra_code[3]
@@ -393,14 +400,27 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 				level_type = &"land" if int(values[3]) == 1 else &"dungeon"
 			var target_map := _content.world.map_by_type_and_index(level_type, int(values[0]))
 			if target_map == null:
+				if ClassicCompatibility.source_unavailable(_content, "Data LD" if level_type == &"land" else "Data DL", int(values[0])):
+					return ClassicCompatibility.skip(&"program-replacement-map", "Data LD" if level_type == &"land" else "Data DL", int(values[0]))
 				return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 7 references unavailable %s map %d." % [String(level_type), int(values[0])])
 			var target_trigger := _content.scenario_records.trigger_by_map_record(target_map.id, int(values[1]))
 			if target_trigger == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_trigger", "Classic opcode 7 references unavailable Action Point record %d on map '%s'." % [int(values[1]), target_map.id])
-			target_program_id = target_trigger.program_id
+				var path := "Data DD" if level_type == &"land" else "Data DDD"
+				if _content.classic_records == null:
+					return ScenarioRuntimeOperationResult.failed(&"unknown_trigger", "Classic opcode 7 references unavailable Action Point record %d on map '%s'." % [int(values[1]), target_map.id])
+				if int(values[1]) not in range(100) or ClassicCompatibility.source_unavailable(_content, path, target_map.level_index * 100 + int(values[1])):
+					return ClassicCompatibility.skip(&"program-replacement-target", path, int(values[1]))
+				# A complete unplaced AP still owns an addressable program body.
+				target_program_id = "trigger:%s:%d:%d" % [path, target_map.level_index, int(values[1])]
+			else:
+				target_program_id = target_trigger.program_id
 	if _content.scenario.program_by_id(source_program_id) == null:
+		if _content.scenario.native_program_is_unavailable(source_program_id):
+			return ClassicCompatibility.skip(&"program-replacement-source", "Data ED3", int(values[2]))
 		return ScenarioRuntimeOperationResult.failed(&"unknown_scenario_program", "Classic opcode 7 references unavailable source XAP %d." % int(values[2]))
 	if _content.scenario.program_by_id(target_program_id) == null:
+		if _content.scenario.native_program_is_unavailable(target_program_id):
+			return ClassicCompatibility.skip(&"program-replacement-target", "encounter-result", int(values[1]))
 		return ScenarioRuntimeOperationResult.failed(&"unknown_scenario_program", "Classic opcode 7 references unavailable target program '%s'." % target_program_id)
 	_game_state.scenario_progress.encounters.set_program_override(target_program_id, source_program_id)
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"scenario_program_replaced", {"sourceProgramId": target_program_id, "targetProgramId": source_program_id, "source": "classic"})])

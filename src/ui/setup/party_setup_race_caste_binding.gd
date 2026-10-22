@@ -14,7 +14,7 @@ func _init(state: RefCounted, appearance_editor: PartySetupAppearanceEditor) -> 
 func build() -> void:
 	if _step_scene == null:
 		_step_scene = load(race_caste_step_scene_path) as PackedScene
-	var step = _step_scene.instantiate()
+	var step := _step_scene.instantiate()
 	creator_page.add_child(step)
 	race_caste_columns = step.get_node("%RaceCasteSelectors") as BoxContainer
 	race_list = step.race_options()

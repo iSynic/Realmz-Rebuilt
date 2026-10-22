@@ -18,6 +18,8 @@ const CLASSIC_THIEF_RESOLUTION: StringName = &"classic-thief-resolution"
 const CLASSIC_CHARACTER_SELECTION: StringName = &"classic-character-selection"
 const CLASSIC_CHARACTER_ABILITY: StringName = &"classic-character-ability"
 const CLASSIC_AGE_UPDATES: StringName = &"classic-age-updates"
+const CLASSIC_CLOCK: StringName = &"classic-clock-refresh"
+const CLASSIC_SCRIPTED_FUMBLE: StringName = &"classic-scripted-fumble"
 const SAFE_AGE_UPDATES: StringName = &"safe-age-updates"
 const CLASSIC_SHOP: StringName = &"classic-shop"
 const CLASSIC_TEMPLE: StringName = &"classic-temple"
@@ -87,9 +89,18 @@ func reward() -> ScenarioRewardContinuationBody:
 	return body as ScenarioRewardContinuationBody
 
 
+func nested_vm() -> ScenarioVmSnapshot:
+	if body is ScenarioClockContinuationBody:
+		return (body as ScenarioClockContinuationBody).timer_vm
+	if combat() != null: return combat().macro_vm
+	if opcode_death() != null: return opcode_death().macro_vm
+	return null
+
+
 func copy() -> ScenarioRuntimeContinuation:
 	var duplicate := from_data(to_data())
-	assert(duplicate != null, "A live scenario runtime continuation must round-trip through its wire codec")
+	if duplicate == null:
+		push_error("A live scenario runtime continuation must round-trip through its wire codec.")
 	return duplicate
 
 
@@ -97,5 +108,5 @@ func to_data() -> Dictionary:
 	return {"kind": String(kind), "version": VERSION, "data": body.wire_payload() if body != null else {}}
 
 
-static func from_data(value: Variant) -> ScenarioRuntimeContinuation:
-	return ScenarioRuntimeContinuationCodec.decode(value)
+static func from_data(value: Variant, depth: int = 0) -> ScenarioRuntimeContinuation:
+	return ScenarioRuntimeContinuationCodec.decode(value, depth)

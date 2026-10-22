@@ -11,13 +11,33 @@ func run() -> void:
 		return
 	var campaign_id: String = loaded.content.campaign_id
 	var campaign_path := TEST_ROOT.path_join(campaign_id)
-	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save", "named-slot.r2save", "updated.r2save", "updated.r2save.tmp", "updated.r2save.bak", "active-slot", "active-slot.bak"])
-	var session := GameSession.new()
-	assert_equal(session.start(loaded.content, 7).state, SessionStep.State.COMPLETED, "save-preview session starts")
+	_reset_files(campaign_path, ["quick.r2save", "quick.r2save.bak", "mismatch.r2save", "legacy.r2save", "broken.r2save", "named-slot.r2save", "updated.r2save", "updated.r2save.tmp", "updated.r2save.bak", "active-slot", "active-slot.bak", "rotation.r2save", "rotation.r2save.bak", "rotation.r2save.bak.rotation"])
+	var session := GameSession.new(); assert_equal(session.start(loaded.content, 7).state, SessionStep.State.COMPLETED, "save-preview session starts")
 	var first := session.snapshot()
 	if first == null:
 		return
+	assert_true(first.game_state.scenario_progress.set_quest_value(127, -1), "the last native quest slot survives the existing full-state v6 write/readback checks")
 	var valid_root := save_data(first)
+	var v5 := valid_root.duplicate(true); v5.formatVersion = 5; v5.gameState.clock = {"totalMinutes": 61}; v5.erase("classicExecution"); v5.scenarioVm.schemaVersion = 2; v5.scenarioVm.stepCount = 0; v5.scenarioVm.lastOutcome = null
+	for field: String in ["classicRecordId", "nativeContext", "secondaryDoor", "noSecondDoor", "returnedEarly", "nativeInvocationBegun"]: v5.scenarioVm.erase(field)
+	var v5_before := CanonicalJson.encode(v5); var decoded_v5 := SaveEnvelope.from_data(v5)
+	assert_true(decoded_v5 != null and decoded_v5.to_data().formatVersion == SaveEnvelope.FORMAT_VERSION and decoded_v5.game_state.clock.to_data() == {"day": 1, "hour": 1, "minute": 1} and CanonicalJson.encode(v5) == v5_before and CanonicalJson.encode(decoded_v5.rng_state.to_data()) == CanonicalJson.encode(v5.rng), "v5 decodes recorded time without replay or RNG changes and only the next write uses the current format")
+	var v6 := valid_root.duplicate(true); v6.formatVersion = 6; v6.scenarioVm.schemaVersion = 3; v6.scenarioVm.erase("nativeInvocationBegun"); v6.scenarioVm.stepCount = 47; v6.scenarioVm.lastOutcome = null; var decoded_v6 := SaveEnvelope.from_data(v6); var schema_four_v6 := valid_root.duplicate(true); schema_four_v6.formatVersion = 6
+	assert_equal([decoded_v6 != null and decoded_v6.scenario_vm.native_invocation_begun, decoded_v6.to_data().scenarioVm.get("stepCount") if decoded_v6 != null else null, SaveEnvelope.from_data(schema_four_v6)], [true, 47, null], "save v6 with VM schema 3 still loads byte-exact and marks its begun invocation, while a v6 envelope claiming VM schema 4 is rejected")
+	var legacy_choices := valid_root.duplicate(true)
+	legacy_choices.gameState.eliminatedSimpleOptions = ["32:0"]
+	legacy_choices.gameState.worldOverlays.randomRegions = [RandomRegionState.new("land:0:randlevel:rect:3", 100, 1, 2, [0, 0, 0]).to_data()]
+	var legacy_envelope := SaveEnvelope.from_data(legacy_choices)
+	var translator := CompleteRecordStateUpdate.new()
+	var record_pair := {"simpleSlots": {"32": [1, 2]}, "shopIndexes": {}, "timerPositions": [0], "randomRegionIds": {"land:0:randlevel:rect:3": "land:0:rect:3"}}
+	var translated := translator.translate(legacy_envelope, record_pair, "a".repeat(64))
+	var expected_translation := legacy_choices.duplicate(true)
+	expected_translation.packageHash = "a".repeat(64)
+	expected_translation.gameState.eliminatedSimpleOptions = ["32:1"]
+	expected_translation.gameState.worldOverlays.randomRegions[0].id = "land:0:rect:3"
+	assert_equal(translated, expected_translation, "explicit record updates map the recorded choice while preserving every unrelated state and RNG field")
+	assert_equal(legacy_envelope.to_data(), legacy_choices, "choice translation preserves the original envelope")
+	assert_true(translator.translate(legacy_envelope, record_pair.merged({"simpleSlots": {}}, true), "a".repeat(64)).is_empty(), "an ambiguous choice update fails without guessing a native slot")
 	var malformed_roots: Array[Dictionary] = []
 	malformed_roots.append({"name": "unknown field", "data": valid_root.merged({"unexpected": true})})
 	malformed_roots.append({"name": "invalid JPEG preview", "data": valid_root.merged({"mapPreviewJpeg": "bm90IGEganBlZw=="})})
@@ -29,7 +49,7 @@ func run() -> void:
 	unsupported_version["formatVersion"] = 4
 	malformed_roots.append({"name": "unsupported version", "data": unsupported_version})
 	for malformed: Dictionary in malformed_roots:
-		assert_equal(SaveEnvelope.from_data(malformed["data"]), null, "save v5 root rejects %s" % malformed["name"])
+		assert_equal(SaveEnvelope.from_data(malformed["data"]), null, "save v6 root rejects %s" % malformed["name"])
 	first.game_state.party.add_character(CharacterState.new("preview.hero", "Mira", 10, 10))
 	first.game_state.experience_multiplier = 1.0 / 3.0
 	var repository := SaveRepository.new(TEST_ROOT)
@@ -72,7 +92,7 @@ func run() -> void:
 	if wrong_package != null:
 		assert_equal([wrong_package.status, wrong_package.can_load], [SaveSlotPreviewScript.PACKAGE_MISMATCH, false], "package mismatch is visible but cannot be loaded")
 	if incompatible != null:
-		assert_equal([incompatible.status, incompatible.can_load, incompatible.error_message], [SaveSlotPreviewScript.INCOMPATIBLE, false, "Save format v4 is incompatible with Realmz Rebuilt save v5."], "legacy saves receive an explicit compatibility-cut message")
+		assert_equal([incompatible.status, incompatible.can_load, incompatible.error_message], [SaveSlotPreviewScript.INCOMPATIBLE, false, "Save format v4 is incompatible with Realmz Rebuilt save v7."], "legacy saves receive an explicit compatibility-cut message")
 	if broken != null:
 		assert_equal([broken.status, broken.can_load], [SaveSlotPreviewScript.CORRUPT, false], "corrupt saves are visible but cannot be loaded")
 	var loaded_backup := repository.load_backup(campaign_id, "quick", loaded.content.package_hash)
@@ -80,7 +100,7 @@ func run() -> void:
 	if loaded_backup != null:
 		assert_equal([loaded_backup.game_state.clock.total_minutes(), var_to_bytes(loaded_backup.game_state.experience_multiplier), PartySetupRules.scale_experience_by_multiplier(600, loaded_backup.game_state.experience_multiplier)], [0, var_to_bytes(first.game_state.experience_multiplier), 200], "backup loading preserves the previous boundary and exact fractional reward multiplier")
 	assert_true(repository.load(campaign_id, "mismatch", loaded.content.package_hash) == null and repository.last_error.contains("identity"), "ordinary load continues to reject mismatched immutable content")
-	assert_true(repository.load(campaign_id, "legacy", loaded.content.package_hash) == null and repository.last_error == "Save format v4 is incompatible with Realmz Rebuilt save v5.", "ordinary load reports the intentional save compatibility cut")
+	assert_true(repository.load(campaign_id, "legacy", loaded.content.package_hash) == null and repository.last_error == "Save format v4 is incompatible with Realmz Rebuilt save v7.", "ordinary load reports the intentional save compatibility cut")
 	var original_before := FileAccess.get_sha256(campaign_path.path_join("quick.r2save"))
 	var backup_before := FileAccess.get_sha256(campaign_path.path_join("quick.r2save.bak"))
 	var update_copy := SaveEnvelope.from_data(save_data(first).merged({"mapPreviewJpeg": Marshalls.raw_to_base64(preview_jpeg)}))
@@ -99,7 +119,7 @@ func run() -> void:
 	var other_data: Dictionary = save_data(first)
 	other_data["campaignId"] = other_campaign
 	var other_envelope := SaveEnvelope.from_data(other_data)
-	assert_not_null(other_envelope, "a second campaign source is a strict v5 envelope")
+	assert_not_null(other_envelope, "a second campaign source is a strict current envelope")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(other_path))
 	var other_file := FileAccess.open(other_path.path_join("Archive-slot.r2save"), FileAccess.WRITE)
 	other_file.store_string(JSON.stringify(other_envelope.to_data()))
@@ -133,6 +153,13 @@ func run() -> void:
 	var changed_external := repository.read_party_source(external_source)
 	assert_true(changed_external.is_valid() and changed_external.source_file_hash != external_source.source_file_hash and changed_external.envelope.game_state.clock.total_minutes() == second.game_state.clock.total_minutes(), "rereading an external selector observes changed content and recomputes its hash")
 	assert_equal([FileAccess.get_sha256(campaign_path.path_join("quick.r2save")), FileAccess.get_sha256(campaign_path.path_join("quick.r2save.bak")), FileAccess.get_file_as_string(campaign_path.path_join("active-slot")), FileAccess.file_exists(campaign_path.path_join("active-slot.bak"))], [original_before, backup_before, "C", false], "party-source enumeration and rereads leave the original save pair and active-slot record unchanged")
+	var rotation_path := campaign_path.path_join("rotation.r2save"); var third := save_round_trip(second); third.game_state.clock.advance_minutes(5)
+	assert_true(repository.save(campaign_id, "rotation", first) and repository.save(campaign_id, "rotation", second), "the rotation slot holds one primary and one backup")
+	DirAccess.rename_absolute(ProjectSettings.globalize_path(rotation_path + ".bak"), ProjectSettings.globalize_path(rotation_path + ".bak.rotation")); DirAccess.rename_absolute(ProjectSettings.globalize_path(rotation_path), ProjectSettings.globalize_path(rotation_path + ".bak"))
+	assert_true(repository.save(campaign_id, "rotation", third), "a save after an interrupted backup rotation recovers instead of permanently refusing the slot")
+	assert_equal([repository.load(campaign_id, "rotation", loaded.content.package_hash).game_state.clock.total_minutes(), repository.load_backup(campaign_id, "rotation", loaded.content.package_hash).game_state.clock.total_minutes(), FileAccess.file_exists(rotation_path + ".bak.rotation")], [third.game_state.clock.total_minutes(), second.game_state.clock.total_minutes(), false], "recovery restores the interrupted primary before rotating it into the single backup")
+	var incomplete := save_round_trip(second); incomplete.is_complete = false; var rotation_before := FileAccess.get_sha256(rotation_path)
+	assert_equal([repository.save(campaign_id, "rotation", incomplete), FileAccess.get_sha256(rotation_path)], [false, rotation_before], "a snapshot whose live continuation failed to detach is refused instead of saved without it")
 
 
 func _preview(previews: Array, slot_id: String, source: StringName) -> RefCounted:

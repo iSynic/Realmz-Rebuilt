@@ -3,6 +3,9 @@
 class_name ClassicRewardWorkflow
 extends ClassicRewardOperationsSupport
 
+## Treasure input the player can correct is rejected so the same request stays
+## open; commit failures and unavailable rules content remain failures.
+const PLAYER_INPUT_ERROR_CODES: Array[String] = ["invalid_interaction_response", "reward_assignment_unavailable", "reward_drop_unavailable", "invalid_money_context", "money_action_unavailable", "reward_spell_unavailable"]
 const REWARD_DROP_SUPPORT := preload("res://src/scenarios/classic/operations/classic_reward_drop_support.gd")
 
 class RewardItemSelection:
@@ -26,6 +29,10 @@ func resume_reward(continuation: ScenarioRuntimeContinuation, response: Interact
 	var rng_checkpoint := _rng.checkpoint()
 	var operation := _resume_reward(continuation, response, request_id)
 	return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
+
+static func _reward_error(error: Dictionary) -> ScenarioRuntimeOperationResult:
+	var code := StringName(error["code"])
+	return ScenarioRuntimeOperationResult.rejected(code, error["message"]) if String(code) in PLAYER_INPUT_ERROR_CODES else ScenarioRuntimeOperationResult.failed(code, error["message"])
 
 func begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0, leading_items: Array[ItemInstance] = [], item_magic_detected: Array[bool] = []) -> ScenarioRuntimeOperationResult:
 	if wealth == null or item_ids.size() + leading_items.size() > ClassicRewardState.MAX_PENDING_ITEMS or not item_magic_detected.is_empty() and item_magic_detected.size() != item_ids.size():
@@ -80,6 +87,9 @@ func _select_reward_items(source_id: String, item_ids: Array[String], item_magic
 		var item_id: String = item_ids[index]
 		var definition := _content.items.item_by_id(item_id)
 		if definition == null:
+			if item_id.begins_with("classic.item.") and item_id.trim_prefix("classic.item.").is_valid_int() and ClassicCompatibility.item_source_unavailable(_content, int(item_id.trim_prefix("classic.item."))):
+				selection.error = ClassicCompatibility.cancel_interaction(&"unavailable-reward-item", "Data NI", int(item_id.trim_prefix("classic.item.")), null)
+				return selection
 			selection.error = ScenarioRuntimeOperationResult.failed(&"unknown_item", "Reward '%s' references unavailable item '%s'." % [source_id, item_id])
 			return selection
 		if definition.cost < 0 and unique_owned.has(definition.id):
@@ -276,7 +286,7 @@ func _resume_reward(continuation: ScenarioRuntimeContinuation, response: Interac
 		return _resume_reward_spells(reward, response, request_id)
 	var body := response.body as InteractionResponse.TreasureBody
 	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or body == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Treasure distribution requires a typed action.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Treasure distribution requires a typed action.")
 	var action := String(body.action)
 	if reward.completion_pending:
 		return _resume_reward_completion(reward, action, request_id)
@@ -298,7 +308,7 @@ func _resume_reward_completion(reward: ClassicRewardState, action: String, reque
 		reward.completion_pending = false
 		return _wait_for_reward(reward, request_id)
 	if action != "confirm-completion":
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Treasure completion must be confirmed or cancelled.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Treasure completion must be confirmed or cancelled.")
 	var abandoned := reward.items().size()
 	var no_items: Array[ItemInstance] = []
 	reward.set_items(no_items)
@@ -315,31 +325,31 @@ func _resume_treasure_action(reward: ClassicRewardState, body: InteractionRespon
 		"assign":
 			var mutation := _assign_reward_item(reward, body)
 			if not mutation.is_empty():
-				return ScenarioRuntimeOperationResult.failed(StringName(mutation["code"]), mutation["message"])
+				return _reward_error(mutation)
 			events.append(DomainEvent.new(&"reward_item_assigned", {"instanceId": body.instance_id, "characterId": body.character_id}))
 		"discard":
 			var discarded := reward.remove_item(body.instance_id)
 			if discarded == null:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The item being left behind is not pending treasure.")
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "The item being left behind is not pending treasure.")
 			events.append(DomainEvent.new(&"reward_item_left", {"instanceId": discarded.id, "itemId": discarded.definition_id}))
 		"drop":
 			var drop_error: Dictionary = REWARD_DROP_SUPPORT.new(_content, _game_state, _rules).drop(body, events)
 			if not drop_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(StringName(drop_error["code"]), drop_error["message"])
+				return _reward_error(drop_error)
 		"pool", "share":
 			var money_error := _apply_reward_wealth_action(action, events)
 			if not money_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(StringName(money_error["code"]), money_error["message"])
+				return _reward_error(money_error)
 		"transfer":
 			var transfer_error := _transfer_reward_wealth(body)
 			if not transfer_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(StringName(transfer_error["code"]), transfer_error["message"])
+				return _reward_error(transfer_error)
 			events.append(DomainEvent.new(&"reward_wealth_transferred", {"characterId": body.character_id, "direction": String(body.direction), "kind": String(body.wealth_kind), "amount": body.amount}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if body.direction == &"to-character" else 663, "waitForCompletion": false, "source": "classic-reward-swap"}))
 		"detect", "identify":
 			var detection_error := _apply_reward_detection(reward, action, body)
 			if not detection_error.is_empty():
-				return ScenarioRuntimeOperationResult.failed(StringName(detection_error["code"]), detection_error["message"])
+				return _reward_error(detection_error)
 			events.append(DomainEvent.new(&"reward_magic_%s" % ("detected" if action == "detect" else "identified"), {"characterId": body.character_id}))
 		"done":
 			if not reward.items().is_empty() or _reward_has_pooled_wealth():
@@ -347,7 +357,7 @@ func _resume_treasure_action(reward: ClassicRewardState, body: InteractionRespon
 				return _wait_for_reward(reward, request_id)
 			return _begin_reward_progression(reward, request_id)
 		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The treasure action is unavailable.")
+			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "The treasure action is unavailable.")
 	return _wait_for_reward(reward, request_id, events)
 
 
@@ -475,10 +485,18 @@ func _advance_reward_levels(reward: ClassicRewardState, request_id: String, even
 			character.experience = -1
 			reward.level_index += 1
 			continue
-		character.experience -= threshold
+		if _content.package_schema_version < 7:
+			character.experience -= threshold
 		var level_result := _rules.characters.level_up(character, race, caste, _rng)
 		if level_result == null:
 			return ScenarioRuntimeOperationResult.failed(&"character_level_failed", "Character '%s' could not level." % character.id)
+		if level_result.state == LevelUpResult.State.UNSAFE_CANDIDATE:
+			# Keep earned XP and earlier rewards; skip only the unsaveable candidate.
+			events.append_array(ClassicCompatibility.skip(&"unsafe-character-advancement", "Data Caste", caste.classic_id - 1).events)
+			reward.level_index += 1
+			continue
+		if _content.package_schema_version >= 7:
+			character.experience -= threshold
 		reward.pending_level_result = {"characterId": character.id, "characterName": character.name, "level": character.level, "stamina": level_result.stamina_gained, "spellPoints": level_result.spell_points_gained, "toHit": level_result.to_hit_gained, "magicResistance": level_result.magic_resistance_gained}
 		if character.spellcaster_type > 0 and character.maximum_spell_points > 0:
 			var spell_ids := reward.spell_character_ids()
@@ -503,7 +521,7 @@ func _level_result_request(reward: ClassicRewardState, request_id: String) -> In
 func _resume_reward_level(reward: ClassicRewardState, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.LevelUpBody
 	if response.kind != InteractionRequest.LEVEL_UP or body == null or body.action != &"continue" or body.character_id != reward.pending_level_result.get("characterId"):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The level result must be acknowledged by its character ID.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "The level result must be acknowledged by its character ID.")
 	var character_id := String(reward.pending_level_result.get("characterId", ""))
 	reward.pending_level_result.clear()
 	var character := _game_state.party.character_by_id(character_id)
@@ -539,7 +557,7 @@ func _resume_reward_spells(reward: ClassicRewardState, response: InteractionResp
 	var ids := reward.spell_character_ids()
 	var body := response.body as InteractionResponse.LevelUpBody
 	if response.kind != InteractionRequest.LEVEL_UP or body == null or body.action != &"confirm-spells" or reward.spell_index < 0 or reward.spell_index >= ids.size() or body.character_id != ids[reward.spell_index]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Spell selection requires the pending character and spell IDs.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Spell selection requires the pending character and spell IDs.")
 	var character := _game_state.party.character_by_id(ids[reward.spell_index])
 	var caste: CasteDefinition = null if character == null else _content.characters.caste_by_id(character.caste_id)
 	if character == null or caste == null:
@@ -551,12 +569,12 @@ func _resume_reward_spells(reward: ClassicRewardState, response: InteractionResp
 	var spent := 0
 	for value: String in body.spell_ids:
 		if selected.has(value) or not candidates.has(value):
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The selected spell list contains an unavailable or duplicate spell.")
+			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "The selected spell list contains an unavailable or duplicate spell.")
 		selected.append(value)
 		spent += _rules.characters.spell_selection_cost(candidates[value])
 	var total := _rules.characters.spell_selection_total(character, caste)
 	if spent > total:
-		return ScenarioRuntimeOperationResult.failed(&"spell_selection_budget_exceeded", "The selected spells exceed the Classic point budget.")
+		return ScenarioRuntimeOperationResult.rejected(&"spell_selection_budget_exceeded", "The selected spells exceed the Classic point budget.")
 	character.set_known_spells(selected)
 	reward.spell_index += 1
 	return _advance_reward_spells(reward, request_id, [DomainEvent.new(&"level_spells_selected", {"characterId": character.id, "spellIds": selected, "pointsRemaining": total - spent})])

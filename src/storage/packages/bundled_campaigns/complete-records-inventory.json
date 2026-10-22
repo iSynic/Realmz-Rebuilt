@@ -1,0 +1,2848 @@
+{
+  "kind": "realmz.complete-records-inventory",
+  "formatVersion": 1,
+  "application": {
+    "packageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+    "archiveSha256": "bf1ff5de1d6fc5bd1d5ffff8d582797dfab885acfd9b20b4e02ce9040421e150"
+  },
+  "compiler": {
+    "commit": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+    "name": "Providence",
+    "projectOrigin": "imported",
+    "projectSchemaVersion": 36,
+    "version": "0.1.0"
+  },
+  "schemaSha256": "b6af98b0541dd1bb34e06ca6644c6eb4e898d6da93ceffd4b182ef65339c6750",
+  "catalogSha256": "ac6064eb65204fd1cfa6ab356e39cd21d3e36808db54acd6ec2cb98b395dbee2",
+  "baselineCatalog": {
+    "file": "complete-records-baseline.provenance.json",
+    "sha256": "048c0af6a1ce9b9af0e170a68d1d3a2dc1bb2d0cf49b58b524ebe21ef67bf411"
+  },
+  "historicalFiles": {
+    "city-of-bywater.source.json": "7a0a968d40529a6b428469a5abe16de18ce91558c35be1bb01e5ec95bbfc3c2c",
+    "native-map-triggers.json": "da7567117db3154e02c68ab01f890b715546823265835f116db162581a5b1443",
+    "prelude-to-pestilence.corrections.json": "de15ab3f6fa31e69abc528177edebdb52269735003c1dbc11a11a1fd876f3a7b",
+    "program-audit-findings.json": "e9bf1b8c32d39bbed375a183935c05e8e09f51e092497c0f596b12c215a766bf",
+    "program-inventory.json": "965814972cbbd6f167cd3c941329fc034b68cdf0e27f17dec4e32b23041ae640",
+    "program-restoration.json": "c8211ba873d25dbebf9a92f7af760952071aa19e6c6cad2e4580a55fc050ef94",
+    "program-restoration.json.zlib": "3c622bb423d2123f23ea2d3cfde03f6f12caec887f3a43e40f13e870ec070272",
+    "shop-restoration.json": "ca9df57099595cf756073206fa9a2b0349068c64f83049e435b8d8eb2557e4e5",
+    "source-compression.json": "164fbc5944fc1e7b1b0b14930df78b34a968f7745e3920ee9b48b1edee2b48aa",
+    "trouble-payment-restoration.json": "f0bc470d9f0c6f220b911b9ab74c451fb115bd221d6d851efbe1854d3ef26067",
+    "war-in-the-sword-lands.corrections.json": "a462132d20e83fc3814c6cc7c922eb05e6d23979a8c6ae937c999b9ab2d5357f",
+    "wrath-of-the-mind-lords.corrections.json": "c5a3f55a4e1b08ba04056c9d664b9795b2bf1c0f896bdbbb6f6118f456b7ef40"
+  },
+  "historyRecipes": {
+    "manifestSha256": "6b5c70a63966cef6df6fbedcab66b6292ce8c15ef3094ee9886e7ee462ec3def"
+  },
+  "historyStateSha256": "1fff7d4385ad4163e243b82dc7aae3c8346493571ece4f7f95e52c5ff3468961",
+  "nativeCorrections": {
+    "kind": "realmz.classic-record-corrections",
+    "version": 1,
+    "corrections": [
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1030,
+        "field": "text",
+        "sourceValue": "ÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ  \u0013“    Ä@     @ @         H   H     \b \u0001 \b                 \b     @ @  ",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1032,
+        "field": "text",
+        "sourceValue": " ˇﬂˇˇˇˇÄ ˇﬂˇˇˇˇ  ˇ\u001fˇˇˇˇÄ ¸\u000fˇˇˇˇ‡ ¸\u0007ˇˇˇˇ ˇ«ˇˇˇˇ¸ ˇˇˇˇˇˇ¯ ˇˇˇˇˇ ?ˇˇˇˇˇ‡ ˇˇˇˇˇüÄ ˇˇˇˇ\u0017  \u001fˇˇˇ˛    ?ˇˇ¸    \u0007ˇˇ‡                                         .  ˇˇˇˇˇˇ \u0001  \u0011\u0011   \u0002ÓÓÓÓÓÓ \u0003DDDDDD \u0004\u0011\u0011\u0011\u0011\u0011\u0011",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1034,
+        "field": "text",
+        "sourceValue": " -›››››› ˇ                                                          ",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1047,
+        "field": "text",
+        "sourceValue": "ˇÃÓŒÔˇ?ˇ¸  ˛ˇÛ#ˇ˛ÓŒˇÛ#ˇ˛  ˛ˇˇˇˇÓÔÃÔˇˇˇ˛  ˛Óˇˇ˛Óˇ¸Œˇˇ˛Ó  \u000fÓÓ",
+        "packageValue": "      ?",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1049,
+        "field": "text",
+        "sourceValue": "ˇ     ˇˇˇ˚˚˚˚ˇˇ       ˇˇ¸˚˚˚˚ˇˇ       ˇˇˇ˚˚˚˚ˇˇ       ˇˇˇˇˇ¯ˇˇˇ        ˇ ˇˇˇˇˇ        Ä  \u000fˇˇ    \u000fˇÓÓˇ   ˇÓÓ‹Ó \u000f˙ÓÓ› Ô \u000fÔÓÓ‹ Ô \u000fˇˇÓﬁˇˇ \u000fˇˇ˛ˇˇˇ \u000fˇˇˇˇˇˇ\u000fˇˇˇÔˇˇ\u000fÔˇˇ˛ˇˇ\u000fˇˇˇˇˇˇ  \u000fˇÓÓˇ   \u000f˛ÓÓˇ   \u000fˇÓÓˇ   \u000fˇˇœˇ    ˇˇ    \u0001   \tÿ  \bÿ   ñ\u0001Ê˘<\u001d\u0004   \u001c ñ \u0005ICN#   2ic",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1050,
+        "field": "text",
+        "sourceValue": "8   >icl4   Jics#   Vics8   bics4   nøπˇˇ        øπˇˇ  \u0001\u0004    øπˇˇ  \u0005\b    øπˇˇ  \u0007\f    øπˇˇ  \u0007P    øπˇˇ  \bT \u0019¬",
+        "packageValue": "8",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1121,
+        "field": "text",
+        "sourceValue": "q                íä\u0003\u000eKd \u0001             \u0018˛q                ë∆\u0003\u0012Id \u0001             \u0018˛q                ÉE\u0003\u0005$d \u0001 \u0003 \u0001 \u0001 \u0001 \u0001 \u0001 '˛o \u000b\u0001í\u0001ì\u0001î\u0001ï\u0001ñ 0  ç\u0016\u0003\u0012=d \t   (     \n - \u0018\u0002ö   Ê     Ë Á    xŸ\u0003%\td \u0001              \u0001π                y¢\u0003&\u000bd \u0001              \u0001π             ",
+        "packageValue": "q",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1127,
+        "field": "text",
+        "sourceValue": "ˇˇˇ\u0002  d                                ˇˇˇˇ\u0002  d \u0001 \u0003 \u0014 \u0018        ˇö * ,          ˇˇˇˇ\u0002  d                                ˇˇˇˇ\u0002  d                                ˇˇˇˇ\u0002  d                                ˇˇˇˇ\u0002  d                                ˇˇˇˇ\u0002  d \u0001 \u0003 \n \n",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1131,
+        "field": "text",
+        "sourceValue": "≠ %            ˇˇˇˇ\u0002  d \u0001 \u0010 \u0018          ˇ≠ %            ˇˇˇˇ\u0002  d \u0001 \u0010 \u0018          ˇ≠ %            ˇˇˇˇ\u0002  d \u0001 \u0003 \n \n        ˇÆ & ' (        ˇˇˇˇ\u0002  d \u0001 \u0001 \n \u0001 \u0019       c d \u0007 e        ˇˇˇˇ\u0002  d \u0001 \u0005             g \u0005            ˇˇˇˇ\u0002  d \u0001 \u0003 \u0014 \u0018        ˇö * +          ",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 1132,
+        "field": "text",
+        "sourceValue": "ˇˇˇ\u0002  d \t \t \u0001          ˝f\u0002õ x          ˇˇˇˇ\u0002  d \u0001 \t \t \u0004 \u0018      ˇá˝e\u0002ö \u0004        ˇˇˇˇ\u0002  d \u0001               ~              ˇˇˇˇ\u0002  d \u0002 \u0018             /              ˇˇˇˇ\u0002  d \u0002 \u0018             /              ˇˇˇˇ\u0002  d \u0002 \u0018             /              ˇˇˇˇ\u0002  d \u0002 \u0018    ",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-grilochs-revenge",
+        "packageHash": "5b7a5e46aa7457ba404a1189d57eeccacd0e97983d9eee14e98107a6dce7863e",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 112,
+        "field": "text",
+        "sourceValue": " Treena runs out of the front door.  \"Hello!  I've just cooked some marvelous muffins.  You must take some.  I could never eat them all.\"",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-grilochs-revenge",
+        "packageHash": "5b7a5e46aa7457ba404a1189d57eeccacd0e97983d9eee14e98107a6dce7863e",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 114,
+        "field": "text",
+        "sourceValue": " Treena yells from the open kitchen window, \"Wait, wait.  I have some fresh strawberries from my garden.  You must have some!\"",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-grilochs-revenge",
+        "packageHash": "5b7a5e46aa7457ba404a1189d57eeccacd0e97983d9eee14e98107a6dce7863e",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 473,
+        "field": "text",
+        "sourceValue": "  A grand entrance hall is in front of you.  Colorful tapestries line the walls and thick carpets cover the stone floors.  Would you like to take the tapestries?  They may fetch a profit.",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-grilochs-revenge",
+        "packageHash": "5b7a5e46aa7457ba404a1189d57eeccacd0e97983d9eee14e98107a6dce7863e",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 474,
+        "field": "text",
+        "sourceValue": "  A grand entrance hall is in front of you.  Bare stone walls stare emotionless as you proceed.",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-trouble-in-the-sword-lands",
+        "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
+        "family": "programs",
+        "nativePath": "Data ED3",
+        "recordId": 330,
+        "field": "xap:330.instructions[0].extraCode",
+        "sourceValue": [
+          70,
+          0,
+          10049,
+          81,
+          0
+        ],
+        "packageValue": null,
+        "reason": "Retain the approved unused Extra Code annotation removal for opcode 1/24; native bytes and executable operands remain unchanged."
+      },
+      {
+        "campaignId": "scenario-trouble-in-the-sword-lands",
+        "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
+        "family": "programs",
+        "nativePath": "Data ED3",
+        "recordId": 330,
+        "field": "xap:330.instructions[1].extraCode",
+        "sourceValue": [
+          -1,
+          -1,
+          0,
+          100,
+          0
+        ],
+        "packageValue": null,
+        "reason": "Retain the approved unused Extra Code annotation removal for opcode 1/24; native bytes and executable operands remain unchanged."
+      },
+      {
+        "campaignId": "scenario-white-dragon",
+        "packageHash": "ed3552fc9b4a5580d598ea540cbf2e6f04002be8985a3020ccbc419ed31449c6",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 857,
+        "field": "text",
+        "sourceValue": "ÌI¿¡¸\u0002\b\u0006ÄˇˇmFAeê\u00100\b I¿¡¸\u0003Ë\u00129ˇˇOÌI¡√¸\u0002\b\u0006ÅˇˇmFAeê\u00120\u0018\u0001I¡–A? \u00109ˇˇOÌI¿¡¸\u0002\b\u0006ÄˇˇmFA",
+        "packageValue": " I         mFA e  0",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-white-dragon",
+        "packageHash": "ed3552fc9b4a5580d598ea540cbf2e6f04002be8985a3020ccbc419ed31449c6",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 858,
+        "field": "text",
+        "sourceValue": "m&O\u0013\u0010n\u0018¸ë ˙Ô¸ËÏÛ¯\u0005˛ Ô˝¯˙\u0007Å \b\u0006\u0004ˇ\b\u0003\u0006\u0005\u0002\u0006\u0001ˇT˙\u0010—  ",
+        "packageValue": "m&O   n",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-white-dragon",
+        "packageHash": "ed3552fc9b4a5580d598ea540cbf2e6f04002be8985a3020ccbc419ed31449c6",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 860,
+        "field": "text",
+        "sourceValue": "“  \u0003\u0011Ùıà5ÚWó?xon\u0019Â0ò/\u0011ª!Í\u0010„À \u001bB˜\u000fÓ \f\u0002Á\u0001› èfπc0QPk\u00184BL0Òx !\u0011oˇ˙¸¸Â \u0005\u0003ÜQ ©bÄ#ﬂAê\u0003√\u0015\t\u0011\u001e!vQ_\u0001 ˚È‰∂a\u0003!\u0010ø˛ıÔ\b\t\u0002È \u0002 (qﬁ/K]w+‰2>2íR˛\u0011s˝¸ı˜Ú¸\u0002o\u0002¸ÈÊ± ˝\u0001O \u0003˜˘\t\n\u0005\bÉPM\u0005'P\u0001ˇﬁ@D0ˇQQ\u0002ÛÛ˝<ulP]\u0013?OÍçi8ê \u0005\u0010\"\u0010˜Ë%PÍ ˇ\u0004 ¸Úˆ\n\u0004\u0003¿Ë\u0003…\u0004G\u0010IPW\u0016\t\u0014˝ ^p ¯ÚÛ˚∫ \u0003ç0ü¸˚",
+        "packageValue": "",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      },
+      {
+        "campaignId": "scenario-white-dragon",
+        "packageHash": "ed3552fc9b4a5580d598ea540cbf2e6f04002be8985a3020ccbc419ed31449c6",
+        "family": "projection",
+        "nativePath": "Data SD2",
+        "recordId": 863,
+        "field": "text",
+        "sourceValue": "\u0001˛§p\\Ä5p\\ c±k≈Ïö\f&\u0003N¿\u0002˛æ\u0010i\u0016\"\u0010D1ﬁK ˇ˘ÚÚ|± ˆ\u0003˘\u0004\u0007ê5q∏‹√√zÁ¨‡n«í¢0°/°ˇ°˛˘}ıÜ!˝Ûˆ˝˘Õ¿\u001b\u0003\u0001Â∞\u0004\u0003ë\u0011òÅ=¡¿\u0007e\\£mﬂ\u0013ÕnÅÁÅ¸˙;ÚÙ \u0011˝ˆˇÓ¡PÄ µ®∫r¯Òª0?P0]Ñó®A‰™ëê”\u0002h\u0010:—¸ÛÛ˝˛!\u0010˙˜˘ˇ˘¸\u0002√1ˇ≥ †¿≥†wë>√^”‡\u0002œø3W\u0018ã’ÿ¡˛˛ˆ;Ú˚ó¡¯˛\u0005K†•¬ J\u0001ÿ’Ω2◊a\\h¸\u0007m‚ç”†Y£≥ù°i\u0010¨†˜)∞˝\u0003˙˙#∞⁄p∆ \u001aPR–¢¡ ;",
+        "packageValue": "   p\\ 5p\\",
+        "reason": "Retain the exact source-pinned approved display correction from the reviewed projection receipt."
+      }
+    ]
+  },
+  "sourceContexts": {
+    "kind": "realmz.classic-startup-source-contexts",
+    "version": 1,
+    "campaigns": [
+      {
+        "campaignId": "scenario-assault-on-giant-mountain",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Assault on Giant Mountain",
+          "sha256": "6c47df1fc984259a873c8a382004254ddf211bd47c5923680cb892aeab72e30b",
+          "byteLength": 320
+        }
+      },
+      {
+        "campaignId": "scenario-castle-in-the-clouds",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Castle in the Clouds",
+          "sha256": "9ec55f8eafa80b4141ee28d8da870ec5353f4b363b6f3b074b8345b99ecf05d9",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-city-of-bywater",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "City of Bywater",
+          "sha256": "df5fa4904f5fe958d3f33dd539d5fddff81e5a617b63b6c03476da20518dddaa",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-destroy-the-necronomicon",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Destroy the Necronomicon",
+          "sha256": "2b3798f17a8be7cc26c4fd561f760c42a6d3e4e7fc4d4ca90441f577fda9be98",
+          "byteLength": 320
+        }
+      },
+      {
+        "campaignId": "scenario-grilochs-revenge",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Grilochs Revenge",
+          "sha256": "67a2c6453838e08c133675db17383b00ae41f49015cfa6d1a5881f03d7e0bb56",
+          "byteLength": 320
+        }
+      },
+      {
+        "campaignId": "scenario-half-truth",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Half Truth",
+          "sha256": "27e94938c5528124550a7fde04051cb187c8d1c7765a1cdd621dafd6aea16986",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-mithril-vault",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Mithril Vault",
+          "sha256": "a22b82d0343827f515b8b6cd593d0420d5cac3821a60a591e136bc0ee8e942ec",
+          "byteLength": 320
+        }
+      },
+      {
+        "campaignId": "scenario-prelude-to-pestilence",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Prelude to Pestilence",
+          "sha256": "126939c5fc859f56d206bd961ac12fd8b4b72607c4cc81d2c76d1a7a5b8767ab",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-trouble-in-the-sword-lands",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Trouble in the Sword Lands",
+          "sha256": "84e877c01a212f397302ca46ed8ef3684b81b693fee30278f4abffd3afb12467",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-twin-sands-of-time",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Twin Sands of Time",
+          "sha256": "f4aa88885cfcbf03ab7556768aa73c6549a266231688a0a92ef77df6a8d41377",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-war-in-the-sword-lands",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "War in the Sword Lands",
+          "sha256": "f34956c092b57acf8bb36710fcca780bb5dd0c25eeaf99ca8e046c7e23269aa1",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-white-dragon",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "White Dragon",
+          "sha256": "04f8df10a6b8acac25752eafaaac80ed2e91247146f95bc0045b69fdd3bbd961",
+          "byteLength": 316
+        }
+      },
+      {
+        "campaignId": "scenario-wrath-of-the-mind-lords",
+        "evidenceBasis": "Castle 491816ad60037394f92c428e99c004494d3c28b3 setupnewgame.c:203-219 selected-menu file open and five startup fields; evaluation-r2 inputs.json sha256=2b8ee32a7e8b8df18616926e728dfbe3c7d3c3ddbdb933d755d0577c4c5cea54; exact source file hash and byte length verified",
+        "source": {
+          "nativePath": "Wrath of the Mind Lords",
+          "sha256": "802db251d4265bc5e8c723bfeefccbc080326576e269c88622f853636cb2c120",
+          "byteLength": 316
+        }
+      }
+    ]
+  },
+  "reviewEvidence": {
+    "semanticDeltaSha256": "6352514984227a1bf099f418647cfd90ae44e27a422ccf936099ad2cbae80b4b",
+    "historyCompositionSha256": "01a9d3d753e3d3f3409009c4ccd40884eba0b84ba0581385186edd46c5e51c31",
+    "projectionReceiptSha256": "c6b412fbd198341ad4b6db3a067541ce9c9756910075fabca0cf830f02ff7316",
+    "fullCorpus": {
+      "campaigns": 40,
+      "originalFilesVerified": 1601,
+      "canonicalForkAliasesVerified": 10,
+      "inventorySha256": "e7abfc7544bf970a5013d0f7047dde4d8b0a954ca6e7ebbe932f7c1030228398",
+      "intakeSha256": "bbca3b67d8749efb1445027d4457b33c8a3e6fed32da85a4d110e26f985702a4",
+      "admissionInputsSha256": "180e0d4b244197f2ece45a567239ba63840ffb9d8f0fe65c019bfa00419fd3d1",
+      "admissionSha256": "c8d773cd0eaec51cebe703f845bb82c6fd273fb656d0821cf40fcbab75a52663",
+      "preservationSha256": "f70c48c24f7b9d6f9483a5156a5cd9654690118d76383b295dc9d4fc198231ff",
+      "sourceContextsSha256": "87337dde0f811f1d84427e7608e11f82f0bbefd3ee2e3659f2056b14237ad0da"
+    }
+  },
+  "campaigns": [
+    {
+      "campaignId": "scenario-assault-on-giant-mountain",
+      "file": "scenario-assault-on-giant-mountain.realmz2",
+      "packageHash": "5b23b7efcbac47ae2912b966583be27573b032b1ca8bd49c771a4d5ed5936e5c",
+      "archiveSha256": "fde72eda61f968d2ff919d073607340cc61c1ec6d67e93124197a93f4ce70ff4",
+      "bytes": 1741019,
+      "classicRecordsSha256": "0205838c448d1c3843fd526640386d12351e8f8d38efba6fe4adb1d099d6661f",
+      "sources": [
+        {
+          "nativePath": "Assault on Giant Mountain",
+          "byteLength": 320,
+          "sha256": "6c47df1fc984259a873c8a382004254ddf211bd47c5923680cb892aeab72e30b"
+        },
+        {
+          "nativePath": "Data BD",
+          "byteLength": 99648,
+          "sha256": "a21b4fe20f67d6a826f2616bc4602bdfb97a60986a54548eab2704872ca6f90e"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "358a74f6dddd21e1094752a91b2b0f4cc508a61a8070f7926ea5f649c4bed18f"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "32e65776544e2faeb354be2d52c2f5685023ba1cad3b60453046790c0c69dfb9"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 28000,
+          "sha256": "c4ad1d4a1f286c1f6d39f73e5a723bc293989d9590aa88ef5e372ab400a8c394"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 8000,
+          "sha256": "4b2c9483705b31190f685104fc7645d4bfb16a845948a46266b5cf42d9b997e3"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 75520,
+          "sha256": "21e42c13dccbdfb5f2d476d739178cf6f99ec6b978118f0bb07ab85e3ef72519"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 32400,
+          "sha256": "acecd7b87b1cafccdfc1b368a2ba6f35bdacbe878c61e8e27be23c4d363c9af0"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 7668,
+          "sha256": "31614616b52548bdba49350e6eaae36b16734bef945742988bfa44d2b6e391af"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 16640,
+          "sha256": "1c3f8b7bac744fdfcf95292df743e87e1f0900cb9755917993b1a80318e9dbc0"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 9960,
+          "sha256": "a9d88749fa6b84da4e92b03916a946e11df32917ce76b38ccf9dd14713bc56ca"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 23920,
+          "sha256": "8b458c31b88d48c51152ce1b5518ae3433f589c9b929297818861cead6b42cfd"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 113400,
+          "sha256": "ae7a69c1c4a0c291bc14ba2ed106762e951e14830e4d77fb4faa06e4b5697f51"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 36120,
+          "sha256": "c8f0bdb1e0b77c91d172eae25cfd689a494fb0086cc3052b8ac9cba521843e99"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 36120,
+          "sha256": "99f75a18533b26ce535306d0f1e08ad75a71b99192929e18499a65a21f31b60d"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 36120,
+          "sha256": "9050794f7c22f8ffecf3b96601a0deb3ce9731830999c094734250bebe36ac8e"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 7140,
+          "sha256": "92f7a19016262e0fa9eec717bd8fea7819f90258d7462730828f4c229d895abb"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "2077ea88c528a0dc49d9d5353eb1aeb6b478fc99e2debface92d6cd7c6f26a59"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "f884e54a82611c07794a46d9dc3eac969a09653118c411d11fb0307025e91a88"
+        },
+        {
+          "nativePath": "Data OD",
+          "byteLength": 1525,
+          "sha256": "fe89823df00d74fa1a508a03acb60a818ae46878582ba81ac61de011a9f53770"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 4508,
+          "sha256": "1e33eb6b3a19e2aaf58620836e1829691af239a1a50051b0dd69acfbbc4903ff"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 1288,
+          "sha256": "099bcb24ed6f2ff7af01fdb01948d0e267239eda68744a44af6099d99b562bcc"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "22aeb407152e43468e00feabd4c622c24ee3bf887bbe2c68c51d29b43e3766cb"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 117078,
+          "sha256": "648d6a8dfbae0240dedb9145b362c8e79b3a6b105f7b5b000e8790ceb1197268"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 251648,
+          "sha256": "2c362b32682f11b56df5e5b5988c0678bb085543b293f717a85eedacecf6455e"
+        },
+        {
+          "nativePath": "Data SD2.rsrc",
+          "byteLength": 378,
+          "sha256": "ea9a5d24485624ace9ef5ece2cd01e62752e687d83214fad8b338239c9e91aff"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "45eb17a0cd26c65df6f8d3c84e304746f890c4f0ad2a83698f72c4f95ca65fba"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 4320,
+          "sha256": "27b4a7f1623b76a69ad193084a4c25a45241c8fb8ca793b8656768976f5e171c"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 1062,
+          "sha256": "058725f9d70782bac69a1043ceb2b98614a136b7f9a6ff75ca16afa6fa4376a9"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 480,
+          "sha256": "e6144be1a63e9e6b390582d9172255027f182162c012fd328dea5bc5f88f275e"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "d477d8c2b1fa22b286db670663ed3e1a273301266beb39e8ff424d33881cb0c7"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 232475,
+          "sha256": "1a1336e27869a5c84c23423e319a3990966965b99146b7ae830b36ad53a65fe5"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-castle-in-the-clouds",
+      "file": "scenario-castle-in-the-clouds.realmz2",
+      "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+      "archiveSha256": "a3d9b3b077414c5839741356213b2ec287605f6f0c6a5114a3eed5d25aeeedcf",
+      "bytes": 1945250,
+      "classicRecordsSha256": "09e0a3ba89d02e27958b1b7cebd2653e61dd954b87acc6b88eeb92f2d773a36f",
+      "sources": [
+        {
+          "nativePath": "Castle in the Clouds",
+          "byteLength": 316,
+          "sha256": "9ec55f8eafa80b4141ee28d8da870ec5353f4b363b6f3b074b8345b99ecf05d9"
+        },
+        {
+          "nativePath": "Data BD",
+          "byteLength": 84424,
+          "sha256": "6aca0d77976d4055c64f6424343066b196189fdc2325a02ff4fb82239331c7f9"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "22a455ac6a6b223025ff8dd6e02ea3fa285b6f690450a9cb07dcfeca069ec6b3"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "9ec55f8eafa80b4141ee28d8da870ec5353f4b363b6f3b074b8345b99ecf05d9"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 32000,
+          "sha256": "39cd67abb91a95f2bb05b64dbf783bd838c50bba84ebbd946c20aacf75d7965d"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 20000,
+          "sha256": "3c167aa50c675d9f9e09ffb05c5c8f8d5b6d9046a3f221d099f08402037d97fd"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 57856,
+          "sha256": "00f401b529f0792723c8d0e340a5022d08c17e45a4caee1f7b7c4c6453d4c224"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 81000,
+          "sha256": "6ae3927e59c49a6d7726145aa89d757136943619693a9b40838c83cc43f6c1aa"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 8094,
+          "sha256": "ff518a5377ddd275cb784068bb55c75a72e3135a4243d9bba43659b33784c056"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 11440,
+          "sha256": "f9222e2eb8c9744539ce189f01adfd6569dca440340762ce2f77e0418973d3e1"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 11680,
+          "sha256": "2c0926b5c99b1749e913de4e273a094b7ce350b709cf1328aaa1047b79517a5f"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 259710,
+          "sha256": "59ac674bcdd840d6fd178674a1171198986a43d753111d7a74091c5434c25202"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 129600,
+          "sha256": "0fa851305ada24c3f0f58baceb34fc4919275f1d741005e2a25a4f681192e095"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 38010,
+          "sha256": "809cc44f3ee7f76cce35635d3b409b766beade4dbc2395f1a90e65f13ee8353c"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 38010,
+          "sha256": "782982ffa979410392f2da9d465620c07624be23d6beb4ca06fd6f9295e56e17"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 38010,
+          "sha256": "007b7f77f171ec049d5716baf164b7baeb1fc8ca7ad6e585eda328c50e81e0cb"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 7140,
+          "sha256": "afd41d252e91fc5d4119761c33b4d83b4a2c473759bf948a68c1ef029b79665a"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "99eba281ed1f665ca3ec89cd96d993be035c778e81fcb02546ed5a2c5f2093a1"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "2ffb0588e47730db1b9621005e476762f75317ff16522e0b89879e6947bec3f2"
+        },
+        {
+          "nativePath": "Data OD",
+          "byteLength": 1275,
+          "sha256": "8e90c7c555cbb5a3be0d46c21e6d932b997d5f062ab73661efab5ba44d91ce45"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 5152,
+          "sha256": "01cfbf6a573cd9904f08f2c2e869c1d8186048772f5b50228a2792827ded829f"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 3220,
+          "sha256": "cf3d2d061758d69d67cdf5345c0b33b1f3108516ecbb1338484fdf69fe2cd586"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "366382fbae0017b2e2f8e008b1592d3e2d093c7b054188ea08f3a5b56ac26e0c"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 33022,
+          "sha256": "de234d188d262993f8de3362fe24e8c135bbbaa88e48e43f83787a69937014ad"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 295936,
+          "sha256": "afa4e73f3e4edfc86f56e3f1bf6eefab234cc23770f0d3ed2bd911cdb86fde31"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 3936,
+          "sha256": "4d48dff3c1a5ec88df3608a14d7edfb95ef4e1a376c489f5e7de58b4fddd0d7d"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 1298,
+          "sha256": "4f86102fb7334710c2c21a0400fdf7ea5117da3515ea22d64d42665a80f5da4d"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 320,
+          "sha256": "9f772b0c94f7e31ee4644444b2a218a21120bb2f9ff4cefee6fd32b909ec3825"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "5451850b4720661e3a36d1fcd89898206e8d7f5a11f727a3408b5216ff286618"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 235269,
+          "sha256": "11f260dd7bebee4223a8b8568271ae7557ed0c2b3ff10721cb4554e770d31ec3"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-city-of-bywater",
+      "file": "scenario-city-of-bywater.realmz2",
+      "packageHash": "f065223425dfb349acd60b00b14238ec8c375bf657d03cbee3cd180b3fcc1063",
+      "archiveSha256": "a23c2a929c11fa132c2f05f2faae0a76071c7f18d7c4d2ad5972f73cf2e7e328",
+      "bytes": 1204627,
+      "classicRecordsSha256": "193a37da9f8d8d0bd4cbe5eebaf1c33fdc850ebc064fa1f2ad650b6508abe7ae",
+      "sources": [
+        {
+          "nativePath": "City of Bywater",
+          "byteLength": 316,
+          "sha256": "df5fa4904f5fe958d3f33dd539d5fddff81e5a617b63b6c03476da20518dddaa"
+        },
+        {
+          "nativePath": "Data BD",
+          "byteLength": 88576,
+          "sha256": "fdac766a9a05f2c9574c7c96d1c5184ea14346c89e6bcbf1b7b935b3d39bc42d"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "5dcd48b1ce220863392143dff01bfeeba6933b4a5e0da4dc58dee13094ae4070"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "df5fa4904f5fe958d3f33dd539d5fddff81e5a617b63b6c03476da20518dddaa"
+        },
+        {
+          "nativePath": "Data Caste",
+          "byteLength": 17280,
+          "sha256": "55ecc6e1af2de98d63e14a413199b378c013252b5d30ed742aec47414350b24d"
+        },
+        {
+          "nativePath": "Data Custom 1 BD",
+          "byteLength": 8104,
+          "sha256": "2f1f44e63c7101ff18700afaeb86d6b2f6d8911983a6cc91552650ba3ea1e26d"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 36000,
+          "sha256": "bf777e5d83053ad2ce105ef3f3f83a60a62118b0ba352a421cff6c0ff61dd1dd"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 8000,
+          "sha256": "2eadae31032eaf3c4fb4072ef95b1a77362b4cb3e390bf1e7b2edb680a016d01"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 74496,
+          "sha256": "4cc892753260fe9a1765838795eba5106fe2bf16e69c53aef615797422e703c3"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 32400,
+          "sha256": "2d5ea3fbf43aceb61c40d7e37763965d3e8bcd5cd0c9d2fca8a27dde67bddc7b"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 8520,
+          "sha256": "dd0a4d2ebb267da9d46a929227de4a215b10a874c9e8c01fd5d95073cdc4e378"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 6760,
+          "sha256": "0f5b9e534dd2cd4c49c2b8bb781866437c611c1ac76c0490d70bae32ce953158"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 9640,
+          "sha256": "bbaae1654162accb8b0a9909c86619580d80fd3d1d4045070449f3a409dbc751"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 52820,
+          "sha256": "3ef7625d0624711795d4e02166662e1700adc38e951074fd11e809bab5ddd92d"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 145800,
+          "sha256": "0475bfcc39790e97fc3de636e870c99b58ca85b786990b71e7970732f6f6c988"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 32550,
+          "sha256": "26988273232a0f6ae85e7fbbf2c1e51af62e3cbeeb3527273b0e873a4087f3ea"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 28980,
+          "sha256": "d6f07830c9f7df8690e500b16a7bed35ee348633a88661f3525b94b77f0b4aa7"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 28770,
+          "sha256": "3202cf3cc825386663a084dcec4aa647f12d1b88693a48e8e77ff0839be94d3b"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 6800,
+          "sha256": "3987b508ff36923443679aad8485c7d538cdb302771eef502d1dd75d89ba4b4d"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "b376737d041a20494cf3e0cf17ddb52e789ab345da6ca38cc423719711ff0db0"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "420b3b3da8e5177a32d0b8c1e30d4e3b95c802745036ad08a9c38bd9df85923d"
+        },
+        {
+          "nativePath": "Data OD",
+          "byteLength": 1275,
+          "sha256": "382cde0b110ade335639d3f18dbc7e3874385b32e103518ca0de901bdf7e911a"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 5796,
+          "sha256": "317ba5182368da878b60ee7553e6429e87845a67d9f707a4567ed3a707b89b6a"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 1288,
+          "sha256": "b4197a3200a32f5c56051663936e990b36e353a7f4c12e643340a3be0c00d39b"
+        },
+        {
+          "nativePath": "Data Race",
+          "byteLength": 12240,
+          "sha256": "1924df08cef53857ee2270e44e579ea9992be7afea75ebbbadfc5d4d87d1981c"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 63042,
+          "sha256": "37c13beaeadddb59370befd533516f6a45ef976039798a68476b5465ef30b2f0"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 225280,
+          "sha256": "e81301448b78d044b0fc59e4595ecd306f9a1e9b3c638fc8c2b553f1d4416cab"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "3bb0f3d7d9e9302770a1381c338f7d4abb8ec76f81f6614828a49b1bd0915d7e"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 3648,
+          "sha256": "707c872ec20c6086dd20355ef97254841d9abac38d556b115a301b500fecfd71"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 944,
+          "sha256": "840306ad4fdf315e3f09b3ad1e3c97db1f5ac212dd5f805ac11518b35519a5e0"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 120,
+          "sha256": "0d15e8befe31c837c0a646e2e594124940beee50dd8145d593e45a590180a464"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Layout",
+          "byteLength": 256,
+          "sha256": "5341e6b2646979a70e57653007a1f310169421ec9bdd9f1a5648f75ade005af1"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "781f88555e6559eda64f699bab99d83d9fd6e84890922f0ded59ed38eeff7ba9"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 113707,
+          "sha256": "d1b530968d5c189b05778b7b2abbf7d89b5491a960b872b6e419f6b9b502f8ec"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-destroy-the-necronomicon",
+      "file": "scenario-destroy-the-necronomicon.realmz2",
+      "packageHash": "afa44a964453a673b2bbc62f13b6c6b7c41becdbf3bae9aa6ad96e657e6391c7",
+      "archiveSha256": "ead7debcf96db4e99896d59b26e94bdc9df8c17e0ba10ac9bc0291d1b54fd228",
+      "bytes": 2651316,
+      "classicRecordsSha256": "4e875259060ac569ae8752a8f9bac8f2710a9bc2e90e09ef0f860d7d9514e2b8",
+      "sources": [
+        {
+          "nativePath": "Data BD",
+          "byteLength": 81310,
+          "sha256": "1d2432abbaf828f905f2862a8468f7372aae667f81db67a7c91e15f74a5686f4"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "2d5f311aa6203269a591cc971ca7363404ae49a63b35a03dc8e25606afd23e52"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "b5a96500d2f9c684f6113266edb725e0c11cbbae2708daefac7336c69da5b203"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 36000,
+          "sha256": "1ce08ed3e2ce261eeaa772062ab724549425bcc2c15a99c8e154115bdf5a6b10"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 8000,
+          "sha256": "ec61dabc37a89a724a1b605c5e65f093d26bc41273f90ca7e60d6d8eaccc0701"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 58880,
+          "sha256": "d9cb97f5e02ced154e9ed6e0de31c8add3682ba86aec70bfecf70f01265b5ceb"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 32400,
+          "sha256": "bf7a0179c98181332d5d5d36b72121a36c11f61a971a80082ebb3ba50741f481"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 5964,
+          "sha256": "06f95d1d3f52fb3a7766b5f22307a4aaa0dfa0b92799ac091c6a90564f6b605e"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 9360,
+          "sha256": "ffd0fbb8fc72cfe59d81ed9de14444a18e553b4cf222a748676c9f1442027ac1"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 11520,
+          "sha256": "5d8be8ac6e4c2aeb8109db6a3dc686edd38d91c5bca483c88e4d6a88468f59b8"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 5820,
+          "sha256": "32204736b34e413aef7be52ae893a138a5c51c2dca2e4ac9ded13c176e4aa172"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 145800,
+          "sha256": "1029c8c990f38da74639156c5b57c714fc81b1293dc125ca627dc746d030876c"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 48300,
+          "sha256": "2305621545dba528ade54316518cb314f97cd57bbf3fffa9818a255344c1eb5f"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 46410,
+          "sha256": "bb706c518b9adf848d560f091a208daa0493155461245366f3ede51ae58f7900"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 46410,
+          "sha256": "902a62747fd83b2b26469163c3e229bdbfc91ddb4998d0d91c074cdb21aff4fb"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 4080,
+          "sha256": "1c30b41ede8b78885a4802c361fd25cde082dc17a756a3408199ffb24f0ee6b2"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "efb0b5dba2fa0252ad89a03add32924121af7ac9abf78d63769b5bbae9f33db8"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "3a03d2d1287c48c1c07a30ece07c58ff1870383b7c1d4deaaa0e8a89f3e168f4"
+        },
+        {
+          "nativePath": "Data OD",
+          "byteLength": 1275,
+          "sha256": "c2a4fe54f4c5b142ee3cf31692108d9aaf7b550b57d08296cce3b7437365c91b"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 5796,
+          "sha256": "2c7f47357aa5e5b6bfaffac8bd00b7bdb7c286bd1d783d3e9b21bb42afc8549e"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 1288,
+          "sha256": "55ffbf5fc754e14c027190c3b385c0a362ef5ca0a26c90522487e58ebf88b14a"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "a78702de8c5472e0881c652c60615c30ede2eb622b9ff4086b56e98564957b43"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 114076,
+          "sha256": "a5980db21b901800a9ef71c26d02e9d8a3c8c9cede7095f17ceb5742e2a27dc6"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 299776,
+          "sha256": "a1d2ae7ec024630d4bffaf15dda16eae4b96e50dbacf9036ee08546963a675d2"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "79a0041aca681619bcf3894b939762244acb1a013073aed02beea3de1a480c6b"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 3504,
+          "sha256": "b2fcdf45c9e3f56285742d6ff9e39c6000367c3b5496df4a595c972ab2984e48"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 590,
+          "sha256": "fe3c11f27a9a18fe0220be8102f45518d992e8b50cb4c12883aa251b4ea871c3"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 840,
+          "sha256": "fd1690fb5c3749d023e4a7b879787d8138ef59f047d7703a0cd925996001e76f"
+        },
+        {
+          "nativePath": "Destroy the Necronomicon",
+          "byteLength": 320,
+          "sha256": "2b3798f17a8be7cc26c4fd561f760c42a6d3e4e7fc4d4ca90441f577fda9be98"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "eb12e5fbfb1dca6da7fc81daa101ccdc4c1d57946f45b0420359ab4e0528dff2"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 481035,
+          "sha256": "ab2705ab5efb4d1378a94a8d495daa573111ed52641db8726d0ab41cbcd8ce5c"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-grilochs-revenge",
+      "file": "scenario-grilochs-revenge.realmz2",
+      "packageHash": "5b7a5e46aa7457ba404a1189d57eeccacd0e97983d9eee14e98107a6dce7863e",
+      "archiveSha256": "bc72cd3964d94b02e9bb74dc03e1c650021c94974d514a125e21d317d4f36f34",
+      "bytes": 2690505,
+      "classicRecordsSha256": "2230d2e8423607e30d188061223ca75d7c4499a68b5b468d11b623c9aa6c41cb",
+      "sources": [
+        {
+          "nativePath": "Data BD",
+          "byteLength": 55706,
+          "sha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "d55cc18677fdac7d734a26de2caa3587366e5cb12eba36405c14a5159611b83d"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "450bd3ee47de764b8c7489ed2bb92c744966a27cf42651f3f320bbfc93b67c08"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 40000,
+          "sha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 20000,
+          "sha256": "dc48175b974f42d11ae01544c12037f4d63ce709847d36a361bc29ea20a936de"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 121856,
+          "sha256": "14acb95807b2c487047007d92947626475ba1d3e546ae363ca38c7ef6dc1608a"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 81000,
+          "sha256": "9a4d31989f8cdd054dd0d379d9305b50c06d4e82a0d54fd0eabec77c421e9a96"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 14058,
+          "sha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 18720,
+          "sha256": "06b91f024975e660958bbbe55a5f7a1e39835cf01357cf4e125a7fbea06c01be"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 23000,
+          "sha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 12830,
+          "sha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 162000,
+          "sha256": "1dceac61dfb0a0bb0111d60050de69668c6c68398bdc1441d975abb68f9489c2"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 52710,
+          "sha256": "6a1496e62e7c0b96c4d5b6e532c2a8c8d99fdbbd54048b73ba386dbb2e43df6d"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 36750,
+          "sha256": "6c4337695d8828612b3faf006fe0e5152698c56684d841399d890d8daf373fe7"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 36750,
+          "sha256": "176c493a4e21e420eded7370fadd2eb298629ef17ed1618459f9526373ff6c99"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 8160,
+          "sha256": "f42b60a3a4facafaad8a46b166d318b150e84921fecb3448076a8faa88a16e62"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "09fef5fb63f9255bbf9e8471c5f1989f5778c8e0b8dd32bc85e2318949d333e3"
+        },
+        {
+          "nativePath": "Data OD",
+          "byteLength": 1325,
+          "sha256": "cdd1414f03bbd9e39c83593e00613309e64787212e3b31e8b4e0210c7e31c3ab"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 6440,
+          "sha256": "c43fee5bb00092c91c3b10af92eeece2bbe0f3ba5a8d37719f413fbcd68a7b0f"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 3220,
+          "sha256": "d433f527aa8e55d2f894515948e93c7ada4a4ea245dc7bdc68acbae222d38d7c"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "1fe974c160466310e6341a632b3dac46ec2a9dd973c5f0566c4ee825e84d6ab4"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 114076,
+          "sha256": "9edc86d34039c26e4acae19a791c1e2eabe383345c7b05e353f62b726e657b8e"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 348416,
+          "sha256": "2b8fa3a1ea34d61ccddcbb38fd44cfcaf0e51f83ab2a5987b5804cb6c1a5f8be"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 3888,
+          "sha256": "f69b43b524fb211e4f60f8bce858a45e96994b463de1c532b70376800da1fa72"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 3540,
+          "sha256": "f72e165c2d1efa49f8a562bc6cf33c4e7ba32b49b8b9b08d3b44be32a4c598d2"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 800,
+          "sha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Grilochs Revenge",
+          "byteLength": 320,
+          "sha256": "67a2c6453838e08c133675db17383b00ae41f49015cfa6d1a5881f03d7e0bb56"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "8448d45998f97fa881df895d037e7408039167b3ce01d9704818c6cd4d7030bd"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 516703,
+          "sha256": "231f741519d055841a043de0f7b7029ddb0633b635b2be78afce264bf9583b27"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-half-truth",
+      "file": "scenario-half-truth.realmz2",
+      "packageHash": "3d06448fdf7b6bd0ba2d14c578c5e8ccc4901a6ac802bcbb78700b50d2ae8a6d",
+      "archiveSha256": "bbd57486479b0519ac9b3468c8cf198dbe2a5c5b379df0bf9a0be7dc8652d523",
+      "bytes": 12723587,
+      "classicRecordsSha256": "7cc33fd012daff93ea78f10de94d19be8048c610bce8391cc94da3ae16e356ba",
+      "sources": [
+        {
+          "nativePath": "Data BD",
+          "byteLength": 103454,
+          "sha256": "c0ea55dd4cf1a9b53e3806dafcf72aa333e85e1dd9e4b95c2e655b418764d7f8"
+        },
+        {
+          "nativePath": "Data Caste",
+          "byteLength": 17280,
+          "sha256": "9511b8230ddb9588ce5d08dee47fa0d1ffd4b8e8b3ae77ecc50ad3bb25823d06"
+        },
+        {
+          "nativePath": "Data Custom 1 BD",
+          "byteLength": 8104,
+          "sha256": "ccd1ad476a590dc657d24519d6b15b8d698eba7f746e6c5dfdd806552d26a10c"
+        },
+        {
+          "nativePath": "Data Custom 2 BD",
+          "byteLength": 8104,
+          "sha256": "f3a8e21f2827059765151b360700802e432c3bb8ccd9028dfb57f02e4fc5e995"
+        },
+        {
+          "nativePath": "Data Custom 3 BD",
+          "byteLength": 8104,
+          "sha256": "93f1c07a0ac67529d7686f5830e29b66d9b9f20a985d897d21733f10af6d88d8"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 48000,
+          "sha256": "eee9202279014322236ccedac3e4c78b622d756836832e0eafbd22d978bc1397"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 4000,
+          "sha256": "2535c2d3542b8ef012e44f298f26d10fccec907f3d790f27210ae7aeab4a6c14"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 55296,
+          "sha256": "cf52b2ae468876b6cfe2291eb11410d59b6cf33fad4639f53ab14a985f53051d"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 16200,
+          "sha256": "e2eb4a322fa6e295bb552649db1f8d2cc8915a9a103a1dc717722f573b8ccc00"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 9120,
+          "sha256": "86647e7c8db74acecce3cfa6e2ea9bfa40b8f74afd88616a6413f04343104f6c"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 19760,
+          "sha256": "8de304fd04f34acfada4455626d3651c5bb2d4c5e34b04c41abf3eac19a3ed94"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 21240,
+          "sha256": "f110a146f6302114037d6920bb576b06f85547f9e82c5a427f38d7d492c262eb"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 14980,
+          "sha256": "247c82a7e3d92a1171afa445e0256b817b09f707737b02a211686182c0d6c1c2"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 194400,
+          "sha256": "730100719ddbefe8ee99660ca79758dc15f01649175404531ee353e1fd517b72"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 44100,
+          "sha256": "8b0b5171144596b25a74d4cd3761de699625e9d42eb710577f70d7ba948b232c"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 44100,
+          "sha256": "967eb5c6393a519048ee06c8db8d65424c9d6dbafd8b7305e01f5a0346cb1a7e"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 44100,
+          "sha256": "e4280f2961595690d2974678f7fb5f17b2c882ac49a8c07d8c482f302f78b261"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 6120,
+          "sha256": "fcf9202f2e6fa6042fef344ccebf82e99c93e56a7e386f65481315206576b8f3"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "2511fda4c75e3cfbbae0af358d0def5024e0743bed7080cf203ab78d5129014e"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "2365065d4a818cb449f9272dc40e9af21d245fdde17aa8771ed76766e3872bf9"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 7728,
+          "sha256": "f35d9c52c7a60e66ebcba2b4455edb182734004234a903fb56b451fa3a57ec79"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 644,
+          "sha256": "65a8a2dcc3fe2ae72028beb1003c029ad36d345a1d1614cb1eafc3c16f6446d9"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "7b6436b0c98f62380866d9432c2af0ee08ce16a171bda6951aecd95ee1307d61"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 66044,
+          "sha256": "cf06f657e971abf8f988d44162a171988eb9b61f7e5b540f41cca4a2a492dcab"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 545536,
+          "sha256": "5c55ad3091fdab07d992459d7be90691e43a00320c80fa444690271bb597a213"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "840a19da70b69c0677b318e2b278199135b462f310cd9986a1002dbd66889982"
+        },
+        {
+          "nativePath": "Data Spell",
+          "byteLength": 9016,
+          "sha256": "b6eb7e7c4a95a231913d5e04350647a505ce60f7b229bc1e9d674c8a2f148d8f"
+        },
+        {
+          "nativePath": "Data Spell.rsrc",
+          "byteLength": 2219,
+          "sha256": "d5f92c0837d39bc5c7a46805a542031f6d9ff3ad22f34129768792ed92d0e183"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 6528,
+          "sha256": "0708dde22ff9724bf7be5e742e52e23f1fb2e2c91a3f250e285abfee7f1667fe"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 1652,
+          "sha256": "47de64cff9028b636a4a79ab9ae2d58f42f20b51aa40e461f03a2c7771b8ecba"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 320,
+          "sha256": "c5027eaf827d22a2734ca5fdd399c9fb8cb8962532136d69f2044b7960d1d522"
+        },
+        {
+          "nativePath": "Format",
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "bf37048c23e5e911d5484ae547af2ba30559ac4d1f5f14d84471cc2ef8d3c22a"
+        },
+        {
+          "nativePath": "Half Truth",
+          "byteLength": 316,
+          "sha256": "27e94938c5528124550a7fde04051cb187c8d1c7765a1cdd621dafd6aea16986"
+        },
+        {
+          "nativePath": "Layout",
+          "byteLength": 256,
+          "sha256": "36b2781bbf6b5d4adfca365a9c6f8fde703c3092d3cb618eb50cc2cde6b372b3"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "7e0479316ec258ecaa8ebac1e9bfff6aa79618f66597e27064d489aaa6733a43"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 2857546,
+          "sha256": "44feaccfaa9eca6c01ee493212f4741e5c43e40a7c25a9e443879a8d551080b6"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-mithril-vault",
+      "file": "scenario-mithril-vault.realmz2",
+      "packageHash": "04180377747ae3e3797c33b34e2e4916f8e48b949ab465c42b7c2e00a72829b5",
+      "archiveSha256": "8cc59792dc1ebf7503e22946b316bf969769b2504f97b9b155c235a29fa0bf31",
+      "bytes": 5130313,
+      "classicRecordsSha256": "63ee2ee45363718b26aea65beb7e3fd0b9dcb5c53b8a774b2896c390e27dc7bb",
+      "sources": [
+        {
+          "nativePath": "Data BD",
+          "byteLength": 86154,
+          "sha256": "9fdc10862abe8cbf58b68c819367cf7515ef7e042ecef08e87589e0935f81cd1"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "132e0595eadd5dbe38e068aefc5200389866391e65496b3a1f2d3510a43b9a3a"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "49d8e4015c25981991ebbed173a52d5b47c7d998c663c6d65b805000edd44e66"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 52000,
+          "sha256": "f797e5fd70e602de14f90f0cead658b6b185fa1ff26c66e5bb61a7138d0a1563"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 8000,
+          "sha256": "fcae7519fce68ba8df8071519e225c3a2529e5144a17a291266ac42810cb2880"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 55296,
+          "sha256": "24061288bbf1e490f0c3a0c00012c9d7106480e10b5d3a9c5625b6b63692ed3b"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 32400,
+          "sha256": "42ccfd2e6394d81ad58716dba57a323f0d717ddf69c4124eea3d920034c75329"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 7800,
+          "sha256": "ec6ba898b637c4f8f8f3628648d94dd3f0f381447f82691bb642352c22db5d24"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 18200,
+          "sha256": "f37189d2af7fd94059fded81cde56f13dcf192810dcc49c9d9d981bfac10fbd0"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 19200,
+          "sha256": "e405152215c01a03ffdf29d2e186c1719bf529c2979954b4f9ec457b76c2f060"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 16720,
+          "sha256": "7a524adde42c12d2a42d7a6ed066c43565e6aa321a72b05c50859c6b1686be96"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 210600,
+          "sha256": "77a054a1bbd366cd51bc47fe3e910c06b66cc741d5e3fb60c19ff556ae868e02"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 42420,
+          "sha256": "0bd4979ca24f1237c682ecc6d3c36439c3bb69547e2961f079cea2ed723cbc03"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 42420,
+          "sha256": "f2d752b04a40ad10263bc2ff9b8fb105bae30b23b82d14210f38ebc2c251caed"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 42420,
+          "sha256": "ce1344e99af879bc9aa0e3d198086f3366fbba63e0b8900c7e75fed393ff3feb"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 6800,
+          "sha256": "837d8c834c74b02fd40ccca209bf9ddb9e7e447806eb11ef9a30a766e5855b38"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "c7cf05c9fa6581cc14f455eeeca48bec3b9b59b85f35e25e05d8af7d6f6c0b95"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "233f226bef78b04f664f9534e059331d6034e73878d76581839d76b981245ada"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 8372,
+          "sha256": "0cbaed22d94b15d8b3dbc2a0ffb94cb1728299fb0539a98963094aab1ac10564"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 1288,
+          "sha256": "1c6354714a2fb15fd63ccaa21e32fb3b2dd3d6bbddd5d47409c2dc8ffc525875"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "7b6436b0c98f62380866d9432c2af0ee08ce16a171bda6951aecd95ee1307d61"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 63042,
+          "sha256": "b326e750ac561c32a1330a69a96f778915636b628b300c300f082447a69c0e0d"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 347392,
+          "sha256": "568697412c24628adeeb348bf0286f34121b8a9225236e69f0d1dee008638621"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "7a4d6c096410abb9c518fe282b6ed983789d6417f08be06d542ad5eb009a763d"
+        },
+        {
+          "nativePath": "Data Spell",
+          "byteLength": 9016,
+          "sha256": "799c2f766b3a198af9189ec0722200f7ced1fbb5df159e57e2f32ce65385bc4c"
+        },
+        {
+          "nativePath": "Data Spell.rsrc",
+          "byteLength": 2219,
+          "sha256": "10ce1289adc0ececa13da473ea4d4b3ed7c5da7acf3ce6fae19632198f461ea1"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 4896,
+          "sha256": "39447c7fdacb9a5934df9cb3df3a60615d32cfadacbf29d302ee1d9849d1b0dd"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 1298,
+          "sha256": "c79936f8804ed001c898b816c515e5c939e20254c6ec5cabec4d21a408ee1b31"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 560,
+          "sha256": "fa000fb147c83ec0b01e9bc74ce54172758dd4ff4686be834d601aae415dcd62"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "f055c8bc0584f86553c667dff531bc1b14c3bd09f288e75acd2c1626872e0e34"
+        },
+        {
+          "nativePath": "Layout",
+          "byteLength": 256,
+          "sha256": "b6a1bd3ee218084935929cdc9f5a1fde3800618922a6da169847478bdc35a9f6"
+        },
+        {
+          "nativePath": "Mithril Vault",
+          "byteLength": 320,
+          "sha256": "a22b82d0343827f515b8b6cd593d0420d5cac3821a60a591e136bc0ee8e942ec"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "6a569c16f817e9ef60b23f523599da7c8a59d975b115e420661d1e22fdf7feaa"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 1448682,
+          "sha256": "6fd552910e82d6afadb5129432d124bd65d601aede39eb404aad818d57e8acfd"
+        },
+        {
+          "nativePath": "Texts/History of the Geyser",
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nativePath": "Texts/History of the Geyser.rsrc",
+          "byteLength": 2584,
+          "sha256": "12ee4ec8a5195f550212a4ae34d28976b3bef1b5f005e7ecd7a772129d70b7c3"
+        },
+        {
+          "nativePath": "Texts/Magistrates Tale",
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nativePath": "Texts/Magistrates Tale.rsrc",
+          "byteLength": 2031,
+          "sha256": "755e87250eeb2f1835ab13682461fa22346aab947ed7863ebdc48175af2879c1"
+        },
+        {
+          "nativePath": "Texts/Sir Maxwells Task",
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nativePath": "Texts/Sir Maxwells Task.rsrc",
+          "byteLength": 2252,
+          "sha256": "0542a3916812f6692d28ee5a36bf827925a184bd941f62ff744eb2630256d868"
+        },
+        {
+          "nativePath": "Texts/Tale of Mithril Vault",
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nativePath": "Texts/Tale of Mithril Vault.rsrc",
+          "byteLength": 5943,
+          "sha256": "fa867adb6ee8deceafcfc8f8f3c66e5220abac5e03506e895130924c259ce5e4"
+        },
+        {
+          "nativePath": "Texts/Westons Diary",
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nativePath": "Texts/Westons Diary.rsrc",
+          "byteLength": 1384,
+          "sha256": "985e6b95b473944f6ed954ef53def38947272ad58eb0e07debc63c3a2d172858"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-prelude-to-pestilence",
+      "file": "scenario-prelude-to-pestilence.realmz2",
+      "packageHash": "5536ec95768ee2c7c84aa169e4d68debe434e8a4e1f62cc5b8960c171344efa8",
+      "archiveSha256": "7898a19c59efc40716ace2651e520deb07c87f3178e04820d63352bf6bcfcd15",
+      "bytes": 1257283,
+      "classicRecordsSha256": "7fe19a38b06b1ff59cf65f66f0c61e4a2e9fc7355ca49338cffc076d56ad07b0",
+      "sources": [
+        {
+          "nativePath": "Data BD",
+          "byteLength": 75774,
+          "sha256": "4a49bc7491cefdc5148ce3a755716e8c14f6086b797f1fd69bd6fd823b25f5e1"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "dcdefa234826ba7a1ae0141024bc1e60caf3f2e28dae0652589fe66160dae09a"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "126939c5fc859f56d206bd961ac12fd8b4b72607c4cc81d2c76d1a7a5b8767ab"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 20000,
+          "sha256": "6925c977fcf1da27f33961f3d7fee8299239e6adef897aa7b32e2a088834b0f2"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 4000,
+          "sha256": "803de995606375fa3a65f8e30466566241c9ca0f4ae1b53d26dfdf95e19a660d"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 76800,
+          "sha256": "650e4570dfecc450121eac2044a06aeaa9ab5584198550155c63b3bb8d6a6686"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 16200,
+          "sha256": "9b306764e86c05ec70a31ada5f419f5bd9ec6281703b7a9582692aeac3c8530f"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 10650,
+          "sha256": "e8e3945df7127795a434e56b2e7b957e908944456ff04e180e14709e87c6e309"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 10400,
+          "sha256": "c848e7366feda0e9e78891f1f8eb52560c656291d4f9ff50313d2102a219913c"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 13240,
+          "sha256": "d519b69ee4dee10b4a44f14a25e57076cc1c7d7e5f172de76c9575a320ca7892"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 6160,
+          "sha256": "df89ed3dfb9be8efeaea7439c6c70455e1f12fd1f909fe4a65bdcef3485bcd79"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 81000,
+          "sha256": "a06c5ec81c5acf9d763ff0c860a8844afc9613f7b2450d216faf0ef9e135d3d4"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 36120,
+          "sha256": "0b40723e6da9f6b0e7f55c323457b557b19fabf7ca884345654bf8e9ab61e071"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 36120,
+          "sha256": "d36b2de09c45d27fed70617f27cbecb88b0678e7367104f99c563f984a24db2f"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 36120,
+          "sha256": "a58c864a59e87b033d5bcc7d13a6840b660f647fdbed1751144d3eedf3414179"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 7140,
+          "sha256": "1b92c7667687be1fd5a406bf2e3656635ef243f9ddc790d05f9a77404ddf8aa6"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "1b070fa401e4b2d83d5b3a483e17ea00755f0843351c60d64df7476247a84a74"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "7ef3a5d5d2fc3cff5facc170a13651a7f4ba3e437918d9f2d65e58eb39df0831"
+        },
+        {
+          "nativePath": "Data OD",
+          "byteLength": 575,
+          "sha256": "bd9a7f89f80fbe7370956e6b0ab82c98fef8391273840addd5e1777dbda2e3ab"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 3220,
+          "sha256": "ae5d7d9609e9ed223b13cc86613a598e4ccb2df1069da8c3d789e5c36ad76fc0"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 644,
+          "sha256": "9f5a1c673132f8fcb4721dc466a32cd8aa709e063cc9e087fe5c83aed378f57d"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "21c25db0baf8a5cc185657cc04c9ba6c6e1b8632de3c0452c9bbed2d48440797"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 63042,
+          "sha256": "c8acf114da9a51f1aabe877c4474a767ec840be2c1e9d3df474ac6092d21ca2d"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 187904,
+          "sha256": "453c8cb02e58443e4b7b82eadc6d219b8e222cc539fd0c8440c1de7b8341a82d"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 2688,
+          "sha256": "e660543643a71d341b4a3f1510cdb78c50cda5f0ec96b3667db69f5ac38a8e66"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 1534,
+          "sha256": "77002f690ecb6c922063c175e4a3ba6e5beb8dd94e04751edd16159a5e772e05"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 240,
+          "sha256": "a5178ee952195fedd45404a6acf261783f5610afaf0120d3481085d2950dfba0"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Prelude to Pestilence",
+          "byteLength": 316,
+          "sha256": "126939c5fc859f56d206bd961ac12fd8b4b72607c4cc81d2c76d1a7a5b8767ab"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "4d2063c97da686f87a505d5b20048c92d6c50aeedb8e43e1e8bfbebb7802f97f"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 198724,
+          "sha256": "489eaa2b9c61db86616f26215b112596adb659c676ef540ef3564795dda778de"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-trouble-in-the-sword-lands",
+      "file": "scenario-trouble-in-the-sword-lands.realmz2",
+      "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
+      "archiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
+      "bytes": 8753239,
+      "classicRecordsSha256": "33a179d14b6615e0fffbca40e3dcead8c6f491a40dbd8a1ddea69dde09a4e697",
+      "sources": [
+        {
+          "nativePath": "Custom 1 Music",
+          "byteLength": 241158,
+          "sha256": "b26e7cc22a19fab1cf6e345f370c76f072b7a73c0435caa533f63e2418e3e53f"
+        },
+        {
+          "nativePath": "Custom 2 Music",
+          "byteLength": 60224,
+          "sha256": "0ba9022f65d5cee0b57103c64264fc64f8fb0f84d63cf70445f2747ead9f2471"
+        },
+        {
+          "nativePath": "Data BD",
+          "byteLength": 123868,
+          "sha256": "57813ae59cad9d5b42b4ac01fe5bd5ae072aa5f18675c4aab77079052135730d"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "f56a2757efce38698830fb69da843240b1e5c609c00c81d5a8b20a7d6f9c9d09"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "2e6ba0bec34fe95afd49f563389233008652cd01516e88bec4e7721dff758c73"
+        },
+        {
+          "nativePath": "Data Custom 1 BD",
+          "byteLength": 8104,
+          "sha256": "1af95365d1a6ec2bf625e3ba5cfdaf54783e651611f3b48fc1019c03e12c0fe9"
+        },
+        {
+          "nativePath": "Data Custom 2 BD",
+          "byteLength": 8104,
+          "sha256": "cc4b9accb90dd37c5a0a6b8f3dc49f718909feaac495586c496a125a07e8bb5c"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 80000,
+          "sha256": "d42672777a6323f80e49da743ef7333356c0e2a3385b2c98c6ef0ff039b4da5b"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 16000,
+          "sha256": "400ec3c95c412f84c55103b778ba352cd3153bdf553af21aa7112a0db9392573"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 61952,
+          "sha256": "a8e1388631a254b97b903f5d3ad58b64614240e2d5de7bee3dcdd037bc0ba6ca"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 64800,
+          "sha256": "9e55a21cf05c5075b5b236984c34d15f115181587c69cb59afaba91746710464"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 57720,
+          "sha256": "4d805ef30249d067ad650b8a03472648dcc75623e364fe663914d95f4080a681"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 48360,
+          "sha256": "129bbd14a1f1ede6ba8f1788c1aff4d30d9abd02114d197b51ec47f720fb234b"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 93360,
+          "sha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 160200,
+          "sha256": "fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 324000,
+          "sha256": "b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 50820,
+          "sha256": "97061ce019e37ce4650ab52a8851b54e78f40695430b0f266c3c5ee0e7e74945"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 50820,
+          "sha256": "8c66e972842f3879a8d8482cab7987c308f727564dc430fa43d944a0c69bd229"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 50820,
+          "sha256": "c08e38a3add21522f730f40962cb87a0200e784cd3660cd5b5f49bba77adf648"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 6800,
+          "sha256": "e84a405145902b657994eff2529831c0d5b761741b146b7c1fa3383819aea71c"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "44e353c423b1efc1051c783a3e9b86e9417dec368ced2bd609b26b08219b5792"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 12880,
+          "sha256": "2594c079463a86b5bb7c94f72390c0fa84190cc3a5b7494fd86a7371dd920f2c"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 2576,
+          "sha256": "331d1e8314a2aafcbf7cc2dca70125e7e417126a23a3a545d370c6e1b71fd1a2"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "17ca3049fd55f5b3834146dfb94b355a8aadd4bc8fdacba99254ea365e7d232e"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 114076,
+          "sha256": "1df7b58bb3f21383e62b6abc62216ef0cc8530cf409fe1b79a522eef1af28568"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 812544,
+          "sha256": "97a80b25c540c621566140b038ed398fd25ecba815870abd6357ff2bfe253e51"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "6382a9bc01c713ba75b0fc342789535111a65fc688b4ab6abb91615ecec17880"
+        },
+        {
+          "nativePath": "Data Spell",
+          "byteLength": 9016,
+          "sha256": "b6eb7e7c4a95a231913d5e04350647a505ce60f7b229bc1e9d674c8a2f148d8f"
+        },
+        {
+          "nativePath": "Data Spell.rsrc",
+          "byteLength": 2219,
+          "sha256": "9be3ebb2cb1b185312ce683275511a146d2af4cf1a4d382516774a00da21e26f"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 9312,
+          "sha256": "57d4e61fa37ab0e09c4ba11238774536ba992815710c440a9c17d92fa1e2b841"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 7198,
+          "sha256": "68e948c0385777ba42e5d27ed40602dea323abbadeff38916af5175d1cfa0f07"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 840,
+          "sha256": "284be3a80d7e89c623ef97615dc84491e6391bc6628e88f5f1c16e84afd4ad6c"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "001ade93b17fe137403627a90bb651f95b7cfeb80d2894fcec99ff8c9dd5470b"
+        },
+        {
+          "nativePath": "Layout",
+          "byteLength": 256,
+          "sha256": "1e2fe74ebff81650c0267f0a25fbd6d98189532af414d7add86e51435e848f9c"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "5d603b567cd7642ec4e45552943650d3ed4ab887ba409728cc36a43631d320bf"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 1842294,
+          "sha256": "244d2da63512a50c28da82c2800ba56322e10e23a6eb53a359573644a2bfae1a"
+        },
+        {
+          "nativePath": "Trouble in the Sword Lands",
+          "byteLength": 316,
+          "sha256": "84e877c01a212f397302ca46ed8ef3684b81b693fee30278f4abffd3afb12467"
+        },
+        {
+          "nativePath": "Trouble in the Sword Lands.rsrc",
+          "byteLength": 286,
+          "sha256": "145c12840a133ee613b56c5b24481161a6f1122129b9694bdef4841bcdf61815"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-twin-sands-of-time",
+      "file": "scenario-twin-sands-of-time.realmz2",
+      "packageHash": "122d7b08168b0efd2fada797445475d6e5f1647be4ac2580220d37440e2d052b",
+      "archiveSha256": "a64f6573adbc104e2410e9d47c271244ee7c0cfd03c0636b63afa1ef8bb4de23",
+      "bytes": 1804935,
+      "classicRecordsSha256": "963417a5491c6c02df9e5cf395348dda64b352975ce972ffa3064a426726f4e8",
+      "sources": [
+        {
+          "nativePath": "Data BD",
+          "byteLength": 45326,
+          "sha256": "65be8319405e5efc561a0c48007633ec968e6d5e55fdbb12573228010393cec3"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "e2493d5514d07fc6601cbf1a5e99f1b8b59b4682cd2fbe2413a511b02e3dfc1b"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "657d249594a71c286d98ee9438d546b566fe29468b4001801ccdbddd71d9f434"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 32000,
+          "sha256": "e84eef36aea7677c561ca3a5eea7bd5e0febf2505b195f4b877176fa6c99f8e1"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 8000,
+          "sha256": "f73c1169f047c0b85ead2acbaae77059c9e7f353ae45e2ded8db2e0fd9a5c274"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 55296,
+          "sha256": "e9682c870849eefb97d89640f082afe26f13785c90e8acb34357677d6dd5aabb"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 32400,
+          "sha256": "cb29d44b8c1adad8fb08d62865ebacf7534215a7d3ab28780f1b64071c5a2dd2"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 8840,
+          "sha256": "dd1454160490174567c377a9b44bdaa5ad9b5835231590b0de754ee2a282e991"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 17160,
+          "sha256": "7a986f83161ebd7c0b369c3a4ab9ad19e6ae681d2b76053f1ccd1ef429c0aeeb"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 17520,
+          "sha256": "ca6c16a981bb24d39356f2ec37bc12ecf2a59f9b762e9cadbaf3237158db846e"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 49030,
+          "sha256": "e0f1fff78b57afa38d9667b869759c06142607126e47b37e3a971d1f8fa3b441"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 129600,
+          "sha256": "06452410e76775977aaf59586a824895cf29cb77c4eb9e757bd8e177f1aa39a6"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 37170,
+          "sha256": "89fbee2083baae8626ebf18c2f4e39045b7d97b3b433c175c05ab20eda9bc25e"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 37380,
+          "sha256": "3b3ee0107dfc04dfa1721bea638d03a19c2358cc85f1b3ef638e95fb8389f657"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 37380,
+          "sha256": "51c2e305e56dd904868971e4a1d65ddbaa114cb1e4bb1855541b0e86d56f8ed5"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 6800,
+          "sha256": "c402517fea9d8b4c7f5498cc3ae1f43844d7d7a653c9999dee53eda0b5d6e420"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "6b09ee9ef7c8c7bf1e48a6b717e6933aa326918aebee6f2df8140a8c5ce50e8a"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "5b83897443a42a0b083338f616d4ffb0e6f81070313da7989ff3f945e114b775"
+        },
+        {
+          "nativePath": "Data NI.rsrc",
+          "byteLength": 286,
+          "sha256": "42cb2113c5a4bd88062e5d80c347861be57680d87d20e52b33e6b7c7db7c9c1a"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 5152,
+          "sha256": "f292491571db98b413dda3ea04e4947738556c6e7cbd5d980239d0c4d6a7e2f1"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 1288,
+          "sha256": "720fbbf104cb2f0382ae1b293807ebd1c520272f623891e69505f600de4b352a"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "129a1423f24b8f90f4e44e8f5aac5a95cc9ddbf192d66c5eb50395c6f2619624"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 81054,
+          "sha256": "4c10291ea69170fd28eb44a45b58dfcafa8b01553ce9d6e8885a9254b6afbb9e"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 285952,
+          "sha256": "a68db36e0768f00d8eedad3576af1e05c7ee0250363a3232e958242924063685"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "d96374cbfe72aa5c9f01e825fea3491b3c62f27e1a18721dcacae60709ecad87"
+        },
+        {
+          "nativePath": "Data Spell",
+          "byteLength": 9016,
+          "sha256": "bced5360eba053b9fdef92e4d343d9ea22d2958d04319d323727e776b670c865"
+        },
+        {
+          "nativePath": "Data Spell.rsrc",
+          "byteLength": 2219,
+          "sha256": "98cd67abcd4e72b026df497b37b11d6ad0b3477a724bcffd495f84e57eb4d95a"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 3744,
+          "sha256": "0cd9fa5750609c154a6e5c9b24e7289e6e72097d49a5ed678e49abe8937d53b7"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 10266,
+          "sha256": "0a346405c55d504588ba5d82c0b479456348a2b26cad256331141c8a83cca46c"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 520,
+          "sha256": "768fccdc38cf91384c6d345213d0dea1bbe4836d2470d212627faa48dcafa086"
+        },
+        {
+          "nativePath": "Format",
+          "byteLength": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Layout",
+          "byteLength": 256,
+          "sha256": "7a0864f58b5d8c01a00c7cf27cf906d76fafea2e89cb4ee0c5aad27b4b0604c0"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "d6fa29f0f7ed439e6b61fa0e5015112fea23c0eea386c6fd72f1f07d268cbbf6"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 326898,
+          "sha256": "dc3c4e2f2b68d1128ef7913f35b8ee02f138194b799f92365e0219d5b1be3ad9"
+        },
+        {
+          "nativePath": "Twin Sands of Time",
+          "byteLength": 316,
+          "sha256": "f4aa88885cfcbf03ab7556768aa73c6549a266231688a0a92ef77df6a8d41377"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-war-in-the-sword-lands",
+      "file": "scenario-war-in-the-sword-lands.realmz2",
+      "packageHash": "50a020526a9025313da25dd0b8d6f4ddf8b5e63ad19a404d22efe0207aae6c3a",
+      "archiveSha256": "8e530934a4c93f7ba668ad5eb6ffe169ed2f190643f5b9d0525b0fb7801e694c",
+      "bytes": 16433883,
+      "classicRecordsSha256": "b8de1f6f4aec316fad0a34d7331d80dc8d755f752f6494a57763caedf5167ec2",
+      "sources": [
+        {
+          "nativePath": "Custom 1 Music",
+          "byteLength": 170360,
+          "sha256": "d29a6f4da4305e0bee58ab6abb639e14610154b1de457b1cecd33a23dac1b6cd"
+        },
+        {
+          "nativePath": "Custom 2 Music",
+          "byteLength": 137064,
+          "sha256": "2ba26647abc72a8a8833334ff6a392e8d9f882f6c96c83f2f284f943db45f6e6"
+        },
+        {
+          "nativePath": "Custom 3 Music",
+          "byteLength": 73480,
+          "sha256": "44988f0c69ab05694d6fb07a82da7bb3b2eaef5dcf7026a2b9e6a27d1fbae6d4"
+        },
+        {
+          "nativePath": "Data BD",
+          "byteLength": 173346,
+          "sha256": "20fe9fb936a978dd48e5315d862eedf07ef09c2fd440fca0455db5d7f44a347e"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "23b296bef04621acd073641107237e0f2e0224a56f22bfcf8c6d73e67da09b33"
+        },
+        {
+          "nativePath": "Data Custom 1 BD",
+          "byteLength": 8104,
+          "sha256": "005fc874193a4c7c03679ca1356ce6570fadea1f8f3bc094a7b82caf22dc184e"
+        },
+        {
+          "nativePath": "Data Custom 2 BD",
+          "byteLength": 8104,
+          "sha256": "f6ce736315b0ec55af0d986e4dc8d77bb150f1a61ea2baa04dfe5a577f0361e5"
+        },
+        {
+          "nativePath": "Data Custom 3 BD",
+          "byteLength": 8104,
+          "sha256": "ff8a89324d762309d330b6bd291333e6b2792696aa83e0324062a85d2a2a4eee"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 84000,
+          "sha256": "5926cecb30970a6e0c782f2733667f4f711e6cf770fcc5aef3954a3093c6f876"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 12000,
+          "sha256": "7cd43f64735627b1a0a6f204217c1ecbc8c455e85b36298568434b0c16882a01"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 86016,
+          "sha256": "81ec8bce8237c0b1348ff0b6101f4cdf09ba1284b55a11e75dd517814ae44435"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 48600,
+          "sha256": "a628aa05b26926bd134c6d0316393604df8e855425321af677f05e4764d5ed50"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 64320,
+          "sha256": "7fa0e21253f9f9a28dd48a74c930dcabbd10d9560eab59182f7067517773eced"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 47320,
+          "sha256": "a3f1001c8b91cff1b2f577ee15c22352bf5881ba7fe5fc281d23551649069eda"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 147840,
+          "sha256": "31b3ab492b0f03968914e3ef6f675a01997fd0a3dd8e4520869f1a110a2ce265"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 644730,
+          "sha256": "200688c86e1a221879e2c5d0754e435d9be968c212933a5d238562f5e8fdff88"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 340200,
+          "sha256": "1eec6c134c21214af132bbc3d0a6e81052ffdea74022436133588fd54bdbc8c3"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 70560,
+          "sha256": "14ec7925f00c224c8c52aa613834b0ed1a220d7d714dd79e9400bf9d595814aa"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 70560,
+          "sha256": "0c38a0ae4d7c1dd62918eb1657f3610b82a531546c4d3398a68eb88d5d94120b"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 70560,
+          "sha256": "95b35bc170147c9cbab5b7646df257aa0d2ddec1ad1e8d02283a84972f11a552"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 6800,
+          "sha256": "a9fa4cc2dbad7f3ac143df7055d703200e87cf8c05621dcca53ed88d6a0b0c52"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "fed20b00a933edb03f5dec26d9cbed3b3e92f51000f0901cbf12b2a934d80857"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 13524,
+          "sha256": "19f330e29198f8a6944f6b6d465815ce7ce42be17572916939fa7089938c9862"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 1932,
+          "sha256": "3128f902a65437ad55c33adec9dd32a20ad3ecaa69208655bae646b766092f3c"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "db53d200232ae34764ce27397cee75001c7221de8ebc068e6e38f34136c47f99"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 66044,
+          "sha256": "48cd814c799d66d27dcda33a14c5572d6b67cb927bbb8925fb269e6b78eacae5"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 1063680,
+          "sha256": "c0fa6ea16c36ec5d98313cf8a7e3ebe5a430f6184c0ee9552167a2ed6008943e"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "ed690bc4dfed8bc7861628af1d72416410bb5be7e129c27f64204e9da6f868ee"
+        },
+        {
+          "nativePath": "Data Spell",
+          "byteLength": 9016,
+          "sha256": "5de4ce790d9d6ba30c0b9892db3363067906a62b57d60e9b2f95ed6aa5bbfece"
+        },
+        {
+          "nativePath": "Data Spell.rsrc",
+          "byteLength": 2219,
+          "sha256": "fe72cda1dc205ab6cd807114c1863f62ec124dc6c82d4c31f3c66366f7948fc1"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 6432,
+          "sha256": "ce40d7ea9b7b307af2a9a0760f00169c7b7b8829b0e16bda9ba6391f4e380d1b"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 4484,
+          "sha256": "b8422e9dd275a545d110d3da5a20751b9f42a8214e0d1c0b4096b0ca5cafb531"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 840,
+          "sha256": "03f7c117e77e3b380f746a01885ac09a4f2d5c11b322e0aa93dd36e5a845f76a"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "1818ccaaedfdf9ca7ce6fe26fbd87f43f9f7a4248b50b7345844ae70ac9d774d"
+        },
+        {
+          "nativePath": "Layout",
+          "byteLength": 256,
+          "sha256": "0bc5bd27a3dc968c58c74f925de81d1df6d18f0b606633d926abc3be57de0043"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "896bce862f3406914cdc395d1762325de68e68e2aab92f43a741ee66734f378c"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 3695646,
+          "sha256": "9738d6d5a9dd659988269bc61e25c8b4d1320475ee774acbfe60ddca81f0c19b"
+        },
+        {
+          "nativePath": "War in the Sword Lands",
+          "byteLength": 316,
+          "sha256": "f34956c092b57acf8bb36710fcca780bb5dd0c25eeaf99ca8e046c7e23269aa1"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-white-dragon",
+      "file": "scenario-white-dragon.realmz2",
+      "packageHash": "ed3552fc9b4a5580d598ea540cbf2e6f04002be8985a3020ccbc419ed31449c6",
+      "archiveSha256": "35b52b622eddc636ea424f8c2eae18c6c08c28bce5f65150387729e915f4d951",
+      "bytes": 2419767,
+      "classicRecordsSha256": "f0bd72f78397ddcf18848b379a123fdd6582eec49cf41e8c042aff96376aa5c6",
+      "sources": [
+        {
+          "nativePath": "Data BD",
+          "byteLength": 73352,
+          "sha256": "6dd5a28e0d28739d2f89b64ec91edf3a7af26e21baea7a4af2f141fed6505c03"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "21b35cc10d915a5e24b4146ca3a3b17e09090f2bc2d3d90f956cf8f04e1707fc"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "04f8df10a6b8acac25752eafaaac80ed2e91247146f95bc0045b69fdd3bbd961"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 48000,
+          "sha256": "26076e76b9b2a40c4cec8c42d5e9e04a70c75afa8e419cfe56504613992810e0"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 16000,
+          "sha256": "d6cd421fc02e6999e73b9ccc474d5d2eea18ea2000983a9479caf3089c1bf002"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 50688,
+          "sha256": "29f4d7b40b4cbe481169c5a4be7a4b4fa4d63c9b10475069ad4747ff95fbad6e"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 64800,
+          "sha256": "e80c528b4009547aca3c36c14b64fc7dddc4e24229cdfcdaef3594ced87b7aff"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 5964,
+          "sha256": "e04a58888fda1adfd04b2b08f2279b1870159ee0f8ce763c2d2b5344c1e8345c"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 13520,
+          "sha256": "7d179c860807301f195b90bd8ce64f043982862723ef6effd0d068af3a73a294"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 86040,
+          "sha256": "ff82bb8ad3f1585b9cc70fd869ec0f89932e922c28bdfd826620af77c4d5a608"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 10170,
+          "sha256": "f8754128abea145e8144e4e9bf66990d6727c83fe61301d4271b29144e4ed636"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 194400,
+          "sha256": "a43dc1c9d48cd021dd73bf0bff4e314e68731321ad6aa8cfe63f3047a08c1bd4"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 40740,
+          "sha256": "8f0b0203043b06d98527197e5d095af89a87ce7d20b8756b5286acd41e2e9299"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 40740,
+          "sha256": "fe10026659c7621acb47d4b8a592f0520bbf89e90a290c95316675b22ac76133"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 40740,
+          "sha256": "d2355a97111d300ce0ea440bb8ee86edb3640fd2c4d3a92e3cc566fb5467dfcc"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 4080,
+          "sha256": "b63f9fb3158a6e51d129280f355af6479257a50ba492dffdb0cf005329dd2a96"
+        },
+        {
+          "nativePath": "Data MENU",
+          "byteLength": 502,
+          "sha256": "b91ff81b6de45abcb2137c8870bc570f76aad3e99e9974df7e5df394204be4f8"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "e16b030c875cec61914d3ca398df3cb7cc6d45105d88a52a09cec33d7c3da9f4"
+        },
+        {
+          "nativePath": "Data OD",
+          "byteLength": 1325,
+          "sha256": "6b79c5673481b56179f169c6dce3b65f65508fb51548e36d70fafadbd631bfb5"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 7728,
+          "sha256": "5a643d01778b6368ba307a6d5726d5de7e15e9837a4781bb013784059793f68c"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 2576,
+          "sha256": "efb25aa52bcf49ed3b610ed05c82945d9466afefd6d24bc96a05ee9eaac9047c"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "11c710f46165ce0a87179c9fc91929c8d39895d4cb86baf5f1d8f7621567c99c"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 36024,
+          "sha256": "0ef92085048a94a3a369d30a55f35a4c69c6df65e94d685ca487d9c35fc7a169"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 241664,
+          "sha256": "aa2383931033f128e8a6c3e310a27c0aaf523747cf0158949ae321f2b5e49462"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "5f70bf18a086007016e948b04aed3b82103a36bea41755b6cddfaf10ace3c6ef"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 2784,
+          "sha256": "cdb11aa4280d6f947c56d75bd4f293b7fb59b0f84a7a01c248666196eecb8df0"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 2714,
+          "sha256": "0d4838fa0cc664e161766a27209e1fe0fcdeb0f44a983296c51f663e3d5ddc61"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 2080,
+          "sha256": "71ee20b57fc8624c826892b225c9cf4bd425de71e2603b762ce810f43470c223"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "5dcc1b5872dd9ff1c234501f1fefda01f664164e1583c3e1bb3dbea47588ab31"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "22397dacd802a0011d950d6c37ebc2264d07064766f1d116f68c899b7c9502ec"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 457580,
+          "sha256": "7362a7405be54ca332e0efbd87d84da3c39aa1749bc79c2994a37173a4c9d322"
+        },
+        {
+          "nativePath": "White Dragon",
+          "byteLength": 316,
+          "sha256": "04f8df10a6b8acac25752eafaaac80ed2e91247146f95bc0045b69fdd3bbd961"
+        }
+      ]
+    },
+    {
+      "campaignId": "scenario-wrath-of-the-mind-lords",
+      "file": "scenario-wrath-of-the-mind-lords.realmz2",
+      "packageHash": "ae694554054cb3c68fe0a6143c7da7c95ff8ba601be5f7399cfb5731e9454761",
+      "archiveSha256": "28f35552e15347233c34ad06504deb7bc68b33bf998f9cdcb5e7412d808bfbb1",
+      "bytes": 20584659,
+      "classicRecordsSha256": "31b99d5ed794d8e4b9d6d0ec8ca97ac97fd78d3b2223cf512dcf1477499ca5de",
+      "sources": [
+        {
+          "nativePath": "Custom 1 Music",
+          "byteLength": 143039,
+          "sha256": "58d0bb19b38dab0ae5069c5849bda127c0a25acba522c2f10d3a98667664af67"
+        },
+        {
+          "nativePath": "Custom 2 Music",
+          "byteLength": 184221,
+          "sha256": "92062bb05ab7c6ce315d27898ddb721ecb23fdebbed7e5a79ec92ade1729cfda"
+        },
+        {
+          "nativePath": "Custom 3 Music",
+          "byteLength": 184108,
+          "sha256": "243f2926bfffd72c92f96ba66100238bb4f2b5e32eca761457ae464ebfcc3624"
+        },
+        {
+          "nativePath": "Custom 3 Music.rsrc",
+          "byteLength": 7377,
+          "sha256": "597d9d22627d837ea9ae6bc9d18a316dcb93cf9d61c724056bdb2190b6e84bbc"
+        },
+        {
+          "nativePath": "Data BD",
+          "byteLength": 186148,
+          "sha256": "ca4e55198b13c9ede8a493ef3b7daa58e864d2340b7454c443b9852721a5a243"
+        },
+        {
+          "nativePath": "Data CI",
+          "byteLength": 4608,
+          "sha256": "8e34d5c305f4196ec70b0a8f07cff1c16eb926d9ba6d959146e8a95be4a38192"
+        },
+        {
+          "nativePath": "Data CS",
+          "byteLength": 316,
+          "sha256": "347cd650b5f0b7abb0d2133b1ec5cfd29f4aef87b89ef7ad7a7684413c80ab15"
+        },
+        {
+          "nativePath": "Data Custom 1 BD",
+          "byteLength": 8104,
+          "sha256": "87014b0539f17576930706316126eac3ca8f69877af3d40cbc1f6431c88a94ab"
+        },
+        {
+          "nativePath": "Data Custom 2 BD",
+          "byteLength": 8104,
+          "sha256": "7c8add66e4d55758c5724c99658eb4b5b6c3bebe0a43883b0cf977dd2b6496f2"
+        },
+        {
+          "nativePath": "Data Custom 3 BD",
+          "byteLength": 8104,
+          "sha256": "59d0707eb9e829ef47831732f832196aa91c7b820429e3126eeea194eea8ad22"
+        },
+        {
+          "nativePath": "Data DD",
+          "byteLength": 80000,
+          "sha256": "d3fbeb8d2a68ffa8b8f601502639c58d984286d1cc31afb8b37d0c27a4722165"
+        },
+        {
+          "nativePath": "Data DDD",
+          "byteLength": 16000,
+          "sha256": "d2fb02a1bbbce108654d43dfb4a17a8cb5fdd2217eadfb917341df2085114cbb"
+        },
+        {
+          "nativePath": "Data DES",
+          "byteLength": 77056,
+          "sha256": "c2626d48f1d500dad72a3ef328c446dfdac92529a689ec004b2cc1745c1cf5df"
+        },
+        {
+          "nativePath": "Data DL",
+          "byteLength": 64800,
+          "sha256": "e944ca428a4daf37b606113e9f4c169e22d43cd2eaf8d64d8ba98a23f7e6e75c"
+        },
+        {
+          "nativePath": "Data ED",
+          "byteLength": 24000,
+          "sha256": "866da9fe9d692f56aef4df9bb08cc3b67bbc49f8bbc5586b82e46072e5d9a586"
+        },
+        {
+          "nativePath": "Data ED2",
+          "byteLength": 44200,
+          "sha256": "6a0e6bad54ba7ed89ab18fe87623fa9b4416926b4d2e822e7dda231e8378f526"
+        },
+        {
+          "nativePath": "Data ED3",
+          "byteLength": 85240,
+          "sha256": "32d2320a67af866f7e638666622e5438fb203af0c6f751266dd1f52f8e8c72f2"
+        },
+        {
+          "nativePath": "Data EDCD",
+          "byteLength": 37970,
+          "sha256": "1e8c23a40f2643b817caf0aedc09657599270b6ddc5e6c2ce5a230cbbcb96cbe"
+        },
+        {
+          "nativePath": "Data LD",
+          "byteLength": 324000,
+          "sha256": "0c3592a5d6f718ea8d1cadc733bf4fcc05195e0ca64d67fbc5a2eda11358f318"
+        },
+        {
+          "nativePath": "Data MD",
+          "byteLength": 63210,
+          "sha256": "e4a64f68e08cb33f83f0705e938d57084e5a2a7878ac8ab45ca471427b9483c8"
+        },
+        {
+          "nativePath": "Data MD-1",
+          "byteLength": 63210,
+          "sha256": "34ab1bfb4ff1851d78c06c021e5beb692cf9a9cbf573da761361a016109bb60a"
+        },
+        {
+          "nativePath": "Data MD1",
+          "byteLength": 63210,
+          "sha256": "a3102b0d8fc2efae4682d26375cf5b5321b9b86b8a22d278d716fda6b0924b2a"
+        },
+        {
+          "nativePath": "Data MD2",
+          "byteLength": 6800,
+          "sha256": "7a2cdc6ab3f368ef67f4d9abab9f72e98d3c5b762fbde047591483740ae6ae01"
+        },
+        {
+          "nativePath": "Data NI",
+          "byteLength": 20000,
+          "sha256": "9039409dd64147a141e9e7afe90df2dc55165a4517bb022b738a954a353389f7"
+        },
+        {
+          "nativePath": "Data RD",
+          "byteLength": 12880,
+          "sha256": "27e6ca47410b130d35c50ca9d0578d1ac8e00633f9ada7d5d968d973604b0d6a"
+        },
+        {
+          "nativePath": "Data RDD",
+          "byteLength": 2576,
+          "sha256": "30e225825193d0d1cf44989db38ac8906456276bc90f239e9ed0ba6cb7fdc8ba"
+        },
+        {
+          "nativePath": "Data RI",
+          "byteLength": 320,
+          "sha256": "0306413af76bd6c74d2ecfe2aa0a090010e3287e0eea571cab16b947af5190cf"
+        },
+        {
+          "nativePath": "Data SD",
+          "byteLength": 66044,
+          "sha256": "59325915b502ff94318803102096236bf70a512ac93e5aad0be71faf9ea4f478"
+        },
+        {
+          "nativePath": "Data SD2",
+          "byteLength": 720640,
+          "sha256": "8f729484fe096aedfb4a3baec3ec5c40c8b2f34dc513dfb4944dc5b419aadada"
+        },
+        {
+          "nativePath": "Data Solids",
+          "byteLength": 1024,
+          "sha256": "f154ce21763f2f8c22f089ff76688039e84982ed5e71718e6b3bddb3aeb444ef"
+        },
+        {
+          "nativePath": "Data Spell",
+          "byteLength": 9016,
+          "sha256": "9df5decc506d050ffe43655d52d060415146d8fd942fa492e0ca0dbd27fd960a"
+        },
+        {
+          "nativePath": "Data Spell.rsrc",
+          "byteLength": 2219,
+          "sha256": "0f21788a37826183b055517b2cebebfbc091a4ad75f66a8520f11e4741ae58eb"
+        },
+        {
+          "nativePath": "Data TD",
+          "byteLength": 7296,
+          "sha256": "0b42961f45aa6923032327608a4f747a528512ede392734b180c4f15507bd0fd"
+        },
+        {
+          "nativePath": "Data TD2",
+          "byteLength": 3776,
+          "sha256": "600dd4ba4d493ba3167ef1cb041118b4c9b5154994f2fb928f3f514f72ec08f2"
+        },
+        {
+          "nativePath": "Data TD3",
+          "byteLength": 320,
+          "sha256": "0b3527d69c0b1039905562a268331621d5ff4a6b17332eb0dda773f8fcfe7de9"
+        },
+        {
+          "nativePath": "Global",
+          "byteLength": 60,
+          "sha256": "c29c30d1d6b3beb90abb5308056eacf350e9b07086298275106cec978ffbf704"
+        },
+        {
+          "nativePath": "Layout",
+          "byteLength": 256,
+          "sha256": "11d9395865f28c4a560e448c5e1bdd2ccc3cab3cd5b785affd6dbdbf1b9fbf16"
+        },
+        {
+          "nativePath": "Scenario",
+          "byteLength": 600,
+          "sha256": "89e0b30b10e88d2e5d01db8de630a66a224949e0a70848953ed6cfeb19eb09f3"
+        },
+        {
+          "nativePath": "Scenario.rsrc",
+          "byteLength": 5174545,
+          "sha256": "2d674f9244d2aeb19ee1ac4c83c55cb54be122d1b978d38bae206beec9fde595"
+        },
+        {
+          "nativePath": "Wrath of the Mind Lords",
+          "byteLength": 316,
+          "sha256": "802db251d4265bc5e8c723bfeefccbc080326576e269c88622f853636cb2c120"
+        }
+      ]
+    }
+  ]
+}

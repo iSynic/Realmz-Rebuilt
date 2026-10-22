@@ -37,10 +37,13 @@ func _release_coordinators() -> void:
 	_intent_coordinator = null
 
 
-func _commit_coordinator_result(result: SessionCoordinatorResult) -> SessionStep:
+func _commit_coordinator_result(result: SessionCoordinatorResult, setup_checkpoint: SessionRestoreCandidate = null) -> SessionStep:
 	_release_coordinators()
 	if result == null:
 		return _finish_failed(&"invalid_coordinator_result", "The session coordinator returned no typed result.", [])
+	if setup_checkpoint != null and result.state == SessionCoordinatorResult.State.FAILED and not result.commit_failure:
+		_context.restore(_context.content, setup_checkpoint)
+		_view_projector.clear()
 	match result.state:
 		SessionCoordinatorResult.State.COMPLETED:
 			return _finish_completed(result.events)
@@ -162,8 +165,15 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_context.current_revision(), &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
 	if _context.state.combat != null and not _context.state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE, PlayerIntent.Kind.COMBAT_TARGETING, PlayerIntent.Kind.EQUIP_ITEM, PlayerIntent.Kind.UNEQUIP_ITEM, PlayerIntent.Kind.SPLIT_ITEM, PlayerIntent.Kind.JOIN_ITEM, PlayerIntent.Kind.DROP_ITEM]:
 		return SessionStep.failed(_context.current_revision(), &"battle_in_progress", "Resolve the active battle before returning to exploration.")
+	var setup_checkpoint := _setup_checkpoint()
+	if _context.content.package_schema_version >= 7 and not _context.state.party_setup_completed and setup_checkpoint == null:
+		return SessionStep.failed(_context.current_revision(), &"invalid_setup_checkpoint", "The creation state could not be safely detached.")
 	_ensure_coordinators()
-	return _commit_coordinator_result(_intent_coordinator.submit(intent))
+	return _commit_coordinator_result(_intent_coordinator.submit(intent), setup_checkpoint)
+
+
+func _setup_checkpoint() -> SessionRestoreCandidate:
+	return SessionRestoreCandidate.capture_setup(_context) if _context.content.package_schema_version >= 7 and not _context.state.party_setup_completed else null
 
 
 func apply_debug_command(command: SessionDebugCommand) -> SessionStep:
@@ -224,15 +234,22 @@ func _respond_shop_trade(response: InteractionResponse, body: InteractionRespons
 	else:
 		if _context.scenario_vm == null or _context.scenario_vm.pending_request() == null:
 			return SessionStep.failed(_context.current_revision(), &"invalid_session_continuation", "The pending Shop cannot be refreshed.")
+	# The custody change commits only together with a successful Shop refresh.
+	var state_checkpoint := _context.state.to_data()
+	var vm_checkpoint := _context.scenario_vm.snapshot() if _context.session_interaction == null else null
 	var trade := InventoryWorkflow.trade_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.instance_id, body.character_id, 1, body.target_character_id))
 	if not trade.ok:
 		return SessionStep.failed(_context.current_revision(), trade.error_code, trade.error_message)
 	if _context.session_interaction != null:
 		_ensure_coordinators()
 		var service_result: SessionCoordinatorResult = _response_coordinator.respond_session_interaction(refresh)
+		if service_result.state == SessionCoordinatorResult.State.FAILED and _context.state.restore_from_data(state_checkpoint):
+			return SessionStep.failed(_context.current_revision(), service_result.error_code, service_result.error_message)
 		service_result.events = trade.events + service_result.events
 		return _commit_coordinator_result(service_result)
 	var result := _context.scenario_vm.resume(refresh, _context.runtime_api)
+	if result.state == ScenarioVmResult.State.FAILED and _context.state.restore_from_data(state_checkpoint) and (result.is_rejection or _context.scenario_vm.restore(vm_checkpoint)):
+		return SessionStep.failed(_context.current_revision(), result.error_code, result.error_message)
 	var events: Array[DomainEvent] = trade.events.duplicate()
 	events.append_array(result.events)
 	return _finish_resumed_vm_result(result, events)
@@ -331,7 +348,7 @@ func _latch_deferred_reference_fault(code: StringName, message: String) -> Sessi
 	if _context.runtime_fault != null:
 		return _context.runtime_fault
 	var failure := _context.scenario_vm.diagnostics.failure_context() if _context.scenario_vm != null else {}
-	if failure.is_empty():
+	if failure.is_empty() or failure.get("errorCode") != String(code) or failure.get("errorMessage") != message:
 		return null
 	var program_id := String(failure.get("programId", ""))
 	var slot := int(failure.get("slot", -1))
@@ -341,13 +358,13 @@ func _latch_deferred_reference_fault(code: StringName, message: String) -> Sessi
 			if not candidate.target_id.is_empty() and message.contains(candidate.target_id):
 				warning = candidate
 				break
-	if warning == null:
-		return null
+	var target_kind: StringName = warning.target_kind if warning != null else &"scenario-instruction"
+	var target_id: String = warning.target_id if warning != null else "%s:%d" % [program_id, slot]
 	var operands: Array[int] = []
 	for value: Variant in failure.get("operands", []):
 		if value is int:
 			operands.append(value)
-	_context.runtime_fault = SessionRuntimeFault.new(_context.content.campaign_id, program_id, slot, int(failure.get("opcode", 0)), operands, warning.target_kind, warning.target_id, code, message)
+	_context.runtime_fault = SessionRuntimeFault.new(_context.content.campaign_id, program_id, slot, int(failure.get("opcode", 0)), operands, target_kind, target_id, code, message)
 	return _context.runtime_fault
 
 
@@ -370,5 +387,8 @@ func _pending_interaction() -> InteractionRequest:
 
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
+	var setup_checkpoint := _setup_checkpoint()
+	if _context.content.package_schema_version >= 7 and not _context.state.party_setup_completed and setup_checkpoint == null:
+		return SessionStep.failed(_context.current_revision(), &"invalid_setup_checkpoint", "The creation state could not be safely detached.")
 	_ensure_coordinators()
-	return _commit_coordinator_result(_response_coordinator.respond_session_interaction(response))
+	return _commit_coordinator_result(_response_coordinator.respond_session_interaction(response), setup_checkpoint)

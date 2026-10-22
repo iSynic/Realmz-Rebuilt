@@ -8,5 +8,15 @@
 *.realmz2 filter=lfs diff=lfs merge=lfs -text
 *.r2save binary
 *.bundle binary
+*.zlib binary
 src/ui/shared/assets/fonts/licenses/*.txt binary
 src/storage/packages/bundled_campaigns/native-map-triggers.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/storage/packages/bundled_campaigns/program-restoration.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/storage/packages/bundled_campaigns/program-inventory.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/storage/packages/bundled_campaigns/program-audit-findings.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+src/storage/packages/bundled_campaigns/complete-records.json -text
+src/storage/packages/bundled_campaigns/complete-records-inventory.json -text
+src/storage/packages/bundled_campaigns/complete-records-baseline.provenance.json -text
+src/storage/packages/bundled_campaigns/program-audit-findings.json filter=lfs diff=lfs merge=lfs -text
+src/storage/packages/bundled_campaigns/program-restoration.json filter=lfs diff=lfs merge=lfs -text
+tools/fixtures/complete-records-history/historical-state.zip filter=lfs diff=lfs merge=lfs -text

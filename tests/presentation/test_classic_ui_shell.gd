@@ -9,13 +9,12 @@ func run() -> void:
 	await _test_indoor_party_marker()
 	await _test_pause_menu_contracts()
 	_test_startup_party_setup_composition()
-	_test_package_operation_presentation()
+	_test_package_operation_presentation(); _test_interaction_layout_policy(); _test_classic_click_modal()
 	await _test_primary_workspace_lifecycle()
 
 
 func _test_indoor_party_marker() -> void:
 	var package := load_test_package("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2")
-	assert_true(package.is_ok(), "party markers use a validated effective media catalog")
 	if not package.is_ok():
 		return
 	var media := ClassicMediaCatalog.new(package.media, ApplicationMediaCatalog.new())

@@ -83,8 +83,13 @@ $attributesPath = Join-Path $destinationPath ".gitattributes"
 $attributes = Get-Content -Raw -LiteralPath $attributesPath
 if ($attributes.Contains("*.realmz2 binary")) {
     $attributes = $attributes.Replace("*.realmz2 binary", "*.realmz2 filter=lfs diff=lfs merge=lfs -text")
-    [System.IO.File]::WriteAllText($attributesPath, $attributes, [System.Text.UTF8Encoding]::new($false))
 }
+# Receipts and fixtures above the public blob limit travel through LFS, like packages.
+foreach ($lfsPath in @($manifest.publicLfsPaths)) {
+    $lfsRule = "$lfsPath filter=lfs diff=lfs merge=lfs -text"
+    if (-not $attributes.Contains($lfsRule)) { $attributes = $attributes.TrimEnd() + "`n" + $lfsRule + "`n" }
+}
+[System.IO.File]::WriteAllText($attributesPath, $attributes, [System.Text.UTF8Encoding]::new($false))
 if (-not $attributes.Contains("*.realmz2 filter=lfs diff=lfs merge=lfs -text")) {
     throw "Public staging does not preserve the Realmz package LFS boundary."
 }

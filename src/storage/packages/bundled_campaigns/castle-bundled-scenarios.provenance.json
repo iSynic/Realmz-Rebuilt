@@ -26,11 +26,11 @@
       "name": "Assault on Giant Mountain",
       "campaignId": "scenario-assault-on-giant-mountain",
       "file": "scenario-assault-on-giant-mountain.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "44de42201952febb5320dd0933b352b816cebd117c6f3d5f64dcda39c5d0c8b8",
-      "contentId": "ec57dce90d52c55e545ff2a20dc894c9cf62158b3322288d4d28433b7b31f893",
-      "archiveSha256": "9be2a50ea98da5ce79144768fe84f4aa1e21af1152efd4f570c38be56bceda11",
-      "bytes": 963712,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "5b23b7efcbac47ae2912b966583be27573b032b1ca8bd49c771a4d5ed5936e5c",
+      "contentId": "f70e7026f8239dda4cf598a907b49f354937ce98c5640dd5b09b280814627e66",
+      "archiveSha256": "fde72eda61f968d2ff919d073607340cc61c1ec6d67e93124197a93f4ce70ff4",
+      "bytes": 1741019,
       "sourceArchive": {
         "compilerRevision": "9b037e5d6436a970eeeaaebea7a70c6867e89e99",
         "archiveSha256": "9cde824d3b37ab9604ecf15f1db57720835107c5701bedeca76be236e6bf69b5",
@@ -51,8 +51,8 @@
         "spells": 0,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 44,
-        "mediaPayloads": 44
+        "mediaDescriptors": 78,
+        "mediaPayloads": 78
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -95,17 +95,50 @@
           "bytes": 936479
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "9be2a50ea98da5ce79144768fe84f4aa1e21af1152efd4f570c38be56bceda11",
+          "bytes": 963712,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "ec57dce90d52c55e545ff2a20dc894c9cf62158b3322288d4d28433b7b31f893",
+          "packageHash": "44de42201952febb5320dd0933b352b816cebd117c6f3d5f64dcda39c5d0c8b8"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "99cfe030d26f78bbab687c8b3946c05bb17f2c8a16fa6c8a74687ecedb161941",
+          "contentId": "12c740e90b6056e1d50664b27b4ec7b806fe32de8bcff4a876e86b4b90fb3195",
+          "archiveSha256": "e9a7dc8bf14ae7dfadb99cc85f4cf5f9b950a1dbe0aa8af0ad813f0af6b86504",
+          "bytes": 2166139,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "07ad28bfb7aca1c86af8a09a1dd274afa0bb3c1853d9a3cfb9d771c0ace5fbb6",
+          "contentId": "12c740e90b6056e1d50664b27b4ec7b806fe32de8bcff4a876e86b4b90fb3195",
+          "archiveSha256": "4291e72cb0c64c0f6a10400fff66bf698dc7bbf12f0c5836030bcacc4b6683e1",
+          "bytes": 1323995,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 33
       }
     },
     {
       "name": "Castle in the Clouds",
       "campaignId": "scenario-castle-in-the-clouds",
       "file": "scenario-castle-in-the-clouds.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "8616163f005e8facdc8a4cbbaa10c7f6b2c4f362cc565cc4cf6421b0f6498de1",
-      "contentId": "18626a831e08ef4397a519c5d60a00567214a14da63fff71ea547dd9059b26a1",
-      "archiveSha256": "43a5c1bfeea78bad2a997694ba703e2813d74be81d40a7fb11f7cd39f936377a",
-      "bytes": 1000302,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "dce5b9338a0c8b868b4fba579b66d6f0b5c8ff343e93e9133c976c75ec83c4c1",
+      "contentId": "5d33a60bb5a738e3ce81b84b47f28f1d59e5b5b0d13473001dfeb93f271b42fb",
+      "archiveSha256": "a3d9b3b077414c5839741356213b2ec287605f6f0c6a5114a3eed5d25aeeedcf",
+      "bytes": 1945250,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "8607fc9f58a495ba87bfe2e63500545ff6a4e0c844722e0ba055b0cb4a85c96d",
@@ -126,8 +159,8 @@
         "spells": 0,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 58,
-        "mediaPayloads": 56
+        "mediaDescriptors": 90,
+        "mediaPayloads": 88
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -170,6 +203,39 @@
           "bytes": 971744
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "43a5c1bfeea78bad2a997694ba703e2813d74be81d40a7fb11f7cd39f936377a",
+          "bytes": 1000302,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "18626a831e08ef4397a519c5d60a00567214a14da63fff71ea547dd9059b26a1",
+          "packageHash": "8616163f005e8facdc8a4cbbaa10c7f6b2c4f362cc565cc4cf6421b0f6498de1"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "c4048afc8477f6c94f284f3aa2523cd24dc578f1e55f25cc70e24402d0b293fb",
+          "contentId": "5bcf797ac4eaffe5750fde872f20bb4710945cedac16151a347be55c070a191d",
+          "archiveSha256": "0b57a6c7766bb6c911409a829b0b6064f6403d6b3322266ed64542337738773b",
+          "bytes": 2448436,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "79eb83708c1195b778272c4647101520c547be1ad071e4a7c66d1fd2a8d47adc",
+          "contentId": "5bcf797ac4eaffe5750fde872f20bb4710945cedac16151a347be55c070a191d",
+          "archiveSha256": "00027bcab2dee6c1887d1d8dd4634a51d26b45eed1973e4d1856fda3078487b6",
+          "bytes": 1373114,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 32
       }
     },
     {
@@ -181,11 +247,11 @@
         "catalog": "city-of-bywater.source.json",
         "snapshotSha256": "ab4b6fc19a1a42bb61353629feb71187e76e760f94c46392958311a5e1361d2e"
       },
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "26d73a87fccb55befe0dc510fb620b535fbd521ff70ea6d88bfdd67ea5711389",
-      "contentId": "54619d8a114972e6d66393101dff18adc6708f9607b68e8f96cffd58cd846553",
-      "archiveSha256": "b8d22d64c9f34210f05a8bf06a118260e77ec7bb2cadab2762c88edaab9163f1",
-      "bytes": 683146,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "f065223425dfb349acd60b00b14238ec8c375bf657d03cbee3cd180b3fcc1063",
+      "contentId": "6eeccbf120d82945cb1a6e7f40a449b8ba49290f74f041f3ecb4df7074281b4e",
+      "archiveSha256": "a23c2a929c11fa132c2f05f2faae0a76071c7f18d7c4d2ad5972f73cf2e7e328",
+      "bytes": 1204627,
       "sourceArchive": {
         "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
         "archiveSha256": "425087df5a2d98bf42da1623c09cfc2fadcdcfcd7977945fdd49ba1d67f1ab58",
@@ -205,9 +271,9 @@
         "items": 200,
         "spells": 0,
         "races": 0,
-        "castes": 30,
-        "mediaDescriptors": 10,
-        "mediaPayloads": 10
+        "castes": 0,
+        "mediaDescriptors": 45,
+        "mediaPayloads": 45
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -250,17 +316,50 @@
           "bytes": 654882
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "b8d22d64c9f34210f05a8bf06a118260e77ec7bb2cadab2762c88edaab9163f1",
+          "bytes": 683146,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "54619d8a114972e6d66393101dff18adc6708f9607b68e8f96cffd58cd846553",
+          "packageHash": "26d73a87fccb55befe0dc510fb620b535fbd521ff70ea6d88bfdd67ea5711389"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "f3d1cb3e9e6786521aa716125a307cce6a9948258fb2f7a917fd4177af169b14",
+          "contentId": "a05a296de3876f11b85eea94c24bfbe1139a30b3fd4ab84a2e14993ed73398a8",
+          "archiveSha256": "d683816b9e496a165b05e303ecc741e1fdd28f30be657b244cf35f6150046c40",
+          "bytes": 1752544,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "14778ba4177b749f780a61db762fa74c25fc9e336e92161def77b58dcdc6c662",
+          "contentId": "a05a296de3876f11b85eea94c24bfbe1139a30b3fd4ab84a2e14993ed73398a8",
+          "archiveSha256": "b70c9462684f40c436f9b4cbeaaea78f6f2842115d51c9263e278ef18ef2c1d9",
+          "bytes": 934440,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 35
       }
     },
     {
       "name": "Destroy the Necronomicon",
       "campaignId": "scenario-destroy-the-necronomicon",
       "file": "scenario-destroy-the-necronomicon.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "f2fde15520a7b8c488936f75e422959659aec6add4f8fb35ec99204b1c6a1dd7",
-      "contentId": "d47806c061942a6cbaaab066cd405aa4fde1273c219f78db9078c8cf9c7bb881",
-      "archiveSha256": "e1c199fb44e3b5280b79433d4c4aa09540cc38abf228ca6050487342f59f9702",
-      "bytes": 1557832,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "afa44a964453a673b2bbc62f13b6c6b7c41becdbf3bae9aa6ad96e657e6391c7",
+      "contentId": "969df20d5c6c1a959e9c3e17c9e35cb7dbd2b7f96625395bb2d7d02789d6235f",
+      "archiveSha256": "ead7debcf96db4e99896d59b26e94bdc9df8c17e0ba10ac9bc0291d1b54fd228",
+      "bytes": 2651316,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "5a39c7e13bcdb73532457c39faef1226c1257548deb0b50b8a603172be949c87",
@@ -281,8 +380,8 @@
         "spells": 0,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 172,
-        "mediaPayloads": 170
+        "mediaDescriptors": 207,
+        "mediaPayloads": 202
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -325,17 +424,50 @@
           "bytes": 1523340
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "e1c199fb44e3b5280b79433d4c4aa09540cc38abf228ca6050487342f59f9702",
+          "bytes": 1557832,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "d47806c061942a6cbaaab066cd405aa4fde1273c219f78db9078c8cf9c7bb881",
+          "packageHash": "f2fde15520a7b8c488936f75e422959659aec6add4f8fb35ec99204b1c6a1dd7"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "317a333070b79aa461459e3d2e6d9ef151cc6670d0b075d0c014e8c18eb26464",
+          "contentId": "5814c78dfb2c04c4f7d439a33edd974aac0010d7ad3eed312fe7ece585ec2fda",
+          "archiveSha256": "834e5e9f9189ca21a1478471ca7181955b5cb6c5bc58bd844dea86cbb3b9ebcd",
+          "bytes": 3070752,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "d8d1b74e2e9c7a5f3de87bcb573b43ff0fd9aea8c4ce161595db824e77b941ec",
+          "contentId": "5814c78dfb2c04c4f7d439a33edd974aac0010d7ad3eed312fe7ece585ec2fda",
+          "archiveSha256": "27899b8f20f775229e5511b090cc3cf537fc43334d9c2e9569222ddcd843a122",
+          "bytes": 1990464,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 32
       }
     },
     {
       "name": "Grilochs Revenge",
       "campaignId": "scenario-grilochs-revenge",
       "file": "scenario-grilochs-revenge.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "a5662fcf210504339d8170b7189487d9f0f874ebd3d8b55594d4c5e1478c5970",
-      "contentId": "86619bb53e3341f825c384b4deaf5cd6b8609c4376b5af774b39e9721c6ea445",
-      "archiveSha256": "ecb2277f56074edbf2696441ecd43945cedb8763af91f52420471f41e6db1c46",
-      "bytes": 1789679,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "5b7a5e46aa7457ba404a1189d57eeccacd0e97983d9eee14e98107a6dce7863e",
+      "contentId": "6f223b0a8c5eb5a5c1e3ccd01c10ebe3a0c897a07d252102974f1d964b549f4f",
+      "archiveSha256": "bc72cd3964d94b02e9bb74dc03e1c650021c94974d514a125e21d317d4f36f34",
+      "bytes": 2690505,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "5cc2520282703a53425962e64dfb98eed7017e85c83153f90c602f65453b174d",
@@ -356,8 +488,8 @@
         "spells": 0,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 198,
-        "mediaPayloads": 197
+        "mediaDescriptors": 230,
+        "mediaPayloads": 226
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -400,17 +532,50 @@
           "bytes": 1751762
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "ecb2277f56074edbf2696441ecd43945cedb8763af91f52420471f41e6db1c46",
+          "bytes": 1789679,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "86619bb53e3341f825c384b4deaf5cd6b8609c4376b5af774b39e9721c6ea445",
+          "packageHash": "a5662fcf210504339d8170b7189487d9f0f874ebd3d8b55594d4c5e1478c5970"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "e0870ca70111a7209a8dca7202992d82eae90726eb3ed8af1b5bda99a601b719",
+          "contentId": "0f01fc6446080e9b6009995cd4a9eef70178a698263f6ef84d7da0c58c2608a2",
+          "archiveSha256": "5539dce13db24b810e9258bdf6f4e4a798c1f945671f0b10e0b136bd52c22239",
+          "bytes": 3525879,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "27e58863c2bfe566f59897214fb3ddd1d3baad179d127a7eb4ddf5f9fcbc0e1b",
+          "contentId": "0f01fc6446080e9b6009995cd4a9eef70178a698263f6ef84d7da0c58c2608a2",
+          "archiveSha256": "bf4ce66bc02538d71ead4829c6ef59345d0aca863cf6207139f1921c04f04473",
+          "bytes": 2200036,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 31
       }
     },
     {
       "name": "Half Truth",
       "campaignId": "scenario-half-truth",
       "file": "scenario-half-truth.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "c68c78ac6201e246cd7d3deb391bd9a0fad712b8c25dc37778e8074c1a8548c3",
-      "contentId": "3a19a83cfc93da328f3fa951c65babbb6266e7488612cb437b8723d709131565",
-      "archiveSha256": "e9c7c1ca211ba9672c0ad1000be8d86be782d0cff70b363ce0d67aa3f819ea2b",
-      "bytes": 6440427,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "3d06448fdf7b6bd0ba2d14c578c5e8ccc4901a6ac802bcbb78700b50d2ae8a6d",
+      "contentId": "8b91aa7af95cbdbc7864529aba1d8e1ee5dc41dbf76d15f6017db08e198d4858",
+      "archiveSha256": "bbd57486479b0519ac9b3468c8cf198dbe2a5c5b379df0bf9a0be7dc8652d523",
+      "bytes": 12723587,
       "sourceArchive": {
         "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
         "archiveSha256": "4b77256f51305cc2c4cb276982a3e19ab9dc9b13062074d49d4f449d9838fed4",
@@ -430,9 +595,9 @@
         "items": 200,
         "spells": 105,
         "races": 0,
-        "castes": 0,
-        "mediaDescriptors": 467,
-        "mediaPayloads": 456
+        "castes": 30,
+        "mediaDescriptors": 502,
+        "mediaPayloads": 493
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -475,17 +640,50 @@
           "bytes": 6397432
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "e9c7c1ca211ba9672c0ad1000be8d86be782d0cff70b363ce0d67aa3f819ea2b",
+          "bytes": 6440427,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "3a19a83cfc93da328f3fa951c65babbb6266e7488612cb437b8723d709131565",
+          "packageHash": "c68c78ac6201e246cd7d3deb391bd9a0fad712b8c25dc37778e8074c1a8548c3"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "650a6eafd94e6f00de5d19e0948ad8cedf6ef49d8b628a5488f9155bccc77dd7",
+          "contentId": "c5e3f52cb1218a17a698df39f9212b2b528e12ef84637641de025c9b546406fb",
+          "archiveSha256": "9d9d942d29346f2fa719164783f6fe3e0e06444bf4e7559218966752d56f433e",
+          "bytes": 10650444,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "f78f98576595c08e53a8a12fa55cf0da2cd71b56d48c8bd8cb6a7fa295e17bda",
+          "contentId": "c5e3f52cb1218a17a698df39f9212b2b528e12ef84637641de025c9b546406fb",
+          "archiveSha256": "d1285c38ce6a3f7b341730d0a8bfb8081e3983ec209c13ab3c14101aec524c88",
+          "bytes": 8221098,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 37
       }
     },
     {
       "name": "Mithril Vault",
       "campaignId": "scenario-mithril-vault",
       "file": "scenario-mithril-vault.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "681a90529ddaae25425405ca090ce9e1d989c523d4c783061c66b823d0997764",
-      "contentId": "4d7f0c77e5561b2bfc3a8acbb36e40de89b1359646dff03a0884a5949b93cdb2",
-      "archiveSha256": "72678fc3366a5f37e68a56e5ab488ef651f5ad35be0dcdb374d05987da706906",
-      "bytes": 3231614,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "04180377747ae3e3797c33b34e2e4916f8e48b949ab465c42b7c2e00a72829b5",
+      "contentId": "0bef9c7a03eff9cd805fc97778c1ce762b42ac4aa81356f461eaf59b9b7acb11",
+      "archiveSha256": "8cc59792dc1ebf7503e22946b316bf969769b2504f97b9b155c235a29fa0bf31",
+      "bytes": 5130313,
       "sourceArchive": {
         "compilerRevision": "7ff51260b06efc1959faa2b1c26a8fc6d1e6ecee",
         "archiveSha256": "213a4fc5def565793f5489eff08890d22e73b8d86e33476f668d19cfdafc9ad2",
@@ -506,8 +704,8 @@
         "spells": 105,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 310,
-        "mediaPayloads": 309
+        "mediaDescriptors": 351,
+        "mediaPayloads": 347
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -554,17 +752,50 @@
           "bytes": 3176243
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "72678fc3366a5f37e68a56e5ab488ef651f5ad35be0dcdb374d05987da706906",
+          "bytes": 3231614,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "4d7f0c77e5561b2bfc3a8acbb36e40de89b1359646dff03a0884a5949b93cdb2",
+          "packageHash": "681a90529ddaae25425405ca090ce9e1d989c523d4c783061c66b823d0997764"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "9d064182bfa74a1f83069c7bfbe11cdab571d47132da1404f1e456e3e78d4bb3",
+          "contentId": "b9780187e7196bcf5df83cae5c4af42cf889ef0f4da4be228e87299f1a4831ad",
+          "archiveSha256": "584e8fc11b48b93bc9d13f06d1867f473ba5166501df3b5153be6a9665c5aa7d",
+          "bytes": 5830116,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "f0773a50766df766562bf9a80c354cde7c7e2ce313f18d89ead1e8fb8093bdfe",
+          "contentId": "b9780187e7196bcf5df83cae5c4af42cf889ef0f4da4be228e87299f1a4831ad",
+          "archiveSha256": "369afb63e666a6f23d528d562468668fd60a945442c7d17b3edcb2d0cbc539e4",
+          "bytes": 4288344,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 44
       }
     },
     {
       "name": "Prelude to Pestilence",
       "campaignId": "scenario-prelude-to-pestilence",
       "file": "scenario-prelude-to-pestilence.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "a93377fe0e8f029d3451ea593fb6650b7a4c482524f62832adbc3fbc44094c78",
-      "contentId": "1ca4171e4b76e0dc2f630644343a8accadea1ab96c2a87d0bfbb1d17d4e9693a",
-      "archiveSha256": "70c063a2a2dde5847dc7e8284f295bae8c3d0625f874e0ad7f43bdb09d0337ba",
-      "bytes": 931149,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "5536ec95768ee2c7c84aa169e4d68debe434e8a4e1f62cc5b8960c171344efa8",
+      "contentId": "63bc17a3b410006ca3d46439ed5307b3b1dbf9cb835cc67b81561d72184012cc",
+      "archiveSha256": "7898a19c59efc40716ace2651e520deb07c87f3178e04820d63352bf6bcfcd15",
+      "bytes": 1257283,
       "sourceArchive": {
         "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
         "archiveSha256": "2bbfe84b06ebce409146aa2fb01ff88f9e8aec6035750675dae9e6119b19aba9",
@@ -585,11 +816,11 @@
       },
       "retainedScenarioContent": {
         "items": 200,
-        "spells": 1,
+        "spells": 0,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 40,
-        "mediaPayloads": 40
+        "mediaDescriptors": 72,
+        "mediaPayloads": 72
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -747,17 +978,50 @@
           "bytes": 917225
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "70c063a2a2dde5847dc7e8284f295bae8c3d0625f874e0ad7f43bdb09d0337ba",
+          "bytes": 931149,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "1ca4171e4b76e0dc2f630644343a8accadea1ab96c2a87d0bfbb1d17d4e9693a",
+          "packageHash": "a93377fe0e8f029d3451ea593fb6650b7a4c482524f62832adbc3fbc44094c78"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "5351c38c216ce24d9ddd04564a3c617c9e4fef7f614f536f2f793c1d634bc054",
+          "contentId": "72b76bba54cfcad4a81c0ffabe4ff100b2404163487ca9b53c164f79f78ed6cc",
+          "archiveSha256": "fb9b2fbb9dd7e363e3ff547d2977151db864638a9472faa6779b8a2cb73acf34",
+          "bytes": 1871899,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "35ef7bd6cc3585c32c67b6c51c1875b13e424b54c4557285e8b7814c565442b0",
+          "contentId": "72b76bba54cfcad4a81c0ffabe4ff100b2404163487ca9b53c164f79f78ed6cc",
+          "archiveSha256": "f9cc5b5b39be837a0807eb6b5a02b130d3fafe5d05a8704fb3ae721829f7289b",
+          "bytes": 1165946,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 32
       }
     },
     {
       "name": "Trouble in the Sword Lands",
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "6d5fbc4fa8d99a4932d09b74cf719184e466e34509c57014aad3038c92c8a61e",
-      "contentId": "efe9af288aafca47729aae282e639d8936b150810271ee84c855a816f3c42b27",
-      "archiveSha256": "c87a004438e05070d297cfa61f245c6eb637d9d4b5093bc8c7ef6b8ada758aaa",
-      "bytes": 5080377,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
+      "contentId": "b1c458bb08018f3deaceabaf70914f195d985f4277fc9edd43f9604a1c2dea20",
+      "archiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
+      "bytes": 8753239,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "10cb5cae1af68109084fd84b95254663ccf397e6a704813514f90c795ed88c42",
@@ -778,8 +1042,8 @@
         "spells": 105,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 275,
-        "mediaPayloads": 273
+        "mediaDescriptors": 312,
+        "mediaPayloads": 309
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -826,17 +1090,61 @@
           "bytes": 5000906
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programRestoration": {
+        "operation": "restore-native-payment-program",
+        "receiptFile": "trouble-payment-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "c87a004438e05070d297cfa61f245c6eb637d9d4b5093bc8c7ef6b8ada758aaa",
+          "bytes": 5080377,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "efe9af288aafca47729aae282e639d8936b150810271ee84c855a816f3c42b27",
+          "packageHash": "6d5fbc4fa8d99a4932d09b74cf719184e466e34509c57014aad3038c92c8a61e"
+        }
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "7cee6240e1097398dc5ebee65f6e2bc2ac0cfb27d0f61241d6bf88ee251ee744",
+          "bytes": 5080397,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "4c962abbde28d041bf8fa6ca957ea539fb24977a81f80822255317b57a4df3a8",
+          "packageHash": "d23364bddb505d34da718a19a822adf83b17364993a8ef77eb4577fe06d5971b"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "ca22740a10d718b041ce3301d226c4b7ac737f87a274eb0a255ec9c5ed70bfe4",
+          "contentId": "1066f84bac19c4ed7324ab12c032dedea3d6d41a8144805c6e7f9858ecb59c7d",
+          "archiveSha256": "2bedf3cc4570670c41ac8b091cf151ecbb85af1eac09c3cadf0dacde20e5f9d2",
+          "bytes": 9484483,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "2677e5c7c07bb78af12f87c59905983b24fe13fb5dbee1d77e1ee26854242cb6",
+          "contentId": "1066f84bac19c4ed7324ab12c032dedea3d6d41a8144805c6e7f9858ecb59c7d",
+          "archiveSha256": "0c6b4dfb9cede405bda38595efcc86903810f9859e3cf1814c11feb1a7aa92a6",
+          "bytes": 6733394,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 38
       }
     },
     {
       "name": "Twin Sands of Time",
       "campaignId": "scenario-twin-sands-of-time",
       "file": "scenario-twin-sands-of-time.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "320da7e47cb18e5e15650e1bfb26b0a432ab953175ef46c6444d0631618f4662",
-      "contentId": "8416ca907a9864ca541361dd60c07f110d16094149db72d76cf2539b70e929b0",
-      "archiveSha256": "44f7db4b7442caef748e19393d9c8da8945f13dee8e4fdcc648398d36123728e",
-      "bytes": 1141529,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "122d7b08168b0efd2fada797445475d6e5f1647be4ac2580220d37440e2d052b",
+      "contentId": "0777e45dc4bcd6bcdd1821a391bb54f147a47812c68bf91761a30d2881401732",
+      "archiveSha256": "a64f6573adbc104e2410e9d47c271244ee7c0cfd03c0636b63afa1ef8bb4de23",
+      "bytes": 1804935,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "b1ab186356915ed759c9bfb042b47685a98b403063cdae9b91003a10502fd3fd",
@@ -857,8 +1165,8 @@
         "spells": 105,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 109,
-        "mediaPayloads": 108
+        "mediaDescriptors": 155,
+        "mediaPayloads": 145
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -905,17 +1213,50 @@
           "bytes": 1106323
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "44f7db4b7442caef748e19393d9c8da8945f13dee8e4fdcc648398d36123728e",
+          "bytes": 1141529,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "8416ca907a9864ca541361dd60c07f110d16094149db72d76cf2539b70e929b0",
+          "packageHash": "320da7e47cb18e5e15650e1bfb26b0a432ab953175ef46c6444d0631618f4662"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "8900793443a0e98ca40ec28265007c41ee0b95f644bd3e1d586a60a66817b080",
+          "contentId": "6264a1008c91ac3146f629c569b590cbe8c8ed309a46faca9dd65fb4ff9032d3",
+          "archiveSha256": "14325ac8101050bc1c314fa7a3fdd6e5c5e7fc5634d1af47f599241a3108b502",
+          "bytes": 2434285,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "c503619f4d320b01febc26e4e66f02254c8194647876cf0ea3146b13f251c851",
+          "contentId": "6264a1008c91ac3146f629c569b590cbe8c8ed309a46faca9dd65fb4ff9032d3",
+          "archiveSha256": "7d9680c2b32088b1f25569015247f817fcff7d3f6da25218cd8a0e93053e1c7d",
+          "bytes": 1470307,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 36
       }
     },
     {
       "name": "War in the Sword Lands",
       "campaignId": "scenario-war-in-the-sword-lands",
       "file": "scenario-war-in-the-sword-lands.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "fa80219a1ce7e39e2866cc1b4d0d5d04afdb9e2fd0e645e4ae55936241aa0b9f",
-      "contentId": "de08f27a8fafd95a0b0c32dbc40f34255b1111fc99c503faf6cab23c08bfe526",
-      "archiveSha256": "2026a436f70699fb8afb0dcd9b79898c350abb2e29b265535b80989a5e3b982b",
-      "bytes": 13101863,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "50a020526a9025313da25dd0b8d6f4ddf8b5e63ad19a404d22efe0207aae6c3a",
+      "contentId": "afbedd9dac4728f25d40fcd586a52319e6700077a18aba1cdfbdefa0339e0d69",
+      "archiveSha256": "8e530934a4c93f7ba668ad5eb6ffe169ed2f190643f5b9d0525b0fb7801e694c",
+      "bytes": 16433883,
       "sourceArchive": {
         "compilerRevision": "31360e29be145a123f3906daa9e018a57729906c",
         "archiveSha256": "30c2c8c5aadc7424533c34e4242885dc42ed47533e2dd7c2be9fe756d74535c5",
@@ -936,8 +1277,8 @@
         "spells": 105,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 553,
-        "mediaPayloads": 549
+        "mediaDescriptors": 592,
+        "mediaPayloads": 585
       },
       "correctionsCatalog": "war-in-the-sword-lands.corrections.json",
       "scenarioMediaMigration": {
@@ -968,17 +1309,50 @@
           "bytes": 12995491
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "2026a436f70699fb8afb0dcd9b79898c350abb2e29b265535b80989a5e3b982b",
+          "bytes": 13101863,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "de08f27a8fafd95a0b0c32dbc40f34255b1111fc99c503faf6cab23c08bfe526",
+          "packageHash": "fa80219a1ce7e39e2866cc1b4d0d5d04afdb9e2fd0e645e4ae55936241aa0b9f"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "20f872d40d15bee4d33c9871b6d9952ef5eba7ed8c7f22baf21542c720af7b97",
+          "contentId": "e55a9243d7bae53eb145e7fdb7b956763845b857a9d7d2702ce7b41beed77d6e",
+          "archiveSha256": "c6f85655bdc02358420d3660bd6c400781720fa7e69f1fcf30fa720e3938758c",
+          "bytes": 20303200,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "e7ed0720772437fb22aa9e4c237a6df31a0b48dad3523f5899979efe1c6ae241",
+          "contentId": "e55a9243d7bae53eb145e7fdb7b956763845b857a9d7d2702ce7b41beed77d6e",
+          "archiveSha256": "2baac04506d6bb2cdbc4001cc957cf76788738b0e64993c2d871270e8e4a652e",
+          "bytes": 15944696,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 38
       }
     },
     {
       "name": "White Dragon",
       "campaignId": "scenario-white-dragon",
       "file": "scenario-white-dragon.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "5d666c3d0220f204bf844f040566b322e3f47e9c10f92d97c04e8771d22a5025",
-      "contentId": "2905fead0c11cec3fbaa134e943c54b27200a19469e56ade0f69763f3d7c6d69",
-      "archiveSha256": "1f8b8fc7d9aca2f59ced9e5a3df91cd9302b517855e6a648b92bfdb0012ee829",
-      "bytes": 1502858,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "ed3552fc9b4a5580d598ea540cbf2e6f04002be8985a3020ccbc419ed31449c6",
+      "contentId": "c57e22dddabe2dd5ed2cf4760b8112350894bc90f92bb2bfc4863dcff55a6698",
+      "archiveSha256": "35b52b622eddc636ea424f8c2eae18c6c08c28bce5f65150387729e915f4d951",
+      "bytes": 2419767,
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "920b4f651acaa5f94cfc66ad0da1d8c6e115591490950e3477153a4add09e85e",
@@ -999,8 +1373,8 @@
         "spells": 0,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 123,
-        "mediaPayloads": 123
+        "mediaDescriptors": 155,
+        "mediaPayloads": 155
       },
       "mediaOwnershipMigration": {
         "operation": "slim-scenarios",
@@ -1043,17 +1417,50 @@
           "bytes": 1465404
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "1f8b8fc7d9aca2f59ced9e5a3df91cd9302b517855e6a648b92bfdb0012ee829",
+          "bytes": 1502858,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "2905fead0c11cec3fbaa134e943c54b27200a19469e56ade0f69763f3d7c6d69",
+          "packageHash": "5d666c3d0220f204bf844f040566b322e3f47e9c10f92d97c04e8771d22a5025"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "544f50445a1b4fb8ff8ff50e995f63fd32f34dbb4226b790a7db02262567d553",
+          "contentId": "9ccaabbb692575fe8b4767aacd6e69c2063c79f58f7ea9ded96bab9968e9b716",
+          "archiveSha256": "f866ed52590d6b7ea7c24ce718b59644e6ab4511d8c015f9f9c1d3a9f6d19055",
+          "bytes": 3037198,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "25f2f2192cd5e5885ec9c7c4bed03ac1943b4d1b6535586964c7181ac0b1aa1d",
+          "contentId": "9ccaabbb692575fe8b4767aacd6e69c2063c79f58f7ea9ded96bab9968e9b716",
+          "archiveSha256": "44ea8c224abc5546a9c5772a619ade97e7bf99169e5079da1d08185cb66adf2d",
+          "bytes": 1881290,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 32
       }
     },
     {
       "name": "Wrath of the Mind Lords",
       "campaignId": "scenario-wrath-of-the-mind-lords",
       "file": "scenario-wrath-of-the-mind-lords.realmz2",
-      "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-      "packageHash": "03b0c6a8099e1cfe4f257e8c4e1a3ef949fa2faa76720b5182c7d486496bac74",
-      "contentId": "21a521d78862c4b2fb2d5486f268a62c1e7713496643cc5572edb462ba13409e",
-      "archiveSha256": "f28b7c9b6a257079605f916fb343aab70a0a7c984427662f8498c8aca3fa27ea",
-      "bytes": 16416080,
+      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "packageHash": "ae694554054cb3c68fe0a6143c7da7c95ff8ba601be5f7399cfb5731e9454761",
+      "contentId": "38b4d7f0145eeb59fe770f05106c32a7dabd858f93df5b3e3c89fd48e291660c",
+      "archiveSha256": "28f35552e15347233c34ad06504deb7bc68b33bf998f9cdcb5e7412d808bfbb1",
+      "bytes": 20584659,
       "sourceArchive": {
         "compilerRevision": "2ded3e0ecd2e6b41ac49893e27f23704246d2bb1",
         "archiveSha256": "9366031c11818d7e80814fe922ea4b8bed867b56915cc34d9e47f851efaa71a9",
@@ -1072,12 +1479,12 @@
         "mediaPayloads": 505
       },
       "retainedScenarioContent": {
-        "items": 197,
-        "spells": 106,
+        "items": 200,
+        "spells": 105,
         "races": 0,
         "castes": 0,
-        "mediaDescriptors": 583,
-        "mediaPayloads": 575
+        "mediaDescriptors": 627,
+        "mediaPayloads": 616
       },
       "correctionsCatalog": "wrath-of-the-mind-lords.corrections.json",
       "mediaOwnershipMigration": {
@@ -1203,7 +1610,51 @@
           "bytes": 16327919
         },
         "receiptFile": "native-map-triggers.json"
+      },
+      "programAuditRestoration": {
+        "operation": "preserve-native-programs-and-source",
+        "receiptFile": "program-restoration.json",
+        "previousPackage": {
+          "archiveSha256": "f28b7c9b6a257079605f916fb343aab70a0a7c984427662f8498c8aca3fa27ea",
+          "bytes": 16416080,
+          "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+          "contentId": "21a521d78862c4b2fb2d5486f268a62c1e7713496643cc5572edb462ba13409e",
+          "packageHash": "03b0c6a8099e1cfe4f257e8c4e1a3ef949fa2faa76720b5182c7d486496bac74"
+        }
+      },
+      "sourceCompression": {
+        "operation": "compress-retained-native-sources",
+        "receiptFile": "source-compression.json",
+        "previousPackage": {
+          "packageHash": "37b99bb8a4f842b3fdbffbabf05dd54efba95d3268a3a1db0eb2cbd2a799fbdd",
+          "contentId": "fa341f92b5bdae8322aaf86504074d3042b747850593279c2be32b1f216c6372",
+          "archiveSha256": "e5f247c359585a750a98c7d90a9111bbfc63b9415d4ff924daf16557606b5d24",
+          "bytes": 24213787,
+          "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+        }
+      },
+      "completeRecords": {
+        "schemaVersion": 7,
+        "previousPackage": {
+          "packageHash": "f4f96b09859c2a478e2d926e1db088527fa5b8479a5e7e2667c386445b5774e1",
+          "contentId": "fa341f92b5bdae8322aaf86504074d3042b747850593279c2be32b1f216c6372",
+          "archiveSha256": "c336092519f91c91df7615bde30cdb0381c0f44cccd1353666cf26f3f76d96f9",
+          "bytes": 20239975,
+          "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
+        },
+        "sourceFiles": 40
       }
     }
-  ]
+  ],
+  "completeRecordCompiler": {
+    "identity": {
+      "commit": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "name": "Providence",
+      "projectOrigin": "imported",
+      "projectSchemaVersion": 36,
+      "version": "0.1.0"
+    },
+    "schemaSha256": "b6af98b0541dd1bb34e06ca6644c6eb4e898d6da93ceffd4b182ef65339c6750",
+    "baselineCatalogSha256": "048c0af6a1ce9b9af0e170a68d1d3a2dc1bb2d0cf49b58b524ebe21ef67bf411"
+  }
 }

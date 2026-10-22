@@ -65,7 +65,7 @@ func draw_between(low: int, high: int, semantic_tag: StringName) -> int:
 
 
 func draw_between_classic(low: int, high: int, semantic_tag: StringName) -> int:
-	var result := draw_classic(classic_range_width(low, high), semantic_tag) - 1 + low
+	var result := RealmzArithmetic.new().signed_16(draw_classic(classic_range_width(low, high), semantic_tag) - 1 + low)
 	_annotate_between_trace(low, high, result)
 	return result
 
@@ -81,6 +81,15 @@ static func classic_between_bounds(low: int, high: int) -> Vector2i:
 	if range_width == 0:
 		return Vector2i(low, low)
 	return Vector2i(low + range_width + 1, low)
+
+
+static func classic_between_intervals(low: int, high: int) -> Array[Vector2i]:
+	var bounds := classic_between_bounds(low, high)
+	var arithmetic := RealmzArithmetic.new()
+	var first := arithmetic.signed_16(bounds.x)
+	var last := arithmetic.signed_16(bounds.y)
+	if first <= last: return [Vector2i(first, last)]
+	return [Vector2i(first, 32767), Vector2i(-32768, last)]
 
 
 func _annotate_between_trace(low: int, high: int, result: int) -> void:

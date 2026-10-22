@@ -35,6 +35,7 @@ static func reserve(state: GameState, content: RealmzContent, selection: CombatC
 			if not _reserve_item(caster, content, selection, commitment): return false
 		_: return false
 	turn.cast_commitment = commitment
+	turn.classic_spell_active = true
 	return true
 
 
@@ -68,6 +69,7 @@ static func release(state: GameState) -> bool:
 	elif commitment.item != null:
 		if not _release_item(caster, commitment): return false
 	state.combat.turns.active_turn.cast_commitment = null
+	state.combat.turns.active_turn.classic_spell_active = false
 	return true
 
 
@@ -103,5 +105,6 @@ static func abort(state: GameState) -> void:
 		state.combat.turns.active_turn.spell_cast_count -= 1
 	caster.movement = maxi(0, caster.movement - 3)
 	state.combat.turns.active_turn.cast_commitment = null
+	state.combat.turns.active_turn.classic_spell_active = false
 	if not commitment.selection.item_instance_id.is_empty() and state.combat.turns.staged_random_item_instance_id() == commitment.selection.item_instance_id:
 		state.combat.turns.clear_staged_random_item_power()

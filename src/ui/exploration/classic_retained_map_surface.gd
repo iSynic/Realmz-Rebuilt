@@ -17,7 +17,10 @@ var _feature_layers: Array[TileMapLayer] = []
 var _fog_layer: TileMapLayer
 var _background: TextureRect
 var _party_sprite: Sprite2D
+var _overlay_layer: Node2D
 var _overlay_sprites: Dictionary = {}
+var _overlay_coordinates: Array[Vector2i] = []
+var _overlay_anchor_rect := Rect2i()
 var _media: ClassicMediaCatalog
 var _tile_set := TileSet.new()
 var _fog_tile_set := TileSet.new()
@@ -91,6 +94,9 @@ func _build_viewport() -> void:
 	_fog_layer.tile_set = _fog_tile_set
 	_fog_layer.z_index = 6
 	_viewport.add_child(_fog_layer)
+	_overlay_layer = Node2D.new()
+	_overlay_layer.z_index = 10
+	_viewport.add_child(_overlay_layer)
 	_party_sprite = Sprite2D.new()
 	_party_sprite.centered = true
 	_party_sprite.z_index = 20
@@ -177,8 +183,18 @@ func present(game_view: GameView, party_texture: Texture2D, control_size: Vector
 	_party_sprite.texture = party_texture
 	_party_sprite.position = (Vector2(_map_view.party_coordinate) + Vector2.ONE * 0.5) * native_cell_size
 	_party_sprite.scale = _texture_scale(party_texture)
+	_update_retained_cells(camera, viewport_cells)
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	queue_redraw()
+
+
+func _update_retained_cells(camera: Vector2i, viewport_cells: Vector2i) -> void:
 	var next_classic_rect := MapPresentationGeometry.classic_visible_rect(_map_view.party_coordinate, Vector2i(_map_view.width, _map_view.height))
 	var full_refresh: bool = _map_id != _map_view.map_id or _map_view.presentation_delta == null or bool(_map_view.presentation_delta.complete_window_rebuild)
+	var next_anchor_rect := Rect2i(camera, viewport_cells)
+	var changed_anchors := _rect_changed_coordinates(_overlay_anchor_rect, next_anchor_rect)
+	changed_anchors.append_array(_rect_changed_coordinates(next_anchor_rect, _overlay_anchor_rect))
+	_overlay_anchor_rect = next_anchor_rect
 	if full_refresh:
 		_clear_layers()
 		for cell: MapCellView in _map_view.cells(): _update_cell(cell, next_classic_rect)
@@ -202,11 +218,18 @@ func present(game_view: GameView, party_texture: Texture2D, control_size: Vector
 		for coordinate: Vector2i in changed:
 			var cell := _map_view.cell_at(coordinate)
 			if cell != null: _update_cell(cell, next_classic_rect)
+			else: _erase_coordinate(coordinate)
+		# Every other input to an anchor-strip cell is unchanged since its
+		# terrain was drawn, so crossing the anchor edge only toggles its overlay.
+		for coordinate: Vector2i in changed_anchors:
+			if changed.has(coordinate):
+				continue
+			var cell := _map_view.cell_at(coordinate)
+			if cell != null: _update_overlay(cell, next_classic_rect)
+			else: _erase_coordinate(coordinate)
 	_map_id = _map_view.map_id
 	_camera_coordinate = camera
 	_classic_rect = next_classic_rect
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-	queue_redraw()
 
 
 func party_rect() -> Rect2:
@@ -224,28 +247,39 @@ func minimap_rect() -> Rect2:
 
 func _update_cell(cell: MapCellView, current_classic_rect: Rect2i) -> void:
 	_erase_coordinate(cell.coordinate)
-	var los := _map_view.uses_los
-	if MapPresentationGeometry.los_cell_requires_blackout(los, _seen.has(cell.coordinate)):
-		_set_fog(cell.coordinate)
-		return
-	var revealed := _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
-	var outside_classic := not los and _classic_visibility and not current_classic_rect.has_point(cell.coordinate)
-	if outside_classic and not revealed.has(cell.coordinate):
+	if _cell_withheld(cell, current_classic_rect):
 		_set_fog(cell.coordinate)
 		return
 	if _map_view.level_type == &"dungeon":
-		if not _dungeon_discovery.has(cell.coordinate):
-			_set_fog(cell.coordinate)
-			return
 		var tiles := _dungeon_tile_ids(cell, false)
 		_set_atlas_cell(_base_layer, cell.coordinate, cell.tileset_id, tiles[0])
 		for index: int in mini(_feature_layers.size(), tiles.size() - 1):
 			_set_atlas_cell(_feature_layers[index], cell.coordinate, cell.tileset_id, tiles[index + 1])
 	else:
 		_set_atlas_cell(_base_layer, cell.coordinate, cell.tileset_id, cell.render_tile)
-		if not cell.overlay_asset_id.is_empty(): _set_overlay(cell.coordinate, cell.overlay_asset_id)
+		if not cell.overlay_asset_id.is_empty() and _overlay_anchor_rect.has_point(cell.coordinate): _set_overlay(cell.coordinate, cell.overlay_asset_id)
 		if cell.has_feature(&"secret"): _set_transparent_marker_cell(_marker_layer, cell.coordinate, SECRET_TILE_ID)
 		if cell.has_feature(&"discovered_path"): _set_transparent_marker_cell(_feature_layers[0], cell.coordinate, PATH_TILE_ID)
+
+
+func _update_overlay(cell: MapCellView, current_classic_rect: Rect2i) -> void:
+	var overlay := _overlay_sprites.get(cell.coordinate) as Sprite2D
+	if overlay != null:
+		overlay.visible = false
+	if _map_view.level_type == &"dungeon" or cell.overlay_asset_id.is_empty() or not _overlay_anchor_rect.has_point(cell.coordinate) or _cell_withheld(cell, current_classic_rect):
+		return
+	_set_overlay(cell.coordinate, cell.overlay_asset_id)
+
+
+func _cell_withheld(cell: MapCellView, current_classic_rect: Rect2i) -> bool:
+	var los := _map_view.uses_los
+	if MapPresentationGeometry.los_cell_requires_blackout(los, _seen.has(cell.coordinate)):
+		return true
+	var revealed := _dungeon_discovery if _map_view.level_type == &"dungeon" else _land_discovery
+	var outside_classic := not los and _classic_visibility and not current_classic_rect.has_point(cell.coordinate)
+	if outside_classic and not revealed.has(cell.coordinate):
+		return true
+	return _map_view.level_type == &"dungeon" and not _dungeon_discovery.has(cell.coordinate)
 
 
 func _erase_coordinate(coordinate: Vector2i) -> void:
@@ -354,12 +388,15 @@ func _set_overlay(coordinate: Vector2i, asset_id: String) -> void:
 	if sprite == null:
 		sprite = Sprite2D.new()
 		sprite.centered = true
-		sprite.z_index = 10
-		_viewport.add_child(sprite)
+		var index := _overlay_coordinates.bsearch_custom(coordinate, func(left: Vector2i, right: Vector2i) -> bool: return Vector2i(left.y, left.x) < Vector2i(right.y, right.x))
+		_overlay_coordinates.insert(index, coordinate)
+		_overlay_layer.add_child(sprite)
+		_overlay_layer.move_child(sprite, index)
 		_overlay_sprites[coordinate] = sprite
+	var rect := MapTextureCache.land_overlay_rect(Rect2(Vector2(coordinate) * _cell_size, Vector2.ONE * _cell_size), asset)
 	sprite.texture = texture
-	sprite.position = (Vector2(coordinate) + Vector2.ONE * 0.5) * _cell_size
-	sprite.scale = _texture_scale(texture)
+	sprite.position = rect.get_center()
+	sprite.scale = rect.size / texture.get_size()
 	sprite.visible = true
 
 
@@ -481,8 +518,14 @@ static func _dungeon_tile_ids(cell: MapCellView, include_unmapped: bool = true) 
 
 static func _rect_changed_coordinates(previous: Rect2i, current: Rect2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
+	var overlap := previous.intersection(current)
+	if not overlap.has_area():
+		overlap = Rect2i(current.position, Vector2i.ZERO)
+	# Row-major like a full scan, but visits only the cells outside the overlap.
 	for y: int in range(current.position.y, current.end.y):
-		for x: int in range(current.position.x, current.end.x):
-			var coordinate := Vector2i(x, y)
-			if not previous.has_point(coordinate): result.append(coordinate)
+		if y < overlap.position.y or y >= overlap.end.y:
+			for x: int in range(current.position.x, current.end.x): result.append(Vector2i(x, y))
+			continue
+		for x: int in range(current.position.x, overlap.position.x): result.append(Vector2i(x, y))
+		for x: int in range(overlap.end.x, current.end.x): result.append(Vector2i(x, y))
 	return result

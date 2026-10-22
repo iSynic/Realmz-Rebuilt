@@ -48,7 +48,7 @@ func set_active_slot(campaign_id: String, slot_id: String) -> bool:
 	file.flush()
 	file.close()
 	var backup := path + ".bak"
-	var replace_error := _replace_with_backup(temporary, path, backup, false)
+	var replace_error := BackupRotation.replace(temporary, path, backup, false)
 	if not replace_error.is_empty():
 		return _fail("Could not install the active save slot: %s" % replace_error)
 	return true
@@ -88,46 +88,10 @@ func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot, previ
 	if verified == null or verified.campaign_id != envelope.campaign_id or verified.package_hash != envelope.package_hash:
 		_delete_file(temp_path)
 		return _fail("Temporary save verification failed.")
-	var replace_error := _replace_with_backup(temp_path, slot_path, backup_path)
+	var replace_error := BackupRotation.replace(temp_path, slot_path, backup_path)
 	if not replace_error.is_empty():
 		return _fail("Could not atomically install the verified save: %s" % replace_error)
 	return true
-
-
-func _replace_with_backup(temporary: String, primary: String, backup: String, retain_backup: bool = true) -> String:
-	var staged_backup := backup + ".rotation"
-	if FileAccess.file_exists(staged_backup) or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(staged_backup)):
-		_delete_file(temporary)
-		return "A prior backup rotation is still present; refusing to overwrite it."
-	var staged_previous_backup := false
-	if FileAccess.file_exists(backup):
-		var stage_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(staged_backup))
-		if stage_error != OK:
-			_delete_file(temporary)
-			return "Could not preserve the previous backup (error %d)." % stage_error
-		staged_previous_backup = true
-	var moved_primary := false
-	if FileAccess.file_exists(primary):
-		var backup_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(primary), ProjectSettings.globalize_path(backup))
-		if backup_error != OK:
-			if staged_previous_backup:
-				DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
-			_delete_file(temporary)
-			return "Could not move the current file to its backup (error %d)." % backup_error
-		moved_primary = true
-	var install_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary), ProjectSettings.globalize_path(primary))
-	if install_error != OK:
-		if moved_primary:
-			DirAccess.rename_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(primary))
-		if staged_previous_backup:
-			DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_backup), ProjectSettings.globalize_path(backup))
-		_delete_file(temporary)
-		return "Could not install the verified file (error %d)." % install_error
-	if not retain_backup:
-		_delete_file(backup)
-	if staged_previous_backup:
-		_delete_file(staged_backup)
-	return ""
 
 
 func load(campaign_id: String, slot_id: String, expected_package_hash: String) -> SaveEnvelope:
@@ -269,10 +233,10 @@ func list_party_sources() -> Array[SavePartySource]:
 
 
 func read_party_source(source: SavePartySource) -> SavePartySource:
-	if source == null or source._storage_selector.is_empty():
+	if source == null or source.storage_selector.is_empty():
 		return _party_source_error("This save source is unavailable.")
-	if source._storage_selector.begins_with(INTERNAL_SOURCE_PREFIX):
-		var relative := source._storage_selector.trim_prefix(INTERNAL_SOURCE_PREFIX)
+	if source.storage_selector.begins_with(INTERNAL_SOURCE_PREFIX):
+		var relative := source.storage_selector.trim_prefix(INTERNAL_SOURCE_PREFIX)
 		var parts := relative.split("/", false)
 		if parts.size() != 2 or not _safe_component(parts[0]):
 			return _party_source_error("This save source selector is invalid.")
@@ -287,10 +251,10 @@ func read_party_source(source: SavePartySource) -> SavePartySource:
 			slot_id = file_name.trim_suffix(".r2save")
 		if not _safe_component(slot_id):
 			return _party_source_error("This save source selector is invalid.")
-		return _read_party_source_path(_root_path.path_join(parts[0]).path_join(file_name), source._storage_selector, slot_id, kind, parts[0])
-	if source._storage_selector.begins_with(EXTERNAL_SOURCE_PREFIX):
-		var path := source._storage_selector.trim_prefix(EXTERNAL_SOURCE_PREFIX)
-		return _read_party_source_path(path, source._storage_selector, source.slot_id, &"external")
+		return _read_party_source_path(_root_path.path_join(parts[0]).path_join(file_name), source.storage_selector, slot_id, kind, parts[0])
+	if source.storage_selector.begins_with(EXTERNAL_SOURCE_PREFIX):
+		var path := source.storage_selector.trim_prefix(EXTERNAL_SOURCE_PREFIX)
+		return _read_party_source_path(path, source.storage_selector, source.slot_id, &"external")
 	return _party_source_error("This save source selector is invalid.")
 
 
@@ -364,8 +328,7 @@ func _read_envelope(path: String) -> SaveEnvelope:
 
 
 func _read_party_source_path(path: String, selector: String, slot_id: String, source_kind: StringName, fallback_campaign_id: String = "") -> SavePartySource:
-	var source := SavePartySource.new()
-	source._storage_selector = selector
+	var source := SavePartySource.new(selector)
 	source.slot_id = slot_id
 	source.source_kind = source_kind
 	source.campaign_id = fallback_campaign_id
@@ -443,7 +406,7 @@ func _incompatible_schema_message_for_data(data: Variant) -> String:
 	var version: Variant = data.get("formatVersion")
 	if version is float and is_equal_approx(version, round(version)):
 		version = int(version)
-	if not version is int or version == SaveEnvelope.FORMAT_VERSION:
+	if not version is int or version in [5, 6, SaveEnvelope.FORMAT_VERSION]:
 		return ""
 	return "Save format v%d is incompatible with Realmz Rebuilt save v%d." % [version, SaveEnvelope.FORMAT_VERSION]
 

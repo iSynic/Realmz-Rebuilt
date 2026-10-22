@@ -41,7 +41,7 @@ static func _continue(content: RealmzContent, state: GameState, rng: RealmzRng, 
 	var message: MessageDefinition = null
 	if extra_code[4] != 0:
 		message = content.scenario_records.message_by_id(absi(extra_code[4]))
-		if message == null:
+		if message == null and not ClassicCompatibility.source_unavailable(content, "Data SD2", absi(extra_code[4])):
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable message %d." % [opcode, extra_code[4]])
 	var hits: Array[Dictionary] = []
 	var events: Array[DomainEvent] = []

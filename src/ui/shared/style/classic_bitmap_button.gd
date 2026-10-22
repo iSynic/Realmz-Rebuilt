@@ -90,6 +90,8 @@ func configure(definition: Dictionary, art_scale: int = 1) -> void:
 	var accelerator := String(definition.get("accelerator", ""))
 	if not accelerator.is_empty():
 		tooltip_text += " [%s]" % accelerator
+	accessibility_name = _label
+	accessibility_description = tooltip_text
 	set_art_scale(art_scale)
 	_bind_caption()
 

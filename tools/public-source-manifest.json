@@ -1,5 +1,10 @@
 {
   "formatVersion": 1,
+  "publicLfsPaths": [
+    "src/storage/packages/bundled_campaigns/program-audit-findings.json",
+    "src/storage/packages/bundled_campaigns/program-restoration.json",
+    "tools/fixtures/complete-records-history/historical-state.zip"
+  ],
   "includeRoots": [
     ".gitattributes",
     ".github",

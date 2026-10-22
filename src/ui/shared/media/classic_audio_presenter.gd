@@ -5,6 +5,8 @@ extends Node
 
 signal sound_observed(sound_id: int)
 signal character_effect_requested(event: DomainEvent)
+signal character_effect_finished(event: DomainEvent)
+signal sequence_finished
 signal blocking_state_changed(blocking: bool)
 signal music_state_changed(playlist_id: int, title: String, playing: bool)
 
@@ -29,6 +31,7 @@ var _waiting_finished_callback: Callable
 var _music_player: AudioStreamPlayer
 var _effect_seconds_remaining := 0.0
 var _effect_first_frame := false
+var _active_effect: DomainEvent
 
 
 func _ready() -> void:
@@ -55,6 +58,10 @@ func _process(delta: float) -> void:
 		return
 	set_process(false)
 	_processing_sounds = false
+	var effect := _active_effect
+	_active_effect = null
+	if effect != null:
+		character_effect_finished.emit(effect)
 	blocking_state_changed.emit(false)
 	_drain_sound_queue()
 
@@ -122,6 +129,7 @@ func stop_music() -> void:
 func skip_effects() -> void:
 	_pending_sounds.clear()
 	_stop_playing_channels()
+	sequence_finished.emit()
 
 
 func _on_music_state_changed(context: int, title: String, playing: bool) -> void:
@@ -155,6 +163,7 @@ func _drain_sound_queue() -> void:
 		if request.has("effect"):
 			_pending_sounds.pop_front()
 			var event: DomainEvent = request["effect"]
+			_active_effect = event
 			_effect_seconds_remaining = maxi(0, int(event.payload.get("frameCount", 0))) * CHARACTER_EFFECT_FRAME_SECONDS
 			_processing_sounds = true
 			_effect_first_frame = true
@@ -180,6 +189,7 @@ func _drain_sound_queue() -> void:
 		if bool(request["waitForCompletion"]) and player.playing:
 			_wait_for_sound(player)
 			return
+	sequence_finished.emit()
 
 
 func _wait_for_sound(player: AudioStreamPlayer) -> void:
@@ -211,6 +221,7 @@ func _stop_playing_channels() -> void:
 	set_process(false)
 	_effect_seconds_remaining = 0.0
 	_effect_first_frame = false
+	_active_effect = null
 	if _waiting_player != null and _waiting_finished_callback.is_valid() and _waiting_player.finished.is_connected(_waiting_finished_callback):
 		_waiting_player.finished.disconnect(_waiting_finished_callback)
 	_waiting_player = null

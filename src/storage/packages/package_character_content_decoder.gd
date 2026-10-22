@@ -80,7 +80,7 @@ func _decode_item_record(value_record: Variant, fields: Array[String], integer_f
 	item.drop_on_empty = record["dropOnEmpty"]
 	return item
 
-func decode_races(value: Variant) -> Variant:
+func decode_races(value: Variant, preserve_native: bool = false, native_facts: bool = false) -> Variant:
 	if not value is Array:
 		_reject("Content races must be an array.")
 		return null
@@ -91,23 +91,23 @@ func decode_races(value: Variant) -> Variant:
 	var classic_ids: Dictionary = {}
 	var has_functional_rules: bool = false
 	for value_record: Variant in value:
-		var decoded := _decode_race_record(value_record, fields, integer_fields, ids, classic_ids)
+		var decoded := _decode_race_record(value_record, fields, integer_fields, ids, classic_ids, native_facts)
 		if decoded.is_empty():
 			return null
 		result.append(decoded["definition"])
 		has_functional_rules = has_functional_rules or bool(decoded["functional"])
-	if not result.is_empty() and not has_functional_rules:
+	if not preserve_native and not result.is_empty() and not has_functional_rules:
 		_reject("Content races cannot be a semantically empty 30-record table.")
 		return null
 	return result
 
-func _decode_race_record(value_record: Variant, fields: Array[String], integer_fields: Array[String], ids: Dictionary, classic_ids: Dictionary) -> Dictionary:
+func _decode_race_record(value_record: Variant, fields: Array[String], integer_fields: Array[String], ids: Dictionary, classic_ids: Dictionary, native_facts: bool) -> Dictionary:
 	if not value_record is Dictionary:
 		_reject("Race definition is not an object.")
 		return {}
 	var record: Dictionary = value_record
 	var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Race definition")
-	if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race") or not record["name"] is String or not record["description"] is String or not record["eligibleCasteIds"] is Array or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5 or not record["ageChanges"] is Array or record["ageChanges"].size() != 5:
+	if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race", not native_facts) or not record["name"] is String or not record["description"] is String or not record["eligibleCasteIds"] is Array or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5 or not record["ageChanges"] is Array or record["ageChanges"].size() != 5:
 		_reject("Race definition is malformed or duplicated.")
 		return {}
 	var classic_id: int = integers_value["classicId"]
@@ -150,7 +150,7 @@ func _decode_race_record(value_record: Variant, fields: Array[String], integer_f
 	var definition := RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, age_changes, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes, abilities_value)
 	return {"definition": definition, "functional": functional}
 
-func decode_castes(value: Variant) -> Variant:
+func decode_castes(value: Variant, preserve_native: bool = false, native_facts: bool = false) -> Variant:
 	if not value is Array:
 		_reject("Content castes must be an array.")
 		return null
@@ -161,23 +161,23 @@ func decode_castes(value: Variant) -> Variant:
 	var classic_ids: Dictionary = {}
 	var has_functional_rules: bool = false
 	for value_record: Variant in value:
-		var decoded := _decode_caste_record(value_record, fields, integer_fields, ids, classic_ids)
+		var decoded := _decode_caste_record(value_record, fields, integer_fields, ids, classic_ids, native_facts)
 		if decoded.is_empty():
 			return null
 		result.append(decoded["definition"])
 		has_functional_rules = has_functional_rules or bool(decoded["functional"])
-	if not result.is_empty() and not has_functional_rules:
+	if not preserve_native and not result.is_empty() and not has_functional_rules:
 		_reject("Content castes cannot be a semantically empty 30-record table.")
 		return null
 	return result
 
-func _decode_caste_record(value_record: Variant, fields: Array[String], integer_fields: Array[String], ids: Dictionary, classic_ids: Dictionary) -> Dictionary:
+func _decode_caste_record(value_record: Variant, fields: Array[String], integer_fields: Array[String], ids: Dictionary, classic_ids: Dictionary, native_facts: bool) -> Dictionary:
 	if not value_record is Dictionary:
 		_reject("Caste definition is not an object.")
 		return {}
 	var record: Dictionary = value_record
 	var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Caste definition")
-	if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Caste") or not record["name"] is String or not record["description"] is String or not record["eligibleRaceIds"] is Array or not record["canUseMissile"] is bool or not record["getsMissileBonus"] is bool or not record["spellcasterRows"] is Array or record["spellcasterRows"].size() != 4:
+	if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Caste", not native_facts) or not record["name"] is String or not record["description"] is String or not record["eligibleRaceIds"] is Array or not record["canUseMissile"] is bool or not record["getsMissileBonus"] is bool or not record["spellcasterRows"] is Array or record["spellcasterRows"].size() != 4:
 		_reject("Caste definition is malformed or duplicated.")
 		return {}
 	var classic_id: int = integers_value["classicId"]

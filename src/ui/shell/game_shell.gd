@@ -120,7 +120,6 @@ const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
 var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
 var _presentation_settings := PresentationSettings.new()
-var _profile: UiLayoutProfile
 var _theme_metrics: Array = []
 var font_resolver := FontResolver.new()
 var menu_input_blocked: Callable
@@ -137,8 +136,7 @@ var _party_effects: GameShellPartyEffectsPresenter
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
-var _controller_radial_kind: StringName = &""
-var _controller_radial_activation := Callable()
+var _controller_radials := GameShellControllerRadials.new(self)
 var exploration_move_to_available: Callable
 var controller: GameShellControllerAccess:
 	get: return GameShellControllerAccess.new(self)
@@ -159,6 +157,35 @@ var picture_stage: Control:
 	get: return _picture_stage
 var pause_active: bool:
 	get: return _pause_controller != null and _pause_controller.is_active()
+## Read-only collaborators for the shell's helper controllers, which may not reach private fields.
+var current_view: GameView:
+	get: return _current_view
+var layout_profile: UiLayoutProfile:
+	get: return _layout_controller.applied_profile if _layout_controller != null else null
+var media: ClassicMediaCatalog:
+	get: return _media
+var pause_controller: GameShellPauseController:
+	get: return _pause_controller
+var controller_prompts: ControllerPromptStrip:
+	get: return _controller_prompts
+var controller_radial: ControllerRadialOverlay:
+	get: return _controller_radial
+var controller_radials: GameShellControllerRadials:
+	get: return _controller_radials
+var controller_keyboard: ControllerQwertyEditor:
+	get: return _controller_keyboard
+var command_grid: GridContainer:
+	get: return _command_grid
+var world_command_panel: PanelContainer:
+	get: return _world_command_panel
+var world_command_grid: GridContainer:
+	get: return _world_command_grid
+var world_command_lower_grid: GridContainer:
+	get: return _world_command_lower_grid
+var torch_dock: PanelContainer:
+	get: return _torch_dock
+var selected_character_id: String:
+	get: return _selected_character_id
 var navigation_overlay_active: bool:
 	get: return character_art.visible or font_picker.visible or (music_workspace != null and music_workspace.visible) or _pause_controller.is_active() or _controller_radial.is_open() or _controller_keyboard.is_open() or _navigator.draft_dialog.visible or hud.focus_root() != null
 
@@ -406,11 +433,11 @@ func _apply_layout() -> void:
 		_theme_metrics = theme_metrics
 		theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, _presentation_settings, sizing_profile.ui_scale, font_resolver)
 	UiSizing.apply(self, sizing_profile)
-	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
+	_layout_controller.apply(size, _presentation_settings, _current_view)
 	_refresh_pause_menu()
 	_rebuild_command_deck()
-	_profile = _layout_controller.apply(size, _presentation_settings, _current_view)
-	layout_changed.emit(_layout_controller.workspace_rect, _profile)
+	_layout_controller.apply(size, _presentation_settings, _current_view)
+	layout_changed.emit(_layout_controller.workspace_rect, _layout_controller.applied_profile)
 
 
 func refresh_layout() -> void:

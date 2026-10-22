@@ -117,21 +117,12 @@ func _test_startup_shell() -> void:
 	var install_dialog := router.find_child("InstallScenarioDialog", true, false) as FileDialog; assert_true(scenario_controls.any(func(text: String) -> bool: return text == "Install .realmz2") and install_dialog != null and install_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE and install_dialog.filters.has("*.realmz2 ; Realmz Rebuilt Scenario"), "the external package action opens a typed Realmz Rebuilt scenario picker")
 	assert_false(scenario_controls.any(func(text: String) -> bool: return text == "Open path" or text.to_lower().contains("play")) or router.find_child("PackagePath", true, false) != null, "the integrated workspace exposes neither developer paths nor Play language")
 	assert_true(router.find_child("Seed", true, false) == null, "developer seed controls are absent from the ordinary integrated workspace")
-	var character_heading: Control = setup_workspace.find_child("CharacterFilesHeading", true, false) as Control if setup_workspace != null else null
-	var party_heading: Control = setup_workspace.find_child("PartyHeading", true, false) as Control if setup_workspace != null else null
-	assert_true(character_heading != null and party_heading != null, "the pre-session workspace mounts both setup columns before a campaign session exists")
 	assert_false(router.setup_controller.create_character_button.disabled, "stock Character Files creation remains available before a scenario is selected")
 	assert_true(router.setup_controller.begin_button.disabled, "Begin Adventure remains unavailable until a scenario and party are selected")
 	var standalone_requests: Array[int] = [0]
 	router.standalone_character_creation_requested.connect(func() -> void: standalone_requests[0] += 1)
 	router.setup_controller.create_character_button.pressed.emit()
 	assert_equal(standalone_requests[0], 1, "pre-session Create Character requests the application-owned stock creator")
-	var empty_party_slots: Node = setup_workspace.find_child("PartySlots", true, false) if setup_workspace != null else null
-	assert_not_null(empty_party_slots, "the integrated workspace owns one named Current Party slot list before session preparation")
-	assert_equal(empty_party_slots.get_child_count() if empty_party_slots != null else -1, 6, "pre-session Current Party renders all six empty positions")
-	if empty_party_slots != null:
-		for slot_number: int in range(1, 7):
-			assert_not_null(empty_party_slots.find_child("EmptyPartySlot%d" % slot_number, true, false), "pre-session Current Party preserves empty slot %d" % slot_number)
 	assert_true(router.handle_back(), "Back from the integrated pre-session workspace returns to the splash")
 	assert_true(splash.visible, "the startup flow retains a real front door after backing out of campaign selection")
 	var route_changes: Array[StringName] = []

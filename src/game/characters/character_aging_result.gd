@@ -74,7 +74,9 @@ static func update_bodies(events: Array[DomainEvent]) -> Array[AgeUpdateRequestB
 	var updates: Array[AgeUpdateRequestBody] = []
 	for payload: Dictionary in update_payloads(events):
 		var request := InteractionRequest.age_update("character-aging", payload)
-		assert(request != null and request.body is AgeUpdateRequestBody, "A committed character-age event must satisfy the typed interaction contract")
+		if request == null or not request.body is AgeUpdateRequestBody:
+			push_error("A committed character-age event does not satisfy the typed interaction contract.")
+			continue
 		updates.append(request.body as AgeUpdateRequestBody)
 	return updates
 

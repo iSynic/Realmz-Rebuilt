@@ -31,12 +31,12 @@ func decode_items(value: Variant) -> Variant:
 	return _characters.decode_items(value)
 
 
-func decode_races(value: Variant) -> Variant:
-	return _characters.decode_races(value)
+func decode_races(value: Variant, preserve_native: bool = false) -> Variant:
+	return _characters.decode_races(value, preserve_native)
 
 
-func decode_castes(value: Variant) -> Variant:
-	return _characters.decode_castes(value)
+func decode_castes(value: Variant, preserve_native: bool = false) -> Variant:
+	return _characters.decode_castes(value, preserve_native)
 
 
 func decode_spells(value: Variant) -> Variant:
@@ -63,8 +63,8 @@ func decode_shops(value: Variant) -> Variant:
 	return _encounters.decode_shops(value)
 
 
-func decode_simple_encounters(value: Variant) -> Variant:
-	return _encounters.decode_simple_encounters(value)
+func decode_simple_encounters(value: Variant, schema_version: int = 3) -> Variant:
+	return _encounters.decode_simple_encounters(value, schema_version)
 
 
 func decode_complex_encounters(value: Variant) -> Variant:
@@ -75,5 +75,5 @@ func decode_thief_encounters(value: Variant) -> Variant:
 	return _encounters.decode_thief_encounters(value)
 
 
-func decode_timed_encounters(value: Variant) -> Variant:
-	return _encounters.decode_timed_encounters(value)
+func decode_timed_encounters(value: Variant, schema_version: int = 3) -> Variant:
+	return _encounters.decode_timed_encounters(value, schema_version)

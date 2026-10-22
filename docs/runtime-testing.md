@@ -8,7 +8,7 @@ Use the [failure-first AP workflow](development.md#failure-first-ap-testing): re
 
 An explicitly launched debug/source runtime accepts `--realmz-testing-observe` after Godot's `--` argument separator. `REALMZ_TESTING_HOME` must name an absolute local tooling directory outside player storage. `REALMZ_TESTING_BUILD` labels the inspected build; an absent label is reported as `unversioned-source`, never inferred to be a verified commit.
 
-This does not attach to, inject into, or restart an existing runtime. Observe-mode instances use ordinary application behavior but the bridge cannot submit inputs, restore, close, or otherwise mutate the live adventure. Checkpoint export returns the public save-v5 envelope, or `snapshot_unavailable` when no safe snapshot exists. It does not fabricate an intermediate state.
+This does not attach to, inject into, or restart an existing runtime. Observe-mode instances use ordinary application behavior but the bridge cannot submit inputs, restore, close, or otherwise mutate the live adventure. Checkpoint export returns the public current save-v6 envelope (v5 remains reader-compatible), or `snapshot_unavailable` when no safe snapshot exists. It does not fabricate an intermediate state.
 
 Each process creates a random session identity and 256-bit authentication secret, binds an ephemeral port on `127.0.0.1`, and publishes `sessions/<sessionId>.json` beneath the tooling directory. Keep that directory private to the local user. Descriptors are credentials; do not commit or share them. Discovery validates process identity through an authenticated request rather than trusting stale files. Ordinary results omit the token. Graceful shutdown removes only the process's own descriptor.
 

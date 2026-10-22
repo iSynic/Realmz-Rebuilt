@@ -48,7 +48,7 @@ func allowed() -> bool:
 	if owner == null or not owner.is_visible_in_tree() or owner.navigator.full_stage_overlay_visible: return false
 	if owner.menu_input_blocked.is_valid() and bool(owner.menu_input_blocked.call()): return false
 	if owner.font_picker.visible or owner.character_art.visible or owner.music_workspace.visible or owner.navigator.draft_dialog.visible or owner.controller.text.is_open() or owner.controller.radial.is_open(): return false
-	var request := owner._current_view.active_interaction_request() if owner._current_view != null else null
+	var request := owner.current_view.active_interaction_request() if owner.current_view != null else null
 	return request == null or request.kind == InteractionRequest.COMBAT
 
 
@@ -56,7 +56,7 @@ func open() -> bool:
 	if is_open(): return true
 	if not allowed(): return false
 	var owner := _owner()
-	owner._controller_prompts.hide_prompts()
+	owner.controller_prompts.hide_prompts()
 	if owner.navigator.draft_dialog.defer_if_dirty(owner.navigator.content_presenter.system_preferences, open): return true
 	if not _active:
 		_view.reset_selection()
@@ -81,7 +81,7 @@ func resume() -> void:
 	_view.hide()
 	_active = false
 	_workspace = false
-	if owner.navigator.current_screen() != _origin and owner._current_view != null and owner._current_view.session_started:
+	if owner.navigator.current_screen() != _origin and owner.current_view != null and owner.current_view.session_started:
 		owner.navigator.open_screen(_origin, false)
 	_backdrop.hide()
 	owner.navigator.shared_menu_backdrop = false
@@ -95,7 +95,7 @@ func resume() -> void:
 func rebuild() -> void:
 	if not _active or not _view.visible and _workspace: return
 	var owner := _owner()
-	var view := owner._current_view
+	var view := owner.current_view
 	if view == null or not view.session_started or view.party_setup_available:
 		if _active:
 			_active = false
@@ -125,7 +125,7 @@ func _detail_text() -> String:
 	if _page == &"about":
 		return "Realmz Rebuilt %s\n\nPlay Classic Realmz adventures on modern computers.\n\nOriginal Rebuilt code: GPL-3.0-or-later.\nRealmz-derived content: CC BY-NC-SA 4.0.\nThird-party components retain their own licenses." % ProjectSettings.get_setting("application/config/version", "")
 	if _page != &"scenario_info": return ""
-	var summary := _owner()._current_view.campaign_summary
+	var summary := _owner().current_view.campaign_summary
 	if summary == null: return "Scenario details are unavailable."
 	var parts: PackedStringArray = [summary.title]
 	if not summary.version.is_empty(): parts.append("Version %s" % summary.version)
@@ -205,7 +205,7 @@ func selected_label() -> String:
 
 
 func set_controller_prompts(family: String) -> void:
-	_view.set_controller_prompts(family, _owner()._presentation_settings.controller)
+	_view.set_controller_prompts(family, _owner().settings.controller)
 
 
 func handle_input(event: InputEvent) -> bool:

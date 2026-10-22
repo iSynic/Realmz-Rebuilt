@@ -40,10 +40,10 @@ func catalog(record: CharacterVaultRecord, destination: RealmzContent) -> Conten
 
 func _read(package: PackageDiscoveryResult) -> ContentTransferCatalog:
 	var archive := ZIPReader.new()
-	if archive.open(package.path) != OK:
+	var reader := PackageArchiveReader.new()
+	if reader.open_bounded(archive, package.path) != OK:
 		last_error = "The Character File's source scenario package could not be opened."
 		return null
-	var reader := PackageArchiveReader.new()
 	var manifest: Variant = reader.read_document(archive, "manifest.json")
 	var entries: Variant = reader.entries(archive)
 	var discovery := PackageManifestDiscovery.new(PackageRepository.SCHEMA_HASHES, PackageRepository.SUPPORTED_CAPABILITIES, PackageRepository.DEFERRED_PACKAGE_CAPABILITIES, reader)

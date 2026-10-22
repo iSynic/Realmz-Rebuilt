@@ -30,6 +30,19 @@ func title(playlist_id: int) -> String:
 	return String((_tracks.get(_stock_track_id(playlist_id), {}) as Dictionary).get("title", ""))
 
 
+func source_playlist(source_sha256: String) -> int:
+	if source_sha256.length() != 64:
+		return 0
+	var selected := 0
+	for playlist_id: int in _tracks:
+		var record: Dictionary = _tracks[playlist_id]
+		if source_sha256 == str(record.get("source_sha256", "")) or source_sha256 == str(record.get("legacy_source_sha256", "")):
+			if selected != 0:
+				return 0
+			selected = playlist_id
+	return selected
+
+
 func stream(playlist_id: int) -> AudioStream:
 	var stock_track_id := _stock_track_id(playlist_id)
 	if _streams.has(stock_track_id):

@@ -18,6 +18,7 @@ class BattleInputs extends RefCounted:
 
 class BattleAssembly extends RefCounted:
 	var inputs: BattleInputs
+	var native_records: bool = false
 	var builder: BattlefieldBuilder
 	var battlefield: BattlefieldState
 	var formation: Dictionary
@@ -54,6 +55,7 @@ func start(state: GameState, content: RealmzContent, battle: BattleDefinition, r
 		return _setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_battle_formation", "Battle '%s' could not derive Castle's opening formation." % battle.id)
 	var assembly := BattleAssembly.new()
 	assembly.inputs = inputs
+	assembly.native_records = content.package_schema_version >= 7
 	assembly.builder = builder
 	assembly.battlefield = terrain_result.battlefield
 	assembly.formation = formation
@@ -103,6 +105,8 @@ func _prepare_authored_monsters(assembly: BattleAssembly, state: GameState, batt
 		var monster := _context.monsters.build_battle_monster(definition, pending_id, slot.invert_traitor, state.difficulty, state.clock.day(), rng)
 		if monster == null:
 			return _setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_monster", "Battle '%s' could not construct monster '%s'." % [battle.id, slot.monster_id])
+		if assembly.native_records:
+			monster.classic_route_id = -definition.classic_id if slot.invert_traitor else definition.classic_id
 		assembly.pending_authored.append({"placeholderId": pending_id, "monster": monster})
 	return null
 
@@ -129,6 +133,9 @@ func _commit(assembly: BattleAssembly, state: GameState, content: RealmzContent,
 	for ally: MonsterState in assembly.consumed_ally_states:
 		ally.traitor = false
 		ally.target_id = ""
+		if assembly.native_records:
+			# Castle clears monsternameid before inserting held-over allies.
+			ally.classic_route_id = 0
 	if not state.allies_suspended:
 		state.party.set_allies([])
 	for character: CharacterState in assembly.inputs.party_characters:
@@ -182,11 +189,21 @@ func _prepare_inputs(state: GameState, content: RealmzContent, battle: BattleDef
 		return left.coordinate.y < right.coordinate.y or left.coordinate.y == right.coordinate.y and left.coordinate.x < right.coordinate.x
 	)
 	result.authored_definitions = {}
+	var selected_slots: Array[BattleMonsterSlotDefinition] = []
 	for slot: BattleMonsterSlotDefinition in result.authored_slots:
+		if content.package_schema_version >= 7 and selected_slots.size() + result.ally_definitions.size() >= MAX_MONSTERS:
+			break
 		var definition := content.combat.monster_by_id_for_set(slot.monster_id, state.monster_set)
 		if definition == null:
 			return CombatFlowResult.failed(&"unknown_monster", "Battle '%s' references unavailable monster '%s'." % [battle.id, slot.monster_id])
+		if content.package_schema_version >= 7 and definition.hit_dice == 0:
+			continue
 		result.authored_definitions[slot.monster_id] = definition
+		selected_slots.append(slot)
+	if content.package_schema_version >= 7:
+		result.authored_slots = selected_slots
+		if result.authored_slots.is_empty() and result.ally_definitions.is_empty():
+			return CombatFlowResult.failed(&"empty_battle", "The native battle contains only empty monster rows.")
 	return result
 
 

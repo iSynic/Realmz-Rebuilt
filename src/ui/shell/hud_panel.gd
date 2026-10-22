@@ -121,6 +121,10 @@ func is_open() -> bool:
 	return _open
 
 
+func reveal_handle_contains_point(point: Vector2) -> bool:
+	return _handle.is_visible_in_tree() and _handle.get_global_rect().has_point(point)
+
+
 func is_required() -> bool:
 	return _required
 

@@ -293,7 +293,7 @@ func run() -> void:
 	assert_equal(rejected.error_code, &"invalid_scroll_target", "an invented scroll target is rejected explicitly")
 	assert_equal([pending_restored._context.state.party.character_by_id(caster.id).scroll_at(0).power, pending_restored._context.rng.snapshot().draw_count], [2, 0], "a rejected target preserves the scroll and RNG position")
 	var used := pending_restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [target.id]}))
-	assert_equal(used.state, SessionStep.State.COMPLETED, "a valid scroll target commits once")
+	assert_equal([used.state, used.view_revision], [SessionStep.State.COMPLETED, requested.view_revision + 1], "a valid scroll target commits once as the next revision after the uncommitted rejection")
 	assert_true(pending_restored._context.state.party.character_by_id(caster.id).scroll_at(0).is_empty(), "the scroll clears only after a valid target resolves")
 	assert_equal(pending_restored._context.state.party.character_by_id(caster.id).spell_points, starting_spell_points - 8, "using a scroll spends no spell points")
 	assert_equal(pending_restored._context.state.party.character_by_id(target.id).current_health, 8, "the scroll applies its stored spell and power to the selected character")

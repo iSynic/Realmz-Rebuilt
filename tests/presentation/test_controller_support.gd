@@ -1,11 +1,12 @@
 extends RealmzTestCase
 
-class RouterClosedPopup extends RefCounted:
+class RouterClosedPopup extends GameShellPauseController:
+	func _init() -> void: pass
 	func is_open() -> bool: return false
 
 class RouterOverlayAccess extends RefCounted:
 	func navigation_workspace_focus_root() -> Node: return null
-	var text := RouterClosedPopup.new(); var radial := text
+	var text := RouterClosedPopup.new(); var radial := text; var pause := text
 	func handle_navigation_modal_controller(_action: StringName, _pressed: bool, _direction: Vector2i = Vector2i.ZERO) -> bool: return false
 
 class RouterShellPresenter extends RefCounted:
@@ -13,21 +14,24 @@ class RouterShellPresenter extends RefCounted:
 
 class RouterCoordinator extends RefCounted:
 	func is_combat_playback_active() -> bool: return false
+	var party_effect_playback := PartyEffectPlayback.new()
 
 class RouterSessionView extends RefCounted:
 	func active_interaction_request() -> InteractionRequest: return null
 
 class RouterSessionController extends RefCounted:
-	var current_view := RouterSessionView.new()
-	func view() -> RouterSessionView: return current_view
+	func view() -> RouterSessionView: return RouterSessionView.new()
 
 class RouterDungeonPresenter extends RefCounted:
 	func is_active() -> bool: return false
 
 class RouterMovementHost extends Control:
 	var click_to_move: ClickToMoveCoordinator
-	var presentation_coordinator := RouterCoordinator.new(); var _shell_presenter := RouterShellPresenter.new(); var session_controller := RouterSessionController.new(); var _dungeon_presenter := RouterDungeonPresenter.new(); var _held_movement := HeldMovementController.new()
+	var presentation_coordinator := RouterCoordinator.new(); var shell_presenter := RouterShellPresenter.new(); var session_controller := RouterSessionController.new(); var dungeon_presenter := RouterDungeonPresenter.new(); var held_movement := HeldMovementController.new()
 	func accepts_exploration_input() -> bool: return true
+
+class RouterPauseHost extends Control:
+	var presentation_coordinator := RouterCoordinator.new(); var shell_presenter: GameShell
 
 
 func run() -> void:
@@ -63,7 +67,6 @@ func _testing_request(request_id: String, revision: int, params: Dictionary) -> 
 func _test_controller_preferences_round_trip_and_migration() -> void:
 	var settings := PresentationSettings.new(); settings.master_volume = 0.35; settings.controller.prompt_family = ControllerPreferences.PROMPT_PLAYSTATION; settings.controller.left_stick_dead_zone = 0.3; settings.controller.repeat_initial_ms = 425
 	var restored := PresentationSettings.from_data(settings.to_data())
-	assert_not_null(restored, "schema-sixteen controller preferences decode")
 	assert_equal([restored.master_volume, restored.controller.prompt_family, restored.controller.left_stick_dead_zone, restored.controller.repeat_initial_ms], [0.35, ControllerPreferences.PROMPT_PLAYSTATION, 0.3, 425], "controller tuning round-trips without changing existing presentation values")
 	var legacy := settings.to_data(); legacy["schemaVersion"] = 13; legacy["textScale"] = 1.0; legacy["typographyMode"] = "classic"; legacy.erase("controller"); var migrated := PresentationSettings.from_data(legacy)
 	assert_not_null(migrated, "schema-thirteen presentation settings migrate")
@@ -159,10 +162,10 @@ func _test_controller_owner_edges_hysteresis_and_takeover() -> void:
 func _test_normalized_direction_reaches_exploration_movement() -> void:
 	var host := RouterMovementHost.new(); (Engine.get_main_loop() as SceneTree).root.add_child(host); var pulses: Array[Vector2i] = []
 	await (Engine.get_main_loop() as SceneTree).process_frame
-	host._held_movement.movement_requested.connect(func(direction: Vector2i) -> void: pulses.append(direction))
+	host.held_movement.movement_requested.connect(func(direction: Vector2i) -> void: pulses.append(direction))
 	var router := ApplicationInputRouter.new(host); router.handle_controller_direction(Vector2i(1, 1))
 	assert_equal(pulses, [Vector2i(1, 1)], "the application router sends the normalized controller vector into exploration movement instead of rereading an empty legacy action cache")
-	router = null; host._held_movement.free(); host.free()
+	router = null; host.held_movement.free(); host.free()
 
 
 func _test_ordered_controller_targeting() -> void:
@@ -281,6 +284,8 @@ func _test_controller_radial_pages_and_explicit_commit() -> void:
 	var pause_view := shell.get_node("PauseMenu") as PauseMenuView; var saves := pause_view.find_children("*", "PauseMenuAction", true, false).filter(func(node: Node) -> bool: return (node as PauseMenuAction).action_id == &"saves")[0] as PauseMenuAction
 	assert_true(saves.button.disabled and saves.button.tooltip_text == "Unavailable during battle.", "Battle disables Save & Load with its explicit reason")
 	shell.controller.pause.back(); shell.controller.pause.back()
+	var pause_host := RouterPauseHost.new(); pause_host.shell_presenter = shell; host.add_child(pause_host); var pause_router := ApplicationInputRouter.new(pause_host); pause_router.handle_controller_action(&"realmz_controller_system", true); var router_opened := shell.controller.pause.is_open(); pause_router.handle_controller_action(&"realmz_controller_system", true)
+	assert_equal([router_opened, shell.controller.pause.is_open()], [true, false], "Start opens Pause through the application input router and a second Start closes it"); pause_host.queue_free()
 	var modal_view := GameView.new(2, true, null); modal_view.campaign_id = "pause-modal-fixture"; modal_view.campaign_summary = CampaignSummaryView.new(); modal_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 10, 10))]; modal_view.pending_interaction = InteractionRequest.acknowledge("pause.modal", "Resolve this choice first."); shell.present(modal_view)
 	assert_false(shell.controller.pause.open(), "a pending interaction keeps priority over Pause")
 	var activated: Array[StringName] = []; assert_true(shell.controller.radial.open_interaction([ControllerRadialEntry.new(&"speak", "Speak")], func(command_id: StringName) -> void: activated.append(command_id)), "an interaction can claim the shared action radial"); shell.controller.radial.confirm(); assert_equal(activated, [&"speak"], "confirming an interaction radial retains and invokes its interaction owner")

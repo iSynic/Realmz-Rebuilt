@@ -102,17 +102,17 @@ Import Party from Save offers party-level reuse of player characters in a fresh 
 - Tests: `test_scenario_vm.gd::_test_classic_opcode_2_legacy_battle_record` covers the AOGM positive case, preserved outcome mode, and nearby negatives (negative word 4, non-zero word 2, word 3 != -1, out-of-range word 4, wrong shape, wrong opcode).
 - Legacy quirk: Preserves raw authored package words while reproducing the intended application sound cue without failing on nonexistent scenario messages.
 
-## FD-SCENARIO-009 — Monster macro repeated-target spells and typed other-target partitioning
+## FD-SCENARIO-009 — Monster macro repeated-target spells
 
-- Affected rule: Classic opcode 17 in battle/death macros for repeated-target spells (targetType 0) and unsupported target types (1 single-target and 6 ray).
+- Affected rule: Classic opcode 17 in battle/death macros for repeated-target spells (targetType 0) with the single-target and ray safety correction specified separately in FD-SCENARIO-016.
 - Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, `newland`, lines 1966–1984, `src/realmz_orig/spelltargets.c`, `spelltargets`, lines 54–65, and `src/realmz_orig/combat.c`, lines 215–240, 308–351. In `newland.c`, opcode 17 places macro source battlefield coordinates into `target[0]` and calls `spelltargets(0, -1, FALSE, 0)`. In `spelltargets.c`, for targetType <= 1, it checks `if (target[0][1] == 2)`. When Y != 2, it reads `pos[target[0][0]]`, which indexes `pos[7][2]` with the macro source's X battlefield coordinate (e.g. 45-50), an out-of-bounds read into unallocated memory. For targetType 6 (ray), `spelltargets.c` checks only `field[target[0][0]][target[0][1]]`, completely bypassing ray traversal and leaving the ray direction undefined. In normal monster turns (`combat.c`), targetType 0 selects living actors within the authored range up to `power`, applying LOS only to positive-range signatures and opposing unless `cannot == 4`.
 - Observable source inconsistency: In macros, single-target (type 1) spells cause memory corruption via coordinate-slot aliasing in `pos`, and ray spells (type 6) collapse to a 1x1 point check on the dying monster's coordinate without a valid ray path. Castle's ordinary monster-turn path supplies the usable repeated-target constraints—up to `power` distinct living targets within authored range, with LOS required only for positive-range signatures, friendly if `cannot == 4`, opposed otherwise—but samples candidate slots with `Rand(10 + nummon)` rather than defining a stable order. The macro path never reaches a valid equivalent selection because its coordinate alias is already corrupt.
 - Player-facing problem: Authoring opcode 17 in a monster death macro with Magic Darts or Destroy Magic failed unconditionally in Rebuilt as unsupported, even though the targeting rules are deterministic and well-defined. Attempting to execute single-target or ray spells under Castle's defective code would lead to arbitrary memory corruption or undefined ray directions.
 - Chosen 2.0 behavior:
   1. Support repeated-target spells (targetType 0) in `CombatMacroSpells`: collect up to `power` living targets within the authored spell range, requiring LOS only for a positive range signature, friendly if `cannot == 4` and opposed otherwise. Because Castle's macro path has no valid target-selection outcome, use Rebuilt's documented deterministic AI correction: take the first legal targets in party-then-monster order without consuming target-choice RNG. Resolve each target in order via `resolve_character_repeated_spell` / `resolve_monster_repeated_spell`, spending no spell points, applying `extra_save_adjust` and `force_affect`, maintaining the dead source as an anchor, and continuing the issuing program.
-  2. Partition single-target (targetType 1) and ray (targetType 6) spells to fail explicitly with typed error codes: `&"unsupported_macro_single_target"` and `&"unsupported_macro_ray"`.
-- Tests: `test_scenario_vm.gd::_test_package_backed_macro_spells` executes the exact packaged Castle in the Clouds `xap:273` (Spell 3208, power 1), Trouble in the Sword Lands `xap:1605` (Spell 1108, power 5, extraSaveAdjust -50), and Mithril Vault `xap:9` (Spell 1304 Destroy Magic, power 5, cannot 4) programs through the public VM, plus packaged Mithril Vault single-target and ray rejection rows. These use controlled battle preparation rather than ordinary campaign routes.
-- Deliberate correction: Stable legal-target ordering replaces Castle's ordinary-turn random candidate sampling because the macro caller never supplies a valid actor target list. Types 1 and 6 fail safely instead of reproducing memory corruption or undefined ray traversal.
+  2. Single-target and ray macro handoffs follow FD-SCENARIO-016 through the same resolver; no typed rejection is retained for these demonstrated signatures.
+- Tests: `test_scenario_vm.gd::_test_package_backed_macro_spells` executes the exact packaged Castle in the Clouds `xap:273` (Spell 3208, power 1), Trouble in the Sword Lands `xap:1605` (Spell 1108, power 5, extraSaveAdjust -50), and Mithril Vault `xap:9` (Spell 1304 Destroy Magic, power 5, cannot 4) programs through the public VM, plus packaged Mithril Vault single-target and ray source-cell rows. These use controlled battle preparation rather than ordinary campaign routes.
+- Deliberate correction: Stable legal-target ordering replaces Castle's ordinary-turn random candidate sampling because the macro caller never supplies a valid actor target list. Types 1 and 6 follow the bounded source-cell policy in FD-SCENARIO-016.
 
 ## FD-SCENARIO-010 — Registration opcode preservation without commercial gating
 
@@ -160,6 +160,15 @@ Import Party from Save offers party-level reuse of player characters in a fresh 
 - Chosen behavior: omit unavailable thief-action text while retaining the source-ordered sound, trap handling, experience rule, and authored result. Existing signed click behavior applies to available messages. Preserve the missing identity in the action event and leave compiled scenario bytes unchanged.
 - Tests: `test_swordlands_battle_prelude.gd::_test_locked_door_failure` enters the exact AP by movement, detects the trap, fails disarming and picking, then verifies trap damage, result 3 narration, movement back out, and preservation of the locked AP.
 - Deliberate correction: suppress Castle's unchecked fallback text and its empty acknowledgement rather than aborting gameplay or inventing a replacement string. Required encounter/program targets remain strict.
+
+## FD-SCENARIO-014 - Out-of-range random-region mutation
+
+- Affected rule: opcode 23/-23 requests a random rectangle outside the native 0-through-19 array on an existing map.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c:2274-2333`, writes through `randlevel.percent[temp1]` and `battlerange[temp1]` without checking the rectangle index, then returns to the remaining instruction slots. `structs.h:206-220` declares twenty entries. There is no error message or terminal-session/save guard in this path. An out-of-bounds C write is not a proven no-op and may overwrite adjacent data; this is source-control-flow evidence, not a controlled runtime equivalence claim.
+- Player-facing problem: Trouble XAP 925 slot 2 preserves opcode 23 Extra Code `[3, 24, 1674, 1, 0]`. Rebuilt turned that invalid rectangle into a terminal content fault, interrupted later authored slots and refused snapshots/saving.
+- Chosen behavior: skip only this out-of-range mutation quietly, without state/RNG changes from the skipped instruction, and execute the remaining timeline. Do not emulate adjacent-memory corruption or synthesize a rectangle. Retain the exact authored instruction and import diagnostics. Ordinary VM execution traces remain available; no player-facing warning is added.
+- Boundaries: valid indices keep their existing mutation semantics. That original boundary remains applicable to legacy packages. V7 additionally uses FD-SCENARIO-015 source-presence guards for authored absent or partial operands; package corruption, source-present omissions and runtime invariants still fail. This is not generic failure suppression.
+- Verification: prepared adjacent entry into the actual Trouble Land 10 AP 7, with a forced battle outcome, reaches XAP 923/925 and later authored teleport; saving, complete readback and restore succeed. Direct compiled-XAP invocation separately reproduces the same before/after failure boundary. Signed forms and index boundaries are checked independently. This does not certify ordinary combat or a full campaign playthrough.
 
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
@@ -610,3 +619,114 @@ Each entry must include:
 
 - Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `showdamage-loaddark-cansee.c:5-65`, requests bold Geneva at 12 points, reduced to 10 for amounts above 9, with a fixed pen baseline at the recipient footprint center plus (-8, 3). Ordinary damage uses white; fire/cold/electrical/magic use black and condition damage uses red. `Font.cpp` maps Geneva to the bundled Inter font and applies synthetic bold.
 - Rebuilt uses that retained Geneva-style utility font, native-pixel sizing, vertical baseline and effect-specific colors for on-canvas damage, preserving the selected interface-font override. The owner-requested readability correction centers each numeral string horizontally instead of reproducing Castle's fixed -8 pen offset, which leaves single digits visibly left of center. Godot and Castle use different text rasterizers; matching the font contract is not pixel-perfect native-font parity. Offscreen badges and descriptive result labels retain their readable presentation treatment.
+
+
+## FD-SCENARIO-015 — Quiet boundaries for unavailable native content
+
+- Affected rule: schema-v7 imported operations whose retained source proves the selected target absent or incomplete. This does not apply to a complete native record missing from compilation.
+- Castle evidence: pinned commit `491816ad60037394f92c428e99c004494d3c28b3`, `newland.c` transfer, mutation and presentation branches; `loaddoor` returns without filling a nonexistent record, while several consumers subsequently read unchecked buffers. A source check is not proof of a safe Castle runtime result for those unchecked reads.
+- Player-facing problem: promoting incidental authored defects to terminal session faults prevented continued play and saving after otherwise committed actions.
+- Chosen behavior: resolve each signed reference first. Omit missing optional presentation, skip unavailable mutation targets, return from empty GOSUBs or finish replacing frames, and cancel unsafe interactions without fabricated rewards or payment. Preserve prior effects, existing return semantics and AP ownership. Only draws reached before the boundary are consumed; no fallback adds a draw. Incomplete operands are never zero-filled.
+- Deliberate correction: unchecked native access receives a bounded operation-specific outcome. Integrity failures, native compilation omissions and recognized unsupported execution still fail explicitly. Existing terminal faults are never cleared as recovery.
+- Evidence: independent retained-source accounting and isolated VM/save-write/readback probes cover missing programs, primary/companion Extra Codes, mutation and payment boundaries, optional text, unknown opcodes and combat-only reads. These are controlled Rebuilt invocations, not Castle runtime or full campaign certification.
+
+## FD-SCENARIO-016 — Monster macro single-target and ray handoffs
+
+- Affected rule: opcode 17 in battle/death macros for target types 1 and 6.
+- Castle evidence: the same pinned revision, `newland.c:1966-1984`, passes the macro source coordinates into `target[0]`. `spelltargets.c:54-65` can misread type 1 coordinates as an actor index; its type-6 branch checks the source cell rather than tracing a ray. Neither supplies a valid player-selected actor or ray endpoint.
+- Chosen behavior: resolve a one-cell area at the retained source coordinate through the existing spell resolver, reflection, resistance, shared rolls and defeat handling. An unoccupied or dead source cell has no living recipient. Do not invent a ray, choose a remote actor, spend character resources or advance the active turn.
+- Deliberate correction: bounded source-cell resolution replaces type 1's unsafe actor alias. Type 6 retains its demonstrated point footprint without claiming a meaningful native ray direction. Repeated targeting remains unchanged under FD-SCENARIO-009.
+- Evidence: the public packaged macro suite executes Mithril Vault XAP 393 and 337 through their acknowledgement boundary and verifies completion, unchanged unrelated state and exact RNG use. Isolated occupied-source probes exercise Heal 2505 and Flame Tongue 1402. Ordinary campaign routes and controlled Castle runtime comparison remain separate.
+
+## FD-SCENARIO-017 - Stable signed monster routing identity
+
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `combatsetup.c:73,312` clears `monsternameid` and assigns the signed Battle grid cell; `newland.c:413,479` compares that value for opcode 123 and assigns the direct Data MD row for opcode 124. Opcodes 87/88/127 instead compare the authored monster `name` field. This is pinned source evidence, not controlled Castle execution.
+- V7 retains the original signed routing reference as optional `classicRouteId` in monster state. Charm, allegiance changes and transformation do not reconstruct or replace it. Held allies enter a new battle with zero; newly allocated summons start at zero. Legacy packages keep their old lookup meanings and omit unknown origins.
+- Deliberate correction: Castle's random-weapon helper calls `combatsetup(nonzero)`, whose unrelated initialization clears every routing ID. Rebuilt preserves recorded actor identities through weapon selection instead of reproducing that global-state clobber. New summon actors do not inherit stale routing IDs from reused dead native slots.
+- Save consequence: the envelope stays v5, with one optional strict signed-16-bit monster field. Restore under v7 requires it during combat. Explicit old-package updates reject mid-battle saves because the original sign cannot safely be inferred after charm or transformation; the original save remains loadable against its retained package. No past action is replayed or repaired.
+
+### FD-SCENARIO-018 — Bound selected native monster construction
+
+- Castle authority: `combatsetup.c:306` skips a zero-HD row; `structs.h:159-170` supplies five physical attack rows and bounded footprints; `loaditem.c:5-34` dispatches item magnitudes only through category 800. Its unsupported accesses and stale item memory do not establish a safe observable outcome.
+- Rebuilt preserves every record, skips individual zero-HD battle rows and cancels an all-empty/unsafe battle before rewards. A selected unsafe ally/spawn adds nothing. Summon and polymorph selection never reroll around an unsafe row: summons retain ordinary costs and action bookkeeping; polymorph leaves its target unchanged. Source-present missing dependencies remain explicit defects.
+- The pinned random-weapon array contains nine rows. The existing Rebuilt table-10 alias to its last row remains an explicit compatibility correction; values beyond that supported alias are unsafe at consumption. No source claim of ten physical Castle rows is made.
+- Signed spell-point state remains signed through native short arithmetic and serialization. Negative death-macro operands in v7 attempt their exact target, with ordinary direct/queued completion; no magnitude substitution or terminal-fault clearing occurs.
+- Evidence: native structure/source inspection and isolated direct owner/VM probes, including Dagger 154, Bywater 150 and Araman signed spell points. These do not certify an ordinary campaign route or a safe result from Castle's undefined memory accesses.
+
+### FD-SCENARIO-019 — Preserve signed battle and random-branch selection
+
+- Castle authority: `newland.c` cases 2, 47, 48, 56, 85, 107 and 126; `combat.c:26`; `misc.c:344`; `share-movecost-dialog.c:44` at the pinned reference revision.
+- V7 opcode 2 selects battle magnitudes then restores EC0's sign. Other battle callers retain direct signed endpoints. A negative selected battle forces surprise -1 before the absolute record lookup.
+- V7 random destinations use signed-short `randrange` arithmetic without reordering endpoints. `Rand` consumes one draw unconditionally, including a wrapped zero or negative width. Quest operand zero clears native slot zero. Legacy packages retain their prior interpretation.
+- Evidence: pinned source and deterministic direct owner/selector probes. Visible battle launch and ordinary gameplay remain separate acceptance evidence.
+
+### FD-SCENARIO-020 — Preserve Player Maps independently of reachability
+
+- Castle authority: `newland.c:2403` acquires a signed map operand through its magnitude; `mapstuff.c:79-82` exits to TEXT before image arithmetic. Image display divides by `iconsize` at lines 95 and 182 and loads the signed level without a safe native array boundary.
+- V7 retains every MD2 row's signed words, fixed marker slots, spare word and complete Pascal note bytes. All safe fixed IDs 0–19 have display definitions even when no script currently references them. TEXT retains unused image inputs without requiring a positive scale.
+- `newland.c:2403–2412` acquires the fixed slot before display and opens it only for a negative operand. V7 preserves that acquisition even when optional display cannot be shown, and continues without a fabricated presentation or RNG draw. Missing optional marker icons are omitted as in `mapstuff.c:150–170`.
+- PICT bypasses terrain loading; its signed level is only marker context. A nonpositive image scale, negative crop index or out-of-domain slot cannot authorize unchecked arithmetic or array access. Unsafe display is omitted; an out-of-domain acquisition is skipped. A usable supplied row missing from compilation remains a package defect.
+- Evidence scope: pinned source, independent byte/field accounting and isolated consumer checks. This does not establish a defined Castle outcome for its unchecked accesses.
+
+
+### FD-SCENARIO-021 — Preserve sparse native rules and bound character publication
+
+- Castle authority: pinned revision `491816ad60037394f92c428e99c004494d3c28b3`, `misc.c:2233–2257` falls back only when opening a scenario Rule file fails; short successful reads do not establish stock substitution. `newcharacter.c` uses sequential `pin`, byte attribute assignments, signed stamina/SP dice and an unconditional age-table draw. `levelup.c` and `updatespec.c` use nonzero signed dice and short destinations before later pins. All-zero advancement caster rows retain an existing caster type.
+- V7 preserves complete Rule rows, including zero or unusual values, alongside supplied fragments and original bytes. Selected short families leave missing rows unavailable, with no invented stock state. Native creation and advancement use their source integer/draw boundaries; old package interpretation remains separate.
+- An age index outside the native five-row table rejects creation before draws. Creation and final equipment publication require exact codec readback, and rejected setup restores the prior typed snapshot, pending confirmation, allocated identities and full RNG checkpoint.
+- Advancement prepares a detached character and RNG. An unsaveable result is not published: opcode 102 preserves its previous character/XP, while rewards keep earned XP and earlier rewards and continue to the next character. No failed-candidate draw reaches the source RNG, and technical compatibility events stay outside narration. This is a bounded safety correction for an unsafe authored result, not a proven Castle no-op.
+- Evidence scope: pinned source, synthetic native signed/width cases, retained rules regression, public isolated creation/refusal transactions and independent source/catalog accounting. These do not certify whole-campaign behavior.
+
+### FD-SCENARIO-022 — Keep later-selected landlooks available
+
+- Castle authority: pinned revision `491816ad60037394f92c428e99c004494d3c28b3`, `newland.c` case 57 assigns the Extra Code short to signed `char landlook` and unsigned-byte `Boolean isdark`; `structs.h` and `Types.h` establish those widths. `loadland-loadpixmap.c` resolves the selected stock or custom table when used.
+- Compile every supplied nonnegative terrain catalog, including stock tables unused by initial maps or battles. V7 narrows the two assigned byte values explicitly. Source-absent maps or unavailable authored tables leave the target unchanged and consume no RNG. A supplied usable table missing from compilation remains an admission/runtime defect.
+- Undefined native access receives the bounded unchanged-target outcome; this does not claim that Castle's unchecked access had a defined result. Legacy packages retain their prior interpretation.
+- Evidence scope: pinned source, independent opcode dependencies and isolated public-operation cases for positive, wrapped, absent and omitted targets. Ordinary campaign routes are separate proof.
+
+### FD-SCENARIO-023 — Separate physical spell records from runtime banks
+
+- Castle authority: `misc.c:2455–2466` reads 105 custom mechanics rows before independently attempting the names resource; `main.c` declares `spelldata[5][7][15]` at the pinned revision.
+- Missing optional names cannot remove mechanics. Providence retains complete physical rows and fragments, validates the full source-backed model prefix, and projects only the native custom bank. Overflow stays inspectable and read-only; it cannot introduce executable levels or classes. Both setup and full v7 admission reject expanded operational banks.
+- Data CI's native Contact title, payment text and captions remain distinct from canonical campaign metadata. `contactinfo.c` displays those fields in Castle; Rebuilt currently retains and accounts their bytes without a corresponding Contact screen. They are not classified as unused or silently substituted into the campaign name.
+- Evidence scope: native framing/source inspection, binary-only and named import/edit/reopen/export cases, overflow corruption probes and shared package-binding checks. This does not certify every custom spell effect.
+
+### FD-SCENARIO-024 — Preserve exact scenario media selection
+
+- Castle's pinned `ResourceManager.cpp` uses ResourceDASM's native resource reader. Dependency revision `27f64c89a5fed855e68c2a5e97b6c6c389d8eb19`, `IndexFormats/ResourceFork.cc` and `ResourceFile.cc`, retains the first reference-map occurrence for duplicate exact keys. Providence derives that first PICT/cicn/sound occurrence, preserves every occurrence, and never substitutes a later duplicate after decode failure.
+- Recognized imported MADG music retains an opaque slot descriptor and all source bytes. An exact source hash already documented by the application music manifest may select that stock recording, including its approved legacy replacement. No title, slot or scenario-name inference and no general MAD decoder are introduced. Fresh music authoring remains MOD-only.
+- Evidence scope: pinned source/dependency inspection, duplicate/decode-failure compiler cases and exact-source music-controller probes. These are distinct from controlled Castle playback or a whole campaign visual review.
+
+### FD-SCENARIO-025 — Preserve signed scalar and selection fallthrough
+
+- Castle authority: pinned `491816ad60037394f92c428e99c004494d3c28b3`, `newland.c:17–18,2980–3004,3197–3288,3523–3543,3548–3566,3624–3676`; `misc.c:344–345` supplies signed `randrange`. Scalar thresholds and unmatched selection switches are distinct from array addresses.
+- V7 opcode 64 compares retained signed thresholds directly with only `-1` as wildcard, then transfers the literal selected XAP, including zero. Hour 24 is not an invalid clock assignment. GOSUB, prior state and RNG remain unchanged apart from the selected transfer.
+- Opcodes 61, 65 and 74 use the shared native signed range arithmetic, including inverted/zero widths. Displacement preserves sign/magnitude draw order and short temporary assignment; an unsafe dungeon destination leaves location unchanged after those draws. Random-item rewards still enforce the real twenty-slot capacity, preserving any count draw and cancelling before rewards or AP removal.
+- Opcode 74 preserves its last-roll semantics, signed-short result/sign/SP assignment and final SP clamp. Zero and minimum-short roll counts leave Castle's local result uninitialized; Rebuilt deliberately skips that unsafe attempted effect before RNG, sound, text or SP mutation. It does not claim a native no-op or reuse stale memory.
+- Opcode 52's unmatched selector/source mode safely yields an empty selection; exact-position bounds still protect the six native slots. Opcode 53 compares exact caste independently and adds only groups 1/2/3; other signed groups add no matches. Existing selected-only corrections remain separate.
+- Earlier package interpretations are unchanged. This entry's original evidence separates stored operands, direct runtime fixtures and the retained hour-24 regression; it did not close opcode 63. The later clock/combat compatibility batch closes CCG-027's defined execution cases; see `clock-combat-compatibility.md`. Campaign-wide branch coverage remains separate.
+
+## FD-COMBAT-021 - Keep the coherent battlefield during an unsafe map reload
+
+- Castle authority: `491816ad60037394f92c428e99c004494d3c28b3`, `newland.c` cases 20, 37 and 45, `loadland`, `movemonster` and shared `field`/occupancy consumers. Controlled Bywater Battle 191 / alternate monster 41 / XAP 111 dispatch commits Land 5 `(62,10)` without ending combat. The native reload changes all six party occupancy cells to terrain 40 and reduces valid terrain cells from 8,070 to 87; the next movement returns failure. This is observed shared-array corruption, not a coherent alternative battle layout.
+- Player-facing problem: reproducing that overwrite strands the battle or lets terrain values masquerade as actor occupancy. Retaining a stale pending source movement at combat exit can also undo the valid authored destination.
+- Chosen behavior: commit the valid exploration destination, preserve the last coherent typed battlefield, actors, fields and turn, and continue the authored script. Apply only at the active-combat map-reload boundary. Preserve opcode-20 rechecks and opcode-37 return; do not reroll, reposition, end combat or grant rewards. Validate a random battle's retained source against its battlefield and discard only its stale source-travel remainder after relocation.
+- Evidence: controlled native corruption probe, direct 20/37/45 land/dungeon and repeated-transfer fixtures, full save/readback, ordinary final attack/victory, retreat confirmation/save/resume, normal defeat, plus visible Bywater Guard/movement. Fixture preparations and forced test-only victory are labelled separately in the external receipts. See `clock-combat-compatibility.md`; this is a deliberate safety correction, not terrain parity inferred from undefined memory.
+
+## FD-CLOCK-001 - Bound undefined clock arithmetic
+
+- Castle authority: opcode 63's native long clock fields and `timeclick(0,0)`. Valid signed fields, exact -1 sentinels, noncanonical hours/minutes, single carry order and unmatched refresh remain faithful.
+- Safety boundary: check signed 32-bit component arithmetic before committing an edit or timeclick. Overflow leaves the clock edit unchanged and produces an opt-in compatibility diagnostic. Never clamp, borrow or repeatedly normalize valid native values, consume a replacement draw or run elapsed-day effects for a direct day assignment.
+- Evidence: native/Rebuilt component and zero-refresh matrix, strict signed v6 persistence, legacy minute-total reading, nested timer/age/Party Death continuation and mutation sensitivity checks. This boundary addresses undefined arithmetic only; it does not authorize suppressing recognized unimplemented behavior.
+
+## FD-CLOCK-002 - Keep timer destination headers typed
+
+- Castle authority: `newland` mode 1 initializes `infodoor` from outdoor `lookx + partyx`, `looky + partyy` and `landlevel`, even while in a dungeon. The completion block compares and indexes those shared globals. Coherent land fixtures establish header replacement and immediate AP recheck ordering; they do not establish a safe meaning for unrelated stale outdoor values in a dungeon.
+- Chosen behavior: initialize the timer header from the actual typed current map and coordinate. Preserve subsequent opcode-specific header changes, selected AP, invocation guards and return order; skip only a header relocation whose destination cannot be safely indexed. Do not invent terrain, movement, AP execution, rewards or RNG.
+- Evidence obligation: source-derived dungeon-global limitation is separate from controlled native clock execution and prepared Rebuilt land/dungeon/save fixtures. This correction applies at timer header initialization/completion, not to native record preservation or compiler interpretation.
+
+## FD-SCENARIO-026 - Preserve coherent continuation after Party Death revival
+
+- Castle authority: `heal.c`/`killbody.c` call `partyloss`; `partyloss.c:23` invokes the global death macro with `newland` mode 1 without restoring the former shared instruction record. Opcode 119 returns after party revival. A repeated 119 reached through the clobbered record instead enters the inactive monster branch (`newland.c:305-309`), whose stale monster context is not a safe continuation contract.
+- Chosen behavior: retain Rebuilt's existing typed suspended effect, VM and caller. Authored Party Death revival resumes that exact uncompleted effect and caller once, preserving earlier effects and RNG. The live destination header remains session-shared; restoring the suspended VM cannot rewind it. Do not re-execute the death hook as the former timer's instruction record or write an inactive monster. An unrevived party still ends the adventure without victory or rewards.
+- Evidence: this is a source-derived safety correction, not controlled Castle continuation parity. The timer fixture exercises the actual health-effect handoff, saved hook acknowledgement, authored119 revival, exact typed remainder, state/readback and RNG. General Party Death and combat-defeat routes retain their existing coverage.

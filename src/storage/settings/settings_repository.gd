@@ -46,11 +46,10 @@ func save_settings(settings: PresentationSettings) -> bool:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		last_error = "Presentation settings failed readback validation."
 		return false
-	if FileAccess.file_exists(settings_path) and DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path)) != OK:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
-		last_error = "Could not replace the previous presentation settings."
-		return false
+	# Rename replaces the previous file directly; deleting it first would lose
+	# the settings if the process stopped between the two operations.
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(settings_path)) != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		last_error = "Could not commit presentation settings."
 		return false
 	return true

@@ -9,14 +9,16 @@ const SUPPORTED_VALUE_TYPES: Array[String] = ["void", "bool", "int", "float", "s
 
 var _allow_deferred: bool = false
 var _extra_code_tail: ClassicExtraCodeFault
+var _native_operand_contract := false
 
 func decode_scenario(document: Dictionary, campaign_id: String, allow_deferred: bool = false) -> ScenarioDefinition:
 	_allow_deferred = allow_deferred
+	_native_operand_contract = document.get("schemaVersion", 3) >= 7
 	_extra_code_tail = null
 	if document.has("extraCodeTail"):
 		var tail: Variant = document["extraCodeTail"]
-		if not allow_deferred or document.get("schemaVersion") not in [5, 6] or not tail is Dictionary or not _exact_fields(tail, ["rowId", "availableBytes"]) or not _is_integer(tail["rowId"]) or not _is_integer(tail["availableBytes"]) or _integer(tail["rowId"]) < 0 or _integer(tail["availableBytes"]) < 1 or _integer(tail["availableBytes"]) > 9:
-			_reject("Scenario Extra Code tail must identify an incomplete imported schema-v5/v6 row.")
+		if not allow_deferred or not _is_integer(document.get("schemaVersion", 0)) or _integer(document.get("schemaVersion", 0)) not in [5, 6, 7] or not tail is Dictionary or not _exact_fields(tail, ["rowId", "availableBytes"]) or not _is_integer(tail["rowId"]) or not _is_integer(tail["availableBytes"]) or _integer(tail["rowId"]) < 0 or _integer(tail["availableBytes"]) < 1 or _integer(tail["availableBytes"]) > 9:
+			_reject("Scenario Extra Code tail must identify an incomplete imported schema-v5 through v7 row.")
 			return null
 		_extra_code_tail = ClassicExtraCodeFault.new(_integer(tail["rowId"]), _integer(tail["availableBytes"]))
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
@@ -132,6 +134,7 @@ func _construct_program_instruction(instruction: Variant) -> Variant:
 				return null
 			extra_code.append(_integer(extra))
 	var action := ClassicActionDefinition.new(_integer(instruction["slot"]), raw_opcode, normalized, _integer(instruction["id"]), instruction["gosub"], extra_code)
+	action.native_extra_code_reference = _native_operand_contract and ClassicOpcodeCatalog.reads_extra_code(normalized)
 	if _extra_code_tail != null and ClassicOpcodeCatalog.reads_extra_code(normalized):
 		var primary_fault := action.operand_id == _extra_code_tail.row_id
 		var companion_fault := normalized == 92 and action.operand_id + 1 == _extra_code_tail.row_id

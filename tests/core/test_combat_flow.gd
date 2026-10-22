@@ -427,13 +427,13 @@ func _test_public_continuation_fumble_terminal_matrix() -> void:
 	character.set_known_spells([spell.id]); character.maximum_spell_attacks = 2; character.spell_points = 10
 	var state := _state(character, monster, "battle.queued-death"); var content := _content([definition], [], [], [], [spell])
 	var lethal := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0, 32_767, 32_767])); assert_true(lethal.ok, "a lethal public spell commits before its death macro is resumed")
-	assert_equal(state.combat.spell_runtime.death_macro_queue(), [monster.id], "the public spell boundary owns the exact death-macro queue head"); assert_true(lethal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested" and event.payload.get("combatantId") == monster.id), "the queue head is the only dispatched macro")
+	assert_equal([state.combat.spell_runtime.death_macro_queue(), rules.combat_flow.cause_active_fumble(state, content, character.id).events[0].payload.get("reason")], [[monster.id], "spell-in-progress"], "the lethal spell guards its exact queued death macro from a scripted fumble"); assert_true(lethal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested" and event.payload.get("combatantId") == monster.id), "the queue head is the only dispatched macro")
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); assert_not_null(restored, "the death-macro queue and active-caster cursor survive save restoration")
 	if restored != null:
 		restored.combat.roster.monster_by_id(monster.id).current_health = 1
 		var resumed := rules.combat_flow.continue_after_monster_death_macro(restored, content, _zeros(16), monster.id)
 		assert_true(resumed.ok, "the public continuation completes the saved macro cursor")
-		assert_equal([restored.combat.spell_runtime.death_macro_queue(), restored.combat.turns.active_actor_id()], [[], character.id], "macro completion clears only the saved head and returns to the issuing caster")
+		assert_equal([restored.combat.spell_runtime.death_macro_queue(), restored.combat.turns.active_actor_id(), restored.combat.turns.active_turn.classic_spell_active], [[], character.id, false], "macro completion clears the saved head and spell context before returning to the issuing caster")
 
 	var weapon := ItemDefinition.new("item.exact-fumble", 77, "Charged Blade")
 	weapon.item_type = 2
@@ -453,6 +453,10 @@ func _test_public_continuation_fumble_terminal_matrix() -> void:
 		var fumble_definition := _monster_definition("monster.fumble", [])
 		var fumble_state := _state(fumbler, MonsterState.new("monster.fumble.instance", fumble_definition.id, fumble_definition.name, 100, 100, 1), "battle.fumble")
 		var fumble_content := _content([fumble_definition], [weapon])
+		for flags: Vector2i in [Vector2i.ZERO, Vector2i.ONE, Vector2i(0, 1)]:
+			var guarded := GameState.from_data(fumble_state.to_data())
+			var turn := guarded.combat.turns.begin_active_turn(); turn.classic_physical_active = flags.x != 0; turn.classic_spell_active = flags.y != 0
+			assert_equal([rules.combat_flow.cause_active_fumble(guarded, fumble_content, fumbler.id).ok, guarded.party.character_by_id(fumbler.id).inventory().size(), guarded.combat.dropped_items.items().size()], [true, 1, 0], "scripted fumbles preserve the weapon without physical context or while a spell is active, including after wire restoration")
 		var fumble := rules.combat_flow.submit_action(fumble_state, fumble_content, fumbler.id, &"attack", fumble_state.combat.roster.monsters()[0].id, ScriptedRng.new([0, 0, 1609]))
 		assert_true(fumble.ok, "the public attack boundary commits a fumble")
 		assert_equal([fumbler.inventory().size(), fumble_state.combat.dropped_items.items().size(), fumble_state.combat.dropped_items.items()[0].charges], [0, 1, 7], "battle owns the exact fumbled instance and remaining charges")
@@ -599,7 +603,7 @@ func _test_random_weapon_table_fails_when_consumed() -> void:
 	invalid_definition.random_weapon_table = 11
 	var rules_at_construction := MonsterRules.new()
 	var construction_rng := _zeros(8)
-	assert_equal([rules_at_construction.build_monster(invalid_definition, "invalid-table", 0, 0, 0, construction_rng), rules_at_construction.build_battle_monster(invalid_definition, "invalid-table-battle", false, 0, 0, construction_rng), construction_rng.trace().size(), MonsterRules.random_weapon_table_error(invalid_definition)], [null, null, 0, "Monster 'classic.monster.invalid-table' (Classic 42) selects random weapon table 11; Classic supports tables 1 through 10."], "both monster builders reject an unimplemented imported table before rolling or substituting a weapon")
+	assert_equal([rules_at_construction.build_monster(invalid_definition, "invalid-table", 0, 0, 0, construction_rng), rules_at_construction.build_battle_monster(invalid_definition, "invalid-table-battle", false, 0, 0, construction_rng), construction_rng.trace().size(), MonsterRules.random_weapon_table_error(invalid_definition)], [null, null, 0, "Monster 'classic.monster.invalid-table' (Classic 42) selects random weapon table 11; The pinned Castle table has nine rows; Rebuilt retains its documented table-10 alias."], "both monster builders reject an unimplemented imported table before rolling or substituting a weapon")
 	var rules := RealmzRules.new()
 	var definitions := _polymorph_definitions()
 	definitions[1].random_weapon_table = 11
@@ -611,7 +615,7 @@ func _test_random_weapon_table_fails_when_consumed() -> void:
 	var target := MonsterState.new("monster.invalid-table-morph", definitions[0].id, definitions[0].name, 20, 20, 2)
 	var state := _state(caster, target, "battle.invalid-table-morph")
 	var result := rules.combat_flow.cast_spell(state, _content(definitions, [], [], [], [spell]), caster.id, target.id, spell.id, 1, _polymorph_rng(4))
-	assert_equal([result.ok, result.error_code, result.error_message, target.definition_id], [false, &"invalid_random_weapon_table", "Monster 'classic.monster.2' (Classic 2) selects random weapon table 11; Classic supports tables 1 through 10.", definitions[0].id], "a selected imported random-weapon table fails with exact monster/table context before polymorph mutation")
+	assert_equal([result.ok, result.error_code, result.error_message, target.definition_id], [false, &"invalid_random_weapon_table", "Monster 'classic.monster.2' (Classic 2) selects random weapon table 11; The pinned Castle table has nine rows; Rebuilt retains its documented table-10 alias.", definitions[0].id], "a selected imported random-weapon table fails with exact monster/table context before polymorph mutation")
 
 
 func _test_public_polymorph_matrix() -> void:
@@ -720,16 +724,12 @@ func _test_weapon_condition_equipment_admission_and_neutrality() -> void:
 	var rules := RealmzRules.new()
 	var repository := test_package_repository()
 	var app_pkg := repository.load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
-	assert_true(app_pkg.is_ok(), "application library loads successfully")
 	var cobra: ItemDefinition = app_pkg.content.items.item_by_id("classic.item.176")
 	var snake_bite: ItemDefinition = app_pkg.content.items.item_by_id("classic.item.180")
-	assert_not_null(cobra, "Cobra Strike +4 is present")
-	assert_not_null(snake_bite, "Snake Bite +3 is present")
 	assert_equal([cobra.special_1, cobra.special_2, cobra.special_3, cobra.special_4, cobra.special_5], [-10, 0, 29, 0, -5], "Cobra Strike +4 encodes automatic permanent poison")
 	assert_equal([snake_bite.special_1, snake_bite.special_2, snake_bite.special_3, snake_bite.special_4, snake_bite.special_5], [-10, 0, 29, 0, -4], "Snake Bite +3 encodes automatic permanent poison")
 
 	var war_pkg := repository.load_package("res://src/storage/packages/bundled_campaigns/scenario-war-in-the-sword-lands.realmz2")
-	assert_true(war_pkg.is_ok(), "War in the Sword Lands package loads successfully")
 	for record: Array in [[927, 1, 21, 7, 4], [907, 2, 49, 50, -1], [956, 1, 21, 7, 6], [968, 1, 29, 4, 6]]:
 		var weapon: ItemDefinition = war_pkg.content.items.item_by_id("classic.item.%d" % record[0])
 		assert_equal([weapon.special_1, weapon.special_2, weapon.special_3, weapon.special_4, weapon.special_5], [-10] + record.slice(1), "%s preserves its exact condition trigger, slot, save/chance and duration" % weapon.name)

@@ -6,6 +6,7 @@ extends RefCounted
 var id: String
 var classic_id: int
 var inflation_percent: int
+var native_facts: ClassicRecordCatalog.ShopFacts
 var _item_ids: Array[String]
 var _quantities: Array[int]
 var _stock_slots: Array[int]

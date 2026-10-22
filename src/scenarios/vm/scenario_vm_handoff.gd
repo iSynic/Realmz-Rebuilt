@@ -33,7 +33,8 @@ static func safe(runtime_handoff: ScenarioRuntimeHandoff, action_frame_index: in
 
 func copy() -> ScenarioVmHandoff:
 	var duplicate := from_data(to_data())
-	assert(duplicate != null, "A live typed VM handoff must round-trip through its wire codec")
+	if duplicate == null:
+		push_error("A live typed VM handoff must round-trip through its wire codec.")
 	return duplicate
 
 
@@ -57,22 +58,38 @@ func to_data() -> Dictionary:
 	return {"kind": String(kind), "version": VERSION, "data": data}
 
 
-static func from_data(value: Variant) -> ScenarioVmHandoff:
+static func from_data(value: Variant, depth: int = 0) -> ScenarioVmHandoff:
 	if not value is Dictionary or value.size() != 3 or not value.get("kind") is String or _integer(value.get("version")) != VERSION or not value.get("data") is Dictionary:
 		return null
 	var data: Dictionary = value["data"]
-	var runtime_handoff := ScenarioRuntimeHandoff.from_data(data.get("runtime"))
+	var runtime_handoff := ScenarioRuntimeHandoff.from_data(data.get("runtime"), depth)
 	if runtime_handoff == null:
 		return null
-	match StringName(value["kind"]):
+	var result := ScenarioVmHandoff.new(StringName(value["kind"]))
+	result.runtime = runtime_handoff
+	match result.kind:
 		CLASSIC_OPERATION:
-			return classic(runtime_handoff) if data.size() == 1 else null
+			return result if data.size() == 1 else null
 		SAFE_OPERATION:
 			var parsed_frame_index := _integer(data.get("frameIndex"))
 			if data.size() != 3 or parsed_frame_index < 0 or not data.get("resultTarget") is String:
 				return null
-			return safe(runtime_handoff, parsed_frame_index, data["resultTarget"])
+			result.frame_index = parsed_frame_index
+			result.result_target = data["resultTarget"]
+			return result
 	return null
+
+
+static func is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapshot) -> bool:
+	if saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null or handoff == null or handoff.runtime == null:
+		return false
+	match handoff.kind:
+		ScenarioVmHandoff.CLASSIC_OPERATION:
+			return saved.frames.back().kind == ScenarioFrame.PROGRAM
+		ScenarioVmHandoff.SAFE_OPERATION:
+			var frame_index: int = handoff.frame_index
+			return frame_index >= 0 and frame_index < saved.frames.size() and saved.frames[frame_index].kind == ScenarioFrame.ACTION
+	return false
 
 
 static func _integer(value: Variant) -> int:

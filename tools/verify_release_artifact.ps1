@@ -10,6 +10,8 @@ param(
     [string]$ImporterRoot,
     [Parameter(Mandatory = $true)]
     [string]$MusicImporterRoot,
+    [Parameter(Mandatory = $true)]
+    [string]$GodotPath,
     [switch]$LocalTestBuild
 )
 
@@ -57,6 +59,9 @@ $pckName = ""
 $pckBytes = 0L
 $pckHash = ""
 $nativeIcon = [ordered]@{}
+$programProbeRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz-program-inventory-" + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $programProbeRoot | Out-Null
+$auditPckPath = ""
 if ($Preset -eq "macOS") {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $archive = [System.IO.Compression.ZipFile]::OpenRead($outputPath)
@@ -66,6 +71,11 @@ if ($Preset -eq "macOS") {
         $entry = $entries[0]
         $pckName = $entry.FullName
         $pckBytes = $entry.Length
+        $auditPckPath = Join-Path $programProbeRoot 'exported.pck'
+        $inputStream = $entry.Open()
+        $outputStream = [IO.File]::Create($auditPckPath)
+        try { $inputStream.CopyTo($outputStream) }
+        finally { $outputStream.Dispose(); $inputStream.Dispose() }
         $stream = $entry.Open()
         $sha = [System.Security.Cryptography.SHA256]::Create()
         try { $pckHash = [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant() }
@@ -90,6 +100,7 @@ if ($Preset -eq "macOS") {
     $pckName = $pck.Name
     $pckBytes = $pck.Length
     $pckHash = (Get-FileHash -LiteralPath $pckPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $auditPckPath = $pckPath
     if ($Preset -eq "Windows Desktop") {
         Add-Type -AssemblyName System.Drawing
         $exportedIcon = [System.Drawing.Icon]::ExtractAssociatedIcon($outputPath)
@@ -278,6 +289,25 @@ if ($LocalTestBuild) {
             [ordered]@{ path = $relative; deleted = $true }
         }
     })
+}
+$probeProject = Join-Path $programProbeRoot 'project'
+New-Item -ItemType Directory -Path $probeProject | Out-Null
+[IO.File]::WriteAllText((Join-Path $probeProject 'project.godot'), "config_version=5`n", [Text.UTF8Encoding]::new($false))
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'audit_release_programs.gd') -Destination (Join-Path $probeProject 'audit_release_programs.gd')
+$payloadRoot = Join-Path $programProbeRoot 'payload'
+. (Join-Path $PSScriptRoot 'stream_process.ps1')
+$probe = Invoke-StreamingProcess -FilePath $GodotPath -ArgumentList @('--headless', '--path', $probeProject, '--script', 'res://audit_release_programs.gd', '--', $auditPckPath, $payloadRoot) -Label 'Exported scenario program inventory'
+if ($probe.ExitCode -ne 0 -or ($probe.Output -join "`n") -match 'SCRIPT ERROR:|Parse Error:') { throw 'Could not inspect actual exported scenario archives.' }
+$completeRecords = Test-Path -LiteralPath (Join-Path $payloadRoot 'complete-records.json.zlib')
+$inventoryVerifier = if ($completeRecords) { 'verify_complete_records.py' } else { 'verify_program_restoration.py' }
+& python (Join-Path $PSScriptRoot $inventoryVerifier) --package-root $payloadRoot
+if ($LASTEXITCODE -ne 0) { throw 'Actual exported scenario archives differ from the reviewed content inventory.' }
+$inventoryName = if ($completeRecords) { 'complete-records-inventory.json' } else { 'program-inventory.json' }
+$manifest.programInventory = [ordered]@{
+    formatVersion = 1
+    file = $inventoryName
+    sha256 = (Get-FileHash -LiteralPath (Join-Path $repoRoot "src/storage/packages/bundled_campaigns/$inventoryName") -Algorithm SHA256).Hash.ToLowerInvariant()
+    verifiedCampaigns = 13
 }
 $manifestPath = Join-Path $artifactDirectory "release-manifest.json"
 [System.IO.File]::WriteAllText($manifestPath, (($manifest | ConvertTo-Json -Depth 7) + "`n"), [System.Text.UTF8Encoding]::new($false))

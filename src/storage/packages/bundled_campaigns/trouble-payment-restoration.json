@@ -1,0 +1,51 @@
+{
+  "addedPrograms": [
+    {
+      "id": "xap:330",
+      "instructions": [
+        {
+          "extraCode": null,
+          "gosub": false,
+          "id": 569,
+          "kind": "classicAction",
+          "opcode": 1,
+          "rawOpcode": 1,
+          "slot": 0
+        },
+        {
+          "extraCode": null,
+          "gosub": false,
+          "id": 0,
+          "kind": "classicAction",
+          "opcode": 24,
+          "rawOpcode": 24,
+          "slot": 7
+        }
+      ],
+      "ownerId": "Data ED3:macro:330",
+      "ownerKind": "extra-action-point"
+    }
+  ],
+  "archiveSha256": "7cee6240e1097398dc5ebee65f6e2bc2ac0cfb27d0f61241d6bf88ee251ee744",
+  "bytes": 5080397,
+  "campaignId": "scenario-trouble-in-the-sword-lands",
+  "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+  "contentId": "4c962abbde28d041bf8fa6ca957ea539fb24977a81f80822255317b57a4df3a8",
+  "file": "scenario-trouble-in-the-sword-lands.realmz2",
+  "formatVersion": 1,
+  "kind": "realmz-rebuilt.trouble-payment-restoration",
+  "nativeFile": "Data ED3",
+  "nativeRecordSha256": "e84563b9246ee4b8a8406d3fb19a77bfc153140dff752a914d2ab533a05cf776",
+  "nativeSha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5",
+  "packageHash": "d23364bddb505d34da718a19a822adf83b17364993a8ef77eb4577fe06d5971b",
+  "previousPackage": {
+    "archiveSha256": "c87a004438e05070d297cfa61f245c6eb637d9d4b5093bc8c7ef6b8ada758aaa",
+    "bytes": 5080377,
+    "compilerRevision": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+    "contentId": "efe9af288aafca47729aae282e639d8936b150810271ee84c855a816f3c42b27",
+    "packageHash": "6d5fbc4fa8d99a4932d09b74cf719184e466e34509c57014aad3038c92c8a61e"
+  },
+  "previousScenarioSha256": "5efa181cd81ac10249dda36cfcc4edb6fefb3bb6f8be3562372ca4d8c762d6fd",
+  "sourceRevision": "491816ad60037394f92c428e99c004494d3c28b3",
+  "compilerToolSha256": "36a1c5e95da4e76223f6883edf9ce37614c5c529d3c4c9f0c1e90481c91cc6a1"
+}

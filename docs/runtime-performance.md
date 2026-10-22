@@ -124,6 +124,21 @@ The prior six-map matrix used the now-rejected two-cell route and is superseded 
 
 Both long-route runs crossed multiple retained chunks without a script error, completed at approximately 79.4 steps per second, and met the 3.0/8.3/12.5/16.7 ms thresholds without reducing visible tile count, native cell size, interface density, or simulation frequency. Darkness and LOS long-route recertification remains separate from this non-LOS chunk-boundary regression rather than inheriting the superseded two-cell evidence.
 
+### Non-combat hot-path pass (2026-10-21)
+
+Godot 4.7.1 on the same Windows host, shared with other concurrent Godot jobs, so every comparison interleaves baseline and changed runs over the same workload and reports medians. Combat is out of scope.
+
+| Path | Workload | Before | After |
+|---|---|---:|---:|
+| Retained map update | AOGM `land:0`, 31x17 projection, 600 moves, headless presenters | 0.936 ms p50, 1.894 ms p95 | 0.671 ms p50, 1.340 ms p95 |
+| Land LOS sweep | every cell of every authored-LOS land map in AOGM, Bywater, Twin Sands | 580–778 µs per uncached origin | 149–299 µs |
+| Deferred frame after opening a workspace | production `GameShell`, 2,814 nodes | Settings 100.2 ms, Character 34.4 ms | Settings 20.8 ms, Character 16.0 ms |
+| World decoding | AOGM first installation / installed load | 1,200–1,354 / 168–174 ms | 759–835 / 113–117 ms |
+| Rendered transaction+projection p95 | AOGM `land:4` (LOS), 1280x720, 240 moves at 400 percent | 2.749 ms | 2.503 ms |
+| Rendered retained-map p95 | AOGM `land:0`, 1280x720, 240 moves at 400 percent | 0.758 ms | 0.602 ms |
+
+Anchor-strip cells now refresh only their overlay; LOS sweeps resolve each effective cell once per call; `UiSizing` skips subtrees an ancestor's added-node pass already bound in the same flush; compact map rows convert each validated integer once. Each change preserved its equivalence evidence: per-step digests of every retained layer cell, overlay and camera; identical LOS results for 145,800 origins; identical control sizing digests; a 16.3-million-case differential check of compact-row acceptance and messages; and identical final canonical saves. The hourly roster rebind was measured at about 0.03 ms per row and left unchanged. Full-window cold map decoding showed no consistent gain from narrower lookup changes, so none was kept. The installed runtime-image read (about 0.45 s for AOGM) is native Variant decoding; changing it would require a cache format revision.
+
 ## Combat navigation
 
 Party Auto and monster advance request a weighted route to legal contact or casting positions before committing a movement step. Each edge uses the same complete-footprint maximum terrain charge as actual movement; a rules-legal size-zero friendly swap is represented by its actual five-point edge. Four derived 1x1, 1x2, 2x1, and 2x2 profiles retain static passability and destination movement base until battlefield terrain changes; typed distance, first-step, closed, goal, heuristic, queue, and heap storage is reused with generation counters. Other dynamic combatants block the immediate move but remain forecast occupancy later in the route. Unavailable pursuit ends without random wandering; retreat retains its separate Castle directional rules.

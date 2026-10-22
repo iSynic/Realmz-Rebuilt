@@ -26,7 +26,7 @@ func request(request_id: String) -> ScenarioRuntimeOperationResult:
 func resume(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var body := response.body as InteractionResponse.BankBody
 	if response.kind != InteractionRequest.BANK or body == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Bank response requires an action.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Bank response requires an action.")
 	var action := String(body.action)
 	if action == "leave":
 		return ScenarioRuntimeOperationResult.completed(true, [
@@ -83,16 +83,16 @@ func _apply_action(body: InteractionResponse.BankBody, events: Array[DomainEvent
 		"pool": return _pool(events)
 		"share": return _share(events)
 		"to-pool", "to-character": return _transfer(body, events)
-		_: return ScenarioRuntimeOperationResult.failed(&"unknown_bank_action", "Bank action '%s' is unavailable." % action)
+		_: return ScenarioRuntimeOperationResult.rejected(&"unknown_bank_action", "Bank action '%s' is unavailable." % action)
 
 
 func _pool(events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
 	var context_error := _money.movement_context_error()
 	if not context_error.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", context_error)
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_money_context", context_error)
 	var probe := _rules.economy.pool_probe(_game_state.party)
 	if not probe.allowed:
-		return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+		return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 	_rules.economy.pool_party_wealth(_game_state.party)
 	_money.recalculate_party_movement()
 	events.append(DomainEvent.new(&"wealth_pooled", {"source": "classic-bank", "wealth": _game_state.party.pooled_wealth.to_data()}))
@@ -103,10 +103,10 @@ func _pool(events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
 func _share(events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
 	var context_error := _money.movement_context_error()
 	if not context_error.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", context_error)
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_money_context", context_error)
 	var probe := _rules.economy.share_probe(_game_state.party)
 	if not probe.allowed:
-		return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+		return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 	_rules.economy.share_pooled_wealth(_game_state.party)
 	_money.recalculate_party_movement()
 	events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-bank", "remaining": _game_state.party.pooled_wealth.to_data()}))
@@ -116,22 +116,22 @@ func _share(events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
 
 func _transfer(body: InteractionResponse.BankBody, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
 	if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Bank-backed Swap requires character, denomination, and amount.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Bank-backed Swap requires character, denomination, and amount.")
 	var context_error := _money.movement_context_error()
 	if not context_error.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", context_error)
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_money_context", context_error)
 	var character := _game_state.party.character_by_id(body.character_id)
 	var kind := ClassicMoneyTransferSupport.wealth_kind(body.denomination)
 	if character == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The selected bank character is unavailable.")
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_character", "The selected bank character is unavailable.")
 	if kind < 0:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_wealth_kind", "The selected bank denomination is unavailable.")
+		return ScenarioRuntimeOperationResult.rejected(&"unknown_wealth_kind", "The selected bank denomination is unavailable.")
 	if body.amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
 	var to_character := body.action == &"to-character"
 	var probe := _rules.economy.transfer_probe(_game_state.party, character, kind as WealthState.Kind, body.amount, to_character)
 	if not probe.allowed:
-		return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", probe.reason)
+		return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 	var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, body.amount) if to_character else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, body.amount)
 	if not transferred:
 		return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", "The selected bank transfer is no longer available.")

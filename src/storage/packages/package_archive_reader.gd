@@ -6,6 +6,14 @@ extends RefCounted
 var last_error: String = ""
 
 
+## Opens an untrusted archive only after its declared entry sizes are bounded.
+func open_bounded(archive: ZIPReader, path: String) -> Error:
+	last_error = PackageArchiveLimits.error_for(path)
+	if not last_error.is_empty():
+		return ERR_FILE_CORRUPT
+	return archive.open(path)
+
+
 func entries(archive: ZIPReader) -> Variant:
 	last_error = ""
 	var paths := archive.get_files()
@@ -67,7 +75,8 @@ func validate_files(manifest: Dictionary, archive: ZIPReader, progress_callback:
 func sha256(bytes: PackedByteArray) -> String:
 	var context := HashingContext.new()
 	context.start(HashingContext.HASH_SHA256)
-	context.update(bytes)
+	if not bytes.is_empty():
+		context.update(bytes)
 	return context.finish().hex_encode()
 
 

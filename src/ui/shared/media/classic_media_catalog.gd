@@ -84,15 +84,19 @@ func asset_by_id(asset_id: String) -> MediaAsset:
 			if packaged_landlook != null:
 				return packaged_landlook
 		return asset_by_resource("PICT", landlook_resource_id)
+	for prefix: String in ["realmz-special-land-neg-", "realmz-land-cicn-"]:
+		if not asset_id.begins_with(prefix):
+			continue
+		var magnitude := asset_id.trim_prefix(prefix)
+		if not magnitude.is_valid_int() or int(magnitude) < 0 or str(int(magnitude)) != magnitude:
+			return null
+		return asset_by_resource("cicn", (-1 if prefix == "realmz-special-land-neg-" else 1) * int(magnitude))
 	var package_asset := package_media.asset_by_id(asset_id) if package_media != null else null
 	if package_asset != null:
 		return package_asset
 	var character_asset := character_media.asset_by_id(asset_id) if character_media != null else null
 	if character_asset != null:
 		return character_asset
-	var land_overlay_resource_id := _land_overlay_resource_id(asset_id)
-	if land_overlay_resource_id != 0:
-		return asset_by_resource("cicn", land_overlay_resource_id)
 	var application_asset := application_media.asset_by_id(asset_id) if application_media != null else null
 	if application_asset != null:
 		return application_asset
@@ -114,19 +118,6 @@ func asset_by_resource(resource_type: String, resource_id: int) -> MediaAsset:
 func tileset_by_id(tileset_id: String) -> MediaAsset:
 	var asset := asset_by_id(tileset_id)
 	return asset if asset != null and asset.is_tileset() else null
-
-
-static func _land_overlay_resource_id(asset_id: String) -> int:
-	const NEGATIVE_PREFIX := "realmz-special-land-neg-"
-	const POSITIVE_PREFIX := "realmz-land-cicn-"
-	var sign := -1 if asset_id.begins_with(NEGATIVE_PREFIX) else 1
-	var prefix := NEGATIVE_PREFIX if sign < 0 else POSITIVE_PREFIX
-	if not asset_id.begins_with(prefix):
-		return 0
-	var magnitude := asset_id.trim_prefix(prefix)
-	if magnitude.is_empty() or not magnitude.is_valid_int() or int(magnitude) <= 0:
-		return 0
-	return sign * int(magnitude)
 
 
 static func _landlook_resource_id(asset_id: String) -> int:

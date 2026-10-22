@@ -16,6 +16,12 @@ var envelope: SaveEnvelope = null
 
 ## Opaque repository selector. Callers retain this record and pass it back to storage.
 var _storage_selector: String = ""
+var storage_selector: String:
+	get: return _storage_selector
+
+
+func _init(selector: String = "") -> void:
+	_storage_selector = selector
 
 
 func is_valid() -> bool:

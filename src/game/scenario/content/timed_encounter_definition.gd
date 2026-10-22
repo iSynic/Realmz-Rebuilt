@@ -18,6 +18,7 @@ var required_y: int
 var required_item_id: int
 var required_quest_id: int
 var location_kind: LocationKind
+var native_facts: ClassicRecordCatalog.TimedFacts
 
 
 func _init(encounter_id: int, first_day: int, day_increment: int, chance: int, macro_id: int, scenario_program_id: String, level_requirement: int, random_rectangle_requirement: int, x_requirement: int, y_requirement: int, item_requirement: int, quest_requirement: int, place_kind: LocationKind) -> void:

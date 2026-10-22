@@ -43,16 +43,17 @@ func start_debug(trigger_id: String) -> SessionCoordinatorResult:
 	trigger_context.continuation = continuation
 	trigger_context.map = map
 	trigger_context.coordinate = trigger.coordinate
-	var step = execute(trigger_context, trigger, events)
+	var step := execute(trigger_context, trigger, events)
 	if step != null:
 		return step
 	_context.session_continuation.clear()
 	return SessionCoordinatorResult.completed(events)
 
 
-func execute(trigger_context: Variant, trigger: TriggerDefinition, events: Array[DomainEvent]):
+func execute(trigger_context: Variant, trigger: TriggerDefinition, events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var continuation: ExplorationContinuationBody = trigger_context.continuation
 	continuation.active_trigger_id = trigger.id
+	_context.classic_execution.begin_trigger(trigger)
 	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, trigger_context.map.id, trigger_context.coordinate, true)
 	var started := _context.scenario_vm.start_program(trigger.program_id, execution_context)
 	if started.state == ScenarioVmResult.State.FAILED:
@@ -71,14 +72,10 @@ func execute(trigger_context: Variant, trigger: TriggerDefinition, events: Array
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.completed(events)
 	_context.scenario().finalize_completed_trigger(trigger, events)
-	if _context.events_have(result.events, &"destination_trigger_recheck_requested"):
-		var requested_map := _context.content.world.map_by_id(_context.state.party.map_id)
-		if requested_map == null:
-			_context.session_continuation.clear()
-			return SessionCoordinatorResult.failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
-		_exploration.set_post_move_continuation(requested_map, _context.state.party.coordinate, 1)
-		return _exploration.continue_post_move(events)
 	if _context.scenario().apply_trigger_destination(trigger, events, continuation.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
+		if _context.scenario_vm.native_recheck_suppressed():
+			_context.session_continuation.clear()
+			return SessionCoordinatorResult.completed(events)
 		var destination_map := _context.content.world.map_by_id(_context.state.party.map_id)
 		_exploration.set_post_move_continuation(destination_map, _context.state.party.coordinate, 1)
 		return _exploration.continue_post_move(events)

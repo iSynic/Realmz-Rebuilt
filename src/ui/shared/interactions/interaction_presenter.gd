@@ -59,6 +59,7 @@ var _application_rect := Rect2(0.0, 32.0, 1280.0, 688.0)
 var _side_workspace_rect := Rect2(928.0, 28.0, 352.0, 502.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
+var _party_effect_masked := false
 var _playback_combatant_facts: Dictionary = {}
 var _playback_battle_id := ""
 var _autojournal_enabled: bool = false
@@ -75,9 +76,9 @@ var controller: ControllerAccess:
 
 class ControllerAccess:
 	extends RefCounted
-	var _presenter: Variant
+	var _presenter: InteractionPresenter
 
-	func _init(presenter: Variant) -> void: _presenter = presenter
+	func _init(presenter: InteractionPresenter) -> void: _presenter = presenter
 	func actions() -> Array[ControllerRadialEntry]: return _presenter._component.controller_actions() if not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null else []
 	func activate_action(action_id: StringName) -> bool: return not _presenter.combat_mount_pending and not _presenter._flash.is_open() and _presenter._component != null and _presenter._component.activate_controller_action(action_id)
 	func submit_acknowledgement() -> bool: return _presenter._flash.dismiss() or _presenter.submit_classic_acknowledgement()
@@ -154,6 +155,7 @@ func _exit_tree() -> void:
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
+	_party_effect_masked = false
 	if _component is ShopInteraction and (_component as ShopInteraction).refresh_workspace(request, game_view):
 		_request = request
 		_playback_masked = false
@@ -303,7 +305,16 @@ func _finish_request_component(request: InteractionRequest, game_view: GameView,
 	call_deferred("_prepare_interaction_focus")
 
 
+func present_party_effect_playback_mask() -> void:
+	present(null)
+	_playback_masked = true
+	_party_effect_masked = true
+	_claim_modal_layer()
+	_apply_classic_region()
+
+
 func present_combat_playback_mask(frame: CombatPlaybackFrame = null, base_view: GameView = null, final_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
+	_party_effect_masked = false
 	var playback_facts := PlaybackFacts.from_view(base_view, media)
 	playback_facts.merge(PlaybackFacts.from_view(final_view, media), true)
 	var battle_id := ""
@@ -570,6 +581,11 @@ func _apply_classic_region() -> void:
 	z_index = 110 if pause_background_active and _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE else _ordinary_layer
 	if not is_inside_tree():
 		return
+	if _party_effect_masked:
+		# The application input owner consumes field-playback actions while
+		# leaving the existing Pause command pointer-accessible.
+		_overlays.close_modal_shield()
+		return
 	# Floating application dialogs fill their own frame, never the battlefield.
 	if LayoutPolicy.uses_application_modal_region(_request):
 		_options.custom_minimum_size.y = 0.0
@@ -670,27 +686,10 @@ func _apply_content_layout() -> void:
 
 func _prepare_interaction_focus() -> void:
 	if combat_mount_pending: return
-	_scroll.scroll_horizontal = 0
-	_scroll.scroll_vertical = 0
-	var preferred := _component.preferred_initial_focus() if _component != null else null
-	var first := preferred if preferred != null else _first_focusable(_overlays.controller_focus_root())
-	if first != null:
-		first.grab_focus()
-	_scroll.scroll_horizontal = 0
-	_scroll.scroll_vertical = 0
+	_overlays.prepare_initial_focus(_scroll, _component.preferred_initial_focus() if _component != null else null)
 
 
 func _claim_modal_layer() -> void:
 	var parent := get_parent()
 	if parent != null and get_index() != parent.get_child_count() - 1:
 		parent.move_child(self, parent.get_child_count() - 1)
-
-
-static func _first_focusable(parent: Node) -> Control:
-	for child: Node in parent.get_children():
-		if child is Control and (child as Control).visible and (child as Control).focus_mode != Control.FOCUS_NONE and not (child is BaseButton and (child as BaseButton).disabled):
-			return child as Control
-		var nested := _first_focusable(child)
-		if nested != null:
-			return nested
-	return null

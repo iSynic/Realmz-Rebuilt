@@ -3,6 +3,16 @@
 class_name SessionRestoreStateValidator
 extends RefCounted
 
+static func selected_character_rules_are_valid(content: RealmzContent, state: GameState) -> bool:
+	var characters := state.party.characters()
+	if state.character_draft != null and state.character_draft.generated_character != null:
+		characters.append(state.character_draft.generated_character)
+	for character: CharacterState in characters:
+		if content.characters.race_by_id(character.race_id) == null or content.characters.caste_by_id(character.caste_id) == null:
+			return false
+	return true
+
+
 static func normalize_age_groups(state: GameState, content: RealmzContent, rules: RealmzRules) -> void:
 	for character: CharacterState in state.party.characters():
 		var race := content.characters.race_by_id(character.race_id)
@@ -162,5 +172,7 @@ static func acquired_player_maps_are_valid(content: RealmzContent, state: GameSt
 		return false
 	for player_map_id: String in state.world.exploration.acquired_map_ids():
 		if content.world.player_map_by_id(player_map_id) == null:
-			return false
+			if content.classic_records == null or not player_map_id.begins_with("classic.player-map."): return false
+			var native_id := player_map_id.trim_prefix("classic.player-map.")
+			if not native_id.is_valid_int() or int(native_id) not in range(20) or str(int(native_id)) != native_id: return false
 	return true

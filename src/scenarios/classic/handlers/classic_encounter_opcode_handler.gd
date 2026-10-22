@@ -20,7 +20,7 @@ func opcode_ids() -> Array[int]:
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		3:
-			return _request_classic_choice(action, request_id)
+			return _request_classic_choice(action, request_id, context)
 		4:
 			return request_encounter(&"simple", action.operand_id, action.gosub, request_id, context)
 		5:
@@ -60,10 +60,13 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter_kind", "Classic encounter kind '%s' is unavailable." % kind)
 	var encounter := _content.scenario_records.simple_encounter_by_id(encounter_id)
 	if encounter == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data ED", encounter_id):
+			return ClassicCompatibility.cancel_interaction(&"simple-encounter", "Data ED", encounter_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Simple Encounter %d." % encounter_id)
 	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id)) if encounter.prompt_message_id != 0 else null
 	if prompt == null and encounter.prompt_message_id != 0:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
+		if not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(encounter.prompt_message_id)):
+			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
 	var options: Array[Dictionary] = []
 	var option_indexes: Array[int] = []
 	var responses := encounter.responses()
@@ -71,11 +74,15 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 		if _game_state.scenario_progress.encounters.simple_option_is_eliminated(encounter.id, option_index):
 			continue
 		var response: SimpleEncounterResponse = responses[option_index]
+		if encounter.native_facts != null and response.label.strip_edges().is_empty():
+			continue
 		if response.is_classic_eliminated(encounter.id):
 			continue
 		options.append({"id": response.id, "label": response.label})
 		option_indexes.append(option_index)
 	if options.is_empty():
+		if encounter.native_facts != null:
+			return ClassicCompatibility.cancel_interaction(&"empty-simple-encounter", "Data ED", encounter_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
 	var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text if prompt != null else "", "options": options, "canBackOut": encounter.can_back_out})
 	var events: Array[DomainEvent] = []
@@ -98,10 +105,14 @@ func _reopen_simple_encounter(action: ClassicActionDefinition, request_id: Strin
 func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var encounter := _content.scenario_records.complex_encounter_by_id(encounter_id)
 	if encounter == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data ED2", encounter_id):
+			return ClassicCompatibility.cancel_interaction(&"complex-encounter", "Data ED2", encounter_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Complex Encounter %d." % encounter_id)
 	_classic_loaded_complex_encounter_id = encounter.id
 	var request := complex_encounter_request(encounter, request_id)
 	if request == null:
+		if _content.classic_records != null:
+			return ClassicCompatibility.cancel_interaction(&"empty-complex-encounter", "Data ED2", encounter_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter %d has no available responses." % encounter.id)
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.encounter(ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER, encounter.id, gosub, [], _encounter_attempt(context, &"complex", encounter.id)), [_encounter_open_sound(&"complex", encounter.id)])
 
@@ -118,7 +129,7 @@ static func _encounter_attempt(context: ScenarioExecutionContext, kind: StringNa
 
 func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id: String) -> InteractionRequest:
 	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id)) if encounter.prompt_message_id != 0 else null
-	if prompt == null and encounter.prompt_message_id != 0:
+	if prompt == null and encounter.prompt_message_id != 0 and not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(encounter.prompt_message_id)):
 		return null
 	var actions: Array[Dictionary] = []
 	if encounter.action_result != 0:
@@ -163,7 +174,7 @@ func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id
 	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text if prompt != null else "", "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out, "actionSelectionCount": encounter.groups().filter(func(value: int) -> bool: return value != 0).size()})
 
 
-func _request_classic_choice(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+func _request_classic_choice(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 3 requires a five-value Extra Code row.")
 	var yes_id := action.extra_code[3]
@@ -177,6 +188,9 @@ func _request_classic_choice(action: ClassicActionDefinition, request_id: String
 		yes_label_value = _classic_choice_label(yes_id)
 		no_label_value = _classic_choice_label(no_id)
 	if yes_label_value == null or no_label_value == null:
+		var path := "Data OD" if _content.scenario_records.has_option_labels() else "Data SD2"
+		if ClassicCompatibility.source_unavailable(_content, path, absi(yes_id)) or ClassicCompatibility.source_unavailable(_content, path, absi(no_id)):
+			return ClassicCompatibility.cancel_interaction(&"choice-label", path, yes_id if yes_label_value == null else no_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_option_label", "Classic opcode 3 references an unavailable option label.")
 	var request := InteractionRequest.from_payload(request_id, &"yes_no", {"yesId": yes_id, "yesLabel": yes_label_value, "noId": no_id, "noLabel": no_label_value})
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.classic_choice(action.extra_code, action.gosub))
@@ -199,6 +213,8 @@ func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntime
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 54 requires a five-value Extra Code row.")
 	var encounter_id := action.extra_code[0]
 	var definition := _content.scenario_records.timed_encounter_by_id(encounter_id)
+	if definition == null and ClassicCompatibility.source_unavailable(_content, "Data TD3", encounter_id):
+		return ClassicCompatibility.skip(&"timed-encounter-mutation", "Data TD3", encounter_id)
 	var current := _game_state.scenario_progress.encounters.timed_override(encounter_id)
 	if action.extra_code[1] > -1:
 		current["percent"] = action.extra_code[1]
@@ -218,6 +234,8 @@ func _eliminate_simple_option(action: ClassicActionDefinition) -> ScenarioRuntim
 	var encounter := _content.scenario_records.simple_encounter_by_id(action.extra_code[0])
 	var option_index := action.extra_code[1] - 1
 	if encounter == null or encounter.response_at(option_index) == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data ED", action.extra_code[0]) or (_content.classic_records != null and option_index not in range(4)):
+			return ClassicCompatibility.skip(&"simple-choice-mutation", "Data ED", action.extra_code[0])
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter_option", "Classic opcode 41 references an unavailable Simple Encounter option.")
 	_game_state.scenario_progress.encounters.eliminate_simple_option(encounter.id, option_index)
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter.id, "optionIndex": option_index, "source": "classic-opcode-41"})])

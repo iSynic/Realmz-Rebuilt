@@ -360,8 +360,8 @@ func _append_monster_spell_resolution_events(state: GameState, content: RealmzCo
 func _handle_monster_spell_defeat(state: GameState, content: RealmzContent, caster: MonsterState, target_id: String, events: Array[DomainEvent]) -> void:
 	var defeated_monster := state.combat.roster.monster_by_id(target_id)
 	var defeated_definition := content.combat.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
-	var queued = _context.actions().events().queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
-	if not queued and defeated_definition != null and defeated_definition.death_macro > 0:
+	var queued := _context.actions().events().queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
+	if not queued and defeated_definition != null and defeated_definition.has_death_macro():
 		_fail(&"invalid_spell_death_macro_queue", "Actor '%s' could not queue defeated actor '%s' death macro." % [caster.id, target_id])
 	# Castle continues after reflection kills the caster, so retain its anchor until
 	# the spell sequence and queued death macros have both finished.
@@ -459,7 +459,7 @@ func process_monster_advance(state: GameState, content: RealmzContent, monster: 
 			return MONSTER_ATTACK_COMPLETED
 		combat.pending_reaction = CombatReactionState.new(CombatReactionState.MONSTER_MOVE, monster.id, origin, probe.destination, probe.movement_cost)
 		combat.pending_reaction.set_phase(CombatReactionState.WITHDRAWAL, [])
-		var movement_result = _context.reactions().continue_pending_reaction(state, content, rng, events)
+		var movement_result := _context.reactions().continue_pending_reaction(state, content, rng, events)
 		if movement_result == REACTION_WAITING:
 			return MONSTER_ATTACK_WAITING
 		if movement_result == REACTION_DEATH_MACRO:
@@ -563,7 +563,7 @@ func process_monster_retreat(state: GameState, content: RealmzContent, monster: 
 		combat.pending_reaction = CombatReactionState.new(CombatReactionState.MONSTER_RETREAT, monster.id, origin, probe.destination, probe.movement_cost)
 		combat.pending_reaction.set_origin_hostiles(hostile_adjacent_ids(state, monster.id))
 		combat.pending_reaction.set_phase(CombatReactionState.WITHDRAWAL, _context.reactions().withdrawal_hostiles(state, combat.pending_reaction))
-		var reaction_result = _context.reactions().continue_pending_reaction(state, content, rng, events)
+		var reaction_result := _context.reactions().continue_pending_reaction(state, content, rng, events)
 		if reaction_result == REACTION_WAITING:
 			return MONSTER_ATTACK_WAITING
 		if reaction_result == REACTION_DEATH_MACRO:
@@ -592,6 +592,7 @@ func resolve_monster_attack_row(state: GameState, content: RealmzContent, monste
 		return MONSTER_ATTACK_COMPLETED
 	active_turn.attack_index += 1
 	active_turn.physical_action_committed = true
+	active_turn.classic_physical_active = true
 	combat.actor_statuses.set_guarding(monster.id, false)
 	var character_target := state.party.character_by_id(active_turn.target_id)
 	if character_target != null:
@@ -658,7 +659,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 	if resolution.killed:
 		active_turn.target_id = ""
 		monster.target_id = ""
-		var death_macro_requested = _context.actions().events().request_monster_death_macro(target, target_definition, events)
+		var death_macro_requested := _context.actions().events().request_monster_death_macro(target, target_definition, events)
 		remove_defeated_position(state.combat, target.id, not death_macro_requested)
 		if death_macro_requested:
 			if active_turn.attack_index >= _monster_actions.attack_limit(monster, definition):

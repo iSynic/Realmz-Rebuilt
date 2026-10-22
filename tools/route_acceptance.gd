@@ -70,7 +70,7 @@ func _initialize() -> void:
 
 
 func _prepare_party() -> void:
-	if _session._state.party.characters().is_empty():
+	if _session._context.state.party.characters().is_empty():
 		var races := _content.characters.race_definitions()
 		var castes := _content.characters.caste_definitions()
 		if races.is_empty() or castes.is_empty():
@@ -80,10 +80,10 @@ func _prepare_party() -> void:
 			var character := CharacterState.new("route.hero.%d" % (index + 1), "Route Hero %d" % (index + 1), 1_000_000, 1_000_000)
 			character.race_id = races[0].id
 			character.caste_id = castes[0].id
-			if not _session._state.party.add_character(character):
+			if not _session._context.state.party.add_character(character):
 				_fail("route harness could not create its deterministic party")
 				return
-	for character: CharacterState in _session._state.party.characters():
+	for character: CharacterState in _session._context.state.party.characters():
 		character.maximum_health = 1_000_000
 		character.current_health = 1_000_000
 		character.brawn = 32_767
@@ -95,7 +95,7 @@ func _prepare_party() -> void:
 			character.set_ability_value(ability_index, 32_767)
 		for save_index: int in 8:
 			character.set_save_value(save_index, 32_767, false)
-	_session._state.party_setup_completed = true
+	_session._context.state.party_setup_completed = true
 
 
 func _validate_route_header(route: Dictionary) -> void:
@@ -135,9 +135,9 @@ func _run_step(step_definition: Dictionary) -> void:
 	if not nearby_path.is_empty():
 		_run_topology_step(step_id, step_definition, trigger, nearby_path, failure_count, scripted_responses, response_cursor)
 		return
-	_session._state.party.map_id = trigger.map_id
-	_session._state.party.coordinate = trigger.coordinate
-	_session._state.world.exploration.mark_visited(trigger.map_id, trigger.coordinate)
+	_session._context.state.party.map_id = trigger.map_id
+	_session._context.state.party.coordinate = trigger.coordinate
+	_session._context.state.world.exploration.mark_visited(trigger.map_id, trigger.coordinate)
 	var continuation_body := ExplorationContinuationBody.new()
 	continuation_body.map_id = trigger.map_id
 	continuation_body.coordinate = trigger.coordinate
@@ -176,9 +176,9 @@ func _run_travel_proof(proof: Dictionary) -> void:
 		_fail("%s starts outside authoritative topology" % proof_id)
 		_stage(proof_id, failure_count, {"entryMode": "travel-checkpoint"})
 		return
-	_session._state.party.map_id = map.id
-	_session._state.party.coordinate = coordinate
-	_session._state.world.exploration.mark_visited(map.id, coordinate)
+	_session._context.state.party.map_id = map.id
+	_session._context.state.party.coordinate = coordinate
+	_session._context.state.world.exploration.mark_visited(map.id, coordinate)
 	var events: Array[DomainEvent] = []
 	var movement_steps := 0
 	for move: Variant in proof["moves"]:
@@ -210,13 +210,13 @@ func _validate_travel_expectations(proof_id: String, expected: Variant, events: 
 	if expected.has("partyInBoat"):
 		if not expected["partyInBoat"] is bool:
 			_fail("%s has a malformed expected boat state" % proof_id)
-		elif expected["partyInBoat"] != _session._state.party_in_boat:
+		elif expected["partyInBoat"] != _session._context.state.party_in_boat:
 			_fail("%s ended with the wrong boat state" % proof_id)
 	var end: Variant = expected.get("position", {})
 	if end is Dictionary and not end.is_empty():
 		var map := _content.world.map_by_type_and_index(StringName(end.get("levelType", "")), int(end.get("levelIndex", -1)))
 		var coordinate := Vector2i(int(end.get("x", -1)), int(end.get("y", -1)))
-		if map == null or _session._state.party.map_id != map.id or _session._state.party.coordinate != coordinate:
+		if map == null or _session._context.state.party.map_id != map.id or _session._context.state.party.coordinate != coordinate:
 			_fail("%s ended at an unexpected position" % proof_id)
 
 
@@ -232,12 +232,12 @@ func _is_integer(value: Variant) -> bool:
 
 
 func _nearby_topology_path(trigger: TriggerDefinition) -> Array[Vector2i]:
-	if _session._state.party_in_boat or _session._state.party.map_id != trigger.map_id or _session._state.party.coordinate == trigger.coordinate:
+	if _session._context.state.party_in_boat or _session._context.state.party.map_id != trigger.map_id or _session._context.state.party.coordinate == trigger.coordinate:
 		return []
 	var map := _content.world.map_by_id(trigger.map_id)
 	if map == null:
 		return []
-	var path := map.topology.find_path(_session._state.party.coordinate, trigger.coordinate, _session._state.world, map.level_type)
+	var path := map.topology.find_path(_session._context.state.party.coordinate, trigger.coordinate, _session._context.state.world, map.level_type)
 	if path.is_empty() or path.size() > MAX_NEARBY_TRAVERSAL_STEPS:
 		return []
 	return path
@@ -246,14 +246,14 @@ func _nearby_topology_path(trigger: TriggerDefinition) -> Array[Vector2i]:
 func _run_topology_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, path: Array[Vector2i], failure_count: int, scripted_responses: Array, response_cursor: Dictionary) -> void:
 	var events: Array[DomainEvent] = []
 	for path_index: int in path.size():
-		var origin := _session._state.party.coordinate
+		var origin := _session._context.state.party.coordinate
 		var destination := path[path_index]
 		var result := _session.submit_intent(ExplorationIntents.move(destination - origin))
 		result = _drain_interactions(result, events, step_id, scripted_responses, response_cursor)
 		if result.state == SessionStep.State.FAILED:
 			_fail("%s topology traversal failed with %s: %s" % [step_id, result.error_code, result.error_message])
 			break
-		if path_index + 1 < path.size() and (_session._state.party.map_id != trigger.map_id or _session._state.party.coordinate != destination):
+		if path_index + 1 < path.size() and (_session._context.state.party.map_id != trigger.map_id or _session._context.state.party.coordinate != destination):
 			_fail("%s topology traversal left its expected path before the target trigger" % step_id)
 			break
 	if not _contains_trigger_event(events, trigger.id):
@@ -282,17 +282,17 @@ func _run_program_step(step_id: String, step_definition: Dictionary, trigger: Tr
 		_fail("%s source position is outside authoritative topology" % step_id)
 		_stage(step_id, failure_count)
 		return
-	_session._state.party.map_id = map.id
-	_session._state.party.coordinate = coordinate
-	_session._state.world.exploration.mark_visited(map.id, coordinate)
+	_session._context.state.party.map_id = map.id
+	_session._context.state.party.coordinate = coordinate
+	_session._context.state.world.exploration.mark_visited(map.id, coordinate)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"trigger_fired", {"triggerId": trigger.id, "source": "route-program"})]
 	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, map.id, coordinate, true)
-	var started := _session._scenario_vm.start_program(trigger.program_id, execution_context)
+	var started := _session._context.scenario_vm.start_program(trigger.program_id, execution_context)
 	var result: SessionStep
 	if started.state == ScenarioVmResult.State.FAILED:
 		result = SessionStep.failed(0, started.error_code, started.error_message, events)
 	else:
-		var vm_result := _session._scenario_vm.run(_session._runtime_api)
+		var vm_result := _session._context.scenario_vm.run(_session._context.runtime_api)
 		events.append_array(vm_result.events)
 		if vm_result.state == ScenarioVmResult.State.FAILED:
 			result = SessionStep.failed(0, vm_result.error_code, vm_result.error_message, events)
@@ -434,7 +434,7 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 
 
 func _force_victory() -> void:
-	var combat := _session._state.combat
+	var combat := _session._context.state.combat
 	if combat == null:
 		return
 	for monster: MonsterState in combat.roster.monsters():
@@ -505,7 +505,7 @@ func _validate_completion(anchor: Variant) -> void:
 		return
 	var expected: Dictionary = anchor["runtime"]
 	for quest_id: Variant in expected.get("questFlags", []):
-		if not _session._state.scenario_progress.quest_is_set(int(quest_id)):
+		if not _session._context.state.scenario_progress.quest_is_set(int(quest_id)):
 			_fail("completion quest %d is not set" % int(quest_id))
 	for override: Variant in expected.get("tileOverrides", []):
 		if not override is Dictionary:
@@ -514,7 +514,7 @@ func _validate_completion(anchor: Variant) -> void:
 		var map := _content.world.map_by_type_and_index(StringName(override.get("levelType", "")), int(override.get("levelIndex", -1)))
 		var coordinate := Vector2i(int(override.get("x", -1)), int(override.get("y", -1)))
 		var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
-		var terrain := "" if cell == null else _session._state.world.topology.terrain_for(map.id, cell)
+		var terrain := "" if cell == null else _session._context.state.world.topology.terrain_for(map.id, cell)
 		if terrain != "classic.terrain.%d" % int(override.get("value", -1)):
 			_fail("completion tile %s %s has terrain %s" % [map.id if map != null else "unknown", coordinate, terrain])
 	var item_ids := _party_classic_item_ids()
@@ -525,14 +525,14 @@ func _validate_completion(anchor: Variant) -> void:
 	if position is Dictionary:
 		var expected_map := _content.world.map_by_type_and_index(StringName(position.get("levelType", "")), int(position.get("levelIndex", -1)))
 		var expected_coordinate := Vector2i(int(position.get("x", -1)), int(position.get("y", -1)))
-		if expected_map == null or _session._state.party.map_id != expected_map.id or _session._state.party.coordinate != expected_coordinate:
+		if expected_map == null or _session._context.state.party.map_id != expected_map.id or _session._context.state.party.coordinate != expected_coordinate:
 			_fail("completion position does not match the route anchor")
 	_stage("completion-runtime", failure_count)
 
 
 func _party_classic_item_ids() -> Array[int]:
 	var result: Array[int] = []
-	for character: CharacterState in _session._state.party.characters():
+	for character: CharacterState in _session._context.state.party.characters():
 		for instance: ItemInstance in character.inventory():
 			var definition := _content.items.item_by_id(instance.definition_id)
 			if definition != null and not result.has(definition.classic_id):
@@ -543,19 +543,19 @@ func _party_classic_item_ids() -> Array[int]:
 
 func _final_state() -> Dictionary:
 	return {
-		"mapId": _session._state.party.map_id,
-		"x": _session._state.party.coordinate.x,
-		"y": _session._state.party.coordinate.y,
+		"mapId": _session._context.state.party.map_id,
+		"x": _session._context.state.party.coordinate.x,
+		"y": _session._context.state.party.coordinate.y,
 		"questFlags": _set_quest_ids(),
 		"itemIds": _party_classic_item_ids(),
-		"world": _session._state.world.to_data(),
+		"world": _session._context.state.world.to_data(),
 	}
 
 
 func _set_quest_ids() -> Array[int]:
 	var result: Array[int] = []
 	for quest_id: int in 100:
-		if _session._state.scenario_progress.quest_is_set(quest_id):
+		if _session._context.state.scenario_progress.quest_is_set(quest_id):
 			result.append(quest_id)
 	return result
 

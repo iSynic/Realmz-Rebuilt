@@ -232,7 +232,8 @@ static func _combat_references_are_valid(state: GameState, party_state: PartySta
 	var combat := state.combat
 	if combat.battlefield != null:
 		var battlefield := combat.battlefield
-		if battlefield.map_id != party_state.map_id: return false
+		# A scenario death macro can relocate the party while combat remains active.
+		# The battlefield retains its separately serialized source identity.
 		for actor_id: Variant in battlefield.actors.character_positions():
 			if not actor_id is String or party_state.character_by_id(actor_id) == null: return false
 		for actor_id: Variant in battlefield.actors.monster_positions():

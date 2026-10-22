@@ -24,13 +24,13 @@ func opcode_ids() -> Array[int]:
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		2, 48, 56, 107:
-			return _battle.start_classic_battle(action, request_id)
+			return _battle.start_classic_battle(action, request_id, context)
 		10:
-			return _rewards.grant_treasure(action.operand_id, request_id)
+			return _rewards.grant_treasure(action.operand_id, request_id, context)
 		11:
 			return _rewards.begin_experience_reward(action.operand_id, request_id)
 		65:
-			return _rewards.grant_random_items(action, request_id)
+			return _rewards.grant_random_items(action, request_id, context)
 	return super.execute(action, request_id, context)
 
 

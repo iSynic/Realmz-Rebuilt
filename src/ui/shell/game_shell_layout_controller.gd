@@ -5,6 +5,7 @@ extends RefCounted
 var _shell_ref: WeakRef
 var _footer_pending := false
 var workspace_rect: Rect2
+var applied_profile: UiLayoutProfile
 var _stage_frame: NinePatchRect
 var _activity_indicator: PanelContainer
 var _party_roster: ClassicPartyRoster
@@ -64,6 +65,7 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	var modular := shell.hud.prepare(settings, game_view, _navigator.current_screen(), shell.pause_active)
 	if modular:
 		_apply_modular(profile)
+		applied_profile = profile
 		return profile
 	_apply_footer(profile, viewport_size, origin, game_view)
 	profile.bottom_height = maxf(profile.bottom_height, ceilf(_bottom_region.get_combined_minimum_size().y))
@@ -78,6 +80,7 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	restore_footer_bounds(profile)
 	_navigator.set_layout_profile(profile, viewport_size, origin)
 	workspace_rect = Rect2(stage_rect.position, Vector2(GameShellLayoutPolicy.combat_spellbook_stage_width(stage_rect.size.x, viewport_size.x, roster_width), stage_rect.size.y))
+	applied_profile = profile
 	return profile
 
 
@@ -190,6 +193,6 @@ func queue_footer_layout() -> void:
 func _settle_footer_layout() -> void:
 	_footer_pending = false
 	var shell := _shell_ref.get_ref() as GameShell
-	if shell == null or not shell.is_node_ready() or shell._profile == null: return
-	shell._profile = apply(shell.size, shell._presentation_settings, shell._current_view)
-	shell.layout_changed.emit(workspace_rect, shell._profile)
+	if shell == null or not shell.is_node_ready() or applied_profile == null: return
+	apply(shell.size, shell.settings, shell.current_view)
+	shell.layout_changed.emit(workspace_rect, applied_profile)

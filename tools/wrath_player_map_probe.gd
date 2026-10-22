@@ -59,7 +59,7 @@ func _run() -> void:
 		quit(1)
 		return
 	var snapshot := session.snapshot()
-	for map_id in [2, 13, 14, 17]:
+	for map_id: int in [2, 13, 14, 17]:
 		var definition := content.world.player_map_by_classic_id(map_id)
 		if definition == null:
 			printerr("PLAYER_MAP_MISSING ", map_id)
@@ -82,7 +82,7 @@ func _run() -> void:
 		printerr("MAP_CHOOSER_MISSING")
 		quit(1)
 		return
-	for map_id in [2, 13, 14, 17]:
+	for map_id: int in [2, 13, 14, 17]:
 		var definition := content.world.player_map_by_classic_id(map_id)
 		var button: Button
 		for node: Node in chooser.find_children("*", "Button", true, false):

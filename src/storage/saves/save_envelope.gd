@@ -4,15 +4,15 @@ class_name SaveEnvelope
 extends SessionSnapshot
 
 const FORMAT: String = "realmz2-save"
-const FORMAT_VERSION: int = 5
+const FORMAT_VERSION: int = 7
 const MAX_MAP_PREVIEW_BYTES: int = 256 * 1024
 
 var map_preview_jpeg: PackedByteArray = PackedByteArray()
 var character_art := CharacterArtBundle.new()
 
 
-func _init(campaign: String, package_identity: String, rules: String, revision: int, state: GameState, random_state: RealmzRngState, vm_state: ScenarioVmSnapshot = null, action_state: ScenarioActionState = null, pending_continuation: SessionContinuation = null, pending_battle_return: SessionContinuation = null, pending_session_interaction: InteractionRequest = null) -> void:
-	super(campaign, package_identity, rules, revision, state, random_state, vm_state, action_state, pending_continuation, pending_battle_return, pending_session_interaction)
+func _init(campaign: String, package_identity: String, rules: String, revision: int, state: GameState, random_state: RealmzRngState, vm_state: ScenarioVmSnapshot = null, action_state: ScenarioActionState = null, pending_continuation: SessionContinuation = null, pending_battle_return: SessionContinuation = null, pending_session_interaction: InteractionRequest = null, native_execution: ClassicExecutionState = null) -> void:
+	super(campaign, package_identity, rules, revision, state, random_state, vm_state, action_state, pending_continuation, pending_battle_return, pending_session_interaction, native_execution)
 
 
 func to_data() -> Dictionary:
@@ -31,6 +31,7 @@ func to_data() -> Dictionary:
 		"sessionContinuation": {} if continuation == null else continuation.to_data(),
 		"battleReturnContinuation": {} if battle_return_continuation == null else battle_return_continuation.to_data(),
 		"sessionInteraction": {} if session_interaction == null else session_interaction.to_data(),
+		"classicExecution": classic_execution.to_data(),
 	}
 	if not map_preview_jpeg.is_empty():
 		data["mapPreviewJpeg"] = Marshalls.raw_to_base64(map_preview_jpeg)
@@ -40,9 +41,9 @@ func to_data() -> Dictionary:
 
 
 static func from_snapshot(snapshot: SessionSnapshot, preview_jpeg: PackedByteArray = PackedByteArray()) -> SaveEnvelope:
-	if snapshot == null:
+	if snapshot == null or not snapshot.is_complete:
 		return null
-	var envelope := SaveEnvelope.new(snapshot.campaign_id, snapshot.package_hash, snapshot.rules_version, snapshot.view_revision, snapshot.game_state, snapshot.rng_state, snapshot.scenario_vm, snapshot.scenario_action_state, snapshot.continuation, snapshot.battle_return_continuation, snapshot.session_interaction)
+	var envelope := SaveEnvelope.new(snapshot.campaign_id, snapshot.package_hash, snapshot.rules_version, snapshot.view_revision, snapshot.game_state, snapshot.rng_state, snapshot.scenario_vm, snapshot.scenario_action_state, snapshot.continuation, snapshot.battle_return_continuation, snapshot.session_interaction, snapshot.classic_execution)
 	envelope.deviation_ids = snapshot.deviation_ids.duplicate()
 	envelope.map_preview_jpeg = preview_jpeg.duplicate()
 	if snapshot is SaveEnvelope:
@@ -52,12 +53,16 @@ static func from_snapshot(snapshot: SessionSnapshot, preview_jpeg: PackedByteArr
 
 static func from_data(data: Variant) -> SaveEnvelope:
 	var fields: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "battleReturnContinuation", "sessionInteraction"]
+	if data is Dictionary and (data.get("formatVersion") == 6 or data.get("formatVersion") == FORMAT_VERSION): fields.append("classicExecution")
 	if not data is Dictionary or data.size() != fields.size() + (1 if data.has("mapPreviewJpeg") else 0) + (1 if data.has("characterArt") else 0):
 		return null
 	for field: String in fields:
 		if not data.has(field):
 			return null
-	if data["format"] != FORMAT or data["formatVersion"] != FORMAT_VERSION:
+	var version := _integer(data["formatVersion"])
+	if data["format"] != FORMAT or version not in [5, 6, FORMAT_VERSION]:
+		return null
+	if not _clock_shape_is_valid(data["gameState"], version):
 		return null
 	var preview_jpeg := PackedByteArray()
 	if data.has("mapPreviewJpeg"):
@@ -80,30 +85,49 @@ static func from_data(data: Variant) -> SaveEnvelope:
 	var random_state := RealmzRngState.from_data(data["rng"])
 	var vm_state := ScenarioVmSnapshot.from_data(data["scenarioVm"])
 	var action_state := ScenarioActionState.from_data(data["scenarioActionState"])
-	if state == null or random_state == null or vm_state == null or action_state == null:
+	var native_execution := ClassicExecutionState.from_data(data["classicExecution"]) if version >= 6 else ClassicExecutionState.new()
+	if state == null or random_state == null or vm_state == null or action_state == null or native_execution == null:
 		return null
-	var typed_continuation: SessionContinuation = null
-	if not data["sessionContinuation"].is_empty():
-		typed_continuation = SessionContinuation.from_data(data["sessionContinuation"])
-		if typed_continuation == null:
-			return null
-	var typed_battle_return: SessionContinuation = null
-	if not data["battleReturnContinuation"].is_empty():
-		typed_battle_return = SessionContinuation.from_data(data["battleReturnContinuation"])
-		if typed_battle_return == null or typed_battle_return.kind != &"post-clock":
-			return null
+	# ADR 0026: v5/v6 predate VM schema 4. v7 may still carry an unrestored
+	# legacy VM copied from an older envelope; restore applies its coercion.
+	if version < FORMAT_VERSION and not vm_state.legacy_values:
+		return null
+	var typed_continuation := SessionContinuation.from_data(data["sessionContinuation"]) if not data["sessionContinuation"].is_empty() else null
+	if not data["sessionContinuation"].is_empty() and typed_continuation == null:
+		return null
+	var typed_battle_return := SessionContinuation.from_data(data["battleReturnContinuation"]) if not data["battleReturnContinuation"].is_empty() else null
+	if not data["battleReturnContinuation"].is_empty() and (typed_battle_return == null or typed_battle_return.kind != &"post-clock"):
+		return null
 	var session_request: InteractionRequest = null
 	if not data["sessionInteraction"].is_empty():
 		session_request = InteractionRequest.from_data(data["sessionInteraction"])
 		if session_request == null or not _json_safe(session_request.body.to_data(), 0):
 			return null
-	var envelope := SaveEnvelope.new(data["campaignId"], data["packageHash"], data["rulesVersion"], revision, state, random_state, vm_state, action_state, typed_continuation, typed_battle_return, session_request)
+	var envelope := SaveEnvelope.new(data["campaignId"], data["packageHash"], data["rulesVersion"], revision, state, random_state, vm_state, action_state, typed_continuation, typed_battle_return, session_request, native_execution)
 	envelope.deviation_ids = deviations
 	envelope.map_preview_jpeg = preview_jpeg
 	envelope.character_art = CharacterArtBundle.from_data(data.get("characterArt", []))
 	if envelope.character_art == null or not envelope.character_art.matches_characters(CharacterArtBundle.snapshot_characters(envelope)):
 		return null
+	if version >= 6 and not _current_execution_facts_match(data, envelope):
+		return null
 	return envelope
+
+
+static func _clock_shape_is_valid(state: Variant, version: int) -> bool:
+	if not state is Dictionary or not state.get("clock") is Dictionary: return false
+	var clock: Dictionary = state["clock"]
+	return clock.size() == 1 and clock.has("totalMinutes") if version == 5 else clock.size() == 3 and clock.has_all(["day", "hour", "minute"])
+
+
+static func _current_execution_facts_match(data: Dictionary, envelope: SaveEnvelope) -> bool:
+	var expected := {"scenarioVm": envelope.scenario_vm.to_data(), "sessionContinuation": {} if envelope.continuation == null else envelope.continuation.to_data(), "battleReturnContinuation": {} if envelope.battle_return_continuation == null else envelope.battle_return_continuation.to_data()}
+	for field: String in expected:
+		if CanonicalJson.encode(data[field]) != CanonicalJson.encode(expected[field]): return false
+	var combat := envelope.game_state.combat
+	if combat != null and combat.turns.active_turn != null:
+		return CanonicalJson.encode(data["gameState"]["combat"]["activeTurn"]) == CanonicalJson.encode(combat.turns.active_turn.to_data())
+	return true
 
 
 static func valid_map_preview(bytes: PackedByteArray) -> bool:
@@ -116,7 +140,7 @@ static func valid_map_preview(bytes: PackedByteArray) -> bool:
 static func _integer(value: Variant) -> int:
 	if value is int:
 		return value
-	if value is float and is_equal_approx(value, round(value)):
+	if value is float and is_finite(value) and value == floor(value) and absf(value) <= 9_007_199_254_740_991.0:
 		return int(value)
 	return -1
 

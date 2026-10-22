@@ -166,7 +166,7 @@ func _switch_character_weapon(state: GameState, content: RealmzContent, actor: C
 	var next_mode: StringName = &"melee" if current_mode == &"missile" else &"missile"
 	if next_mode == &"missile" and equipment.missile_weapon == null:
 		return CombatFlowResult.rejected(&"missile_weapon_unavailable", "The active character has no equipped Classic type-15 missile weapon.")
-	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	var profile := _context.reactions().character_projectile_profile(actor, content, equipment, state)
 	if next_mode == &"missile" and profile.error_code == &"projectile_enemy_adjacent":
 		return CombatFlowResult.rejected(profile.error_code, profile.error_message)
 	prepare_character_turn(combat, actor)
@@ -190,6 +190,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		prepare_character_turn(combat, actor)
 		combat.turns.invalidate_undo()
 		combat.turns.active_turn.physical_action_committed = true
+		combat.turns.active_turn.classic_physical_active = true
 		var resolution := _context.combat.resolve_character_attack(actor, equipment, monster_target, definition, rng, state.clock.day(), false, true, combat.dropped_items.can_queue())
 		if resolution.total_damage() > 0: combat.actor_statuses.mark_attacked(monster_target.id)
 		if resolution.fumbled and not _events.commit_character_fumble(state, content, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
@@ -209,6 +210,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		prepare_character_turn(combat, actor)
 		combat.turns.invalidate_undo()
 		combat.turns.active_turn.physical_action_committed = true
+		combat.turns.active_turn.classic_physical_active = true
 		var resolution := _context.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, combat.dropped_items.can_queue())
 		if resolution.total_damage() > 0: combat.actor_statuses.mark_attacked(character_target.id)
 		if resolution.fumbled and not _events.commit_character_fumble(state, content, actor, equipment, events): return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
@@ -227,7 +229,7 @@ func _prepare_character_projectile(state: GameState, content: RealmzContent, act
 	if combat.actor_statuses.character_weapon_mode(actor.id) != &"missile":
 		return CombatFlowResult.failed(&"projectile_power_roll_unavailable", "Random projectile power is available only in missile weapon mode.")
 	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
-	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	var profile := _context.reactions().character_projectile_profile(actor, content, equipment, state)
 	if profile.error_code == &"projectile_enemy_adjacent":
 		return CombatFlowResult.rejected(profile.error_code, profile.error_message)
 	if profile.available or profile.error_code != &"projectile_power_roll_required":
@@ -354,7 +356,7 @@ func _turn_undead_macro_count(combat: CombatState, content: RealmzContent, targe
 	for target_id: String in target_ids:
 		var target := combat.roster.monster_by_id(target_id)
 		var definition := content.combat.monster_by_id(target.definition_id) if target != null else null
-		if definition != null and definition.death_macro > 0:
+		if definition != null and definition.has_death_macro():
 			result += 1
 	return result
 
@@ -428,6 +430,15 @@ static func mark_character_bleeding(state: GameState, character: CharacterState,
 		character.lifetime_record.record_death()
 
 
+static func scripted_fumble_guard_reason(state: GameState) -> StringName:
+	if state == null or state.combat == null or state.combat.completed: return &"no-active-battle"
+	var turn := state.combat.turns.active_turn
+	if turn != null and turn.classic_spell_active: return &"spell-in-progress"
+	if turn == null or not turn.classic_physical_active: return &"no-physical-action"
+	if state.party.character_by_id(state.combat.turns.active_actor_id()) == null: return &"not-party-actor"
+	return &""
+
+
 func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: String) -> CombatFlowResult:
 	if state == null or content == null or state.combat == null or state.combat.completed:
 		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle can receive a fumble operation.")
@@ -435,23 +446,20 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 		actor_id = state.combat.turns.active_actor_id()
 	if actor_id != state.combat.turns.active_actor_id():
 		return CombatFlowResult.failed(&"invalid_fumble_actor", "Classic opcode 122 can affect only the active physical combatant.")
-	if state.combat.turns.active_turn == null or not state.combat.turns.active_turn.physical_action_committed:
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "no-physical-action", "source": "classic"})])
+	var reason := scripted_fumble_guard_reason(state)
+	if not reason.is_empty():
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": String(reason), "source": "classic"})])
 	var events: Array[DomainEvent] = []
 	var character := state.party.character_by_id(actor_id)
-	# Castle's outer q[up] < 10 guard excludes monster initiative IDs (10+).
-	# The monster branch nested below that guard is therefore unreachable.
-	if character == null:
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "not-party-actor", "source": "classic"})])
 	var equipment := _context.equipment.combat_equipment(character, content.items.definitions())
 	if not equipment.valid:
 		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	if not equipment.is_armed():
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "unarmed", "source": "classic"})])
-	if not equipment.melee_weapon.cursed_item_id.is_empty():
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "cursed-weapon", "source": "classic"})])
 	if not state.combat.dropped_items.can_queue():
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "queue-full", "source": "classic"})])
+	if not equipment.melee_weapon.cursed_item_id.is_empty():
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "cursed-weapon", "source": "classic"})])
 	if not _events.commit_character_fumble(state, content, character, equipment, events):
 		return CombatFlowResult.failed(&"invalid_fumble_state", "The active character's melee weapon could not enter the recovery queue.")
 	return CombatFlowResult.succeeded(events)
@@ -459,7 +467,7 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 
 func fire_character_projectile(state: GameState, content: RealmzContent, actor: CharacterState, equipment: CharacterCombatEquipment, target_id: String, rng: RealmzRng) -> CombatFlowResult:
 	var combat := state.combat
-	var profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	var profile := _context.reactions().character_projectile_profile(actor, content, equipment, state)
 	if profile.error_code == &"projectile_enemy_adjacent":
 		return CombatFlowResult.rejected(profile.error_code, profile.error_message)
 	if not profile.available:
@@ -487,7 +495,7 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 	actor.lifetime_record.add_projectile_damage_given(resolution.total_damage, resolution.hit_count, resolution.miss_count, resolution.target_defeated)
 	if resolution.total_damage > 0:
 		combat.actor_statuses.mark_attacked(target.id)
-	combat.turns.active_turn.physical_action_committed = true
+	combat.turns.active_turn.commit_physical_action()
 	combat.turns.clear_staged_random_item_power()
 	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - 2)
 	actor.movement = maxi(0, actor.movement - 12)

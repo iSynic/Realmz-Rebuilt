@@ -128,7 +128,7 @@ func commit_preferences(baseline: PresentationSettings, draft: PresentationSetti
 		return _repository.last_error
 	var refresh_music := candidate.music_enabled != _settings.music_enabled or candidate.music_playlist_modes != _settings.music_playlist_modes
 	_settings.copy_from(candidate)
-	_application._controller_input.configure(_settings.controller)
+	_application.controller_input.configure(_settings.controller)
 	_held_movement.set_speed_percent(_settings.exploration_speed_percent)
 	apply_initial_settings()
 	if refresh_music:
@@ -399,7 +399,7 @@ func _on_controller_preferences_changed(value: ControllerPreferences) -> void:
 	if value == null or not value.required_navigation_is_reachable() or not value.conflicts().is_empty():
 		return
 	_settings.controller = value.duplicate_value()
-	_application._controller_input.configure(_settings.controller)
+	_application.controller_input.configure(_settings.controller)
 	_shell.apply_settings(_settings)
 	_save()
 

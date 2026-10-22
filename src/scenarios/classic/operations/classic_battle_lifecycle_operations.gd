@@ -31,8 +31,8 @@ func _runtime_api() -> RealmzRuntimeApi:
 	return _runtime_api_ref.get_ref() as RealmzRuntimeApi if _runtime_api_ref != null else null
 
 
-func start_classic_battle(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
-	return _start_classic_battle(action, request_id)
+func start_classic_battle(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
+	return _start_classic_battle(action, request_id, context)
 
 
 func resume_battle(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -68,15 +68,10 @@ func complete_debug_victory(continuation: ScenarioRuntimeContinuation, request_i
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed debug battle does not match its issuing continuation.")
 	return _finish_battle_with_allies(continuation.kind, combat_continuation.caller, request_id, events)
 
-func _start_classic_battle(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
-	var battle_id := action.operand_id
+func _start_classic_battle(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
+	var battle_id := ClassicBattleSelection.select(action, _content.package_schema_version, _rng)
 	var prelude: Array[DomainEvent] = []
 	if not action.extra_code.is_empty():
-		var low := action.extra_code[0]
-		var high := action.extra_code[1] if action.extra_code.size() > 1 else 0
-		battle_id = absi(low)
-		if high != 0:
-			battle_id = _rng.draw_between(absi(low), absi(high), StringName("classic.opcode-%d.battle" % action.opcode))
 		var sound_id := action.extra_code[3] if action.opcode == 56 else action.extra_code[2]
 		var message_id := action.extra_code[4] if action.opcode == 56 else action.extra_code[3]
 		if action.opcode == 2 and action.extra_code.size() == 5 and action.extra_code[1] == 0 and action.extra_code[2] == -1 and action.extra_code[3] >= 30000 and action.extra_code[3] <= 30005:
@@ -86,7 +81,7 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 			prelude.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-battle"}))
 		if message_id != 0:
 			var message := _content.scenario_records.message_by_id(absi(message_id))
-			if message == null and action.opcode != 2:
+			if message == null and action.opcode != 2 and not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(message_id)):
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable battle message %d." % [action.opcode, message_id])
 			if message != null:
 				prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
@@ -99,13 +94,18 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, caller_mode, caller_target)
 	var battle := _content.combat.battle_by_classic_id(absi(battle_id))
 	if battle == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data BD", absi(battle_id)):
+			return ClassicCompatibility.cancel_interaction(&"battle", "Data BD", absi(battle_id), context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Classic opcode %d references unavailable battle %d." % [action.opcode, battle_id])
+	if _content.classic_records != null:
+		var unavailable := ClassicCompatibility.unsafe_battle(_content, _game_state, battle, context)
+		if unavailable != null: return unavailable
 	var participants: Array[String] = []
 	if action.opcode == 48:
 		participants = _game_state.scenario_progress.selected_character_ids()
 		if participants.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode 48 requires at least one selected party member.")
-	var operation := start_battle_definition(battle, request_id, "classic", caller, participants)
+	var operation := start_battle_definition(battle, request_id, "classic", caller, participants, -1 if _content.package_schema_version >= 7 and battle_id < 0 else 0)
 	if operation.state != ScenarioRuntimeOperationResult.State.FAILED:
 		operation.events = prelude + operation.events
 	return operation
@@ -188,21 +188,22 @@ func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioR
 	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive)
 
 
-func start_battle_definition(battle: BattleDefinition, request_id: String, source: String, caller: ScenarioBattleCaller, participant_character_ids: Array[String] = []) -> ScenarioRuntimeOperationResult:
-	var result := _rules.combat_flow.start_battle(_game_state, _content, battle, _rng, 0, participant_character_ids)
+func start_battle_definition(battle: BattleDefinition, request_id: String, source: String, caller: ScenarioBattleCaller, participant_character_ids: Array[String] = [], surprise: int = 0) -> ScenarioRuntimeOperationResult:
+	var result := _rules.combat_flow.start_battle(_game_state, _content, battle, _rng, surprise, participant_character_ids)
 	if not result.ok:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	var events: Array[DomainEvent] = []
 	if battle.message_before_id != 0:
 		var before := _content.scenario_records.message_by_id(absi(battle.message_before_id))
-		if before == null:
+		if before == null and not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(battle.message_before_id)):
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Battle '%s' references unavailable before-message %d." % [battle.id, battle.message_before_id])
-		events.append(DomainEvent.new(&"message_shown", {"messageId": before.id, "text": before.text, "source": "classic-battle-definition"}))
+		if before != null:
+			events.append(DomainEvent.new(&"message_shown", {"messageId": before.id, "text": before.text, "source": "classic-battle-definition"}))
 	events.append_array(result.events)
 	var continuation_kind := ScenarioRuntimeContinuation.SAFE_COMBAT if source == "scenario-action" else ScenarioRuntimeContinuation.CLASSIC_COMBAT
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
 		return _wait_for_combat_age_updates(continuation_kind, caller, request_id, events, _game_state.combat.turns.round_number)
-	if not _death_macro_request(result.events).is_empty():
+	if not CombatActionEvents.death_macro_request(result.events).is_empty():
 		return _run_combat_death_macro(continuation_kind, caller, events, request_id)
 	if result.completed:
 		return _finish_battle_with_allies(continuation_kind, caller, request_id, events)
@@ -259,7 +260,7 @@ func _set_combat_auto(body: InteractionResponse.CombatBody, continuation: Scenar
 	if not result.ok:
 		if not _game_state.restore_from_data(state_checkpoint) or not _rng.rollback(rng_checkpoint):
 			return ScenarioRuntimeOperationResult.failed(&"combat_auto_rollback_failed", "Persistent Auto failed and could not restore its toggle transaction.")
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	var combined_events: Array[DomainEvent] = []
 	combined_events.append_array(events)
 	combined_events.append_array(result.events)
@@ -318,10 +319,10 @@ func _continue_after_combat_result(result: CombatFlowResult, body: InteractionRe
 				DomainEvent.new(&"combat_action_unavailable", {"actorId": body.actor_id, "action": "move", "reason": String(result.error_code), "message": result.error_message, "source": "classic"}),
 			]
 			return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), continuation, warning_events)
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
 		return _wait_for_combat_age_updates(continuation.kind, caller, request_id, result.events, previous_round)
-	if not _death_macro_request(result.events).is_empty():
+	if not CombatActionEvents.death_macro_request(result.events).is_empty():
 		return _run_combat_death_macro(continuation.kind, caller, result.events, request_id)
 	if result.completed:
 		var completed_events: Array[DomainEvent] = []
@@ -397,10 +398,10 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 	var previous_round := _game_state.combat.turns.round_number
 	var result := _rules.combat_flow.retreat_character(_game_state, _content, combat_continuation.actor_id, mode, destination, _rng)
 	if not result.ok:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
 		return _wait_for_combat_age_updates(source_kind, caller, request_id, result.events, previous_round)
-	if not _death_macro_request(result.events).is_empty():
+	if not CombatActionEvents.death_macro_request(result.events).is_empty():
 		return _run_combat_death_macro(source_kind, caller, result.events, request_id)
 	if result.completed:
 		var completed_events: Array[DomainEvent] = []
@@ -459,6 +460,8 @@ func _resume_ally_selection(continuation: ScenarioRuntimeContinuation, response:
 	if _rules.combat_flow.rounds.ally_selection_payload(_game_state, _content).is_empty():
 		return _finish_battle_with_fumbles(combat_continuation.source_kind, combat_continuation.caller, String(response.request_id), [])
 	var selected := _rules.combat_flow.apply_ally_selection(_game_state, _content, body.selected_ids)
+	if selected.is_rejection:
+		return ScenarioRuntimeOperationResult.rejected(selected.error_code, selected.error_message)
 	if not selected.ok:
 		return ScenarioRuntimeOperationResult.failed(selected.error_code, selected.error_message)
 	var events: Array[DomainEvent] = []
@@ -474,6 +477,8 @@ func _resume_fumble_recovery(continuation: ScenarioRuntimeContinuation, response
 	if _game_state.combat == null or not _game_state.combat.completed or _game_state.combat.battle_id != combat_continuation.battle_id:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed battle is unavailable for fumbled-weapon recovery.")
 	var recovered := _rules.combat_flow.apply_fumble_recovery(_game_state, _content, body.action, body.instance_id, body.character_id)
+	if recovered.is_rejection:
+		return ScenarioRuntimeOperationResult.rejected(recovered.error_code, recovered.error_message)
 	if not recovered.ok:
 		return ScenarioRuntimeOperationResult.failed(recovered.error_code, recovered.error_message)
 	var events: Array[DomainEvent] = []
@@ -491,14 +496,14 @@ func _run_battle_macro(source_kind: StringName, caller: ScenarioBattleCaller, pr
 	var macro_context := ScenarioExecutionContext.calling(&"battle-macro").set_battle(combat.battle_id)
 	var started := vm.start_program(program_id, macro_context)
 	if started.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message)
+		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message, started.events)
 	var result := vm.run(_runtime_api())
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
 	events.append(DomainEvent.new(&"battle_macro_started", {"battleId": combat.battle_id, "programId": program_id, "round": combat.turns.round_number}))
 	events.append_array(result.events)
 	if result.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A battle macro cannot suspend a second battle into the application host.")
 	if result.state == ScenarioVmResult.State.WAITING:
@@ -522,7 +527,7 @@ func _resume_battle_macro(continuation: ScenarioRuntimeContinuation, response: I
 	if result.is_rejection:
 		return ScenarioRuntimeOperationResult.rejected(result.error_code, result.error_message)
 	if result.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A resumed battle macro cannot suspend a second battle into the application host.")
 	if result.state == ScenarioVmResult.State.WAITING:
@@ -541,7 +546,7 @@ func _continue_after_battle_macro(source_kind: StringName, caller: ScenarioBattl
 
 
 func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCaller, preceding_events: Array[DomainEvent], request_id: String) -> ScenarioRuntimeOperationResult:
-	var request := _death_macro_request(preceding_events)
+	var request := CombatActionEvents.death_macro_request(preceding_events)
 	var combat := _game_state.combat
 	if request.is_empty() or combat == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Monster death-macro execution requires an active combatant request.")
@@ -557,14 +562,14 @@ func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCall
 	death_context.set_combatant(combatant_id, int(request.get("classicMonsterId", 0)), bool(request.get("traitor", monster.traitor)), true)
 	var started := vm.start_program(program_id, death_context)
 	if started.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message)
+		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message, started.events)
 	var result := vm.run(_runtime_api())
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
 	events.append(DomainEvent.new(&"monster_death_macro_started", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id}))
 	events.append_array(result.events)
 	if result.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
 	if result.state == ScenarioVmResult.State.WAITING:
@@ -588,7 +593,7 @@ func _resume_combat_death_macro(continuation: ScenarioRuntimeContinuation, respo
 	if result.is_rejection:
 		return ScenarioRuntimeOperationResult.rejected(result.error_code, result.error_message)
 	if result.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A resumed monster death macro cannot suspend a second battle into the application host.")
 	if result.state == ScenarioVmResult.State.WAITING:
@@ -614,7 +619,7 @@ func _continue_after_combat_death_macro(source_kind: StringName, caller: Scenari
 	committed.append_array(continued.events)
 	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
 		return _wait_for_combat_age_updates(source_kind, caller, request_id, committed, previous_round)
-	if not _death_macro_request(continued.events).is_empty():
+	if not CombatActionEvents.death_macro_request(continued.events).is_empty():
 		return _run_combat_death_macro(source_kind, caller, committed, request_id)
 	if continued.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, committed)
@@ -661,18 +666,10 @@ func _resume_combat_age_updates(continuation: ScenarioRuntimeContinuation, respo
 	events.append_array(continued.events)
 	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
 		return _wait_for_combat_age_updates(source_kind, caller, request_id, events, round_before)
-	if not _death_macro_request(continued.events).is_empty():
+	if not CombatActionEvents.death_macro_request(continued.events).is_empty():
 		return _run_combat_death_macro(source_kind, caller, events, request_id)
 	if continued.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, events)
 	if _game_state.combat.turns.round_number > round_before and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(source_kind, caller, events, request_id)
 	return _wait_for_active_battle(source_kind, caller, request_id, events)
-
-
-static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
-	for index: int in range(events.size() - 1, -1, -1):
-		var event := events[index]
-		if event.kind == &"monster_death_macro_requested":
-			return event.payload
-	return {}

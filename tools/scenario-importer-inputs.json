@@ -14,12 +14,41 @@
     "sha256": "6662740906af80e216daf60cf68a9dd88a40282264b2fe79237c41203913c622"
   },
   "sourceUpdate": {
-    "file": "providence-converter-map-markers-v6.bundle",
-    "sha256": "02632f29e220d8d994feb764f68ec962bbe4c80a6a22ee6dfda3f7c763acbe2a",
+    "file": "providence-converter-complete-records-v7.bundle",
+    "sha256": "6452f1597a19f97415983649af857e69fe0a9de0318f5b2a6ddbb7052a58ba83",
     "baseCommit": "9281bf692dadf24863808d2474984c3e4357db33",
-    "commit": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
-    "tree": "ab9266903e5738a687588edb7af85b834af2f543",
-    "schemaSha256": "5f7cbc80444bca4630f2989cfef4339a7c5ea6fe4c3af687f41c43280c33e439",
+    "commit": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+    "tree": "5b244d9a4a8e30371360d02cfa69f14606e5489d",
+    "schemaSha256": "b6af98b0541dd1bb34e06ca6644c6eb4e898d6da93ceffd4b182ef65339c6750",
     "cargoLockSha256": "6284fae1e7efc5d31b0a872730ee022472d8b8e939491e1b6d02df35a780b104"
-  }
+  },
+  "retainedSourceUpdates": [
+    {
+      "file": "providence-converter-map-markers-v6.bundle",
+      "sha256": "02632f29e220d8d994feb764f68ec962bbe4c80a6a22ee6dfda3f7c763acbe2a",
+      "baseCommit": "9281bf692dadf24863808d2474984c3e4357db33",
+      "commit": "542f9a1d250a155ca6ecf52645cca83c808c3dad",
+      "tree": "ab9266903e5738a687588edb7af85b834af2f543",
+      "schemaSha256": "5f7cbc80444bca4630f2989cfef4339a7c5ea6fe4c3af687f41c43280c33e439",
+      "cargoLockSha256": "6284fae1e7efc5d31b0a872730ee022472d8b8e939491e1b6d02df35a780b104"
+    },
+    {
+      "file": "providence-converter-program-closure.bundle",
+      "sha256": "9ce77040e6247caa77deaedc5f3c6e7784985207647dec828b914a6ecdcd9362",
+      "baseCommit": "9281bf692dadf24863808d2474984c3e4357db33",
+      "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+      "tree": "8a7f5e1397513ec94df9c58b01547522150f58e7",
+      "schemaSha256": "5f7cbc80444bca4630f2989cfef4339a7c5ea6fe4c3af687f41c43280c33e439",
+      "cargoLockSha256": "6284fae1e7efc5d31b0a872730ee022472d8b8e939491e1b6d02df35a780b104"
+    },
+    {
+      "file": "providence-converter-source-compression.bundle",
+      "sha256": "455dc5682f58d03e7d1a8e50bbb076cb454b630dde78bc967ca2db830e723882",
+      "baseCommit": "9281bf692dadf24863808d2474984c3e4357db33",
+      "commit": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "tree": "c79800d0d53773bb2f5473487c3ea4f3f3b28a6a",
+      "schemaSha256": "5f7cbc80444bca4630f2989cfef4339a7c5ea6fe4c3af687f41c43280c33e439",
+      "cargoLockSha256": "6284fae1e7efc5d31b0a872730ee022472d8b8e939491e1b6d02df35a780b104"
+    }
+  ]
 }

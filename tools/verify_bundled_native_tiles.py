@@ -5,6 +5,8 @@ from pathlib import Path
 import re
 import sys
 import zipfile
+from verify_trouble_payment import restoration, remove_addition
+from verify_program_restoration import correction_for, reverse_current_documents
 
 
 def digest(data):
@@ -44,8 +46,13 @@ def reconstruct_previous_documents(archive, receipt):
     required = {"content.json", "world.json", "scenario.json", "assets/index.json"}
     require(required <= previous.keys(), "receipt omits a required previous document")
     documents = {name: _json_document(archive, name) for name in previous}
+    reverse_current_documents(archive, documents, Path(__file__).resolve().parent.parent)
     world = documents["world.json"]
     scenario = documents["scenario.json"]
+    payment = restoration(Path(__file__).resolve().parent.parent)
+    if receipt.get("outputPackageHash") == payment["previousPackage"]["packageHash"] and any(
+            p.get("id") == "xap:330" for p in scenario.get("programs", [])):
+        remove_addition(scenario, payment)
     maps = {item["id"]: item for item in world.get("maps", [])}
 
     for map_doc in maps.values():
@@ -170,8 +177,11 @@ def _verify_media_receipt(archive, row, campaign):
     expected = row.get("preservation", {}).get("mediaInventory", {})
     require(expected.get("identical") is True,
             f"{campaign} receipt does not prove preserved media")
+    manifest = _json_document(archive, "manifest.json")
+    program = correction_for(Path(__file__).resolve().parent.parent, manifest["campaignId"], manifest["packageHash"])
+    retained_source_paths = {entry["path"] for entry in program["recipe"]["payloadAdditions"]} if program else set()
     media = {name: digest(archive.read(name)) for name in archive.namelist()
-             if name.startswith("assets/media/")}
+             if name.startswith("assets/media/") and name not in retained_source_paths}
     require(len(media) == expected.get("files") == row.get("preservedMediaFiles"),
             f"{campaign} preserved media inventory count differs")
     require(digest(canonical(media)) == expected.get("sha256"),
@@ -228,10 +238,13 @@ def verify(root):
             "native marker refresh requires a clean release compiler build")
     inputs = json.loads((root / "tools/scenario-importer-inputs.json").read_text(encoding="utf-8"))
     source = inputs.get("sourceUpdate", inputs["source"])
-    require(compiler["commit"] == source["commit"]
-            and compiler.get("sourceTree") == source["tree"]
-            and compiler.get("schemaSha256") == source["schemaSha256"] == schema_hash
-            and compiler.get("cargoLockSha256") == source["cargoLockSha256"],
+    predecessors = [source, *inputs.get("retainedSourceUpdates", [])]
+    marker_source = next((row for row in predecessors if row["commit"] == compiler["commit"]), None)
+    require(marker_source is not None and digest((root / "tools" / marker_source["file"]).read_bytes()) == marker_source["sha256"],
+            "historical native marker compiler source is not retained with its exact bytes")
+    require(compiler.get("sourceTree") == marker_source["tree"]
+            and compiler.get("schemaSha256") == marker_source["schemaSha256"] == schema_hash
+            and compiler.get("cargoLockSha256") == marker_source["cargoLockSha256"],
             "native marker compiler differs from the pinned importer source")
     require(len({row.get("outputFile") for row in rows}) == len(rows),
             "native marker receipt output filenames are duplicated")
@@ -258,6 +271,26 @@ def verify(root):
     prior_packages = set()
 
     for entry in scenarios:
+        marker_identity = entry
+        if "sourceCompression" in entry:
+            from verify_source_compression import load_receipt
+            _, compressed = load_receipt(root)
+            transition = compressed[entry["campaignId"]]
+            require(entry["archiveSha256"] == transition["archiveSha256"], "compressed endpoint differs")
+            marker_identity = transition["previousPackage"]
+        if "programAuditRestoration" in entry:
+            program = correction_for(root, entry["campaignId"], entry["packageHash"])
+            require(program and marker_identity["archiveSha256"] == program["archiveSha256"]
+                    and entry["programAuditRestoration"]["previousPackage"] == program["previousPackage"],
+                    "audited program restoration identity differs")
+            marker_identity = program["previousPackage"]
+        if "programRestoration" in entry:
+            payment = restoration(root)
+            require(entry["campaignId"] == payment["campaignId"]
+                    and marker_identity["packageHash"] == payment["packageHash"]
+                    and marker_identity["archiveSha256"] == payment["archiveSha256"],
+                    "post-marker program restoration identity differs")
+            marker_identity = payment["previousPackage"]
         refresh = entry.get("nativeTileRefresh")
         require(isinstance(refresh, dict)
                 and refresh.get("operation") == "correct-classic-map-markers"
@@ -283,23 +316,23 @@ def verify(root):
         require(set(row.get("previousDocuments", {}))
                 == {"content.json", "world.json", "scenario.json", "assets/index.json"},
                 f"{entry['file']} marker update changed its permitted document set")
-        require(entry.get("compilerRevision") == compiler["commit"],
+        require(marker_identity.get("compilerRevision", compiler["commit"]) == compiler["commit"],
                 f"{entry['file']} compiler revision differs from receipt")
         package_path = bundle / entry["file"]
         package_bytes = package_path.read_bytes()
         require(len(package_bytes) == entry.get("bytes")
                 and digest(package_bytes) == entry.get("archiveSha256")
-                and digest(package_bytes) == row.get("outputSha256"),
+                and marker_identity["archiveSha256"] == row.get("outputSha256"),
                 f"{entry['file']} output archive identity differs")
         with zipfile.ZipFile(package_path) as archive:
             manifest = _json_document(archive, "manifest.json")
             require(manifest.get("schemaVersion") == 6
                     and manifest.get("schemaHash") == schema_hash
-                    and manifest.get("compiler", {}).get("commit") == compiler["commit"]
+                    and manifest.get("compiler", {}).get("commit") == entry["compilerRevision"]
                     and manifest.get("packageHash") == entry.get("packageHash")
                     and manifest.get("contentId") == entry.get("contentId")
-                    and manifest.get("packageHash") == row.get("outputPackageHash")
-                    and manifest.get("contentId") == row.get("outputContentId"),
+                    and marker_identity["packageHash"] == row.get("outputPackageHash")
+                    and marker_identity["contentId"] == row.get("outputContentId"),
                     f"{entry['file']} manifest identity differs from receipt")
             world = _json_document(archive, "world.json")
             _verify_map_markers(world, entry["name"])

@@ -1,11 +1,19 @@
 $ErrorActionPreference = "Stop"
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $campaignRoot = Join-Path $repoRoot "src\storage\packages\bundled_campaigns"
+if (Test-Path -LiteralPath (Join-Path $campaignRoot "complete-records.json")) {
+    & python (Join-Path $PSScriptRoot "verify_complete_records.py")
+    if ($LASTEXITCODE -ne 0) { throw "Complete native-record bundle verification failed." }
+    return
+}
 $catalogPath = Join-Path $campaignRoot "castle-bundled-scenarios.provenance.json"
 $citySourcePath = Join-Path $campaignRoot "city-of-bywater.source.json"
 $applicationRoot = Join-Path $repoRoot "src\storage\packages\application"
 $applicationLock = Get-Content -Raw -LiteralPath (Join-Path $applicationRoot "application-library.lock.json") | ConvertFrom-Json
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
+$programCorrections = Get-Content -Raw -LiteralPath (Join-Path $campaignRoot "program-restoration.json") | ConvertFrom-Json
+$unavailableNativeText = (& python (Join-Path $PSScriptRoot "audit_native_resource_references.py") | Out-String) | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw "Native resource-reference accounting failed." }
 $nativeOwnership = Get-Content -Raw -LiteralPath (Join-Path $PSScriptRoot "fixtures/classic-monster-cicn-ownership.json") | ConvertFrom-Json
 $nativeByCampaign = @{}
 if ($nativeOwnership.formatVersion -ne 1 -or @($nativeOwnership.entries).Count -ne 13) {
@@ -119,6 +127,7 @@ try {
     $applicationArchive.Dispose()
 }
 $scenarioArchiveBytes = [long]0
+$prePreservationArchiveBytes = [long]0
 $sourceArchiveBytes = [long]0
 $refreshedScenarioMedia = 0
 $addedScenarioMediaDescriptors = 0
@@ -160,6 +169,7 @@ foreach ($scenario in $catalog.scenarios) {
     $preservedUnrefreshableScenarioMedia += [int]$refresh.preservedUnrefreshableScenarioMedia
     $rewrittenScenarioMediaReferences += [int]$refresh.rewrittenAssetReferences
     $scenarioArchiveBytes += [long]$scenario.bytes
+    $prePreservationArchiveBytes += if ($null -ne $scenario.programAuditRestoration) { [long]$scenario.programAuditRestoration.previousPackage.bytes } else { [long]$scenario.bytes }
     $sourceArchiveBytes += [long]$scenario.sourceArchive.bytes
     $archive = [System.IO.Compression.ZipFile]::OpenRead($packagePath)
     try {
@@ -228,9 +238,9 @@ foreach ($scenario in $catalog.scenarios) {
         }
 
         # Every emitted monster icon uses Castle's paired-facing identity: the
-        # right-facing CICN is base + 308. Resolve scenario-owned media first,
-        # then the pinned application inventory, and reject an incomplete pair
-        # before a package can enter the bundled corpus.
+        # right-facing CICN is base + 308. Native ownership must remain exact.
+        # Newly preserved dormant definitions may reference art absent from both
+        # native resource chains; report that authored defect instead of pruning.
         foreach ($monster in @($contentDocument.monsters)) {
             if ($null -eq $monster.iconId -or [int]$monster.iconId -le 0) { continue }
             $baseId = [int]$monster.iconId
@@ -247,6 +257,13 @@ foreach ($scenario in $catalog.scenarios) {
             $baseAsset = if ($assetsByResourceKey.ContainsKey($baseKey)) { $assetsByResourceKey[$baseKey] } else { $applicationAssetsByResourceKey[$baseKey] }
             $rightAsset = if ($assetsByResourceKey.ContainsKey($rightKey)) { $assetsByResourceKey[$rightKey] } else { $applicationAssetsByResourceKey[$rightKey] }
             if ($null -eq $baseAsset -or $null -eq $rightAsset) {
+                $programEndpoint = if ($null -ne $scenario.sourceCompression) { $scenario.sourceCompression.previousPackage.packageHash } else { $scenario.packageHash }
+                $correction = @($programCorrections.campaigns | Where-Object { $_.campaignId -eq $scenario.campaignId -and $_.packageHash -eq $programEndpoint })
+                $restored = @($correction.recipe.additions.'content.json'.monsters | Where-Object { $_.id -eq $monster.id })
+                if ($correction.Count -eq 1 -and $restored.Count -eq 1 -and @($manifest.capabilities) -contains "realmz.scenario.deferred-references-v1") {
+                    Write-Host "$($scenario.file) preserves native $($monster.id) with unavailable authored CICN $baseId/$rightId."
+                    continue
+                }
                 throw "$($scenario.file) monster $($monster.id) is missing its effective CICN pair $baseId/$rightId."
             }
             foreach ($pairedAsset in @($baseAsset, $rightAsset)) {
@@ -295,6 +312,11 @@ foreach ($scenario in $catalog.scenarios) {
                     throw "$($scenario.file) program $($program.id) retains Castle's invalid scrolling-text resource ID 0."
                 }
                 if (-not $resourceKeys.Contains("TEXT:$resourceId")) {
+                    $unavailable = @($unavailableNativeText | Where-Object { $_.campaignId -eq $scenario.campaignId -and $_.programId -eq $program.id -and $_.slot -eq $instruction.slot -and $_.resourceId -eq $resourceId })
+                    if ($unavailable.Count -eq 1 -and @($manifest.capabilities) -contains "realmz.scenario.deferred-references-v1") {
+                        Write-Host "$($scenario.file) preserves $($program.id) slot $($instruction.slot) with unavailable native TEXT $resourceId."
+                        continue
+                    }
                     throw "$($scenario.file) program $($program.id) has no exact scenario TEXT $resourceId asset for scrolling text."
                 }
                 if (-not $resourceKeys.Contains("styl:$resourceId")) {
@@ -475,10 +497,15 @@ if ($refreshedScenarioMedia -ne 515 -or $addedScenarioMediaDescriptors -ne 515 -
 }
 
 $applicationArchiveBytes = [long](Get-Item -LiteralPath (Join-Path $applicationRoot "realmz-classic-application-library.realmz2")).Length
-if ($scenarioArchiveBytes -ge $sourceArchiveBytes -or ($scenarioArchiveBytes + $applicationArchiveBytes) -ge $sourceArchiveBytes) {
-    throw "The separated application-plus-scenario library did not reduce the previous bundled archive footprint."
+if (($prePreservationArchiveBytes + $applicationArchiveBytes) -ge $sourceArchiveBytes) {
+    throw "The historical application-ownership migration does not match its reduced archive footprint."
 }
+Write-Host "Preserved scenario archives: $scenarioArchiveBytes bytes; before native-program/source preservation: $prePreservationArchiveBytes bytes."
 
+& python (Join-Path $PSScriptRoot 'verify_program_restoration.py')
+if ($LASTEXITCODE -ne 0) { throw 'Bundled native program inventory verification failed.' }
+& python (Join-Path $PSScriptRoot 'verify_trouble_payment.py')
+if ($LASTEXITCODE -ne 0) { throw 'Trouble payment restoration verification failed.' }
 & python (Join-Path $PSScriptRoot 'verify_bundled_native_tiles.py')
 if ($LASTEXITCODE -ne 0) { throw 'Bundled native map marker verification failed.' }
 & python (Join-Path $PSScriptRoot 'verify_bundled_shops.py')

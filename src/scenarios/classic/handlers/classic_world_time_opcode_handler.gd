@@ -18,7 +18,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 57, 61, 63, 66, 68, 70, 76, 92, 95, 101, 103, 104, 106]
+	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 57, 61, 66, 68, 70, 76, 92, 95, 101, 103, 104, 106]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -32,22 +32,22 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		20:
 			return _move_between_maps(action, false, true)
 		29:
-			return _acquire_player_map(action, request_id)
+			return _acquire_player_map(action, request_id, context)
 		37:
 			return _move_between_maps(action, true)
 		45:
 			return _move_between_maps(action, false, false)
 		47:
 			var quest_id := absi(action.operand_id)
-			if not _game_state.scenario_progress.set_quest_value(quest_id, 0 if action.operand_id < 0 else 1):
+			if _content.package_schema_version >= 7 and quest_id >= ClassicCompatibility.quest_limit(_content):
+				return ClassicCompatibility.skip(&"unavailable-quest-mutation", "quest-slots", quest_id)
+			if quest_id >= ClassicCompatibility.quest_limit(_content) or not _game_state.scenario_progress.set_quest_value(quest_id, 0 if action.operand_id < 0 or action.operand_id == 0 and _content.package_schema_version >= 7 else 1):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 47 references quest %d outside 0 through 99." % quest_id)
 			return ScenarioRuntimeOperationResult.completed(_game_state.scenario_progress.quest_value(quest_id), [DomainEvent.new(&"quest_changed", {"questId": quest_id, "value": _game_state.scenario_progress.quest_value(quest_id)})])
 		57:
 			return _change_land_look(action)
 		61:
 			return _shift_party(action)
-		63:
-			return _alter_game_time(action)
 		66:
 			_game_state.camping_allowed = action.operand_id == 0
 			return ScenarioRuntimeOperationResult.completed(_game_state.camping_allowed, [DomainEvent.new(&"camping_availability_changed", {"allowed": _game_state.camping_allowed, "source": "classic"})])
@@ -74,16 +74,28 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 
 
 func _change_land_look(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5 or action.extra_code[1] not in [0, 1]:
+	var native_values := _content.package_schema_version >= 7 and _content.classic_records != null
+	if action.extra_code.size() < 5 or not native_values and action.extra_code[1] not in [0, 1]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_land_look", "Classic opcode 57 requires a landlook, darkness flag, and land-level identity.")
+	# newland.c assigns the signed short to char landlook and unsigned Boolean.
+	var look := RealmzArithmetic.new().signed_8(action.extra_code[0]) if native_values else action.extra_code[0]
+	var dark := RealmzArithmetic.new().unsigned_8(action.extra_code[1]) != 0 if native_values else action.extra_code[1] != 0
 	var map := _content.world.map_by_type_and_index(&"land", action.extra_code[2])
-	if map == null or _content.world.battle_terrain_set_by_landlook(action.extra_code[0]) == null:
+	if map == null and native_values and ClassicCompatibility.map_source_unavailable(_content, "land:%d" % action.extra_code[2]):
+		return ClassicCompatibility.skip(&"unavailable-landlook-map", "Data LD", action.extra_code[2])
+	if map == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_land_look", "Classic opcode 57 references an unavailable land level.")
+	if _content.world.battle_terrain_set_by_landlook(look) == null and native_values and look not in [0, 3, 4, 5, 9, 10]:
+		var source := _content.classic_records.source_by_path("Data Custom %d BD" % (look - 5)) if look in [6, 7, 8] else null
+		if source == null or source.effective_byte_length < 8044:
+			return ClassicCompatibility.skip(&"unavailable-landlook-table", "Map Stats", look)
+	if _content.world.battle_terrain_set_by_landlook(look) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_land_look", "Classic opcode 57 references an unavailable land level or landlook.")
 	var previous_landlook := _game_state.world.topology.map_landlook(map)
 	var previous_dark := _game_state.world.topology.map_is_dark(map)
-	_game_state.world.topology.set_map_landlook(map.id, action.extra_code[0])
-	_game_state.world.topology.set_map_darkness(map.id, action.extra_code[1] != 0)
-	return ScenarioRuntimeOperationResult.completed(map.id, [DomainEvent.new(&"map_appearance_changed", {"mapId": map.id, "previousLandlook": previous_landlook, "landlook": action.extra_code[0], "previousDark": previous_dark, "dark": action.extra_code[1] != 0, "offscreen": map.id != _game_state.party.map_id, "source": "classic-opcode-57"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": map.id, "reason": "map-appearance"})])
+	_game_state.world.topology.set_map_landlook(map.id, look)
+	_game_state.world.topology.set_map_darkness(map.id, dark)
+	return ScenarioRuntimeOperationResult.completed(map.id, [DomainEvent.new(&"map_appearance_changed", {"mapId": map.id, "previousLandlook": previous_landlook, "landlook": look, "previousDark": previous_dark, "dark": dark, "offscreen": map.id != _game_state.party.map_id, "source": "classic-opcode-57"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": map.id, "reason": "map-appearance"})])
 
 
 func _save_or_restore_party_position(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -121,6 +133,8 @@ func _alter_random_region_geometry(action: ClassicActionDefinition) -> ScenarioR
 	var map := _content.world.map_by_type_and_index(map_type, map_index)
 	var region := null if map == null else map.random_region_by_index(region_index)
 	if region == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data RDD" if map_type == &"dungeon" else "Data RD", map_index):
+			return ClassicCompatibility.skip(&"random-region-geometry", "Data RDD" if map_type == &"dungeon" else "Data RD", map_index)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_random_region", "Classic opcode 92 references an unavailable random rectangle.")
 	var previous := _game_state.world.triggers.random_region(region)
 	var edges := previous.bounds_edges()
@@ -167,14 +181,19 @@ func _change_dungeon_heading(action: ClassicActionDefinition) -> ScenarioRuntime
 	return ScenarioRuntimeOperationResult.completed(_game_state.dungeon_heading, [DomainEvent.new(&"dungeon_heading_changed", {"previous": previous, "current": _game_state.dungeon_heading, "randomized": randomized, "source": "classic"})])
 
 
-func _acquire_player_map(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+func _acquire_player_map(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var classic_id := absi(action.operand_id)
+	# Castle stores acquired maps in twenty fixed slots. A supplied extra native
+	# row remains inspectable; it does not authorize an out-of-bounds state write.
+	if _content.classic_records != null and classic_id not in range(20):
+		return ClassicCompatibility.skip(&"player-map-slot", "Data MD2", classic_id)
+	if _content.classic_records != null:
+		return _acquire_native_player_map(action, classic_id, request_id, context)
 	var definition := _content.world.player_map_by_classic_id(classic_id)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_player_map", "Classic opcode 29 references unavailable player-map record %d." % classic_id)
-	var unavailable_reference := _unavailable_player_map_reference(definition)
-	if not unavailable_reference.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"deferred_player_map_reference", unavailable_reference)
+	var unavailable_reference := _player_map_reference_result(definition, context)
+	if unavailable_reference != null: return unavailable_reference
 	var already_acquired: bool = _game_state.world.exploration.has_map(definition.id)
 	_game_state.world.exploration.acquire_map(definition.id)
 	var event_payload := {"playerMapId": definition.id, "classicId": definition.classic_id, "name": definition.name, "alreadyAcquired": already_acquired, "source": "classic"}
@@ -187,9 +206,37 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.player_map(definition.id), events)
 
 
-func _unavailable_player_map_reference(definition: PlayerMapDefinition) -> String:
-	if definition.mode != PlayerMapDefinition.SCROLLING_TEXT and _content.world.map_by_id(definition.map_id) == null:
-		return "Classic opcode 29 Player Map %d requires source map '%s', which is unavailable." % [definition.classic_id, definition.map_id]
+func _acquire_native_player_map(action: ClassicActionDefinition, classic_id: int, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	var definition := _content.world.player_map_by_classic_id(classic_id)
+	var facts := _content.classic_records.player_map_by_id(classic_id)
+	if definition == null and facts != null and facts.can_project():
+		return ScenarioRuntimeOperationResult.failed(&"unknown_player_map", "The compiler omitted usable native Player Map %d." % classic_id)
+	# newland.c acquires the fixed map slot before attempting an optional display.
+	var map_id := "classic.player-map.%d" % classic_id
+	var payload := {"playerMapId": map_id, "classicId": classic_id, "name": definition.name if definition != null else "", "alreadyAcquired": _game_state.world.exploration.has_map(map_id), "source": "classic"}
+	_game_state.world.exploration.acquire_map(map_id)
+	if action.operand_id >= 0:
+		payload.merge({"notificationText": PLAYER_MAP_ACQUIRED_TEXT, "notificationSoundId": PLAYER_MAP_ACQUIRED_SOUND_ID})
+	var events: Array[DomainEvent] = [DomainEvent.new(&"player_map_acquired", payload)]
+	if action.operand_id >= 0:
+		return ScenarioRuntimeOperationResult.completed(map_id, events)
+	if definition == null:
+		events.append_array(ClassicCompatibility.skip(&"unavailable-player-map-display", "Data MD2", classic_id).events)
+		return ScenarioRuntimeOperationResult.completed(map_id, events)
+	var unavailable := _player_map_reference_result(definition, context)
+	if unavailable != null:
+		if unavailable.state == ScenarioRuntimeOperationResult.State.FAILED: return unavailable
+		events.append_array(unavailable.events)
+		return ScenarioRuntimeOperationResult.completed(map_id, events)
+	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": map_id})
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioInteractionContinuations.player_map(map_id), events)
+
+
+func _player_map_reference_result(definition: PlayerMapDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	if (definition.mode in [PlayerMapDefinition.LAND_CROP, PlayerMapDefinition.DUNGEON_CROP] or _content.classic_records == null and definition.mode == PlayerMapDefinition.PICTURE) and _content.world.map_by_id(definition.map_id) == null:
+		if ClassicCompatibility.map_source_unavailable(_content, definition.map_id):
+			return ClassicCompatibility.cancel_interaction(&"player-map-source", "Data MD2", definition.classic_id, context)
+		return ScenarioRuntimeOperationResult.failed(&"deferred_player_map_reference", "Classic opcode 29 Player Map %d requires source map '%s', which is unavailable." % [definition.classic_id, definition.map_id])
 	for field: String in ["picture", "scrolling text", "party marker"]:
 		var asset_id := ""
 		match field:
@@ -197,11 +244,16 @@ func _unavailable_player_map_reference(definition: PlayerMapDefinition) -> Strin
 			"scrolling text": asset_id = definition.scrolling_text_asset_id
 			"party marker": asset_id = definition.party_marker_asset_id
 		if not asset_id.is_empty() and not _has_media_asset(asset_id):
-			return "Classic opcode 29 Player Map %d requires unavailable %s asset '%s'." % [definition.classic_id, field, asset_id]
+			if ClassicCompatibility.media_reference_source_absent(_content, asset_id):
+				if field == "party marker": continue
+				return ClassicCompatibility.cancel_interaction(&"player-map-media", "Data MD2", definition.classic_id, context)
+			return ScenarioRuntimeOperationResult.failed(&"deferred_player_map_reference", "Classic opcode 29 Player Map %d requires unavailable %s asset '%s'." % [definition.classic_id, field, asset_id])
 	for marker: PlayerMapMarkerDefinition in definition.markers():
 		if not _has_media_asset(marker.icon_asset_id):
-			return "Classic opcode 29 Player Map %d requires unavailable CICN resource %d ('%s')." % [definition.classic_id, marker.classic_icon_id, marker.icon_asset_id]
-	return ""
+			if ClassicCompatibility.media_reference_source_absent(_content, marker.icon_asset_id):
+				continue
+			return ScenarioRuntimeOperationResult.failed(&"deferred_player_map_reference", "Classic opcode 29 Player Map %d requires unavailable CICN resource %d ('%s')." % [definition.classic_id, marker.classic_icon_id, marker.icon_asset_id])
+	return null
 
 
 func _has_media_asset(asset_id: String) -> bool:
@@ -222,6 +274,8 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 	var coordinate := Vector2i(action.extra_code[2], action.extra_code[3]) if dungeon_move else Vector2i(_game_state.party.coordinate.x if action.extra_code[1] < 0 else action.extra_code[1], _game_state.party.coordinate.y if action.extra_code[2] < 0 else action.extra_code[2])
 	var target_map := _content.world.map_by_type_and_index(target_type, map_index)
 	if target_map == null or target_map.topology.cell_at(coordinate) == null:
+		if _content.classic_records != null and (target_map != null or ClassicCompatibility.source_unavailable(_content, "Data DL" if target_type == &"dungeon" else "Data LD", map_index)):
+			return ClassicCompatibility.skip(&"unavailable-teleport-destination", "Data DL" if target_type == &"dungeon" else "Data LD", map_index)
 		return ScenarioRuntimeOperationResult.failed(&"invalid_teleport", "Classic map movement references an unavailable destination.")
 	var authored_heading := action.extra_code[4] if dungeon_move and target_type == &"dungeon" else 0
 	if dungeon_move and target_type == &"dungeon" and (absi(authored_heading) < 1 or absi(authored_heading) > 4):
@@ -237,17 +291,24 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 	var sound_id := 0 if dungeon_move else action.extra_code[3]
 	var message_id := 0 if dungeon_move else action.extra_code[4]
 	var events: Array[DomainEvent] = [DomainEvent.new(&"party_teleported", {"sourceMapId": source_map_id, "sourceX": source_coordinate.x, "sourceY": source_coordinate.y, "mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "soundId": sound_id, "messageId": message_id, "dungeonHeading": _game_state.dungeon_heading, "dungeonMultiview": _game_state.dungeon_multiview, "source": "classic"})]
+	if _game_state.combat != null and not _game_state.combat.completed:
+		# FD-COMBAT-021: Castle loadland overwrites combat's shared field, including
+		# live actor occupancy (Bywater 191 / alternate 41 / XAP 111). Commit the
+		# authored world destination while retaining the last coherent battlefield.
+		events.append(DomainEvent.new(&"combat_battlefield_retained", {"battleId": _game_state.combat.battle_id, "battlefieldMapId": _game_state.combat.battlefield.map_id, "destinationMapId": target_map.id, "opcode": action.opcode, "source": "unsafe-native-map-reload"}))
 	if sound_id != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-teleport"}))
 	if message_id != 0:
 		var message := _content.scenario_records.message_by_id(absi(message_id))
-		if message == null:
+		if message == null and not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(message_id)):
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic teleport references unavailable message %d." % message_id)
-		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-teleport"}))
+		if message != null:
+			events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-teleport"}))
 	if activate_destination and target_map.topology.action_point_is_marked(coordinate, _game_state.world, true):
 		events.append(DomainEvent.new(&"destination_trigger_recheck_requested", {"mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "source": "classic-opcode-20"}))
 		return ScenarioRuntimeOperationResult.completed(target_map.id, events, ScenarioVmDirective.finish_timeline())
-	return ScenarioRuntimeOperationResult.completed(target_map.id, events)
+	# Unlike teleport, opcode 37 returns from newland immediately.
+	return ScenarioRuntimeOperationResult.completed(target_map.id, events, ScenarioVmDirective.finish_timeline() if dungeon_move else null)
 
 
 func _mutate_random_region(action: ClassicActionDefinition, dungeon: bool) -> ScenarioRuntimeOperationResult:
@@ -255,9 +316,16 @@ func _mutate_random_region(action: ClassicActionDefinition, dungeon: bool) -> Sc
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic random-region mutation requires a five-value Extra Code row.")
 	var map := _content.world.map_by_type_and_index(&"dungeon" if dungeon else &"land", action.extra_code[0])
 	if map == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data DL" if dungeon else "Data LD", action.extra_code[0]):
+			return ClassicCompatibility.skip(&"random-region-map-mutation", "Data DL" if dungeon else "Data LD", action.extra_code[0])
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic random-region mutation references unavailable map %d." % action.extra_code[0])
+	if action.extra_code[1] < 0 or action.extra_code[1] >= 20:
+		# FD-SCENARIO-014: safely skip Castle's unchecked array write, not the timeline.
+		return ScenarioRuntimeOperationResult.completed(false)
 	var region := map.random_region_by_index(action.extra_code[1])
 	if region == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data RDD" if dungeon else "Data RD", action.extra_code[0]):
+			return ClassicCompatibility.skip(&"random-region-mutation", "Data RDD" if dungeon else "Data RD", action.extra_code[0])
 		return ScenarioRuntimeOperationResult.failed(&"unknown_random_region", "Classic random-region mutation references unavailable rectangle %d." % action.extra_code[1])
 	var previous := _game_state.world.triggers.random_region(region)
 	var battle_min := previous.battle_minimum if action.extra_code[3] < 0 else action.extra_code[3]
@@ -276,6 +344,8 @@ func _mutate_tile(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	var map := _content.world.map_by_type_and_index(&"dungeon" if dungeon else &"land", action.extra_code[0])
 	var coordinate := Vector2i(action.extra_code[2], action.extra_code[1]) if dungeon else Vector2i(action.extra_code[1], action.extra_code[2])
 	if map == null or map.topology.cell_at(coordinate) == null:
+		if _content.classic_records != null and (map != null or ClassicCompatibility.source_unavailable(_content, "Data DL" if dungeon else "Data LD", action.extra_code[0])):
+			return ClassicCompatibility.skip(&"tile-mutation", "Data DL" if dungeon else "Data LD", action.extra_code[0])
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map_cell", "Classic tile mutation references an unavailable map cell.")
 	var terrain_id := "classic.terrain.%d" % action.extra_code[3]
 	_game_state.world.topology.replace_terrain(map.id, coordinate, terrain_id)
@@ -295,6 +365,8 @@ func _mutate_triggers(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 		level_type = &"land"
 	var map := _content.world.map_by_type_and_index(level_type, action.extra_code[0])
 	if map == null:
+		if ClassicCompatibility.source_unavailable(_content, "Data DL" if level_type == &"dungeon" else "Data LD", action.extra_code[0]):
+			return ClassicCompatibility.skip(&"action-point-map-mutation", "Data DL" if level_type == &"dungeon" else "Data LD", action.extra_code[0])
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic trigger mutation references unavailable map %d." % action.extra_code[0])
 	var record_indexes: Array[int] = []
 	if action.extra_code[1] != 0:
@@ -322,13 +394,15 @@ func _shift_party(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	var delta := Vector2i(action.extra_code[1], action.extra_code[2])
 	var random_shift := action.extra_code[3] != 0
 	if random_shift:
-		if action.extra_code[1] < 1 or action.extra_code[2] < 1:
+		if _content.package_schema_version < 7 and (action.extra_code[1] < 1 or action.extra_code[2] < 1):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_shift_range", "Classic opcode 61 random shift ranges must be positive.")
 		var x_sign := 1 if _rng.draw(100, &"classic.opcode61.x-sign") < 50 else -1
-		var x_magnitude := _rng.draw_between(1, action.extra_code[1], &"classic.opcode61.x-magnitude")
+		var x_magnitude := _rng.draw_between_classic(1, action.extra_code[1], &"classic.opcode61.x-magnitude") if _content.package_schema_version >= 7 else _rng.draw_between(1, action.extra_code[1], &"classic.opcode61.x-magnitude")
 		var y_sign := 1 if _rng.draw(100, &"classic.opcode61.y-sign") < 50 else -1
-		var y_magnitude := _rng.draw_between(1, action.extra_code[2], &"classic.opcode61.y-magnitude")
+		var y_magnitude := _rng.draw_between_classic(1, action.extra_code[2], &"classic.opcode61.y-magnitude") if _content.package_schema_version >= 7 else _rng.draw_between(1, action.extra_code[2], &"classic.opcode61.y-magnitude")
 		delta = Vector2i(x_sign * x_magnitude, y_sign * y_magnitude)
+		if _content.package_schema_version >= 7:
+			delta = Vector2i(RealmzArithmetic.new().signed_16(delta.x), RealmzArithmetic.new().signed_16(delta.y))
 	var source_coordinate := _game_state.party.coordinate
 	var requested_coordinate := source_coordinate + delta
 	var target_coordinate := requested_coordinate
@@ -340,6 +414,8 @@ func _shift_party(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 			clampi(requested_coordinate.y, 0, current_map.topology.height - 1)
 		)
 	if current_map.topology.cell_at(target_coordinate) == null:
+		if _content.package_schema_version >= 7:
+			return ClassicCompatibility.skip(&"unavailable-shift-coordinate", "Data EDCD", action.operand_id)
 		return ScenarioRuntimeOperationResult.failed(&"shift_out_of_bounds", "Classic opcode 61 shifts the party outside the current map.")
 	_game_state.party.coordinate = target_coordinate
 	_game_state.world.exploration.mark_visited(current_map.id, target_coordinate)
@@ -360,40 +436,13 @@ func _shift_party(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	})])
 
 
-func _alter_game_time(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 63 requires a five-value Extra Code row.")
-	var mode := action.extra_code[0]
-	var target_minutes := _game_state.clock.total_minutes()
-	match mode:
-		1:
-			var day := _game_state.clock.day() if action.extra_code[1] == -1 else action.extra_code[1]
-			var hour := _game_state.clock.hour() if action.extra_code[2] == -1 else action.extra_code[2]
-			var minute := _game_state.clock.minute() if action.extra_code[3] == -1 else action.extra_code[3]
-			if day < 1 or hour < 0 or hour > 23 or minute < 0 or minute > 59:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_game_time", "Classic opcode 63 absolute time is outside the Realmz clock.")
-			target_minutes = (day - 1) * RealmzClock.MINUTES_PER_DAY + hour * 60 + minute
-		2:
-			target_minutes += action.extra_code[1] * RealmzClock.MINUTES_PER_DAY + action.extra_code[2] * 60 + action.extra_code[3]
-		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_game_time_mode", "Classic opcode 63 requires set or offset mode.")
-	if not _game_state.clock.set_total_minutes(target_minutes):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_game_time", "Classic opcode 63 cannot move before the start of the Realmz clock.")
-	return ScenarioRuntimeOperationResult.completed(target_minutes, [DomainEvent.new(&"game_time_changed", {
-		"mode": mode,
-		"day": _game_state.clock.day(),
-		"hour": _game_state.clock.hour(),
-		"minute": _game_state.clock.minute(),
-		"totalMinutes": target_minutes,
-		"source": "classic",
-	})])
-
-
 func _adjust_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 76 requires a five-value Extra Code row.")
 	var quest_id := action.extra_code[0]
-	if quest_id < 0 or quest_id >= 100:
+	if quest_id < 0 or quest_id >= ClassicCompatibility.quest_limit(_content):
+		if _content.package_schema_version >= 7:
+			return ClassicCompatibility.skip(&"unavailable-quest-mutation", "quest-slots", quest_id)
 		return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 76 references quest %d outside 0 through 99." % quest_id)
 	var value := clampi(_game_state.scenario_progress.quest_value(quest_id) + action.extra_code[1], -127, 127)
 	_game_state.scenario_progress.set_quest_value(quest_id, value)

@@ -117,6 +117,9 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 	if state == null or content == null or rng == null or state.combat == null:
 		return CombatFlowResult.failed(&"invalid_death_macro_continuation", "Monster death-macro continuation requires an active battle.")
 	var events: Array[DomainEvent] = []
+	# killbody clears physical after each direct or queued macro, not each turn.
+	if state.combat.turns.active_turn != null:
+		state.combat.turns.active_turn.classic_physical_active = false
 	if not state.combat.spell_runtime.pending_death_macro_id().is_empty():
 		var expected_id := state.combat.spell_runtime.pending_death_macro_id()
 		if completed_combatant_id.is_empty():
@@ -132,6 +135,8 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 			return CombatFlowResult.succeeded(events)
 		var spell_actor_id := state.combat.spell_runtime.macro_actor_id()
 		var advances_turn := state.combat.spell_runtime.macro_advances_turn()
+		if state.combat.turns.active_turn != null:
+			state.combat.turns.active_turn.classic_spell_active = false
 		if advances_turn:
 			if state.combat.turns.active_actor_id() != spell_actor_id:
 				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The active caster changed before the queued spell action completed.")
@@ -144,7 +149,7 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		var mover_id := reaction.mover_id
 		if _context.reactions().combatant_is_alive(state, mover_id):
 			reaction.mover_killed = false
-			var reaction_result = _context.reactions().continue_pending_reaction(state, content, rng, events)
+			var reaction_result := _context.reactions().continue_pending_reaction(state, content, rng, events)
 			if reaction_result == REACTION_WAITING or reaction_result == REACTION_DEATH_MACRO:
 				return CombatFlowResult.succeeded(events)
 			if reaction_result == REACTION_COMPLETED:
@@ -231,7 +236,7 @@ func _continue_after_age_reaction(state: GameState, content: RealmzContent, rng:
 	var mover_id := combat.pending_reaction.mover_id
 	if resumed.defeated:
 		combat.pending_reaction.mover_killed = true
-	var reaction_result = _context.reactions().continue_pending_reaction(state, content, rng, events)
+	var reaction_result := _context.reactions().continue_pending_reaction(state, content, rng, events)
 	if reaction_result == REACTION_WAITING or reaction_result == REACTION_DEATH_MACRO:
 		return CombatFlowResult.succeeded(events)
 	if reaction_result == REACTION_MOVER_DEFEATED:
@@ -299,24 +304,26 @@ func ally_selection_payload(state: GameState, content: RealmzContent) -> Diction
 
 func apply_ally_selection(state: GameState, content: RealmzContent, selected_value: Variant) -> CombatFlowResult:
 	var payload := ally_selection_payload(state, content)
-	if payload.is_empty() or not selected_value is Array:
+	if payload.is_empty():
 		return CombatFlowResult.failed(&"invalid_ally_selection", "The post-battle ally selection is unavailable.")
+	if not selected_value is Array:
+		return CombatFlowResult.rejected(&"invalid_ally_selection", "Selected allies must be an array of stable IDs.")
 	var selected_ids: Array[String] = []
 	for value: Variant in selected_value:
 		if not value is String or value.is_empty() or selected_ids.has(value):
-			return CombatFlowResult.failed(&"invalid_ally_selection", "Selected allies must be unique stable IDs.")
+			return CombatFlowResult.rejected(&"invalid_ally_selection", "Selected allies must be unique stable IDs.")
 		selected_ids.append(value)
 	if selected_ids.size() > int(payload["maximum"]):
-		return CombatFlowResult.failed(&"invalid_ally_selection", "The ally selection exceeds the Classic body-count limit.")
+		return CombatFlowResult.rejected(&"invalid_ally_selection", "The ally selection exceeds the Classic body-count limit.")
 	var candidate_ids: Array[String] = []
 	for candidate: Dictionary in payload["candidates"]:
 		candidate_ids.append(candidate["id"])
 	for required_id: String in payload["requiredIds"]:
 		if not selected_ids.has(required_id):
-			return CombatFlowResult.failed(&"required_ally_missing", "A scenario-mandatory ally cannot be left behind.")
+			return CombatFlowResult.rejected(&"required_ally_missing", "A scenario-mandatory ally cannot be left behind.")
 	for selected_id: String in selected_ids:
 		if not candidate_ids.has(selected_id):
-			return CombatFlowResult.failed(&"invalid_ally_selection", "The ally selection contains an unavailable combatant.")
+			return CombatFlowResult.rejected(&"invalid_ally_selection", "The ally selection contains an unavailable combatant.")
 	var retained: Array[MonsterState] = []
 	for selected_id: String in selected_ids:
 		var monster := state.combat.roster.monster_by_id(selected_id)
@@ -417,26 +424,26 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 	if request_payload.is_empty():
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery is unavailable.")
 	if instance_id != request_payload["item"]["instanceId"]:
-		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery must identify the pending item and action.")
+		return CombatFlowResult.rejected(&"invalid_fumble_recovery", "Fumbled-weapon recovery must identify the pending item and action.")
 	if action == &"discard":
 		var discarded := state.combat.dropped_items.remove(instance_id)
 		if discarded == null:
 			return CombatFlowResult.failed(&"invalid_fumble_recovery", "The pending fumbled weapon is unavailable.")
 		return CombatFlowResult.succeeded([DomainEvent.new(&"fumbled_item_left_behind", {"battleId": state.combat.battle_id, "instanceId": discarded.id, "itemId": discarded.definition_id})])
 	if action != &"assign" or character_id.is_empty():
-		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery requires an available character or discard action.")
+		return CombatFlowResult.rejected(&"invalid_fumble_recovery", "Fumbled-weapon recovery requires an available character or discard action.")
 	var candidate: Dictionary = {}
 	for entry: Dictionary in request_payload["characters"]:
 		if entry["id"] == character_id:
 			candidate = entry
 			break
 	if candidate.is_empty() or not candidate["enabled"]:
-		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character cannot receive the fumbled weapon.")
+		return CombatFlowResult.rejected(&"invalid_fumble_recovery", "The selected character cannot receive the fumbled weapon.")
 	var character := state.party.character_by_id(character_id)
 	var queued: ItemInstance = state.combat.dropped_items.items()[0]
 	var definition := content.items.item_by_id(queued.definition_id)
 	if character == null or definition == null or not _context.inventory.can_restore_item(character, queued, definition):
-		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character can no longer receive the fumbled weapon.")
+		return CombatFlowResult.rejected(&"invalid_fumble_recovery", "The selected character can no longer receive the fumbled weapon.")
 	var recovered := state.combat.dropped_items.remove(instance_id)
 	if recovered == null or not _context.inventory.restore_item(character, recovered, definition):
 		if recovered != null:

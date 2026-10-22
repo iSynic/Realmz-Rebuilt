@@ -42,9 +42,9 @@ func monster_by_id(definition_id: String) -> MonsterDefinition:
 
 func monster_by_id_for_set(definition_id: String, set_id: int) -> MonsterDefinition:
 	var records: Variant = _monster_sets.get(set_id)
-	if records is Dictionary and records.has(definition_id):
-		return records[definition_id] as MonsterDefinition
-	return monster_by_id(definition_id)
+	if records is Dictionary:
+		return records.get(definition_id) as MonsterDefinition
+	return _base_monsters.get(definition_id) as MonsterDefinition
 
 
 func monster_by_classic_id(classic_id: int) -> MonsterDefinition:
@@ -80,9 +80,9 @@ func available_monster_sets() -> Array[int]:
 
 func bestiary_definitions_for_set(set_id: int) -> Array[MonsterDefinition]:
 	var result: Array[MonsterDefinition] = []
-	for value: Variant in _base_monsters.values():
-		var base := value as MonsterDefinition
-		var definition := monster_by_id_for_set(base.id, set_id)
+	var records: Dictionary = _monster_sets.get(set_id, _base_monsters)
+	for value: Variant in records.values():
+		var definition := value as MonsterDefinition
 		if definition != null and definition.hit_dice > 0 and definition.hit_dice != 255 and not definition.not_on_menu:
 			result.append(definition)
 	result.sort_custom(func(left: MonsterDefinition, right: MonsterDefinition) -> bool: return left.classic_id < right.classic_id)

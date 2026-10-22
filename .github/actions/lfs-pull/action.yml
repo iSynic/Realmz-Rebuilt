@@ -1,0 +1,19 @@
+name: Cached LFS pull
+description: Restores Git LFS objects from a cache keyed on the exact object list, then pulls anything missing.
+runs:
+  using: composite
+  steps:
+    - id: objects
+      shell: pwsh
+      run: |
+        $ids = @(git lfs ls-files --long | ForEach-Object { ($_ -split ' ')[0] } | Sort-Object) -join "`n"
+        $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($ids))).ToLowerInvariant()
+        "id=$hash" >> $env:GITHUB_OUTPUT
+    - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: .git/lfs
+        key: lfs-${{ steps.objects.outputs.id }}
+    - shell: pwsh
+      run: |
+        git lfs pull
+        if ($LASTEXITCODE -ne 0) { throw 'Git LFS pull failed.' }

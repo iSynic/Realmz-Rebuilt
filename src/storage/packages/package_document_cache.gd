@@ -74,8 +74,6 @@ func write(package_path: String, archive_sha256: String, documents: Dictionary, 
 	if _sha256(FileAccess.get_file_as_bytes(temporary_path)) != _sha256(cache_bytes):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		return false
-	if FileAccess.file_exists(cache_path):
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(cache_path))
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(cache_path)) != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		return false

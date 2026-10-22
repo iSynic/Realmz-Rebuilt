@@ -8,6 +8,8 @@ var action: StringName = &""
 var attack_index: int = 0
 var target_id: String = ""
 var physical_action_committed: bool = false
+var classic_physical_active: bool = false
+var classic_spell_active: bool = false
 var movement_remaining: int = -1
 var spell_cast_count: int = 0
 var monster_cast_attempt_count: int = 0
@@ -20,6 +22,11 @@ func _init(source_actor_id: String) -> void:
 	actor_id = source_actor_id
 
 
+func commit_physical_action() -> void:
+	physical_action_committed = true
+	classic_physical_active = true
+
+
 func to_data() -> Dictionary:
 	var data := {
 		"actorId": actor_id,
@@ -27,6 +34,8 @@ func to_data() -> Dictionary:
 		"attackIndex": attack_index,
 		"targetId": target_id,
 		"physicalActionCommitted": physical_action_committed,
+		"classicPhysicalActive": classic_physical_active,
+		"classicSpellActive": classic_spell_active,
 		"movementRemaining": movement_remaining,
 		"spellCastCount": spell_cast_count,
 		"monsterCastAttemptCount": monster_cast_attempt_count,
@@ -39,13 +48,15 @@ func to_data() -> Dictionary:
 
 
 static func from_data(data: Variant) -> CombatTurnState:
-	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8, 10, 11]:
+	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8, 10, 11, 12, 13]:
 		return null
-	var allowed_fields: Array[String] = ["actorId", "action", "attackIndex", "targetId", "physicalActionCommitted", "movementRemaining", "spellCastCount", "monsterCastAttemptCount", "stagedItemInstanceId", "stagedItemPower", "castCommitment"]
+	var allowed_fields: Array[String] = ["actorId", "action", "attackIndex", "targetId", "physicalActionCommitted", "movementRemaining", "spellCastCount", "monsterCastAttemptCount", "stagedItemInstanceId", "stagedItemPower", "castCommitment", "classicPhysicalActive", "classicSpellActive"]
 	for key: Variant in data.keys():
 		if not key is String or key not in allowed_fields:
 			return null
-	if data.has("castCommitment") and data.size() != 11:
+	if data.has("classicPhysicalActive") != data.has("classicSpellActive") or data.has("classicPhysicalActive") and (not data["classicPhysicalActive"] is bool or not data["classicSpellActive"] is bool):
+		return null
+	if data.has("castCommitment") and data.size() != (13 if data.has("classicPhysicalActive") else 11):
 		return null
 	for field: String in ["actorId", "action", "attackIndex", "targetId"]:
 		if not data.has(field):
@@ -70,6 +81,9 @@ static func from_data(data: Variant) -> CombatTurnState:
 	result.attack_index = loaded_attack_index
 	result.target_id = data["targetId"]
 	result.physical_action_committed = bool(data.get("physicalActionCommitted", false))
+	# V5 retains its recorded effective physical guard; no past macro is replayed.
+	result.classic_physical_active = data.get("classicPhysicalActive", result.physical_action_committed)
+	result.classic_spell_active = data.get("classicSpellActive", data.has("castCommitment"))
 	result.movement_remaining = _integer(data.get("movementRemaining", -1))
 	result.spell_cast_count = _integer(data.get("spellCastCount", 0))
 	result.monster_cast_attempt_count = _integer(data.get("monsterCastAttemptCount", 0))

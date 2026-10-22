@@ -19,6 +19,7 @@ var _media_controller: PresentationMediaController
 var _active_route: StringName = &"exploration"
 var _play_stage_visible := false
 var _combat_playback: CombatPlaybackController
+var party_effect_playback := PartyEffectPlayback.new()
 var _presented_view: GameView
 var _deferred_step: SessionStep
 var _deferred_view: GameView
@@ -48,7 +49,7 @@ var runtime_observation: Dictionary:
 			"presentedRevision": _presented_view.revision if _presented_view != null else -1,
 			"drawnRevision": drawn_revision,
 			"deferredRevision": _deferred_view.revision if _deferred_view != null else -1,
-			"playbackPhase": String(frame.kind) if frame != null else "",
+			"playbackPhase": String(frame.kind) if frame != null else "party-effect" if party_effect_playback.is_active() else "",
 		}
 
 
@@ -78,10 +79,8 @@ func bind(
 	_audio_presenter = audio_presenter
 	_media_controller = media_controller
 	_media_controller.bind(_map_presenter, _battlefield_presenter, _shell_presenter, _audio_presenter)
-	_combat_playback = CombatPlaybackController.new()
-	_combat_playback.frame_changed.connect(_on_combat_playback_frame_changed)
-	_combat_playback.sound_requested.connect(func(event: DomainEvent) -> void: _audio_presenter.present_events([event], _media_controller.catalog()))
-	_combat_playback.playback_finished.connect(_on_combat_playback_finished)
+	_bind_combat_playback()
+	party_effect_playback.bind(_shell_presenter, _audio_presenter, _settle_deferred_step)
 	_session_controller.step_committed.connect(_on_step_committed)
 	_interaction_presenter.combat_mount_completed.connect(func() -> void: _queue_draw_ack(_presented_view.revision))
 	_bind_spatial_visibility()
@@ -130,6 +129,10 @@ func _process(delta: float) -> void:
 
 
 func _on_step_committed(step: SessionStep) -> void:
+	if party_effect_playback.is_active():
+		party_effect_playback.cancel()
+		_deferred_step = null
+		_deferred_view = null
 	var game_view := _session_controller.view()
 	if _has_event(step.events, &"session_restored"):
 		_battlefield_presenter.result_text.clear()
@@ -145,6 +148,14 @@ func _on_step_committed(step: SessionStep) -> void:
 			_interaction_presenter.present_combat_playback_mask(_combat_playback.current_frame(), _combat_playback.base_view, _combat_playback.final_view, _media_controller.catalog())
 		set_process(true)
 		if _shell_presenter.pause_active: skip_combat_playback()
+		return
+	if party_effect_playback.begin(_presented_view, step.events):
+		_deferred_step = step
+		_deferred_view = game_view
+		_present_request(null, _presented_view, null)
+		_interaction_presenter.present_party_effect_playback_mask()
+		_audio_presenter.present_events(step.events, _media_controller.catalog())
+		if _shell_presenter.pause_active: party_effect_playback.skip()
 		return
 	_present_committed_step(step, game_view, true)
 	if treasure_transfer_captured:
@@ -193,6 +204,10 @@ func _on_combat_playback_finished() -> void:
 	set_process(false)
 	_playback_draw.reset()
 	_battlefield_presenter.clear_playback_frame()
+	_settle_deferred_step()
+
+
+func _settle_deferred_step() -> void:
 	var step := _deferred_step
 	var game_view := _deferred_view
 	_deferred_step = null
@@ -212,7 +227,7 @@ func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, 
 
 
 func set_active_route(route_id: StringName) -> void:
-	if is_combat_playback_active() and route_id not in [&"system", &"inventory"]:
+	if (is_combat_playback_active() or party_effect_playback.is_active()) and route_id not in [&"system", &"inventory"]:
 		_pending_route = route_id
 		return
 	var previous_route := _active_route
@@ -293,7 +308,7 @@ func toggle_dungeon_view() -> bool:
 	var game_view := _session_controller.view() if _session_controller != null else null
 	if game_view == null or game_view.map_view == null or game_view.map_view.level_type != &"dungeon":
 		return false
-	if not dungeon_view_toggle_available(game_view.map_view):
+	if not GameShellRoutePolicy.dungeon_view_toggle_available(game_view.map_view):
 		_shell_presenter.status.set_status("This dungeon is locked to the 3D view. Wizard's Eye permits the overhead view.")
 		return true
 	_dungeon_3d_enabled = not _dungeon_presenter.is_active()
@@ -349,7 +364,7 @@ func refresh() -> void:
 func refresh_spatial_projection() -> void:
 	if _session_controller == null:
 		return
-	var game_view := _session_controller.view()
+	var game_view := party_effect_playback.base_view if party_effect_playback.is_active() else _session_controller.view()
 	_map_presenter.present(game_view)
 	_dungeon_presenter.present(game_view)
 	_presented_view = game_view
@@ -380,6 +395,12 @@ func present_host_workflow(game_view: GameView, step: SessionStep = null) -> voi
 
 
 func _present_current_view(include_interaction: bool = true) -> void:
+	if party_effect_playback.is_active():
+		_present_view(party_effect_playback.base_view, false)
+		_shell_presenter.roster.present_playback_health(party_effect_playback.health, true)
+		if include_interaction and _host_interaction == null:
+			_interaction_presenter.present_party_effect_playback_mask()
+		return
 	if is_combat_playback_active():
 		_present_view(_combat_playback.base_view, false)
 		var frame := _combat_playback.current_frame()
@@ -420,7 +441,7 @@ func _acknowledge_after_draw(revision: int, generation: int) -> void:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	else:
 		await RenderingServer.frame_post_draw
-	if generation == _draw_ack_generation and _presented_view != null and _presented_view.revision == revision and not is_combat_playback_active() and not _interaction_presenter.combat_mount_pending:
+	if generation == _draw_ack_generation and _presented_view != null and _presented_view.revision == revision and not is_combat_playback_active() and not party_effect_playback.is_active() and not _interaction_presenter.combat_mount_pending:
 		drawn_revision = revision
 
 
@@ -428,8 +449,8 @@ func _update_spatial_visibility(game_view: GameView) -> void:
 	var backdrop_route := _active_route
 	if _shell_presenter.pause_active and game_view != null and game_view.session_started:
 		backdrop_route = &"combat" if game_view.combat_view != null else &"exploration"
-	var exploration_visible := should_show_exploration_stage(backdrop_route, game_view, _play_stage_visible)
-	var battle_visible := should_show_battle_stage(backdrop_route, game_view, _play_stage_visible)
+	var exploration_visible := GameShellRoutePolicy.should_show_exploration_stage(backdrop_route, game_view, _play_stage_visible)
+	var battle_visible := GameShellRoutePolicy.should_show_battle_stage(backdrop_route, game_view, _play_stage_visible)
 	var was_map_visible := _map_presenter.visible
 	var was_dungeon_visible := _dungeon_presenter.visible
 	var was_battle_visible := _battlefield_presenter.visible
@@ -448,24 +469,8 @@ func _update_spatial_visibility(game_view: GameView) -> void:
 
 func _sync_dungeon_view(game_view: GameView) -> void:
 	var map_view := game_view.map_view if game_view != null else null
-	var forced_3d := map_view != null and map_view.level_type == &"dungeon" and not dungeon_view_toggle_available(map_view)
-	_dungeon_presenter.set_enabled(_dungeon_3d_enabled or forced_3d, dungeon_view_toggle_available(map_view))
-
-
-static func dungeon_view_toggle_available(map_view: MapView) -> bool:
-	return map_view != null and map_view.level_type == &"dungeon" and (map_view.dungeon_multiview or map_view.wizard_eye_active)
-
-
-static func should_show_exploration_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return active_route in [&"exploration", &"spells", &"save_load"] and game_view != null and game_view.session_started and not game_view.party_setup_available and (active_route != &"save_load" or game_view.combat_view == null) and play_stage_visible
-
-
-static func should_show_spatial_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return should_show_exploration_stage(active_route, game_view, play_stage_visible)
-
-
-static func should_show_battle_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return active_route in [&"combat", &"save_load"] and game_view != null and game_view.session_started and game_view.combat_view != null and game_view.combat_view.battlefield != null and play_stage_visible
+	var forced_3d := map_view != null and map_view.level_type == &"dungeon" and not GameShellRoutePolicy.dungeon_view_toggle_available(map_view)
+	_dungeon_presenter.set_enabled(_dungeon_3d_enabled or forced_3d, GameShellRoutePolicy.dungeon_view_toggle_available(map_view))
 
 
 func _present_interaction(game_view: GameView) -> void:
@@ -493,3 +498,10 @@ func _present_request(request: InteractionRequest, game_view: GameView, characte
 	if enables_spatial_cursor:
 		_map_presenter.set_movement_cursor_enabled(true)
 		_dungeon_presenter.set_navigation_cursor_enabled(true)
+
+
+func _bind_combat_playback() -> void:
+	_combat_playback = CombatPlaybackController.new()
+	_combat_playback.frame_changed.connect(_on_combat_playback_frame_changed)
+	_combat_playback.sound_requested.connect(func(event: DomainEvent) -> void: _audio_presenter.present_events([event], _media_controller.catalog()))
+	_combat_playback.playback_finished.connect(_on_combat_playback_finished)

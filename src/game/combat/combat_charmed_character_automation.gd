@@ -80,13 +80,14 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		failure_result = CombatFlowResult.failed(&"missing_monster_definition", "Charmed target '%s' has no monster definition." % monster_target.id)
 		return false
 	active_turn.physical_action_committed = true
+	active_turn.classic_physical_active = true
 	var resolution := _context.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day(), false, true, state.combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(monster_target.id)
 	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, actor, equipment, events):
 		failure_result = CombatFlowResult.failed(&"invalid_fumble_state", "Charmed actor '%s' could not commit its fumble." % actor.id)
 		return false
-	var event = _context.actions().events().character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null)
+	var event := _context.actions().events().character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null)
 	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"monster", monster_target.id)
 	event.payload["automatic"] = true
 	events.append(event)
@@ -94,7 +95,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		_context.actions().mark_character_bleeding(state, actor, resolution.killed)
 		CombatOccupancyRules.remove_defeated_position(state.combat, actor.id, resolution.killed)
 		return false
-	var death_macro_requested = resolution.killed and _context.actions().events().request_monster_death_macro(monster_target, target_definition, events)
+	var death_macro_requested := resolution.killed and _context.actions().events().request_monster_death_macro(monster_target, target_definition, events)
 	CombatOccupancyRules.remove_defeated_position(state.combat, monster_target.id, resolution.killed and not death_macro_requested)
 	return death_macro_requested
 
@@ -105,13 +106,14 @@ func _resolve_charmed_attack_character(state: GameState, content: RealmzContent,
 		failure_result = CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
 		return false
 	active_turn.physical_action_committed = true
+	active_turn.classic_physical_active = true
 	var resolution := _context.combat.resolve_character_attack_character(actor, equipment, target, target_equipment, rng, false, true, state.combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(target.id)
 	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, actor, equipment, events):
 		failure_result = CombatFlowResult.failed(&"invalid_fumble_state", "Charmed actor '%s' could not commit its fumble." % actor.id)
 		return false
-	var character_event = _context.actions().events().character_attack_event(actor.id, target.id, &"character", resolution, equipment.melee_weapon != null)
+	var character_event := _context.actions().events().character_attack_event(actor.id, target.id, &"character", resolution, equipment.melee_weapon != null)
 	_context.actions().events().append_character_attack_audio(events, actor, equipment, resolution, &"character", target.id)
 	character_event.payload["automatic"] = true
 	events.append(character_event)

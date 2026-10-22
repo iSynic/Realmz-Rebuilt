@@ -2,7 +2,13 @@
 
 This register records local compiler, installation, and startup evidence without bundling scenario payloads. `loadable` means that the exact source imported, compiled, finalized, passed Rebuilt package validation, and started a session. It does not certify an ordinary route or the complete campaign.
 
-## Pinned lane
+## Current preservation boundary
+
+Schema v7 is checked against every folder in the forty-scenario corpus and the separate twenty-five pinned source revisions, including twelve additional differing private source sets. All convert and pass independent native accounting and Rebuilt admission in isolated outputs. Prior import history and authoring completeness do not limit eligibility. No private package is bundled or installed by this verification. Source-preserved data, usable consumption and campaign certification remain separate; selected authored absences use the [quiet operation-specific contract](faithful-scenario-records.md), while package corruption and recognized unimplemented behavior remain explicit defects.
+
+Everything below records the exact September 22 toolchain. Its older exclusion, blocked-import and terminal-reference policies do not describe v7. Historical measurements and installed identities remain unchanged.
+
+## Historical September 22 lane
 
 - Providence vNext commit: `a779ad4de3d247b045c54e7ef4633a89a7ec9660`; source tree `d657eb1bb50a28064f5f302d9d3045904124cb7c`.
 - Rebuilt toolchain-lock SHA-256: `c02eef95cf1e0b9b41157b558c47f14427abefdf6c355dae67fc49d25f61a987`.
@@ -16,9 +22,9 @@ This register records local compiler, installation, and startup evidence without
 
 The source-tree hashes below cover the ordered relative path, length, and SHA-256 inventory. Raw sources, imported projects, packages, and detailed reports remain outside Git.
 
-## Results
+## Historical results
 
-| Scenario | Source files / bytes | Source-tree SHA-256 | Outcome | Current boundary |
+| Scenario | Source files / bytes | Source-tree SHA-256 | Outcome | Boundary at that revision |
 | --- | ---: | --- | --- | --- |
 | Araman's Ring | 72 / 518,245 | `45fd49a3668b26c8e18cc9a03ccb3d1ec530fecbd896e53bdbf08355e507c587` | loadable; 11 warnings | Installed package `405a5980bb50aec448ad0a2754155e55689c69720cbe9e4981921860d92337a0`. Missing optional XAP 69, one Complex prompt, and nine random-rectangle messages are deferred; no target is fabricated. |
 | Begining of the End | 71 / 972,687 | `5bcba50c11ed2feabef895ddca16437702be1527dafc7bd36ff6739ace99d94d` | blocked; 4 warnings | The 232-byte `Data SD2` fragment now imports as retained non-executable evidence. Startup content still needs 2,078 exact special-land media references that neither the scenario nor pinned application library can resolve, so topology remains an essential hard gate. |
@@ -50,7 +56,7 @@ The six loadable packages were installed through the ordinary immutable `user://
 
 The prior rendered controller openings for City of Port Hyrtin and Journey into the Mire remain valid only for their older pinned archives. This intake establishes startup for their new revisions, not a replay of those ordinary openings.
 
-## Warning and fault boundary
+## Historical warning and fault boundary
 
 - A warning preserves the source caller and exact operand. It does not claim that the unavailable target is dead or supply inferred content.
 - The stock door item remains safely unusable when its scenario XAP is absent.
@@ -58,7 +64,7 @@ The prior rendered controller openings for City of Port Hyrtin and Journey into 
 - Missing imported monster artwork is a presentation warning only when the exact resource is absent. Present but malformed media remains a hard package error.
 - Quarantined records remain byte-exact in Providence but are not executable definitions in the runtime package.
 
-## Remaining executable cases
+## Historical investigation targets
 
 1. Establish the actual ownership or damage pattern behind Begining of the End's 2,078 missing special-land references before changing essential topology rules.
 2. Execute Dagger of Shine battle 205 in a controlled pinned Castle fixture before assigning safe meaning to monster 141's two out-of-bounds attack counts.

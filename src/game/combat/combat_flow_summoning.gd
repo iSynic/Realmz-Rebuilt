@@ -111,39 +111,38 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	var definition := _select_classic_summon_definition(state, content, spell, rng)
 	if definition == null:
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": event_source})])
+	var consumption := MonsterConsumptionProbe.inspect(content, definition)
+	if consumption.outcome == MonsterConsumptionProbe.Outcome.PACKAGE_DEFECT:
+		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"missing_monster_dependency", consumption.reason)
+	var unsafe_native := consumption.outcome == MonsterConsumptionProbe.Outcome.AUTHORED_UNSAFE
 	var table_error := MonsterRules.random_weapon_table_error(definition)
-	if not table_error.is_empty():
+	if not unsafe_native and not table_error.is_empty():
 		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"invalid_random_weapon_table", table_error)
 	var battlefield := state.combat.battlefield
 	var map := content.world.map_by_id(battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var planned_cells: Dictionary = {}
-	for coordinate: Vector2i in target_coordinates:
+	for coordinate: Vector2i in ([] if unsafe_native else target_coordinates):
 		if not _context.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, definition.size, planned_cells):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_footprint_unavailable", "The selected space cannot hold the source-selected summon footprint.")
 		for cell: Vector2i in BattlefieldGrid.footprint_cells(coordinate, definition.size):
 			planned_cells[cell] = true
-	_context.actions().prepare_character_turn(state.combat, caster)
-	state.combat.turns.invalidate_undo()
-	if spend_spell_points:
-		var cost := absi(spell.cost * power_level)
-		if caster.spell_points < cost:
-			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"insufficient_spell_points", "The caster no longer has enough spell points for this summon.")
-		caster.spell_points -= cost
-	if count_spell_cast:
-		state.combat.turns.active_turn.spell_cast_count += 1
-		caster.lifetime_record.record_spell_cast()
-	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
-	caster.movement = maxi(0, caster.movement - 12)
+	if not _spend_character_summon(state, caster, spell, power_level, spend_spell_points, count_spell_cast):
+		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"insufficient_spell_points", "The caster no longer has enough spell points for this summon.")
 	var events: Array[DomainEvent] = []
+	if unsafe_native:
+		# The selected native row ends this attempt after normal costs; do not reroll.
+		events.append(DomainEvent.new(&"classic_reference_skipped", {"operation": "unsafe-summon", "nativeId": definition.classic_id, "source": "native-compatibility"}))
 	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-combat-spell-start")
 	var summoned_ids: Array[String] = []
-	for index: int in target_coordinates.size():
+	for index: int in (0 if unsafe_native else target_coordinates.size()):
 		var instance_id := state.next_instance_id("monster.summoned")
 		var summoned := _context.monsters.build_monster(definition, instance_id, 1 if caster.traitor else 0, state.difficulty, state.clock.day(), rng)
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
+		if content.package_schema_version >= 7:
+			summoned.classic_route_id = 0
 		if not state.combat.roster.add_monster(summoned) or not battlefield.actors.place_monster(summoned.id, target_coordinates[index], definition.size):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_placement_failed", "The selected Classic monster could not enter the battlefield.")
 		state.combat.append_turn_actor(summoned.id)
@@ -171,14 +170,18 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 	var definition := _select_classic_summon_definition(state, content, spell, rng)
 	if definition == null:
 		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": "classic-monster"})])
+	var consumption := MonsterConsumptionProbe.inspect(content, definition)
+	if consumption.outcome == MonsterConsumptionProbe.Outcome.PACKAGE_DEFECT:
+		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"missing_monster_dependency", consumption.reason)
+	var unsafe_native := consumption.outcome == MonsterConsumptionProbe.Outcome.AUTHORED_UNSAFE
 	var table_error := MonsterRules.random_weapon_table_error(definition)
-	if not table_error.is_empty():
+	if not unsafe_native and not table_error.is_empty():
 		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"invalid_random_weapon_table", table_error)
 	var battlefield := state.combat.battlefield
 	var map := content.world.map_by_id(battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
 	var planned_cells: Dictionary = {}
-	for coordinate: Vector2i in target_coordinates:
+	for coordinate: Vector2i in ([] if unsafe_native else target_coordinates):
 		if not _context.battlefield.monster_footprint_is_open(battlefield, terrain_set, coordinate, definition.size, planned_cells):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_footprint_unavailable", "The selected space cannot hold the source-selected monster summon footprint.")
 		for cell: Vector2i in BattlefieldGrid.footprint_cells(coordinate, definition.size):
@@ -189,14 +192,19 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 	caster.spell_points -= cost
 	state.combat.turns.active_turn.spell_cast_count += 1
 	var events: Array[DomainEvent] = []
+	if unsafe_native:
+		# The selected native row ends this attempt after normal costs; do not reroll.
+		events.append(DomainEvent.new(&"classic_reference_skipped", {"operation": "unsafe-summon", "nativeId": definition.classic_id, "source": "native-compatibility"}))
 	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-monster-spell-start")
 	var summoned_ids: Array[String] = []
-	for index: int in target_coordinates.size():
+	for index: int in (0 if unsafe_native else target_coordinates.size()):
 		var instance_id := state.next_instance_id("monster.summoned")
 		var summoned := _context.monsters.build_monster(definition, instance_id, 1 if caster.traitor else 0, state.difficulty, state.clock.day(), rng)
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
+		if content.package_schema_version >= 7:
+			summoned.classic_route_id = 0
 		if not state.combat.roster.add_monster(summoned) or not battlefield.actors.place_monster(summoned.id, target_coordinates[index], definition.size):
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_placement_failed", "The selected Classic monster could not enter the battlefield.")
 		state.combat.append_turn_actor(summoned.id)
@@ -287,3 +295,19 @@ static func _candidate_bounds(battlefield: BattlefieldState, caster_id: String, 
 	var minimum := Vector2i(maxi(0, origin.x - maximum_range), maxi(0, origin.y - maximum_range))
 	var maximum_exclusive := Vector2i(mini(BattlefieldGrid.SIZE, origin.x + maximum_range + 1), mini(BattlefieldGrid.SIZE, origin.y + maximum_range + 1))
 	return Rect2i(minimum, maximum_exclusive - minimum)
+
+
+func _spend_character_summon(state: GameState, caster: CharacterState, spell: SpellDefinition, power_level: int, spend_spell_points: bool, count_spell_cast: bool) -> bool:
+	_context.actions().prepare_character_turn(state.combat, caster)
+	state.combat.turns.invalidate_undo()
+	if spend_spell_points:
+		var cost := absi(spell.cost * power_level)
+		if caster.spell_points < cost:
+			return false
+		caster.spell_points -= cost
+	if count_spell_cast:
+		state.combat.turns.active_turn.spell_cast_count += 1
+		caster.lifetime_record.record_spell_cast()
+	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
+	caster.movement = maxi(0, caster.movement - 12)
+	return true

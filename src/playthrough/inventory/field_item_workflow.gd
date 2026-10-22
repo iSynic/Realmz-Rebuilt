@@ -29,7 +29,7 @@ static func classic_torch_probe(context: SessionWorkflowContext) -> InventoryAct
 static func begin_classic_torch(context: SessionWorkflowContext, request_revision: int) -> MagicTransitionResult:
 	var identity := classic_torch_item(context)
 	if identity.is_empty():
-		return MagicTransitionResult.failed(&"torch_unavailable", "The party carries no usable torch.")
+		return MagicTransitionResult.rejected(&"torch_unavailable", "The party carries no usable torch.")
 	return begin_field_spell_item(context, identity[0], identity[1], "", [], request_revision)
 
 
@@ -131,7 +131,7 @@ static func begin_field_spell_item(context: SessionWorkflowContext, actor_id: St
 	var spell: SpellDefinition = null if item == null else context.content.magic.spell_by_classic_id(item.special_2)
 	var probe := field_spell_item_probe(context, character, instance, item, spell)
 	if not probe.allowed:
-		return MagicTransitionResult.failed(item_use_error_code(instance, item, spell), probe.reason)
+		return MagicTransitionResult.rejected(item_use_error_code(instance, item, spell), probe.reason)
 	var power := absi(item.special_1)
 	var random_power_checkpoint: Dictionary = {}
 	if power == 8:
@@ -147,7 +147,7 @@ static func begin_field_spell_item(context: SessionWorkflowContext, actor_id: St
 	if not target_ids.is_empty():
 		if not random_power_checkpoint.is_empty():
 			context.rng.rollback(random_power_checkpoint)
-		return MagicTransitionResult.failed(&"invalid_item_use_target", "The item requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
+		return MagicTransitionResult.rejected(&"invalid_item_use_target", "The item requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
 	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.instance_id = instance.id
@@ -164,7 +164,7 @@ static func resume_field_spell_item(context: SessionWorkflowContext, targeting: 
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The item target continuation is unavailable.")
 	if target_ids.size() != targeting.target_count:
-		return MagicTransitionResult.failed(&"invalid_item_use_target", "The item requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
+		return MagicTransitionResult.rejected(&"invalid_item_use_target", "The item requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
 	var character := context.state.party.character_by_id(targeting.character_id)
 	var instance := InventoryWorkflow.item_instance(character, targeting.instance_id)
 	if instance == null or instance.charges != targeting.starting_charges:
@@ -179,18 +179,23 @@ static func commit_field_spell_item(context: SessionWorkflowContext, character_i
 	var spell := context.content.magic.spell_by_id(spell_id)
 	var probe := field_spell_item_probe(context, character, instance, item, spell)
 	if not probe.allowed:
-		return SessionWorkflowResult.failed(item_use_error_code(instance, item, spell), probe.reason)
+		return SessionWorkflowResult.rejected(item_use_error_code(instance, item, spell), probe.reason)
 	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
-		return SessionWorkflowResult.failed(&"invalid_item_use_target", "The item target selection contains an unavailable or duplicate character.")
+		return SessionWorkflowResult.rejected(&"invalid_item_use_target", "The item target selection contains an unavailable or duplicate character.")
 	if (selected_value as Dictionary).size() != field_item_target_count(context, spell, power):
-		return SessionWorkflowResult.failed(&"invalid_item_use_target", "The item target selection has the wrong number of characters.")
+		return SessionWorkflowResult.rejected(&"invalid_item_use_target", "The item target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
+	# The charge is spent before resolution, so a resolution failure restores it.
+	var state_checkpoint := context.state.to_data()
+	var rng_checkpoint := context.rng.checkpoint()
 	if not context.rules.inventory.use_charge(character, instance.id, item):
 		return SessionWorkflowResult.failed(&"item_charge_commit_failed", "The validated item charge could not be committed.")
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
 	var resolution := FieldMagicResolver.resolve(context, character, selected, spell, power, false, allow_empty)
 	if resolution == null or not resolution.cast:
+		if not context.state.restore_from_data(state_checkpoint) or not context.rng.rollback(rng_checkpoint):
+			return SessionWorkflowResult.failed(&"item_rollback_failed", "The item spell failed and its spent charge could not be restored.")
 		return SessionWorkflowResult.failed(&"item_spell_failed", "The item spell could not be resolved.")
 	var charges_remaining := -1
 	var dropped := true

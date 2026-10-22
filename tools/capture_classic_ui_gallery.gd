@@ -528,8 +528,8 @@ func _capture_gallery() -> void:
 	var combat_fixture := _combat_view(gallery_view)
 	gallery_view.combat_view = combat_fixture
 	_router.open_screen(&"combat")
-	_application._battlefield_presenter.present(gallery_view)
-	_application._battlefield_presenter.visible = true
+	_application.battlefield_presenter.present(gallery_view)
+	_application.battlefield_presenter.visible = true
 	var combat_media := _application.presentation_media.catalog()
 	var combat_request := ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
 	var combat_body := combat_request.body as CombatRequestBody
@@ -539,36 +539,36 @@ func _capture_gallery() -> void:
 	_interaction.present(combat_request, "", gallery_view, combat_media)
 	await _settle()
 	await _capture("canonical-combat-tactical-workspace-1280x720")
-	_application._battlefield_presenter.interaction.toggle_reveal_friends()
+	_application.battlefield_presenter.interaction.toggle_reveal_friends()
 	await _settle()
 	await _capture("canonical-combat-reveal-friends-1280x720")
-	_application._battlefield_presenter.interaction.toggle_reveal_friends()
-	_application._battlefield_presenter.interaction.set_movement_costs_visible(true)
+	_application.battlefield_presenter.interaction.toggle_reveal_friends()
+	_application.battlefield_presenter.interaction.set_movement_costs_visible(true)
 	await _settle()
 	await _capture("canonical-combat-movement-aid-1280x720")
-	_application._battlefield_presenter.interaction.set_movement_costs_visible(false)
-	await _resize(Vector2i(800, 600)); _application._battlefield_presenter.visible = true
+	_application.battlefield_presenter.interaction.set_movement_costs_visible(false)
+	await _resize(Vector2i(800, 600)); _application.battlefield_presenter.visible = true
 	await _settle()
 	await _capture("classic-combat-tactical-workspace-800x600")
 	var spells_button := _interaction.find_child("CombatCommandSpells", true, false) as Button
 	if spells_button != null and not spells_button.disabled:
-		spells_button.pressed.emit(); await _settle(); _application._battlefield_presenter.visible = true; await _settle()
+		spells_button.pressed.emit(); await _settle(); _application.battlefield_presenter.visible = true; await _settle()
 		await _capture("classic-combat-spellbook-800x600")
-		await _resize(Vector2i(1280, 720)); _application._battlefield_presenter.visible = true; await _settle()
+		await _resize(Vector2i(1280, 720)); _application.battlefield_presenter.visible = true; await _settle()
 		await _capture("canonical-combat-spellbook-1280x720")
 		var aim_button := _shell.find_child("CombatSpellAim", true, false) as Button
 		if aim_button != null and not aim_button.disabled:
-			aim_button.pressed.emit(); await _settle(); _application._battlefield_presenter.visible = true; await _settle(); await _capture("canonical-combat-targeting-1280x720")
-			await _resize(Vector2i(800, 600)); _application._battlefield_presenter.visible = true; await _settle(); await _capture("classic-combat-targeting-800x600"); await _resize(Vector2i(1280, 720)); _application._battlefield_presenter.visible = true; await _settle()
-			_application._battlefield_presenter.interaction.cancel_targeting()
+			aim_button.pressed.emit(); await _settle(); _application.battlefield_presenter.visible = true; await _settle(); await _capture("canonical-combat-targeting-1280x720")
+			await _resize(Vector2i(800, 600)); _application.battlefield_presenter.visible = true; await _settle(); await _capture("classic-combat-targeting-800x600"); await _resize(Vector2i(1280, 720)); _application.battlefield_presenter.visible = true; await _settle()
+			_application.battlefield_presenter.interaction.cancel_targeting()
 	_interaction.present(combat_request, "", gallery_view, combat_media)
 	var battle_entry := CombatPlaybackFrame.new(&"battle_cue", 0.28); battle_entry.display_text = "Battle begins"
-	_application._battlefield_presenter.present_playback_frame(battle_entry); _interaction.present_combat_playback_mask(battle_entry); await _settle(); await _capture("canonical-combat-entry-1280x720")
+	_application.battlefield_presenter.present_playback_frame(battle_entry); _interaction.present_combat_playback_mask(battle_entry); await _settle(); await _capture("canonical-combat-entry-1280x720")
 	var automatic_move := CombatPlaybackFrame.new(&"move_start", 0.02); automatic_move.actor_id = gallery_hero_id; automatic_move.from_coordinate = Vector2i(45, 45); automatic_move.to_coordinate = Vector2i(46, 45); automatic_move.automatic = true
-	_application._battlefield_presenter.present_playback_frame(automatic_move); _interaction.update_combat_playback_frame(automatic_move); var actor_cue := CombatPlaybackFrame.new(&"actor_cue", 0.2); actor_cue.actor_id = gallery_hero_id; actor_cue.display_text = "Now acting"; actor_cue.automatic = true; _interaction.update_combat_playback_frame(actor_cue); var attack_cue := CombatPlaybackFrame.new(&"melee_attack", 0.2); attack_cue.actor_id = gallery_hero_id; attack_cue.target_id = gallery_monster_id; attack_cue.automatic = true; _interaction.update_combat_playback_frame(attack_cue); var result_cue := CombatPlaybackFrame.new(&"result", 0.2); result_cue.actor_id = gallery_hero_id; result_cue.target_id = gallery_monster_id; result_cue.display_text = "4 damage"; result_cue.automatic = true; _interaction.update_combat_playback_frame(result_cue); await _settle(); await _capture("canonical-combat-auto-playback-1280x720"); await _resize(Vector2i(800, 600)); _application._battlefield_presenter.visible = true; await _settle(); await _capture("classic-combat-auto-playback-800x600"); await _resize(Vector2i(1280, 720)); _application._battlefield_presenter.visible = true; await _settle(); _interaction.queue_classic_flash_messages([{"text": "New Combat Round.", "soundId": 139, "autoCloseSeconds": 2.0}]); await _settle(); await _capture("canonical-combat-new-round-1280x720"); await create_timer(2.1).timeout
+	_application.battlefield_presenter.present_playback_frame(automatic_move); _interaction.update_combat_playback_frame(automatic_move); var actor_cue := CombatPlaybackFrame.new(&"actor_cue", 0.2); actor_cue.actor_id = gallery_hero_id; actor_cue.display_text = "Now acting"; actor_cue.automatic = true; _interaction.update_combat_playback_frame(actor_cue); var attack_cue := CombatPlaybackFrame.new(&"melee_attack", 0.2); attack_cue.actor_id = gallery_hero_id; attack_cue.target_id = gallery_monster_id; attack_cue.automatic = true; _interaction.update_combat_playback_frame(attack_cue); var result_cue := CombatPlaybackFrame.new(&"result", 0.2); result_cue.actor_id = gallery_hero_id; result_cue.target_id = gallery_monster_id; result_cue.display_text = "4 damage"; result_cue.automatic = true; _interaction.update_combat_playback_frame(result_cue); await _settle(); await _capture("canonical-combat-auto-playback-1280x720"); await _resize(Vector2i(800, 600)); _application.battlefield_presenter.visible = true; await _settle(); await _capture("classic-combat-auto-playback-800x600"); await _resize(Vector2i(1280, 720)); _application.battlefield_presenter.visible = true; await _settle(); _interaction.queue_classic_flash_messages([{"text": "New Combat Round.", "soundId": 139, "autoCloseSeconds": 2.0}]); await _settle(); await _capture("canonical-combat-new-round-1280x720"); await create_timer(2.1).timeout
 	var victory_cue := CombatPlaybackFrame.new(&"battle_cue", 0.28); victory_cue.display_text = "Victory"
-	_application._battlefield_presenter.present_playback_frame(victory_cue); _interaction.update_combat_playback_frame(victory_cue); await _settle(); await _capture("canonical-combat-terminal-cue-1280x720")
-	_application._battlefield_presenter.clear_playback_frame()
+	_application.battlefield_presenter.present_playback_frame(victory_cue); _interaction.update_combat_playback_frame(victory_cue); await _settle(); await _capture("canonical-combat-terminal-cue-1280x720")
+	_application.battlefield_presenter.clear_playback_frame()
 	_interaction.present(null)
 	gallery_view.combat_view = null
 	_application._map_presenter.present(gallery_view); _shell.present(gallery_view); await _resize(Vector2i(1280, 720)); await _settle()
@@ -777,14 +777,14 @@ func _capture(label: String) -> void:
 
 func _capture_scaling_audit(state: String) -> void:
 	var original_size := DisplayServer.window_get_size()
-	var visibility: Array[bool] = [_application._map_presenter.visible, _application._battlefield_presenter.visible, (_application.get("_dungeon_presenter") as Control).visible]
+	var visibility: Array[bool] = [_application._map_presenter.visible, _application.battlefield_presenter.visible, (_application.get("dungeon_presenter") as Control).visible]
 	for setting: Array in ScalingAudit.SETTINGS:
 		var dimensions: Vector2i = setting[0]
 		await _resize(dimensions)
 		await _apply_sizing_settings(setting[1], setting[3], "classic", setting[2])
 		await _restore_capture_visibility(visibility)
 		var failures := ScalingAudit.inspect(_application)
-		var profile := _shell.get("_profile") as UiLayoutProfile
+		var profile := _shell.layout_profile
 		var label := "%s-%dx%d-%s-text%d-%s" % [state, dimensions.x, dimensions.y, setting[1], int(setting[2] * 100), setting[3]]
 		var image := root.get_texture().get_image()
 		assert(image != null and not image.is_empty(), "Scaling audit requires a graphical driver.")
@@ -837,7 +837,7 @@ func _surface_id_for_capture(label: String) -> String:
 
 func _capture_sizing_surface(surface_id: String) -> void:
 	var original_size := DisplayServer.window_get_size()
-	var spatial_visibility: Array[bool] = [_application._map_presenter.visible, _application._battlefield_presenter.visible, (_application.get("_dungeon_presenter") as Control).visible]
+	var spatial_visibility: Array[bool] = [_application._map_presenter.visible, _application.battlefield_presenter.visible, (_application.get("dungeon_presenter") as Control).visible]
 	for size: Vector2i in SIZING_MATRIX_SIZES:
 		await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 		await _resize(size)
@@ -858,8 +858,8 @@ func _capture_sizing_surface(surface_id: String) -> void:
 func _restore_capture_visibility(spatial_visibility: Array[bool]) -> void:
 	# Gallery-only detached combat views must survive the live session's resize visibility refresh.
 	_application._map_presenter.visible = spatial_visibility[0]
-	_application._battlefield_presenter.visible = spatial_visibility[1]
-	(_application.get("_dungeon_presenter") as Control).visible = spatial_visibility[2]
+	_application.battlefield_presenter.visible = spatial_visibility[1]
+	(_application.get("dungeon_presenter") as Control).visible = spatial_visibility[2]
 	(_application.get("_spatial_layout") as ApplicationSpatialLayout).sync_display_world_region(_compositor, _application.get("_presentation_settings") as PresentationSettings)
 	await _settle()
 
@@ -937,7 +937,7 @@ func _save_capture(label: String, surface_id: String) -> void:
 			boundaries[control_name] = {"minimum": [minimum.x, minimum.y], "position": [control.global_position.x, control.global_position.y], "size": [control.size.x, control.size.y]}
 		print("UI_SIZING_BOUNDARIES: %s • %s" % [label, JSON.stringify(boundaries)])
 	if not surface_id.is_empty():
-		var profile := _shell.get("_profile") as UiLayoutProfile
+		var profile := _shell.layout_profile
 		var settings := _application.get("_presentation_settings") as PresentationSettings
 		var actual_window := DisplayServer.window_get_size()
 		var metadata := {"surfaceNames": [surface_id], "capture": label, "actualWindow": [actual_window.x, actual_window.y], "profile": String(profile.id), "effectiveScale": profile.ui_scale, "requestedScale": profile.requested_scale, "fontScale": profile.font_scale, "uiScaleMode": settings.ui_scale_mode, "textScale": settings.interface_text_scale, "interfaceFont": settings.interface_font, "narrativeFont": settings.narrative_font, "narrativeTextScale": settings.narrative_text_scale, "displayMode": settings.display_scaling_mode}

@@ -56,6 +56,14 @@ func image_texture(asset_id: String) -> Texture2D:
 	return texture
 
 
+static func land_overlay_rect(cell_rect: Rect2, asset: MediaAsset) -> Rect2:
+	var extent := Vector2.ONE
+	if asset != null and asset.resource_type == "cicn" and asset.resource_id > 200:
+		extent = Vector2(2.0 if asset.width == 64 else 1.0, 2.0 if asset.height == 64 else 1.0)
+	var size := cell_rect.size * extent
+	return Rect2(cell_rect.end - size, size)
+
+
 func darkness_mask_texture(level: int) -> Texture2D:
 	var bounded_level := clampi(level, 0, 6)
 	if _darkness_mask_textures.has(bounded_level):

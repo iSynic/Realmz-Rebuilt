@@ -1,0 +1,333 @@
+{
+  "kind": "realmz-rebuilt.source-compression",
+  "formatVersion": 1,
+  "applicationPackageHash": "82b8718f183bb07135ca0438d833c534754e16361314759b83e5192ccb55cbad",
+  "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+  "campaigns": [
+    {
+      "campaignId": "scenario-assault-on-giant-mountain",
+      "file": "scenario-assault-on-giant-mountain.realmz2",
+      "packageHash": "07ad28bfb7aca1c86af8a09a1dd274afa0bb3c1853d9a3cfb9d771c0ace5fbb6",
+      "contentId": "12c740e90b6056e1d50664b27b4ec7b806fe32de8bcff4a876e86b4b90fb3195",
+      "archiveSha256": "4291e72cb0c64c0f6a10400fff66bf698dc7bbf12f0c5836030bcacc4b6683e1",
+      "bytes": 1323995,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "308edc3a2353d3b146de3c86e8c2753b9db124b82092b099aae61b76703738ef",
+      "previousManifestSha256": "9d8b253d2cf02d185cff62e3f3c7debd5275e446c22c93b874dbc8f0f1a9b4c1",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "99cfe030d26f78bbab687c8b3946c05bb17f2c8a16fa6c8a74687ecedb161941",
+        "contentId": "12c740e90b6056e1d50664b27b4ec7b806fe32de8bcff4a876e86b4b90fb3195",
+        "archiveSha256": "e9a7dc8bf14ae7dfadb99cc85f4cf5f9b950a1dbe0aa8af0ad813f0af6b86504",
+        "bytes": 2166139,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-castle-in-the-clouds",
+      "file": "scenario-castle-in-the-clouds.realmz2",
+      "packageHash": "79eb83708c1195b778272c4647101520c547be1ad071e4a7c66d1fd2a8d47adc",
+      "contentId": "5bcf797ac4eaffe5750fde872f20bb4710945cedac16151a347be55c070a191d",
+      "archiveSha256": "00027bcab2dee6c1887d1d8dd4634a51d26b45eed1973e4d1856fda3078487b6",
+      "bytes": 1373114,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "04b6d9409316542b88ab923e7e6c1e2f8fd8eff75a21c35013c2525e87ffc21d",
+      "previousManifestSha256": "8fca8dfcfd1fab24fe304697659444046660bc8245308ab6a8a4d12909f735e0",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "c4048afc8477f6c94f284f3aa2523cd24dc578f1e55f25cc70e24402d0b293fb",
+        "contentId": "5bcf797ac4eaffe5750fde872f20bb4710945cedac16151a347be55c070a191d",
+        "archiveSha256": "0b57a6c7766bb6c911409a829b0b6064f6403d6b3322266ed64542337738773b",
+        "bytes": 2448436,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-city-of-bywater",
+      "file": "scenario-city-of-bywater.realmz2",
+      "packageHash": "14778ba4177b749f780a61db762fa74c25fc9e336e92161def77b58dcdc6c662",
+      "contentId": "a05a296de3876f11b85eea94c24bfbe1139a30b3fd4ab84a2e14993ed73398a8",
+      "archiveSha256": "b70c9462684f40c436f9b4cbeaaea78f6f2842115d51c9263e278ef18ef2c1d9",
+      "bytes": 934440,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "4587e5525c20cd76b58ff968bd14340ea937de601368518eb45f5fb2acafb92d",
+      "previousManifestSha256": "2fb4894e768a7a35a1f43775a22b580691c0ef546427e4c6f19e7f7150db750a",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "f3d1cb3e9e6786521aa716125a307cce6a9948258fb2f7a917fd4177af169b14",
+        "contentId": "a05a296de3876f11b85eea94c24bfbe1139a30b3fd4ab84a2e14993ed73398a8",
+        "archiveSha256": "d683816b9e496a165b05e303ecc741e1fdd28f30be657b244cf35f6150046c40",
+        "bytes": 1752544,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-destroy-the-necronomicon",
+      "file": "scenario-destroy-the-necronomicon.realmz2",
+      "packageHash": "d8d1b74e2e9c7a5f3de87bcb573b43ff0fd9aea8c4ce161595db824e77b941ec",
+      "contentId": "5814c78dfb2c04c4f7d439a33edd974aac0010d7ad3eed312fe7ece585ec2fda",
+      "archiveSha256": "27899b8f20f775229e5511b090cc3cf537fc43334d9c2e9569222ddcd843a122",
+      "bytes": 1990464,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "11146cd3d2f4cb1249a3d0ac8f2d00db125f833c971d6476dfbec8b68edd1813",
+      "previousManifestSha256": "9677803fd3c4165520d505d201b349b2ba00cd63f0176660e52b984a217270e1",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "317a333070b79aa461459e3d2e6d9ef151cc6670d0b075d0c014e8c18eb26464",
+        "contentId": "5814c78dfb2c04c4f7d439a33edd974aac0010d7ad3eed312fe7ece585ec2fda",
+        "archiveSha256": "834e5e9f9189ca21a1478471ca7181955b5cb6c5bc58bd844dea86cbb3b9ebcd",
+        "bytes": 3070752,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-grilochs-revenge",
+      "file": "scenario-grilochs-revenge.realmz2",
+      "packageHash": "27e58863c2bfe566f59897214fb3ddd1d3baad179d127a7eb4ddf5f9fcbc0e1b",
+      "contentId": "0f01fc6446080e9b6009995cd4a9eef70178a698263f6ef84d7da0c58c2608a2",
+      "archiveSha256": "bf4ce66bc02538d71ead4829c6ef59345d0aca863cf6207139f1921c04f04473",
+      "bytes": 2200036,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "d20d0c6811629de428a2015318f0430f8a5e87902b06c9a296655ff9cfa13eb1",
+      "previousManifestSha256": "7e2382711f1505f71dee52839a76472b9612db3611163df922f1f903c4dec0b5",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "e0870ca70111a7209a8dca7202992d82eae90726eb3ed8af1b5bda99a601b719",
+        "contentId": "0f01fc6446080e9b6009995cd4a9eef70178a698263f6ef84d7da0c58c2608a2",
+        "archiveSha256": "5539dce13db24b810e9258bdf6f4e4a798c1f945671f0b10e0b136bd52c22239",
+        "bytes": 3525879,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-half-truth",
+      "file": "scenario-half-truth.realmz2",
+      "packageHash": "f78f98576595c08e53a8a12fa55cf0da2cd71b56d48c8bd8cb6a7fa295e17bda",
+      "contentId": "c5e3f52cb1218a17a698df39f9212b2b528e12ef84637641de025c9b546406fb",
+      "archiveSha256": "d1285c38ce6a3f7b341730d0a8bfb8081e3983ec209c13ab3c14101aec524c88",
+      "bytes": 8221098,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "4efb0a87a429745fd109574d28f16ce0ab4fcfdc3489a1b5927f760e02da8f79",
+      "previousManifestSha256": "0db37978cd1c21ac9368f95e8d75f4988348c1255ca6524a7b592518ead80b3a",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "650a6eafd94e6f00de5d19e0948ad8cedf6ef49d8b628a5488f9155bccc77dd7",
+        "contentId": "c5e3f52cb1218a17a698df39f9212b2b528e12ef84637641de025c9b546406fb",
+        "archiveSha256": "9d9d942d29346f2fa719164783f6fe3e0e06444bf4e7559218966752d56f433e",
+        "bytes": 10650444,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-mithril-vault",
+      "file": "scenario-mithril-vault.realmz2",
+      "packageHash": "f0773a50766df766562bf9a80c354cde7c7e2ce313f18d89ead1e8fb8093bdfe",
+      "contentId": "b9780187e7196bcf5df83cae5c4af42cf889ef0f4da4be228e87299f1a4831ad",
+      "archiveSha256": "369afb63e666a6f23d528d562468668fd60a945442c7d17b3edcb2d0cbc539e4",
+      "bytes": 4288344,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "b7301278d67db18e959bcba2f6fd243bd704bb18affe672b0fbbff5bd050a7f9",
+      "previousManifestSha256": "3ebdb8b291e7939bf01f80f0db34f7f3010731a5010eca46a04d787b705d402d",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "9d064182bfa74a1f83069c7bfbe11cdab571d47132da1404f1e456e3e78d4bb3",
+        "contentId": "b9780187e7196bcf5df83cae5c4af42cf889ef0f4da4be228e87299f1a4831ad",
+        "archiveSha256": "584e8fc11b48b93bc9d13f06d1867f473ba5166501df3b5153be6a9665c5aa7d",
+        "bytes": 5830116,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-prelude-to-pestilence",
+      "file": "scenario-prelude-to-pestilence.realmz2",
+      "packageHash": "35ef7bd6cc3585c32c67b6c51c1875b13e424b54c4557285e8b7814c565442b0",
+      "contentId": "72b76bba54cfcad4a81c0ffabe4ff100b2404163487ca9b53c164f79f78ed6cc",
+      "archiveSha256": "f9cc5b5b39be837a0807eb6b5a02b130d3fafe5d05a8704fb3ae721829f7289b",
+      "bytes": 1165946,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "e8f860dcb2d3429f4d346519e797fa4aeebb6d03fdede66d1cab53ecb6f794d9",
+      "previousManifestSha256": "94c4a3189462fe00f7fee654bdf4c49e3c6092b25c65513e87ed2f7a02a87991",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 33,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "5351c38c216ce24d9ddd04564a3c617c9e4fef7f614f536f2f793c1d634bc054",
+        "contentId": "72b76bba54cfcad4a81c0ffabe4ff100b2404163487ca9b53c164f79f78ed6cc",
+        "archiveSha256": "fb9b2fbb9dd7e363e3ff547d2977151db864638a9472faa6779b8a2cb73acf34",
+        "bytes": 1871899,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-trouble-in-the-sword-lands",
+      "file": "scenario-trouble-in-the-sword-lands.realmz2",
+      "packageHash": "2677e5c7c07bb78af12f87c59905983b24fe13fb5dbee1d77e1ee26854242cb6",
+      "contentId": "1066f84bac19c4ed7324ab12c032dedea3d6d41a8144805c6e7f9858ecb59c7d",
+      "archiveSha256": "0c6b4dfb9cede405bda38595efcc86903810f9859e3cf1814c11feb1a7aa92a6",
+      "bytes": 6733394,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "d2a2890f9c2f390a45236e20d287c68598a1f7b0fae39f5dfa46cc30e3855372",
+      "previousManifestSha256": "542c12e2fd5f955b495b338d4b0636316078f420a7c65779794a7bec457d75bf",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "ca22740a10d718b041ce3301d226c4b7ac737f87a274eb0a255ec9c5ed70bfe4",
+        "contentId": "1066f84bac19c4ed7324ab12c032dedea3d6d41a8144805c6e7f9858ecb59c7d",
+        "archiveSha256": "2bedf3cc4570670c41ac8b091cf151ecbb85af1eac09c3cadf0dacde20e5f9d2",
+        "bytes": 9484483,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-twin-sands-of-time",
+      "file": "scenario-twin-sands-of-time.realmz2",
+      "packageHash": "c503619f4d320b01febc26e4e66f02254c8194647876cf0ea3146b13f251c851",
+      "contentId": "6264a1008c91ac3146f629c569b590cbe8c8ed309a46faca9dd65fb4ff9032d3",
+      "archiveSha256": "7d9680c2b32088b1f25569015247f817fcff7d3f6da25218cd8a0e93053e1c7d",
+      "bytes": 1470307,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "c2c135b4989a2df13b7dae14d70c05890a386a0f754f479f2b8f3b5446570170",
+      "previousManifestSha256": "41af72144835109c1aec661ed28f12ce8cc25bc59b6e6eee49e3edc4034a7a1a",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "8900793443a0e98ca40ec28265007c41ee0b95f644bd3e1d586a60a66817b080",
+        "contentId": "6264a1008c91ac3146f629c569b590cbe8c8ed309a46faca9dd65fb4ff9032d3",
+        "archiveSha256": "14325ac8101050bc1c314fa7a3fdd6e5c5e7fc5634d1af47f599241a3108b502",
+        "bytes": 2434285,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-war-in-the-sword-lands",
+      "file": "scenario-war-in-the-sword-lands.realmz2",
+      "packageHash": "e7ed0720772437fb22aa9e4c237a6df31a0b48dad3523f5899979efe1c6ae241",
+      "contentId": "e55a9243d7bae53eb145e7fdb7b956763845b857a9d7d2702ce7b41beed77d6e",
+      "archiveSha256": "2baac04506d6bb2cdbc4001cc957cf76788738b0e64993c2d871270e8e4a652e",
+      "bytes": 15944696,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "032f459048f19f516cafd839ef81362483d3749265bd1ad25112dba570830cf6",
+      "previousManifestSha256": "bc1101b0b7cdfffe473214c5c4f258344eb4b66776f5386b999162da0e490cc1",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 33,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "20f872d40d15bee4d33c9871b6d9952ef5eba7ed8c7f22baf21542c720af7b97",
+        "contentId": "e55a9243d7bae53eb145e7fdb7b956763845b857a9d7d2702ce7b41beed77d6e",
+        "archiveSha256": "c6f85655bdc02358420d3660bd6c400781720fa7e69f1fcf30fa720e3938758c",
+        "bytes": 20303200,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-white-dragon",
+      "file": "scenario-white-dragon.realmz2",
+      "packageHash": "25f2f2192cd5e5885ec9c7c4bed03ac1943b4d1b6535586964c7181ac0b1aa1d",
+      "contentId": "9ccaabbb692575fe8b4767aacd6e69c2063c79f58f7ea9ded96bab9968e9b716",
+      "archiveSha256": "44ea8c224abc5546a9c5772a619ade97e7bf99169e5079da1d08185cb66adf2d",
+      "bytes": 1881290,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "d7a5cd170954c80ede83f9117028e60771bb2f5c199406ac964989873e8ebc13",
+      "previousManifestSha256": "a141b6e2edd355e02586c46d6f41be7d4e170164b9c6eb3d91487ec14face2fb",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 12,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "544f50445a1b4fb8ff8ff50e995f63fd32f34dbb4226b790a7db02262567d553",
+        "contentId": "9ccaabbb692575fe8b4767aacd6e69c2063c79f58f7ea9ded96bab9968e9b716",
+        "archiveSha256": "f866ed52590d6b7ea7c24ce718b59644e6ab4511d8c015f9f9c1d3a9f6d19055",
+        "bytes": 3037198,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    },
+    {
+      "campaignId": "scenario-wrath-of-the-mind-lords",
+      "file": "scenario-wrath-of-the-mind-lords.realmz2",
+      "packageHash": "f4f96b09859c2a478e2d926e1db088527fa5b8479a5e7e2667c386445b5774e1",
+      "contentId": "fa341f92b5bdae8322aaf86504074d3042b747850593279c2be32b1f216c6372",
+      "archiveSha256": "c336092519f91c91df7615bde30cdb0381c0f44cccd1353666cf26f3f76d96f9",
+      "bytes": 20239975,
+      "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239",
+      "manifestSha256": "69a5f316b13d9972d173c5d072756f249701027e4c0aaacba3d79b54372c5afe",
+      "previousManifestSha256": "6c4f36c779a292d1e525eb26e1b75a3d0fd69e95a400d69753eeb74b1f777100",
+      "previousCompiler": {
+        "commit": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e",
+        "name": "Providence",
+        "projectOrigin": "imported",
+        "projectSchemaVersion": 33,
+        "version": "0.1.0"
+      },
+      "previousPackage": {
+        "packageHash": "37b99bb8a4f842b3fdbffbabf05dd54efba95d3268a3a1db0eb2cbd2a799fbdd",
+        "contentId": "fa341f92b5bdae8322aaf86504074d3042b747850593279c2be32b1f216c6372",
+        "archiveSha256": "e5f247c359585a750a98c7d90a9111bbfc63b9415d4ff924daf16557606b5d24",
+        "bytes": 24213787,
+        "compilerRevision": "0d2fc1f0bea6c33bd28d58ba715f2eb67920446e"
+      }
+    }
+  ]
+}

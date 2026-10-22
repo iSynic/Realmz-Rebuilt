@@ -14,6 +14,7 @@ var _styles: Array[StyleBox] = []
 var _panels: Array[HudPanel] = []
 var _settings := HudPreferences.new()
 var _last_route: StringName = &""
+var _party_effect_playback := false
 var _arrange_draft: HudPreferences
 var _placement_area: Rect2
 var _layout_font_scale := 1.0
@@ -50,10 +51,20 @@ func prepare(settings: PresentationSettings, view: GameView, route: StringName, 
 	_settings = preferences.duplicate_value()
 	for index: int in 4:
 		_panels[index].configure(TITLES[index], preferences.panels[index], settings.reduced_motion)
-		_panels[index].set_required(_arrange_draft != null or view.active_interaction_request() != null and index < 2)
+		_panels[index].set_required(_arrange_draft != null or view.active_interaction_request() != null and index < 2 or _party_effect_playback and index == 0)
 	%EffectsDock.visible = _panels[3].is_open()
 	%EffectsDock.self_modulate.a = preferences.panels[3].background_opacity
 	return true
+
+
+func set_party_effect_playback(enabled: bool) -> void:
+	_party_effect_playback = enabled
+	if active:
+		_panels[0].set_required(enabled)
+
+
+func world_reveal_contains_point(point: Vector2) -> bool:
+	return active and _panels[2].reveal_handle_contains_point(point)
 
 
 func _set_active(enabled: bool) -> void:

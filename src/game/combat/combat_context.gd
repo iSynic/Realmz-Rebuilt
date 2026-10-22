@@ -34,14 +34,14 @@ func _init(rules: RealmzRules) -> void:
 
 
 func bind_collaborators(
-	rounds: RefCounted,
-	actions: RefCounted,
-	reactions: RefCounted,
-	magic_flow: RefCounted,
-	fields: RefCounted,
-	summoning: RefCounted,
-	phase: RefCounted,
-	automation: RefCounted
+	rounds: CombatFlowLifecycle,
+	actions: CombatFlowActions,
+	reactions: CombatFlowReactions,
+	magic_flow: CombatFlowMagic,
+	fields: CombatFlowFields,
+	summoning: CombatFlowSummoning,
+	phase: CombatFlowPhase,
+	automation: CombatFlowAutomation
 ) -> void:
 	assert(rounds != null and actions != null and reactions != null and magic_flow != null, "Combat requires its round, action, reaction, and magic collaborators")
 	assert(fields != null and summoning != null and phase != null and automation != null, "Combat requires its field, summoning, phase, and automation collaborators")
@@ -55,33 +55,33 @@ func bind_collaborators(
 	_automation = weakref(automation)
 
 
-func rounds() -> RefCounted:
+func rounds() -> CombatFlowLifecycle:
 	return _rounds.get_ref()
 
 
-func actions() -> RefCounted:
+func actions() -> CombatFlowActions:
 	return _actions.get_ref()
 
 
-func reactions() -> RefCounted:
+func reactions() -> CombatFlowReactions:
 	return _reactions.get_ref()
 
 
-func magic_flow() -> RefCounted:
+func magic_flow() -> CombatFlowMagic:
 	return _magic.get_ref()
 
 
-func fields() -> RefCounted:
+func fields() -> CombatFlowFields:
 	return _fields.get_ref()
 
 
-func summoning() -> RefCounted:
+func summoning() -> CombatFlowSummoning:
 	return _summoning.get_ref()
 
 
-func phase() -> RefCounted:
+func phase() -> CombatFlowPhase:
 	return _phase.get_ref()
 
 
-func automation() -> RefCounted:
+func automation() -> CombatFlowAutomation:
 	return _automation.get_ref()

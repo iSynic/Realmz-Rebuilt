@@ -6,8 +6,8 @@ extends RefCounted
 
 class ControllerAccess:
 	extends RefCounted
-	var _owner: Variant
-	func _init(owner: Variant) -> void: _owner = owner
+	var _owner: BattlefieldInteractionController
+	func _init(owner: BattlefieldInteractionController) -> void: _owner = owner
 	func has_movement_preview() -> bool: return _owner._movement_preview != null
 	func inspect_target_preview() -> bool:
 		if _owner._targeting == null: return false

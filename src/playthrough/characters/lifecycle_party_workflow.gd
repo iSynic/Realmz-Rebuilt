@@ -180,7 +180,7 @@ static func commit_character_draft(context: SessionWorkflowContext) -> Character
 		return CharacterFinalizeWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the generated character.")
 	var party_context := context.state.party.characters()
 	party_context.append(character)
-	if not _materialize_initial_inventory(context, character, context.content.characters.caste_by_id(character.caste_id), party_context) or not context.state.party.add_character(character):
+	if not _materialize_initial_inventory(context, character, context.content.characters.caste_by_id(character.caste_id), party_context) or not _candidate_is_saveable(context, character) or not context.state.party.add_character(character):
 		return CharacterFinalizeWorkflowResult.failed(&"character_creation_failed", "Realmz rules rejected the generated character.")
 	context.state.character_draft = null
 	return CharacterFinalizeWorkflowResult.committed(character.id, character.name, [DomainEvent.new(&"character_finalized", {"characterId": character.id})])
@@ -315,6 +315,8 @@ static func _character_creation_error(context: SessionWorkflowContext, spec: Cha
 	var caste := context.content.characters.caste_by_id(spec.caste_id)
 	if race == null or caste == null:
 		return {"code": &"unknown_character_definition", "message": "Party creation references an unavailable race or caste."}
+	if context.content.package_schema_version >= 7 and (caste.minimum_age_group < 1 or caste.minimum_age_group > 5):
+		return {"code": &"unavailable_creation_age", "message": "The selected class references an unavailable creation age group."}
 	var restrictions := context.content.campaign.restrictions
 	if restrictions.banned_races.has(race.id):
 		return {"code": &"restricted_race", "message": "This campaign does not allow the selected race."}
@@ -344,7 +346,15 @@ static func _create_character_from_spec(context: SessionWorkflowContext, spec: C
 		equipment_context.append(character)
 		if not _materialize_initial_inventory(context, character, context.content.characters.caste_by_id(spec.caste_id), equipment_context):
 			return null
-	return character
+	return character if _candidate_is_saveable(context, character) else null
+
+
+static func _candidate_is_saveable(context: SessionWorkflowContext, character: CharacterState) -> bool:
+	if context.content.package_schema_version < 7:
+		return true
+	var encoded := CharacterStateCodec.encode(character)
+	var readback := CharacterStateCodec.decode(encoded)
+	return readback != null and CharacterStateCodec.encode(readback) == encoded
 
 
 static func _materialize_initial_inventory(context: SessionWorkflowContext, character: CharacterState, caste: CasteDefinition, party_context: Array[CharacterState]) -> bool:

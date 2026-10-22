@@ -101,7 +101,7 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIn
 	var spell := context.content.magic.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
 	var slot_probe := scroll_slot_probe(context, character, payload.scroll_slot, spell)
 	if not slot_probe.allowed:
-		return MagicTransitionResult.failed(&"scroll_unavailable", slot_probe.reason)
+		return MagicTransitionResult.rejected(&"scroll_unavailable", slot_probe.reason)
 	if not spell.in_camp:
 		var discard := TargetingContinuationBody.new()
 		discard.character_id = character.id
@@ -113,13 +113,13 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIn
 		return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"scroll_discard_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "source": "classic"})])
 	var probe := scroll_use_probe(context, character, payload.scroll_slot, spell)
 	if not probe.allowed:
-		return MagicTransitionResult.failed(&"scroll_unavailable", probe.reason)
+		return MagicTransitionResult.rejected(&"scroll_unavailable", probe.reason)
 	var target_ids := field_spell_target_ids(context, character, spell, payload.target_ids, payload.target_id)
 	var required_count := field_spell_target_count(context, spell, scroll.power)
 	if target_ids.size() == required_count:
 		return MagicTransitionResult.committed(commit_field_scroll(context, character.id, payload.scroll_slot, spell.id, scroll.power, target_ids), true)
 	if not target_ids.is_empty():
-		return MagicTransitionResult.failed(&"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
+		return MagicTransitionResult.rejected(&"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
 	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.scroll_slot = payload.scroll_slot
@@ -155,7 +155,7 @@ static func resume_field_scroll(context: SessionWorkflowContext, targeting: Targ
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The scroll target continuation is unavailable.")
 	if target_ids.size() != targeting.target_count:
-		return MagicTransitionResult.failed(&"invalid_scroll_target", "The scroll requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
+		return MagicTransitionResult.rejected(&"invalid_scroll_target", "The scroll requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
 	var character := context.state.party.character_by_id(targeting.character_id)
 	var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
 	if scroll == null or scroll.spell_id != targeting.spell_id or scroll.power != targeting.power:
@@ -168,12 +168,12 @@ static func commit_field_scroll(context: SessionWorkflowContext, character_id: S
 	var spell := context.content.magic.spell_by_id(spell_id)
 	var probe := scroll_use_probe(context, character, slot_index, spell)
 	if not probe.allowed:
-		return SessionWorkflowResult.failed(&"scroll_unavailable", probe.reason)
+		return SessionWorkflowResult.rejected(&"scroll_unavailable", probe.reason)
 	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
-		return SessionWorkflowResult.failed(&"invalid_scroll_target", "The scroll target selection contains an unavailable or duplicate character.")
+		return SessionWorkflowResult.rejected(&"invalid_scroll_target", "The scroll target selection contains an unavailable or duplicate character.")
 	if (selected_value as Dictionary).size() != field_spell_target_count(context, spell, power):
-		return SessionWorkflowResult.failed(&"invalid_scroll_target", "The scroll target selection has the wrong number of characters.")
+		return SessionWorkflowResult.rejected(&"invalid_scroll_target", "The scroll target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
 	var resolution := FieldMagicResolver.resolve(context, character, selected, spell, power, false, allow_empty)
@@ -241,13 +241,13 @@ static func begin_field_spell(context: SessionWorkflowContext, payload: SpellInt
 	var spell := context.content.magic.spell_by_id(payload.spell_id)
 	var probe := field_spell_probe(context, character, spell, payload.power)
 	if not probe.allowed:
-		return MagicTransitionResult.failed(&"field_spell_unavailable", probe.reason)
+		return MagicTransitionResult.rejected(&"field_spell_unavailable", probe.reason)
 	var target_ids := field_spell_target_ids(context, character, spell, payload.target_ids, payload.target_id)
 	var required_count := field_spell_target_count(context, spell, payload.power)
 	if target_ids.size() == required_count:
 		return MagicTransitionResult.committed(commit_field_spell(context, character.id, spell.id, payload.power, target_ids), true)
 	if not target_ids.is_empty():
-		return MagicTransitionResult.failed(&"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
+		return MagicTransitionResult.rejected(&"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
 	var targeting := TargetingContinuationBody.new()
 	targeting.character_id = character.id
 	targeting.spell_id = spell.id
@@ -263,7 +263,7 @@ static func resume_field_spell(context: SessionWorkflowContext, targeting: Targe
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The field-spell target continuation is unavailable.")
 	if target_ids.size() != targeting.target_count:
-		return MagicTransitionResult.failed(&"invalid_field_spell_target", "The spell requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
+		return MagicTransitionResult.rejected(&"invalid_field_spell_target", "The spell requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
 	var character := context.state.party.character_by_id(targeting.character_id)
 	if character == null or character.spell_points != targeting.starting_spell_points:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The field spell awaiting a target no longer matches its committed state.")
@@ -275,12 +275,12 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 	var spell := context.content.magic.spell_by_id(spell_id)
 	var probe := field_spell_probe(context, character, spell, power)
 	if not probe.allowed:
-		return SessionWorkflowResult.failed(&"field_spell_unavailable", probe.reason)
+		return SessionWorkflowResult.rejected(&"field_spell_unavailable", probe.reason)
 	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
 	if selected_value == null:
-		return SessionWorkflowResult.failed(&"invalid_field_spell_target", "The spell target selection contains an unavailable or duplicate character.")
+		return SessionWorkflowResult.rejected(&"invalid_field_spell_target", "The spell target selection contains an unavailable or duplicate character.")
 	if (selected_value as Dictionary).size() != field_spell_target_count(context, spell, power):
-		return SessionWorkflowResult.failed(&"invalid_field_spell_target", "The spell target selection has the wrong number of characters.")
+		return SessionWorkflowResult.rejected(&"invalid_field_spell_target", "The spell target selection has the wrong number of characters.")
 	var selected: Dictionary = selected_value
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
 	var resolution := FieldMagicResolver.resolve(context, character, selected, spell, power, true, allow_empty)

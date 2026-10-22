@@ -16,13 +16,11 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 		return CombatFlowResult.failed(&"invalid_macro_spell_source", "A monster macro spell requires its retained battlefield source.")
 	var spell := authored_spell.with_scenario_adjustments(extra_save_adjust, force_affect)
 	if not _supports_spell(spell):
-		if spell != null and spell.target_type == 1:
-			return CombatFlowResult.failed(&"unsupported_macro_single_target", "Single-target monster macros require separate adjudication due to Classic coordinate-target aliasing.")
-		if spell != null and spell.target_type == 6:
-			return CombatFlowResult.failed(&"unsupported_macro_ray", "Ray monster macros require separate adjudication due to Classic ray traversal bypass.")
 		return CombatFlowResult.failed(&"unsupported_macro_spell", "Monster macros require an area, side-group, or repeated-target combat spell.")
 	var center := combat.battlefield.actors.actor_position(source_id)
-	var shape := _context.spell_areas.shape_for(spell, power) if spell.target_type in [3, 4] else 0
+	# FD-SCENARIO-016: opcode 17 supplies one source coordinate, no actor index
+	# or ray endpoint. Use that cell for types 1/6; never alias pos[] or invent a ray.
+	var shape := _context.spell_areas.shape_for(spell, power) if spell.target_type in [3, 4] else (1 if spell.target_type in [1, 6] else 0)
 	if spell.target_type in [3, 4] and _context.spell_areas.pattern(shape).is_empty():
 		return CombatFlowResult.failed(&"invalid_spell_area_shape", "The monster macro references an unavailable Classic area mask.")
 	var persistent_field: RefCounted = null
@@ -46,7 +44,7 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 
 
 static func _supports_spell(spell: SpellDefinition) -> bool:
-	return spell != null and spell.target_type in [0, 3, 4, 9, 10, 12] and (spell.queue_icon == 0 or spell.target_type in [3, 4])
+	return spell != null and spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12] and (spell.queue_icon == 0 or spell.target_type in [3, 4])
 
 
 func _targets(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, center: Vector2i, shape: int, power: int, rng: RealmzRng) -> Array[SpellTargetSelection]:

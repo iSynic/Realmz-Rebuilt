@@ -8,6 +8,15 @@ static func acknowledge() -> ScenarioRuntimeContinuation:
 	return ScenarioRuntimeContinuation.new(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE, ScenarioRuntimeContinuationBody.new())
 
 
+static func scripted_fumble(battle_id: String, actor_id: String, message_id: int, context: ScenarioExecutionContext) -> ScenarioRuntimeContinuation:
+	var body := ScenarioFumbleContinuationBody.new()
+	body.battle_id = battle_id
+	body.actor_id = actor_id
+	body.message_id = message_id
+	body.context = ScenarioExecutionContext.empty() if context == null else context.copy()
+	return ScenarioRuntimeContinuation.new(ScenarioRuntimeContinuation.CLASSIC_SCRIPTED_FUMBLE, body)
+
+
 static func textbox(message_id: int) -> ScenarioRuntimeContinuation:
 	var body := ScenarioTextContinuationBody.new()
 	body.message_id = message_id

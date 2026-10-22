@@ -63,9 +63,9 @@ func discover_campaigns(search_roots: Array[String]) -> Array[PackageDiscoveryRe
 func inspect(path: String) -> PackageDiscoveryResult:
 	last_error = ""
 	var archive := ZIPReader.new()
-	var open_error := archive.open(path)
+	var open_error := _archive_reader.open_bounded(archive, path)
 	if open_error != OK:
-		return PackageDiscoveryResult.new(path, false, "", "", "", "Could not open package (error %d)." % open_error)
+		return PackageDiscoveryResult.new(path, false, "", "", "", _archive_reader.last_error if not _archive_reader.last_error.is_empty() else "Could not open package (error %d)." % open_error)
 	var entries_value: Variant = _archive_reader.entries(archive)
 	var manifest_value: Variant = _archive_reader.read_document(archive, "manifest.json")
 	if entries_value == null or manifest_value == null:

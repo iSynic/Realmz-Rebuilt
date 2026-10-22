@@ -171,8 +171,9 @@ func _test_pooled_wealth_departure(content: RealmzContent) -> void:
 	assert_equal(distribution_restored.restore(content, save_round_trip(warning_restored.snapshot())).state, SessionStep.State.COMPLETED, "the pooled distribution workspace restores transactionally")
 	var request := distribution_restored.view().pending_interaction
 	var character_id: String = distribution_restored._context.state.party.characters()[0].id
+	var revision_before := distribution_restored.view().revision
 	var forged := distribution_restored.respond(InteractionResponse.from_data(request.request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "to-character", "characterId": character_id, "denomination": "gold", "amount": 1}))
-	assert_equal(forged.error_code, &"invalid_money_increment", "a forged non-Classic transfer fails without closing the restored workspace")
+	assert_equal([forged.error_code, distribution_restored.view().revision, distribution_restored.view().pending_interaction.request_id], [&"invalid_money_increment", revision_before, request.request_id], "a forged non-Classic transfer is rejected without committing a revision or closing the restored workspace")
 	assert_equal(distribution_restored._context.state.party.pooled_wealth.gold, 10, "the rejected transfer preserves exact pooled wealth")
 	request = distribution_restored.view().pending_interaction
 	var transfer_response := InteractionResponse.from_data(request.request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "to-character", "characterId": character_id, "denomination": "gold", "amount": 5})

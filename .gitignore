@@ -12,6 +12,8 @@ test-results/
 release-evidence/
 *.bundle
 !tools/providence-converter-map-markers-v6.bundle
+!tools/providence-converter-program-closure.bundle
+!tools/providence-converter-complete-records-v7.bundle
 *.pyc
 __pycache__/
 user-data/

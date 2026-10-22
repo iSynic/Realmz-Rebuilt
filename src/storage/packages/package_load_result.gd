@@ -4,6 +4,8 @@ class_name PackageLoadResult
 extends RefCounted
 
 var schema_hash: String = ""
+## SHA-256 of the exact archive bytes an installation validated; empty otherwise.
+var archive_sha256: String = ""
 var content: RealmzContent
 var media: PackageMediaCatalog
 var error_code: StringName = &""

@@ -277,26 +277,12 @@ func _write_index() -> bool:
 	if not _indexes_match(parsed, _index):
 		last_error = "Imported scenario revision index readback differs from the staged data."
 		return false
-	var backup_path := absolute_path + ".previous"
-	var had_old := FileAccess.file_exists(absolute_path)
-	if had_old:
-		if FileAccess.file_exists(backup_path):
-			var remove_backup_error := DirAccess.remove_absolute(backup_path)
-			if remove_backup_error != OK:
-				last_error = "Could not prepare imported scenario index replacement (error %d)." % remove_backup_error
-				return false
-		var backup_error := DirAccess.rename_absolute(absolute_path, backup_path)
-		if backup_error != OK:
-			last_error = "Could not preserve the previous imported scenario index (error %d)." % backup_error
-			return false
-	var rename_error := DirAccess.rename_absolute(temp_path, absolute_path)
-	if rename_error != OK:
-		if had_old:
-			DirAccess.rename_absolute(backup_path, absolute_path)
-		last_error = "Could not replace imported scenario revision index (error %d)." % rename_error
+	# The shared rotation stages a leftover `.previous` instead of deleting it,
+	# so an interrupted write always leaves a primary or a restorable previous index.
+	var replace_error := BackupRotation.replace(temp_path, absolute_path, absolute_path + ".previous", false)
+	if not replace_error.is_empty():
+		last_error = "Could not replace imported scenario revision index: %s" % replace_error
 		return false
-	if had_old:
-		DirAccess.remove_absolute(backup_path)
 	return true
 
 

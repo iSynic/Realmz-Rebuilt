@@ -67,10 +67,10 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 		87:
 			return _branch_on_ally(action)
 		88:
-			var removed := _remove_classic_ally(absi(action.operand_id))
+			var removed := _remove_classic_ally(action.operand_id if _content.package_schema_version >= 7 else absi(action.operand_id))
 			return ScenarioRuntimeOperationResult.completed(removed, [DomainEvent.new(&"allies_removed", {"classicMonsterId": absi(action.operand_id), "count": removed})])
 		89:
-			return _add_classic_ally(absi(action.operand_id))
+			return _add_classic_ally(action.operand_id if _content.package_schema_version >= 7 else absi(action.operand_id))
 		90:
 			return _take_experience(action)
 		102:
@@ -84,10 +84,12 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 
 
 func _alter_selected_spell_points(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5 or action.extra_code[0] == 0 or action.extra_code[2] < action.extra_code[1]:
+	if action.extra_code.size() < 5 or (_content.package_schema_version < 7 and (action.extra_code[0] == 0 or action.extra_code[2] < action.extra_code[1])):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_spell_point_effect", "Classic opcode 74 requires a nonzero roll count and valid five-value Extra Code range.")
+	if _content.package_schema_version >= 7 and action.extra_code[0] in [0, -32768]:
+		return ClassicCompatibility.skip(&"unsafe-uninitialized-spell-point-roll", "Data EDCD", action.operand_id)
 	var message := _content.scenario_records.message_by_id(action.extra_code[4]) if action.extra_code[4] != 0 else null
-	if action.extra_code[4] != 0 and message == null:
+	if action.extra_code[4] != 0 and message == null and not ClassicCompatibility.source_unavailable(_content, "Data SD2", action.extra_code[4]):
 		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 74 references unavailable message %d." % action.extra_code[4])
 	var changes: Array[Dictionary] = []
 	for character: CharacterState in _game_state.scenario_progress.selected_characters():
@@ -95,10 +97,11 @@ func _alter_selected_spell_points(action: ClassicActionDefinition) -> ScenarioRu
 			continue
 		var rolled := 0
 		for _roll: int in absi(action.extra_code[0]):
-			rolled = _rng.draw_between(action.extra_code[1], action.extra_code[2], &"classic.opcode74.spell-points")
+			rolled = _rng.draw_between_classic(action.extra_code[1], action.extra_code[2], &"classic.opcode74.spell-points") if _content.package_schema_version >= 7 else _rng.draw_between(action.extra_code[1], action.extra_code[2], &"classic.opcode74.spell-points")
 		var amount := -rolled if action.extra_code[0] < 0 else rolled
 		var previous := character.spell_points
-		character.spell_points = clampi(character.spell_points + amount, 0, character.maximum_spell_points)
+		var next := _rules.arithmetic.signed_16(character.spell_points + _rules.arithmetic.signed_16(amount)) if _content.package_schema_version >= 7 else character.spell_points + amount
+		character.spell_points = clampi(next, 0, character.maximum_spell_points)
 		changes.append({"characterId": character.id, "previous": previous, "current": character.spell_points, "amount": character.spell_points - previous})
 	var events: Array[DomainEvent] = [DomainEvent.new(&"spell_points_changed", {"changes": changes, "source": "classic-opcode-74"})]
 	if action.extra_code[3] != 0:
@@ -155,18 +158,27 @@ func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 func _level_selected_characters() -> ScenarioRuntimeOperationResult:
 	var leveled: Array[String] = []
 	var balances: Dictionary = {}
+	var events: Array[DomainEvent] = []
 	for character: CharacterState in _game_state.scenario_progress.selected_characters():
 		var race := _content.characters.race_by_id(character.race_id)
 		var caste := _content.characters.caste_by_id(character.caste_id)
 		if race == null or caste == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_character_profile", "Classic opcode 102 requires source-defined race and caste profiles.")
 		var threshold_index := clampi(character.level, 1, 30) - 1
-		character.experience = 1 - caste.progression.victory_threshold(threshold_index)
-		if _rules.characters.level_up(character, race, caste, _rng) == null:
+		if _content.package_schema_version < 7:
+			character.experience = 1 - caste.progression.victory_threshold(threshold_index)
+		var advanced := _rules.characters.level_up(character, race, caste, _rng)
+		if advanced == null:
 			return ScenarioRuntimeOperationResult.failed(&"character_level_failed", "Classic opcode 102 could not level character '%s'." % character.id)
+		if advanced.state == LevelUpResult.State.UNSAFE_CANDIDATE:
+			events.append_array(ClassicCompatibility.skip(&"unsafe-character-advancement", "Data Caste", caste.classic_id - 1).events)
+			continue
+		if _content.package_schema_version >= 7:
+			character.experience = 1 - caste.progression.victory_threshold(threshold_index)
 		leveled.append(character.id)
 		balances[character.id] = character.experience
-	return ScenarioRuntimeOperationResult.completed(leveled, [DomainEvent.new(&"characters_leveled", {"characterIds": leveled, "experienceRemaining": balances, "source": "classic"})])
+	events.append(DomainEvent.new(&"characters_leveled", {"characterIds": leveled, "experienceRemaining": balances, "source": "classic"}))
+	return ScenarioRuntimeOperationResult.completed(leveled, events)
 
 
 func _request_character_selection(action: ClassicActionDefinition, request_id: String, invert: bool) -> ScenarioRuntimeOperationResult:
@@ -303,14 +315,15 @@ func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRunt
 	var selector := action.extra_code[0]
 	var value := action.extra_code[1]
 	var source_mode := action.extra_code[2]
-	if selector < 0 or selector > 8 or source_mode < 0 or source_mode > 2: return ScenarioRuntimeOperationResult.failed(&"invalid_character_selector", "Classic miscellaneous character selector is invalid.")
-	if selector == 8 and (value < 1 or value > 6): return ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 52 exact-position selection requires a party position from 1 through 6.")
+	if _content.package_schema_version < 7 and (selector < 0 or selector > 8 or source_mode < 0 or source_mode > 2): return ScenarioRuntimeOperationResult.failed(&"invalid_character_selector", "Classic miscellaneous character selector is invalid.")
 	var candidates := _game_state.scenario_progress.selected_characters()
 	if source_mode != 2:
 		candidates = []
 		for character: CharacterState in _game_state.party.characters():
-			if source_mode == 0 or character.current_health > 0:
+			if source_mode == 0 or (source_mode == 1 and character.current_health > 0):
 				candidates.append(character)
+	if selector == 8 and (value < 1 or value > 6) and (_content.package_schema_version < 7 or not candidates.is_empty()):
+		return ClassicCompatibility.skip(&"unsafe-party-position-selection", "Data EDCD", action.operand_id) if _content.package_schema_version >= 7 else ScenarioRuntimeOperationResult.failed(&"invalid_party_position", "Classic opcode 52 exact-position selection requires a party position from 1 through 6.")
 	var selected: Array[String] = []
 	var party := _game_state.party.characters()
 	for character: CharacterState in candidates:
@@ -346,12 +359,12 @@ func _select_characters_by_caste(action: ClassicActionDefinition) -> ScenarioRun
 	var exact_caste := action.extra_code[0]
 	var caste_group := action.extra_code[1]
 	var source_mode := action.extra_code[2]
-	if caste_group < 0 or caste_group > 3 or source_mode < 0 or source_mode > 2:
+	if _content.package_schema_version < 7 and (caste_group < 0 or caste_group > 3 or source_mode < 0 or source_mode > 2):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_caste_selection", "Classic opcode 53 has an invalid caste group or source mode.")
 	var selected: Array[String] = []
 	if source_mode != 2:
 		for character: CharacterState in _game_state.party.characters():
-			if source_mode == 1 and character.current_health <= 0:
+			if source_mode not in [0, 1] or (source_mode == 1 and character.current_health <= 0):
 				continue
 			var caste := _content.characters.caste_by_id(character.caste_id)
 			if caste == null:
@@ -396,6 +409,8 @@ func _branch_on_picked_characters(action: ClassicActionDefinition) -> ScenarioRu
 	if failure_behavior == 2:
 		var message := _content.scenario_records.message_by_id(action.extra_code[4])
 		if message == null:
+			if ClassicCompatibility.source_unavailable(_content, "Data SD2", action.extra_code[4]):
+				return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 55 references unavailable message %d." % action.extra_code[4])
 		return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-picked-branch"})], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
@@ -441,12 +456,13 @@ func _branch_on_character_condition(action: ClassicActionDefinition) -> Scenario
 func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 87 requires a five-value Extra Code row.")
-	var monster := _content.combat.monster_by_classic_id_for_set(absi(action.extra_code[0]), _game_state.monster_set)
+	var native_names := _content.package_schema_version >= 7
+	var monster: MonsterDefinition = null if native_names else _content.combat.monster_by_classic_id_for_set(absi(action.extra_code[0]), _game_state.monster_set)
 	var present := false
-	if monster != null:
+	if native_names or monster != null:
 		for ally: MonsterState in _game_state.party.allies():
 			var ally_definition := _content.combat.monster_by_id(ally.definition_id)
-			if ally_definition != null and ally_definition.classic_id == monster.classic_id:
+			if ally_definition != null and (ally_definition.classic_name_id == action.extra_code[0] if native_names else ally_definition.classic_id == monster.classic_id):
 				present = true
 				break
 	var event := DomainEvent.new(&"ally_branch_checked", {"classicMonsterId": absi(action.extra_code[0]), "present": present})
@@ -464,6 +480,8 @@ func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 		2:
 			var message := _content.scenario_records.message_by_id(action.extra_code[4])
 			if message == null:
+				if ClassicCompatibility.source_unavailable(_content, "Data SD2", action.extra_code[4]):
+					return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 87 references unavailable message %d." % action.extra_code[4])
 			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"invalid_ally_branch", "Classic opcode 87 has an invalid absent-ally behavior.")
@@ -474,7 +492,7 @@ func _remove_classic_ally(classic_monster_id: int) -> int:
 	var retained: Array[MonsterState] = []
 	for ally: MonsterState in _game_state.party.allies():
 		var definition := _content.combat.monster_by_id(ally.definition_id)
-		if definition != null and definition.classic_id == classic_monster_id:
+		if definition != null and (definition.classic_name_id if _content.package_schema_version >= 7 else definition.classic_id) == classic_monster_id:
 			removed += 1
 		else:
 			retained.append(ally)
@@ -485,7 +503,15 @@ func _remove_classic_ally(classic_monster_id: int) -> int:
 func _add_classic_ally(classic_monster_id: int) -> ScenarioRuntimeOperationResult:
 	var definition := _resolve_classic_ally_definition(classic_monster_id)
 	if definition == null:
+		var native_path := "Data MD" + (str(_game_state.monster_set) if _game_state.monster_set != 0 else "")
+		if ClassicCompatibility.source_unavailable(_content, native_path, classic_monster_id):
+			return ClassicCompatibility.skip(&"unavailable-ally", native_path, classic_monster_id)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 89 references unavailable monster %d." % classic_monster_id)
+	var consumption := MonsterConsumptionProbe.inspect(_content, definition)
+	if consumption.outcome == MonsterConsumptionProbe.Outcome.PACKAGE_DEFECT:
+		return ScenarioRuntimeOperationResult.failed(&"missing_monster_dependency", consumption.reason)
+	if consumption.outcome == MonsterConsumptionProbe.Outcome.AUTHORED_UNSAFE:
+		return ClassicCompatibility.skip(&"unsafe-ally", "Data MD", classic_monster_id)
 	var table_error := MonsterRules.random_weapon_table_error(definition)
 	if not table_error.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_random_weapon_table", "Classic opcode 89: %s" % table_error)
@@ -597,63 +623,8 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 
 
 func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode %d requires a four-value Extra Code row." % action.opcode)
-	var spell := _content.magic.spell_by_classic_id(int(action.extra_code[0]))
-	if spell == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_spell", "Classic opcode %d references unavailable packed spell %d." % [action.opcode, int(action.extra_code[0])])
-	if not entire_party and not context.combatant_id.is_empty():
-		var result := _rules.combat_flow.magic.cast_macro_spell(_game_state, _content, context.combatant_id, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng)
-		return ScenarioRuntimeOperationResult.completed(true, result.events) if result.ok else ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
-	var targets := _game_state.party.characters() if entire_party else _game_state.scenario_progress.selected_characters()
-	if targets.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode %d has no selected character targets." % action.opcode)
-	return _continue_scenario_spell(action, targets, 0)
+	return ClassicScenarioSpellOperations.apply(_content, _game_state, _rng, _rules, action, entire_party, context)
 
 
 func resume_scenario_spell(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:
-	var targets: Array[CharacterState] = []
-	for id: String in handoff.effect_target_ids:
-		targets.append(_game_state.party.character_by_id(id))
-	var action := ClassicActionDefinition.new(0, handoff.effect_opcode, handoff.effect_opcode, 0, false, handoff.effect_extra_code)
-	return _with_age_update_interactions(_continue_scenario_spell(action, targets, handoff.effect_next_index), "classic-spell-revival")
-
-
-func _continue_scenario_spell(action: ClassicActionDefinition, targets: Array[CharacterState], start_index: int) -> ScenarioRuntimeOperationResult:
-	var spell := _content.magic.spell_by_classic_id(action.extra_code[0])
-	var events: Array[DomainEvent] = []
-	for index: int in range(start_index, targets.size()):
-		var character := targets[index]
-		var before_health := character.current_health
-		var before_conditions := character.conditions.values()
-		var race := _content.characters.race_by_id(character.race_id)
-		var resolution := _rules.magic.resolve_scenario_spell(character, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng, _content.characters.caste_by_id(character.caste_id), race)
-		if resolution == null:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_spell_effect", "Classic scenario spell inputs are invalid.")
-		var event_source := "classic-opcode-%d" % action.opcode
-		if spell.sound_end + 600 != 0:
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": event_source}))
-		var first_effect_resource := 12032 if spell.look_start == 0 else 11992 + spell.look_start * 8
-		events.append(DomainEvent.new(&"character_effect_requested", {"characterId": character.id, "resourceType": "cicn", "firstResourceId": first_effect_resource, "frameCount": 8, "source": event_source}))
-		events.append(DomainEvent.new(&"scenario_spell_applied", {
-			"spellId": spell.id,
-			"classicSpellId": spell.classic_id,
-			"characterId": character.id,
-			"powerLevel": int(action.extra_code[1]),
-			"saved": resolution.saved,
-			"damage": resolution.damage,
-			"duration": resolution.duration,
-			"healthBefore": before_health,
-			"healthAfter": character.current_health,
-			"conditionsChanged": before_conditions != character.conditions.values(),
-			"source": "classic",
-		}))
-		if resolution.aging != null and resolution.aging.changed_group():
-			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character, race)))
-		# Castle resolvespell -> killbody -> partyloss interrupts the target loop here.
-		if _game_state.combat == null and _game_state.party.characters().all(func(member: CharacterState) -> bool: return member.current_health <= 0):
-			var target_ids: Array[String] = []
-			for target: CharacterState in targets:
-				target_ids.append(target.id)
-			return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.character_defeat(action.opcode, action.extra_code, target_ids, index + 1), events)
-	return ScenarioRuntimeOperationResult.completed(targets.size(), events)
+	return _with_age_update_interactions(ClassicScenarioSpellOperations.resume(_content, _game_state, _rng, _rules, handoff), "classic-spell-revival")

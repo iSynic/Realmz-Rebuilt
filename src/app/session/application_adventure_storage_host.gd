@@ -91,7 +91,7 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 	var resolved_slot := slot_id
 	var previous_slot := ""
 	if slot_id in ["quick", "quick-2"]:
-		# This copies supported v5 records to A–J slots; it never migrates an older save schema.
+		# This writes supported v5/v6 snapshots to A–J through the v6 writer; source files stay intact.
 		var validation := GameSession.new().restore(content, envelope)
 		if validation.state == SessionStep.State.FAILED:
 			_shell.status.set_status("Load failed • %s" % validation.error_message, true)

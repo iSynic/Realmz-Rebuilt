@@ -32,8 +32,10 @@ func resume_thief(continuation: ScenarioRuntimeContinuation, response: Interacti
 	var owner := continuation.body as ScenarioThiefContinuationBody
 	var selection := response.body as InteractionResponse.ThiefEncounterBody
 	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
-	if response.kind != InteractionRequest.THIEF_ENCOUNTER or selection == null or encounter == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter response does not match its source encounter.")
+	if encounter == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Thief Encounter is unavailable.")
+	if response.kind != InteractionRequest.THIEF_ENCOUNTER or selection == null:
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Thief Encounter response does not match its source encounter.")
 	if selection.action == &"back":
 		var complex_request := _encounters.complex_encounter_request(encounter, request_id)
 		if complex_request == null:
@@ -48,12 +50,14 @@ func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: Inter
 	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(owner.character_id) if owner != null else null
-	if response.kind != InteractionRequest.PICK_LOCK or selection == null or encounter == null or thief == null or character == null or character.current_health <= 0:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Pick Lock response does not match its source character and encounter.")
+	if encounter == null or thief == null or character == null or character.current_health <= 0:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "The pending Pick Lock no longer matches its source character and encounter.")
+	if response.kind != InteractionRequest.PICK_LOCK or selection == null or selection.frame_index < 0 or selection.frame_index > ClassicPickLockRules.maximum_iterations(thief.tumblers):
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Pick Lock response selected a frame outside the source timer.")
 	var chance := ClassicPickLockRules.chance(character.ability_value(ClassicPickLockRules.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
 	var resolved := ClassicPickLockRules.resolve(_rng, thief.tumblers, chance, selection.frame_index)
 	if resolved.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Pick Lock response selected a frame outside the source timer.")
+		return ScenarioRuntimeOperationResult.failed(&"invalid_pick_lock_state", "Pick Lock could not resolve its deterministic tumbler sequence.")
 	var flags := _state.scenario_progress.encounters.thief_type_flags(thief)
 	var succeeded: bool = resolved["succeeded"]
 	var event := _action_event(encounter, thief, character, owner.action_index, chance, succeeded)
@@ -70,12 +74,14 @@ func resume_resolution(continuation: ScenarioRuntimeContinuation, response: Inte
 	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(owner.character_id) if owner != null else null
-	if response.kind != InteractionRequest.ACKNOWLEDGE or acknowledgement == null or acknowledgement.take_note or owner == null or encounter == null or thief == null or character == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter result acknowledgement does not match its source action.")
+	if owner == null or encounter == null or thief == null or character == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "The pending Thief Encounter result no longer matches its source action.")
+	if response.kind != InteractionRequest.ACKNOWLEDGE or acknowledgement == null or acknowledgement.take_note:
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Thief Encounter result requires an empty acknowledgement.")
 	if owner.phase == &"trap-message":
 		return _apply_trap(encounter, thief, owner.gosub, character, request_id, owner.encounter_attempt)
 	if owner.phase != &"action-message":
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter result has an unknown stage.")
+		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Thief Encounter result has an unknown stage.")
 	if owner.trap_pending:
 		return _wait_for_trap_message(encounter, owner.gosub, character, owner.action_index, owner.succeeded, request_id, [], owner.encounter_attempt)
 	return _finish_action(encounter, thief, owner.gosub, character, owner.action_index, owner.succeeded, request_id, [], owner.encounter_attempt)
@@ -86,8 +92,10 @@ func _attempt(encounter: ComplexEncounterDefinition, gosub: bool, selection: Int
 	var character := _state.party.character_by_id(selection.character_id)
 	var action_index := selection.action_index
 	var flags := _state.scenario_progress.encounters.thief_type_flags(thief) if thief != null else []
-	if thief == null or character == null or not _character_eligible(character) or not _action_available(character, thief, flags, action_index):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter action or character is unavailable.")
+	if thief == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_thief_encounter", "The pending Complex Encounter has no Thief record.")
+	if character == null or not _character_eligible(character) or not _action_available(character, thief, flags, action_index):
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Thief Encounter action or character is unavailable.")
 	flags[action_index] = false
 	var trap_armed := flags[9]
 	if trap_armed and action_index in [4, 6, 7]:

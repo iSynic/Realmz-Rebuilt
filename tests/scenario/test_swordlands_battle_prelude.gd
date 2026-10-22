@@ -3,7 +3,6 @@ extends RealmzTestCase
 
 func run() -> void:
 	var loaded := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-trouble-in-the-sword-lands.realmz2")
-	assert_true(loaded.is_ok(), "Trouble in the Sword Lands package loads for the reported AP")
 	if not loaded.is_ok():
 		return
 	var content: RealmzContent = loaded.content

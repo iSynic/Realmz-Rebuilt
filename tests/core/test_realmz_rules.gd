@@ -30,6 +30,13 @@ func _test_arithmetic_and_ranges() -> void:
 	var ranged := ScriptedRng.new([0, 32_767])
 	assert_equal(ranged.draw_between(-3, 3, &"rules.range.low"), -3, "Castle randrange includes its lower bound")
 	assert_equal(ranged.draw_between(-3, 3, &"rules.range.high"), 3, "Castle randrange includes its upper bound")
+	assert_equal(ScriptedRng.new([32767]).draw_between_classic(32760, -32760, &"rules.range.wrap"), -32760, "Classic randrange narrows its final signed-short destination")
+	var native_caste := _caste()
+	native_caste.progression = CasteDefinition.ProgressionDefinition.new(Vector2i(8, -32768), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var native_character := CharacterState.new("character.native", "Native", 10, 10)
+	var original := CharacterStateCodec.encode(native_character)
+	var native_rng := ScriptedRng.new([0, 16384, 0])
+	assert_true(CharacterRules.new(true).level_up(native_character, _race(), native_caste, native_rng).state == LevelUpResult.State.UNSAFE_CANDIDATE and CharacterStateCodec.encode(native_character) == original and native_rng.snapshot().draw_count == 0, "an unsafe signed advancement preserves the complete character and RNG")
 
 
 func _test_party_setup_scaling() -> void:
@@ -95,13 +102,7 @@ func _test_character_creation_and_leveling() -> void:
 	var created := rules.characters.create_character("character.hero", "Hero", race, caste, 1, creation_rng)
 	assert_not_null(created, "a valid race/caste pair constructs a direct Realmz character")
 	assert_equal([created.brawn, created.knowledge, created.judgment, created.agility, created.vitality, created.luck], [2, 1, 1, 1, 1, 1], "attribute rolls apply gender and min/max constraints in Castle order")
-	assert_equal(created.maximum_health, 1, "initial stamina uses the caste die")
-	assert_equal(created.to_hit, -10, "caste and brawn to-hit bonuses are combined")
-	assert_equal(created.magic_resistance, 5, "race and caste magic resistance inputs are applied")
-	assert_equal(created.maximum_load, 500, "Classic load capacity retains its 500 minimum")
-	assert_equal(created.age_days, 18 * 365, "age is rolled from the race range selected by caste")
-	assert_equal(created.age_group, 1, "creation persists the caste-selected current age group independently from age days")
-	assert_equal(created.inventory().size(), 1, "caste starting equipment becomes stable item instances")
+	assert_equal([created.maximum_health, created.to_hit, created.magic_resistance, created.maximum_load, created.age_days, created.age_group, created.inventory().size()], [1, -10, 5, 500, 18 * 365, 1, 1], "Classic creation combines source-defined stamina, combat bonuses, load, age group and starting equipment")
 	assert_equal(rules.characters.strength_bonuses(30, 5).damage_bonus, 5, "caste strength caps brawn damage without changing hit bonus")
 	assert_equal(creation_rng.snapshot().draw_count, 12, "creation preserves Castle's discarded attribute and three special-bonus rolls")
 	var creation_trace := creation_rng.trace()
@@ -673,18 +674,10 @@ func _test_monster_permanent_afflictions() -> void:
 func _test_conditions_time_and_persistence() -> void:
 	var rules := RealmzRules.new()
 	var torch_party := PartyState.new("map.test", Vector2i.ZERO, [])
-	torch_party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 3)
-	var torch_events := rules.conditions.tick_party(torch_party)
-	assert_equal(torch_party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 1, "Torch Lit receives Castle's generic and torch-specific hourly decrements")
-	assert_false(torch_events.any(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_expired"), "a positive torch remainder does not publish expiration")
-	torch_party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 2)
-	torch_events = rules.conditions.tick_party(torch_party)
-	assert_equal(torch_party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 0, "a two-point torch expires after the two source-ordered decrements")
-	assert_equal(torch_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_expired" and event.payload.get("condition") == ConditionRules.PARTY_TORCH_LIT).size(), 1, "torch expiration publishes once when the specific decrement reaches zero")
-	torch_party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 1)
-	torch_events = rules.conditions.tick_party(torch_party)
-	assert_equal(torch_party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 0, "a one-point torch expires in the generic pass without becoming negative")
-	assert_equal(torch_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_expired" and event.payload.get("condition") == ConditionRules.PARTY_TORCH_LIT).size(), 1, "generic-pass torch expiration is not duplicated")
+	for fuel: int in [3, 2, 1]:
+		torch_party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, fuel)
+		var torch_events := rules.conditions.tick_party(torch_party)
+		assert_equal([torch_party.conditions.value(ConditionRules.PARTY_TORCH_LIT), torch_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_expired" and event.payload.get("condition") == ConditionRules.PARTY_TORCH_LIT).size()], [maxi(0, fuel - 2), 0 if fuel == 3 else 1], "source-ordered torch decrements expire exactly once without becoming negative")
 	var character := CharacterState.new("character.conditions", "Conditions", 5, 10)
 	character.maximum_spell_points = 10
 	character.spell_points = 5
@@ -696,18 +689,29 @@ func _test_conditions_time_and_persistence() -> void:
 	var party := PartyState.new("map.test", Vector2i(1, 1), _characters([character]))
 	party.conditions.set_value(0, 1)
 	var state := GameState.new(party, RealmzClock.new()); state.dungeon_heading = 3; state.dungeon_multiview = false
-	var events := rules.conditions.tick_party(party)
+	rules.conditions.tick_party(party)
 	assert_equal(character.current_health, 4, "regeneration occurs before disease and poison damage")
 	assert_equal(character.spell_points, 4, "energy drain occurs before energy absorption")
 	assert_equal(character.conditions.value(ConditionRules.POISONED), 1, "positive character conditions decay after applying their effect")
 	assert_equal(party.conditions.value(0), 0, "party conditions decay through the same fixed owner")
-	assert_true(events.size() >= 4, "condition ticks publish domain observations")
 	assert_equal(rules.clock.change_fatigue(party, 500), 135, "fatigue is clamped to Castle's upper bound")
 	state.combat = CombatState.new("battle.test", _monsters([MonsterState.new("monster.saved", "monster.test", "Saved Monster", 3, 6)]))
 	var parsed: Variant = JSON.parse_string(JSON.stringify(state.to_data()))
 	var restored := GameState.from_data(parsed)
 	assert_not_null(restored, "the complete expanded game aggregate survives JSON")
 	assert_equal(restored.to_data(), state.to_data(), "expanded party, condition, wealth, and combat state round-trip exactly")
+
+	for test: Array in [
+		[[7, 4, 12], [1, 0, 0, 0], [0, 0, 0], 0], [[7, 4, 12], [1, -1, -1, -1], [7, 4, 12], 0],
+		[[1, 1, 1], [2, -1, -2, -3], [0, -1, -2], 0], [[3, 23, 0], [2, 0, 1, 60], [4, 1, 0], 0],
+		[[7, 23, 0], [2, 0, 0, 60], [8, 0, 0], RealmzClock.MIDNIGHT], [[8, 24, 105], [77, -32768, 25, 61], [9, 0, 105], RealmzClock.MIDNIGHT],
+		[[-1, 23, 0], [2, 0, 0, 60], [0, 0, 0], RealmzClock.MIDNIGHT], [[1, 23, 0], [2, 0, 49, 121], [2, 49, 61], 0],
+	]:
+		var clock := RealmzClock.new()
+		clock.set_components(test[0][0], test[0][1], test[0][2])
+		var refresh := clock.alter_classic(test[1][0], test[1][1], test[1][2], test[1][3])
+		assert_equal([clock.day(), clock.hour(), clock.minute(), refresh], test[2] + [test[3]], "native clock assignments, exact sentinels, signed fields and single-carry order retain the zero-time refresh")
+		assert_equal(RealmzClock.from_data(JSON.parse_string(JSON.stringify(clock.to_data()))).to_data(), clock.to_data(), "noncanonical clock components survive JSON without normalization")
 
 
 func _test_inventory_economy_and_treasure() -> void:

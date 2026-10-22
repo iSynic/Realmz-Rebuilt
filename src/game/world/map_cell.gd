@@ -22,6 +22,8 @@ var movement_sound_id: int
 var render_tile: int
 var tileset_id: String
 var overlay_asset_id: String
+var native_tile_supplied: bool = false
+var native_tile_value: int = 0
 var _trigger_ids: Array[String]
 var _random_rect_ids: Array[String]
 var _edges: Dictionary = {}

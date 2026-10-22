@@ -23,7 +23,40 @@ static func combat_vm_continuation_is_valid(state: GameState, rules: RealmzRules
 	if runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT]:
 		return state.combat == null or state.combat.pending_reaction == null or not state.combat.pending_reaction.awaits_friendly_collision_choice()
 	var nested := body.macro_vm if body != null else runtime.opcode_death().macro_vm if runtime.opcode_death() != null else null
+	if runtime.body is ScenarioClockContinuationBody:
+		nested = (runtime.body as ScenarioClockContinuationBody).timer_vm
 	return nested == null or nested.pending_request != null and snapshot.pending_request != null and nested.pending_request.to_data() == snapshot.pending_request.to_data() and combat_vm_continuation_is_valid(state, rules, nested, depth + 1)
+
+
+static func native_operation_continuation_is_valid(content: RealmzContent, state: GameState, snapshot: ScenarioVmSnapshot, depth: int = 0) -> bool:
+	if depth > 32 or snapshot == null: return false
+	var runtime := snapshot.pending_continuation.runtime if snapshot.pending_continuation != null else null
+	if runtime == null: return true
+	var clock_body := runtime.body as ScenarioClockContinuationBody
+	var nested := runtime.nested_vm()
+	if runtime.body is ScenarioFumbleContinuationBody:
+		var fumble := runtime.body as ScenarioFumbleContinuationBody
+		var message := content.scenario_records.message_by_id(fumble.message_id)
+		if state.combat == null or state.combat.battle_id != fumble.battle_id or state.combat.turns.active_actor_id() != fumble.actor_id or not CombatFlowActions.scripted_fumble_guard_reason(state).is_empty() or message == null or snapshot.pending_request == null: return false
+		var request := InteractionRequest.from_payload(snapshot.pending_request.request_id, InteractionRequest.ACKNOWLEDGE, {"prompt": message.text, "messageId": message.id, "presentation": "classic-textbox", "journalEligible": ScenarioProgressState.journal_message_id_is_valid(message.id), "journalRecorded": state.scenario_progress.journal_message_is_recorded(message.id)})
+		if request.to_data() != snapshot.pending_request.to_data(): return false
+	if clock_body != null:
+		var encounters := content.scenario_records.timed_encounters()
+		if clock_body.timer_index > encounters.size(): return false
+		if not clock_body.return_program_id.is_empty() and content.scenario.program_by_id(clock_body.return_program_id) == null: return false
+		if nested != null:
+			if clock_body.timer_index < 1 or encounters[clock_body.timer_index - 1].program_id != clock_body.program_id: return false
+			var vm := ScenarioVm.new()
+			vm.configure(content.scenario)
+			if not vm.restore(nested): return false
+		else:
+			for update: AgeUpdateRequestBody in clock_body.updates:
+				if not age_update_payload_is_valid(state, update): return false
+			var request := InteractionRequest.age_update_body("clock.validation", clock_body.updates[clock_body.age_index - 1])
+			if snapshot.pending_request == null: return false
+			request.request_id = snapshot.pending_request.request_id
+			if request.to_data() != snapshot.pending_request.to_data(): return false
+	return nested == null or nested.pending_request != null and snapshot.pending_request != null and nested.pending_request.to_data() == snapshot.pending_request.to_data() and native_operation_continuation_is_valid(content, state, nested, depth + 1)
 
 
 static func vm_reward_continuation_is_valid(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
@@ -200,6 +233,6 @@ static func ready_post_move_continuation_is_valid(content: RealmzContent, state:
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
 	return cell != null and state.party.map_id == map.id and state.party.coordinate == exploration.coordinate \
-		and exploration.trigger_ids == ExplorationContinuationWorkflow.selected_placed_trigger_ids(content, map, exploration.coordinate, state.world, exploration.action_point_destination_depth > 0) \
+		and exploration.trigger_ids == ClassicActionPointRules.selected_placed_trigger_ids(content, map, exploration.coordinate, state.world, exploration.action_point_destination_depth > 0) \
 		and exploration.random_region_ids == state.world.triggers.random_region_ids_at(map, exploration.coordinate) \
 		and exploration.random_region_index == exploration.random_region_ids.size() - 1

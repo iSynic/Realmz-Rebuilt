@@ -262,12 +262,21 @@ static func _combat_continuation(kind: StringName, body: CombatContinuationBody)
 
 static func _decode_post_clock(data: Dictionary) -> SessionContinuation:
 	var fields: Array[String] = ["mapId", "x", "y", "timedDay", "timedEncounterIndex", "activeTimedProgramId", "midnightRecoveryPending", "timedCheckX", "timedCheckY", "checkRandom", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
+	if data.has("timedScanPending"): fields.append("timedScanPending")
+	if data.has("timedScanPending") and not data["timedScanPending"] is bool: return null
+	if data.has("movementMarkerPending"):
+		fields.append("movementMarkerPending")
+		if not data["movementMarkerPending"] is bool: return null
 	if not _has_exact_fields(data, fields) or not data.get("mapId") is String or data["mapId"].is_empty() or not data.get("activeTimedProgramId") is String or not data.get("midnightRecoveryPending") is bool or not data.get("checkRandom") is bool or not data.get("randomRegionIds") is Array or not data.get("activeRandomProgramId") is String or not data.get("activeRandomRegionId") is String or data.get("randomBattleStage") not in ["", "surprise-choice"] or data.get("resumeKind") not in ["completed", "move", "post-move", "attempt-search-completed", "attempt-search-post-move", "area-search-second", "camp-entry-second", "rest-second", "camp-departure-second", "heal"]:
 		return null
 	var body := ExplorationContinuationBody.new()
 	body.map_id = data["mapId"]
 	body.coordinate = Vector2i(_integer(data["x"]), _integer(data["y"]))
-	body.timed_day = _integer(data["timedDay"])
+	var day_value: Variant = _signed_integer_or_null(data["timedDay"])
+	if day_value == null or not RealmzClock.valid_component(day_value): return null
+	body.timed_day = day_value
+	body.timed_scan_pending = data.get("timedScanPending", body.timed_day > 0)
+	body.movement_marker_pending = data.get("movementMarkerPending", true)
 	body.timed_encounter_index = _integer(data["timedEncounterIndex"])
 	body.active_timed_program_id = data["activeTimedProgramId"]
 	body.midnight_recovery_pending = data["midnightRecoveryPending"]
@@ -286,7 +295,7 @@ static func _decode_post_clock(data: Dictionary) -> SessionContinuation:
 
 
 static func _valid_post_clock(body: ExplorationContinuationBody, data: Dictionary) -> bool:
-	if body.coordinate.x < 0 or body.coordinate.y < 0 or body.timed_day < 0 or body.timed_encounter_index < 0 or body.timed_check_coordinate.x < -1 or body.timed_check_coordinate.y < -1 or body.random_region_ids.size() != data["randomRegionIds"].size() or body.random_region_index < -1 or body.random_region_index >= body.random_region_ids.size() or body.direction.x < -1 or body.direction.x > 1 or body.direction.y < -1 or body.direction.y > 1:
+	if body.coordinate.x < 0 or body.coordinate.y < 0 or body.timed_encounter_index < 0 or body.timed_check_coordinate.x < -1 or body.timed_check_coordinate.y < -1 or body.random_region_ids.size() != data["randomRegionIds"].size() or body.random_region_index < -1 or body.random_region_index >= body.random_region_ids.size() or body.direction.x < -1 or body.direction.x > 1 or body.direction.y < -1 or body.direction.y > 1:
 		return false
 	if body.resume_kind in [&"completed", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"heal"] and body.direction != Vector2i.ZERO:
 		return false

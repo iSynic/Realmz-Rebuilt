@@ -4,6 +4,7 @@ extends RefCounted
 
 const PROFILE := &"ui_sizing_profile"
 const BASELINE := &"ui_sizing_baseline"
+const BOUND_BY := &"ui_sizing_bound_by"
 
 
 static func apply(root: Control, profile: UiLayoutProfile) -> void:
@@ -29,10 +30,21 @@ static func profile_for(node: Node) -> UiLayoutProfile:
 static func bind_added(instance_id: int) -> void:
 	if not is_instance_id_valid(instance_id): return
 	var node := instance_from_id(instance_id) as Node
-	if node == null or _engine_owned(node): return
+	if node == null or _bound_by_ancestor(node) or _engine_owned(node): return
 	var profile := profile_for(node)
 	if profile != null:
-		_apply_branch(node, profile, true)
+		_apply_branch(node, profile, true, instance_id)
+
+
+# Every added node queues its own binding. When a still-attached ancestor's
+# added-branch pass already visited this node during the same deferred flush,
+# the complete subtree is current and the repeated walk would change nothing.
+static func _bound_by_ancestor(node: Node) -> bool:
+	var stamp: PackedInt64Array = node.get_meta(BOUND_BY, PackedInt64Array([-1, 0]))
+	if stamp[0] != Engine.get_process_frames() or not is_instance_id_valid(stamp[1]):
+		return false
+	var root := instance_from_id(stamp[1]) as Node
+	return root != null and root.is_ancestor_of(node)
 
 
 static func _engine_owned(node: Node) -> bool:
@@ -76,7 +88,9 @@ static func artwork(control: TextureRect, native: Texture2D) -> void:
 	if profile != null: _scale_artwork(control, _baseline(control), profile.bitmap_scale)
 
 
-static func _apply_branch(node: Node, profile: UiLayoutProfile, added_only: bool = false) -> void:
+static func _apply_branch(node: Node, profile: UiLayoutProfile, added_only: bool = false, bound_root_id: int = 0) -> void:
+	if added_only:
+		node.set_meta(BOUND_BY, PackedInt64Array([Engine.get_process_frames(), bound_root_id]))
 	if node is Control:
 		var control := node as Control
 		if control.has_meta(PROFILE): control.set_meta(PROFILE, profile)
@@ -111,7 +125,7 @@ static func _apply_branch(node: Node, profile: UiLayoutProfile, added_only: bool
 				control.offset_bottom = offsets.w * profile.ui_scale
 			metrics["applied_profile"] = scale_key
 	for child: Node in node.get_children():
-		_apply_branch(child, profile, added_only)
+		_apply_branch(child, profile, added_only, bound_root_id)
 	if node.has_method("apply_ui_sizing"):
 		node.call("apply_ui_sizing", profile)
 

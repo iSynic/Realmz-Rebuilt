@@ -7,6 +7,7 @@ const CLASSIC_CHARACTER_LIBRARY_ID: String = ApplicationLibraryIdentity.CAMPAIGN
 const CLASSIC_CHARACTER_LIBRARY_HASH: String = ApplicationLibraryIdentity.PACKAGE_HASH
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
 const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
+const OVERSIZED_ARCHIVE_ROOT: String = "user://realmz2-tests/oversized-archive"
 
 
 func run() -> void:
@@ -34,7 +35,7 @@ func run() -> void:
 	if half_truth.is_ok():
 		var stale_archive := HalfTruthMediaSaveUpdate.new("res://src/storage/packages/bundled_campaigns/scenario-half-truth.realmz2")
 		assert_true(stale_archive.eligible(half_truth.content.campaign_id, HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH, HalfTruthMediaSaveUpdate.NEW_PACKAGE_HASH) and not stale_archive.eligible(half_truth.content.campaign_id, HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH, half_truth.content.package_hash) and not stale_archive.eligible(half_truth.content.campaign_id, "f".repeat(64), HalfTruthMediaSaveUpdate.NEW_PACKAGE_HASH) and not stale_archive.validate_archives(half_truth.content), "only the original pinned media revision pair is eligible; the native-marker revision and substituted archives cannot update a save")
-	if half_truth.is_ok(): var left_wrecker := half_truth.media.asset_by_resource("cicn", 385); var right_wrecker := half_truth.media.asset_by_resource("cicn", BattlefieldPresentationGeometry.classic_monster_icon_id(385, true)); assert_equal([left_wrecker.id, left_wrecker.sha256, right_wrecker.id, right_wrecker.sha256], ["scenario-cicn-385", "1ed2f725f1a36ebdfd8e44a3672e9a0e1036420e7fd3c5a8883801ae27ad80da", "scenario-cicn-693", "1a1506b7be7970cee4408449910081ef6197303fcff9e8978e4cf7164c858ebf"], "Half Truth resolves Wrecker's authored left and right CICNs by exact scenario resource identity"); var half_truth_media := ClassicMediaCatalog.new(half_truth.media, ApplicationMediaCatalog.new(), character_library.media); var scenario_right_diagnostic := half_truth_media.resolution_diagnostic("cicn", 821, "classic-combat-monster", "decoded"); var mixed_right_diagnostic := half_truth_media.resolution_diagnostic("cicn", 795, "classic-combat-monster", "decoded"); var application_right_diagnostic := half_truth_media.resolution_diagnostic("cicn", 791, "classic-combat-monster", "decoded"); assert_equal([scenario_right_diagnostic["status"], scenario_right_diagnostic["sourceOwner"], scenario_right_diagnostic["packageAssetId"], scenario_right_diagnostic["resolvedAssetId"]], ["resolved", "scenario-package", "realmz-monster-icon-821", "realmz-monster-icon-821"], "Half Truth's scenario-owned right-facing CICN wins the exact scenario-before-application lookup"); assert_equal([mixed_right_diagnostic["status"], mixed_right_diagnostic["sourceOwner"], mixed_right_diagnostic["packageAssetId"], mixed_right_diagnostic["resolvedAssetId"]], ["resolved", "scenario-package", "scenario-cicn-795", "scenario-cicn-795"], "a scenario-owned right-facing override wins even when its monster's base CICN remains application-owned"); assert_equal([application_right_diagnostic["status"], application_right_diagnostic["sourceOwner"], application_right_diagnostic["characterAssetId"], application_right_diagnostic["resolvedAssetId"]], ["resolved", "application-package", "realmz-application-cicn-791", "realmz-application-cicn-791"], "a stock right-facing CICN resolves from the application package when the scenario owns no exact override")
+	if half_truth.is_ok(): var left_wrecker := half_truth.media.asset_by_resource("cicn", 385); var right_wrecker := half_truth.media.asset_by_resource("cicn", BattlefieldPresentationGeometry.classic_monster_icon_id(385, true)); assert_equal([left_wrecker.resource_type, left_wrecker.resource_id, right_wrecker.resource_type, right_wrecker.resource_id], ["cicn", 385, "cicn", 693], "Half Truth resolves Wrecker's authored left and right CICNs by exact scenario resource identity"); var half_truth_media := ClassicMediaCatalog.new(half_truth.media, ApplicationMediaCatalog.new(), character_library.media); var scenario_right_diagnostic := half_truth_media.resolution_diagnostic("cicn", 821, "classic-combat-monster", "decoded"); var mixed_right_diagnostic := half_truth_media.resolution_diagnostic("cicn", 795, "classic-combat-monster", "decoded"); var application_right_diagnostic := half_truth_media.resolution_diagnostic("cicn", 791, "classic-combat-monster", "decoded"); assert_equal([scenario_right_diagnostic["status"], scenario_right_diagnostic["sourceOwner"], scenario_right_diagnostic["packageAssetId"] == half_truth.media.asset_by_resource("cicn", 821).id, scenario_right_diagnostic["resolvedAssetId"] == half_truth.media.asset_by_resource("cicn", 821).id], ["resolved", "scenario-package", true, true], "Half Truth's scenario-owned right-facing CICN wins the exact scenario-before-application lookup"); assert_equal([mixed_right_diagnostic["status"], mixed_right_diagnostic["sourceOwner"], mixed_right_diagnostic["packageAssetId"] == half_truth.media.asset_by_resource("cicn", 795).id, mixed_right_diagnostic["resolvedAssetId"] == half_truth.media.asset_by_resource("cicn", 795).id], ["resolved", "scenario-package", true, true], "a scenario-owned right-facing override wins even when its monster's base CICN remains application-owned"); assert_equal([application_right_diagnostic["status"], application_right_diagnostic["sourceOwner"], application_right_diagnostic["characterAssetId"], application_right_diagnostic["resolvedAssetId"]], ["resolved", "application-package", "realmz-application-cicn-791", "realmz-application-cicn-791"], "a stock right-facing CICN resolves from the application package when the scenario owns no exact override")
 	var loaded := repository.load_package(FIXTURE_PATH); assert_true(loaded.is_ok(), "the Providence-authored fixture passes package validation: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
@@ -322,6 +323,8 @@ func run() -> void:
 	repository.close()
 	assert_equal(repository.retained_package_count(), 0, "closing the repository releases both bounded package graph slots")
 	_cleanup_install_test_root()
+	_write_oversized_archive(); var oversized_discovery := repository.discover_packages([OVERSIZED_ARCHIVE_ROOT])
+	assert_equal([PackageArchiveLimits.error_for(FIXTURE_PATH), oversized_discovery.size(), oversized_discovery.is_empty() or oversized_discovery[0].ready, oversized_discovery.is_empty() or oversized_discovery[0].error_message.contains("limit")], ["", 1, false, true], "discovery rejects an archive whose central directory declares an oversized entry before inflating it")
 
 
 func _cleanup_install_test_root() -> void:
@@ -396,3 +399,16 @@ func _test_deferred_start_locations(loaded: Variant, character_library: Variant)
 	var absent_start_manifest: Dictionary = deferred_manifest.duplicate(true)
 	absent_start_manifest.erase("start")
 	assert_equal(PackageDomainAssembler.new().assemble(absent_start_manifest, content, world, scenario, loaded.media.assets(), false, character_library.content), null, "the deferred-reference capability does not permit a structurally absent startup record")
+
+
+func _write_oversized_archive() -> String:
+	var path := ProjectSettings.globalize_path(OVERSIZED_ARCHIVE_ROOT.path_join("oversized.realmz2"))
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var writer := ZIPPacker.new(); writer.open(path); writer.start_file("manifest.json"); writer.write_file("{}".to_utf8_buffer()); writer.close_file(); writer.close()
+	var bytes := FileAccess.get_file_as_bytes(path)
+	for offset: int in range(bytes.size() - 4, -1, -1):
+		if bytes.decode_u32(offset) == 0x02014b50:
+			bytes.encode_u32(offset + 24, 0xF0000000)
+			break
+	var file := FileAccess.open(path, FileAccess.WRITE); file.store_buffer(bytes); file.close()
+	return path

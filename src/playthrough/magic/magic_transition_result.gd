@@ -11,6 +11,7 @@ var continuation: SessionContinuation
 var interaction: InteractionRequest
 var error_code: StringName
 var error_message: String
+var is_rejection: bool = false
 
 
 static func failed(code: StringName, message: String) -> MagicTransitionResult:
@@ -20,11 +21,18 @@ static func failed(code: StringName, message: String) -> MagicTransitionResult:
 	return result
 
 
+## Correctable player input: nothing was mutated and the prompt stays open.
+static func rejected(code: StringName, message: String) -> MagicTransitionResult:
+	var result := failed(code, message)
+	result.is_rejection = true
+	return result
+
+
 static func committed(workflow_result: SessionWorkflowResult, should_process_age_updates: bool = false) -> MagicTransitionResult:
 	if workflow_result == null:
 		return failed(&"invalid_workflow_result", "The magic workflow returned no result.")
 	if not workflow_result.ok:
-		return failed(workflow_result.error_code, workflow_result.error_message)
+		return rejected(workflow_result.error_code, workflow_result.error_message) if workflow_result.is_rejection else failed(workflow_result.error_code, workflow_result.error_message)
 	var result := MagicTransitionResult.new()
 	result.ok = true
 	result.completed = true

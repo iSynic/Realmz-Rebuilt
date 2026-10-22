@@ -8,6 +8,7 @@ var prompt_message_id: int
 var can_back_out: bool
 var max_times: int
 var caste_success: int
+var native_facts: ClassicRecordCatalog.SimpleFacts
 var _responses: Array[SimpleEncounterResponse] = []
 
 
