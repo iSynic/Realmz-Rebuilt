@@ -40,6 +40,7 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"combat_turn_delayed",
 	&"combat_turn_undone",
 	&"combatant_fumbled",
+	&"condition_damaged",
 	&"combat_attack_blocked",
 	&"combatant_retreated",
 	&"combat_persistent_field_created",
@@ -82,7 +83,7 @@ func begin(previous: GameView, events: Array[DomainEvent], final: GameView, redu
 		_frames.append(CombatPlaybackFrame.new(&"settle", 0.0))
 	else:
 		_append_next_actor_cue(hidden_combatant_ids)
-		_assign_camera_focus_ids()
+		CombatPlaybackViews.assign_camera_focus_ids(_frames)
 	if _frames.is_empty():
 		return false
 	_active = true
@@ -201,6 +202,8 @@ func _finish() -> void:
 
 func _has_playback_event(events: Array[DomainEvent]) -> bool:
 	for event: DomainEvent in events:
+		if event.kind == &"condition_damaged" and event.payload.get("combat", false) != true:
+			continue
 		if event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-auto-toggle":
 			continue
 		if event.kind in PLAYBACK_EVENT_KINDS:
@@ -255,7 +258,12 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 	match event.kind:
 		&"sound_requested", &"character_effect_requested":
 			if event.kind == &"sound_requested" and event.payload.get("playbackBoundary") == "defeat":
-				_defeat_sounds[String(event.payload.get("targetId", ""))] = event
+				var target_id: String = event.payload.get("targetId", "")
+				# Round damage commits its result before requesting the defeat cue.
+				if not _frames.is_empty() and _frames[-1].kind == &"defeat" and _frames[-1].target_id == target_id:
+					_frames[-1].sound_event = event
+				else:
+					_defeat_sounds[target_id] = event
 				return
 			var sound_frame := _new_frame(&"sound", SOUND_FRAME_SECONDS, positions, hidden)
 			sound_frame.sound_event = event
@@ -278,6 +286,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 		&"combatant_bled_to_death": _append_bleeding_result(event, positions, hidden, true)
 		&"combat_turn_delayed": _append_simple_result(event, positions, hidden, &"delay", "Delayed")
 		&"combatant_fumbled": _append_simple_result(event, positions, hidden, &"fumble", "Fumble")
+		&"condition_damaged": _append_condition_damage(event, positions, hidden)
 		&"combat_attack_blocked": _append_simple_result(event, positions, hidden, &"blocked", "Blocked")
 		&"combatant_retreated": _append_retreat(event, positions, hidden)
 		&"combat_summoned": _append_summon(event, positions, hidden)
@@ -300,7 +309,7 @@ func _append_field_change(event: DomainEvent, positions: Dictionary, hidden: Arr
 	if event.kind == &"combat_persistent_field_expired":
 		_visible_fields = _visible_fields.filter(func(field: PersistentCombatFieldView) -> bool: return field.slot != slot)
 		var expired_frame := _new_frame(&"field_changed", SPELL_EFFECT_SECONDS, positions, hidden)
-		expired_frame.to_coordinate = _payload_coordinate(event.payload.get("center"))
+		expired_frame.to_coordinate = CombatPlaybackViews.payload_coordinate(event.payload.get("center"))
 		expired_frame.display_text = "Persistent field expired"
 		_frames.append(expired_frame)
 		return
@@ -312,7 +321,7 @@ func _append_field_change(event: DomainEvent, positions: Dictionary, hidden: Arr
 				added = true
 				break
 	if not added and slot >= 0:
-		var center := _payload_coordinate(event.payload.get("center"))
+		var center := CombatPlaybackViews.payload_coordinate(event.payload.get("center"))
 		var field_state := PersistentCombatField.new(slot, String(event.payload.get("spellId", "unknown.field")), String(event.payload.get("casterId", "unknown.caster")), center, int(event.payload.get("rotation", 0)), int(event.payload.get("shape", 1)), int(event.payload.get("queueIcon", 1)), maxi(int(event.payload.get("power", 1)), 1), maxi(int(event.payload.get("classicTier", 0)), 0), maxi(int(event.payload.get("duration", 1)), 1), maxi(int(event.payload.get("phaseTurnIndex", 0)), 0))
 		var affected: Array[Vector2i] = []
 		for offset: Vector2i in SpellAreaRules.new().pattern(field_state.shape):
@@ -322,7 +331,7 @@ func _append_field_change(event: DomainEvent, positions: Dictionary, hidden: Arr
 		_visible_fields.append(PersistentCombatFieldView.new(field_state, field_state.spell_id, affected))
 	var frame := _new_frame(&"field_changed", SPELL_EFFECT_SECONDS, positions, hidden)
 	frame.actor_id = String(event.payload.get("casterId", ""))
-	frame.to_coordinate = _payload_coordinate(event.payload.get("center"))
+	frame.to_coordinate = CombatPlaybackViews.payload_coordinate(event.payload.get("center"))
 	frame.display_text = "Persistent field created"
 	_frames.append(frame)
 
@@ -337,7 +346,7 @@ func _append_summon(event: DomainEvent, positions: Dictionary, hidden: Array[Str
 	var monster_id := String(event.payload.get("monsterId", ""))
 	if monster_id.is_empty():
 		return
-	var coordinate := _payload_coordinate(event.payload.get("coordinate"))
+	var coordinate := CombatPlaybackViews.payload_coordinate(event.payload.get("coordinate"))
 	if coordinate.x < 0:
 		return
 	positions[monster_id] = coordinate
@@ -378,12 +387,12 @@ func _accelerate_frames(first_frame_index: int, automatic: bool) -> void:
 
 func _append_movement(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	var actor_id := String(event.payload.get("actorId", ""))
-	var from_coordinate := _payload_coordinate(event.payload.get("from"))
-	var to_coordinate := _payload_coordinate(event.payload.get("to"))
+	var from_coordinate := CombatPlaybackViews.payload_coordinate(event.payload.get("from"))
+	var to_coordinate := CombatPlaybackViews.payload_coordinate(event.payload.get("to"))
 	if from_coordinate.x < 0:
 		from_coordinate = _position_for(actor_id, positions)
 	if event.kind == &"combatants_swapped":
-		var target_id := String(event.payload.get("targetId", ""))
+		var target_id: String = event.payload.get("targetId", "")
 		if to_coordinate.x < 0:
 			to_coordinate = _position_for(target_id, positions)
 		if not actor_id.is_empty() and to_coordinate.x >= 0:
@@ -435,7 +444,7 @@ func _append_spell_cast(event: DomainEvent, positions: Dictionary, hidden: Array
 	cast.actor_id = String(event.payload.get("actorId", ""))
 	cast.target_id = String(event.payload.get("targetId", ""))
 	cast.from_coordinate = _position_for(cast.actor_id, positions)
-	cast.to_coordinate = _payload_coordinate(event.payload.get("areaCenter"))
+	cast.to_coordinate = CombatPlaybackViews.payload_coordinate(event.payload.get("areaCenter"))
 	if cast.to_coordinate.x < 0:
 		cast.to_coordinate = _position_for(cast.target_id, positions)
 	cast.effect_resource_id = int(event.payload.get("classicEffectResourceId", 0))
@@ -468,7 +477,7 @@ func _append_spell_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 			var effect := _new_frame(&"spell_effect", SPELL_RESOLUTION_FRAME_SECONDS, positions, hidden)
 			effect.actor_id = String(event.payload.get("actorId", ""))
 			effect.target_id = String(event.payload.get("targetId", ""))
-			effect.to_coordinate = _payload_coordinate(event.payload.get("areaCenter"))
+			effect.to_coordinate = CombatPlaybackViews.payload_coordinate(event.payload.get("areaCenter"))
 			if effect.to_coordinate.x < 0:
 				effect.to_coordinate = _position_for(effect.target_id, positions)
 			effect.effect_resource_id = int(effect_value)
@@ -533,7 +542,7 @@ func _append_multi_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
 	var result_kind := StringName(event.payload.get("result", "resisted"))
 	var text := "Resist" if result_kind == &"resisted" else "Destroyed" if result_kind == &"destroyed" else "Turned"
-	var target_id := String(event.payload.get("targetId", ""))
+	var target_id: String = event.payload.get("targetId", "")
 	var result := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
 	result.actor_id = String(event.payload.get("actorId", ""))
 	result.target_id = target_id
@@ -583,11 +592,32 @@ func _append_simple_result(event: DomainEvent, positions: Dictionary, hidden: Ar
 	_frames.append(frame)
 
 
+func _append_condition_damage(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var condition: int = event.payload.get("condition", -1)
+	if event.payload.get("combat", false) != true or condition not in [ConditionRules.POISONED, ConditionRules.DISEASED]:
+		return
+	var target_id: String = event.payload.get("characterId", event.payload.get("monsterId", ""))
+	var health: int = event.payload["health"]
+	var payload := {
+		"targetId": target_id, "damage": event.payload["amount"], "health": event.payload["health"],
+		"defeated": health <= 0,
+		"classicResultEffectResourceId": event.payload.get("classicResultEffectResourceId", 0),
+	}
+	var result := _append_result(DomainEvent.new(event.kind, payload), positions, hidden)
+	result.result_kind = &"condition_damage"
+	result.display_text = "%s: %d" % ["Poison" if condition == ConditionRules.POISONED else "Disease", result.display_amount]
+	if event.payload.has("soundRequest"):
+		var sound_request: Dictionary = event.payload["soundRequest"]
+		result.sound_event = DomainEvent.new(&"sound_requested", sound_request)
+
+
 func _append_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> CombatPlaybackFrame:
 	_backdrops.apply_result(event.payload)
 	var target_id := String(event.payload.get("resultTargetId", event.payload.get("targetId", "")))
 	var defeated := bool(event.payload.get("defeated", false))
-	if _visible_health.has(target_id):
+	if event.payload.has("health"):
+		_visible_health[target_id] = event.payload["health"]
+	elif _visible_health.has(target_id):
 		_visible_health[target_id] = int(_visible_health[target_id]) - int(event.payload.get("damage", 0)) + int(event.payload.get("healing", 0))
 	var result := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
 	result.set_result(event.payload)
@@ -627,24 +657,6 @@ func _append_next_actor_cue(hidden_combatant_ids: Array[String]) -> void:
 	_frames.append(cue)
 
 
-func _assign_camera_focus_ids() -> void:
-	var latest_focus_id := ""
-	for frame: CombatPlaybackFrame in _frames:
-		var frame_focus_id := frame.actor_id if not frame.actor_id.is_empty() else frame.target_id
-		if frame.kind in [&"result", &"spell_effect", &"defeat"] and not frame.target_id.is_empty():
-			frame_focus_id = frame.target_id
-		if not frame_focus_id.is_empty():
-			latest_focus_id = frame_focus_id
-		frame.camera_focus_id = latest_focus_id
-	var next_focus_id := ""
-	for index: int in range(_frames.size() - 1, -1, -1):
-		var frame := _frames[index]
-		if not frame.camera_focus_id.is_empty():
-			next_focus_id = frame.camera_focus_id
-		elif not next_focus_id.is_empty():
-			frame.camera_focus_id = next_focus_id
-
-
 func _new_frame(kind: StringName, duration: float, positions: Dictionary, hidden: Array[String]) -> CombatPlaybackFrame:
 	var frame := CombatPlaybackFrame.new(kind, duration * 100.0 / float(_speed_percent))
 	frame.combatant_positions = positions.duplicate(true)
@@ -662,21 +674,7 @@ func _position_for(combatant_id: String, positions: Dictionary) -> Vector2i:
 	var value: Variant = positions.get(combatant_id)
 	if value is Vector2i:
 		return value
-	var coordinate := _view_position(previous_view, combatant_id)
+	var coordinate := CombatPlaybackViews.combatant_position(previous_view, combatant_id)
 	if coordinate.x >= 0:
 		return coordinate
-	return _view_position(final_view, combatant_id)
-
-
-func _view_position(view: GameView, combatant_id: String) -> Vector2i:
-	if view == null or view.combat_view == null:
-		return Vector2i(-1, -1)
-	return BattlefieldPresentationGeometry.actor_position(view.combat_view, view.party_members, combatant_id)
-
-
-static func _payload_coordinate(value: Variant) -> Vector2i:
-	if value is Vector2i:
-		return value
-	if value is Array and value.size() == 2:
-		return Vector2i(int(value[0]), int(value[1]))
-	return Vector2i(-1, -1)
+	return CombatPlaybackViews.combatant_position(final_view, combatant_id)

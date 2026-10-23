@@ -32,14 +32,14 @@ function Invoke-GodotGate {
     if ($combined -match "SCRIPT ERROR:" -or $combined -match "Parse Error:") {
         throw "$Label emitted a GDScript error despite returning exit 0."
     }
-    if ($RejectTeardownLeaks -and ($combined -match "ObjectDB instances were leaked at exit" -or $combined -match "resources still in use at exit")) {
+    if ($RejectTeardownLeaks -and ($combined -match "ObjectDB instances? (?:was|were) leaked at exit" -or $combined -match "resources? still in use at exit")) {
         throw "$Label retained Godot objects or resources during process teardown."
     }
 }
 
 Invoke-GodotGate "Godot project import/script validation" @("--headless", "--path", $repoRoot, "--editor", "--quit")
 Invoke-GodotGate "Complete script compilation" @("--headless", "--path", $repoRoot, "--script", "res://tools/verify_script_compilation.gd")
-Invoke-GodotGate "Main scene smoke launch" @("--headless", "--path", $repoRoot, "--script", "res://tools/verification_tree.gd", "--quit-after", "5")
+Invoke-GodotGate -Label "Main scene smoke launch" -GodotArguments @("--headless", "--path", $repoRoot, "--script", "res://tools/verification_tree.gd", "--quit-after", "5") -RejectTeardownLeaks
 Invoke-GodotGate -Label "Headless test suite" -GodotArguments @("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd") -RejectTeardownLeaks
 Invoke-GodotGate "Providence-Rebuilt package alignment" @("--headless", "--path", $repoRoot, "--script", "res://tools/providence_alignment_probe.gd")
 Invoke-GodotGate "Bundled party-setup catalogs" @("--headless", "--path", $repoRoot, "--script", "res://tools/generate_setup_catalogs.gd", "--", "--check")

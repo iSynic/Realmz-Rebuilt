@@ -54,7 +54,10 @@ func _process_party(state: GameState, events: Array[DomainEvent]) -> void:
 	events.append_array(_context.conditions.tick_party_conditions(state.party))
 	for character: CharacterState in state.party.characters():
 		var alive := character.current_health > 0
-		events.append_array(_context.conditions.tick_character(character, true, _context.arithmetic))
+		var character_events := _context.conditions.tick_character(character, true, _context.arithmetic)
+		for event: DomainEvent in character_events:
+			_attach_condition_feedback(event)
+		events.append_array(character_events)
 		if alive and character.current_health <= 0:
 			_context.actions().mark_character_bleeding(state, character, true)
 			_context.automation().remove_defeated_position(state.combat, character.id, true)
@@ -126,7 +129,19 @@ func _collide(state: GameState, content: RealmzContent, actor_id: String, health
 
 
 static func _append_monster_effect(events: Array[DomainEvent], monster: MonsterState, index: int, amount: int, healed: bool) -> void:
-	events.append(DomainEvent.new(&"condition_healed" if healed else &"condition_damaged", {"monsterId": monster.id, "condition": index, "amount": amount, "health": monster.current_health, "combat": true}))
+	var event := DomainEvent.new(&"condition_healed" if healed else &"condition_damaged", {"monsterId": monster.id, "condition": index, "amount": amount, "health": monster.current_health, "combat": true})
+	_attach_condition_feedback(event)
+	events.append(event)
+
+
+static func _attach_condition_feedback(event: DomainEvent) -> void:
+	if event == null or event.kind != &"condition_damaged" or not event.payload.get("combat", false):
+		return
+	var condition: int = event.payload.get("condition", -1)
+	if condition != ConditionRules.POISONED and condition != ConditionRules.DISEASED:
+		return
+	event.payload["classicResultEffectResourceId"] = 165 if condition == ConditionRules.POISONED else 0
+	event.payload["soundRequest"] = {"soundId": 684, "waitForCompletion": false, "source": "classic-combat-condition"}
 
 
 func process_character_bleeding(state: GameState, character: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> void:

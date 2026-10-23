@@ -87,6 +87,7 @@ func _process(_delta: float) -> void:
 	var status := ResourceLoader.load_threaded_get_status(_load_path)
 	if status == ResourceLoader.THREAD_LOAD_LOADED:
 		var loaded := ResourceLoader.load_threaded_get(_load_path)
+		_load_requested = false
 		if _load_path == APPLICATION_SCRIPT_PATH:
 			_application_script_prime = loaded as Script
 			if _application_script_prime == null:
@@ -124,6 +125,11 @@ func _input(event: InputEvent) -> void:
 
 
 func _exit_tree() -> void:
+	if _load_requested:
+		# Finish and release the loader request even when startup closes before polling it.
+		ResourceLoader.load_threaded_get(_load_path)
+		_load_requested = false
+		_load_path = ""
 	if is_instance_valid(_application):
 		if _startup_diagnostics != null:
 			_startup_diagnostics.call("restore_overlay")
@@ -158,6 +164,8 @@ func _request_application_scene_load() -> void:
 	_load_path = APPLICATION_SCENE_PATH
 	if ResourceLoader.load_threaded_request(_load_path) != OK:
 		_fail_application_load("Application loading failed.")
+	else:
+		_load_requested = true
 
 
 func _initialize_after_first_draw() -> void:

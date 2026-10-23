@@ -44,6 +44,6 @@ if ($result.ExitCode -ne 0) {
 if ($combinedOutput -match "SCRIPT ERROR:" -or $combinedOutput -match "Parse Error:") {
     throw "Focused Godot tests emitted a GDScript error despite returning exit 0."
 }
-if ($combinedOutput -match "ObjectDB instances were leaked at exit" -or $combinedOutput -match "resources still in use at exit") {
+if ($combinedOutput -match "ObjectDB instances? (?:was|were) leaked at exit" -or $combinedOutput -match "resources? still in use at exit") {
     throw "Focused Godot tests retained objects or resources during process teardown."
 }

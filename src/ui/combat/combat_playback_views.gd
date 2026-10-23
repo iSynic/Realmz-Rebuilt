@@ -1,4 +1,4 @@
-## Chooses the detached pre-action view for one committed playback sequence.
+## Projects detached playback views, coordinates and recipient camera focus.
 class_name CombatPlaybackViews
 extends RefCounted
 
@@ -37,3 +37,37 @@ static func positions_for(view: GameView) -> Dictionary:
 	return result
 
 
+static func assign_camera_focus_ids(frames: Array[CombatPlaybackFrame]) -> void:
+	var latest_focus_id := ""
+	for frame: CombatPlaybackFrame in frames:
+		var frame_focus_id := frame.actor_id if not frame.actor_id.is_empty() else frame.target_id
+		if frame.kind in [&"result", &"spell_effect", &"defeat"] and not frame.target_id.is_empty():
+			frame_focus_id = frame.target_id
+		if not frame_focus_id.is_empty():
+			latest_focus_id = frame_focus_id
+		frame.camera_focus_id = latest_focus_id
+	var next_focus_id := ""
+	for index: int in range(frames.size() - 1, -1, -1):
+		var frame := frames[index]
+		if not frame.camera_focus_id.is_empty():
+			next_focus_id = frame.camera_focus_id
+		elif not next_focus_id.is_empty():
+			frame.camera_focus_id = next_focus_id
+
+
+static func payload_coordinate(value: Variant) -> Vector2i:
+	if value is Vector2i:
+		return value
+	if value is Array:
+		var coordinate: Array = value
+		if coordinate.size() == 2:
+			var x: int = coordinate[0]
+			var y: int = coordinate[1]
+			return Vector2i(x, y)
+	return Vector2i(-1, -1)
+
+
+static func combatant_position(view: GameView, combatant_id: String) -> Vector2i:
+	if view == null or view.combat_view == null:
+		return Vector2i(-1, -1)
+	return BattlefieldPresentationGeometry.actor_position(view.combat_view, view.party_members, combatant_id)

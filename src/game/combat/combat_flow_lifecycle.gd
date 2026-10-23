@@ -316,6 +316,12 @@ func apply_ally_selection(state: GameState, content: RealmzContent, selected_val
 		if monster == null:
 			return CombatFlowResult.failed(&"invalid_ally_selection", "The selected combatant is unavailable.")
 		monster.traitor = false
+		var loot_item_ids := monster.loot_item_ids()
+		var first_loot_item_id := loot_item_ids[0] if not loot_item_ids.is_empty() else ""
+		var carried_weapon := content.items.item_by_id(first_loot_item_id) if not first_loot_item_id.is_empty() else null
+		# Castle booty.c restores from items[0] when its native ID is below 200; an empty slot is native ID zero.
+		if (carried_weapon == null and first_loot_item_id.is_empty()) or (carried_weapon != null and carried_weapon.classic_id < 200):
+			monster.weapon_id = first_loot_item_id if carried_weapon != null else ""
 		retained.append(monster)
 	state.party.set_allies(retained)
 	if state.combat.classic_post_battle_sentinel == 8:

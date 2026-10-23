@@ -47,7 +47,7 @@ func include_effect(frame: CombatPlaybackFrame) -> void:
 
 
 func has_numeric_result() -> bool:
-	return display_amount > 0 and result_kind in [&"damage", &"elemental_damage", &"saved", &"healing"]
+	return display_amount > 0 and result_kind in [&"damage", &"elemental_damage", &"condition_damage", &"saved", &"healing"]
 
 
 func position_for(combatant_id: String) -> Vector2i:

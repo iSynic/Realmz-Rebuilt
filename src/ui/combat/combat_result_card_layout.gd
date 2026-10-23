@@ -26,9 +26,9 @@ static func measure(font: Font, frame: CombatPlaybackFrame, raster_scale: float 
 	var text_scale := float(result.size_percent) / 100.0
 	result.font_size = roundi(14.0 * result.raster_scale * text_scale)
 	result.saved_font_size = roundi(12.0 * result.raster_scale * text_scale)
-	result.numeric = frame.result_kind in [&"damage", &"elemental_damage"] or frame.result_kind == &"saved" and frame.display_amount > 0
+	result.numeric = frame.result_kind in [&"damage", &"elemental_damage", &"condition_damage"] or frame.result_kind == &"saved" and frame.display_amount > 0
 	result.saved = result.numeric and frame.result_kind == &"saved"
-	var text := str(frame.display_amount) if result.numeric else frame.display_text
+	var text := str(frame.display_amount) if result.numeric and frame.result_kind != &"condition_damage" else frame.display_text
 	if frame.result_kind == &"condition": text = text.trim_prefix("Condition applied: ")
 	if frame.result_kind == &"condition_cleared": text = text.trim_prefix("Condition cleared: ") + " cleared"
 	var wrap_width := 56.0
