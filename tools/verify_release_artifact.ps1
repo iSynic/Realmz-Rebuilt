@@ -208,7 +208,7 @@ if ($Preset -eq "macOS") {
             $sha = [System.Security.Cryptography.SHA256]::Create()
             try { $entryHash = [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant() }
             finally { $sha.Dispose(); $stream.Dispose() }
-            if ($entry.Length -ne (Get-Item -LiteralPath $diskPath).Length -or $entryHash -cne (Get-FileHash -LiteralPath $diskPath -Algorithm SHA256).Hash.ToLowerInvariant()) { throw "macOS archived scenario importer file differs from its verified package: $relative" }
+            if ($entry.Length -ne (Get-Item -LiteralPath $diskPath -Force).Length -or $entryHash -cne (Get-FileHash -LiteralPath $diskPath -Algorithm SHA256).Hash.ToLowerInvariant()) { throw "macOS archived scenario importer file differs from its verified package: $relative" }
         }
         $musicManifestEntries = @($archive.Entries | Where-Object { $_.FullName -match '(^|/)Realmz Rebuilt\.app/Contents/MacOS/music-importer/manifest\.json$' })
         if ($musicManifestEntries.Count -ne 1) { throw "macOS release archive must contain one native music importer inside Contents/MacOS/music-importer." }
