@@ -143,7 +143,7 @@ foreach ($workflow in @($ci, $releaseWorkflow)) {
     foreach ($windowsSmokeContract in @('$quotedLog =', '-ArgumentList "--headless --quit-after 2 --log-file $quotedLog"')) {
         if (-not $workflow.Contains($windowsSmokeContract)) { throw "Windows native smoke must preserve an absolute log path as one quoted argument: $windowsSmokeContract" }
     }
-    foreach ($importerContract in @("install_scenario_importer.ps1", "SCENARIO_IMPORTER_WINDOWS_X86_64_URL", "SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256", "SCENARIO_IMPORTER_LINUX_X86_64_URL", "SCENARIO_IMPORTER_LINUX_X86_64_SHA256", "SCENARIO_IMPORTER_MACOS_URL", "SCENARIO_IMPORTER_MACOS_SHA256", "-ImporterRoot `$importerRoot", "Contents/MacOS/importer")) {
+    foreach ($importerContract in @("install_scenario_importer.ps1", "compact_scenario_importer.py pack", "SCENARIO_IMPORTER_WINDOWS_X86_64_URL", "SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256", "SCENARIO_IMPORTER_LINUX_X86_64_URL", "SCENARIO_IMPORTER_LINUX_X86_64_SHA256", "SCENARIO_IMPORTER_MACOS_URL", "SCENARIO_IMPORTER_MACOS_SHA256", "-ImporterRoot `$importerRoot", "Contents/MacOS/importer")) {
         if (-not $workflow.Contains($importerContract)) { throw "Native release workflow is missing scenario importer packaging contract: $importerContract" }
     }
 }

@@ -100,7 +100,9 @@ runs:
         $result = Invoke-StreamingProcess -FilePath $godotPath -ArgumentList @('--headless', '--path', '.', '--export-release', '${{ inputs.preset }}', '${{ inputs.output }}') -Label '${{ inputs.export-label }}'
         [IO.File]::WriteAllLines($exportLog, $result.Output, [Text.UTF8Encoding]::new($false))
         if ($result.ExitCode -ne 0) { throw "Godot export failed with exit code $($result.ExitCode)." }
-        $importerSource = Join-Path $env:RUNNER_TEMP 'scenario-importer'
+        $importerSource = Join-Path $env:RUNNER_TEMP 'scenario-importer-runtime'
+        python tools/compact_scenario_importer.py pack --source (Join-Path $env:RUNNER_TEMP 'scenario-importer') --destination $importerSource --application src/storage/packages/application/realmz-classic-application-library.realmz2
+        if ($LASTEXITCODE -ne 0) { throw 'Could not compact scenario importer support against the bundled stock library.' }
         $musicImporterSource = Join-Path $env:RUNNER_TEMP 'music-importer-package'
         $copyImporter = {
           param([string]$Source, [string]$Destination)

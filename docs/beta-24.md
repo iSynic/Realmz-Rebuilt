@@ -28,6 +28,10 @@ With it off, cancellation keeps the Classic behavior, including the charge and m
 - Character Art is under Interface > Artwork; the music library remains under Sound & Music.
 - Search no longer changes the footer layout when toggled. With command titles hidden, it keeps the same compact width as Area Search.
 
+## Cleaner downloads
+
+The scenario importer now reuses the game's stock library and keeps its remaining support data in one archive. That removes thousands of loose files from the download without changing scenario data or import rules. Keep the complete `importer` folder with the game when extracting the release.
+
 ## Saves and updating
 
 Beta 24 writes save format v8 and reads v5-v8. **Earlier betas cannot open saves written by Beta 24.** Back up saves you want to keep using in an older build.

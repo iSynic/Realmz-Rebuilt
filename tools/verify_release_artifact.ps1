@@ -126,7 +126,7 @@ if ($artifact.Length -le 0 -or $pckBytes -le 0) { throw "$Preset release contain
 $importerBuildManifestPath = Join-Path $importerRootPath "build-manifest.json"
 if (-not (Test-Path -LiteralPath $importerBuildManifestPath -PathType Leaf)) { throw "The exported runtime is missing its verified adjacent scenario importer." }
 $importerManifest = Get-Content -Raw -LiteralPath $importerBuildManifestPath | ConvertFrom-Json
-if ($importerManifest.kind -cne "realmz-rebuilt.scenario-importer-build" -or [int]$importerManifest.formatVersion -ne 1) { throw "Scenario importer build manifest kind or version is unsupported." }
+if ($importerManifest.kind -cne "realmz-rebuilt.scenario-importer-build" -or [int]$importerManifest.formatVersion -ne 2) { throw "Scenario importer must use the compact stock-library-backed support format." }
 if ($importerManifest.buildIdentity.profile -cne "release") { throw "Artifacts require a release-profile Providence build identity." }
 if ([bool]$importerManifest.buildIdentity.sourceDirty -and -not $LocalTestBuild) { throw "Release artifacts require a clean Providence build identity; use -LocalTestBuild only for an unpublished local test export." }
 if (-not $LocalTestBuild) {
@@ -148,16 +148,10 @@ $importerBinaryPath = Join-Path $importerRootPath $expectedImporterBinary
 if ([string]$importerManifest.executable.path -cne $expectedImporterBinary -or -not (Test-Path -LiteralPath $importerBinaryPath -PathType Leaf)) { throw "Scenario importer executable does not match its native target." }
 if ((Get-Item -LiteralPath $importerBinaryPath).Length -ne [long]$importerManifest.executable.bytes -or (Get-FileHash -LiteralPath $importerBinaryPath -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$importerManifest.executable.sha256) { throw "Scenario importer executable does not match its build manifest." }
 & (Join-Path $PSScriptRoot "verify_scenario_importer_platform.ps1") -ExpectedPlatform $expectedImporterPlatform -Target $importerTarget -ExecutablePath $importerBinaryPath
-$expectedImporterFiles = @(".gdignore", "build-manifest.json", $expectedImporterBinary)
-foreach ($supportFile in $importerManifest.supportFiles) {
-    $relative = [string]$supportFile.path
-    if ([string]::IsNullOrWhiteSpace($relative) -or [IO.Path]::IsPathRooted($relative) -or $relative.Contains('\') -or @($relative.Split('/')).Contains('..')) { throw "Scenario importer manifest contains an unsafe support path." }
-    $path = Join-Path (Join-Path $importerRootPath "support") ($relative.Replace('/', [IO.Path]::DirectorySeparatorChar))
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Scenario importer support file is missing: $relative" }
-    $support = Get-Item -LiteralPath $path
-    if ($support.Length -ne [long]$supportFile.bytes -or (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne [string]$supportFile.sha256) { throw "Scenario importer support file failed its manifest check: $relative" }
-    $expectedImporterFiles += "support/$relative"
-}
+$applicationPath = Join-Path $repoRoot "src/storage/packages/application/realmz-classic-application-library.realmz2"
+& python (Join-Path $PSScriptRoot "compact_scenario_importer.py") verify --root $importerRootPath --application $applicationPath
+if ($LASTEXITCODE -ne 0) { throw "Scenario importer compact support verification failed." }
+$expectedImporterFiles = @(".gdignore", "build-manifest.json", $expectedImporterBinary, "support.zip")
 $importerPrefix = $importerRootPath.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
 $actualImporterFiles = @(Get-ChildItem -LiteralPath $importerRootPath -File -Recurse -Force | ForEach-Object { [IO.Path]::GetFullPath($_.FullName).Substring($importerPrefix.Length).Replace('\', '/') })
 if (@(Compare-Object ($expectedImporterFiles | Sort-Object) ($actualImporterFiles | Sort-Object)).Count -ne 0) { throw "Scenario importer directory contains unexpected or missing files." }
@@ -204,8 +198,17 @@ if ($Preset -eq "macOS") {
         $importerManifestEntries = @($archive.Entries | Where-Object { $_.FullName -match '(^|/)Realmz Rebuilt\.app/Contents/MacOS/importer/build-manifest\.json$' })
         if ($importerManifestEntries.Count -ne 1) { throw "macOS release archive must contain one importer inside Contents/MacOS." }
         $appImporterPrefix = $importerManifestEntries[0].FullName.Substring(0, $importerManifestEntries[0].FullName.Length - "build-manifest.json".Length)
+        $actualArchivedImporterFiles = @($archive.Entries | Where-Object { $_.FullName.StartsWith($appImporterPrefix, [StringComparison]::Ordinal) -and -not $_.FullName.EndsWith("/") } | ForEach-Object { $_.FullName.Substring($appImporterPrefix.Length) })
+        if (@(Compare-Object ($expectedImporterFiles | Sort-Object) ($actualArchivedImporterFiles | Sort-Object)).Count -ne 0) { throw "macOS release archive contains unexpected or missing scenario importer files." }
         foreach ($relative in $expectedImporterFiles) {
             if (@($archive.Entries | Where-Object { $_.FullName -ceq ($appImporterPrefix + $relative) }).Count -ne 1) { throw "macOS release archive is missing importer file $relative inside Contents/MacOS/importer." }
+            $entry = $archive.GetEntry($appImporterPrefix + $relative)
+            $diskPath = Join-Path $importerRootPath $relative
+            $stream = $entry.Open()
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            try { $entryHash = [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant() }
+            finally { $sha.Dispose(); $stream.Dispose() }
+            if ($entry.Length -ne (Get-Item -LiteralPath $diskPath).Length -or $entryHash -cne (Get-FileHash -LiteralPath $diskPath -Algorithm SHA256).Hash.ToLowerInvariant()) { throw "macOS archived scenario importer file differs from its verified package: $relative" }
         }
         $musicManifestEntries = @($archive.Entries | Where-Object { $_.FullName -match '(^|/)Realmz Rebuilt\.app/Contents/MacOS/music-importer/manifest\.json$' })
         if ($musicManifestEntries.Count -ne 1) { throw "macOS release archive must contain one native music importer inside Contents/MacOS/music-importer." }
@@ -268,6 +271,8 @@ $manifest = [ordered]@{
         executable = $importerManifest.executable
         buildIdentity = $importerManifest.buildIdentity
         supportFiles = $importerManifest.supportFiles
+        supportArchive = $importerManifest.supportArchive
+        supportApplication = $importerManifest.supportApplication
     }
     musicImporter = [ordered]@{
         converter = $musicManifest.converter

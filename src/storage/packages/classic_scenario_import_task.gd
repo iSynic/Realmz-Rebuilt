@@ -33,6 +33,8 @@ var _preparation: Thread
 var _executable: String = ""
 var _process_driver: ProcessDriver = ProcessDriver.new()
 var _startup_file: String = ""
+var _preparation_mutex: Mutex = Mutex.new()
+var _preparation_cancelled: bool = false
 
 
 func _init(process_driver: ProcessDriver = null) -> void:
@@ -54,6 +56,9 @@ func start(directory: String, job_parent: String, menu_selection: int, importer_
 	startup_candidates.clear()
 	report_path = ""
 	_completed = false
+	_preparation_mutex.lock()
+	_preparation_cancelled = false
+	_preparation_mutex.unlock()
 	_event_offset = 0
 	if OS.has_feature("android"):
 		return _fail("Classic folder import is unavailable in the Android preview. Use the bundled scenarios.", &"android-preview.capability-unavailable")
@@ -91,9 +96,6 @@ func start(directory: String, job_parent: String, menu_selection: int, importer_
 
 
 func _prepare_job(root: String, directory: String) -> String:
-	var verification := _verify_bundle(root)
-	if not verification.is_empty():
-		return verification
 	var application_path := _job_root.path_join("application.realmz2")
 	var application := FileAccess.open(application_path, FileAccess.WRITE)
 	if application == null:
@@ -104,7 +106,11 @@ func _prepare_job(root: String, directory: String) -> String:
 	application.close()
 	if write_error != OK:
 		return "Could not write the application library for import (error %d)." % write_error
-	var request := {"formatVersion": 1, "sourceDirectory": directory, "outputDirectory": _job_root.path_join("conversion"), "supportDirectory": root.path_join("support"), "applicationPackage": application_path, "applicationLibraryIdentity": {"campaignId": ApplicationLibraryIdentity.CAMPAIGN_ID, "packageHash": ApplicationLibraryIdentity.PACKAGE_HASH}}
+	var support := ClassicImporterSupport.new()
+	var verification := support.prepare(root, _job_root.path_join("support"), application_path, _executable, _is_preparation_cancelled)
+	if not verification.is_empty():
+		return verification
+	var request := {"formatVersion": 1, "sourceDirectory": directory, "outputDirectory": _job_root.path_join("conversion"), "supportDirectory": support.directory, "applicationPackage": application_path, "applicationLibraryIdentity": {"campaignId": ApplicationLibraryIdentity.CAMPAIGN_ID, "packageHash": ApplicationLibraryIdentity.PACKAGE_HASH}}
 	request["nativeMenuSelection"] = native_menu_selection
 	if not _startup_file.is_empty():
 		request["startupFile"] = _startup_file
@@ -160,9 +166,19 @@ func cancel() -> void:
 	if state != &"running":
 		return
 	state = &"cancelled"
+	_preparation_mutex.lock()
+	_preparation_cancelled = true
+	_preparation_mutex.unlock()
 	message = "Scenario import cancelled."
 	if _pid > 0 and _process_driver.is_process_running(_pid):
 		_process_driver.kill_process(_pid)
+
+
+func _is_preparation_cancelled() -> bool:
+	_preparation_mutex.lock()
+	var cancelled := _preparation_cancelled
+	_preparation_mutex.unlock()
+	return cancelled
 
 
 func close() -> void:
@@ -299,25 +315,6 @@ func recover_abandoned_jobs(parent: String) -> void:
 		var owner: Variant = _parse_json(FileAccess.get_file_as_string(path.path_join("owner.json")))
 		if owner is Dictionary and owner.get("formatVersion") == 1 and not OS.is_process_running(int(owner.get("processId", -1))) and not OS.is_process_running(int(owner.get("converterId", -1))):
 			_remove_job(path)
-
-
-func _verify_bundle(root: String) -> String:
-	var manifest: Variant = _parse_json(FileAccess.get_file_as_string(root.path_join("build-manifest.json")))
-	if not manifest is Dictionary or manifest.get("formatVersion") != 1 or not manifest.get("executable") is Dictionary or not manifest.get("supportFiles") is Array:
-		return "The scenario importer build manifest is missing or invalid. Reinstall Rebuilt."
-	var executable: Dictionary = manifest.executable
-	if str(executable.get("path", "")) != _executable.get_file() or FileAccess.get_sha256(_executable) != str(executable.get("sha256", "")):
-		return "The scenario importer executable failed its integrity check. Reinstall Rebuilt."
-	for value: Variant in manifest.supportFiles:
-		if not value is Dictionary:
-			return "The scenario importer support manifest is invalid."
-		var relative := str(value.get("path", ""))
-		if relative.is_empty() or relative.is_absolute_path() or ".." in relative.split("/") or relative.contains("\\"):
-			return "The scenario importer support manifest contains an unsafe path."
-		var path := root.path_join("support").path_join(relative)
-		if not FileAccess.file_exists(path) or FileAccess.get_sha256(path) != str(value.get("sha256", "")):
-			return "Scenario importer support failed its integrity check: %s" % relative
-	return ""
 
 
 func _parse_json(text: String) -> Variant:
