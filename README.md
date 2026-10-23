@@ -8,7 +8,7 @@ The old scenarios are more than maps and dialogue. They depend on a whole game's
 
 [Download the current beta for Windows, Linux, or macOS](https://github.com/iSynic/Realmz-Rebuilt/releases). Download the archive for your platform, extract it, and launch Realmz Rebuilt. The release includes the content needed for its bundled scenarios.
 
-[Beta 25 release notes](docs/beta-25.md) cover poison and disease feedback, retained allies' weapon recovery, startup cleanup, and save compatibility.
+[Beta 25 release notes](docs/beta-25.md) cover poison and disease feedback, retained allies' weapon recovery, resting in Trouble in the Sword Lands, startup cleanup, and save compatibility.
 
 You can assemble a party and head into overland maps, 2D and first-person dungeons, authored encounters, and tactical battles. Inventory, spells, treasure, services, and saving and loading are part of the game. You can use a keyboard and mouse or play entirely with a controller. If you're starting with an empty character vault, you'll also get editable copies of six Classic starter characters.
 

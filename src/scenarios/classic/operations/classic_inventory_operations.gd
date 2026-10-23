@@ -76,8 +76,6 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	match int(values[2]):
 		0:
 			return _branch_to_destination(values[1], values[4], action.gosub)
-		1:
-			return ScenarioRuntimeOperationResult.completed(false)
 		2:
 			var message := _content.scenario_records.message_by_id(values[4])
 			if message == null:
@@ -85,7 +83,8 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 					return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.finish())
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic item branch references unavailable message %d." % values[4])
 			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], ScenarioVmDirective.finish())
-	return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item possession branch has an invalid failure mode.")
+	# Castle continues when the absent-item mode is neither 0 nor 2.
+	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_on_item_result(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:

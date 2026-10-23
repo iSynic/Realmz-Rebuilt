@@ -125,6 +125,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _exit_tree() -> void:
+	_launch_transition.stop()
+	_launch_music.stop()
 	if _load_requested:
 		# Finish and release the loader request even when startup closes before polling it.
 		ResourceLoader.load_threaded_get(_load_path)

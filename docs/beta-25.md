@@ -1,17 +1,18 @@
 # Realmz Rebuilt Beta 25
 
-You can now see poison and disease damage as it happens in combat. Allies you keep after a battle also recover their weapon when the Classic rules allow it, so a fumble no longer leaves them unarmed in later fights.
+You can now see poison and disease damage as it happens in combat. Allies you keep after a battle also recover their weapon when the Classic rules allow it, so a fumble no longer leaves them unarmed in later fights. Resting past midnight in Trouble in the Sword Lands also continues normally.
 
 [Realmz Rebuilt downloads for Windows, Linux, and macOS](https://github.com/iSynic/Realmz-Rebuilt/releases). Extract the complete archive and keep its importer and music-importer folders with the game. This release contains desktop builds only; no Android APK is included.
 
-## Combat fixes
+## Combat and adventure fixes
 
 - **Poison and disease feedback:** combat now shows the condition name and damage at the affected character or monster, with the appropriate sound. Lethal damage appears before the defeat result. Reduced Motion and Skip retain the result in the combat account. This makes the existing damage visible; it does not change damage, condition durations, or random rolls. Addresses [#20](https://github.com/iSynic/Realmz-Rebuilt/issues/20).
 - **Retained allies' weapons:** fixed the missing post-battle weapon recovery for surviving allies you choose to keep. Recovery follows the rules in the Realmz Castle codebase and preserves their carried loot. Addresses [#21](https://github.com/iSynic/Realmz-Rebuilt/issues/21).
+- **Resting in Trouble in the Sword Lands:** fixed an item check in its daily script that could stop the adventure when resting past midnight. Load a save made before the fault to continue; no campaign update is needed. Addresses [#23](https://github.com/iSynic/Realmz-Rebuilt/issues/23).
 
 ## Startup cleanup
 
-Closing the game during startup now releases the outstanding background load cleanly. The startup check also catches the teardown warning that previously slipped through verification.
+Closing the game during startup now releases its background load and audio cleanly. The startup check also catches the teardown warning that previously slipped through verification.
 
 ## Saves and updating
 
