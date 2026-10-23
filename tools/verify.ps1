@@ -39,7 +39,7 @@ function Invoke-GodotGate {
 
 Invoke-GodotGate "Godot project import/script validation" @("--headless", "--path", $repoRoot, "--editor", "--quit")
 Invoke-GodotGate "Complete script compilation" @("--headless", "--path", $repoRoot, "--script", "res://tools/verify_script_compilation.gd")
-Invoke-GodotGate -Label "Main scene smoke launch" -GodotArguments @("--headless", "--path", $repoRoot, "--script", "res://tools/verification_tree.gd", "--quit-after", "5") -RejectTeardownLeaks
+Invoke-GodotGate -Label "Main scene smoke launch" -GodotArguments @("--headless", "--verbose", "--path", $repoRoot, "--script", "res://tools/verification_tree.gd", "--quit-after", "5") -RejectTeardownLeaks
 Invoke-GodotGate -Label "Headless test suite" -GodotArguments @("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd") -RejectTeardownLeaks
 Invoke-GodotGate "Providence-Rebuilt package alignment" @("--headless", "--path", $repoRoot, "--script", "res://tools/providence_alignment_probe.gd")
 Invoke-GodotGate "Bundled party-setup catalogs" @("--headless", "--path", $repoRoot, "--script", "res://tools/generate_setup_catalogs.gd", "--", "--check")
