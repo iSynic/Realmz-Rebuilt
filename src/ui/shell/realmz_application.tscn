@@ -6,7 +6,6 @@
 [ext_resource type="PackedScene" path="res://src/ui/shell/game_shell.tscn" id="4_shell"]
 [ext_resource type="Script" uid="uid://3njyl4c48r3i" path="res://src/ui/shared/media/classic_audio_presenter.gd" id="5_lvslj"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png" id="6_stone"]
-[ext_resource type="Theme" path="res://src/ui/shared/style/classic_ui_theme.tres" id="7_theme"]
 [ext_resource type="Script" path="res://src/ui/combat/classic_battlefield_presenter.gd" id="8_p3gde"]
 [ext_resource type="Script" path="res://src/app/startup/startup_route_bridge.gd" id="9_startup"]
 [ext_resource type="PackedScene" path="res://src/ui/shared/movement_route_preview.tscn" id="10_movement"]
@@ -35,7 +34,6 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_application")
-theme = ExtResource("7_theme")
 
 [node name="Background" type="ColorRect" parent="." unique_id=968727885]
 layout_mode = 1

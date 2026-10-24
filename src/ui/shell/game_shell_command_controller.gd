@@ -8,6 +8,9 @@ const CONTEXTUAL_CONTROL_SOUND_ID := 141
 
 var _owner_ref: WeakRef
 var _buttons: Dictionary = {}
+var _fixed_buttons: Dictionary = {}
+var _modular_buttons: Dictionary = {}
+var _bound_modular := false
 var _configured_definitions: Dictionary = {}
 var _held_command: StringName = &""
 var _held_command_source: StringName = &""
@@ -38,13 +41,15 @@ func initialize() -> void:
 			continue
 		var button := node as BaseButton
 		var command_id := StringName(button.get_meta("shell_command_id"))
-		_buttons[command_id] = button
+		var deck := _modular_buttons if _owner().hud.is_ancestor_of(button) else _fixed_buttons
+		deck[command_id] = button
 		button.set_meta("focus_key", "command:%s" % command_id)
 		if bool(ClassicCommandCatalog.command(command_id).get("hold_repeat", false)):
 			button.button_down.connect(_begin_held_command.bind(command_id))
 			button.button_up.connect(_on_button_up)
 		else:
 			button.connect("command_requested", activate)
+	_buttons = _fixed_buttons
 
 
 func present(game_view: GameView) -> void:
@@ -56,6 +61,11 @@ func rebuild() -> void:
 	var owner := _owner()
 	if not owner.is_node_ready() or owner.layout_profile == null:
 		return
+	if _bound_modular != owner.hud.active:
+		_stop_held_command()
+		_bound_modular = owner.hud.active
+		_buttons = _modular_buttons if _bound_modular else _fixed_buttons
+		_configured_definitions.clear()
 	for button: BaseButton in _buttons.values():
 		button.hide()
 	var context: StringName = owner.navigator.current_screen()

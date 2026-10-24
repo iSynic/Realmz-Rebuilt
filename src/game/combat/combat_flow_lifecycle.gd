@@ -447,6 +447,7 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 func finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
 	state.prune_combat_auto_characters()
 	var combat := state.combat
+	combat.reconcile_classic_counters(state.party)
 	if combat.round_cursor != null or not combat.spell_runtime.pending_death_macro_id().is_empty() or not combat.spell_runtime.macro_actor_id().is_empty():
 		return false
 	var enemies_alive := false
@@ -459,6 +460,8 @@ func finish_if_resolved(state: GameState, content: RealmzContent, events: Array[
 			enemies_alive = true
 			break
 	var party_alive := has_loyal_battlefield_character(state)
+	if combat.classic_counters_available:
+		enemies_alive = combat.classic_kill_count < combat.classic_enemy_count
 	if enemies_alive and party_alive:
 		return false
 	var outcome: StringName = &"victory" if party_alive else &"retreated" if has_living_retreated_character(state) else &"defeat"

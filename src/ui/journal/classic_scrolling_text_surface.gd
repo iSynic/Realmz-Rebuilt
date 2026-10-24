@@ -28,7 +28,7 @@ var _fonts: Dictionary = {}
 var _display_text: String
 var _style_bytes := PackedByteArray()
 var _theme_refresh_pending := false
-var _narrative_override: Font
+var _role_font_signature: Array = []
 var _narrative_scale: float = 1.0
 
 
@@ -66,7 +66,8 @@ func present_text(text: String, style_bytes: PackedByteArray = PackedByteArray()
 		return
 	_display_text = text
 	_style_bytes = style_bytes
-	_narrative_override = get_theme_font(&"normal_font", &"ClassicNarrative") if get_theme_constant(&"custom_font_selected", &"ClassicNarrative") == 1 else null
+	_role_font_signature = _resolved_font_signature()
+	_fonts.clear()
 	var profile := UiSizing.profile_for(self)
 	_narrative_scale = profile.narrative_font_scale if profile != null else 1.0
 	_text.clear()
@@ -197,28 +198,28 @@ func _font_for_role(role: StringName) -> Font:
 		return get_theme_font(&"normal_font", &"ClassicNarrative")
 	if _fonts.has(role):
 		return _fonts[role] as Font
-	var path := ClassicTypography.THELDROW_PATH
+	var source := get_theme_font(&"font", &"Label")
 	match role:
 		FONT_ROLE_ORNAMENT:
-			path = ClassicTypography.BLACK_CHANCERY_PATH
+			source = get_theme_font(&"font", &"ClassicHeading")
 		FONT_ROLE_UTILITY:
-			path = ClassicTypography.CLASSIC_UTILITY_PATH
+			source = get_theme_font(&"font", &"ClassicUtility")
 		FONT_ROLE_CHICAGO:
-			path = ClassicTypography.CHICAGO_PATH
-	var source := load(path) as Font
-	if source == null and role != FONT_ROLE_BODY:
-		source = load(ClassicTypography.THELDROW_PATH) as Font
+			source = get_theme_font(&"font", &"Classic3DHelp")
 	_fonts[role] = source
 	return source
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_THEME_CHANGED and _text != null and not _theme_refresh_pending:
-		var chosen := get_theme_font(&"normal_font", &"ClassicNarrative") if get_theme_constant(&"custom_font_selected", &"ClassicNarrative") == 1 else null
-		if chosen == _narrative_override:
+		if _resolved_font_signature() == _role_font_signature:
 			return
 		_theme_refresh_pending = true
 		_refresh_text_theme.call_deferred()
+
+
+func _resolved_font_signature() -> Array:
+	return [get_theme_constant(&"custom_font_selected", &"ClassicNarrative"), get_theme_font(&"normal_font", &"ClassicNarrative"), get_theme_font(&"font", &"Label"), get_theme_font(&"font", &"ClassicHeading"), get_theme_font(&"font", &"ClassicUtility"), get_theme_font(&"font", &"Classic3DHelp")]
 
 
 func _refresh_text_theme() -> void:

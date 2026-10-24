@@ -69,7 +69,7 @@ func focus_selected_spell() -> bool:
 		return false
 	var selected := root.find_child("KnownSpell_%s" % _selected_spell_id.validate_node_name(), true, false) as Control
 	if selected == null or not selected.is_visible_in_tree() or selected.focus_mode == Control.FOCUS_NONE:
-		selected = root.find_child("EncounterCatalogCancel" if _encounter_mode else "RouteBackAction", true, false) as Control
+		selected = root.find_child("EncounterCatalogCancel" if _encounter_mode else "SpellsBackAction", true, false) as Control
 	if selected == null or not selected.is_visible_in_tree():
 		return false
 	selected.grab_focus()

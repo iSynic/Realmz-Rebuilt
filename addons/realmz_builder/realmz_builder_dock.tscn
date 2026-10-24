@@ -37,12 +37,12 @@ layout_mode = 2
 [node name="ApplyPreview" type="Button" parent="PreviewActions"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Preview"
+text = "Sample state"
 
 [node name="ClearPreview" type="Button" parent="PreviewActions"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Clear"
+text = "Clear samples"
 
 [node name="Rule" type="HSeparator" parent="."]
 layout_mode = 2
@@ -70,3 +70,8 @@ text = "Detached view"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Owning test"
+
+[node name="AuthoringScene" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open owning screen"

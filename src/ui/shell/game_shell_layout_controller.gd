@@ -26,6 +26,9 @@ var _bottom_region: PanelContainer
 var _picture_stage: Control
 var _navigator: ScreenNavigator
 var _effect_slots: Array[TextureRect] = []
+var _authored_roster_width: float
+var _authored_footer_height: float
+var _authored_command_width: float
 
 
 func _init(shell: Control) -> void:
@@ -49,19 +52,53 @@ func _init(shell: Control) -> void:
 	_bottom_region = shell.get_node("%BottomRegion") as PanelContainer
 	_picture_stage = shell.get_node("%PictureStage") as Control
 	_navigator = shell.get_node("%ScreenNavigator") as ScreenNavigator
+	_authored_roster_width = _party_roster.offset_right - _party_roster.offset_left
+	_authored_footer_height = _bottom_region.offset_bottom - _bottom_region.offset_top
+	_authored_command_width = _world_command_panel.custom_minimum_size.x
 
 
 func set_effect_slots(effect_slots: Array[TextureRect]) -> void:
 	_effect_slots = effect_slots
 
 
+func bind_hud_content(shell: GameShell, modular: bool) -> void:
+	if modular:
+		_party_roster = shell.hud.content(0) as ClassicPartyRoster
+		_narrative_well = shell.hud.content(1) as PanelContainer
+		_world_command_panel = shell.hud.content(2) as PanelContainer
+		_command_panel = shell.hud.content(3) as PanelContainer
+		_facts = _narrative_well.get_node("NarrativeColumn/Facts") as GridContainer
+	else:
+		_party_roster = shell.get_node("%PartyRoster") as ClassicPartyRoster
+		_narrative_well = shell.get_node("%NarrativeWell") as PanelContainer
+		_world_command_panel = shell.get_node("%WorldCommandPanel") as PanelContainer
+		_command_panel = shell.get_node("%CommandPanel") as PanelContainer
+		_facts = shell.get_node("%Facts") as GridContainer
+	_world_command_column = _world_command_panel.get_node("WorldCommandColumn") as VBoxContainer
+	_party_effects_row = _command_panel.get_node("PartyEffectsRow") as BoxContainer
+	_party_command_column = _party_effects_row.get_node("PartyCommandColumn") as VBoxContainer
+	_world_command_grid = shell.hud.world_grid if modular else shell.get_node("%WorldCommandGrid") as GridContainer
+	_world_command_lower_grid = _world_command_panel.get_node("WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid") as GridContainer
+	_command_grid = shell.hud.party_grid() if modular else shell.get_node("%CommandGrid") as GridContainer
+	_torch_dock = _party_effects_row.get_node("TorchDock") as PanelContainer
+	_effects_panel = shell.hud.effects_panel if modular else shell.get_node("%EffectsPanel") as PanelContainer
+
+
 func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameView) -> UiLayoutProfile:
 	var profile := UiLayoutProfile.for_viewport(shell_size, settings.ui_scale_mode, settings.display_scaling_mode, settings.interface_text_scale, settings.narrative_text_scale)
+	var shell := _shell_ref.get_ref() as GameShell
+	if profile.id == UiLayoutProfile.WIDE:
+		profile.party_width = _authored_roster_width * profile.ui_scale
+		profile.bottom_height = _authored_footer_height * profile.ui_scale
+		profile.command_width = _authored_command_width * profile.ui_scale
+	else:
+		profile.party_width = (shell.compact_roster_width * maxf(1.0, settings.interface_text_scale) + shell.compact_roster_text_growth * maxf(0.0, settings.interface_text_scale - 1.0)) * profile.ui_scale
+		profile.bottom_height = shell.compact_footer_height * profile.ui_scale
+		profile.command_width = shell.compact_command_width * profile.ui_scale
 	var canvas_rect := profile.application_rect
 	var viewport_size := canvas_rect.size
 	var origin := canvas_rect.position
 	profile.menu_height = 0.0
-	var shell := _shell_ref.get_ref() as GameShell
 	var modular := shell.hud.prepare(settings, game_view, _navigator.current_screen(), shell.pause_active)
 	if modular:
 		_apply_modular(profile)

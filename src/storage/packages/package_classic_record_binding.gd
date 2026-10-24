@@ -87,8 +87,22 @@ static func validate_source_receipt(archive: ZIPReader, records: ClassicRecordCa
 		if not program_fact_error.is_empty(): return program_fact_error
 		var player_map_error := PackageClassicPlayerMapBinding.verify_effective_source(records, source, effective)
 		if not player_map_error.is_empty(): return player_map_error
+		if source.native_path in ["Data RD", "Data RDD"] and not _bind_initial_darkness(records, source, effective):
+			return "The effective native map source has invalid darkness-byte facts."
 		seen[row.nativePath] = true
 	return "" if seen.size() == records.sources().size() else "The native record catalog has undeclared source files."
+
+
+static func _bind_initial_darkness(records: ClassicRecordCatalog, source: ClassicRecordCatalog.Source, effective: PackedByteArray) -> bool:
+	var level_type := &"land" if source.native_path == "Data RD" else &"dungeon"
+	var family := "land-random-levels" if level_type == &"land" else "dungeon-random-levels"
+	for layout: ClassicRecordCatalog.Layout in source.layouts:
+		if layout.family != family: continue
+		if layout.record_bytes != 644 or layout.complete_records * 644 + layout.trailing_bytes != effective.size(): return false
+		for index: int in layout.complete_records:
+			records.set_verified_initial_map_darkness_byte(level_type, index, effective[index * 644 + 521])
+		return true
+	return false
 
 
 static func _apply_source_edits(original: PackedByteArray, source: ClassicRecordCatalog.Source) -> Dictionary:

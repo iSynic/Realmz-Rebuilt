@@ -70,7 +70,7 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 21 requires a five-value Extra Code row.")
 	var values := action.extra_code
-	var possessed := _party_has_classic_item(absi(values[0]))
+	var possessed := _party_has_classic_item(values[0] if _content.package_schema_version >= 7 else absi(values[0]))
 	if possessed:
 		return _branch_to_destination(values[1], values[3], action.gosub)
 	match int(values[2]):
@@ -90,12 +90,10 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 func _branch_on_item_result(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 38 requires a five-value Extra Code row.")
-	var possessed := _party_has_classic_item(absi(action.extra_code[0]))
+	var possessed := _party_has_classic_item(action.extra_code[0] if _content.package_schema_version >= 7 else absi(action.extra_code[0]))
 	var test_mode := action.extra_code[1]
 	if test_mode == 2 or test_mode == 0 and not possessed or test_mode == 1 and possessed:
 		return _branch_from_values(action.extra_code, false, context)
-	if test_mode not in [0, 1, 2]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item result branch has an invalid test mode.")
 	return ScenarioRuntimeOperationResult.completed(false)
 
 
@@ -112,6 +110,8 @@ func _branch_on_item_charges(action: ClassicActionDefinition) -> ScenarioRuntime
 	var matched := total_charges >= action.extra_code[2]
 	var target_id := action.extra_code[3] if matched else action.extra_code[4]
 	var event := DomainEvent.new(&"item_charge_branch_checked", {"classicItemId": action.extra_code[0], "totalCharges": total_charges, "minimumCharges": action.extra_code[2], "matched": matched, "targetMode": action.extra_code[1], "targetId": target_id, "source": "classic"})
+	if matched and target_id == -1 and action.extra_code[1] in [1, 2]:
+		return ScenarioRuntimeOperationResult.completed(matched, [event], ScenarioVmDirective.push_classic_return() if action.gosub else null)
 	var branch := _branch_to_destination(action.extra_code[1], target_id, action.gosub)
 	branch.events.append(event)
 	return branch
@@ -120,6 +120,9 @@ func _branch_on_item_charges(action: ClassicActionDefinition) -> ScenarioRuntime
 func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 22 requires a five-value Extra Code row.")
+	# Castle's unmatched operation does not read definitions or alter carried items.
+	if action.extra_code[2] not in [1, 2, 3]:
+		return ScenarioRuntimeOperationResult.completed(0)
 	var native_source := action.extra_code[0] if _content.classic_records != null else absi(action.extra_code[0])
 	var source := _content.items.item_by_classic_id(native_source)
 	if source == null:
@@ -130,8 +133,8 @@ func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationR
 	var maximum := action.extra_code[1]
 	if _content.classic_records != null and maximum <= 0:
 		return ClassicCompatibility.skip(&"item-mutation-empty-count", "Data NI", native_source)
-	if maximum < 0 or operation not in [1, 2, 3]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_item_mutation", "Classic item mutation has an invalid count or operation.")
+	if maximum < 0:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_item_mutation", "Classic item mutation has an invalid count.")
 	var native_replacement := action.extra_code[4] if _content.classic_records != null else absi(action.extra_code[4])
 	var replacement := _content.items.item_by_classic_id(native_replacement) if operation == 3 else null
 	if operation == 3 and replacement == null:
@@ -197,7 +200,8 @@ func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecu
 			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.finish_timeline())
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
+	# Castle's shared result-branch switch has no action for other modes.
+	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -215,7 +219,7 @@ func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioR
 		0: return _branch_xap(target_id, gosub)
 		1: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"simple", target_id, gosub))
 		2: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"complex", target_id, gosub))
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is unavailable." % mode)
+	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

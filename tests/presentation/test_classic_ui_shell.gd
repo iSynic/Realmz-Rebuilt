@@ -8,6 +8,7 @@ const InteractionLayoutPolicyScript := preload("res://src/ui/shared/interactions
 func run() -> void:
 	await _test_indoor_party_marker()
 	await _test_pause_menu_contracts()
+	await _test_authored_hud_switch()
 	_test_startup_party_setup_composition()
 	_test_package_operation_presentation(); _test_interaction_layout_policy(); _test_classic_click_modal()
 	await _test_primary_workspace_lifecycle()
@@ -53,7 +54,7 @@ func _test_pause_menu_contracts() -> void:
 	var host := Control.new()
 	host.size = Vector2(1280.0, 720.0)
 	(Engine.get_main_loop() as SceneTree).root.add_child(host)
-	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell
+	var shell := (load("res://src/ui/shell/game_shell.tscn") as PackedScene).instantiate() as GameShell
 	shell.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	host.add_child(shell)
 	await (Engine.get_main_loop() as SceneTree).process_frame
@@ -96,6 +97,85 @@ func _test_pause_menu_contracts() -> void:
 	assert_true(pause.visible and (pause.find_child("Surface", true, false) as Control).get_global_rect().end.x <= host.size.x, "Pause fits the compact 4:3 application composition")
 	host.free()
 	await (Engine.get_main_loop() as SceneTree).process_frame
+
+func _test_authored_hud_switch() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var host := Control.new()
+	host.size = Vector2(1280, 720)
+	tree.root.add_child(host)
+	var shell := load("res://src/ui/shell/game_shell.tscn").instantiate() as GameShell
+	shell.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var authored_roster := shell.get_node("PartyRoster") as Control
+	var authored_width := authored_roster.offset_right - authored_roster.offset_left
+	authored_roster.offset_left -= 12.0
+	host.add_child(shell)
+	await tree.process_frame
+	assert_true(is_equal_approx(shell.roster.size.x, authored_width + 12.0), "the running Wide roster uses its edited scene width")
+	var view := GameView.new(1, true, null)
+	view.campaign_id = "hud-switch-fixture"
+	view.campaign_summary = CampaignSummaryView.new()
+	view.campaign_summary.title = "HUD Switch Fixture"
+	view.party_summary = PartySummaryView.new()
+	for index: int in 6:
+		var character := CharacterView.new(CharacterState.new("hud.hero.%d" % index, "Hero %d" % index, 20, 20))
+		view.party_members.append(character)
+		view.party_summary.character_ids.append(character.id)
+	shell.present(view)
+	var window_host := Control.new()
+	shell.add_child(window_host)
+	var inherited_dialog := ConfirmationDialog.new()
+	window_host.add_child(inherited_dialog)
+	assert_true(inherited_dialog.theme == shell.theme, "a separate dialog window receives the shell's resolved theme")
+	var local_dialog := ConfirmationDialog.new()
+	local_dialog.theme = Theme.new()
+	window_host.add_child(local_dialog)
+	assert_true(local_dialog.theme != shell.theme, "an authored dialog theme remains a local exception")
+	shell.settings.interface_text_scale = 1.05
+	shell.refresh_layout()
+	assert_true(inherited_dialog.theme == shell.theme and local_dialog.theme != shell.theme, "dialog theme inheritance follows scaling without replacing a local Window theme")
+	var fixed_roster := shell.roster
+	var fixed_narrative := shell.get_node("%NarrativeText") as RichTextLabel
+	shell.status.append_narrative("The road is clear.")
+	shell.roster.character_selected.emit(view.party_members[2].id)
+	var intents := [0]
+	shell.intent_submitted.connect(func(_intent: PlayerIntent) -> void: intents[0] += 1)
+	shell.settings.hud.modular = true
+	shell.refresh_layout()
+	assert_true(shell.hud.active and shell.roster != fixed_roster and shell.roster == shell.hud.content(0), "Modular mounts its authored roster rather than moving the Fixed roster")
+	assert_equal(shell.selected_character_id, view.party_members[2].id, "Modular retains the selected character")
+	assert_equal((shell.hud.content(1).get_node("NarrativeColumn/NarrativeText") as RichTextLabel).text, "The road is clear.", "Modular retains narrative history")
+	assert_equal((shell.roster.get_node("RosterColumn/PartyScroll/PartyList") as Control).get_child_count(), 6, "Modular retains six authored party positions")
+	shell.settings.hud.panels[2].background_opacity = 0.4
+	shell.settings.hud.panels[3].background_opacity = 0.4
+	shell.refresh_layout()
+	var world_surface := shell.hud.get_node("World/Surface") as PanelContainer
+	var effect_surface := shell.hud.get_node("Party/EffectsDock") as PanelContainer
+	var command_text := shell.hud.world_grid.get_node("SearchModeCommand") as Control
+	assert_true(is_equal_approx(world_surface.self_modulate.a, 0.4) and is_equal_approx(effect_surface.self_modulate.a, 0.4) and is_equal_approx(command_text.self_modulate.a, 1.0), "Modular opacity changes panel and dock backgrounds while retaining opaque command content")
+	var modular_search := shell.hud.world_grid.get_node("SearchModeCommand") as ClassicSearchCommandButton
+	modular_search.command_requested.emit(&"search_mode")
+	assert_equal(intents[0], 1, "Modular command delivers one intent")
+	shell.status.append_narrative("The bridge is near.")
+	var modular_clock := shell.hud.content(1).get_node("NarrativeColumn/Facts/Clock") as Label
+	var time_clicks: Array[DomainEvent] = []
+	for minute: int in range(1, 9):
+		time_clicks.append(DomainEvent.new(&"time_advanced", {"day": 3, "hour": 10, "minute": minute}))
+	shell.status._field_time_playback.present(shell, modular_clock, time_clicks)
+	assert_true(shell.status.is_field_time_playback_active() and modular_clock.text == "Day 3 • 10:01", "field-time playback starts on the visible Modular clock")
+	shell.settings.hud.modular = false
+	shell.refresh_layout()
+	await tree.create_timer(0.15).timeout
+	var fixed_clock := shell.get_node("%NarrativeWell/NarrativeColumn/Facts/Clock") as Label
+	assert_equal(fixed_clock.text, "Day 3 • 10:08", "switching to Fixed during field-time playback continues its remaining clock frames on the visible label")
+	assert_true(not shell.hud.active and shell.roster == fixed_roster and not shell.hud.visible, "Fixed remounts its original authored composition")
+	assert_equal(fixed_narrative.text, "The road is clear.\n\nThe bridge is near.", "Fixed restores narration appended in Modular")
+	var fixed_search := shell.get_node("%WorldCommandGrid/SearchModeCommand") as ClassicSearchCommandButton
+	fixed_search.command_requested.emit(&"search_mode")
+	assert_equal(intents[0], 2, "Fixed command delivers one intent after switching back")
+	assert_equal(shell.selected_character_id, view.party_members[2].id, "Fixed retains the selected character")
+	host.free()
+	await tree.process_frame
+
 
 func _test_interaction_layout_policy() -> void:
 	var textbox := InteractionRequest.acknowledge("layout.textbox", "Narration")
@@ -215,7 +295,7 @@ func _test_primary_workspace_lifecycle() -> void:
 		if shell_mode:
 			assert_true(router.find_child("WorkspaceFrame", true, false) == null, "shell modes do not leave a hidden explanatory scene in the tree")
 			continue
-		var route_back := router.find_child("RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ScreenFrame if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_footer := spell_screen.find_child("WorkspaceFooter", true, false) as Control if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; var services_done := router.find_child("MoneyDone", true, false) as Button if route_id == &"services" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"vault", &"inventory", &"services"]) and (route_id != &"spells" or spell_footer != null and spell_footer.get_parent().name == &"WorkspaceColumn" and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"services" or services_done != null and services_done.visible and services_done.get_parent().name == &"MoneyPartyArea") and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory and Party Wealth Done into fixed records, opens the current Character, and gives Spells a fixed in-flow action footer without a redundant route heading" % route_id)
+		var route_back := router.find_child("SpellsBackAction" if route_id == &"spells" else "RouteBackAction", true, false) as Button; var spell_screen := router.find_child("WorkspaceFrame", true, false) as ScreenFrame if route_id == &"spells" else null; var context_actions := spell_screen.context_action_control() if spell_screen != null else null; var spell_footer := spell_screen.find_child("WorkspaceFooter", true, false) as Control if spell_screen != null else null; var spell_title := spell_screen.find_child("ScreenTitle", true, false) as Control if spell_screen != null else null; var header_rule := spell_screen.find_child("HeaderRule", true, false) as Control if spell_screen != null else null; var inventory_done := router.find_child("InventoryDone", true, false) as Button if route_id == &"inventory" else null; var inventory_record := router.find_child("InventoryItemInspector", true, false) as Control if route_id == &"inventory" else null; var services_done := router.find_child("MoneyDone", true, false) as Button if route_id == &"services" else null; assert_true(route_back != null and route_back.visible == (route_id not in [&"vault", &"inventory", &"services"]) and (route_id != &"spells" or spell_footer != null and spell_footer.get_parent().name == &"WorkspaceColumn" and context_actions != null and spell_title != null and not spell_title.visible and header_rule != null and not header_rule.visible) and (route_id != &"inventory" or inventory_done != null and inventory_done.visible and inventory_record != null and inventory_record.is_ancestor_of(inventory_done) and router.find_child("WorkspaceFooter", true, false) == null) and (route_id != &"services" or services_done != null and services_done.visible and services_done.get_parent().name == &"MoneyPartyArea") and (route_id != &"character" or _buttons_in(router.find_child("CharacterPicker", true, false)).any(func(button: Button) -> bool: return button.text == "Mage" and button.button_pressed)), "route %s keeps one task-appropriate visible Done or Back action, integrates Inventory and Party Wealth Done into fixed records, opens the current Character, and gives Spells a fixed in-flow action footer without a redundant route heading" % route_id)
 		if route_id == &"inventory":
 			_assert_route_regions_survive_refresh(router, view, ["InventoryMainSplit", "InventoryItemBrowser", "InventoryCharacterCommandRail", "InventoryItemInspector"], "Inventory rerenders records inside stable scene-authored regions")
 		if route_id == &"character":

@@ -77,6 +77,12 @@ const SCROLL_ARROW_REPEAT_INTERVAL := 0.065
 
 @export var party_effect_slot_scene: PackedScene
 
+@export_group("Compact Layout")
+@export var compact_roster_width := 208.0
+@export var compact_roster_text_growth := 80.0
+@export var compact_footer_height := 270.0
+@export var compact_command_width := 416.0
+
 @onready var _package_status: Label = $PauseMenu.get_node("%PackageStatus")
 @onready var _stage_frame: NinePatchRect = %StageFrame
 @onready var _picture_stage: Control = %PictureStage
@@ -121,6 +127,7 @@ var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
 var _presentation_settings := PresentationSettings.new()
 var _theme_metrics: Array = []
+var _authored_theme: Theme
 var font_resolver := FontResolver.new()
 var menu_input_blocked: Callable
 var _media: ClassicMediaCatalog
@@ -136,6 +143,7 @@ var _party_effects: GameShellPartyEffectsPresenter
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
+var _inherited_window_themes: Dictionary = {}
 var _controller_radials := GameShellControllerRadials.new(self)
 var exploration_move_to_available: Callable
 var controller: GameShellControllerAccess:
@@ -191,6 +199,12 @@ var navigation_overlay_active: bool:
 
 
 func _ready() -> void:
+	var source: Node = self
+	while source != null and _authored_theme == null:
+		if source is Control: _authored_theme = (source as Control).theme
+		source = source.get_parent()
+	if _authored_theme == null:
+		_authored_theme = load(str(ProjectSettings.get_setting("gui/theme/custom", ""))) as Theme
 	# The shell is structural; only its concrete controls should participate in
 	# GUI hit testing. A full-window PASS control masks earlier root siblings.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -229,13 +243,8 @@ func _ready() -> void:
 	_navigator.combat_inventory_response_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: combat_inventory_response_submitted.emit(body))
 	_navigator.combat_inventory_item_use_requested.connect(func(character_id: String, instance_id: String) -> void: combat_inventory_item_use_requested.emit(character_id, instance_id))
 	_navigator.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
-	_party_roster.character_selected.connect(_on_character_selected)
-	_party_roster.character_activated.connect(_on_character_activated)
-	_party_roster.combat_auto_changed.connect(_on_combat_auto_changed)
-	_party_roster.character_selection_completed.connect(func(character_ids: Array[String]) -> void: character_selection_completed.emit(character_ids))
-	_party_roster.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: combat_spell_cast_requested.emit(option))
-	_party_roster.combat_spellbook_back_requested.connect(func() -> void: combat_spellbook_back_requested.emit())
-	_party_roster.combat_bandage_target_selected.connect(func(character_id: String) -> void: combat_bandage_target_selected.emit(character_id))
+	_connect_roster(_party_roster)
+	_connect_roster(hud.content(0) as ClassicPartyRoster)
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
 	_bottom_region.minimum_size_changed.connect(_layout_controller.queue_footer_layout)
@@ -244,11 +253,79 @@ func _ready() -> void:
 	_apply_layout()
 
 
+func _connect_roster(target: ClassicPartyRoster) -> void:
+	target.character_selected.connect(_on_character_selected)
+	target.character_activated.connect(_on_character_activated)
+	target.combat_auto_changed.connect(_on_combat_auto_changed)
+	target.character_selection_completed.connect(func(character_ids: Array[String]) -> void: character_selection_completed.emit(character_ids))
+	target.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: combat_spell_cast_requested.emit(option))
+	target.combat_spellbook_back_requested.connect(func() -> void: combat_spellbook_back_requested.emit())
+	target.combat_bandage_target_selected.connect(func(character_id: String) -> void: combat_bandage_target_selected.emit(character_id))
+
+
+func bind_hud_content(modular: bool) -> void:
+	_party_roster = hud.content(0) as ClassicPartyRoster if modular else get_node("%PartyRoster") as ClassicPartyRoster
+	_narrative_well = hud.content(1) as PanelContainer if modular else get_node("%NarrativeWell") as PanelContainer
+	_world_command_panel = hud.content(2) as PanelContainer if modular else get_node("%WorldCommandPanel") as PanelContainer
+	_command_panel = hud.content(3) as PanelContainer if modular else get_node("%CommandPanel") as PanelContainer
+	_narrative = _narrative_well.get_node("NarrativeColumn/NarrativeText") as RichTextLabel
+	_facts = _narrative_well.get_node("NarrativeColumn/Facts") as GridContainer
+	_status_label = _facts.get_node("Status") as Label
+	_coordinates_label = _facts.get_node("Coordinates") as Label
+	_fatigue_label = _facts.get_node("FatigueGauge/Fatigue") as Label
+	_fatigue_bar = _facts.get_node("FatigueGauge/FatigueBar") as ProgressBar
+	_light_label = _facts.get_node("Light") as Label
+	_clock_label = _facts.get_node("Clock") as Label
+	_gold_label = _facts.get_node("Gold") as Label
+	_world_command_column = _world_command_panel.get_node("WorldCommandColumn") as VBoxContainer
+	_world_command_grid = hud.world_grid if modular else get_node("%WorldCommandGrid") as GridContainer
+	_world_command_lower_grid = _world_command_panel.get_node("WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter/WorldCommandLowerGrid") as GridContainer
+	_party_effects_row = _command_panel.get_node("PartyEffectsRow") as BoxContainer
+	_party_command_column = _party_effects_row.get_node("PartyCommandColumn") as VBoxContainer
+	_command_grid = hud.party_grid() if modular else get_node("%CommandGrid") as GridContainer
+	_effects_panel = hud.effects_panel if modular else get_node("%EffectsPanel") as PanelContainer
+	_effects_grid = _effects_panel.get_node("EffectsColumn/EffectsGrid") as GridContainer
+	_torch_dock = _party_effects_row.get_node("TorchDock") as PanelContainer
+	_status_controller.bind_hud_content(_narrative_well)
+	_layout_controller.bind_hud_content(self, modular)
+	_layout_controller.set_effect_slots(_party_effects.bind_hud_content(_effects_grid, _effects_panel, party_effect_slot_scene))
+	_party_roster.set_media_catalog(_media)
+	if _current_view != null:
+		_party_roster.present(_current_view, _selected_character_id)
+		_party_effects.present(_current_view)
+
+
 func _on_tree_node_added(node: Node) -> void:
 	if is_ancestor_of(node) or (get_parent().is_ancestor_of(node) and (node.scene_file_path.begins_with("res://src/ui/shared/interactions/") or node.scene_file_path == "res://src/ui/combat/fast_spell_dock.tscn")):
 		UiSizing.bind_added.call_deferred(node.get_instance_id())
+	if node is Window and is_ancestor_of(node):
+		_sync_window_theme(node as Window)
 	if node is ScrollContainer:
 		ClassicScrollArrowController.bind(node as ScrollContainer, SCROLL_ARROW_STEP, SCROLL_ARROW_INITIAL_DELAY, SCROLL_ARROW_REPEAT_INTERVAL)
+
+
+func _sync_window_theme(window: Window) -> void:
+	var identity := window.get_instance_id()
+	if window.theme != null and not _inherited_window_themes.has(identity):
+		return
+	var source: Node = window.get_parent()
+	while source != null:
+		if source is Control and (source as Control).theme != null:
+			window.theme = (source as Control).theme
+			_inherited_window_themes[identity] = true
+			return
+		if source is Window and (source as Window).theme != null:
+			window.theme = (source as Window).theme
+			_inherited_window_themes[identity] = true
+			return
+		source = source.get_parent()
+	window.theme = theme
+	_inherited_window_themes[identity] = true
+
+
+func _sync_window_themes() -> void:
+	for node: Node in find_children("*", "Window", true, false):
+		_sync_window_theme(node as Window)
 
 
 func present(game_view: GameView) -> void:
@@ -431,7 +508,8 @@ func _apply_layout() -> void:
 	var theme_metrics: Array = [sizing_profile.ui_scale, _presentation_settings.interface_text_scale, _presentation_settings.narrative_text_scale, _presentation_settings.interface_font, _presentation_settings.narrative_font]
 	if _theme_metrics != theme_metrics:
 		_theme_metrics = theme_metrics
-		theme = ClassicTypography.themed_copy(load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme, _presentation_settings, sizing_profile.ui_scale, font_resolver)
+		theme = ClassicTypography.themed_copy(_authored_theme, _presentation_settings, sizing_profile.ui_scale, font_resolver)
+		_sync_window_themes()
 	UiSizing.apply(self, sizing_profile)
 	_layout_controller.apply(size, _presentation_settings, _current_view)
 	_refresh_pause_menu()

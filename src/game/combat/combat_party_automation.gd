@@ -151,10 +151,10 @@ func plan_pursuit_step(state: GameState, content: RealmzContent, actor: Characte
 		return {}
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.actors.has_actor(character.id):
+		if character.id != actor.id and character.current_health > 0 and character.classic_traitor != actor.classic_traitor and combat.battlefield.actors.has_actor(character.id):
 			candidates.append(character.id)
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.actors.has_actor(monster.id):
+		if monster.current_health > 0 and monster.classic_traitor != actor.classic_traitor and combat.battlefield.actors.has_actor(monster.id):
 			candidates.append(monster.id)
 	if candidates.is_empty():
 		return {}
@@ -167,10 +167,10 @@ func plan_pursuit_step(state: GameState, content: RealmzContent, actor: Characte
 	var swappable_ids: Array[String] = []
 	if combat.battlefield.actors.actor_size(actor.id) == 0:
 		for character: CharacterState in state.party.characters():
-			if character.id != actor.id and character.current_health > 0 and character.traitor == actor.traitor and combat.battlefield.actors.has_actor(character.id) and combat.battlefield.actors.actor_size(character.id) == 0:
+			if character.id != actor.id and character.current_health > 0 and character.classic_traitor == actor.classic_traitor and combat.battlefield.actors.has_actor(character.id) and combat.battlefield.actors.actor_size(character.id) == 0:
 				swappable_ids.append(character.id)
 		for monster: MonsterState in combat.roster.monsters():
-			if monster.current_health > 0 and monster.traitor == actor.traitor and combat.battlefield.actors.has_actor(monster.id) and combat.battlefield.actors.actor_size(monster.id) == 0:
+			if monster.current_health > 0 and monster.classic_traitor == actor.classic_traitor and combat.battlefield.actors.has_actor(monster.id) and combat.battlefield.actors.actor_size(monster.id) == 0:
 				swappable_ids.append(monster.id)
 	for candidate_id: String in candidates:
 		if actor.attacks_remaining >= 2 and _context.battlefield.are_adjacent(combat.battlefield, actor.id, candidate_id): continue

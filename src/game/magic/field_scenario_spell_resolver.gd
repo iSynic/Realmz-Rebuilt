@@ -50,6 +50,42 @@ func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState],
 	return result
 
 
+func resolve_scenario_empty_spell(party: PartyState, spell: SpellDefinition, power_level: int, rng: RealmzRng) -> GroupSpellResolution:
+	if party == null or spell == null or rng == null:
+		return null
+	var special := absi(spell.special)
+	# These branches read an active native actor/destination even with no picks.
+	if special in [56, 58] or spell.spell_class == 9:
+		var failure := GroupSpellResolution.new(false, 0, 0, 0)
+		failure.error_code = &"unavailable_scenario_spell_context"
+		failure.error_message = "This unpicked scenario spell requires an explicit native combat source or destination."
+		return failure
+	if spell.target_type == 7 and special != 50 and special != 68 and special >= party.conditions.size():
+		return null
+	var duration := _classic_scenario_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"scenario-empty.duration")
+	var damage := _classic_scenario_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"scenario-empty.damage")
+	if special == 68:
+		party.fatigue = 4
+	elif spell.target_type == 7:
+		var index := ConditionRules.PARTY_TORCH_LIT if special == 50 else special
+		if special == 50:
+			if power_level * 30 > party.conditions.value(index):
+				party.conditions.set_value(index, RealmzArithmetic.new().signed_16(power_level * 30 - 1))
+		elif duration > party.conditions.value(index):
+			party.conditions.set_value(index, duration)
+	elif special == 66 and spell.size == 0:
+		rng.draw(5, &"scenario-empty.attribute")
+	return GroupSpellResolution.new(true, 0, duration, damage)
+
+
+func _classic_scenario_roll(low: int, high: int, power_low: int, power_high: int, power: int, rng: RealmzRng, tag: StringName) -> int:
+	var value := rng.draw_between_classic(low, high, tag)
+	if power_low != 0:
+		for index: int in maxi(0, power):
+			value = RealmzArithmetic.new().signed_16(value + rng.draw_between_classic(power_low, power_high, StringName("%s.power.%d" % [tag, index])))
+	return value
+
+
 func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition = null, race: RaceDefinition = null) -> SpellResolution:
 	if target == null or spell == null or rng == null or power_level < 0:
 		return null

@@ -184,7 +184,7 @@ func _branch_to_random_destination(action: ClassicActionDefinition) -> ScenarioR
 	var mode := action.extra_code[0]
 	var low_id := action.extra_code[1]
 	var high_id := action.extra_code[2]
-	if mode not in [0, 1, 2] or (_content.classic_records == null and low_id < 0) or (_content.package_schema_version < 7 and high_id < low_id):
+	if mode in [0, 1, 2] and ((_content.classic_records == null and low_id < 0) or (_content.package_schema_version < 7 and high_id < low_id)):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_random_branch", "Classic opcode 85 requires a destination mode and an ordered inclusive range.")
 	var events: Array[DomainEvent] = []
 	if action.extra_code[3] != 0:
@@ -195,6 +195,9 @@ func _branch_to_random_destination(action: ClassicActionDefinition) -> ScenarioR
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 85 references unavailable message %d." % action.extra_code[4])
 		if message != null:
 			events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-opcode-85"}))
+	# Castle publishes media before its switch, but only selected cases call randrange.
+	if mode not in [0, 1, 2]:
+		return ScenarioRuntimeOperationResult.completed(false, events)
 	var target_id := _rng.draw_between_classic(low_id, high_id, &"classic.opcode85.destination") if _content.package_schema_version >= 7 else _rng.draw_between(low_id, high_id, &"classic.opcode85.destination")
 	var branch := _branch_to_destination(mode, target_id, action.gosub)
 	branch.events.append_array(events)
@@ -221,8 +224,8 @@ func _branch_on_quest_value(action: ClassicActionDefinition, context: ScenarioEx
 
 
 func _branch_on_faced_tile_semantic(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5 or action.extra_code[0] < 1 or action.extra_code[0] > 7 or action.extra_code[2] not in [0, 1, 2]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_faced_tile_test", "Classic opcode 78 requires a faced-tile test and destination mode.")
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 78 requires a five-value Extra Code row.")
 	var map := _content.world.map_by_id(_game_state.party.map_id)
 	if map == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 78 requires the party's current map.")
@@ -254,8 +257,6 @@ func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 86 requires a five-value Extra Code row.")
 	var test_kind := action.extra_code[0]
 	var expected := action.extra_code[1]
-	if test_kind < 0 or test_kind > 8:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_misc_branch", "Classic opcode 86 test kind is unavailable.")
 	if test_kind == 6 and (absi(expected) < 1 or absi(expected) > 32):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_race_descriptor", "Classic opcode 86 race descriptor is outside 1 through 32.")
 	var selected_only := expected < 0 and test_kind in [0, 1, 2, 5, 6]
@@ -324,7 +325,8 @@ func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecu
 			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.finish_timeline())
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
+	# Castle's shared result-branch switch has no action for other modes.
+	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
@@ -332,7 +334,7 @@ func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioR
 		0: return _branch_xap(target_id, gosub)
 		1: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"simple", target_id, gosub))
 		2: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"complex", target_id, gosub))
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is unavailable." % mode)
+	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -395,12 +397,17 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 				return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 7 cannot resolve the current map.")
 			var level_type := current_map.level_type
 			if int(values[3]) != 0:
-				if int(values[3]) not in [1, 2]:
+				if _content.package_schema_version >= 7:
+					level_type = &"dungeon" if RealmzArithmetic.new().unsigned_8(int(values[3]) - 1) != 0 else &"land"
+				elif int(values[3]) not in [1, 2]:
 					return ScenarioRuntimeOperationResult.failed(&"invalid_map_type", "Classic opcode 7 map type must be 1 for land or 2 for dungeon.")
-				level_type = &"land" if int(values[3]) == 1 else &"dungeon"
-			var target_map := _content.world.map_by_type_and_index(level_type, int(values[0]))
+				else:
+					level_type = &"land" if int(values[3]) == 1 else &"dungeon"
+			# Castle's failed negative seek leaves the freshly opened map file at zero.
+			var map_index := maxi(0, int(values[0])) if _content.package_schema_version >= 7 else int(values[0])
+			var target_map := _content.world.map_by_type_and_index(level_type, map_index)
 			if target_map == null:
-				if ClassicCompatibility.source_unavailable(_content, "Data LD" if level_type == &"land" else "Data DL", int(values[0])):
+				if ClassicCompatibility.source_unavailable(_content, "Data LD" if level_type == &"land" else "Data DL", map_index):
 					return ClassicCompatibility.skip(&"program-replacement-map", "Data LD" if level_type == &"land" else "Data DL", int(values[0]))
 				return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 7 references unavailable %s map %d." % [String(level_type), int(values[0])])
 			var target_trigger := _content.scenario_records.trigger_by_map_record(target_map.id, int(values[1]))
@@ -422,7 +429,15 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 		if _content.scenario.native_program_is_unavailable(target_program_id):
 			return ClassicCompatibility.skip(&"program-replacement-target", "encounter-result", int(values[1]))
 		return ScenarioRuntimeOperationResult.failed(&"unknown_scenario_program", "Classic opcode 7 references unavailable target program '%s'." % target_program_id)
+	return _replace_program(target_program_id, source_program_id, values)
+
+
+func _replace_program(target_program_id: String, source_program_id: String, values: Array[int]) -> ScenarioRuntimeOperationResult:
 	_game_state.scenario_progress.encounters.set_program_override(target_program_id, source_program_id)
+	if values[0] == -1:
+		_game_state.scenario_progress.encounters.classic_loaded_simple_id = values[1]
+	elif values[0] == -2:
+		_game_state.scenario_progress.encounters.classic_loaded_complex_id = values[1]
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"scenario_program_replaced", {"sourceProgramId": target_program_id, "targetProgramId": source_program_id, "source": "classic"})])
 
 

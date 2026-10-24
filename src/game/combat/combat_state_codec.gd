@@ -15,6 +15,7 @@ static func encode(combat: CombatState) -> Dictionary:
 		"rewardsStarted": combat.rewards_started,
 		"rewardsCompleted": combat.rewards_completed,
 		"classicPostBattleSentinel": combat.classic_post_battle_sentinel,
+		"classicEnemyCounters": combat.classic_counters_data() if combat.classic_counters_available else null,
 		"turnOrder": combat.turns.turn_order(),
 		"monsters": combat.roster.to_data(),
 		"pendingMonsterAttack": null if combat.pending_monster_attack == null else combat.pending_monster_attack.to_data(),
@@ -59,7 +60,10 @@ static func decode(data: Variant) -> CombatState:
 		return null
 	var order: Array[String] = decoded_order
 	var result := CombatState.new(data["battleId"], monsters, loaded_macro, battlefield)
+	var fields: Dictionary = data
 	if not _restore_header(result, data, order, loaded_round, loaded_turn):
+		return null
+	if not result.restore_classic_counters(fields.get("classicEnemyCounters")):
 		return null
 	if not _restore_actor_statuses(result, data, order) or not _restore_spell_runtime(result, data, order):
 		return null

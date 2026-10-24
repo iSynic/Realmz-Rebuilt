@@ -1,9 +1,14 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=13 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/modular_hud.gd" id="1"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/hud_panel.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/hud_panel_menu.tscn" id="3"]
-[ext_resource type="Theme" path="res://src/ui/shared/style/modular_controls_theme.tres" id="4"]
+
+[ext_resource type="PackedScene" path="res://src/ui/shell/classic_party_roster.tscn" id="5_roster"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/classic_party_effect_slot.tscn" id="8_effect_slot"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="13_command"]
+[ext_resource type="PackedScene" path="res://src/ui/exploration/classic_search_command_button.tscn" id="14_search"]
+[ext_resource type="PackedScene" path="res://src/ui/exploration/classic_torch_command_button.tscn" id="15_torch"]
 
 [sub_resource type="StyleBoxFlat" id="CommandSurface"]
 bg_color = Color(0.082, 0.133, 0.18, 1)
@@ -12,25 +17,72 @@ content_margin_right = 0.0
 content_margin_top = 0.0
 content_margin_bottom = 0.0
 
+[sub_resource type="StyleBoxEmpty" id="ModularRosterFrame"]
+
+[sub_resource type="StyleBoxFlat" id="FatigueTrackStyle"]
+bg_color = Color(0.025, 0.035, 0.04, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.33, 0.39, 0.4, 1)
+
+[sub_resource type="StyleBoxFlat" id="FatigueFillStyle"]
+bg_color = Color(0.22, 0.72, 0.78, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.48, 0.88, 0.91, 1)
+
 [node name="ModularHud" type="Control"]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
+offset_right = 1280.0
+offset_bottom = 720.0
 mouse_filter = 2
-visible = false
 script = ExtResource("1")
 
 [node name="Roster" parent="." instance=ExtResource("2")]
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 928.0
+offset_top = 8.0
+offset_right = 1272.0
+offset_bottom = 470.0
 [node name="Narration" parent="." instance=ExtResource("2")]
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 146.0
+offset_top = 552.0
+offset_right = 908.0
+offset_bottom = 712.0
 [node name="World" parent="." instance=ExtResource("2")]
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 134.0
+offset_bottom = 176.0
 [node name="Surface" parent="World" index="0"]
 theme_override_styles/panel = SubResource("CommandSurface")
 [node name="Body" parent="World/Surface/Column" index="0"]
 vertical_scroll_mode = 0
 [node name="Party" parent="." instance=ExtResource("2")]
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 8.0
+offset_top = 184.0
+offset_right = 134.0
+offset_bottom = 443.0
 [node name="Surface" parent="Party" index="0"]
 theme_override_styles/panel = SubResource("CommandSurface")
 
@@ -39,12 +91,491 @@ vertical_scroll_mode = 0
 
 [node name="EffectsDock" type="PanelContainer" parent="Party"]
 unique_name_in_owner = true
+layout_mode = 0
+offset_left = 598.0
+offset_top = 324.0
+offset_right = 900.0
+offset_bottom = 359.0
 theme_override_styles/panel = SubResource("CommandSurface")
 mouse_filter = 1
-theme = ExtResource("4")
 theme_type_variation = &"ClassicInset"
+
+[node name="PartyRoster" parent="Roster/Surface/Column/Body/Content" instance=ExtResource("5_roster")]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("ModularRosterFrame")
+
+[node name="Heading" parent="Roster/Surface/Column/Body/Content/PartyRoster/RosterColumn" index="0"]
+visible = false
+
+
+[node name="WorldCommandPanel" type="PanelContainer" parent="World/Surface/Column/Body/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"ClassicSharedStone"
+
+[node name="WorldCommandColumn" type="VBoxContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="WorldCommandDeckCenter" type="CenterContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="WorldCommandDeckFrame" type="PanelContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicFooterCommandWell"
+
+[node name="WorldCommandRows" type="VBoxContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="WorldCommandUpperCenter" type="CenterContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows"]
+layout_mode = 2
+
+[node name="WorldCommandGrid" type="GridContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+columns = 2
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+
+[node name="WorldCommandLowerCenter" type="CenterContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows"]
+visible = false
+layout_mode = 2
+
+[node name="WorldCommandLowerGrid" type="GridContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+columns = 2
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+
+[node name="NarrativeWell" type="PanelContainer" parent="Narration/Surface/Column/Body/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.45
+theme_type_variation = &"ClassicTextWell"
+
+[node name="NarrativeColumn" type="VBoxContainer" parent="Narration/Surface/Column/Body/Content/NarrativeWell"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="NarrativeText" type="RichTextLabel" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn"]
+unique_name_in_owner = true
+focus_mode = 2
+layout_mode = 2
+size_flags_vertical = 3
+theme_type_variation = &"ClassicNarrative"
+bbcode_enabled = true
+fit_content = false
+scroll_active = true
+scroll_following = true
+
+[node name="Facts" type="GridContainer" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+columns = 5
+
+[node name="Status" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8, 0.82, 0.79, 1)
+text = "Ready"
+text_overrun_behavior = 3
+
+[node name="Coordinates" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49, 0.83, 0.9, 1)
+text = "Map —"
+
+[node name="FatigueGauge" type="HBoxContainer" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Fatigue" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts/FatigueGauge"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.49, 0.83, 0.9, 1)
+text = "Fatigue —"
+
+[node name="FatigueBar" type="ProgressBar" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts/FatigueGauge"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(88, 12)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_styles/background = SubResource("FatigueTrackStyle")
+theme_override_styles/fill = SubResource("FatigueFillStyle")
+min_value = 4.0
+max_value = 135.0
+value = 4.0
+show_percentage = false
+
+[node name="Light" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.87, 0.32, 1)
+text = "Light —"
+
+[node name="Clock" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Day —"
+
+[node name="Gold" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.87, 0.32, 1)
+text = "Gold —"
+
+[node name="CommandPanel" type="PanelContainer" parent="Party/Surface/Column/Body/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.0
+theme_type_variation = &"ClassicSharedStone"
+
+[node name="PartyEffectsRow" type="BoxContainer" parent="Party/Surface/Column/Body/Content/CommandPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="PartyCommandColumn" type="VBoxContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 3
+
+[node name="CommandDeckCenter" type="CenterContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="CommandDeckFrame" type="PanelContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"ClassicFooterCommandWell"
+
+[node name="CommandGrid" type="GridContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+columns = 2
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+
+[node name="EffectsPanel" type="PanelContainer" parent="Party/EffectsDock"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_type_variation = &"ClassicFooterCommandWell"
+
+[node name="EffectsColumn" type="VBoxContainer" parent="Party/EffectsDock/EffectsPanel"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="EffectsGrid" type="GridContainer" parent="Party/EffectsDock/EffectsPanel/EffectsColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+columns = 2
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2
+
+[node name="PartyEffectSlot1" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot2" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot3" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot4" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot5" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot6" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot7" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="PartyEffectSlot8" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
+layout_mode = 2
+
+[node name="TorchDock" type="PanelContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_type_variation = &"ClassicFooterCommandWell"
+
+[node name="SearchModeCommand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("14_search")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"search_mode"
+metadata/search_animation = true
+
+[node name="CaptionBand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/SearchModeCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/SearchModeCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Search"
+
+
+[node name="AreaSearchCommand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"area_search"
+command_id = &"area_search"
+
+[node name="CaptionBand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/AreaSearchCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/AreaSearchCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Area\nSearch"
+
+
+[node name="CampCommand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"camp"
+command_id = &"camp"
+
+[node name="CaptionBand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/CampCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/CampCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Camp"
+
+
+[node name="RestCommand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"rest"
+command_id = &"rest"
+
+[node name="CaptionBand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/RestCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/RestCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Rest"
+
+
+[node name="HealCommand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"heal"
+command_id = &"heal"
+
+[node name="CaptionBand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/HealCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/HealCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Heal"
+
+
+[node name="ContextualCommand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"contextual"
+command_id = &"contextual"
+
+[node name="CaptionBand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/ContextualCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/ContextualCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter"
+
+
+[node name="SettingsCommand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"settings"
+command_id = &"settings"
+
+[node name="CaptionBand" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/SettingsCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid/SettingsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Settings"
+
+
+[node name="MoneyCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"money"
+command_id = &"money"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/MoneyCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/MoneyCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Money"
+
+
+[node name="InventoryCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"inventory"
+command_id = &"inventory"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/InventoryCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/InventoryCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Items"
+
+
+[node name="SpellsCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"spells"
+command_id = &"spells"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/SpellsCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/SpellsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Spells"
+
+
+[node name="MapsCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"maps"
+command_id = &"maps"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/MapsCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/MapsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Maps"
+
+
+[node name="TorchCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("15_torch")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"torch"
+metadata/torch_meter = true
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/TorchCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/TorchCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Torch"
+
+
+[node name="SaveCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"save"
+visible = false
+command_id = &"save"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/SaveCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/SaveCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Save"
+
+
+[node name="EncounterActionCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"encounter_action"
+visible = false
+command_id = &"encounter_action"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterActionCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterActionCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Action"
+
+
+[node name="EncounterItemsCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"encounter_items"
+visible = false
+command_id = &"encounter_items"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterItemsCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterItemsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Items"
+
+
+[node name="EncounterSkillsCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"encounter_skills"
+visible = false
+command_id = &"encounter_skills"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterSkillsCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterSkillsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Skills"
+
+
+[node name="EncounterSpeakCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"encounter_speak"
+visible = false
+command_id = &"encounter_speak"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterSpeakCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterSpeakCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Speak"
+
+
+[node name="EncounterStopCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"encounter_stop"
+visible = false
+command_id = &"encounter_stop"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterStopCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/EncounterStopCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Encounter Stop"
+
 
 [node name="PanelMenu" parent="." instance=ExtResource("3")]
 
+[editable path="Roster"]
+[editable path="Narration"]
 [editable path="World"]
 [editable path="Party"]

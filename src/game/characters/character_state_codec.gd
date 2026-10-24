@@ -16,7 +16,7 @@ static func encode(state: CharacterState) -> Dictionary:
 	var fast_spell_data: Array[Dictionary] = []
 	for binding: FastSpellBindingState in state.fast_spells():
 		fast_spell_data.append(binding.to_data())
-	return {
+	var result := {
 		"id": state.id, "name": state.name, "currentHealth": state.current_health, "maximumHealth": state.maximum_health,
 		"raceId": state.race_id, "casteId": state.caste_id, "gender": state.gender, "portraitId": state.portrait_id, "combatIconId": state.combat_icon_id, "level": state.level, "experience": state.experience, "ageDays": state.age_days, "ageGroup": state.age_group,
 		"attributes": [state.brawn, state.knowledge, state.judgment, state.agility, state.vitality, state.luck],
@@ -30,6 +30,9 @@ static func encode(state: CharacterState) -> Dictionary:
 		"conditions": state.conditions.to_data(), "money": state.money.to_data(), "saves": state.save_values, "specials": state.special_values, "abilities": state.ability_values,
 		"inventory": item_data, "equipmentOrder": state.equipment_order.resolved(state.inventory()), "knownSpells": state.known_spells(), "scrollCase": scroll_data, "fastSpells": fast_spell_data,
 	}
+	if state.classic_traitor not in [0, 1]:
+		result["classicTraitor"] = state.classic_traitor
+	return result
 
 
 static func decode(data: Variant) -> CharacterState:
@@ -160,6 +163,10 @@ static func _restore_numeric_fields(result: CharacterState, data: Dictionary) ->
 	if result.lifetime_record == null or data.has("traitor") and not data["traitor"] is bool:
 		return false
 	result.traitor = bool(data.get("traitor", false))
+	if data.has("classicTraitor"):
+		var side := _classic_allegiance(data["classicTraitor"])
+		if side < -32_768 or side > 32_767 or (side != 0) != result.traitor: return false
+		result.classic_traitor = side
 	result.conditions = loaded_conditions
 	result.money = loaded_money
 	return true
@@ -273,4 +280,14 @@ static func _signed_integer(value: Variant) -> int:
 		return value
 	if value is float and is_equal_approx(value, round(value)):
 		return int(value)
+	return -100_000
+
+
+static func _classic_allegiance(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float:
+		var number: float = value
+		if is_finite(number) and number == floorf(number) and number >= -32_768 and number <= 32_767:
+			return int(number)
 	return -100_000

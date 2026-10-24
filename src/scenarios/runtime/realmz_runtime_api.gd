@@ -299,7 +299,7 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 		ScenarioRuntimeContinuation.CLASSIC_CHARACTER_ABILITY:
 			return _resume_character_ability(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_CHOICE:
-			return _resume_classic_choice(continuation, response)
+			return _encounter_operations.resume_classic_choice(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_SHOP, ScenarioRuntimeContinuation.CLASSIC_TEMPLE, ScenarioRuntimeContinuation.CLASSIC_TEMPLE_EXIT, ScenarioRuntimeContinuation.CLASSIC_BANKING:
 			return _service_operations.resume(continuation, response, request_id)
 		_:
@@ -486,27 +486,6 @@ func _state_identity(arguments: Dictionary) -> Array[String]:
 	if state_scope.is_empty() or name_value == null or (not name_value is String and not name_value is int):
 		return []
 	return [state_scope, owner_id, str(name_value)]
-
-
-func _resume_classic_choice(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	var body := response.body as InteractionResponse.YesNoBody
-	if response.kind != &"yes_no" or body == null:
-		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic choice response requires an accepted bool.")
-	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
-	var values := choice_continuation.values
-	if values.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic choice continuation is malformed.")
-	var apply_result: bool = body.accepted != (int(values[0]) != 0)
-	if not apply_result:
-		return ScenarioRuntimeOperationResult.completed(false)
-	match int(values[1]):
-		0:
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_choice_backout_requested")], ScenarioVmDirective.finish())
-		1:
-			return _branch_xap(int(values[2]), choice_continuation.gosub)
-		4:
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_choice_timeline_stopped")], ScenarioVmDirective.finish())
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_choice_target", "Classic choice branch mode %d is not available." % int(values[1]))
 
 
 func _resume_character_selection(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:

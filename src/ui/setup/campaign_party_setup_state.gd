@@ -112,6 +112,7 @@ var standalone_character_creation_available: bool = false
 var standalone_character_creation_reason: String = "The Classic character library is unavailable."
 var standalone_character_creation_active: bool = false
 var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
+var wide_scenario_minimum_width := 210.0
 
 var host: Control
 var appearance_textures: Dictionary = {}
@@ -125,7 +126,7 @@ func apply_setup_mode_layout() -> void:
 		var setup_visible := setup_overlay != null and setup_overlay.visible
 		var splash_visible := splash_overlay != null and splash_overlay.visible
 		campaign_overlay.visible = setup_visible and not splash_visible and not creator_active
-		campaign_overlay.custom_minimum_size.x = 190.0 if compact else 210.0
+		campaign_overlay.custom_minimum_size.x = (setup_overlay as PartySetupWorkspace).compact_scenario_minimum_width if compact else wide_scenario_minimum_width
 	if creator_active:
 		party_pane.visible = false
 		character_pane.custom_minimum_size.x = 0.0

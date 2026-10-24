@@ -43,6 +43,7 @@ var _trade_scroll_positions: Dictionary[String, int] = {}
 var _trade_item_owner_id: String = ""
 var _trade_item_instance_id: String = ""
 var _browse_only_reason: String = ""
+var _presented_view: GameView
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -70,6 +71,7 @@ func reset() -> void:
 	_trade_item_owner_id = ""
 	_trade_item_instance_id = ""
 	_browse_only_reason = ""
+	_presented_view = null
 
 
 func present(target: Control, view: GameView, media: ClassicMediaCatalog, text_scale: float) -> void:
@@ -117,6 +119,7 @@ func present_encounter(parent: VBoxContainer, view: GameView, media: ClassicMedi
 func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, text_scale: float, screen: InventoryScreen = null) -> void:
 	if parent == null:
 		return
+	_presented_view = view
 	_item_scroll_position = _scene_binding.capture_item_scroll(parent, _rendered_character_id, _selected_character_id, _item_scroll_position)
 	for node: Node in parent.find_children("InventoryTradeLedger_*", "", true, false):
 		var ledger := node as InventoryTradeLedger
@@ -127,9 +130,7 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		workspace = screen.workspace() if screen != null else parent as InventoryWorkspace
 		workspace.clear_rendered_content()
 	else:
-		_scene_binding.clear_children(parent)
-		workspace = (load(WORKSPACE_SCENE_PATH) as PackedScene).instantiate() as InventoryWorkspace
-		parent.add_child(workspace)
+		workspace = _scene_binding.ensure_workspace(parent, load(WORKSPACE_SCENE_PATH) as PackedScene)
 	_text_scale = maxf(text_scale, 0.1)
 	_scene_binding.text_scale = _text_scale
 	if view == null:
@@ -163,10 +164,8 @@ func _present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog,
 		if target == null:
 			_cancel_trade()
 			return
-		var trade_host := workspace.prepare_alternate_layout()
+		var trade_workspace := workspace.prepare_trade_layout()
 		var trade_popover := _bind_detail_popover(workspace, media)
-		var trade_workspace := workspace.trade_workspace_scene.instantiate() as InventoryTradeWorkspace
-		trade_host.add_child(trade_workspace)
 		_bind_trade_workspace(trade_workspace, view, selected_character, target, selected_item, media, trade_popover)
 		return
 	workspace.prepare_normal_layout(_layout_profile == UiLayoutProfile.COMPACT, _encounter_mode)
@@ -183,12 +182,12 @@ func _bind_detail_popover(workspace: InventoryWorkspace, media: ClassicMediaCata
 
 
 func _present_empty(workspace: InventoryWorkspace, title: String, detail: String, show_done: bool) -> void:
-	var host := workspace.prepare_alternate_layout()
-	var empty := workspace.empty_state_scene.instantiate() as InventoryEmptyState
+	workspace.prepare_alternate_layout()
+	var empty := workspace.empty_state()
+	empty.visible = true
 	empty.bind(title, detail, show_done)
 	if show_done:
 		_scene_binding.bind_exit_column(empty.done_button().get_parent() as InventoryDoneColumn, not _browse_only_reason.is_empty(), func() -> void: back_requested.emit(), func(route: StringName) -> void: route_requested.emit(route))
-	host.add_child(empty)
 
 
 func _bind_character_selector(selector: InventoryCharacterSelector, view: GameView, selected: CharacterView, media: ClassicMediaCatalog) -> void:
@@ -501,7 +500,8 @@ func _bind_trade_workspace(workspace: InventoryTradeWorkspace, view: GameView, s
 func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character: CharacterView, other_id: String, media: ClassicMediaCatalog, detail_popover: CanvasLayer) -> void:
 	ledger.name = "InventoryTradeLedger_%s" % character.id
 	ledger.configure_drop(&"inventory-trade-item", character.id)
-	ledger.item_dropped.connect(func(payload: Dictionary, target_id: String) -> void: _drop_trade_item(view, payload, target_id))
+	if not ledger.item_dropped.is_connected(_drop_trade_item):
+		ledger.item_dropped.connect(_drop_trade_item)
 	_scene_binding.bind_label(ledger.title_label(), "%s's items" % character.name, LEDGER_INK, 17)
 	_scene_binding.bind_label(ledger.load_label(), "Load %d/%d" % [character.carried_load, character.maximum_load], LEDGER_MUTED, 12)
 	ledger.clear_rows()
@@ -578,10 +578,10 @@ func _select_trade_item(view: GameView, character_id: String, instance_id: Strin
 	refresh_requested.emit()
 
 
-func _drop_trade_item(view: GameView, payload: Dictionary, target_id: String) -> void:
+func _drop_trade_item(payload: Dictionary, target_id: String) -> void:
 	var source_id := String(payload.get("sourceId", ""))
 	var instance_id := String(payload.get("instanceId", ""))
-	var source := InventoryViewQueries.character_by_id(view, source_id)
+	var source := InventoryViewQueries.character_by_id(_presented_view, source_id)
 	var item := InventoryViewQueries.item_by_id(source, instance_id)
 	var availability := InventoryViewQueries.trade_target(item, target_id)
 	if availability == null or not availability.enabled:

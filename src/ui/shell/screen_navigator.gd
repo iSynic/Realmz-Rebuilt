@@ -81,6 +81,7 @@ func _init() -> void:
 	setup_controller.campaign_library.campaign_selection_requested.connect(func() -> void: show_campaign_selection())
 	setup_controller.campaign_library.load_adventure_requested.connect(func() -> void: startup.show_browser(false))
 	setup_controller.load_saved_adventure_requested.connect(_show_load_workspace)
+	setup_controller.adventure_rules_requested.connect(func() -> void: open_screen(&"system", false, &"Adventure Rules"))
 	setup_controller.campaign_library.vault_requested.connect(show_vault_from_splash)
 	setup_controller.campaign_library.settings_requested.connect(func() -> void: open_screen(&"system", false, &"Display"))
 	setup_controller.campaign_library.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
@@ -138,7 +139,6 @@ func initialize() -> void:
 	setup_controller.attach(_overlay_host)
 	_build_body()
 	setup_controller.campaign_library.build_splash_overlay()
-	setup_controller.campaign_library.build_campaign_overlay()
 	setup_controller.build_setup_overlay()
 	if _startup_splash_enabled:
 		show_splash()

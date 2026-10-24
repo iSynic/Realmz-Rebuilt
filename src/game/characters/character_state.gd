@@ -44,7 +44,13 @@ var carried_load: int = 0
 var maximum_load: int = 0
 var prestige_penalty: int = 0
 var lifetime_record: CharacterLifetimeRecord
-var traitor: bool = false
+var _classic_traitor: int = 0
+var classic_traitor: int:
+	get: return _classic_traitor
+	set(value): _classic_traitor = RealmzArithmetic.new().signed_16(value)
+var traitor: bool:
+	get: return _classic_traitor != 0
+	set(value): _classic_traitor = 1 if value else 0
 var conditions: ConditionSet
 var money: WealthState
 var _saves: Array[int] = []

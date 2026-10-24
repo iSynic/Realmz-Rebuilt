@@ -24,7 +24,8 @@ static func build_slots(grid: GridContainer, _slot_scene: PackedScene) -> Array[
 	for condition_index: int in range(1, 9):
 		var frame := grid.get_node("PartyEffectSlot%d" % condition_index) as Control
 		frame.custom_minimum_size = Vector2.ONE * slot_size(1)
-		var icon := frame.get_node("Center/PartyEffectIcon") as TextureRect
+		var icon := frame.get_node_or_null("Center/PartyEffectIcon") as TextureRect
+		if icon == null: icon = frame.get_node("Center/PartyEffectIcon%d" % condition_index) as TextureRect
 		icon.name = "PartyEffectIcon%d" % condition_index
 		icon.custom_minimum_size = Vector2.ONE * icon_size(1)
 		icon.tooltip_text = NAMES[condition_index - 1]

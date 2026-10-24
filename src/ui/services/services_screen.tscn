@@ -4,9 +4,16 @@
 [ext_resource type="PackedScene" path="res://src/ui/services/services_workspace.tscn" id="3_workspace"]
 [node name="ServicesScreen" instance=ExtResource("1_base")]
 route_id = &"services"
-title = "Party Wealth"
-description = "Pool, share, and exchange carried wealth."
 script = ExtResource("2_screen")
+
+[node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
+text = "Party Wealth"
+
+[node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
+text = "Pool, share, and exchange carried wealth."
+
+[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
+visible = false
 
 [node name="ServicesWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
 layout_mode = 2

@@ -5,7 +5,6 @@ extends ClassicOpcodeHandler
 
 var _content: RealmzContent
 var _game_state: GameState
-var _classic_loaded_complex_encounter_id: int = -1
 
 
 func _init(content: RealmzContent, game_state: GameState) -> void:
@@ -42,15 +41,53 @@ func _eliminate_complex_result(action: ClassicActionDefinition, context: Scenari
 	var result_index := action.operand_id - 1
 	if result_index < 0 or result_index > 3:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 requires result 1 through 4 in an Encounter result.")
-	if context != null and context.encounter_kind == &"complex" and context.encounter_id >= 0:
+	if context != null and context.encounter_kind == &"complex" and context.encounter_id >= 0 and (_game_state.scenario_progress.encounters.classic_loaded_complex_id < 0 or _game_state.scenario_progress.encounters.classic_loaded_complex_id == context.encounter_id):
 		if not _game_state.scenario_progress.encounters.eliminate_complex_result(context.encounter_id, result_index):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 could not mutate the active Complex Encounter result.")
 		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"complex_encounter_result_eliminated", {"encounterId": context.encounter_id, "resultIndex": result_index, "source": "classic"})])
-	if context != null and context.encounter_kind == &"simple":
-		var loaded_id := _classic_loaded_complex_encounter_id
-		var mutated_loaded_record := loaded_id >= 0 and _game_state.scenario_progress.encounters.eliminate_complex_result(loaded_id, result_index)
-		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_global_complex_result_mutation", {"encounterId": loaded_id, "resultIndex": result_index, "loadedComplexEncounter": loaded_id >= 0, "mutatedLoadedRecord": mutated_loaded_record, "source": "classic-opcode-44"})])
-	return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 44 requires an active Encounter result.")
+	var loaded_id := _game_state.scenario_progress.encounters.classic_loaded_complex_id
+	var mutated_loaded_record := loaded_id >= 0 and _game_state.scenario_progress.encounters.eliminate_complex_result(loaded_id, result_index)
+	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_global_complex_result_mutation", {"encounterId": loaded_id, "resultIndex": result_index, "loadedComplexEncounter": loaded_id >= 0, "mutatedLoadedRecord": mutated_loaded_record, "source": "classic-opcode-44"})])
+
+
+func resume_classic_choice(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != &"yes_no" or body == null:
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Classic choice response requires an accepted bool.")
+	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
+	var values := choice_continuation.values
+	if values.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic choice continuation is malformed.")
+	var apply_result: bool = body.accepted != (int(values[0]) != 0)
+	if not apply_result:
+		return ScenarioRuntimeOperationResult.completed(false)
+	match int(values[1]):
+		0:
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_choice_backout_requested")], ScenarioVmDirective.finish())
+		1:
+			return ScenarioRuntimeOperationResult.completed(false) if values[2] == 0 else ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(values[2], choice_continuation.gosub))
+		4:
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"classic_choice_timeline_stopped")], ScenarioVmDirective.finish())
+		2, 3:
+			return copy_loaded_choice_result(values[1], values[2])
+	return ScenarioRuntimeOperationResult.completed(false)
+
+
+func copy_loaded_choice_result(mode: int, result_index: int) -> ScenarioRuntimeOperationResult:
+	if result_index < 0 or result_index > 3:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_result", "Classic Choice copy requires native result index 0 through 3.")
+	var encounters := _game_state.scenario_progress.encounters
+	var kind := &"simple" if mode == 2 else &"complex"
+	var loaded_id := encounters.classic_loaded_simple_id if mode == 2 else encounters.classic_loaded_complex_id
+	if loaded_id == -1:
+		return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
+	if loaded_id < -1:
+		return ScenarioRuntimeOperationResult.failed(&"missing_loaded_encounter", "Classic Choice copy has no loaded %s record." % kind)
+	var program_id := "%s:%d:result:%d" % [kind, loaded_id, result_index]
+	if kind == &"complex" and encounters.complex_result_is_eliminated(loaded_id, result_index):
+		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"source": "classic-opcode-44"})], ScenarioVmDirective.finish_timeline())
+	# newland copies the loaded record's eight slots and restarts without GOSUB.
+	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_program(program_id, false, ScenarioExecutionContext.empty()))
 
 
 func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request_id: String, context: ScenarioExecutionContext, reopen_result: bool = false) -> ScenarioRuntimeOperationResult:
@@ -63,6 +100,7 @@ func request_encounter(kind: StringName, encounter_id: int, gosub: bool, request
 		if ClassicCompatibility.source_unavailable(_content, "Data ED", encounter_id):
 			return ClassicCompatibility.cancel_interaction(&"simple-encounter", "Data ED", encounter_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Simple Encounter %d." % encounter_id)
+	_game_state.scenario_progress.encounters.classic_loaded_simple_id = encounter.id
 	var prompt := _content.scenario_records.message_by_id(absi(encounter.prompt_message_id)) if encounter.prompt_message_id != 0 else null
 	if prompt == null and encounter.prompt_message_id != 0:
 		if not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(encounter.prompt_message_id)):
@@ -108,7 +146,7 @@ func _request_complex_encounter(encounter_id: int, gosub: bool, request_id: Stri
 		if ClassicCompatibility.source_unavailable(_content, "Data ED2", encounter_id):
 			return ClassicCompatibility.cancel_interaction(&"complex-encounter", "Data ED2", encounter_id, context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic branch references unavailable Complex Encounter %d." % encounter_id)
-	_classic_loaded_complex_encounter_id = encounter.id
+	_game_state.scenario_progress.encounters.classic_loaded_complex_id = encounter.id
 	var request := complex_encounter_request(encounter, request_id)
 	if request == null:
 		if _content.classic_records != null:

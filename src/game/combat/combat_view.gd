@@ -185,7 +185,7 @@ func _populate_projectile_targets(combat: CombatState, content: RealmzContent, c
 		ranged_attack_unavailable_reason = "The equipped item's effect has no available Classic target."
 		return
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor != active_character.traitor and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
+		if monster.current_health > 0 and monster.classic_traitor != active_character.classic_traitor and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
 			targets.append(MonsterView.new(monster, content.combat.monster_by_id(monster.definition_id), content))
 	if targets.is_empty():
 		ranged_attack_unavailable_reason = "No hostile monster is within the projectile's Classic range and line of sight."
@@ -266,10 +266,10 @@ static func _is_hostile_target(combat: CombatState, characters: Array[CharacterS
 		return false
 	var monster := combat.roster.monster_by_id(target_id)
 	if monster != null:
-		return monster.current_health > 0 and monster.traitor != actor.traitor
+		return monster.current_health > 0 and monster.classic_traitor != actor.classic_traitor
 	for character: CharacterState in characters:
 		if character.id == target_id:
-			return character.current_health > 0 and character.traitor != actor.traitor
+			return character.current_health > 0 and character.classic_traitor != actor.classic_traitor
 	return false
 
 

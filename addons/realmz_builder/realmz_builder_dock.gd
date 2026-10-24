@@ -14,6 +14,7 @@ signal path_requested(path: String)
 @onready var _controller: Button = %Controller
 @onready var _view: Button = %View
 @onready var _tests: Button = %Tests
+@onready var _authoring_scene: Button = %AuthoringScene
 
 var _registration: Dictionary = {}
 
@@ -25,6 +26,8 @@ func _ready() -> void:
 	_controller.pressed.connect(func() -> void: _request_link("controller"))
 	_view.pressed.connect(func() -> void: _request_link("view"))
 	_tests.pressed.connect(_request_first_test)
+	if _authoring_scene != null:
+		_authoring_scene.pressed.connect(func() -> void: _request_link("authoringScene"))
 
 
 func configure(profiles: Array) -> void:
@@ -36,9 +39,12 @@ func configure(profiles: Array) -> void:
 func present_registration(registration: Dictionary) -> void:
 	_registration = registration
 	var registered := not registration.is_empty()
+	configure(["Wide", "Compact", "Empty", "Long Content", "Unavailable", "Error"])
+	if String(registration.get("id", "")) == "party-assembly":
+		_profile.add_item("Character creation")
 	_scene_name.text = String(registration.get("id", "Unregistered scene")).capitalize()
 	var production_binding := bool(registration.get("productionBinding", false))
-	_status.text = "Production-bound preview" if production_binding else "Layout registered; data preview pending"
+	_status.text = "Editable production scene with representative data" if production_binding else "Editable layout; representative data pending"
 	_profile.disabled = not registered
 	_apply.disabled = not registered
 	_clear.disabled = not registered
@@ -46,6 +52,8 @@ func present_registration(registration: Dictionary) -> void:
 	_controller.disabled = not registered
 	_view.disabled = not registered
 	_tests.disabled = not registered or Array(registration.get("tests", [])).is_empty()
+	if _authoring_scene != null:
+		_authoring_scene.visible = registered and registration.has("authoringScene")
 
 
 func _request_link(key: String) -> void:

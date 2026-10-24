@@ -18,17 +18,17 @@ static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
 static func character_is_friendly(state: GameState, actor: CharacterState, target_id: String) -> bool:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
-		return character.traitor == actor.traitor
+		return character.classic_traitor == actor.classic_traitor
 	var monster := state.combat.roster.monster_by_id(target_id)
-	return monster != null and monster.traitor == actor.traitor
+	return monster != null and monster.classic_traitor == actor.classic_traitor
 
 
 static func monster_is_friendly(state: GameState, actor: MonsterState, target_id: String) -> bool:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
-		return character.traitor == actor.traitor
+		return character.classic_traitor == actor.classic_traitor
 	var monster := state.combat.roster.monster_by_id(target_id)
-	return monster != null and monster.traitor == actor.traitor
+	return monster != null and monster.classic_traitor == actor.classic_traitor
 
 
 static func health(state: GameState, target_id: String) -> int:
@@ -73,14 +73,14 @@ static func condition_value(state: GameState, target_id: String, condition_index
 	return character.conditions.value(condition_index) if character != null else monster.conditions.value(condition_index) if monster != null else 0
 
 
-static func destroy_magic_score(state: GameState, caster_traitor: bool, target_id: String) -> int:
+static func destroy_magic_score(state: GameState, caster_traitor: int, target_id: String) -> int:
 	var character := state.party.character_by_id(target_id)
 	var monster := state.combat.roster.monster_by_id(target_id) if character == null else null
 	var conditions: ConditionSet = character.conditions if character != null else monster.conditions if monster != null else null
 	if conditions == null:
 		return 0
-	var target_traitor_before := character.traitor if character != null else monster.traitor
-	var target_traitor_after := false if character != null else target_traitor_before
+	var target_traitor_before := character.classic_traitor if character != null else monster.classic_traitor
+	var target_traitor_after := 0 if character != null else target_traitor_before
 	var allied_before := target_traitor_before == caster_traitor
 	var allied_after := target_traitor_after == caster_traitor
 	var score := 0

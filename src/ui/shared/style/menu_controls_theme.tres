@@ -1,11 +1,16 @@
-[gd_resource type="Theme" load_steps=12 format=3]
+[gd_resource type="Theme" format=3 uid="uid://bqav4l8gd2oq4"]
 
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_idle.tres" id="1_idle"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_selected.tres" id="2_selected"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_panel.tres" id="3_panel"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_field.tres" id="4_field"]
 
-[sub_resource type="StyleBoxEmpty" id="Empty"]
+[sub_resource type="StyleBoxFlat" id="ControlIdle"]
+content_margin_left = 12.0
+content_margin_top = 6.0
+content_margin_right = 12.0
+content_margin_bottom = 6.0
+bg_color = Color(0, 0, 0, 0)
 
 [sub_resource type="StyleBoxFlat" id="Focus"]
 bg_color = Color(0, 0, 0, 0)
@@ -15,98 +20,90 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.867, 0.729, 0.416, 1)
 
-[sub_resource type="StyleBoxFlat" id="ControlIdle"]
-bg_color = Color(0, 0, 0, 0)
-content_margin_left = 12.0
-content_margin_right = 12.0
-content_margin_top = 6.0
-content_margin_bottom = 6.0
-
 [sub_resource type="StyleBoxFlat" id="ControlHover"]
-bg_color = Color(0.16, 0.23, 0.28, 1)
 content_margin_left = 12.0
-content_margin_right = 12.0
 content_margin_top = 6.0
+content_margin_right = 12.0
 content_margin_bottom = 6.0
+bg_color = Color(0.16, 0.23, 0.28, 1)
 
 [sub_resource type="StyleBoxFlat" id="ControlSelected"]
-bg_color = Color(0.866667, 0.729412, 0.415686, 1)
 content_margin_left = 12.0
-content_margin_right = 12.0
 content_margin_top = 6.0
+content_margin_right = 12.0
 content_margin_bottom = 6.0
+bg_color = Color(0.866667, 0.729412, 0.415686, 1)
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[sub_resource type="StyleBoxEmpty" id="SettingsSurface"]
+content_margin_left = 18.0
+content_margin_top = 16.0
+content_margin_right = 18.0
+content_margin_bottom = 14.0
 
 [sub_resource type="StyleBoxEmpty" id="TabBody"]
 content_margin_top = 12.0
 
-[sub_resource type="StyleBoxEmpty" id="SettingsSurface"]
-content_margin_left = 18.0
-content_margin_right = 18.0
-content_margin_top = 16.0
-content_margin_bottom = 14.0
-
 [resource]
-Button/styles/normal = SubResource("ControlIdle")
-Button/styles/hover = SubResource("ControlHover")
-Button/styles/pressed = SubResource("ControlSelected")
-Button/styles/focus = SubResource("Focus")
-Button/styles/disabled = SubResource("ControlIdle")
 Button/colors/font_color = Color(0.925, 0.925, 0.89, 1)
-Button/colors/font_hover_color = Color(1, 0.88, 0.57, 1)
-Button/colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
 Button/colors/font_disabled_color = Color(0.51, 0.59, 0.63, 1)
-OptionButton/styles/normal = ExtResource("4_field")
-OptionButton/styles/hover = ExtResource("4_field")
-OptionButton/styles/pressed = ExtResource("2_selected")
-OptionButton/styles/focus = SubResource("Focus")
-OptionButton/styles/disabled = ExtResource("4_field")
-LineEdit/styles/normal = ExtResource("4_field")
-LineEdit/styles/focus = SubResource("Focus")
+Button/colors/font_hover_color = Color(1, 0.88, 0.57, 1)
+Button/colors/font_hover_pressed_color = Color(0.063, 0.102, 0.141, 1)
+Button/colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
+Button/styles/disabled = SubResource("ControlIdle")
+Button/styles/focus = SubResource("Focus")
+Button/styles/hover = SubResource("ControlHover")
+Button/styles/hover_pressed = SubResource("ControlSelected")
+Button/styles/normal = SubResource("ControlIdle")
+Button/styles/pressed = SubResource("ControlSelected")
+CheckButton/colors/font_hover_color = Color(1, 0.88, 0.57, 1)
+CheckButton/colors/font_hover_pressed_color = Color(1, 0.88, 0.57, 1)
+CheckButton/colors/font_pressed_color = Color(0.925, 0.925, 0.89, 1)
+CheckButton/styles/disabled = SubResource("ControlIdle")
+CheckButton/styles/focus = SubResource("Focus")
+CheckButton/styles/hover = SubResource("ControlHover")
+CheckButton/styles/hover_pressed = SubResource("ControlHover")
+CheckButton/styles/normal = SubResource("ControlIdle")
+CheckButton/styles/pressed = SubResource("ControlIdle")
+ItemList/colors/font_selected_color = Color(0.063, 0.102, 0.141, 1)
 ItemList/styles/panel = ExtResource("4_field")
 ItemList/styles/selected = ExtResource("2_selected")
 ItemList/styles/selected_focus = ExtResource("2_selected")
-ItemList/colors/font_selected_color = Color(0.063, 0.102, 0.141, 1)
-TabContainer/styles/panel = SubResource("TabBody")
-TabContainer/styles/tab_selected = SubResource("ControlSelected")
-TabContainer/styles/tab_unselected = SubResource("ControlIdle")
-TabContainer/colors/font_selected_color = Color(0.063, 0.102, 0.141, 1)
-PanelContainer/styles/panel = SubResource("Empty")
+LineEdit/styles/focus = SubResource("Focus")
+LineEdit/styles/normal = ExtResource("4_field")
+MenuAction/base_type = &"Button"
+MenuAction/colors/font_hover_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/colors/font_hover_pressed_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/styles/disabled = ExtResource("1_idle")
+MenuAction/styles/focus = ExtResource("2_selected")
+MenuAction/styles/hover = ExtResource("2_selected")
+MenuAction/styles/hover_pressed = ExtResource("2_selected")
+MenuAction/styles/normal = ExtResource("1_idle")
+MenuAction/styles/pressed = ExtResource("2_selected")
 MenuDialog/base_type = &"PanelContainer"
 MenuDialog/styles/panel = ExtResource("3_panel")
-
-MenuAction/base_type = &"Button"
-MenuAction/styles/normal = ExtResource("1_idle")
-MenuAction/styles/hover = ExtResource("2_selected")
-MenuAction/styles/pressed = ExtResource("2_selected")
-MenuAction/styles/focus = ExtResource("2_selected")
-MenuAction/styles/disabled = ExtResource("1_idle")
-
-TabContainer/styles/tab_hovered = SubResource("ControlHover")
-TabContainer/styles/tab_disabled = SubResource("ControlIdle")
-TabContainer/styles/tab_focus = SubResource("Focus")
-TabContainer/colors/font_hovered_color = Color(1, 0.88, 0.57, 1)
-TabBar/styles/tab_selected = SubResource("ControlSelected")
-TabBar/styles/tab_unselected = SubResource("ControlIdle")
-TabBar/styles/tab_hovered = SubResource("ControlHover")
-TabBar/styles/tab_disabled = SubResource("ControlIdle")
-TabBar/styles/tab_focus = SubResource("Focus")
-TabBar/colors/font_selected_color = Color(0.063, 0.102, 0.141, 1)
-TabBar/colors/font_hovered_color = Color(1, 0.88, 0.57, 1)
-CheckButton/styles/normal = SubResource("ControlIdle")
-CheckButton/styles/hover = SubResource("ControlHover")
-CheckButton/styles/pressed = SubResource("ControlIdle")
-CheckButton/styles/hover_pressed = SubResource("ControlHover")
-CheckButton/styles/disabled = SubResource("ControlIdle")
-CheckButton/styles/focus = SubResource("Focus")
-CheckButton/colors/font_hover_color = Color(1, 0.88, 0.57, 1)
-CheckButton/colors/font_pressed_color = Color(0.925, 0.925, 0.89, 1)
-CheckButton/colors/font_hover_pressed_color = Color(1, 0.88, 0.57, 1)
+OptionButton/styles/disabled = ExtResource("4_field")
+OptionButton/styles/focus = SubResource("Focus")
+OptionButton/styles/hover = ExtResource("4_field")
+OptionButton/styles/normal = ExtResource("4_field")
+OptionButton/styles/pressed = ExtResource("2_selected")
+PanelContainer/styles/panel = SubResource("Empty")
 SettingsSurface/base_type = &"PanelContainer"
 SettingsSurface/styles/panel = SubResource("SettingsSurface")
-
-MenuAction/colors/font_hover_color = Color(0.063, 0.102, 0.141, 1)
-MenuAction/colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
-MenuAction/colors/font_hover_pressed_color = Color(0.063, 0.102, 0.141, 1)
-MenuAction/styles/hover_pressed = ExtResource("2_selected")
-Button/styles/hover_pressed = SubResource("ControlSelected")
-Button/colors/font_hover_pressed_color = Color(0.063, 0.102, 0.141, 1)
+TabBar/colors/font_hovered_color = Color(1, 0.88, 0.57, 1)
+TabBar/colors/font_selected_color = Color(0.063, 0.102, 0.141, 1)
+TabBar/styles/tab_disabled = SubResource("ControlIdle")
+TabBar/styles/tab_focus = SubResource("Focus")
+TabBar/styles/tab_hovered = SubResource("ControlHover")
+TabBar/styles/tab_selected = SubResource("ControlSelected")
+TabBar/styles/tab_unselected = SubResource("ControlIdle")
+TabContainer/colors/font_hovered_color = Color(1, 0.88, 0.57, 1)
+TabContainer/colors/font_selected_color = Color(0.063, 0.102, 0.141, 1)
+TabContainer/styles/panel = SubResource("TabBody")
+TabContainer/styles/tab_disabled = SubResource("ControlIdle")
+TabContainer/styles/tab_focus = SubResource("Focus")
+TabContainer/styles/tab_hovered = SubResource("ControlHover")
+TabContainer/styles/tab_selected = SubResource("ControlSelected")
+TabContainer/styles/tab_unselected = SubResource("ControlIdle")

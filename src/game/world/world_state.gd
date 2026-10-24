@@ -30,6 +30,7 @@ func to_data() -> Dictionary:
 		"acquiredMaps": exploration_data["acquiredMaps"],
 		"randomRegions": trigger_data["randomRegions"],
 		"mapDarkness": topology_data["mapDarkness"],
+		"mapDarknessBytes": topology_data["mapDarknessBytes"],
 		"mapLandlooks": topology_data["mapLandlooks"],
 		"locationNotes": exploration_data["locationNotes"],
 	}

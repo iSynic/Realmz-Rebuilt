@@ -15,55 +15,16 @@ const READABLE_NARRATIVE_PATH := "res://src/ui/shared/assets/fonts/Alegreya-Vari
 
 static func themed_copy(base_theme: Theme, settings: PresentationSettings, interface_size: float = 1.0, fonts: FontResolver = null) -> Theme:
 	var result := base_theme.duplicate() as Theme
-	result.add_type(&"ClassicTheldrowLineEdit")
-	result.set_type_variation(&"ClassicTheldrowLineEdit", &"LineEdit")
-	result.add_type(&"ClassicTheldrowOptionButton")
-	result.set_type_variation(&"ClassicTheldrowOptionButton", &"OptionButton")
-	result.add_type(&"ClassicTheldrowButton")
-	result.set_type_variation(&"ClassicTheldrowButton", &"Button")
-	result.add_type(&"ClassicUnidentifiedItem")
-	result.set_type_variation(&"ClassicUnidentifiedItem", &"Label")
 	var font_scale := interface_size * settings.interface_text_scale
-	result.default_font_size = int(round(17.0 * font_scale))
+	var authored_runtime_size := base_theme.get_constant(&"default_font_size", &"ClassicRuntimeMetrics") if base_theme.has_constant(&"default_font_size", &"ClassicRuntimeMetrics") else base_theme.default_font_size
+	result.default_font_size = maxi(1, roundi(authored_runtime_size * font_scale))
 	_scale_theme(result, interface_size, font_scale, interface_size * settings.narrative_text_scale)
-	var readable_ui := load(READABLE_UI_PATH) as Font
-	var readable_bold := load(READABLE_BOLD_PATH) as Font
-	var readable_narrative := load(READABLE_NARRATIVE_PATH) as Font
-	var body := _with_fallback(THELDROW_PATH, readable_ui)
-	var ornament := _with_fallback(BLACK_CHANCERY_PATH, readable_bold)
-	var utility := _with_fallback(CLASSIC_UTILITY_PATH, readable_ui)
-	result.default_font = body
-	result.set_font(&"font", &"ClassicRosterText", body)
-	result.set_font(&"font", &"ClassicRosterAuto", body)
-	for type_name: StringName in [&"Label", &"CheckButton"]:
-		result.set_font(&"font", type_name, body)
-	for type_name: StringName in [&"LineEdit", &"OptionButton", &"ItemList"]:
-		result.set_font(&"font", type_name, utility)
-	result.set_font(&"normal_font", &"RichTextLabel", body)
-	result.set_font(&"font", &"Button", ornament)
-	result.set_font(&"font", &"BattleCommandButton", ornament)
-	result.set_font(&"font", &"ClassicChoiceButton", ornament)
-	result.set_font(&"font", &"ClassicHeading", ornament)
-	result.set_font(&"font", &"ClassicCommandCaption", ornament)
-	result.set_font(&"normal_font", &"ClassicNarrative", _with_fallback(THELDROW_PATH, readable_narrative))
-	result.set_font(&"font", &"MenuButton", body)
-	result.set_font(&"font", &"PopupMenu", body)
-	result.set_font(&"font", &"ClassicUtility", utility)
-	result.set_font(&"font", &"ClassicTheldrowLineEdit", body)
-	result.set_font(&"font", &"ClassicTheldrowOptionButton", body)
-	result.set_font(&"font", &"ClassicTheldrowButton", body)
-	result.set_font(&"font", &"ClassicUnidentifiedItem", body)
-	result.set_color(&"font_color", &"ClassicUnidentifiedItem", Color.TRANSPARENT)
-	result.set_color(&"font_outline_color", &"ClassicUnidentifiedItem", Color("8fcfd1"))
-	result.set_constant(&"outline_size", &"ClassicUnidentifiedItem", 2)
-	result.set_font(&"font", &"Classic3DHelp", _with_fallback(CHICAGO_PATH, readable_ui))
 	_apply_font_choices(result, settings, fonts)
 	return result
 
 
 static func _apply_font_choices(theme: Theme, settings: PresentationSettings, fonts: FontResolver) -> void:
 	theme.set_constant(&"custom_font_selected", &"ClassicNarrative", 0 if settings.narrative_font.is_empty() else 1)
-	theme.set_type_variation(&"ClassicNarrativeText", &"Label")
 	theme.set_font(&"font", &"ClassicNarrativeText", theme.get_font(&"normal_font", &"ClassicNarrative"))
 	theme.set_font_size(&"font_size", &"ClassicNarrativeText", theme.get_font_size(&"normal_font_size", &"ClassicNarrative"))
 	if settings.interface_font.is_empty() and settings.narrative_font.is_empty():

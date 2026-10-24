@@ -281,4 +281,12 @@ func _clear_creator_page() -> void:
 	review_label = null
 	spell_label = null
 	spell_list = null
-	_clear(creator_page)
+	for child: Node in creator_page.get_children():
+		if child.name == "PartyAssemblyBrowser":
+			(child as Control).hide()
+			var rows := child.get_node_or_null("StoredCharacterList")
+			if rows != null:
+				_clear(rows)
+		else:
+			creator_page.remove_child(child)
+			child.queue_free()

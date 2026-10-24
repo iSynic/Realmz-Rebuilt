@@ -31,7 +31,7 @@ func character_spells(selection: CombatSpellSelection, state: GameState, content
 	return _spells
 
 
-func threats(state: GameState, content: RealmzContent, traitor: bool) -> CombatProtectionThreats:
+func threats(state: GameState, content: RealmzContent, traitor: int) -> CombatProtectionThreats:
 	if _threats == null: _threats = CombatProtectionThreats.new(state, content, traitor)
 	return _threats
 

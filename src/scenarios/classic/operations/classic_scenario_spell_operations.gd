@@ -15,9 +15,27 @@ static func apply(content: RealmzContent, state: GameState, rng: RealmzRng, rule
 		var result := rules.combat_flow.magic.cast_macro_spell(state, content, context.combatant_id, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, rng)
 		return ScenarioRuntimeOperationResult.completed(true, result.events) if result.ok else ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	var targets := state.party.characters() if entire_party else state.scenario_progress.selected_characters()
-	if targets.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode %d has no selected character targets." % action.opcode)
+	if targets.is_empty() or spell.target_type == 7 or absi(spell.special) == 68:
+		return _without_character_targets(state, rng, rules, action, spell)
 	return _continue(content, state, rng, rules, action, targets, 0)
+
+
+static func _without_character_targets(state: GameState, rng: RealmzRng, rules: RealmzRules, action: ClassicActionDefinition, spell: SpellDefinition) -> ScenarioRuntimeOperationResult:
+	var result := rules.magic.resolve_scenario_empty_spell(state.party, spell, action.extra_code[1], rng)
+	if result == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_spell_effect", "Classic scenario spell has unsafe party-effect inputs.")
+	if not result.cast:
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+	var events: Array[DomainEvent] = []
+	var special := absi(spell.special)
+	if special == 48 or special == 50 and spell.target_type == 7:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 647 if special == 48 else 601, "waitForCompletion": false, "source": "classic-scenario-spell"}))
+	if special == 68:
+		events.append(DomainEvent.new(&"party_fatigue_changed", {"fatigue": state.party.fatigue, "source": "classic"}))
+	elif spell.target_type == 7:
+		var index := ConditionRules.PARTY_TORCH_LIT if special == 50 else special
+		events.append(DomainEvent.new(&"party_condition_changed", {"condition": index, "value": state.party.conditions.value(index), "source": "classic"}))
+	return ScenarioRuntimeOperationResult.completed(0, events)
 
 
 static func resume(content: RealmzContent, state: GameState, rng: RealmzRng, rules: RealmzRules, handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:

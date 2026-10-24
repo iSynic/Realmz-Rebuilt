@@ -14,6 +14,7 @@ const RESTART_CURRENT_PROGRAM: StringName = &"restart-current-program"
 const DROPOUT: StringName = &"dropout"
 const CLOCK_TIMER_RETURN: StringName = &"clock-timer-return"
 const RECHECK_PROGRAM: StringName = &"recheck-program"
+const PUSH_CLASSIC_RETURN: StringName = &"push-classic-return"
 
 var kind: StringName
 var target_id: int = -1
@@ -82,6 +83,12 @@ static func restart_current_program() -> ScenarioVmDirective:
 	return ScenarioVmDirective.new(RESTART_CURRENT_PROGRAM)
 
 
+static func push_classic_return() -> ScenarioVmDirective:
+	var directive := ScenarioVmDirective.new(PUSH_CLASSIC_RETURN)
+	directive.gosub = true
+	return directive
+
+
 static func dropout() -> ScenarioVmDirective:
 	return ScenarioVmDirective.new(DROPOUT)
 
@@ -100,7 +107,7 @@ func copy() -> ScenarioVmDirective:
 
 func to_data() -> Dictionary:
 	match kind:
-		FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT:
+		FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT, PUSH_CLASSIC_RETURN:
 			return {"kind": String(kind)}
 		BRANCH_XAP:
 			return {"kind": String(kind), "targetId": target_id, "gosub": gosub}
@@ -125,17 +132,9 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 	if not data.get("kind") is String:
 		return null
 	var kind_text: String = data["kind"]
+	if StringName(kind_text) in [FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT, PUSH_CLASSIC_RETURN]:
+		return _empty_directive(StringName(kind_text)) if data.size() == 1 else null
 	match StringName(kind_text):
-		FINISH:
-			return finish() if data.size() == 1 else null
-		FINISH_TIMELINE:
-			return finish_timeline() if data.size() == 1 else null
-		RESUME_AFTER_ENCOUNTER:
-			return resume_after_encounter() if data.size() == 1 else null
-		RESTART_CURRENT_PROGRAM:
-			return restart_current_program() if data.size() == 1 else null
-		DROPOUT:
-			return dropout() if data.size() == 1 else null
 		BRANCH_XAP:
 			if data.size() != 3 or not data.get("targetId") is int or not data.get("gosub") is bool:
 				return null
@@ -177,6 +176,17 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 			var use_gosub: bool = data["gosub"]
 			var repeat: bool = data["repeatEncounter"]
 			return null if restored_context == null else branch_encounter_result(program, use_gosub, restored_context, repeat)
+	return null
+
+
+static func _empty_directive(kind_value: StringName) -> ScenarioVmDirective:
+	match kind_value:
+		FINISH: return finish()
+		FINISH_TIMELINE: return finish_timeline()
+		RESUME_AFTER_ENCOUNTER: return resume_after_encounter()
+		RESTART_CURRENT_PROGRAM: return restart_current_program()
+		DROPOUT: return dropout()
+		PUSH_CLASSIC_RETURN: return push_classic_return()
 	return null
 
 

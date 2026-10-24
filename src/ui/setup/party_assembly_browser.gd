@@ -6,7 +6,7 @@ extends VBoxContainer
 
 
 func character_rows() -> VBoxContainer:
-	return %StoredCharacterList as VBoxContainer
+	return get_node("StoredCharacterList") as VBoxContainer
 
 
 func apply_ui_sizing(profile: UiLayoutProfile) -> void:

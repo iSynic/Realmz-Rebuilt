@@ -55,6 +55,18 @@ func clear_children(parent: Container) -> void:
 		child.queue_free()
 
 
+func ensure_workspace(parent: Container, scene: PackedScene) -> InventoryWorkspace:
+	var workspace := parent.get_node_or_null("InventoryWorkspace") as InventoryWorkspace
+	if workspace == null:
+		clear_children(parent)
+		workspace = scene.instantiate() as InventoryWorkspace
+		workspace.name = "InventoryWorkspace"
+		parent.add_child(workspace)
+	else:
+		workspace.clear_rendered_content()
+	return workspace
+
+
 func capture_item_scroll(parent: Container, rendered_character_id: String, selected_character_id: String, current_position: int) -> int:
 	if rendered_character_id != selected_character_id:
 		return current_position

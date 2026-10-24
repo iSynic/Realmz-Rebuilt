@@ -300,7 +300,7 @@ static func group_spell_target_label(target_type: int) -> String:
 	return {9: "All Friendly", 10: "All Enemies", 12: "Everybody"}.get(target_type, "Automatic Targets")
 
 
-static func group_target_matches(target_type: int, target_traitor: bool, caster_traitor: bool) -> bool:
+static func group_target_matches(target_type: int, target_traitor: int, caster_traitor: int) -> bool:
 	if target_type == 12: return true
 	if target_type == 9: return target_traitor == caster_traitor
 	return target_traitor != caster_traitor

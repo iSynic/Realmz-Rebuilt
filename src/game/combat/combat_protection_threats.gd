@@ -6,10 +6,10 @@ var _conditions: Dictionary = {}
 var _unknown_macro := false
 
 
-func _init(state: GameState, content: RealmzContent, friendly_traitor: bool) -> void:
+func _init(state: GameState, content: RealmzContent, friendly_traitor: int) -> void:
 	if state.combat == null: return
 	for character: CharacterState in state.party.characters():
-		if character.current_health <= 0 or character.traitor == friendly_traitor or not state.combat.battlefield.actors.has_actor(character.id): continue
+		if character.current_health <= 0 or character.classic_traitor == friendly_traitor or not state.combat.battlefield.actors.has_actor(character.id): continue
 		if not state.character_spellcasting_blocked:
 			for spell_id: String in character.known_spells():
 				var spell := content.magic.spell_by_id(spell_id)
@@ -23,7 +23,7 @@ func _init(state: GameState, content: RealmzContent, friendly_traitor: bool) -> 
 			var scroll := character.scroll_at(slot)
 			if scroll != null and not scroll.is_empty(): _spell(content.magic.spell_by_id(scroll.spell_id))
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health <= 0 or monster.traitor == friendly_traitor or not state.combat.battlefield.actors.has_actor(monster.id): continue
+		if monster.current_health <= 0 or monster.classic_traitor == friendly_traitor or not state.combat.battlefield.actors.has_actor(monster.id): continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null: continue
 		_unknown_macro = _unknown_macro or definition.death_macro != 0

@@ -18,6 +18,8 @@ static func apply(directive: ScenarioVmDirective, definition: ScenarioDefinition
 			return resume_encounter(definition, frames)
 		ScenarioVmDirective.RESTART_CURRENT_PROGRAM:
 			return _restart_program(frames)
+		ScenarioVmDirective.PUSH_CLASSIC_RETURN:
+			return _push_classic_return(frames)
 		ScenarioVmDirective.DROPOUT:
 			return _dropout_program(definition, frames)
 		ScenarioVmDirective.BRANCH_XAP:
@@ -85,6 +87,16 @@ static func resume_encounter(definition: ScenarioDefinition, frames: Array[Scena
 			if _is_issuing_encounter(issuing_action, encounter_context):
 				return _exit_issuing_program(frames, frame_index, source_frame, encounter_context)
 	return ScenarioDirectiveTransition.failed(&"invalid_encounter_loop", "Classic encounter exit cannot find its issuing encounter instruction.")
+
+
+static func _push_classic_return(frames: Array[ScenarioFrame]) -> ScenarioDirectiveTransition:
+	if frames.is_empty() or frames.back().kind != ScenarioFrame.PROGRAM:
+		return ScenarioDirectiveTransition.failed(&"invalid_classic_return", "Classic return push has no issuing program.")
+	# Castle opcode 67 pushes before testing the successful destination -1.
+	# The active record continues; 111 later resumes its saved following slot.
+	var source: ScenarioFrame = frames.back()
+	var active := ScenarioFrame.from_data(source.to_data())
+	return _install_program_frame(active, true, frames, active.definition_id)
 
 
 static func _restart_program(frames: Array[ScenarioFrame]) -> ScenarioDirectiveTransition:

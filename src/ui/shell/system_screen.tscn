@@ -10,8 +10,6 @@
 theme = ExtResource("4_theme")
 theme_type_variation = &"SettingsSurface"
 route_id = &"system"
-title = "Settings"
-description = ""
 script = ExtResource("2_screen")
 
 [node name="SystemWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
@@ -25,12 +23,14 @@ size_flags_vertical = 3
 
 [node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
 visible = false
+text = ""
 
 [node name="ScreenBodyScroll" parent="WorkspaceColumn/BodyClip" index="0"]
 vertical_scroll_mode = 0
 
 [node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
 theme_override_font_sizes/font_size = 44
+text = "Settings"
 
 [node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
 theme_override_font_sizes/font_size = 24

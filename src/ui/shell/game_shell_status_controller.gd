@@ -64,6 +64,37 @@ func initialize(
 	_setup_controller = setup_controller
 
 
+func bind_hud_content(well: PanelContainer) -> void:
+	var prior_status := _status_label.text
+	var prior_status_color := _status_label.modulate
+	var prior_narrative := _latest_classic_text if _choice_context_visible else _narrative_history
+	if prior_narrative.is_empty(): prior_narrative = _narrative.text
+	var prior_scroll: float = _narrative.get_v_scroll_bar().value
+	var prior_facts := [_coordinates_label.text, _fatigue_label.text, _fatigue_bar.value, _fatigue_bar.tooltip_text, _light_label.text, _clock_label.text, _gold_label.text]
+	_narrative_well = well
+	_narrative = well.get_node("NarrativeColumn/NarrativeText") as RichTextLabel
+	var facts := well.get_node("NarrativeColumn/Facts") as GridContainer
+	_status_label = facts.get_node("Status") as Label
+	_coordinates_label = facts.get_node("Coordinates") as Label
+	_fatigue_label = facts.get_node("FatigueGauge/Fatigue") as Label
+	_fatigue_bar = facts.get_node("FatigueGauge/FatigueBar") as ProgressBar
+	_light_label = facts.get_node("Light") as Label
+	_clock_label = facts.get_node("Clock") as Label
+	_gold_label = facts.get_node("Gold") as Label
+	_status_label.text = prior_status
+	_status_label.modulate = prior_status_color
+	_narrative.text = prior_narrative
+	_narrative.get_v_scroll_bar().value = prior_scroll
+	_coordinates_label.text = prior_facts[0]
+	_fatigue_label.text = prior_facts[1]
+	_fatigue_bar.value = prior_facts[2]
+	_fatigue_bar.tooltip_text = prior_facts[3]
+	_light_label.text = prior_facts[4]
+	_clock_label.text = prior_facts[5]
+	_gold_label.text = prior_facts[6]
+	_field_time_playback.bind_label(_clock_label)
+
+
 func set_status(text: String, is_error: bool = false) -> void:
 	_status_label.text = text
 	_status_label.modulate = ERROR if is_error else TEXT

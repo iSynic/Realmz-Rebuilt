@@ -76,6 +76,10 @@ static func is_condition_cure_spell(spell: SpellDefinition) -> bool:
 	return SpellResolutionSupport.is_condition_cure_spell(spell)
 
 
+func resolve_scenario_empty_spell(party: PartyState, spell: SpellDefinition, power_level: int, rng: RealmzRng) -> GroupSpellResolution:
+	return _field_scenario_spells.resolve_scenario_empty_spell(party, spell, power_level, rng)
+
+
 func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = [], spend_spell_points: bool = true, allow_empty: bool = false, item_definitions: Array[ItemDefinition] = [], ally_targets: Array[MonsterState] = [], ally_definitions: Array[MonsterDefinition] = []) -> GroupSpellResolution:
 	return _field_scenario_spells.resolve_field_spell(caster, targets, spell, power_level, rng, castes, races, spend_spell_points, allow_empty, item_definitions, ally_targets, ally_definitions)
 

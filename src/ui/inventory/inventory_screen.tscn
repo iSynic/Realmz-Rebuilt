@@ -6,11 +6,21 @@
 
 [node name="InventoryScreen" instance=ExtResource("1_base")]
 route_id = &"inventory"
-title = "Inventory"
-description = ""
 script = ExtResource("2_screen")
 
 [node name="InventoryWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+
+[editable path="InventoryWorkspace"]
+
+[node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
+text = "Inventory"
+
+[node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
+visible = false
+text = ""
+
+[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
+visible = false

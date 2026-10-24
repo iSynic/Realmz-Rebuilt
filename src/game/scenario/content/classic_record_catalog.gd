@@ -207,6 +207,7 @@ var _resource_facts: Array[ResourceFacts] = []
 var _undecodable_resource_sources: Array[String] = []
 var _native_races: Array[RaceDefinition] = []
 var _native_castes: Array[CasteDefinition] = []
+var _initial_map_darkness_bytes: Dictionary = {}
 var rule_selection: RuleSelection
 
 var resource_facts: Array[ResourceFacts]:
@@ -262,6 +263,17 @@ func extra_code_by_id(record_id: int) -> ExtraCodeFacts:
 
 func sources() -> Array[Source]:
 	return _sources.duplicate()
+
+
+func set_verified_initial_map_darkness_byte(level_type: StringName, native_index: int, value: int) -> void:
+	_initial_map_darkness_bytes["%s:%d" % [String(level_type), native_index]] = value
+
+
+func initial_map_darkness_byte(level_type: StringName, level_index: int, fallback: int) -> int:
+	var source_value: Variant = _initial_map_darkness_bytes.get("%s:%d" % [String(level_type), level_index], fallback)
+	if source_value is int:
+		return source_value
+	return fallback
 
 
 func native_races() -> Array[RaceDefinition]:

@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://src/ui/shared/screen_frame.gd" id="1_route"]
 
 [node name="ScreenFrame" type="PanelContainer"]
+offset_right = 1280.0
+offset_bottom = 720.0
 script = ExtResource("1_route")
 
 [node name="WorkspaceColumn" type="VBoxContainer" parent="."]

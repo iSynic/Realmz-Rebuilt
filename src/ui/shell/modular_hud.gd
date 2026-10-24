@@ -8,10 +8,15 @@ const WATCHED_FIELDS: Array[StringName] = [&"current_health", &"maximum_health",
 var active := false
 var _shell_ref: WeakRef
 var _contents: Array[Control] = []
-var _parents: Array[Node] = []
-var _indices: Array[int] = []
-var _styles: Array[StyleBox] = []
+var _fixed_contents: Array[Control] = []
+var _effects_panel: PanelContainer
+var effects_panel: PanelContainer:
+	get: return _effects_panel
+var world_grid: GridContainer:
+	get: return _contents[2].get_node("WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandUpperCenter/WorldCommandGrid") as GridContainer
 var _panels: Array[HudPanel] = []
+var _authored_rects: Array[Rect2] = []
+var _authored_effect_rect: Rect2
 var _settings := HudPreferences.new()
 var _last_route: StringName = &""
 var _party_effect_playback := false
@@ -25,19 +30,38 @@ var _layout_narrative_scale := 1.0
 
 func initialize(shell: GameShell) -> void:
 	_shell_ref = weakref(shell)
-	_contents = [shell.get_node("%PartyRoster"), shell.get_node("%NarrativeWell"), shell.get_node("%WorldCommandPanel"), shell.get_node("%CommandPanel")]
-	_panels = [$Roster, $Narration, $World, $Party]
+	_fixed_contents = [shell.get_node("%PartyRoster"), shell.get_node("%NarrativeWell"), shell.get_node("%WorldCommandPanel"), shell.get_node("%CommandPanel")]
+	_bind_authored_content()
 	_panels[3].companion_surface = %EffectsDock
 	_panels[3].open_changed.connect(func(open: bool) -> void: %EffectsDock.visible = active and open)
 	panel_menu.arrange_requested.connect(_arrange_from_menu)
 	for index: int in 4:
-		var content := _contents[index]
-		_parents.append(content.get_parent())
-		_indices.append(content.get_index())
-		_styles.append(content.get_theme_stylebox("panel") if content.has_theme_stylebox_override("panel") else null)
 		_panels[index].pin_changed.connect(_pin_changed.bind(index))
 		_panels[index].options_requested.connect(_open_options.bind(index))
 	shell.status.narrative_appended.connect(_narrative_appended)
+
+
+func _bind_authored_content() -> void:
+	_contents = [
+		$Roster/Surface/Column/Body/Content/PartyRoster,
+		$Narration/Surface/Column/Body/Content/NarrativeWell,
+		$World/Surface/Column/Body/Content/WorldCommandPanel,
+		$Party/Surface/Column/Body/Content/CommandPanel,
+	]
+	_effects_panel = $Party/EffectsDock/EffectsPanel
+	_panels = [$Roster, $Narration, $World, $Party]
+	for panel: HudPanel in _panels:
+		_authored_rects.append(Rect2(panel.position, panel.size))
+	_authored_effect_rect = Rect2(_panels[3].position + %EffectsDock.position, %EffectsDock.size)
+
+
+func arrange_authoring_sample(profile: UiLayoutProfile) -> void:
+	if _contents.is_empty(): _bind_authored_content()
+	_settings = HudPreferences.new()
+	active = true
+	for index: int in 4:
+		_panels[index].configure(TITLES[index], _settings.panels[index], false)
+	arrange(profile)
 
 
 func prepare(settings: PresentationSettings, view: GameView, route: StringName, paused: bool) -> bool:
@@ -72,43 +96,34 @@ func _set_active(enabled: bool) -> void:
 	visible = enabled
 	panel_menu.close()
 	var shell := _shell_ref.get_ref() as GameShell
-	var effects := shell.get_node("%EffectsPanel")
 	if not enabled:
-		(shell.get_node("%BottomRegion") as Control).show()
-		(shell.get_node("%Facts") as GridContainer).remove_theme_constant_override("h_separation")
-	var row := shell.get_node("%PartyEffectsRow")
-	effects.reparent(%EffectsDock if enabled else row, false)
-	if not enabled: row.move_child(effects, 1)
-	if not enabled: (shell.get_node("%EffectsGrid") as GridContainer).columns = 2
-	if not enabled:
-		(shell.get_node("%WorldCommandLowerGrid") as Control).get_parent().show()
-		for grid: GridContainer in [shell.get_node("%WorldCommandGrid"), shell.get_node("%CommandGrid")]:
+		(get_node("World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter") as Control).show()
+		for grid: GridContainer in [world_grid, party_grid()]:
 			UiSizing.constant(grid, &"h_separation", 3)
 			UiSizing.constant(grid, &"v_separation", 3)
 	(_contents[0].get_node("RosterColumn/Heading") as Control).visible = not enabled
 	for record: Node in _contents[0].find_children("Member", "PanelContainer", true, false):
 		(record as PartyRosterMemberRow).set_modular_style(enabled)
-	for index: int in 4:
-		var content := _contents[index]
-		content.reparent(_panels[index].content_host() if enabled else _parents[index], false)
+	for content: Control in _contents:
 		content.custom_minimum_size = Vector2.ZERO
 		content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		content.z_index = 0
-		if enabled:
-			content.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-			content.show()
-		else:
-			_parents[index].move_child(content, _indices[index])
-			if _styles[index] != null: content.add_theme_stylebox_override("panel", _styles[index])
-			else: content.remove_theme_stylebox_override("panel")
+		content.show()
+	(_fixed_contents[0] as Control).visible = not enabled
+	(shell.get_node("%BottomRegion") as Control).visible = not enabled
+	shell.bind_hud_content(enabled)
+
+
+func content(index: int) -> Control:
+	return _contents[index]
+
+
+func party_grid() -> GridContainer:
+	return _contents[3].get_node("PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid") as GridContainer
 
 
 func arrange(profile: UiLayoutProfile) -> void:
 	if not active: return
-	for content: Control in _contents:
-		if not content.get_theme_stylebox("panel") is StyleBoxEmpty:
-			content.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	var area := profile.application_rect.grow(-8.0)
 	_placement_area = area
 	_layout_font_scale = profile.font_scale
@@ -126,6 +141,13 @@ func arrange(profile: UiLayoutProfile) -> void:
 		Rect2(Vector2(strip_width + gap, area.size.y - narrative_height), Vector2(narrative_width, narrative_height)),
 		commands[0], commands[1],
 	]
+	if not compact:
+		var authored_scale := area.size / Vector2(1264.0, 704.0)
+		for index: int in 4:
+			var source := _authored_rects[index]
+			rectangles[index] = Rect2((source.position - Vector2(8.0, 8.0)) * authored_scale, source.size * authored_scale)
+			if index >= 2:
+				rectangles[index].size = rectangles[index].size.max(commands[index - 2].size)
 	for index: int in 4:
 		var rectangle := rectangles[index]
 		if index == 0 and not compact:
@@ -174,14 +196,13 @@ func _roster_reading_width() -> float:
 
 
 func _fit_narrative(rectangle: Rect2) -> Rect2:
-	var shell := _shell_ref.get_ref() as GameShell
-	var facts := shell.get_node("%Facts") as GridContainer
+	var facts := _contents[1].get_node("NarrativeColumn/Facts") as GridContainer
 	facts.add_theme_constant_override("h_separation", roundi(8.0 * _layout_font_scale))
 	facts.columns = 3
 	while facts.columns > 1 and facts.get_combined_minimum_size().x + 12.0 > rectangle.size.x:
 		facts.columns -= 1
 	rectangle.size.x = maxf(rectangle.size.x, facts.get_combined_minimum_size().x + 12.0)
-	var narrative := shell.get_node("%NarrativeText") as RichTextLabel
+	var narrative := _contents[1].get_node("NarrativeColumn/NarrativeText") as RichTextLabel
 	var line_height := narrative.get_theme_font_size("normal_font_size") * 1.4
 	rectangle.size.y = maxf(rectangle.size.y, facts.get_combined_minimum_size().y + line_height * 3.0 + 20.0)
 	rectangle.size = rectangle.size.min(_placement_area.size)
@@ -189,13 +210,14 @@ func _fit_narrative(rectangle: Rect2) -> Rect2:
 
 
 func _arrange_effects(area: Rect2, narration: Rect2, compact: bool) -> void:
-	var shell := _shell_ref.get_ref() as GameShell
-	var grid := shell.get_node("%EffectsGrid") as GridContainer
+	var grid := %EffectsDock.get_node("EffectsPanel/EffectsColumn/EffectsGrid") as GridContainer
 	var cell := (grid.get_child(0) as Control).get_combined_minimum_size()
 	var spacing := Vector2(grid.get_theme_constant("h_separation"), grid.get_theme_constant("v_separation"))
 	grid.columns = _strip_columns(8, cell + spacing, area.size, _settings.strip_orientations[2], 8 if 8.0 * (cell.x + spacing.x) <= narration.size.x else 4)
 	var effect_size := Vector2(grid.columns, ceili(8.0 / grid.columns)) * (cell + spacing) - spacing
 	var effect_position := Vector2(narration.end.x - effect_size.x, narration.position.y - effect_size.y - 8.0)
+	if not compact and _settings.strip_orientations[2] == "auto" and not _settings.effects_custom_position:
+		effect_position = (_authored_effect_rect.position - Vector2(8.0, 8.0)) * (area.size / Vector2(1264.0, 704.0))
 	if _settings.strip_orientations[2] == "vertical":
 		effect_position = Vector2(_panels[0].position.x - area.position.x - effect_size.x - 8.0, 0.0)
 	if _settings.effects_custom_position: effect_position = (area.size - effect_size).max(Vector2.ZERO) * _settings.effects_position
@@ -213,10 +235,9 @@ func _strip_columns(count: int, cell: Vector2, available: Vector2, orientation: 
 
 
 func _arrange_commands(profile: UiLayoutProfile, area: Rect2) -> Array[Rect2]:
-	var shell := _shell_ref.get_ref() as GameShell
 	var padding := 2 if _settings.compact_commands else 8
-	var world := shell.get_node("%WorldCommandGrid") as GridContainer
-	var party := shell.get_node("%CommandGrid") as GridContainer
+	var world := world_grid
+	var party := party_grid()
 	var icon_size := Vector2(32, 32)
 	for grid: GridContainer in [world, party]:
 		for button: Node in grid.get_children():
@@ -238,10 +259,10 @@ func _arrange_commands(profile: UiLayoutProfile, area: Rect2) -> Array[Rect2]:
 			if child is BaseButton and child.has_method("set_modular_icon_layout"):
 				child.call("set_modular_icon_layout", art_scale, padding)
 				(child as Control).custom_minimum_size = cell
-	(shell.get_node("%WorldCommandLowerGrid") as Control).get_parent().hide()
-	(shell.get_node("%TorchDock") as Control).hide()
+	(_contents[2].get_node("WorldCommandColumn/WorldCommandDeckCenter/WorldCommandDeckFrame/WorldCommandRows/WorldCommandLowerCenter") as Control).hide()
+	(_contents[3].get_node("PartyEffectsRow/TorchDock") as Control).hide()
 	# Reflow after command refresh briefly restores the larger Fixed artwork metrics.
-	(shell.get_node("%PartyEffectsRow") as BoxContainer).queue_sort()
+	(_contents[3].get_node("PartyEffectsRow") as BoxContainer).queue_sort()
 	var world_size := Vector2(world.columns, ceili(7.0 / world.columns)) * cell
 	var party_size := Vector2(party.columns, ceili(5.0 / party.columns)) * cell
 	var party_position := Vector2(0, world_size.y + 8)

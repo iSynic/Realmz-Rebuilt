@@ -13,13 +13,18 @@ var _condition_values: Array[int] = []
 
 
 func initialize(host: Node, grid: GridContainer, panel: PanelContainer, slot_scene: PackedScene) -> Array[TextureRect]:
-	_panel = panel
-	_slots = ClassicPartyEffects.build_slots(grid, slot_scene)
+	bind_hud_content(grid, panel, slot_scene)
 	var timer := Timer.new()
 	timer.wait_time = FRAME_SECONDS
 	timer.autostart = true
 	timer.timeout.connect(_advance_frame)
 	host.add_child(timer)
+	return _slots
+
+
+func bind_hud_content(grid: GridContainer, panel: PanelContainer, slot_scene: PackedScene) -> Array[TextureRect]:
+	_panel = panel
+	_slots = ClassicPartyEffects.build_slots(grid, slot_scene)
 	return _slots
 
 

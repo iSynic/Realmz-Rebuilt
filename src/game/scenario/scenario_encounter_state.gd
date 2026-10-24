@@ -9,6 +9,8 @@ var _eliminated_complex_results: Dictionary = {}
 var _attempts: Dictionary = {}
 var _thief_type_flags: Dictionary = {}
 var _program_overrides: Dictionary = {}
+var classic_loaded_simple_id: int = -1
+var classic_loaded_complex_id: int = -1
 
 
 func set_timed_override(encounter_id: int, value: Dictionary) -> void:
@@ -73,6 +75,9 @@ func set_program_override(source_program_id: String, target_program_id: String) 
 	if source_program_id.is_empty() or target_program_id.is_empty():
 		return false
 	_program_overrides[source_program_id] = target_program_id
+	var parts := source_program_id.split(":")
+	if parts.size() == 4 and parts[0] == "complex" and parts[2] == "result":
+		_eliminated_complex_results.erase("%s:%s" % [parts[1], parts[3]])
 	return true
 
 
@@ -87,9 +92,17 @@ func write_to(data: Dictionary) -> void:
 	data["encounterAttempts"] = _sorted_dictionary(_attempts)
 	data["thiefEncounterTypeFlags"] = _sorted_dictionary(_thief_type_flags)
 	data["scenarioProgramOverrides"] = _sorted_dictionary(_program_overrides)
+	data["classicLoadedSimpleId"] = classic_loaded_simple_id
+	data["classicLoadedComplexId"] = classic_loaded_complex_id
 
 
 func restore_collections(data: Dictionary) -> bool:
+	for field: String in ["classicLoadedSimpleId", "classicLoadedComplexId"]:
+		var value := _loaded_id(data.get(field, -2))
+		if value < -2 or value > 32_767:
+			return false
+	classic_loaded_simple_id = _loaded_id(data.get("classicLoadedSimpleId", -2))
+	classic_loaded_complex_id = _loaded_id(data.get("classicLoadedComplexId", -2))
 	for field: String in ["timedEncounterOverrides", "eliminatedSimpleOptions", "encounterAttempts", "thiefEncounterTypeFlags", "scenarioProgramOverrides"]:
 		if not data.has(field):
 			return false
@@ -182,6 +195,16 @@ func _timed_overrides_for_save() -> Dictionary:
 	for encounter_id: Variant in encounter_ids:
 		result[str(encounter_id)] = (_timed_overrides[encounter_id] as Dictionary).duplicate(true)
 	return result
+
+
+static func _loaded_id(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float:
+		var number: float = value
+		if is_finite(number) and number == floorf(number):
+			return int(number)
+	return -3
 
 
 static func _integer(value: Variant) -> int:

@@ -138,6 +138,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	for index: int in (0 if unsafe_native else target_coordinates.size()):
 		var instance_id := state.next_instance_id("monster.summoned")
 		var summoned := _context.monsters.build_monster(definition, instance_id, 1 if caster.traitor else 0, state.difficulty, state.clock.day(), rng)
+		if summoned != null: summoned.classic_traitor = caster.classic_traitor
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
@@ -200,6 +201,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 	for index: int in (0 if unsafe_native else target_coordinates.size()):
 		var instance_id := state.next_instance_id("monster.summoned")
 		var summoned := _context.monsters.build_monster(definition, instance_id, 1 if caster.traitor else 0, state.difficulty, state.clock.day(), rng)
+		if summoned != null: summoned.classic_traitor = caster.classic_traitor
 		if summoned == null:
 			return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"summon_construction_failed", "The selected Classic monster could not be constructed.")
 		summoned.summoned = true
@@ -217,14 +219,14 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 
 
 func automatic_coordinate(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Vector2i:
-	return _automatic_coordinate(state, content, caster.id, caster.traitor, spell, power_level)
+	return _automatic_coordinate(state, content, caster.id, caster.classic_traitor, spell, power_level)
 
 
 func automatic_monster_coordinate(state: GameState, content: RealmzContent, caster: MonsterState, spell: SpellDefinition, power_level: int) -> Vector2i:
-	return _automatic_coordinate(state, content, caster.id, caster.traitor, spell, power_level)
+	return _automatic_coordinate(state, content, caster.id, caster.classic_traitor, spell, power_level)
 
 
-func _automatic_coordinate(state: GameState, content: RealmzContent, caster_id: String, caster_traitor: bool, spell: SpellDefinition, power_level: int) -> Vector2i:
+func _automatic_coordinate(state: GameState, content: RealmzContent, caster_id: String, caster_traitor: int, spell: SpellDefinition, power_level: int) -> Vector2i:
 	if not probe_choice(state, content, caster_id, spell, power_level).allowed:
 		return INVALID_COORDINATE
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
@@ -242,10 +244,10 @@ func _automatic_coordinate(state: GameState, content: RealmzContent, caster_id: 
 		return INVALID_COORDINATE
 	var hostile_positions: Array[Vector2i] = []
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor != caster_traitor and state.combat.battlefield.actors.has_actor(monster.id):
+		if monster.current_health > 0 and monster.classic_traitor != caster_traitor and state.combat.battlefield.actors.has_actor(monster.id):
 			hostile_positions.append(state.combat.battlefield.actors.actor_position(monster.id))
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor != caster_traitor and state.combat.battlefield.actors.has_actor(character.id):
+		if character.current_health > 0 and character.classic_traitor != caster_traitor and state.combat.battlefield.actors.has_actor(character.id):
 			hostile_positions.append(state.combat.battlefield.actors.actor_position(character.id))
 	candidates.sort_custom(func(left: Vector2i, right: Vector2i) -> bool:
 		var left_distance := _nearest_distance(left, hostile_positions)

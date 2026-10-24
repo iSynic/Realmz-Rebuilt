@@ -121,7 +121,7 @@ func _test_treasure_drop_menu() -> void:
 	assert_true(recipient.disabled and not drop.disabled and component.preferred_initial_focus() == drop, "a capacity-blocked recipient still has a focusable Drop menu")
 	assert_true(drop.get_theme_stylebox("normal") == recipient.get_theme_stylebox("normal"), "Treasure Drop uses the same raised slate surface as a recipient button")
 	assert_false(drop.flat, "Treasure Drop draws its raised button frame")
-	assert_true((load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme).get_font("font", "ClassicTreasureDropButton") == load("res://src/ui/shared/assets/fonts/BlackChancery-Realmz.ttf"), "Treasure Drop retains the Classic caption font")
+	assert_true((((load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme).get_font("font", "ClassicTreasureDropButton") as FontVariation).base_font as FontFile).data == (load("res://src/ui/shared/assets/fonts/BlackChancery-Realmz.ttf") as FontFile).data, "Treasure Drop retains the Classic caption font")
 	assert_true(not drop.get_popup().exclusive, "Treasure Drop leaves embedded viewport input available for outside-click dismissal")
 	assert_true(drop.get_parent().get_combined_minimum_size().x <= 250.0, "the recipient and Drop control fit the compact Treasure column")
 	assert_equal([drop.get_popup().item_count, drop.get_popup().get_item_text(0), drop.get_popup().is_item_disabled(1), drop.get_popup().get_item_tooltip(1)], [2, "Old boots", true, "This cursed item cannot be removed."], "Treasure Drop lists exact items and explains an equipped item that cannot be removed")

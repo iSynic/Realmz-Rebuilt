@@ -147,7 +147,7 @@ func _complete_opcode_death_macro(combatant_id: String, program_id: String, even
 		_game_state.combat.turns.active_turn.classic_physical_active = false
 	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
 	if monster != null:
-		monster.traitor = false
+		_game_state.combat.clear_classic_death_macro_traitor(monster, _game_state.party)
 		if monster.current_health <= 0 and _game_state.combat.battlefield != null:
 			_game_state.combat.battlefield.actors.remove_monster(monster.id)
 	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": _game_state.combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
@@ -234,8 +234,9 @@ func _revive_after_combat_macro(context: ScenarioExecutionContext) -> ScenarioRu
 	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
 	if monster == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_combatant_context", "Classic opcode 119 requires its death-macro combatant identity.")
+	_game_state.combat.reconcile_classic_counters(_game_state.party)
 	monster.current_health = 1
-	monster.traitor = false
+	_game_state.combat.clear_classic_death_macro_traitor(monster, _game_state.party)
 	return ScenarioRuntimeOperationResult.completed(monster.id, [DomainEvent.new(&"monster_revived", {"monsterId": monster.id, "source": "classic-death-macro"})])
 
 
@@ -245,32 +246,36 @@ func _alter_combat_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 120 requires a five-value Extra Code row.")
 	var target_kind := action.extra_code[0]
-	var definition := _content.combat.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
-	var remaining := maxi(0, action.extra_code[2])
-	if target_kind < 1 or target_kind > 2 or definition == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_combat_monster_target", "Classic opcode 120 references an unavailable monster kind or identity.")
-	var candidates := _game_state.party.allies() if target_kind == 1 else _game_state.combat.roster.monsters()
+	if target_kind not in [1, 2]:
+		return ScenarioRuntimeOperationResult.completed(0)
+	_game_state.combat.reconcile_classic_counters(_game_state.party)
+	var remaining := action.extra_code[2]
+	var candidates := _game_state.combat.roster.monsters()
 	var altered: Array[String] = []
 	for monster: MonsterState in candidates:
-		if remaining <= 0:
+		if remaining == 0:
 			break
 		var candidate_definition := _content.combat.monster_by_id(monster.definition_id)
-		if candidate_definition == null or candidate_definition.classic_id != definition.classic_id:
+		if candidate_definition == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 120 requires every live monster definition.")
+		if candidate_definition.classic_name_id != action.extra_code[1] or (candidate_definition.can_summon == -1) != (target_kind == 1):
 			continue
 		if action.extra_code[3] != -1:
 			monster.icon_id = action.extra_code[3]
 			altered.append(monster.id)
-			remaining -= 1
-		elif action.extra_code[4] != -1 and monster.traitor != (action.extra_code[4] != 0):
-			monster.traitor = action.extra_code[4] != 0
+			remaining = RealmzArithmetic.new().signed_16(remaining - 1)
+		elif action.extra_code[4] != -1 or monster.classic_traitor != action.extra_code[4]:
+			if not _game_state.combat.classic_counters_available:
+				return ScenarioRuntimeOperationResult.failed(&"missing_classic_battle_counters", "This older battle has no retained native enemy-counter history.")
+			_game_state.combat.record_classic_traitor_write(monster, action.extra_code[4])
 			altered.append(monster.id)
-			remaining -= 1
-	return ScenarioRuntimeOperationResult.completed(altered.size(), [DomainEvent.new(&"combat_monsters_altered", {"count": altered.size(), "monsterIds": altered, "classicMonsterId": definition.classic_id, "targetKind": target_kind, "source": "classic"})])
+			remaining = RealmzArithmetic.new().signed_16(remaining - 1)
+	return ScenarioRuntimeOperationResult.completed(altered.size(), [DomainEvent.new(&"combat_monsters_altered", {"count": altered.size(), "monsterIds": altered, "classicNameId": action.extra_code[1], "targetKind": target_kind, "source": "classic"})])
 
 
 func _deanimate_lower_undead() -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
-		return ScenarioRuntimeOperationResult.failed(&"no_active_battle", "Classic opcode 121 requires an active battle.")
+		return ScenarioRuntimeOperationResult.completed(0)
 	var affected: Array[String] = []
 	for monster: MonsterState in _game_state.combat.roster.monsters():
 		var definition := _content.combat.monster_by_id(monster.definition_id)
@@ -285,11 +290,11 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Scenario
 		return ScenarioRuntimeOperationResult.completed(0, [DomainEvent.new(&"combat_route_applied", {"count": 0, "reason": "no-active-battle", "source": "classic"})])
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 123 requires a five-value Extra Code row.")
-	var source_traitor := true
+	var source_traitor := 1
 	var source_id := context.combatant_id
 	var source_monster := _game_state.combat.roster.monster_by_id(source_id)
 	if source_monster != null:
-		source_traitor = source_monster.traitor
+		source_traitor = source_monster.classic_traitor
 	var definition_ids: Dictionary = {}
 	for classic_id: int in action.extra_code:
 		if classic_id == 0:
@@ -310,7 +315,7 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Scenario
 	for monster: MonsterState in _game_state.combat.roster.monsters():
 		var routed_definition := _content.combat.monster_by_id(monster.definition_id)
 		var route_id := monster.classic_route_id if _content.classic_records != null else routed_definition.classic_id if routed_definition != null else MonsterState.UNKNOWN_CLASSIC_ROUTE_ID
-		if monster.current_health > 0 and monster.traitor == source_traitor and definition_ids.has(route_id):
+		if monster.current_health > 0 and monster.classic_traitor == source_traitor and definition_ids.has(route_id):
 			monster.conditions.set_value(ConditionRules.RUNS_AWAY, -1)
 			monster.surrender_percent = 50
 			routed.append(monster.id)
@@ -358,11 +363,9 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 	var traitor_override := _classic_spawn_traitor_override(action, context)
 	var builder := BattlefieldBuilder.new()
 	for _index: int in maxi(0, count):
-		var monster := _rules.monsters.build_monster(definition, _game_state.next_instance_id("combat.spawn"), traitor_override, _game_state.difficulty, _game_state.clock.day(), _rng)
+		var monster := _build_classic_spawn(definition, traitor_override, native_id)
 		if monster == null:
 			continue
-		if _content.package_schema_version >= 7:
-			monster.classic_route_id = native_id
 		var desired_local := source_coordinate - battlefield.party_anchor
 		var coordinate := builder.find_monster_position(battlefield, terrain_set, desired_local, definition.size)
 		if coordinate.x < 0 or not battlefield.actors.place_monster(monster.id, coordinate, definition.size):
@@ -378,6 +381,16 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic"}))
 	events.append(DomainEvent.new(&"combat_monsters_spawned", {"monsterId": definition.id, "instanceIds": spawned, "coordinates": coordinates, "requestedCount": maxi(0, count), "soundId": action.extra_code[3], "source": "classic"}))
 	return ScenarioRuntimeOperationResult.completed(spawned, events)
+
+
+func _build_classic_spawn(definition: MonsterDefinition, traitor_override: int, native_id: int) -> MonsterState:
+	var monster := _rules.monsters.build_monster(definition, _game_state.next_instance_id("combat.spawn"), traitor_override, _game_state.difficulty, _game_state.clock.day(), _rng)
+	if monster != null:
+		if traitor_override != MonsterState.UNKNOWN_CLASSIC_ROUTE_ID:
+			monster.classic_traitor = traitor_override
+		if _content.package_schema_version >= 7:
+			monster.classic_route_id = native_id
+	return monster
 
 
 func _classic_spawn_source_coordinate(context: ScenarioExecutionContext) -> Vector2i:
@@ -398,8 +411,8 @@ func _classic_spawn_traitor_override(action: ClassicActionDefinition, context: S
 	if context != null and not context.combatant_id.is_empty():
 		var source := _game_state.combat.roster.monster_by_id(context.combatant_id)
 		if source != null:
-			return 1 if source.traitor else 0
-	return -1
+			return source.classic_traitor
+	return MonsterState.UNKNOWN_CLASSIC_ROUTE_ID
 
 
 func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -418,7 +431,8 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 		1:
 			matched = _rng.draw(100, &"classic.battle-round-macro-percent") <= action.extra_code[1]
 		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_battle_macro_test", "Classic opcode 126 has an invalid round test mode.")
+			# Castle tests only modes zero and one; other modes branch unconditionally.
+			matched = true
 	if not matched:
 		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"battle_macro_tested", {"matched": false, "mode": mode, "round": combat.turns.round_number, "source": "classic"})], ScenarioVmDirective.finish())
 	if action.extra_code[2] != 1:

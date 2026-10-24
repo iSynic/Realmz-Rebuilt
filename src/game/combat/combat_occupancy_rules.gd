@@ -14,23 +14,23 @@ func hostile_adjacent_ids(state: GameState, actor_id: String, anchor_override: V
 	var result: Array[String] = []
 	if state == null or state.combat == null or state.combat.battlefield == null:
 		return result
-	var actor_traitor := false
+	var actor_traitor := 0
 	var character := state.party.character_by_id(actor_id)
 	if character != null:
-		actor_traitor = character.traitor
+		actor_traitor = character.classic_traitor
 	else:
 		var monster := state.combat.roster.monster_by_id(actor_id)
 		if monster == null:
 			return result
-		actor_traitor = monster.traitor
+		actor_traitor = monster.classic_traitor
 	var adjacent_ids := _context.battlefield.adjacent_actor_ids(state.combat.battlefield, actor_id, anchor_override)
 	# Castle scans numeric combat slots: party members first, then monsters in
 	# authored runtime order. Stable IDs must not accidentally redefine reactions.
 	for candidate_character: CharacterState in state.party.characters():
-		if adjacent_ids.has(candidate_character.id) and candidate_character.current_health > 0 and candidate_character.traitor != actor_traitor:
+		if adjacent_ids.has(candidate_character.id) and candidate_character.current_health > 0 and candidate_character.classic_traitor != actor_traitor:
 			result.append(candidate_character.id)
 	for candidate_monster: MonsterState in state.combat.roster.monsters():
-		if adjacent_ids.has(candidate_monster.id) and candidate_monster.current_health > 0 and candidate_monster.traitor != actor_traitor:
+		if adjacent_ids.has(candidate_monster.id) and candidate_monster.current_health > 0 and candidate_monster.classic_traitor != actor_traitor:
 			result.append(candidate_monster.id)
 	return result
 
@@ -50,9 +50,9 @@ func hostile_contact_target_id(state: GameState, actor_id: String, destination_o
 		return ""
 	var monster := state.combat.roster.monster_by_id(candidate_id)
 	if monster != null:
-		return candidate_id if monster.current_health > 0 and monster.traitor != actor.traitor else ""
+		return candidate_id if monster.current_health > 0 and monster.classic_traitor != actor.classic_traitor else ""
 	var character := state.party.character_by_id(candidate_id)
-	return candidate_id if character != null and character.current_health > 0 and character.traitor != actor.traitor else ""
+	return candidate_id if character != null and character.current_health > 0 and character.classic_traitor != actor.classic_traitor else ""
 
 
 static func remove_defeated_position(combat: CombatState, actor_id: String, defeated: bool) -> void:

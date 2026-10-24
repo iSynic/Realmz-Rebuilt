@@ -2,6 +2,10 @@
 class_name PartySetupWorkspace
 extends PanelContainer
 
+@export_group("Responsive layout")
+@export var compact_scenario_minimum_width := 190.0
+@export_group("")
+
 @export var character_sheet_scene: PackedScene
 @export_file("*.tscn") var identity_step_scene_path: String = "res://src/ui/setup/character_creation_identity_step.tscn"
 @export_file("*.tscn") var race_caste_step_scene_path: String = "res://src/ui/setup/character_creation_race_caste_step.tscn"

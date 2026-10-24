@@ -7,149 +7,15 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
-# Tagged builds never cancel one another; each tag publishes its own assets.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  verify:
-    name: Verify tag (${{ matrix.platform }})
-    timeout-minutes: 60
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-2022
-            platform: Windows x86_64
-          - os: ubuntu-latest
-            platform: Linux x86_64
-          - os: macos-latest
-            platform: macOS universal
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          fetch-depth: 1
-      - uses: ./.github/actions/lfs-pull
-      - uses: chickensoft-games/setup-godot@ac93246ea68518a384c1c280a496e5989341f2f6 # v2.4.3
-        with:
-          version: 4.7.1
-          use-dotnet: false
-          include-templates: false
-      - name: Verify tagged source
-        shell: pwsh
-        run: |
-          if ((git rev-parse HEAD).Trim() -ne '${{ github.sha }}') { throw 'Checkout does not match the tagged commit.' }
-          ./tools/verify_public_source.ps1
-          $godotPath = (Get-Command godot).Source
-          if ($IsWindows) {
-            $windowsGodotPath = Join-Path $env:RUNNER_TEMP 'godot.exe'
-            Copy-Item -LiteralPath $godotPath -Destination $windowsGodotPath
-            $godotPath = $windowsGodotPath
-          }
-          ./tools/verify.ps1 -GodotPath $godotPath
-
-  build:
-    name: Build tag (${{ matrix.platform }})
-    needs: verify
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-2022
-            platform: Windows x86_64
-            importerPlatform: windows
-            importerUrlVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_URL
-            importerHashVariable: SCENARIO_IMPORTER_WINDOWS_X86_64_SHA256
-            preset: Windows Desktop
-            output: dist/windows/Realmz Rebuilt.exe
-            artifactPath: dist/windows
-            package: release/realmz-rebuilt-windows-x86_64.zip
-            upload: release-windows
-          - os: ubuntu-latest
-            platform: Linux x86_64
-            importerPlatform: linux
-            importerUrlVariable: SCENARIO_IMPORTER_LINUX_X86_64_URL
-            importerHashVariable: SCENARIO_IMPORTER_LINUX_X86_64_SHA256
-            preset: Linux
-            output: dist/linux/Realmz Rebuilt.x86_64
-            artifactPath: dist/linux
-            package: release/realmz-rebuilt-linux-x86_64.tar.gz
-            upload: release-linux
-          - os: macos-latest
-            platform: macOS universal
-            importerPlatform: macos
-            importerUrlVariable: SCENARIO_IMPORTER_MACOS_URL
-            importerHashVariable: SCENARIO_IMPORTER_MACOS_SHA256
-            preset: macOS
-            output: dist/macos/Realmz Rebuilt.zip
-            artifactPath: dist/macos
-            package: release/realmz-rebuilt-macos-universal.zip
-            upload: release-macos
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-        with:
-          fetch-depth: 1
-      - uses: ./.github/actions/lfs-pull
-      - uses: chickensoft-games/setup-godot@ac93246ea68518a384c1c280a496e5989341f2f6 # v2.4.3
-        with:
-          version: 4.7.1
-          use-dotnet: false
-          include-templates: true
-      - uses: ./.github/actions/native-runtime
-        with:
-          importer-platform: ${{ matrix.importerPlatform }}
-          importer-url: ${{ vars[matrix.importerUrlVariable] }}
-          importer-sha256: ${{ vars[matrix.importerHashVariable] }}
-          preset: ${{ matrix.preset }}
-          output: ${{ matrix.output }}
-          export-label: ${{ matrix.platform }} tagged export
-          missing-importer-message: Set the versioned importer asset URL and SHA-256 repository variables for this platform before building the release.
-      - name: Native startup and package
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path release | Out-Null
-          $log = Join-Path (Resolve-Path -LiteralPath '${{ matrix.artifactPath }}').Path 'smoke.log'
-          if ('${{ runner.os }}' -eq 'Windows') {
-            $quotedLog = '"' + $log + '"'
-            $process = Start-Process -FilePath '${{ matrix.output }}' -ArgumentList "--headless --quit-after 2 --log-file $quotedLog" -WindowStyle Hidden -Wait -PassThru
-            if ($process.ExitCode -ne 0) { throw "Windows startup failed: $($process.ExitCode)" }
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
-            [IO.Compression.ZipFile]::CreateFromDirectory('${{ matrix.artifactPath }}', '${{ matrix.package }}', [IO.Compression.CompressionLevel]::Optimal, $false)
-          } elseif ('${{ runner.os }}' -eq 'Linux') {
-            chmod +x '${{ matrix.output }}'
-            & './${{ matrix.output }}' --headless --quit-after 2 --log-file $log
-            if ($LASTEXITCODE -ne 0) { throw "Linux startup failed: $LASTEXITCODE" }
-            tar -czf '${{ matrix.package }}' -C '${{ matrix.artifactPath }}' .
-          } else {
-            $extracted = Join-Path $env:RUNNER_TEMP 'realmz-rebuilt-native-smoke'
-            Expand-Archive -LiteralPath '${{ matrix.output }}' -DestinationPath $extracted
-            $binary = Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/Realmz Rebuilt'
-            chmod 755 (Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/importer/providence-native-adapter')
-            if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS smoke importer executable permissions.' }
-            chmod 755 (Join-Path $extracted 'Realmz Rebuilt.app/Contents/MacOS/music-importer/realmz-music-importer')
-            if ($LASTEXITCODE -ne 0) { throw 'Could not set macOS smoke music importer executable permissions.' }
-            chmod +x $binary
-            & $binary --headless --quit-after 2 --log-file $log
-            if ($LASTEXITCODE -ne 0) { throw "macOS startup failed: $LASTEXITCODE" }
-            Copy-Item -LiteralPath '${{ matrix.output }}' -Destination '${{ matrix.package }}'
-          }
-          if (-not (Test-Path -LiteralPath $log -PathType Leaf)) { throw "Native startup did not produce its required log on ${{ runner.os }}." }
-          $content = Get-Content -Raw -LiteralPath $log
-          if ($content -match '(?m)^(?:ERROR|SCRIPT ERROR):') { throw 'Native startup log contains an error.' }
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ${{ matrix.upload }}
-          path: ${{ matrix.package }}
-          if-no-files-found: error
-
   publish:
-    name: Preserve or create tagged release
-    needs: build
+    name: Promote verified native artifacts
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
@@ -157,18 +23,19 @@ jobs:
         with:
           lfs: false
           fetch-depth: 1
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
-          pattern: release-*
-          path: release
-          merge-multiple: true
-      - name: Generate checksums
-        shell: pwsh
-        run: |
-          $lines = Get-ChildItem -LiteralPath release -File | Sort-Object Name | ForEach-Object {
-            "{0}  {1}" -f (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant(), $_.Name
-          }
-          [System.IO.File]::WriteAllLines((Join-Path (Resolve-Path release) 'SHA256SUMS'), $lines, [System.Text.UTF8Encoding]::new($false))
+          python-version: '3.12'
+      - name: Package verified preparation artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: >-
+          python tools/prepare_release_assets.py
+          --repository "$GITHUB_REPOSITORY"
+          --tag "$RELEASE_TAG"
+          --commit "$GITHUB_SHA"
+          --output release
       - name: Inspect existing release state
         id: release_state
         shell: pwsh

@@ -8,6 +8,7 @@ var _boat_presence_overrides: Dictionary = {}
 var _door_states: Dictionary = {}
 var _discovered_secrets: Dictionary = {}
 var _map_darkness: Dictionary = {}
+var _map_darkness_bytes: Dictionary = {}
 var _map_landlooks: Dictionary = {}
 var _revision: int = 0
 
@@ -81,13 +82,30 @@ func revision() -> int:
 	return _revision
 
 
-func set_map_darkness(map_id: String, dark: bool) -> void:
-	if not map_id.is_empty():
-		_map_darkness[map_id] = dark
+func set_map_darkness(map_id: String, dark: bool, native_byte: int = -1) -> void:
+	if map_id.is_empty() or native_byte < -1 or native_byte > 255 or native_byte >= 0 and (native_byte != 0) != dark:
+		return
+	_map_darkness[map_id] = dark
+	if native_byte >= 0:
+		_map_darkness_bytes[map_id] = native_byte
+	else:
+		_map_darkness_bytes.erase(map_id)
+
+
+func map_darkness_byte(map_id: String, initial_byte: int) -> int:
+	if _map_darkness_bytes.has(map_id):
+		var stored_byte: Variant = _map_darkness_bytes[map_id]
+		if stored_byte is int:
+			return stored_byte
+	if _map_darkness.has(map_id):
+		var stored_dark: Variant = _map_darkness[map_id]
+		if stored_dark is bool:
+			return 1 if stored_dark else 0
+	return initial_byte
 
 
 func map_is_dark(map: MapDefinition) -> bool:
-	return false if map == null else bool(_map_darkness.get(map.id, map.dark))
+	return false if map == null else map_darkness_byte(map.id, 1 if map.dark else 0) != 0
 
 
 func set_map_landlook(map_id: String, landlook: int) -> void:
@@ -111,6 +129,7 @@ func to_data() -> Dictionary:
 		"doorStates": _sorted_dictionary(_door_states),
 		"discoveredSecrets": _sorted_keys(_discovered_secrets),
 		"mapDarkness": _sorted_dictionary(_map_darkness),
+		"mapDarknessBytes": _sorted_dictionary(_map_darkness_bytes),
 		"mapLandlooks": _sorted_dictionary(_map_landlooks),
 	}
 
@@ -162,6 +181,23 @@ static func _load_map_appearance(data: Dictionary, state: WorldTopologyState) ->
 			if not key is String or key.is_empty() or not data["mapDarkness"][key] is bool:
 				return false
 			state._map_darkness[key] = data["mapDarkness"][key]
+	if data.has("mapDarknessBytes"):
+		if not data["mapDarknessBytes"] is Dictionary:
+			return false
+		for key: Variant in data["mapDarknessBytes"]:
+			var darkness_byte := _signed_integer(data["mapDarknessBytes"][key])
+			if not key is String or key.is_empty() or darkness_byte < 0 or darkness_byte > 255:
+				return false
+			var dark := darkness_byte != 0
+			if state._map_darkness.has(key):
+				var existing_dark_value: Variant = state._map_darkness[key]
+				if not existing_dark_value is bool:
+					return false
+				var existing_dark: bool = existing_dark_value
+				if existing_dark != dark:
+					return false
+			state._map_darkness[key] = dark
+			state._map_darkness_bytes[key] = darkness_byte
 	if data.has("mapLandlooks"):
 		if not data["mapLandlooks"] is Dictionary:
 			return false

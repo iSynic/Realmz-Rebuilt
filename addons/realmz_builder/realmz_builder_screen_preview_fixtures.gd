@@ -14,8 +14,10 @@ const SUPPORTED_SURFACES: Array[String] = [
 	"bestiary",
 	"maps-journal",
 	"system",
+	"save-load",
 	"font-picker",
 	"application-shell",
+	"modular-hud",
 	"campaign-selection",
 	"party-assembly",
 	"party-import-from-save",
@@ -23,6 +25,8 @@ const SUPPORTED_SURFACES: Array[String] = [
 	"saved-adventure-browser",
 	"loading-adventure",
 ]
+
+static var _sample_media: ClassicMediaCatalog
 
 
 static func supports(surface_id: String) -> bool:
@@ -49,8 +53,10 @@ static func bind(surface: Node, surface_id: String, profile: String) -> bool:
 		"bestiary": _bind_creature_screen(surface as CreatureLibraryScreen, view, profile, compact, false)
 		"maps-journal": _bind_journal_screen(surface as JournalScreen, view, compact)
 		"system": _bind_system_screen(surface as SystemScreen, view, profile, compact)
+		"save-load": _bind_save_load_screen(surface as SaveLoadScreen, view, profile, compact)
 		"font-picker": (surface as FontPickerDialog).open(&"interface", PresentationSettings.new())
 		"application-shell": _bind_application_shell(surface as GameShell, view)
+		"modular-hud": _bind_modular_hud(surface as ModularHud, view, profile)
 		"campaign-selection": _bind_campaign_selection(surface as CampaignSelectionPanel, view, profile)
 		"party-assembly": _bind_party_setup(surface as PartySetupWorkspace, view, profile, false)
 		"party-import-from-save": _bind_party_import_dialog(surface as PartyImportFromSaveDialog, profile)
@@ -70,9 +76,11 @@ static func _bind_character_screen(screen: CharacterScreen, view: GameView, comp
 
 
 static func _bind_inventory_screen(screen: InventoryScreen, view: GameView, compact: bool) -> void:
+	var dimensions := Vector2(800.0, 600.0) if compact else Vector2(1280.0, 720.0)
+	screen.set_workspace_rect(Rect2(Vector2.ZERO, dimensions))
 	var controller := InventoryScreenController.new()
 	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
-	controller.present(screen, view, null, 1.0)
+	controller.present(screen, view, _media_catalog(), 1.0)
 	screen.set_meta("realmz_builder_controller", controller)
 
 
@@ -130,15 +138,69 @@ static func _bind_system_screen(screen: SystemScreen, view: GameView, profile: S
 	screen.set_meta("realmz_builder_controller", controller)
 
 
+static func _bind_save_load_screen(screen: SaveLoadScreen, view: GameView, profile: String, compact: bool) -> void:
+	var dimensions := Vector2(800.0, 600.0) if compact else Vector2(1280.0, 720.0)
+	screen.set_workspace_rect(Rect2(Vector2.ZERO, dimensions))
+	var controller := SystemScreenController.new()
+	controller.set_layout_profile(UiLayoutProfile.COMPACT if compact else UiLayoutProfile.WIDE)
+	controller.saves.set_save_previews(_save_previews(profile))
+	controller.present(screen, view, PresentationSettings.new())
+	controller.show_saves()
+	screen.set_meta("realmz_builder_controller", controller)
+
+
 static func _bind_application_shell(shell: GameShell, view: GameView) -> void:
+	if view.party_members.size() < 6 and view.session_started:
+		view = _game_view("Long Content")
+	shell.set_package_media(_media_catalog())
 	if shell.is_node_ready():
 		shell.present(view)
-		shell.status.set_status("Realmz Builder representative application state")
+		shell.status.append_narrative("The company gathers at the city gates. A messenger brings news from beyond the western road.")
+		shell.status.set_status("Ready to explore")
 		return
 	(shell.find_child("PackageStatus", true, false) as Label).text = view.campaign_summary.title if view.campaign_summary != null else "No campaign"
-	(shell.find_child("Status", true, false) as Label).text = "Realmz Builder representative application state"
+	(shell.find_child("Status", true, false) as Label).text = "Ready to explore"
+	(shell.find_child("NarrativeText", true, false) as RichTextLabel).text = "The company gathers at the city gates. A messenger brings news from beyond the western road."
 	var roster := shell.find_child("PartyRoster", true, false) as ClassicPartyRoster
 	roster.present(view, view.party_members[0].id if not view.party_members.is_empty() else "")
+
+
+static func _bind_modular_hud(hud: ModularHud, view: GameView, profile: String) -> void:
+	if view.party_members.size() < 6 and view.session_started:
+		view = _game_view("Long Content")
+	var roster := hud.get_node("Roster/Surface/Column/Body/Content/PartyRoster") as ClassicPartyRoster
+	roster.set_media_catalog(_media_catalog())
+	roster.present(view, view.party_members[0].id if not view.party_members.is_empty() else "")
+	roster.set_compact_layout(profile == "Compact")
+	var narrative := hud.get_node("Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/NarrativeText") as RichTextLabel
+	narrative.text = "The company gathers at the city gates. A messenger brings news from beyond the western road."
+	var facts := hud.get_node("Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts") as GridContainer
+	(facts.get_node("Status") as Label).text = "Ready to explore"
+	(facts.get_node("Coordinates") as Label).text = "Map 12, 8"
+	(facts.get_node("Light") as Label).text = "Light 26"
+	(facts.get_node("Clock") as Label).text = "Day 2 • 14:30"
+	(facts.get_node("Gold") as Label).text = "Gold 460"
+	var exploration_ids: Array[StringName] = []
+	for definition: Dictionary in ClassicCommandCatalog.for_context(&"exploration"):
+		exploration_ids.append(StringName(definition["id"]))
+	for node: Node in hud.find_children("*", "BaseButton", true, false):
+		if not node.has_meta("shell_command_id"):
+			continue
+		var button := node as BaseButton
+		var command_id := StringName(button.get_meta("shell_command_id"))
+		if command_id not in exploration_ids:
+			button.hide()
+			continue
+		if button is ClassicBitmapButton:
+			(button as ClassicBitmapButton).configure(ClassicCommandCatalog.command(command_id), 1)
+		if button.has_method("set_modular_icon_layout"):
+			button.call("set_modular_icon_layout", 1, 2)
+		button.show()
+		(button.get_node("CommandMargin/CommandContent/CaptionBand") as Control).hide()
+	var dimensions := Vector2(800.0, 600.0) if profile == "Compact" else Vector2(1280.0, 720.0)
+	var settings := PresentationSettings.new()
+	hud.arrange_authoring_sample(UiLayoutProfile.for_viewport(dimensions, settings.ui_scale_mode, settings.display_scaling_mode, settings.interface_text_scale, settings.narrative_text_scale))
+	hud.set_meta("realmz_builder_profile", profile)
 
 
 static func _bind_campaign_selection(panel: CampaignSelectionPanel, view: GameView, profile: String) -> void:
@@ -148,6 +210,7 @@ static func _bind_campaign_selection(panel: CampaignSelectionPanel, view: GameVi
 	controller.set_campaigns(_campaigns(profile))
 	controller.set_selected_campaign_summary(view.campaign_summary if profile != "Empty" else null)
 	controller.show_campaign()
+	(panel.find_child("ImportedFilter", true, false) as Button).pressed.emit()
 	panel.set_meta("realmz_builder_controller", controller)
 
 
@@ -155,12 +218,23 @@ static func _bind_party_setup(workspace: PartySetupWorkspace, view: GameView, pr
 	_prepare_party_setup_view(view, profile)
 	var controller := CampaignPartySetupController.new()
 	controller.attach(workspace)
-	controller.campaign_library.build_campaign_overlay()
+	controller.set_media_catalog(_media_catalog())
 	controller.bind_setup_workspace(workspace)
-	controller.campaign_library.set_campaigns(_campaigns(profile))
+	var campaigns := _campaigns(profile)
+	controller.campaign_library.set_campaigns(campaigns)
+	if not campaigns.is_empty():
+		view.campaign_id = campaigns[0].campaign_id
+		view.campaign_summary.campaign_id = campaigns[0].campaign_id
+		view.campaign_summary.package_hash = campaigns[0].package_hash
+		controller.campaign_library.set_selected_campaign_summary(view.campaign_summary)
 	controller.set_vault_revisions(_vault_revisions(view, profile))
 	controller.set_view(view)
 	controller.show_party_setup()
+	(workspace.find_child("ImportedFilter", true, false) as Button).pressed.emit()
+	var dimensions := Vector2(800.0, 600.0) if profile == "Compact" else Vector2(1280.0, 720.0)
+	var settings := PresentationSettings.new()
+	var layout := UiLayoutProfile.for_viewport(dimensions, settings.ui_scale_mode, settings.display_scaling_mode, settings.interface_text_scale, settings.narrative_text_scale)
+	controller.apply_layout(layout, ScreenNavigator.campaign_rect_for(layout, dimensions), Rect2(Vector2.ZERO, dimensions))
 	if creator:
 		(workspace.find_child("CreateCharacter", true, false) as Button).pressed.emit()
 	workspace.set_meta("realmz_builder_controller", controller)
@@ -314,7 +388,11 @@ static func _campaigns(profile: String) -> Array[CampaignPackageView]:
 
 static func _character(index: int, unavailable: bool, long_content: bool) -> CharacterView:
 	var names: Array[String] = ["Kevlar", "Lothlorian", "Silver Leaf", "Traskelion", "Trevor", "Vormale"]
-	var state := CharacterState.new("builder.character.%d" % index, names[index], 24 + index, 42 + index * 2)
+	var long_names: Array[String] = ["Kevlar Ironhand", "Lothlorian Everdawn", "Silver Leaf", "Traskelion of Bywater", "Trevor Northwind", "Vormale the Wanderer"]
+	var races: Array[String] = ["Orc", "Vampire", "Half Elf", "Human", "Dwarf", "Brownie"]
+	var castes: Array[String] = ["Berserker", "Cardinal", "Arcane Archer", "Crusader", "Priest", "Minstrel"]
+	var state := CharacterState.new("builder.character.%d" % index, long_names[index] if long_content else names[index], 24 + index, 42 + index * 2)
+	state.portrait_id = "realmz-portrait-%d" % (267 + index)
 	state.level = 4 + index
 	state.experience = 1200 + index * 325
 	state.spell_points = 18 + index * 2
@@ -326,12 +404,21 @@ static func _character(index: int, unavailable: bool, long_content: bool) -> Cha
 	state.maximum_load = 1800
 	state.money.gold = 80 + index * 20
 	var result := CharacterView.new(state)
+	result.race_name = races[index]
+	result.caste_name = castes[index]
 	var record_count := 14 if long_content else 4
 	for item_index: int in record_count:
 		result.items.append(_item(index, item_index, unavailable))
 	for spell_index: int in record_count:
 		result.spells.append(_spell(spell_index, unavailable))
 	return result
+
+
+static func _media_catalog() -> ClassicMediaCatalog:
+	if _sample_media == null:
+		var library := PackageRepository.new().load_bundled_package(ApplicationLibraryIdentity.PATH, ApplicationLibraryIdentity.CAMPAIGN_ID, ApplicationLibraryIdentity.PACKAGE_HASH)
+		_sample_media = ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new(), library.media if library.is_ok() else null)
+	return _sample_media
 
 
 static func _item(character_index: int, index: int, unavailable: bool) -> ItemView:

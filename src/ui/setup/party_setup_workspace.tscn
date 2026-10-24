@@ -1,10 +1,11 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/party_setup_workspace.gd" id="1_script"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/party_setup_party_slot.tscn" id="4_slot"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="2_sheet"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/character_creation_appearance_step.tscn" id="3_appearance"]
-[ext_resource type="PackedScene" path="res://src/ui/shell/adventure_rules_panel.tscn" id="5_adventure_rules"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/campaign_selection_panel.tscn" id="5_scenarios"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_assembly_browser.tscn" id="6_browser"]
 
 [sub_resource type="StyleBoxFlat" id="SetupSurface"]
 content_margin_left = 10.0
@@ -14,10 +15,8 @@ content_margin_bottom = 10.0
 bg_color = Color(0, 0, 0, 0)
 
 [node name="PartySetup" type="PanelContainer"]
-offset_left = -440.0
-offset_top = -238.0
-offset_right = 440.0
-offset_bottom = 238.0
+offset_right = 1280.0
+offset_bottom = 720.0
 mouse_filter = 0
 theme_override_styles/panel = SubResource("SetupSurface")
 script = ExtResource("1_script")
@@ -34,6 +33,9 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 10
+
+[node name="ScenarioColumn" parent="ScenarioPartyWorkspace" instance=ExtResource("5_scenarios")]
+layout_mode = 2
 
 [node name="CharacterFilesPane" type="PanelContainer" parent="ScenarioPartyWorkspace"]
 unique_name_in_owner = true
@@ -109,10 +111,11 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="EditorHint" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorScroll/Creator/CreatorPage"]
+[node name="PartyAssemblyBrowser" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorScroll/Creator/CreatorPage" instance=ExtResource("6_browser")]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Character Files or the active creation step"
-horizontal_alignment = 1
+
+[editable path="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent/CreatorScroll/Creator/CreatorPage/PartyAssemblyBrowser"]
 
 [node name="SetupMessage" type="Label" parent="ScenarioPartyWorkspace/CharacterFilesPane/CharacterFilesPaneContent"]
 unique_name_in_owner = true
@@ -303,9 +306,11 @@ theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 text_overrun_behavior = 3
 
-[node name="AdventureRulesPanel" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartyBody/PartySetupOptions" instance=ExtResource("5_adventure_rules")]
+[node name="AdventureRules" type="Button" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartySlotScroll/PartyBody/PartySetupOptions"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 34)
 layout_mode = 2
+text = "Adventure Rules…"
 
 [node name="PartyFooter" type="BoxContainer" parent="ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn"]
 unique_name_in_owner = true
@@ -327,3 +332,5 @@ size_flags_horizontal = 3
 text = "Begin adventure"
 autowrap_mode = 2
 disabled = true
+
+[editable path="ScenarioPartyWorkspace/ScenarioColumn"]

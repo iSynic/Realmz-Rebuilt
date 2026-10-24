@@ -125,7 +125,7 @@ func polymorph_monster(target: MonsterState, target_definition: MonsterDefinitio
 
 func _apply_polymorph(target: MonsterState, definition: MonsterDefinition, context: MonsterPolymorphContext, rng: RealmzRng) -> MonsterPolymorphResult:
 	var old_definition_id := target.definition_id
-	var old_traitor := target.traitor
+	var old_traitor := target.classic_traitor
 	var old_summoned := target.summoned
 	var old_conditions := target.conditions.values()
 	var agility := definition.agility + rng.draw(3, &"magic.polymorph.agility-before-stamina") - 2
@@ -153,7 +153,7 @@ func _apply_polymorph(target: MonsterState, definition: MonsterDefinition, conte
 	target.magic_resistance = magic_resistance
 	target.spell_points = spell_points
 	target.maximum_spell_points = definition.spell_points
-	target.traitor = old_traitor
+	target.classic_traitor = old_traitor
 	target.summoned = old_summoned
 	target.icon_id = definition.icon_id
 	target.surrender_percent = definition.surrender_percent

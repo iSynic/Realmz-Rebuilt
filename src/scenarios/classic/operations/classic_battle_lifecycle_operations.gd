@@ -612,7 +612,7 @@ func _continue_after_combat_death_macro(source_kind: StringName, caller: Scenari
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.")
 	var monster := combat.roster.monster_by_id(combatant_id)
 	if monster != null and reset_traitor_on_complete:
-		monster.traitor = false
+		combat.clear_classic_death_macro_traitor(monster, _game_state.party)
 	var committed: Array[DomainEvent] = []
 	committed.assign(events)
 	committed.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))

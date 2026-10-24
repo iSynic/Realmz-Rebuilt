@@ -64,7 +64,7 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 	var area_placement_cache := decision.placements()
 	var area_center_cache := decision.area_centers
 	var scored_spells: Dictionary = {}
-	var protection_threats := decision.threats(state, content, monster.traitor)
+	var protection_threats := decision.threats(state, content, monster.classic_traitor)
 	for slot: int in 10:
 		var spell := content.magic.spell_by_id(definition.spell_id_at(slot))
 		if spell == null or not _context.automation().monster_spell_unavailable_reason(spell).is_empty():
@@ -112,10 +112,10 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	var friendly := spell.target_type == 5 or spell.cannot == 4 or cure_index >= 0 or spell_point_restore
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (spell.target_type != 5 or character.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, character.id) > 0) and (not spell_point_drain or _target_spell_points(state, character.id) > 0) and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.actors.has_actor(character.id) and _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
+		if character.current_health > 0 and (character.classic_traitor == monster.classic_traitor) == friendly and (spell.target_type != 5 or character.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, character.id) > 0) and (not spell_point_drain or _target_spell_points(state, character.id) > 0) and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.actors.has_actor(character.id) and _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
 			candidates.append(character.id)
 	for candidate: MonsterState in state.combat.roster.monsters():
-		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and (spell.target_type != 5 or candidate.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, candidate.id) > 0) and (not spell_point_drain or _target_spell_points(state, candidate.id) > 0) and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (effect_index < 0 or candidate.conditions.value(effect_index) == 0) and (cure_index >= 0 or candidate.id == monster.id or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.actors.has_actor(candidate.id) and content.combat.monster_by_id(candidate.definition_id) != null and _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
+		if candidate.current_health > 0 and (candidate.classic_traitor == monster.classic_traitor) == friendly and (spell.target_type != 5 or candidate.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, candidate.id) > 0) and (not spell_point_drain or _target_spell_points(state, candidate.id) > 0) and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (effect_index < 0 or candidate.conditions.value(effect_index) == 0) and (cure_index >= 0 or candidate.id == monster.id or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.actors.has_actor(candidate.id) and content.combat.monster_by_id(candidate.definition_id) != null and _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
 			candidates.append(candidate.id)
 	if candidates.is_empty():
 		return {}
@@ -144,12 +144,12 @@ func _monster_summon_spell_power_plan(state: GameState, content: RealmzContent, 
 	var allied_summon_count := 0
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id):
-			if character.traitor == monster.traitor: friendly_count += 1
+			if character.classic_traitor == monster.classic_traitor: friendly_count += 1
 			else: hostile_count += 1
 	for candidate: MonsterState in state.combat.roster.monsters():
 		if candidate.current_health <= 0 or not state.combat.battlefield.actors.has_actor(candidate.id):
 			continue
-		if candidate.traitor == monster.traitor:
+		if candidate.classic_traitor == monster.classic_traitor:
 			friendly_count += 1
 			if candidate.summoned: allied_summon_count += 1
 		else:
@@ -163,7 +163,7 @@ func _monster_summon_spell_power_plan(state: GameState, content: RealmzContent, 
 
 
 func _monster_destroy_magic_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
-	var candidates := _destroy_magic_candidates(state, content, monster.id, monster.traitor, spell, power)
+	var candidates := _destroy_magic_candidates(state, content, monster.id, monster.classic_traitor, spell, power)
 	if candidates.is_empty():
 		return {}
 	var selected: Array[String] = []
@@ -180,7 +180,7 @@ func _monster_destroy_magic_plan(state: GameState, content: RealmzContent, monst
 func _monster_polymorph_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
 	var best: Dictionary = {}
 	for target: MonsterState in state.combat.roster.monsters():
-		if target.current_health <= 0 or target.traitor == monster.traitor or not state.combat.battlefield.actors.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, target.id, spell, power):
+		if target.current_health <= 0 or target.classic_traitor == monster.classic_traitor or not state.combat.battlefield.actors.has_actor(target.id) or _target_reflects(state, target.id) or _target_hard_immune(state, content, target.id, spell) or not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, monster.id, target.id, spell, power):
 			continue
 		best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [target.id], "score": 440 + target.hit_dice * 20 + target.current_health - spell.cost * power * 3})
 	return best

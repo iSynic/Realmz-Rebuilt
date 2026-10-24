@@ -1,18 +1,13 @@
-[gd_resource type="Theme" load_steps=6 format=3]
-
-[sub_resource type="StyleBoxEmpty" id="Empty"]
+[gd_resource type="Theme" format=3 uid="uid://cs573tjgb6v0v"]
 
 [sub_resource type="StyleBoxFlat" id="Idle"]
+content_margin_left = 2.0
+content_margin_top = 2.0
+content_margin_right = 2.0
+content_margin_bottom = 2.0
 bg_color = Color(0.06, 0.09, 0.12, 0.18)
 border_width_bottom = 1
 border_color = Color(0.5, 0.58, 0.62, 0.25)
-content_margin_left = 2.0
-content_margin_right = 2.0
-content_margin_top = 2.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="Hover"]
-bg_color = Color(0.65, 0.56, 0.34, 0.2)
 
 [sub_resource type="StyleBoxFlat" id="Focus"]
 bg_color = Color(0, 0, 0, 0)
@@ -22,41 +17,46 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.87, 0.73, 0.42, 0.9)
 
+[sub_resource type="StyleBoxFlat" id="Hover"]
+bg_color = Color(0.65, 0.56, 0.34, 0.2)
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
 [sub_resource type="StyleBoxFlat" id="Scroll"]
-bg_color = Color(0.55, 0.62, 0.65, 0.55)
 content_margin_left = 3.0
-content_margin_right = 3.0
 content_margin_top = 3.0
+content_margin_right = 3.0
 content_margin_bottom = 3.0
+bg_color = Color(0.55, 0.62, 0.65, 0.55)
 
 [resource]
 Button/constants/flat_surface = 1
-Button/styles/normal = SubResource("Idle")
-Button/styles/hover = SubResource("Hover")
-Button/styles/pressed = SubResource("Hover")
 Button/styles/disabled = SubResource("Idle")
 Button/styles/focus = SubResource("Focus")
-Panel/styles/panel = SubResource("Empty")
-PanelContainer/styles/panel = SubResource("Empty")
+Button/styles/hover = SubResource("Hover")
+Button/styles/normal = SubResource("Idle")
+Button/styles/pressed = SubResource("Hover")
+ClassicFooterCommandWell/base_type = &"PanelContainer"
+ClassicFooterCommandWell/styles/panel = SubResource("Empty")
 ClassicInset/base_type = &"PanelContainer"
 ClassicInset/styles/panel = SubResource("Idle")
+ClassicOpenRight/base_type = &"PanelContainer"
+ClassicOpenRight/styles/panel = SubResource("Empty")
 ClassicRaised/base_type = &"PanelContainer"
 ClassicRaised/styles/panel = SubResource("Empty")
 ClassicSharedStone/base_type = &"PanelContainer"
 ClassicSharedStone/styles/panel = SubResource("Empty")
-ClassicFooterCommandWell/base_type = &"PanelContainer"
-ClassicFooterCommandWell/styles/panel = SubResource("Empty")
 ClassicTextWell/base_type = &"PanelContainer"
 ClassicTextWell/styles/panel = SubResource("Empty")
-ClassicOpenRight/base_type = &"PanelContainer"
-ClassicOpenRight/styles/panel = SubResource("Empty")
-VScrollBar/styles/scroll = SubResource("Idle")
-VScrollBar/styles/scroll_focus = SubResource("Idle")
-VScrollBar/styles/grabber = SubResource("Scroll")
-VScrollBar/styles/grabber_highlight = SubResource("Scroll")
-VScrollBar/styles/grabber_pressed = SubResource("Scroll")
-HScrollBar/styles/scroll = SubResource("Idle")
-HScrollBar/styles/scroll_focus = SubResource("Idle")
 HScrollBar/styles/grabber = SubResource("Scroll")
 HScrollBar/styles/grabber_highlight = SubResource("Scroll")
 HScrollBar/styles/grabber_pressed = SubResource("Scroll")
+HScrollBar/styles/scroll = SubResource("Idle")
+HScrollBar/styles/scroll_focus = SubResource("Idle")
+Panel/styles/panel = SubResource("Empty")
+PanelContainer/styles/panel = SubResource("Empty")
+VScrollBar/styles/grabber = SubResource("Scroll")
+VScrollBar/styles/grabber_highlight = SubResource("Scroll")
+VScrollBar/styles/grabber_pressed = SubResource("Scroll")
+VScrollBar/styles/scroll = SubResource("Idle")
+VScrollBar/styles/scroll_focus = SubResource("Idle")

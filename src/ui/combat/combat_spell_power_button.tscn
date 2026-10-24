@@ -3,6 +3,7 @@
 [node name="CombatSpellPower" type="Button"]
 custom_minimum_size = Vector2(20, 22)
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicUtilityButton"
 theme_override_font_sizes/font_size = 12
 toggle_mode = true
 text = "1"

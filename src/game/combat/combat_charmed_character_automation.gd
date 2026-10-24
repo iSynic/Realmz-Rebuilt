@@ -53,11 +53,11 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 	var adjacent_ids := _context.battlefield.adjacent_actor_ids(state.combat.battlefield, actor.id)
 	var character_targets: Array[CharacterState] = []
 	for candidate: CharacterState in state.party.characters():
-		if candidate.id != actor.id and candidate.current_health > 0 and candidate.traitor != actor.traitor and adjacent_ids.has(candidate.id):
+		if candidate.id != actor.id and candidate.current_health > 0 and candidate.classic_traitor != actor.classic_traitor and adjacent_ids.has(candidate.id):
 			character_targets.append(candidate)
 	var monster_targets: Array[MonsterState] = []
 	for candidate: MonsterState in state.combat.roster.monsters():
-		if candidate.current_health > 0 and candidate.traitor != actor.traitor and adjacent_ids.has(candidate.id):
+		if candidate.current_health > 0 and candidate.classic_traitor != actor.classic_traitor and adjacent_ids.has(candidate.id):
 			monster_targets.append(candidate)
 	var target_count := character_targets.size() + monster_targets.size()
 	if target_count == 0:

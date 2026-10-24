@@ -63,7 +63,7 @@ func _resolve_character_spell_monster_target(caster: CharacterState, target: Mon
 		return _drain_monster_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
-		target.traitor = caster.traitor
+		target.classic_traitor = caster.classic_traitor
 		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
@@ -115,7 +115,7 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		return _drain_character_spell_points(target, damage, duration, 0, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
-		target.traitor = caster.traitor
+		target.classic_traitor = caster.classic_traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
@@ -202,7 +202,7 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 		return _drain_character_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
-		target.traitor = caster.traitor
+		target.classic_traitor = caster.classic_traitor
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var helpless_before := target.conditions.is_active(ConditionRules.HELPLESS)
@@ -261,7 +261,7 @@ func _resolve_monster_spell_monster_target(caster: MonsterState, target: Monster
 		return _drain_monster_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
 	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
-		target.traitor = caster.traitor
+		target.classic_traitor = caster.classic_traitor
 		target.target_id = ""
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
@@ -312,7 +312,7 @@ static func _destroy_or_turn_undead(caster: CharacterState, target: MonsterState
 	else:
 		result.special_result = &"turned"
 		var traitor_before := target.traitor
-		target.traitor = caster.traitor
+		target.classic_traitor = caster.classic_traitor
 		target.target_id = ""
 		_record_allegiance_change(result, traitor_before, target.traitor)
 	return result

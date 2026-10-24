@@ -6,8 +6,7 @@ extends PanelContainer
 signal back_requested
 
 @export var route_id: StringName
-@export var title: String = "Realmz"
-@export_multiline var description: String = ""
+@export var compact_spells_back_width := 60.0
 
 @onready var scroll: ScrollContainer = %ScreenBodyScroll
 @onready var body: VBoxContainer = %ScreenBody
@@ -18,14 +17,13 @@ signal back_requested
 @onready var _header_rule: HSeparator = $WorkspaceColumn/HeaderRule
 var _compact_route_exit := false
 var _compact_spell_route := false
+var _spells_back_authored_min_size := Vector2.ZERO
 
 
 func _ready() -> void:
-	_title_label.text = title
-	_description_label.text = description
 	_description_label.max_lines_visible = 2
 	_description_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_description_label.visible = not description.is_empty()
+	_description_label.visible = not _description_label.text.is_empty()
 	_configure_navigation()
 	_update_back_visibility()
 	apply_route_chrome()
@@ -57,24 +55,21 @@ func _update_back_visibility() -> void:
 
 
 func _configure_navigation() -> void:
-	var action := _back_action
+	var action := find_child("SpellsBackAction", true, false) as Button if route_id == &"spells" else _back_action
 	if action == null:
 		action = get_node_or_null("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
 	if action == null:
 		return
-	action.text = "Back"
+	_back_action = action
 	if route_id != &"spells":
 		return
-	var footer := find_child("WorkspaceFooter", true, false) as Control
-	var back_host := find_child("SpellsBackHost", true, false) as Container
-	assert(footer != null and back_host != null, "The Spells route requires its authored footer and Back host")
-	if action.get_parent() != back_host:
-		action.owner = null
-		action.reparent(back_host)
-		action.owner = self
-	var navigation_size := Vector2(60.0 if _compact_spell_route else 82.0, 34.0)
+	assert(action.name == &"SpellsBackAction", "The Spells route requires its authored footer Back action")
+	if _spells_back_authored_min_size == Vector2.ZERO:
+		_spells_back_authored_min_size = action.custom_minimum_size
+	var navigation_size := _spells_back_authored_min_size
+	if _compact_spell_route:
+		navigation_size.x = compact_spells_back_width
 	action.custom_minimum_size = navigation_size
-	action.size_flags_horizontal = Control.SIZE_SHRINK_END
 
 
 func apply_route_chrome() -> void:
@@ -85,7 +80,7 @@ func apply_route_chrome() -> void:
 	if route_title != null:
 		route_title.visible = show_route_heading
 	if route_description != null:
-		route_description.visible = show_route_heading and not description.is_empty()
+		route_description.visible = show_route_heading and not route_description.text.is_empty()
 	if route_rule != null:
 		route_rule.visible = show_route_heading
 

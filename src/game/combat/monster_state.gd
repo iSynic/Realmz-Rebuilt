@@ -17,7 +17,13 @@ var armor: int
 var magic_resistance: int
 var spell_points: int
 var maximum_spell_points: int
-var traitor: bool
+var _classic_traitor: int = 0
+var classic_traitor: int:
+	get: return _classic_traitor
+	set(value): _classic_traitor = RealmzArithmetic.new().signed_8(value)
+var traitor: bool:
+	get: return _classic_traitor != 0
+	set(value): _classic_traitor = 1 if value else 0
 var summoned: bool = false
 var icon_id: int = 0
 var surrender_percent: int = 0
@@ -145,6 +151,8 @@ func to_data() -> Dictionary:
 		result["saves"] = _saves.duplicate()
 	if classic_route_id != UNKNOWN_CLASSIC_ROUTE_ID:
 		result["classicRouteId"] = classic_route_id
+	if _classic_traitor not in [0, 1]:
+		result["classicTraitor"] = _classic_traitor
 	return result
 
 
@@ -216,6 +224,11 @@ static func _numeric_fields_from_data(data: Dictionary) -> Variant:
 
 
 static func _restore_optional_fields(result: MonsterState, data: Dictionary) -> bool:
+	if data.has("classicTraitor"):
+		var flag := _classic_allegiance(data["classicTraitor"])
+		if flag < -128 or flag > 127 or (flag != 0) != result.traitor:
+			return false
+		result.classic_traitor = flag
 	if data.has("classicRouteId"):
 		var route_id := _integer(data.classicRouteId)
 		if route_id < -32_768 or route_id > 32_767:
@@ -279,4 +292,14 @@ static func _integer(value: Variant) -> int:
 		return value
 	if value is float and is_equal_approx(value, round(value)):
 		return int(value)
+	return -100_000
+
+
+static func _classic_allegiance(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float:
+		var number: float = value
+		if is_finite(number) and number == floorf(number) and number >= -128 and number <= 127:
+			return int(number)
 	return -100_000

@@ -2,17 +2,24 @@
 class_name InventoryTradeWorkspace
 extends PanelContainer
 
+var _source_ledger: InventoryTradeLedger
+var _target_ledger: InventoryTradeLedger
+
 
 func ledgers() -> BoxContainer:
 	return get_node("Content/InventoryTradeLedgers") as BoxContainer
 
 
 func source_ledger() -> InventoryTradeLedger:
-	return get_node("Content/InventoryTradeLedgers/SourceLedger") as InventoryTradeLedger
+	if _source_ledger == null:
+		_source_ledger = get_node("Content/InventoryTradeLedgers/SourceLedger") as InventoryTradeLedger
+	return _source_ledger
 
 
 func target_ledger() -> InventoryTradeLedger:
-	return get_node("Content/InventoryTradeLedgers/TargetLedger") as InventoryTradeLedger
+	if _target_ledger == null:
+		_target_ledger = get_node("Content/InventoryTradeLedgers/TargetLedger") as InventoryTradeLedger
+	return _target_ledger
 
 
 func divider() -> InventoryTradeDivider:

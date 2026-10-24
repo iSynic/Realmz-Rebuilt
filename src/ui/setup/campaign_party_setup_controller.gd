@@ -7,6 +7,7 @@ const PARTY_SETUP_WORKSPACE_PATH := "res://src/ui/setup/party_setup_workspace.ts
 const PARTY_IMPORT_DIALOG_PATH := "res://src/ui/setup/party_import_from_save_dialog.tscn"
 
 signal party_import_requested
+signal adventure_rules_requested
 signal party_import_source_requested(index: int)
 signal party_import_external_source_requested(path: String)
 signal party_import_selected_requested(indices: Array[int])
@@ -31,9 +32,6 @@ var _inspection: PartySetupInspectionController
 var _assembly: PartySetupAssemblyController
 var _creation: PartySetupCharacterCreationController
 var _party_import_dialog: PartyImportFromSaveDialog
-var _adventure_rules_error := ""
-var _adventure_rules_feedback_revision := -1
-var _adventure_rules_campaign_id := ""
 
 
 func _init() -> void:
@@ -46,8 +44,6 @@ func _init() -> void:
 func build_setup_overlay() -> void:
 	if setup_overlay != null:
 		return
-	if campaign_overlay == null:
-		_campaign_library.build_campaign_overlay()
 	var workspace_scene := load(PARTY_SETUP_WORKSPACE_PATH) as PackedScene
 	assert(workspace_scene != null, "Party setup workspace scene is unavailable.")
 	var workspace := workspace_scene.instantiate() as PartySetupWorkspace
@@ -83,10 +79,9 @@ func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
 	review_step_scene_path = setup_overlay.get("review_step_scene_path") as String
 	spells_step_scene_path = setup_overlay.get("spells_step_scene_path") as String
 	setup_body = setup_overlay.get_node("ScenarioPartyWorkspace") as HBoxContainer
-	_host.remove_child(campaign_overlay)
-	setup_body.add_child(campaign_overlay)
-	setup_body.move_child(campaign_overlay, 0)
-	campaign_overlay.position = Vector2.ZERO
+	_campaign_library.bind_campaign_panel(setup_overlay.get_node("ScenarioPartyWorkspace/ScenarioColumn") as CampaignSelectionPanel)
+	var setup_state := _state as CampaignPartySetupState
+	setup_state.wide_scenario_minimum_width = campaign_overlay.custom_minimum_size.x
 	character_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CharacterFilesPane") as PanelContainer
 	party_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane") as PanelContainer
 	creator_steps = setup_overlay.get_node("%CreatorSteps") as HBoxContainer
@@ -98,14 +93,14 @@ func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
 	creator_scroll.resized.connect(_assembly.refresh_stored_character_capacity)
 	creator = setup_overlay.get_node("%Creator") as BoxContainer
 	creator_page = setup_overlay.get_node("%CreatorPage") as VBoxContainer
-	_clear(creator_page)
+	_clear_creator_page()
 	party_list = setup_overlay.get_node("%PartySlots") as VBoxContainer
 	party_list.set_script(PartySetupPartyList)
 	party_list.import_requested.connect(_assembly.import_stored_character)
 	setup_message = setup_overlay.get_node("%SetupMessage") as Label
 	party_setup_options = setup_overlay.get_node("%PartySetupOptions") as VBoxContainer
-	var adventure_rules_panel := setup_overlay.get_node("%AdventureRulesPanel") as AdventureRulesPanel
-	adventure_rules_panel.value_changed.connect(_on_adventure_rules_changed)
+	var adventure_rules_button := setup_overlay.get_node("%AdventureRules") as Button
+	adventure_rules_button.pressed.connect(func() -> void: adventure_rules_requested.emit())
 	_bind_adventure_rules(view)
 	party_guidance_label = setup_overlay.get_node("%PartyLevelGuidance") as Label
 	monster_set_option = setup_overlay.get_node("%MonsterSetOption") as OptionButton
@@ -328,40 +323,7 @@ func present(next_view: GameView) -> void:
 func _bind_adventure_rules(next_view: GameView) -> void:
 	if setup_overlay == null:
 		return
-	var campaign_id := next_view.campaign_id if next_view != null and next_view.session_started else ""
-	if campaign_id != _adventure_rules_campaign_id or (next_view != null and _adventure_rules_feedback_revision != next_view.revision):
-		_adventure_rules_campaign_id = campaign_id
-		_adventure_rules_error = ""
-		_adventure_rules_feedback_revision = -1
-	var panel := setup_overlay.get_node_or_null("%AdventureRulesPanel") as AdventureRulesPanel
-	if panel == null:
-		return
-	if next_view == null or not next_view.session_started:
-		panel.bind_rules(AdventureRules.new(), false, "Select and prepare a campaign before changing Adventure Rules.")
-		return
-	var availability := next_view.availability(&"adventure_rules")
-	var reason := "" if availability == null else availability.reason
-	if availability == null:
-		reason = "Adventure Rules are unavailable in this context."
-	elif availability.enabled and not _adventure_rules_error.is_empty():
-		reason = _adventure_rules_error
-	panel.bind_rules(next_view.adventure_rules, availability != null and availability.enabled, reason)
-
-
-func _on_adventure_rules_changed(enabled: bool) -> void:
-	if view == null or not view.session_started:
-		return
-	var availability := view.availability(&"adventure_rules")
-	if availability == null or not availability.enabled:
-		_bind_adventure_rules(view)
-		return
-	var rules := view.adventure_rules.copy()
-	rules.free_targeting_cancellation = enabled
-	var submitted_revision := view.revision
-	_adventure_rules_error = ""
-	_adventure_rules_feedback_revision = -1
-	intent_submitted.emit(AdventureRulesIntents.set_rules(rules))
-	if view == null or view.revision == submitted_revision or view.adventure_rules.free_targeting_cancellation != enabled:
-		_adventure_rules_error = "The rules update was not accepted. Review availability and try again."
-		_adventure_rules_feedback_revision = submitted_revision
-		_bind_adventure_rules(view)
+	var button := setup_overlay.get_node("%AdventureRules") as Button
+	var availability := next_view.availability(&"adventure_rules") if next_view != null and next_view.session_started else null
+	button.disabled = availability == null or not availability.enabled
+	button.tooltip_text = availability.reason if availability != null else "Select and prepare a campaign before changing Adventure Rules."

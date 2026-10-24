@@ -44,10 +44,10 @@ func probe_character_retreat(combat: CombatState, characters: Array[CharacterSta
 	var nearest_range := 127
 	var origin := combat.battlefield.actors.actor_position(actor_id)
 	for character: CharacterState in characters:
-		if character.id != actor_id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.actors.has_actor(character.id):
+		if character.id != actor_id and character.current_health > 0 and character.classic_traitor != actor.classic_traitor and combat.battlefield.actors.has_actor(character.id):
 			nearest_range = mini(nearest_range, floori(Vector2(combat.battlefield.actors.actor_position(character.id) - origin).length()))
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.actors.has_actor(monster.id):
+		if monster.current_health > 0 and monster.classic_traitor != actor.classic_traitor and combat.battlefield.actors.has_actor(monster.id):
 			nearest_range = mini(nearest_range, floori(Vector2(combat.battlefield.actors.actor_position(monster.id) - origin).length()))
 	if nearest_range < 10:
 		return CombatRetreatProbe.blocked(&"enemy_too_close", "Classic Escape requires every enemy to be at least 10 battlefield cells away.", nearest_range)
@@ -259,9 +259,9 @@ func friendly_collision_target_id(state: GameState, actor_id: String, destinatio
 		return ""
 	var target_character := state.party.character_by_id(target_id)
 	if target_character != null:
-		return target_id if target_character.current_health > 0 and target_character.traitor == actor.traitor else ""
+		return target_id if target_character.current_health > 0 and target_character.classic_traitor == actor.classic_traitor else ""
 	var target_monster := combat.roster.monster_by_id(target_id)
-	return target_id if target_monster != null and target_monster.current_health > 0 and target_monster.traitor == actor.traitor else ""
+	return target_id if target_monster != null and target_monster.current_health > 0 and target_monster.classic_traitor == actor.classic_traitor else ""
 
 
 func classic_projectile_uses_point_blank_auto_switch(actor: CharacterState, content: RealmzContent) -> bool:
@@ -345,15 +345,15 @@ func _continue_guard_before(state: GameState, content: RealmzContent, reaction: 
 func _submit_friendly_contact_attack(state: GameState, content: RealmzContent, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
 	var target_monster := combat.roster.monster_by_id(reaction.friendly_collision_target_id)
-	var previous_traitor := false
+	var previous_traitor := 0
 	if target_monster != null:
-		previous_traitor = target_monster.traitor
+		previous_traitor = target_monster.classic_traitor
 		target_monster.traitor = not state.party.character_by_id(reaction.mover_id).traitor
 	combat.pending_reaction = null
 	var friendly_attack: CombatFlowResult = _context.actions().submit_action(state, content, reaction.mover_id, &"attack", reaction.friendly_collision_target_id, rng, true)
 	if not friendly_attack.ok:
 		if target_monster != null:
-			target_monster.traitor = previous_traitor
+			target_monster.classic_traitor = previous_traitor
 		events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "reason": String(friendly_attack.error_code)}))
 		return REACTION_COMPLETED
 	events.append_array(friendly_attack.events)

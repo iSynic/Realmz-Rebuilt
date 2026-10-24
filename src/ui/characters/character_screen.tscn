@@ -7,10 +7,15 @@
 
 [node name="CharacterScreen" instance=ExtResource("1_base")]
 route_id = &"character"
-title = "Characters"
-description = ""
 script = ExtResource("2_screen")
 party_order_row_scene = ExtResource("4_order_row")
+
+[node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
+text = "Characters"
+
+[node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
+visible = false
+text = ""
 
 [node name="PartyOrderArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
 unique_name_in_owner = true

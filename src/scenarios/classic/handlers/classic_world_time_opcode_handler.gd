@@ -79,7 +79,8 @@ func _change_land_look(action: ClassicActionDefinition) -> ScenarioRuntimeOperat
 		return ScenarioRuntimeOperationResult.failed(&"invalid_land_look", "Classic opcode 57 requires a landlook, darkness flag, and land-level identity.")
 	# newland.c assigns the signed short to char landlook and unsigned Boolean.
 	var look := RealmzArithmetic.new().signed_8(action.extra_code[0]) if native_values else action.extra_code[0]
-	var dark := RealmzArithmetic.new().unsigned_8(action.extra_code[1]) != 0 if native_values else action.extra_code[1] != 0
+	var dark_byte := RealmzArithmetic.new().unsigned_8(action.extra_code[1]) if native_values else action.extra_code[1]
+	var dark := dark_byte != 0
 	var map := _content.world.map_by_type_and_index(&"land", action.extra_code[2])
 	if map == null and native_values and ClassicCompatibility.map_source_unavailable(_content, "land:%d" % action.extra_code[2]):
 		return ClassicCompatibility.skip(&"unavailable-landlook-map", "Data LD", action.extra_code[2])
@@ -94,7 +95,7 @@ func _change_land_look(action: ClassicActionDefinition) -> ScenarioRuntimeOperat
 	var previous_landlook := _game_state.world.topology.map_landlook(map)
 	var previous_dark := _game_state.world.topology.map_is_dark(map)
 	_game_state.world.topology.set_map_landlook(map.id, look)
-	_game_state.world.topology.set_map_darkness(map.id, dark)
+	_game_state.world.topology.set_map_darkness(map.id, dark, dark_byte)
 	return ScenarioRuntimeOperationResult.completed(map.id, [DomainEvent.new(&"map_appearance_changed", {"mapId": map.id, "previousLandlook": previous_landlook, "landlook": look, "previousDark": previous_dark, "dark": dark, "offscreen": map.id != _game_state.party.map_id, "source": "classic-opcode-57"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": map.id, "reason": "map-appearance"})])
 
 
@@ -119,12 +120,12 @@ func _save_or_restore_party_position(action: ClassicActionDefinition) -> Scenari
 			_game_state.party.coordinate = _game_state.saved_party_coordinate
 			_game_state.world.exploration.mark_visited(target_map.id, _game_state.saved_party_coordinate)
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"party_position_restored", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": _game_state.saved_party_coordinate.x, "y": _game_state.saved_party_coordinate.y, "levelType": String(target_map.level_type), "suppressActionPointDestination": true, "source": "classic-opcode-70"}), DomainEvent.new(&"world_projection_invalidated", {"mapId": target_map.id, "reason": "party-position-restore"})])
-	return ScenarioRuntimeOperationResult.failed(&"invalid_party_position_mode", "Classic opcode 70 requires save or restore mode.")
+	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _alter_random_region_geometry(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() != 10 or action.extra_code[4] not in [-1, 0, 1, 2]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_random_region_geometry", "Classic opcode 92 requires two five-value Extra Code rows and a valid geometry mode.")
+	if action.extra_code.size() != 10:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_random_region_geometry", "Classic opcode 92 requires two five-value Extra Code rows.")
 	var map_type := &"dungeon" if action.extra_code[2] != 0 else &"land"
 	# Castle's PC build falls back to the first map on a negative file seek and
 	# explicitly clamps an out-of-range rectangle to slot zero.
@@ -146,7 +147,7 @@ func _alter_random_region_geometry(action: ClassicActionDefinition) -> ScenarioR
 		1: edges = [edges[0] + geometry[0], edges[1] + geometry[0], edges[2] + geometry[1], edges[3] + geometry[1]]
 		2: edges = [edges[0] + geometry[0], edges[1] + geometry[1], edges[2] + geometry[2], edges[3] + geometry[3]]
 	var updated := RandomRegionState.new(region.id, RealmzArithmetic.new().signed_16(previous.chance_ten_thousand + action.extra_code[3]), previous.battle_minimum, previous.battle_maximum, previous.random_door_percents(), region.bounds, previous.bounds_overridden)
-	if action.extra_code[4] != -1 and not updated.set_bounds_edges(edges):
+	if action.extra_code[4] in [0, 1, 2] and not updated.set_bounds_edges(edges):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_random_region_geometry", "Classic opcode 92 could not preserve its rectangle geometry.")
 	elif previous.bounds_overridden:
 		updated.set_bounds_edges(edges)
@@ -169,7 +170,7 @@ func _alter_party_fatigue(action: ClassicActionDefinition) -> ScenarioRuntimeOpe
 			var calculated_fatigue: int = scaled_fatigue / 100
 			_game_state.party.fatigue = clampi(calculated_fatigue, 4, 135)
 		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_fatigue_mode", "Classic opcode 68 requires fatigue mode 1, 2, or 3.")
+			return ScenarioRuntimeOperationResult.completed(previous)
 	var current := _game_state.party.fatigue
 	return ScenarioRuntimeOperationResult.completed(current, [DomainEvent.new(&"fatigue_changed", {"previous": previous, "current": current, "reason": "classic-opcode-68", "source": "classic"})])
 
@@ -444,11 +445,15 @@ func _adjust_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOper
 		if _content.package_schema_version >= 7:
 			return ClassicCompatibility.skip(&"unavailable-quest-mutation", "quest-slots", quest_id)
 		return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 76 references quest %d outside 0 through 99." % quest_id)
-	var value := clampi(_game_state.scenario_progress.quest_value(quest_id) + action.extra_code[1], -127, 127)
-	_game_state.scenario_progress.set_quest_value(quest_id, value)
-	var event := DomainEvent.new(&"quest_value_changed", {"questId": quest_id, "value": value, "delta": action.extra_code[1], "source": "classic"})
+	var value := _game_state.scenario_progress.quest_value(quest_id)
+	var events: Array[DomainEvent] = []
+	# Castle only mutates slots below 100; its later test reads the full 128-slot bank.
+	if quest_id < 100:
+		value = clampi(value + action.extra_code[1], -127, 127)
+		_game_state.scenario_progress.set_quest_value(quest_id, value)
+		events.append(DomainEvent.new(&"quest_value_changed", {"questId": quest_id, "value": value, "delta": action.extra_code[1], "source": "classic"}))
 	if action.extra_code[3] == 0 or value < action.extra_code[3]:
-		return ScenarioRuntimeOperationResult.completed(value, [event])
+		return ScenarioRuntimeOperationResult.completed(value, events)
 	var directive: ScenarioVmDirective = null
 	match action.extra_code[2]:
 		1:
@@ -458,10 +463,8 @@ func _adjust_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOper
 		3:
 			directive = ScenarioVmDirective.enter_encounter(&"complex", action.extra_code[4], action.gosub)
 		_:
-			return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic opcode 76 auto-branch target type %d is unavailable." % action.extra_code[2])
-	var branch := ScenarioRuntimeOperationResult.completed(true, [], directive)
-	branch.events.append(event)
-	return branch
+			return ScenarioRuntimeOperationResult.completed(value, events)
+	return ScenarioRuntimeOperationResult.completed(true, events, directive)
 
 
 func _back_up_party() -> ScenarioRuntimeOperationResult:
@@ -493,24 +496,30 @@ func _back_up_party() -> ScenarioRuntimeOperationResult:
 func _set_map_darkness(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 2:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 106 requires a five-value Extra Code row.")
-	if action.extra_code[0] not in [1, 2]:
+	var native_values := _content.package_schema_version >= 7 and _content.classic_records != null
+	if not native_values and action.extra_code[0] not in [1, 2]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_darkness", "Classic opcode 106 darkness value must be 1 or 2.")
 	var map := _content.world.map_by_id(_game_state.party.map_id)
 	if map == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 106 requires the party's current map.")
-	var dark := action.extra_code[0] == 2
-	var unchanged := _game_state.world.topology.map_is_dark(map) == dark
+	var darkness_state := _game_state.world.topology
+	var darkness_byte := action.extra_code[0] - 1 if native_values else (1 if action.extra_code[0] == 2 else 0)
+	var initial_byte := 1 if map.dark else 0
+	if native_values:
+		initial_byte = _content.classic_records.initial_map_darkness_byte(map.level_type, map.level_index, initial_byte)
+	var current_byte := darkness_state.map_darkness_byte(map.id, initial_byte)
+	var unchanged := current_byte == darkness_byte
 	if unchanged and action.extra_code[1] != 0:
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"map_darkness_unchanged", {"mapId": map.id, "dark": dark})], ScenarioVmDirective.finish())
-	_game_state.world.topology.set_map_darkness(map.id, dark)
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"map_darkness_unchanged", {"mapId": map.id, "dark": current_byte != 0})], ScenarioVmDirective.finish())
+	var assigned_byte := darkness_byte & 0xff if native_values else darkness_byte
+	darkness_state.set_map_darkness(map.id, assigned_byte != 0, assigned_byte)
+	var dark := assigned_byte != 0
 	return ScenarioRuntimeOperationResult.completed(dark, [DomainEvent.new(&"map_darkness_changed", {"mapId": map.id, "dark": dark, "source": "classic"})])
 
 
 func _test_or_set_party_mode(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 3:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 103 requires a five-value Extra Code row.")
-	if action.extra_code[0] not in [0, 1, 2] or action.extra_code[1] not in [0, 1, 2] or action.extra_code[2] not in [0, 1, 2]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_party_mode", "Classic opcode 103 has an invalid boat or camping mode.")
 	var should_finish := action.extra_code[0] == 1 and not _game_state.party_in_boat or action.extra_code[0] == 2 and _game_state.party_in_boat
 	should_finish = should_finish or action.extra_code[1] == 1 and not _game_state.party_camping or action.extra_code[1] == 2 and _game_state.party_camping
 	if action.extra_code[2] == 1:

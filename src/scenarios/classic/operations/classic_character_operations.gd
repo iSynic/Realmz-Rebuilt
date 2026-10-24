@@ -121,8 +121,6 @@ func _branch_on_spell_points(action: ClassicActionDefinition, context: ScenarioE
 			for character: CharacterState in _game_state.party.characters():
 				if character.current_health > 0 and not character.conditions.is_active(ConditionRules.ANIMATED):
 					candidates.append(character)
-		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_spell_point_branch", "Classic opcode 75 selector must be picked or all eligible living characters.")
 	var matched := candidates.any(func(character: CharacterState) -> bool: return character.spell_points >= action.extra_code[1])
 	var event := DomainEvent.new(&"spell_point_branch_checked", {"selector": action.extra_code[0], "minimumSpellPoints": action.extra_code[1], "matched": matched, "characterIds": candidates.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})
 	if not matched:
@@ -228,7 +226,7 @@ func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRun
 	for character: CharacterState in candidates:
 		var check_value := _character_attribute(character, check_index) if attribute_check else character.ability_value(check_index)
 		var roll := _rng.draw(25 if attribute_check else 100, &"classic.filter-character")
-		var passed := roll - int(values[1]) < check_value if attribute_check else roll <= check_value + int(values[1])
+		var passed := check_index in [0, 1, 2, 3, 4, 6] and roll - int(values[1]) < check_value if attribute_check else roll <= check_value + int(values[1])
 		if passed != (int(values[0]) < 0):
 			selected.append(character.id)
 		checks.append({"characterId": character.id, "roll": roll, "value": check_value, "passed": passed})
@@ -241,12 +239,13 @@ func _branch_on_party_condition(action: ClassicActionDefinition) -> ScenarioRunt
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 40 requires a five-value Extra Code row.")
 	var required_state := action.extra_code[0]
 	var condition_index := action.extra_code[3]
-	if required_state not in [1, 2] or condition_index < 0 or condition_index >= ConditionSet.PARTY_COUNT:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_party_condition", "Classic party-condition branch has an invalid state or condition.")
+	if condition_index < 0 or condition_index >= ConditionSet.PARTY_COUNT:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_party_condition", "Classic party-condition branch references an invalid condition index.")
 	var active := _game_state.party.conditions.is_active(condition_index)
-	if required_state == 1 and not active or required_state == 2 and active:
+	if not (required_state == 1 and active or required_state == 2 and not active):
 		return ScenarioRuntimeOperationResult.completed(false)
-	if action.extra_code[1] == 0:
+	# This switch's default ends the script, unlike ordinary destination fallthrough.
+	if action.extra_code[1] not in [1, 2, 3]:
 		return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish_timeline())
 	return _branch_to_destination(action.extra_code[1] - 1, action.extra_code[2], action.gosub)
 
@@ -257,19 +256,23 @@ func _apply_classic_condition(action: ClassicActionDefinition) -> ScenarioRuntim
 	var target_mode := action.extra_code[0]
 	var condition_index := action.extra_code[1]
 	var duration := action.extra_code[2]
-	if target_mode < 0 or target_mode > 2 or condition_index < 0 or condition_index >= ConditionSet.CHARACTER_COUNT:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_condition", "Classic opcode 43 has an invalid target or condition index.")
+	if condition_index < 0 or condition_index >= ConditionSet.CHARACTER_COUNT:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_condition", "Classic opcode 43 has an invalid condition index.")
+	# Castle clears positive durations before its target switch, even on a default.
+	for character: CharacterState in _game_state.party.characters():
+		if character.conditions.value(condition_index) > 0:
+			character.conditions.set_value(condition_index, 0)
 	var targets: Array[CharacterState] = []
 	if target_mode == 1:
 		targets = _game_state.scenario_progress.selected_characters()
 	else:
 		for character: CharacterState in _game_state.party.characters():
-			if target_mode == 0 or character.current_health > 0:
+			if target_mode == 0 or target_mode == 2 and character.current_health > -10:
 				targets.append(character)
 	var ids: Array[String] = []
 	var events: Array[DomainEvent] = []
 	for character: CharacterState in targets:
-		character.conditions.set_value(condition_index, duration)
+		character.conditions.set_value(condition_index, RealmzArithmetic.new().signed_16(character.conditions.value(condition_index) + duration))
 		ids.append(character.id)
 		if action.extra_code.size() > 3 and action.extra_code[3] != 0:
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic-opcode-43"}))
@@ -282,8 +285,6 @@ func _select_characters_by_identity(action: ClassicActionDefinition) -> Scenario
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 50 requires a five-value Extra Code row.")
 	var selector := action.extra_code[0]
-	if selector < 0 or selector > 4:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_identity_selector", "Classic opcode 50 has an invalid identity selector.")
 	var selected: Array[String] = []
 	for character: CharacterState in _game_state.party.characters():
 		if action.extra_code[4] != 0 and character.current_health <= 0:
@@ -334,7 +335,7 @@ func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRunt
 			1:
 				matches = party.find(character) < value
 			2:
-				matches = _character_has_classic_item(character, absi(value), false)
+				matches = _character_has_classic_item(character, value if _content.package_schema_version >= 7 else absi(value), false)
 			3:
 				matches = _rng.draw(100, &"classic.misc-character-percent") <= value
 			4:
@@ -344,7 +345,7 @@ func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRunt
 			6:
 				matches = not _game_state.scenario_progress.selected_character_ids().is_empty() and _game_state.scenario_progress.selected_character_ids()[0] == character.id
 			7:
-				matches = _character_has_classic_item(character, absi(value), true)
+				matches = _character_has_classic_item(character, value if _content.package_schema_version >= 7 else absi(value), true)
 			8:
 				matches = party.find(character) + 1 == value
 		if matches:
@@ -386,7 +387,6 @@ func _branch_on_picked_characters(action: ClassicActionDefinition) -> ScenarioRu
 	if action.extra_code.size() < 5: return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 55 requires a five-value Extra Code row.")
 	var selector := action.extra_code[0]
 	var failure_behavior := action.extra_code[1]
-	if failure_behavior < 0 or failure_behavior > 2: return ScenarioRuntimeOperationResult.failed(&"invalid_picked_branch", "Classic opcode 55 has an invalid failure behavior.")
 	var selected_ids := _game_state.scenario_progress.selected_character_ids()
 	var matched := false
 	if selector == 0:
@@ -484,7 +484,7 @@ func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 					return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 87 references unavailable message %d." % action.extra_code[4])
 			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], ScenarioVmDirective.finish())
-	return ScenarioRuntimeOperationResult.failed(&"invalid_ally_branch", "Classic opcode 87 has an invalid absent-ally behavior.")
+	return ScenarioRuntimeOperationResult.completed(false, [event])
 
 
 func _remove_classic_ally(classic_monster_id: int) -> int:
@@ -540,7 +540,7 @@ func _alter_selected_characters(action: ClassicActionDefinition) -> ScenarioRunt
 	var alteration := action.extra_code[0]
 	var amount := action.extra_code[1]
 	if alteration < 1 or alteration > 12:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_alteration", "Classic opcode 108 references alteration %d outside 1 through 12." % alteration)
+		return ScenarioRuntimeOperationResult.completed(0)
 	var targets := _game_state.scenario_progress.selected_characters()
 	for character: CharacterState in targets:
 		match alteration:
@@ -603,7 +603,7 @@ func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioR
 		0: return _branch_xap(target_id, gosub)
 		1: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"simple", target_id, gosub))
 		2: return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.enter_encounter(&"complex", target_id, gosub))
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is unavailable." % mode)
+	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

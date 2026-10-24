@@ -6,9 +6,14 @@
 
 [node name="JournalScreen" instance=ExtResource("1_base")]
 route_id = &"journal"
-title = "Maps & Notes"
-description = ""
 script = ExtResource("2_screen")
+
+[node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
+text = "Maps & Notes"
+
+[node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
+visible = false
+text = ""
 
 [node name="JournalCount" type="Label" parent="WorkspaceColumn/WorkspaceHeader"]
 layout_mode = 2

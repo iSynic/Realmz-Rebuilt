@@ -183,7 +183,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 	if combat.battlefield == null: return CombatFlowResult.failed(&"missing_battlefield", "Melee requires the session-owned Classic battlefield.")
 	if not _context.battlefield.are_adjacent(combat.battlefield, actor.id, target_id): return CombatFlowResult.rejected(&"combat_target_not_adjacent", "Classic melee can target only an enemy in an adjacent battlefield footprint.")
 	var monster_target := combat.roster.monster_by_id(target_id)
-	if monster_target != null and monster_target.current_health > 0 and (monster_target.traitor != actor.traitor or allow_friendly_contact):
+	if monster_target != null and monster_target.current_health > 0 and (monster_target.classic_traitor != actor.classic_traitor or allow_friendly_contact):
 		var definition := content.combat.monster_by_id(monster_target.definition_id)
 		if definition == null: return CombatFlowResult.failed(&"unknown_monster_definition", "The selected monster has no immutable definition.")
 		prepare_character_turn(combat, actor)
@@ -203,7 +203,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 			_context.automation().remove_defeated_position(combat, monster_target.id, resolution.killed and not macro_requested)
 	else:
 		var character_target := state.party.character_by_id(target_id)
-		if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or (character_target.traitor == actor.traitor and not allow_friendly_contact): return CombatFlowResult.rejected(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
+		if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or (character_target.classic_traitor == actor.classic_traitor and not allow_friendly_contact): return CombatFlowResult.rejected(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
 		var target_equipment := _context.equipment.combat_equipment(character_target, content.items.definitions())
 		if not target_equipment.valid: return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
 		prepare_character_turn(combat, actor)
@@ -380,7 +380,7 @@ func _resolve_turn_undead_target(combat: CombatState, content: RealmzContent, ac
 		result_kind = "turned"
 		actor.lifetime_record.record_turn_undead(false)
 		experience_award = 50 * target.hit_dice
-		target.traitor = actor.traitor
+		target.classic_traitor = actor.classic_traitor
 		target.target_id = ""
 		combat.actor_statuses.set_guarding(target.id, false)
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
@@ -476,7 +476,7 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 			return CombatFlowResult.rejected(&"projectile_item_targeting_required", "Choose this item's battlefield targets through Fire Weapon.")
 		return _context.magic_flow().use_spell_item(state, content, actor.id, target_id, profile.item_instance_id, rng)
 	var target := combat.roster.monster_by_id(target_id)
-	if target == null or target.current_health <= 0 or target.traitor == actor.traitor:
+	if target == null or target.current_health <= 0 or target.classic_traitor == actor.classic_traitor:
 		return CombatFlowResult.rejected(&"invalid_projectile_target", "This source-backed projectile slice can target only a living hostile monster.")
 	if not _context.reactions().projectile_target_is_valid(combat, content, actor.id, target.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
 		return CombatFlowResult.rejected(&"projectile_target_unavailable", "The target is outside the Classic projectile range or line of sight.")

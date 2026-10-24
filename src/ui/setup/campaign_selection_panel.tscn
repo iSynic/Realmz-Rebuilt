@@ -21,8 +21,7 @@ theme_override_constants/separation = 4
 
 [node name="ScenarioHeading" type="Label" parent="ScenarioPaneContent"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 20
+theme_type_variation = &"ClassicScenarioHeading"
 text = "Scenarios"
 
 [node name="LibraryFilters" type="HBoxContainer" parent="ScenarioPaneContent"]
@@ -71,8 +70,7 @@ theme_override_constants/separation = 4
 [node name="MainScenarioHeading" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 14
+theme_type_variation = &"ClassicScenarioListHeading"
 text = "Main Scenarios"
 
 [node name="MainCampaignRows" type="VBoxContainer" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
@@ -84,8 +82,7 @@ theme_override_constants/separation = 4
 [node name="ImportedScenarioHeading" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 14
+theme_type_variation = &"ClassicScenarioListHeading"
 text = "Imported Scenarios"
 
 [node name="ImportedCampaignRows" type="VBoxContainer" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
@@ -97,7 +94,7 @@ theme_override_constants/separation = 4
 [node name="NoCampaignsState" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_type_variation = &"ClassicSecondaryText"
 text = "Installed scenarios appear here"
 horizontal_alignment = 1
 autowrap_mode = 2

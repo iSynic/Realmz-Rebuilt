@@ -3,7 +3,6 @@
 class_name PartySetupAssemblyController
 extends "res://src/ui/setup/party_setup_controller_component.gd"
 
-const ASSEMBLY_BROWSER_SCENE_PATH := "res://src/ui/setup/party_assembly_browser.tscn"
 const STORED_ROW_GAP: float = 2.0
 const BROWSER_SECTION_GAP: float = 6.0
 const BROWSER_HEADER_HEIGHT: float = 52.0
@@ -15,7 +14,6 @@ var _stored_character_page: int = 0
 var _stored_character_page_size_cache: int = -1
 var _party_slots: Array[Control] = []
 var _party_slots_owner: PartySetupPartyList
-var _assembly_browser_scene: PackedScene
 var _assembly_browser: Control
 
 
@@ -77,7 +75,7 @@ func render_party_assembly() -> void:
 
 
 func _update_campaign_context() -> void:
-	var context := _assembly_browser.get_node("%AssemblyCampaignContext") as Label
+	var context := _assembly_browser.get_node("AssemblyCampaignContext") as Label
 	context.text = "Preparing scenario..." if _campaign_library.blocks_party_editing() else "Adding to %s" % view.campaign_summary.title if view != null and view.party_setup_available and view.campaign_summary != null else "Choose a scenario to add characters"
 	context.tooltip_text = context.text
 
@@ -118,15 +116,14 @@ func _visible_revision_asset_ids(current_revisions: Array[CharacterVaultRevision
 
 func _rebuild_assembly_browser(current_revisions: Array[CharacterVaultRevisionView], campaign_setup: bool, party_full: bool, next_signature: String) -> void:
 	_clear_creator_page()
-	if _assembly_browser_scene == null:
-		_assembly_browser_scene = load(ASSEMBLY_BROWSER_SCENE_PATH) as PackedScene
-	_assembly_browser = _assembly_browser_scene.instantiate() as Control
-	creator_page.add_child(_assembly_browser)
+	_assembly_browser = creator_page.get_node("PartyAssemblyBrowser") as Control
+	_assembly_browser.show()
 	stored_character_list = _assembly_browser.call("character_rows") as VBoxContainer
-	(_assembly_browser.get_node("%CharacterFileCount") as Label).text = "• %d available" % current_revisions.size()
+	(_assembly_browser.get_node("CharacterFilesHeading/HeadingContent/CharacterFileCount") as Label).text = "• %d available" % current_revisions.size()
+	(_assembly_browser.get_node("CharacterFilesEmpty") as Label).hide()
 	_stored_revision_signature = next_signature
 	if current_revisions.is_empty():
-		var empty_state := _assembly_browser.get_node("%CharacterFilesEmpty") as Label
+		var empty_state := _assembly_browser.get_node("CharacterFilesEmpty") as Label
 		empty_state.text = vault_notice if not vault_notice.is_empty() else "No Character Files yet. Create one here."
 		empty_state.visible = true
 		return
@@ -211,15 +208,17 @@ func _stored_character_page_items(revisions: Array[CharacterVaultRevisionView]) 
 func _add_stored_character_pager(item_count: int) -> void:
 	var page_size := _stored_character_page_size(item_count)
 	var page_count := maxi(1, ceili(float(item_count) / float(page_size)))
-	var pager := _assembly_browser.get_node("%CharacterFilePager") as HBoxContainer
+	var pager := _assembly_browser.get_node("CharacterFilePager") as HBoxContainer
 	pager.visible = page_count > 1
-	var previous := _assembly_browser.get_node("%CharacterFilePrevious") as Button
+	var previous := _assembly_browser.get_node("CharacterFilePager/CharacterFilePrevious") as Button
 	previous.disabled = _stored_character_page == 0
-	previous.pressed.connect(_change_stored_character_page.bind(-1))
-	(_assembly_browser.get_node("%CharacterFilePage") as Label).text = "Page %d of %d" % [_stored_character_page + 1, page_count]
-	var next := _assembly_browser.get_node("%CharacterFileNext") as Button
+	var previous_page := _change_stored_character_page.bind(-1)
+	if not previous.pressed.is_connected(previous_page): previous.pressed.connect(previous_page)
+	(_assembly_browser.get_node("CharacterFilePager/CharacterFilePage") as Label).text = "Page %d of %d" % [_stored_character_page + 1, page_count]
+	var next := _assembly_browser.get_node("CharacterFilePager/CharacterFileNext") as Button
 	next.disabled = _stored_character_page >= page_count - 1
-	next.pressed.connect(_change_stored_character_page.bind(1))
+	var next_page := _change_stored_character_page.bind(1)
+	if not next.pressed.is_connected(next_page): next.pressed.connect(next_page)
 
 
 func _change_stored_character_page(offset: int) -> void:

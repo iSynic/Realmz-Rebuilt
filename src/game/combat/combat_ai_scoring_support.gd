@@ -92,10 +92,10 @@ func _auto_group_target_is_safe(spell: SpellDefinition) -> bool:
 func _opposed_actor_ids(state: GameState, actor: CharacterState) -> Array[String]:
 	var result: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and state.combat.battlefield.actors.has_actor(character.id):
+		if character.id != actor.id and character.current_health > 0 and character.classic_traitor != actor.classic_traitor and state.combat.battlefield.actors.has_actor(character.id):
 			result.append(character.id)
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor != actor.traitor and state.combat.battlefield.actors.has_actor(monster.id):
+		if monster.current_health > 0 and monster.classic_traitor != actor.classic_traitor and state.combat.battlefield.actors.has_actor(monster.id):
 			result.append(monster.id)
 	return result
 
@@ -103,10 +103,10 @@ func _opposed_actor_ids(state: GameState, actor: CharacterState) -> Array[String
 func _friendly_actor_ids(state: GameState, actor: CharacterState) -> Array[String]:
 	var result: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor == actor.traitor and state.combat.battlefield.actors.has_actor(character.id):
+		if character.current_health > 0 and character.classic_traitor == actor.classic_traitor and state.combat.battlefield.actors.has_actor(character.id):
 			result.append(character.id)
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and monster.traitor == actor.traitor and state.combat.battlefield.actors.has_actor(monster.id):
+		if monster.current_health > 0 and monster.classic_traitor == actor.classic_traitor and state.combat.battlefield.actors.has_actor(monster.id):
 			result.append(monster.id)
 	return result
 
@@ -127,7 +127,7 @@ func _hostile_adjacent_ids_for_monster(state: GameState, monster: MonsterState) 
 	for target_id: String in _context.battlefield.adjacent_actor_ids(state.combat.battlefield, monster.id):
 		var character := state.party.character_by_id(target_id)
 		var target_monster := state.combat.roster.monster_by_id(target_id)
-		if (character != null and character.current_health > 0 and character.traitor != monster.traitor) or (target_monster != null and target_monster.current_health > 0 and target_monster.traitor != monster.traitor):
+		if (character != null and character.current_health > 0 and character.classic_traitor != monster.classic_traitor) or (target_monster != null and target_monster.current_health > 0 and target_monster.classic_traitor != monster.classic_traitor):
 			result.append(target_id)
 	return result
 
@@ -135,10 +135,10 @@ func _hostile_adjacent_ids_for_monster(state: GameState, monster: MonsterState) 
 func _opposed_actor_ids_for_monster(state: GameState, monster: MonsterState) -> Array[String]:
 	var result: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.actors.has_actor(character.id):
+		if character.current_health > 0 and character.classic_traitor != monster.classic_traitor and state.combat.battlefield.actors.has_actor(character.id):
 			result.append(character.id)
 	for candidate: MonsterState in state.combat.roster.monsters():
-		if candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.actors.has_actor(candidate.id):
+		if candidate.id != monster.id and candidate.current_health > 0 and candidate.classic_traitor != monster.classic_traitor and state.combat.battlefield.actors.has_actor(candidate.id):
 			result.append(candidate.id)
 	return result
 
@@ -146,9 +146,9 @@ func _opposed_actor_ids_for_monster(state: GameState, monster: MonsterState) -> 
 func _friendly_actor_ids_for_monster(state: GameState, monster: MonsterState) -> Array[String]:
 	var result: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor == monster.traitor and state.combat.battlefield.actors.has_actor(character.id): result.append(character.id)
+		if character.current_health > 0 and character.classic_traitor == monster.classic_traitor and state.combat.battlefield.actors.has_actor(character.id): result.append(character.id)
 	for candidate: MonsterState in state.combat.roster.monsters():
-		if candidate.current_health > 0 and candidate.traitor == monster.traitor and state.combat.battlefield.actors.has_actor(candidate.id): result.append(candidate.id)
+		if candidate.current_health > 0 and candidate.classic_traitor == monster.classic_traitor and state.combat.battlefield.actors.has_actor(candidate.id): result.append(candidate.id)
 	return result
 
 
@@ -197,7 +197,7 @@ static func _target_condition_value(state: GameState, target_id: String, conditi
 	return CombatAiTargetFacts.condition_value(state, target_id, condition_index)
 
 
-func _destroy_magic_candidates(state: GameState, content: RealmzContent, caster_id: String, caster_traitor: bool, spell: SpellDefinition, power: int) -> Array[String]:
+func _destroy_magic_candidates(state: GameState, content: RealmzContent, caster_id: String, caster_traitor: int, spell: SpellDefinition, power: int) -> Array[String]:
 	var candidates: Array[String] = []
 	for target_id: String in _all_actor_ids(state):
 		if (target_id != caster_id and _target_reflects(state, target_id)) or _destroy_magic_target_score(state, caster_traitor, target_id) <= 0 or not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, caster_id, target_id, spell, power):
@@ -207,7 +207,7 @@ func _destroy_magic_candidates(state: GameState, content: RealmzContent, caster_
 	return candidates
 
 
-static func _destroy_magic_target_score(state: GameState, caster_traitor: bool, target_id: String) -> int:
+static func _destroy_magic_target_score(state: GameState, caster_traitor: int, target_id: String) -> int:
 	return CombatAiTargetFacts.destroy_magic_score(state, caster_traitor, target_id)
 
 

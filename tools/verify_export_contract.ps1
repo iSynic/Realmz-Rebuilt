@@ -121,18 +121,20 @@ foreach ($requiredCiContract in @("fetch-depth: 1", "verify_public_source.ps1", 
 }
 if (-not (Test-Path -LiteralPath $releaseWorkflowPath -PathType Leaf)) { throw "The tag draft-prerelease workflow is missing." }
 $releaseSource = Get-Content -Raw -LiteralPath $releaseWorkflowPath
-foreach ($callerContract in @("uses: ./.github/actions/native-runtime", "uses: ./.github/actions/lfs-pull")) {
-    if (-not $releaseSource.Contains($callerContract)) { throw "Tag workflow must call its shared composite action: $callerContract" }
+foreach ($promotionContract in @('prepare_release_assets.py', '--commit "$GITHUB_SHA"', 'actions: read')) {
+    if (-not $releaseSource.Contains($promotionContract)) { throw "Tag workflow must promote verified preparation artifacts: $promotionContract" }
 }
+if ($releaseSource.Contains('uses: ./.github/actions/native-runtime') -or $releaseSource.Contains('verify.ps1')) { throw 'Tag workflow must not rebuild or repeat preparation verification.' }
+if ($ciSource -notmatch "branches: \['release/\*\*'\]" -or $ciSource -notmatch '(?m)^  pull_request:') { throw 'CI must run on preparation branches and pull requests without repeating the main fast-forward.' }
 if ($releaseSource -notmatch 'softprops/action-gh-release@[0-9a-f]{40} # v3\.') { throw "Tag workflow must pin softprops/action-gh-release v3 to a full commit SHA." }
-$releaseWorkflow = $releaseSource + "`n" + $nativeAction
+$releaseWorkflow = $releaseSource
 foreach ($requiredReleaseContract in @('tags:', '"v*"', "draft: true", "prerelease: true", "SHA256SUMS", "realmz-rebuilt-windows-x86_64.zip", "realmz-rebuilt-linux-x86_64.tar.gz", "realmz-rebuilt-macos-universal.zip")) {
     if (-not $releaseWorkflow.Contains($requiredReleaseContract)) { throw "Tag workflow is missing required draft-prerelease contract: $requiredReleaseContract" }
 }
 foreach ($existingReleaseContract in @('Inspect existing release state', 'Refresh existing release assets', "if: steps.release_state.outputs.exists == 'true'", "if: steps.release_state.outputs.exists == 'false'", 'draft: ${{ steps.release_state.outputs.draft }}', 'prerelease: ${{ steps.release_state.outputs.prerelease }}', 'make_latest: ${{ steps.release_state.outputs.make_latest }}', 'fail_on_unmatched_files: true')) {
     if (-not $releaseWorkflow.Contains($existingReleaseContract)) { throw "Tag workflow is missing existing-release preservation: $existingReleaseContract" }
 }
-foreach ($workflow in @($ci, $releaseWorkflow)) {
+foreach ($workflow in @($ci)) {
     $exportMatrix = [regex]::Match($workflow, '(?ms)^  (?:export|build):\r?\n.*?^    runs-on:').Value
     foreach ($platformKey in @('WINDOWS_X86_64', 'LINUX_X86_64', 'MACOS')) {
         foreach ($variableKind in @('URL', 'SHA256')) {

@@ -364,7 +364,7 @@ func _apply_party_charm_special(resolution: AttackResolution, attacker: MonsterS
 	resolution.special_allegiance_after = defender.traitor
 	if resolution.special_saved:
 		return
-	defender.traitor = attacker.traitor
+	defender.classic_traitor = attacker.classic_traitor
 	resolution.special_allegiance_after = defender.traitor
 	resolution.special_applied = resolution.special_allegiance_after != resolution.special_allegiance_before
 	# Castle reports party charm only while incrementing the original loyal-party count.
@@ -381,7 +381,7 @@ func _apply_monster_charm_special(resolution: AttackResolution, attacker: Monste
 	resolution.special_allegiance_after = defender.traitor
 	if resolution.special_saved:
 		return
-	defender.traitor = attacker.traitor
+	defender.classic_traitor = attacker.classic_traitor
 	resolution.special_allegiance_after = defender.traitor
 	resolution.special_applied = resolution.special_allegiance_after != resolution.special_allegiance_before
 	resolution.special_announced = true

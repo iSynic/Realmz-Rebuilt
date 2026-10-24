@@ -1,218 +1,33 @@
-[gd_resource type="Theme" load_steps=48 format=3]
+[gd_resource type="Theme" format=3 uid="uid://cseh1n7fh3ath"]
 
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-raised-frame.png" id="1_raised"]
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-inset-frame.png" id="2_inset"]
-[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/AlegreyaSans-Regular.ttf" id="3_ui"]
-[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/AlegreyaSans-Bold.ttf" id="4_ui_bold"]
-[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/Alegreya-Variable.ttf" id="5_narrative"]
-[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/BlackChancery-Realmz.ttf" id="6_button"]
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-up.svg" id="7_scroll_up"]
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-down.svg" id="8_scroll_down"]
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-left.svg" id="9_scroll_left"]
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/scroll-arrow-right.svg" id="10_scroll_right"]
-[ext_resource type="FontFile" path="res://src/ui/shared/assets/fonts/InterVariable-Castle.ttf" id="11_roster_font"]
-
+[ext_resource type="Texture2D" path="res://src/ui/shared/style/classic_theme_raised_frame.res" id="1_raised"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/style/classic_theme_inset_frame.res" id="2_inset"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_alegreya_regular.res" id="3_ui"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_alegreya_bold.res" id="4_ui_bold"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_black_chancery.res" id="6_button"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/style/classic_theme_scroll_up.res" id="7_scroll_up"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/style/classic_theme_scroll_down.res" id="8_scroll_down"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/style/classic_theme_scroll_left.res" id="9_scroll_left"]
+[ext_resource type="Texture2D" path="res://src/ui/shared/style/classic_theme_scroll_right.res" id="10_scroll_right"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_inter.res" id="11_roster_font"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_idle.tres" id="12_menu_idle"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_theldrow.res" id="12_theldrow"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_chicago.res" id="13_chicago"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_selected.tres" id="13_menu_selected"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_panel.tres" id="14_menu_panel"]
 
-[sub_resource type="StyleBoxTexture" id="RaisedPanel"]
-texture = ExtResource("1_raised")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-
-[sub_resource type="StyleBoxTexture" id="InsetPanel"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-
-[sub_resource type="StyleBoxTexture" id="FooterCommandWellPanel"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-
-[sub_resource type="StyleBoxTexture" id="SpellTargetBadgePanel"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-
-[sub_resource type="StyleBoxFlat" id="ContentWell"]
-bg_color = Color(0.012, 0.016, 0.018, 0.96)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.26, 0.31, 0.32, 1)
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-
-[sub_resource type="StyleBoxFlat" id="PopupPanel"]
-bg_color = Color(0.045, 0.052, 0.052, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.32, 0.36, 0.37, 1)
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-
-[sub_resource type="StyleBoxTexture" id="ButtonNormal"]
-texture = ExtResource("1_raised")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 9.0
-content_margin_top = 5.0
-content_margin_right = 9.0
-content_margin_bottom = 5.0
-modulate_color = Color(0.76, 0.79, 0.79, 1)
-
-[sub_resource type="StyleBoxTexture" id="ButtonHover"]
-texture = ExtResource("1_raised")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 9.0
-content_margin_top = 5.0
-content_margin_right = 9.0
-content_margin_bottom = 5.0
-modulate_color = Color(0.92, 0.98, 1, 1)
-
-[sub_resource type="StyleBoxTexture" id="ButtonPressed"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 10.0
-content_margin_top = 6.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
-
-[sub_resource type="StyleBoxTexture" id="ButtonDisabled"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 9.0
-content_margin_top = 5.0
-content_margin_right = 9.0
-content_margin_bottom = 5.0
-modulate_color = Color(0.35, 0.37, 0.37, 0.82)
-
-[sub_resource type="StyleBoxTexture" id="BattleSummaryInset"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 6.0
-content_margin_top = 3.0
-content_margin_right = 6.0
-content_margin_bottom = 3.0
-
-[sub_resource type="StyleBoxTexture" id="BattleButtonNormal"]
-texture = ExtResource("1_raised")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 5.0
-content_margin_top = 2.0
-content_margin_right = 5.0
-content_margin_bottom = 2.0
-modulate_color = Color(0.76, 0.79, 0.79, 1)
-
-[sub_resource type="StyleBoxTexture" id="BattleButtonHover"]
-texture = ExtResource("1_raised")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 5.0
-content_margin_top = 2.0
-content_margin_right = 5.0
-content_margin_bottom = 2.0
-modulate_color = Color(0.92, 0.98, 1, 1)
-
-[sub_resource type="StyleBoxTexture" id="BattleButtonPressed"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 6.0
-content_margin_top = 3.0
-content_margin_right = 4.0
-content_margin_bottom = 1.0
-
 [sub_resource type="StyleBoxTexture" id="BattleButtonDisabled"]
-texture = ExtResource("2_inset")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_right = 8.0
-texture_margin_bottom = 8.0
 content_margin_left = 5.0
 content_margin_top = 2.0
 content_margin_right = 5.0
 content_margin_bottom = 2.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 modulate_color = Color(0.35, 0.37, 0.37, 0.82)
 
 [sub_resource type="StyleBoxFlat" id="Focus"]
@@ -227,17 +42,269 @@ expand_margin_top = 2.0
 expand_margin_right = 2.0
 expand_margin_bottom = 2.0
 
-[sub_resource type="StyleBoxFlat" id="LineEdit"]
-bg_color = Color(0.012, 0.016, 0.018, 0.98)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.32, 0.38, 0.39, 1)
+[sub_resource type="StyleBoxTexture" id="BattleButtonHover"]
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+modulate_color = Color(0.92, 0.98, 1, 1)
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonNormal"]
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+modulate_color = Color(0.76, 0.79, 0.79, 1)
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonPressed"]
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 4.0
+content_margin_bottom = 1.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxTexture" id="BattleSummaryInset"]
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="FontVariation" id="OrnamentFont"]
+fallbacks = Array[Font]([ExtResource("4_ui_bold")])
+base_font = ExtResource("6_button")
+
+[sub_resource type="StyleBoxTexture" id="ButtonDisabled"]
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+modulate_color = Color(0.35, 0.37, 0.37, 0.82)
+
+[sub_resource type="StyleBoxTexture" id="ButtonHover"]
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+modulate_color = Color(0.92, 0.98, 1, 1)
+
+[sub_resource type="StyleBoxTexture" id="ButtonNormal"]
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+modulate_color = Color(0.76, 0.79, 0.79, 1)
+
+[sub_resource type="StyleBoxTexture" id="ButtonPressed"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="FontVariation" id="BodyFont"]
+fallbacks = Array[Font]([ExtResource("3_ui")])
+base_font = ExtResource("12_theldrow")
+
+[sub_resource type="FontVariation" id="HelpFont"]
+fallbacks = Array[Font]([ExtResource("3_ui")])
+base_font = ExtResource("13_chicago")
+
+[sub_resource type="StyleBoxTexture" id="FooterCommandWellPanel"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxTexture" id="InsetPanel"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxFlat" id="InventoryFactCell"]
 content_margin_left = 8.0
 content_margin_top = 5.0
 content_margin_right = 8.0
 content_margin_bottom = 5.0
+bg_color = Color(0.055, 0.075, 0.086, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.24, 0.29, 0.31, 1)
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerPanel"]
+content_margin_left = 7.0
+content_margin_top = 6.0
+content_margin_right = 7.0
+content_margin_bottom = 6.0
+bg_color = Color(0.965, 0.957, 0.918, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.4, 0.39, 1)
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonNormal"]
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonHover"]
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+bg_color = Color(0.77, 0.9, 0.94, 0.6)
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerRow"]
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+bg_color = Color(0.995, 0.992, 0.976, 1)
+border_width_bottom = 1
+border_color = Color(0.82, 0.81, 0.76, 1)
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerSelectedRow"]
+content_margin_left = 3.0
+content_margin_top = 1.0
+content_margin_right = 3.0
+content_margin_bottom = 1.0
+bg_color = Color(1, 0.944, 0.72, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.76, 0.6, 0.13, 1)
+
+[sub_resource type="AtlasTexture" id="OpenRightFrameTexture"]
+atlas = ExtResource("1_raised")
+region = Rect2(0, 0, 520, 528)
+
+[sub_resource type="StyleBoxTexture" id="OpenRightPanel"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+texture = SubResource("OpenRightFrameTexture")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxEmpty" id="SharedStoneSurface"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="SpellTargetBadgePanel"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxFlat" id="ContentWell"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.012, 0.016, 0.018, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.26, 0.31, 0.32, 1)
+
+[sub_resource type="StyleBoxFlat" id="TextboxOverlaySurface"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+bg_color = Color(0.012, 0.016, 0.018, 1)
+
+[sub_resource type="FontVariation" id="UtilityFont"]
+fallbacks = Array[Font]([ExtResource("3_ui")])
+base_font = ExtResource("11_roster_font")
 
 [sub_resource type="StyleBoxFlat" id="Selection"]
 bg_color = Color(0.15, 0.34, 0.4, 0.72)
@@ -247,203 +314,217 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.46, 0.84, 0.91, 1)
 
-[sub_resource type="StyleBoxEmpty" id="Empty"]
-
-[sub_resource type="StyleBoxFlat" id="MenuNormal"]
-bg_color = Color(0, 0, 0, 0)
-content_margin_left = 7.0
-content_margin_top = 2.0
-content_margin_right = 7.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="MenuHover"]
-bg_color = Color(0.13, 0.15, 0.15, 0.94)
-border_width_bottom = 1
-border_color = Color(0.48, 0.43, 0.22, 1)
-content_margin_left = 7.0
-content_margin_top = 2.0
-content_margin_right = 7.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="MenuPressed"]
-bg_color = Color(0.045, 0.052, 0.052, 0.98)
-border_width_bottom = 1
-border_color = Color(0.99, 0.89, 0.38, 1)
-content_margin_left = 7.0
-content_margin_top = 2.0
-content_margin_right = 7.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="MenuDisabled"]
-bg_color = Color(0, 0, 0, 0)
-content_margin_left = 7.0
-content_margin_top = 2.0
-content_margin_right = 7.0
-content_margin_bottom = 2.0
-
-[sub_resource type="AtlasTexture" id="OpenRightFrameTexture"]
-atlas = ExtResource("1_raised")
-region = Rect2(0, 0, 520, 528)
-
-[sub_resource type="StyleBoxTexture" id="OpenRightPanel"]
-texture = SubResource("OpenRightFrameTexture")
-axis_stretch_horizontal = 1
-axis_stretch_vertical = 1
-texture_margin_left = 8.0
-texture_margin_top = 8.0
-texture_margin_bottom = 8.0
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-
-[sub_resource type="StyleBoxEmpty" id="SharedStoneSurface"]
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-
-[sub_resource type="StyleBoxFlat" id="TextboxOverlaySurface"]
-bg_color = Color(0.012, 0.016, 0.018, 1)
-content_margin_left = 10.0
-content_margin_top = 8.0
-content_margin_right = 10.0
-content_margin_bottom = 8.0
-
-[sub_resource type="StyleBoxFlat" id="ItemLedgerPanel"]
-bg_color = Color(0.965, 0.957, 0.918, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.38, 0.4, 0.39, 1)
-content_margin_left = 7.0
-content_margin_top = 6.0
-content_margin_right = 7.0
-content_margin_bottom = 6.0
-
-[sub_resource type="StyleBoxFlat" id="ItemLedgerRow"]
-bg_color = Color(0.995, 0.992, 0.976, 1)
-border_width_bottom = 1
-border_color = Color(0.82, 0.81, 0.76, 1)
-content_margin_left = 4.0
-content_margin_top = 2.0
-content_margin_right = 4.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="ItemLedgerSelectedRow"]
-bg_color = Color(1, 0.944, 0.72, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.76, 0.6, 0.13, 1)
-content_margin_left = 3.0
-content_margin_top = 1.0
-content_margin_right = 3.0
-content_margin_bottom = 1.0
-
-[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonNormal"]
-bg_color = Color(0, 0, 0, 0)
-content_margin_left = 4.0
-content_margin_top = 2.0
-content_margin_right = 4.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonHover"]
-bg_color = Color(0.77, 0.9, 0.94, 0.6)
-content_margin_left = 4.0
-content_margin_top = 2.0
-content_margin_right = 4.0
-content_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="InventoryFactCell"]
-bg_color = Color(0.055, 0.075, 0.086, 0.94)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.24, 0.29, 0.31, 1)
+[sub_resource type="StyleBoxFlat" id="LineEdit"]
 content_margin_left = 8.0
 content_margin_top = 5.0
 content_margin_right = 8.0
 content_margin_bottom = 5.0
+bg_color = Color(0.012, 0.016, 0.018, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.38, 0.39, 1)
+
+[sub_resource type="StyleBoxFlat" id="MenuDisabled"]
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="MenuHover"]
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+bg_color = Color(0.13, 0.15, 0.15, 0.94)
+border_width_bottom = 1
+border_color = Color(0.48, 0.43, 0.22, 1)
+
+[sub_resource type="StyleBoxFlat" id="MenuNormal"]
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="MenuPressed"]
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+bg_color = Color(0.045, 0.052, 0.052, 0.98)
+border_width_bottom = 1
+border_color = Color(0.99, 0.89, 0.38, 1)
+
+[sub_resource type="StyleBoxTexture" id="RaisedPanel"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxFlat" id="PopupPanel"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.045, 0.052, 0.052, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.36, 0.37, 1)
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
 
 [resource]
-default_font = ExtResource("3_ui")
+default_font = SubResource("BodyFont")
 default_font_size = 15
-Button/colors/font_color = Color(0.94, 0.94, 0.9, 1)
-Button/colors/font_hover_color = Color(1, 0.92, 0.45, 1)
-Button/colors/font_pressed_color = Color(1, 0.92, 0.45, 1)
-Button/colors/font_disabled_color = Color(0.47, 0.5, 0.5, 1)
-Button/fonts/font = ExtResource("3_ui")
-Button/styles/normal = SubResource("ButtonNormal")
-Button/styles/hover = SubResource("ButtonHover")
-Button/styles/pressed = SubResource("ButtonPressed")
-Button/styles/disabled = SubResource("ButtonDisabled")
-Button/styles/focus = SubResource("Focus")
 BattleCommandButton/base_type = &"Button"
 BattleCommandButton/font_sizes/font_size = 13
-BattleCommandButton/styles/normal = SubResource("BattleButtonNormal")
-BattleCommandButton/styles/hover = SubResource("BattleButtonHover")
-BattleCommandButton/styles/pressed = SubResource("BattleButtonPressed")
 BattleCommandButton/styles/disabled = SubResource("BattleButtonDisabled")
 BattleCommandButton/styles/focus = SubResource("Focus")
-ClassicChoiceButton/base_type = &"Button"
-ClassicChoiceButton/font_sizes/font_size = 16
-ClassicChoiceButton/styles/normal = SubResource("BattleButtonNormal")
-ClassicChoiceButton/styles/hover = SubResource("BattleButtonHover")
-ClassicChoiceButton/styles/pressed = SubResource("BattleButtonPressed")
-ClassicChoiceButton/styles/disabled = SubResource("BattleButtonDisabled")
-ClassicChoiceButton/styles/focus = SubResource("Focus")
+BattleCommandButton/styles/hover = SubResource("BattleButtonHover")
+BattleCommandButton/styles/normal = SubResource("BattleButtonNormal")
+BattleCommandButton/styles/pressed = SubResource("BattleButtonPressed")
 BattleSummaryInset/base_type = &"PanelContainer"
 BattleSummaryInset/styles/panel = SubResource("BattleSummaryInset")
+Button/colors/font_color = Color(0.94, 0.94, 0.9, 1)
+Button/colors/font_disabled_color = Color(0.47, 0.5, 0.5, 1)
+Button/colors/font_hover_color = Color(1, 0.92, 0.45, 1)
+Button/colors/font_pressed_color = Color(1, 0.92, 0.45, 1)
+Button/fonts/font = SubResource("OrnamentFont")
+Button/styles/disabled = SubResource("ButtonDisabled")
+Button/styles/focus = SubResource("Focus")
+Button/styles/hover = SubResource("ButtonHover")
+Button/styles/normal = SubResource("ButtonNormal")
+Button/styles/pressed = SubResource("ButtonPressed")
 CheckButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
-CheckButton/fonts/font = ExtResource("3_ui")
-Label/colors/font_color = Color(0.91, 0.91, 0.87, 1)
-Label/fonts/font = ExtResource("3_ui")
-LineEdit/colors/font_color = Color(0.94, 0.94, 0.9, 1)
-LineEdit/colors/font_placeholder_color = Color(0.52, 0.57, 0.58, 1)
-LineEdit/fonts/font = ExtResource("3_ui")
-LineEdit/styles/normal = SubResource("LineEdit")
-LineEdit/styles/focus = SubResource("Focus")
-MenuButton/colors/font_color = Color(0.96, 0.9, 0.52, 1)
-MenuButton/colors/font_hover_color = Color(1, 0.95, 0.69, 1)
-MenuButton/fonts/font = ExtResource("4_ui_bold")
-MenuButton/styles/normal = SubResource("MenuNormal")
-MenuButton/styles/hover = SubResource("MenuHover")
-MenuButton/styles/pressed = SubResource("MenuPressed")
-MenuButton/styles/disabled = SubResource("MenuDisabled")
-MenuButton/styles/focus = SubResource("Focus")
+CheckButton/fonts/font = SubResource("BodyFont")
+Classic3DHelp/base_type = &"Label"
+Classic3DHelp/fonts/font = SubResource("HelpFont")
+ClassicChoiceButton/base_type = &"Button"
+ClassicChoiceButton/font_sizes/font_size = 16
+ClassicChoiceButton/styles/disabled = SubResource("BattleButtonDisabled")
+ClassicChoiceButton/styles/focus = SubResource("Focus")
+ClassicChoiceButton/styles/hover = SubResource("BattleButtonHover")
+ClassicChoiceButton/styles/normal = SubResource("BattleButtonNormal")
+ClassicChoiceButton/styles/pressed = SubResource("BattleButtonPressed")
+ClassicCommandCaption/base_type = &"Label"
+ClassicCommandCaption/fonts/font = SubResource("OrnamentFont")
+ClassicFooterCommandWell/base_type = &"PanelContainer"
+ClassicFooterCommandWell/styles/panel = SubResource("FooterCommandWellPanel")
+ClassicHeading/base_type = &"Label"
+ClassicHeading/colors/font_color = Color(0.98, 0.87, 0.32, 1)
+ClassicHeading/font_sizes/font_size = 18
+ClassicHeading/fonts/font = SubResource("OrnamentFont")
+ClassicInset/base_type = &"PanelContainer"
+ClassicInset/styles/panel = SubResource("InsetPanel")
+ClassicInventoryFactCell/base_type = &"PanelContainer"
+ClassicInventoryFactCell/styles/panel = SubResource("InventoryFactCell")
+ClassicItemLedger/base_type = &"PanelContainer"
+ClassicItemLedger/styles/panel = SubResource("ItemLedgerPanel")
+ClassicItemLedgerButton/base_type = &"Button"
+ClassicItemLedgerButton/colors/font_color = Color(0.055, 0.055, 0.05, 1)
+ClassicItemLedgerButton/colors/font_focus_color = Color(0.02, 0.26, 0.52, 1)
+ClassicItemLedgerButton/colors/font_hover_color = Color(0.02, 0.26, 0.52, 1)
+ClassicItemLedgerButton/colors/font_hover_pressed_color = Color(0.34, 0.25, 0.02, 1)
+ClassicItemLedgerButton/colors/font_pressed_color = Color(0.34, 0.25, 0.02, 1)
+ClassicItemLedgerButton/font_sizes/font_size = 17
+ClassicItemLedgerButton/fonts/font = SubResource("OrnamentFont")
+ClassicItemLedgerButton/styles/disabled = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/focus = SubResource("Focus")
+ClassicItemLedgerButton/styles/hover = SubResource("ItemLedgerButtonHover")
+ClassicItemLedgerButton/styles/normal = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/pressed = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerRow/base_type = &"PanelContainer"
+ClassicItemLedgerRow/styles/panel = SubResource("ItemLedgerRow")
+ClassicItemLedgerSelectedRow/base_type = &"PanelContainer"
+ClassicItemLedgerSelectedRow/styles/panel = SubResource("ItemLedgerSelectedRow")
+ClassicMoneyLedgerButton/base_type = &"Button"
+ClassicMoneyLedgerButton/colors/font_color = Color(0.88, 0.89, 0.9, 1)
+ClassicMoneyLedgerButton/colors/font_disabled_color = Color(0.46, 0.48, 0.49, 1)
+ClassicMoneyLedgerButton/colors/font_focus_color = Color(0.98, 0.87, 0.32, 1)
+ClassicMoneyLedgerButton/colors/font_hover_color = Color(0.97, 0.98, 0.98, 1)
+ClassicMoneyLedgerButton/colors/font_hover_pressed_color = Color(1, 0.93, 0.5, 1)
+ClassicMoneyLedgerButton/colors/font_pressed_color = Color(0.98, 0.87, 0.32, 1)
+ClassicMoneyLedgerButton/font_sizes/font_size = 17
+ClassicMoneyLedgerButton/fonts/font = SubResource("OrnamentFont")
+ClassicMoneyLedgerButton/styles/disabled = SubResource("ButtonDisabled")
+ClassicMoneyLedgerButton/styles/focus = SubResource("Focus")
+ClassicMoneyLedgerButton/styles/hover = SubResource("ButtonHover")
+ClassicMoneyLedgerButton/styles/normal = SubResource("ButtonNormal")
+ClassicMoneyLedgerButton/styles/pressed = SubResource("ButtonPressed")
+ClassicNarrative/base_type = &"RichTextLabel"
+ClassicNarrative/colors/default_color = Color(0.95, 0.93, 0.83, 1)
+ClassicNarrative/font_sizes/normal_font_size = 17
+ClassicNarrative/fonts/normal_font = SubResource("BodyFont")
+ClassicNarrativeText/base_type = &"Label"
+ClassicNarrativeText/font_sizes/font_size = 17
+ClassicNarrativeText/fonts/font = SubResource("BodyFont")
+ClassicOpenRight/base_type = &"PanelContainer"
+ClassicOpenRight/styles/panel = SubResource("OpenRightPanel")
+ClassicRosterAuto/base_type = &"Button"
+ClassicRosterAuto/fonts/font = SubResource("BodyFont")
+ClassicRosterText/base_type = &"Label"
+ClassicRosterText/fonts/font = SubResource("BodyFont")
+ClassicRuntimeMetrics/constants/default_font_size = 17
+ClassicScenarioHeading/base_type = &"ClassicHeading"
+ClassicScenarioHeading/colors/font_color = Color(0.835, 0.706, 0.365, 1)
+ClassicScenarioHeading/font_sizes/font_size = 20
+ClassicScenarioListHeading/base_type = &"Label"
+ClassicScenarioListHeading/colors/font_color = Color(0.835, 0.706, 0.365, 1)
+ClassicScenarioListHeading/font_sizes/font_size = 14
+ClassicSecondaryText/base_type = &"Label"
+ClassicSecondaryText/colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
+ClassicSecondaryText/font_sizes/font_size = 13
+ClassicSharedStone/base_type = &"PanelContainer"
+ClassicSharedStone/styles/panel = SubResource("SharedStoneSurface")
+ClassicSpellTargetBadge/base_type = &"PanelContainer"
+ClassicSpellTargetBadge/styles/panel = SubResource("SpellTargetBadgePanel")
+ClassicTextWell/base_type = &"PanelContainer"
+ClassicTextWell/styles/panel = SubResource("ContentWell")
+ClassicTextboxOverlay/base_type = &"PanelContainer"
+ClassicTextboxOverlay/styles/panel = SubResource("TextboxOverlaySurface")
+ClassicTheldrowButton/base_type = &"Button"
+ClassicTheldrowButton/fonts/font = SubResource("BodyFont")
+ClassicTheldrowLineEdit/base_type = &"LineEdit"
+ClassicTheldrowLineEdit/fonts/font = SubResource("BodyFont")
+ClassicTheldrowOptionButton/base_type = &"OptionButton"
+ClassicTheldrowOptionButton/fonts/font = SubResource("BodyFont")
 ClassicTreasureDropButton/base_type = &"MenuButton"
 ClassicTreasureDropButton/colors/font_color = Color(0.96, 0.9, 0.52, 1)
+ClassicTreasureDropButton/colors/font_disabled_color = Color(0.47, 0.5, 0.5, 1)
 ClassicTreasureDropButton/colors/font_hover_color = Color(1, 0.92, 0.45, 1)
 ClassicTreasureDropButton/colors/font_pressed_color = Color(1, 0.92, 0.45, 1)
-ClassicTreasureDropButton/colors/font_disabled_color = Color(0.47, 0.5, 0.5, 1)
-ClassicTreasureDropButton/fonts/font = ExtResource("6_button")
-ClassicTreasureDropButton/styles/normal = SubResource("ButtonNormal")
-ClassicTreasureDropButton/styles/hover = SubResource("ButtonHover")
-ClassicTreasureDropButton/styles/pressed = SubResource("ButtonPressed")
+ClassicTreasureDropButton/fonts/font = SubResource("OrnamentFont")
 ClassicTreasureDropButton/styles/disabled = SubResource("ButtonDisabled")
 ClassicTreasureDropButton/styles/focus = SubResource("Focus")
-OptionButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
-OptionButton/fonts/font = ExtResource("3_ui")
-Panel/styles/panel = SubResource("RaisedPanel")
-PanelContainer/styles/panel = SubResource("RaisedPanel")
-PopupMenu/colors/font_color = Color(0.93, 0.93, 0.89, 1)
-PopupMenu/colors/font_accelerator_color = Color(0.48, 0.82, 0.89, 1)
-PopupMenu/fonts/font = ExtResource("3_ui")
-PopupMenu/styles/panel = SubResource("PopupPanel")
-PopupMenu/styles/hover = SubResource("Selection")
-RichTextLabel/colors/default_color = Color(0.93, 0.92, 0.84, 1)
-RichTextLabel/fonts/normal_font = ExtResource("5_narrative")
-ScrollContainer/styles/panel = SubResource("Empty")
-VScrollBar/icons/decrement = ExtResource("7_scroll_up")
-VScrollBar/icons/decrement_highlight = ExtResource("7_scroll_up")
-VScrollBar/icons/decrement_pressed = ExtResource("7_scroll_up")
-VScrollBar/icons/increment = ExtResource("8_scroll_down")
-VScrollBar/icons/increment_highlight = ExtResource("8_scroll_down")
-VScrollBar/icons/increment_pressed = ExtResource("8_scroll_down")
+ClassicTreasureDropButton/styles/hover = SubResource("ButtonHover")
+ClassicTreasureDropButton/styles/normal = SubResource("ButtonNormal")
+ClassicTreasureDropButton/styles/pressed = SubResource("ButtonPressed")
+ClassicUnidentifiedItem/base_type = &"Label"
+ClassicUnidentifiedItem/colors/font_color = Color(0, 0, 0, 0)
+ClassicUnidentifiedItem/colors/font_outline_color = Color(0.560784, 0.811765, 0.819608, 1)
+ClassicUnidentifiedItem/constants/outline_size = 2
+ClassicUnidentifiedItem/fonts/font = SubResource("BodyFont")
+ClassicUtility/base_type = &"Label"
+ClassicUtility/fonts/font = SubResource("UtilityFont")
+ClassicUtilityButton/base_type = &"Button"
+ClassicUtilityButton/fonts/font = SubResource("UtilityFont")
+ClassicUtilityButton/styles/disabled = SubResource("BattleButtonDisabled")
+ClassicUtilityButton/styles/focus = SubResource("Focus")
+ClassicUtilityButton/styles/hover = SubResource("BattleButtonHover")
+ClassicUtilityButton/styles/normal = SubResource("BattleButtonNormal")
+ClassicUtilityButton/styles/pressed = SubResource("BattleButtonPressed")
 HScrollBar/icons/decrement = ExtResource("9_scroll_left")
 HScrollBar/icons/decrement_highlight = ExtResource("9_scroll_left")
 HScrollBar/icons/decrement_pressed = ExtResource("9_scroll_left")
@@ -452,95 +533,64 @@ HScrollBar/icons/increment_highlight = ExtResource("10_scroll_right")
 HScrollBar/icons/increment_pressed = ExtResource("10_scroll_right")
 ItemList/colors/font_color = Color(0.91, 0.91, 0.87, 1)
 ItemList/colors/font_selected_color = Color(1, 0.94, 0.58, 1)
-ItemList/fonts/font = ExtResource("3_ui")
+ItemList/fonts/font = SubResource("UtilityFont")
 ItemList/styles/panel = SubResource("ContentWell")
 ItemList/styles/selected = SubResource("Selection")
-SlateList/base_type = &"ItemList"
-SlateList/styles/panel = SubResource("InsetPanel")
+Label/colors/font_color = Color(0.91, 0.91, 0.87, 1)
+Label/fonts/font = SubResource("BodyFont")
+LineEdit/colors/font_color = Color(0.94, 0.94, 0.9, 1)
+LineEdit/colors/font_placeholder_color = Color(0.52, 0.57, 0.58, 1)
+LineEdit/fonts/font = SubResource("UtilityFont")
+LineEdit/styles/focus = SubResource("Focus")
+LineEdit/styles/normal = SubResource("LineEdit")
+MenuAction/base_type = &"Button"
+MenuAction/colors/font_color = Color(0.925, 0.925, 0.89, 1)
+MenuAction/colors/font_disabled_color = Color(0.53, 0.61, 0.65, 1)
+MenuAction/colors/font_focus_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/colors/font_hover_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
+MenuAction/font_sizes/font_size = 24
+MenuAction/styles/disabled = ExtResource("12_menu_idle")
+MenuAction/styles/focus = ExtResource("13_menu_selected")
+MenuAction/styles/hover = ExtResource("13_menu_selected")
+MenuAction/styles/normal = ExtResource("12_menu_idle")
+MenuAction/styles/pressed = ExtResource("13_menu_selected")
+MenuButton/colors/font_color = Color(0.96, 0.9, 0.52, 1)
+MenuButton/colors/font_hover_color = Color(1, 0.95, 0.69, 1)
+MenuButton/fonts/font = SubResource("BodyFont")
+MenuButton/styles/disabled = SubResource("MenuDisabled")
+MenuButton/styles/focus = SubResource("Focus")
+MenuButton/styles/hover = SubResource("MenuHover")
+MenuButton/styles/normal = SubResource("MenuNormal")
+MenuButton/styles/pressed = SubResource("MenuPressed")
+MenuDialog/base_type = &"PanelContainer"
+MenuDialog/styles/panel = ExtResource("14_menu_panel")
+OptionButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
+OptionButton/fonts/font = SubResource("UtilityFont")
+Panel/styles/panel = SubResource("RaisedPanel")
+PanelContainer/styles/panel = SubResource("RaisedPanel")
+PopupMenu/colors/font_accelerator_color = Color(0.48, 0.82, 0.89, 1)
+PopupMenu/colors/font_color = Color(0.93, 0.93, 0.89, 1)
+PopupMenu/fonts/font = SubResource("BodyFont")
+PopupMenu/styles/hover = SubResource("Selection")
+PopupMenu/styles/panel = SubResource("PopupPanel")
+RichTextLabel/colors/default_color = Color(0.93, 0.92, 0.84, 1)
+RichTextLabel/fonts/normal_font = SubResource("BodyFont")
+ScrollContainer/styles/panel = SubResource("Empty")
 SlateLineEdit/base_type = &"LineEdit"
 SlateLineEdit/styles/normal = SubResource("InsetPanel")
 SlateLineEdit/styles/read_only = SubResource("InsetPanel")
+SlateList/base_type = &"ItemList"
+SlateList/styles/panel = SubResource("InsetPanel")
 SlateTabs/base_type = &"TabContainer"
 SlateTabs/styles/panel = SubResource("InsetPanel")
+SlateTabs/styles/tab_disabled = SubResource("ButtonDisabled")
+SlateTabs/styles/tab_hovered = SubResource("ButtonHover")
 SlateTabs/styles/tab_selected = SubResource("ButtonPressed")
 SlateTabs/styles/tab_unselected = SubResource("ButtonNormal")
-SlateTabs/styles/tab_hovered = SubResource("ButtonHover")
-SlateTabs/styles/tab_disabled = SubResource("ButtonDisabled")
-ClassicHeading/base_type = &"Label"
-ClassicCommandCaption/base_type = &"Label"
-ClassicCommandCaption/fonts/font = ExtResource("6_button")
-ClassicRosterText/base_type = &"Label"
-ClassicRosterText/fonts/font = ExtResource("11_roster_font")
-ClassicRosterAuto/base_type = &"Button"
-ClassicRosterAuto/fonts/font = ExtResource("11_roster_font")
-ClassicHeading/colors/font_color = Color(0.98, 0.87, 0.32, 1)
-ClassicHeading/fonts/font = ExtResource("4_ui_bold")
-ClassicHeading/font_sizes/font_size = 18
-ClassicNarrative/base_type = &"RichTextLabel"
-ClassicNarrative/colors/default_color = Color(0.95, 0.93, 0.83, 1)
-ClassicNarrative/fonts/normal_font = ExtResource("5_narrative")
-ClassicNarrative/font_sizes/normal_font_size = 17
-ClassicTextWell/base_type = &"PanelContainer"
-ClassicTextWell/styles/panel = SubResource("ContentWell")
-ClassicInset/base_type = &"PanelContainer"
-ClassicInset/styles/panel = SubResource("InsetPanel")
-ClassicFooterCommandWell/base_type = &"PanelContainer"
-ClassicFooterCommandWell/styles/panel = SubResource("FooterCommandWellPanel")
-ClassicSpellTargetBadge/base_type = &"PanelContainer"
-ClassicSpellTargetBadge/styles/panel = SubResource("SpellTargetBadgePanel")
-ClassicOpenRight/base_type = &"PanelContainer"
-ClassicOpenRight/styles/panel = SubResource("OpenRightPanel")
-ClassicSharedStone/base_type = &"PanelContainer"
-ClassicSharedStone/styles/panel = SubResource("SharedStoneSurface")
-ClassicTextboxOverlay/base_type = &"PanelContainer"
-ClassicTextboxOverlay/styles/panel = SubResource("TextboxOverlaySurface")
-ClassicItemLedger/base_type = &"PanelContainer"
-ClassicItemLedger/styles/panel = SubResource("ItemLedgerPanel")
-ClassicItemLedgerRow/base_type = &"PanelContainer"
-ClassicItemLedgerRow/styles/panel = SubResource("ItemLedgerRow")
-ClassicItemLedgerSelectedRow/base_type = &"PanelContainer"
-ClassicItemLedgerSelectedRow/styles/panel = SubResource("ItemLedgerSelectedRow")
-ClassicItemLedgerButton/base_type = &"Button"
-ClassicItemLedgerButton/colors/font_color = Color(0.055, 0.055, 0.05, 1)
-ClassicItemLedgerButton/colors/font_hover_color = Color(0.02, 0.26, 0.52, 1)
-ClassicItemLedgerButton/colors/font_pressed_color = Color(0.34, 0.25, 0.02, 1)
-ClassicItemLedgerButton/colors/font_hover_pressed_color = Color(0.34, 0.25, 0.02, 1)
-ClassicItemLedgerButton/colors/font_focus_color = Color(0.02, 0.26, 0.52, 1)
-ClassicItemLedgerButton/fonts/font = ExtResource("6_button")
-ClassicItemLedgerButton/font_sizes/font_size = 17
-ClassicItemLedgerButton/styles/normal = SubResource("ItemLedgerButtonNormal")
-ClassicItemLedgerButton/styles/hover = SubResource("ItemLedgerButtonHover")
-ClassicItemLedgerButton/styles/pressed = SubResource("ItemLedgerButtonNormal")
-ClassicItemLedgerButton/styles/disabled = SubResource("ItemLedgerButtonNormal")
-ClassicItemLedgerButton/styles/focus = SubResource("Focus")
-ClassicInventoryFactCell/base_type = &"PanelContainer"
-ClassicInventoryFactCell/styles/panel = SubResource("InventoryFactCell")
-ClassicMoneyLedgerButton/base_type = &"Button"
-ClassicMoneyLedgerButton/colors/font_color = Color(0.88, 0.89, 0.9, 1)
-ClassicMoneyLedgerButton/colors/font_hover_color = Color(0.97, 0.98, 0.98, 1)
-ClassicMoneyLedgerButton/colors/font_pressed_color = Color(0.98, 0.87, 0.32, 1)
-ClassicMoneyLedgerButton/colors/font_hover_pressed_color = Color(1, 0.93, 0.5, 1)
-ClassicMoneyLedgerButton/colors/font_focus_color = Color(0.98, 0.87, 0.32, 1)
-ClassicMoneyLedgerButton/colors/font_disabled_color = Color(0.46, 0.48, 0.49, 1)
-ClassicMoneyLedgerButton/fonts/font = ExtResource("6_button")
-ClassicMoneyLedgerButton/font_sizes/font_size = 17
-ClassicMoneyLedgerButton/styles/normal = SubResource("ButtonNormal")
-ClassicMoneyLedgerButton/styles/hover = SubResource("ButtonHover")
-ClassicMoneyLedgerButton/styles/pressed = SubResource("ButtonPressed")
-ClassicMoneyLedgerButton/styles/disabled = SubResource("ButtonDisabled")
-ClassicMoneyLedgerButton/styles/focus = SubResource("Focus")
-
-MenuDialog/base_type = &"PanelContainer"
-MenuDialog/styles/panel = ExtResource("14_menu_panel")
-MenuAction/base_type = &"Button"
-MenuAction/font_sizes/font_size = 24
-MenuAction/colors/font_color = Color(0.925, 0.925, 0.89, 1)
-MenuAction/colors/font_hover_color = Color(0.063, 0.102, 0.141, 1)
-MenuAction/colors/font_focus_color = Color(0.063, 0.102, 0.141, 1)
-MenuAction/colors/font_pressed_color = Color(0.063, 0.102, 0.141, 1)
-MenuAction/colors/font_disabled_color = Color(0.53, 0.61, 0.65, 1)
-MenuAction/styles/normal = ExtResource("12_menu_idle")
-MenuAction/styles/hover = ExtResource("13_menu_selected")
-MenuAction/styles/focus = ExtResource("13_menu_selected")
-MenuAction/styles/pressed = ExtResource("13_menu_selected")
-MenuAction/styles/disabled = ExtResource("12_menu_idle")
+VScrollBar/icons/decrement = ExtResource("7_scroll_up")
+VScrollBar/icons/decrement_highlight = ExtResource("7_scroll_up")
+VScrollBar/icons/decrement_pressed = ExtResource("7_scroll_up")
+VScrollBar/icons/increment = ExtResource("8_scroll_down")
+VScrollBar/icons/increment_highlight = ExtResource("8_scroll_down")
+VScrollBar/icons/increment_pressed = ExtResource("8_scroll_down")

@@ -41,6 +41,10 @@ pointing/emulate_touch_from_mouse=false
 
 enabled=PackedStringArray("res://addons/realmz_builder/plugin.cfg")
 
+[gui]
+
+theme/custom="res://src/ui/shared/style/classic_ui_theme.tres"
+
 [rendering]
 
 renderer/rendering_method="mobile"

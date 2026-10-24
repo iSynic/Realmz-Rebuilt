@@ -24,8 +24,7 @@ text = "No party inventory"
 
 [node name="Detail" type="Label" parent="Message/Content"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.603922, 0.627451, 0.658824, 1)
-theme_override_font_sizes/font_size = 13
+theme_type_variation = &"ClassicSecondaryText"
 text = "The party has no characters."
 autowrap_mode = 2
 

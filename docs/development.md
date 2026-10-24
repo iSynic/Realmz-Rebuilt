@@ -117,6 +117,16 @@ The aggregate gate imports the project, launches the main scene, runs every type
 
 Move directly to Tier 3 for package/schema changes; semantic save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat/reward sequencing; and application composition-root changes.
 
+## Desktop release delivery
+
+Push the sanitized candidate to a `release/**` branch. Its Windows, Linux and macOS Verify/Export jobs plus Runtime testing tools must pass before protected `main` fast-forwards to that exact commit. Each native export is verified and launched once there; `main` does not repeat the matrix.
+
+A `v*` tag promotes those preparation artifacts rather than rebuilding them. `tools/prepare_release_assets.py` binds the tag SHA to a successful same-repository preparation run, checks all seven jobs and the three artifact identities, validates downloaded SHA-256 digests, and packages the verified native bytes. It retains the macOS app archive and restores Linux executable permissions. Missing, expired or mismatched inputs fail explicitly and require a fresh preparation run. New releases remain draft prereleases; refreshing an existing release preserves its draft, prerelease and Latest state.
+
+Download all release assets, verify checksums and contents, and run isolated startup acceptance before handoff. Promotion removes repeated compilation and aggregate checks; it does not replace exported-payload or downloaded-runtime verification. Keep the preparation run, artifact digests, release checksums and final metadata in the release receipt.
+
+Compare actual exported campaign archives, receipts and stock inputs byte-for-byte with the verified source inputs. Exact identity carries forward the successful complete-record gate; do not repeat historical reconstruction for identical payloads. Changed bytes require fresh verification.
+
 ## Test admission
 
 A durable automated check should protect one of these responsibilities:

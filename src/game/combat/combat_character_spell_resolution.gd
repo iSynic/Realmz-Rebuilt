@@ -43,7 +43,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 		if area_target:
 			if not selected_ids.has(character.id):
 				continue
-		elif not _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
+		elif not _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
 			continue
 		character_targets.append(character)
 	for monster: MonsterState in state.combat.roster.monsters():
@@ -52,7 +52,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 		if area_target:
 			if not selected_ids.has(monster.id):
 				continue
-		elif not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+		elif not _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:

@@ -76,7 +76,7 @@ func _targets(state: GameState, content: RealmzContent, source_id: String, spell
 func _repeated_targets(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, power: int) -> Array[SpellTargetSelection]:
 	var max_targets := spell.fixed_target_count if spell.fixed_target_count > 0 else power
 	var source_monster := state.combat.roster.monster_by_id(source_id)
-	var source_traitor := source_monster.traitor if source_monster != null else false
+	var source_traitor := source_monster.classic_traitor if source_monster != null else 0
 	var friendly_only := spell.cannot == 4
 	var result: Array[SpellTargetSelection] = []
 	for character: CharacterState in state.party.characters():
@@ -84,7 +84,7 @@ func _repeated_targets(state: GameState, content: RealmzContent, source_id: Stri
 			break
 		if character.current_health <= 0 or not state.combat.battlefield.actors.has_actor(character.id) or character.id == source_id:
 			continue
-		var is_friendly := character.traitor == source_traitor
+		var is_friendly := character.classic_traitor == source_traitor
 		if (friendly_only and not is_friendly) or (not friendly_only and is_friendly):
 			continue
 		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, source_id, character.id, spell, power):
@@ -97,7 +97,7 @@ func _repeated_targets(state: GameState, content: RealmzContent, source_id: Stri
 			continue
 		if candidate_monster.magic_resistance > 100:
 			continue
-		var is_friendly := candidate_monster.traitor == source_traitor
+		var is_friendly := candidate_monster.classic_traitor == source_traitor
 		if (friendly_only and not is_friendly) or (not friendly_only and is_friendly):
 			continue
 		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, source_id, candidate_monster.id, spell, power):

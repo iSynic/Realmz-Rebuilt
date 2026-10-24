@@ -10,11 +10,18 @@
 
 [node name="VaultScreen" instance=ExtResource("1_base")]
 route_id = &"vault"
-title = "Character Files"
-description = "Reusable characters, revision history, and campaign eligibility."
 script = ExtResource("2_screen")
 character_card_scene = ExtResource("4_card")
 history_row_scene = ExtResource("5_history")
+
+[node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
+text = "Character Files"
+
+[node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
+text = "Reusable characters, revision history, and campaign eligibility."
+
+[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
+visible = false
 
 [node name="VaultHeaderArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
 unique_name_in_owner = true

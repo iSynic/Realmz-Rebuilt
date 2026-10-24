@@ -38,6 +38,7 @@ function Invoke-GodotGate {
 }
 
 Invoke-GodotGate "Godot project import/script validation" @("--headless", "--path", $repoRoot, "--editor", "--quit")
+Invoke-GodotGate "Project theme source assets" @("--headless", "--path", $repoRoot, "--script", "res://tools/generate_theme_assets.gd", "--", "--check")
 Invoke-GodotGate "Complete script compilation" @("--headless", "--path", $repoRoot, "--script", "res://tools/verify_script_compilation.gd")
 Invoke-GodotGate -Label "Main scene smoke launch" -GodotArguments @("--headless", "--verbose", "--path", $repoRoot, "--script", "res://tools/verification_tree.gd", "--quit-after", "5") -RejectTeardownLeaks
 Invoke-GodotGate -Label "Headless test suite" -GodotArguments @("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd") -RejectTeardownLeaks

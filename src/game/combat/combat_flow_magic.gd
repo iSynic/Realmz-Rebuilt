@@ -123,10 +123,10 @@ func _probe_item_area_spell(state: GameState, content: RealmzContent, caster: Ch
 func _probe_item_group_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition) -> CombatSpellCastProbe:
 	var group_target_count := 0
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
 			group_target_count += 1
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
 			continue
 		if content.combat.monster_by_id(monster.definition_id) == null:
 			return CombatSpellCastProbe.fault(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
@@ -248,10 +248,10 @@ func _resolve_group_spell_item(state: GameState, content: RealmzContent, caster:
 	var monster_targets: Array[MonsterState] = []
 	var monster_definitions: Array[MonsterDefinition] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
 			character_targets.append(character)
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
@@ -509,10 +509,10 @@ func _probe_scroll_area_spell(state: GameState, content: RealmzContent, caster: 
 func _probe_scroll_group_spell(state: GameState, caster: CharacterState, spell: SpellDefinition) -> CombatSpellCastProbe:
 	var group_count := 0
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.traitor, caster.traitor):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
 			group_count += 1
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id) and _selection.group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id) and _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
 			group_count += 1
 	if group_count == 0:
 		return CombatSpellCastProbe.blocked(&"scroll_target_unavailable", "The scroll has no available group target.")

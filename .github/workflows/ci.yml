@@ -2,14 +2,14 @@ name: verify
 
 on:
   push:
-    branches: [main, 'release/**']
+    branches: ['release/**']
   pull_request:
 
 permissions:
   contents: read
 
-# Superseded pull-request and release-preparation runs are cancelled; every
-# main commit keeps its own complete verification.
+# The exact preparation commit already passed before main fast-forwards.
+# Superseded pull-request and preparation runs are cancelled.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' || startsWith(github.ref, 'refs/heads/release/') }}
