@@ -114,7 +114,7 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIn
 	var probe := scroll_use_probe(context, character, payload.scroll_slot, spell)
 	if not probe.allowed:
 		return MagicTransitionResult.rejected(&"scroll_unavailable", probe.reason)
-	var target_ids := field_spell_target_ids(context, character, spell, payload.target_ids, payload.target_id)
+	var target_ids := field_spell_target_ids(context, character, spell, scroll.power, payload.target_ids, payload.target_id)
 	var required_count := field_spell_target_count(context, spell, scroll.power)
 	if target_ids.size() == required_count:
 		return MagicTransitionResult.committed(commit_field_scroll(context, character.id, payload.scroll_slot, spell.id, scroll.power, target_ids), true)
@@ -154,13 +154,17 @@ static func scroll_discard_request(request_id: String, spell_name: String) -> In
 static func resume_field_scroll(context: SessionWorkflowContext, targeting: TargetingContinuationBody, target_ids: Array[String]) -> MagicTransitionResult:
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The scroll target continuation is unavailable.")
-	if target_ids.size() != targeting.target_count:
+	if target_ids.size() != targeting.target_count or FieldMagicResolver.selected_targets(context.state.party, target_ids, false) == null:
 		return MagicTransitionResult.rejected(&"invalid_scroll_target", "The scroll requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
 	var character := context.state.party.character_by_id(targeting.character_id)
 	var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
 	if scroll == null or scroll.spell_id != targeting.spell_id or scroll.power != targeting.power:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The scroll awaiting a target no longer matches its committed state.")
-	return MagicTransitionResult.committed(commit_field_scroll(context, targeting.character_id, targeting.scroll_slot, targeting.spell_id, targeting.power, target_ids), true)
+	var spell := context.content.magic.spell_by_id(targeting.spell_id)
+	if spell == null:
+		return MagicTransitionResult.failed(&"invalid_session_continuation", "The scroll spell awaiting a target is unavailable.")
+	var resolved_targets := field_spell_target_ids(context, character, spell, targeting.power, target_ids, "")
+	return MagicTransitionResult.committed(commit_field_scroll(context, targeting.character_id, targeting.scroll_slot, targeting.spell_id, targeting.power, resolved_targets), true)
 
 
 static func commit_field_scroll(context: SessionWorkflowContext, character_id: String, slot_index: int, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionWorkflowResult:
@@ -169,7 +173,7 @@ static func commit_field_scroll(context: SessionWorkflowContext, character_id: S
 	var probe := scroll_use_probe(context, character, slot_index, spell)
 	if not probe.allowed:
 		return SessionWorkflowResult.rejected(&"scroll_unavailable", probe.reason)
-	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
+	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, FieldMagicResolver.includes_allies(context.state.party, spell, power))
 	if selected_value == null:
 		return SessionWorkflowResult.rejected(&"invalid_scroll_target", "The scroll target selection contains an unavailable or duplicate character.")
 	var selected: Dictionary = selected_value
@@ -213,16 +217,19 @@ static func field_spell_effect_supported(spell: SpellDefinition) -> bool:
 	return ClassicSpellDispositionRules.field_character_disposition(spell) == ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE
 
 
-static func field_spell_target_ids(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
-	if spell.target_type == 5:
-		return [character.id]
-	if spell.target_type > 2:
-		if spell.target_type == 7 or absi(spell.special) == 68:
-			return []
-		return FieldMagicResolver.group_target_ids(context.state.party, spell)
+static func field_spell_target_ids(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int, requested_targets: Array[String], requested_target: String) -> Array[String]:
 	var values: Array[String] = requested_targets.duplicate()
 	if values.is_empty() and not requested_target.is_empty():
 		values.append(requested_target)
+	if spell.target_type == 5:
+		return [character.id]
+	# Castle buttonchoice.c selects the whole party at its size, then every ally above it.
+	if spell.target_type > 2 or spell.target_type == 0 and power >= context.state.party.characters().size():
+		if spell.target_type == 7 or absi(spell.special) == 68:
+			return []
+		if spell.target_type == 0 and not values.is_empty() and (values.size() != context.state.party.characters().size() or FieldMagicResolver.selected_targets(context.state.party, values, false) == null):
+			return values
+		return FieldMagicResolver.group_target_ids(context.state.party, spell, power)
 	return values
 
 
@@ -231,8 +238,8 @@ static func field_spell_target_count(context: SessionWorkflowContext, spell: Spe
 		return 0
 	if spell.target_type == 5:
 		return 1
-	if spell.target_type > 2:
-		return FieldMagicResolver.group_target_ids(context.state.party, spell).size()
+	if spell.target_type > 2 or spell.target_type == 0 and power >= context.state.party.characters().size():
+		return FieldMagicResolver.group_target_ids(context.state.party, spell, power).size()
 	return mini(power, context.state.party.characters().size()) if spell.target_type == 0 else 1
 
 
@@ -242,7 +249,7 @@ static func begin_field_spell(context: SessionWorkflowContext, payload: SpellInt
 	var probe := field_spell_probe(context, character, spell, payload.power)
 	if not probe.allowed:
 		return MagicTransitionResult.rejected(&"field_spell_unavailable", probe.reason)
-	var target_ids := field_spell_target_ids(context, character, spell, payload.target_ids, payload.target_id)
+	var target_ids := field_spell_target_ids(context, character, spell, payload.power, payload.target_ids, payload.target_id)
 	var required_count := field_spell_target_count(context, spell, payload.power)
 	if target_ids.size() == required_count:
 		return MagicTransitionResult.committed(commit_field_spell(context, character.id, spell.id, payload.power, target_ids), true)
@@ -262,12 +269,17 @@ static func begin_field_spell(context: SessionWorkflowContext, payload: SpellInt
 static func resume_field_spell(context: SessionWorkflowContext, targeting: TargetingContinuationBody, target_ids: Array[String]) -> MagicTransitionResult:
 	if targeting == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The field-spell target continuation is unavailable.")
-	if target_ids.size() != targeting.target_count:
+	if target_ids.size() != targeting.target_count or FieldMagicResolver.selected_targets(context.state.party, target_ids, false) == null:
 		return MagicTransitionResult.rejected(&"invalid_field_spell_target", "The spell requires exactly %d target%s." % [targeting.target_count, "" if targeting.target_count == 1 else "s"])
 	var character := context.state.party.character_by_id(targeting.character_id)
 	if character == null or character.spell_points != targeting.starting_spell_points:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The field spell awaiting a target no longer matches its committed state.")
-	return MagicTransitionResult.committed(commit_field_spell(context, targeting.character_id, targeting.spell_id, targeting.power, target_ids), true)
+	# Older saves retain a party-only picker; validate it before expanding its full-party answer.
+	var spell := context.content.magic.spell_by_id(targeting.spell_id)
+	if spell == null:
+		return MagicTransitionResult.failed(&"invalid_session_continuation", "The field spell awaiting a target is unavailable.")
+	var resolved_targets := field_spell_target_ids(context, character, spell, targeting.power, target_ids, "")
+	return MagicTransitionResult.committed(commit_field_spell(context, targeting.character_id, targeting.spell_id, targeting.power, resolved_targets), true)
 
 
 static func commit_field_spell(context: SessionWorkflowContext, character_id: String, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionWorkflowResult:
@@ -276,7 +288,7 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 	var probe := field_spell_probe(context, character, spell, power)
 	if not probe.allowed:
 		return SessionWorkflowResult.rejected(&"field_spell_unavailable", probe.reason)
-	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, spell.target_type in [3, 9])
+	var selected_value: Variant = FieldMagicResolver.selected_targets(context.state.party, requested_target_ids, FieldMagicResolver.includes_allies(context.state.party, spell, power))
 	if selected_value == null:
 		return SessionWorkflowResult.rejected(&"invalid_field_spell_target", "The spell target selection contains an unavailable or duplicate character.")
 	var selected: Dictionary = selected_value

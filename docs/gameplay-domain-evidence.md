@@ -187,6 +187,14 @@ The follow-up 13-package monster-slot audit corrects a capability-reporting erro
 
 At pinned Castle commit `491816ad60037394f92c428e99c004494d3c28b3`, `getup.c:72-205` runs the negative battle macro before `reduce.c:31-145`: party decay (including Torch's extra decrement), character effects before positive character decay, then character collisions/bleeding. Monsters decay first, then regenerate, take disease/poison damage, apply signed spell-point effects and collide with fields. Negative durations persist. Character regeneration requires living stamina in combat and excludes Animated; Stone blocks the actual heal. Monster regeneration has no Animated exclusion. Monster absorption retains the source's ENERGY_DRAIN operand and absent maximum cap. This is source-control-flow evidence, not a new fidelity correction or Castle runtime oracle. `CombatRoundBoundary` and its saved phase/actor cursor own the sequence; `test_combat_flow.gd` protects duration-one, positive and permanent ordering, with existing field, bleeding and death-macro coverage.
 
+Battle and death-macro completion distinguish newly emitted continuation work from previously committed events. The event history still reaches presentation in order, but a completed death-macro request cannot trigger itself again. This repairs the recursive return exposed by Trouble in the Sword Lands' centipede encounter and Jhalor Fireblade's immediate revival macro without changing authored programs, RNG rules, or saved continuation formats.
+
+## Field X-target groups
+
+Pinned Castle `buttonchoice.c:603-646` compares Type-0 power minus one with the last party index: below party size it requests that many characters, at party size it selects all characters, and above party size it additionally selects every held-over ally. Thus a six-character party casts at ×6 without a picker and at ×7 on all characters and allies, regardless of ally count. Learned spells and scrolls share this field path. Existing saved party-only selections remain readable and expand only after their complete response validates. No combat targeting or save wire format changes.
+
+Castle `resolvespell.c:345-372`, `showresults.c:100-125,542-547`, and `spelleffect.c:15-49` provide recipient feedback for condition spells: sound2, the target/result display, and the spelllook2 frame family. Rebuilt uses its ordered portrait effects and temporarily names each recipient in the visible narration well before restoring its history and appending one compact party/ally count. Allies receive their own sound and named interval; they have no fixed roster portrait to animate. This is source-control-flow evidence, not a new Castle runtime capture.
+
 ## Classic operand switch defaults
 
 Pinned Castle `newland.c` distinguishes several unmatched-operand paths. These are source-control-flow restorations in the shared handlers; scenario records and package/save identities remain unchanged.

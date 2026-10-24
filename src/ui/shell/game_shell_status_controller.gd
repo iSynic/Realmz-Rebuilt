@@ -30,6 +30,7 @@ var _activity_tween: Tween
 var _latest_classic_text := ""
 var _narrative_history := ""
 var _choice_context_visible := false
+var _spell_recipient_text := ""
 
 
 func initialize(
@@ -68,6 +69,7 @@ func bind_hud_content(well: PanelContainer) -> void:
 	var prior_status := _status_label.text
 	var prior_status_color := _status_label.modulate
 	var prior_narrative := _latest_classic_text if _choice_context_visible else _narrative_history
+	if not _spell_recipient_text.is_empty(): prior_narrative = _spell_recipient_text
 	if prior_narrative.is_empty(): prior_narrative = _narrative.text
 	var prior_scroll: float = _narrative.get_v_scroll_bar().value
 	var prior_facts := [_coordinates_label.text, _fatigue_label.text, _fatigue_bar.value, _fatigue_bar.tooltip_text, _light_label.text, _clock_label.text, _gold_label.text]
@@ -99,6 +101,19 @@ func set_status(text: String, is_error: bool = false) -> void:
 	_status_label.text = text
 	_status_label.modulate = ERROR if is_error else TEXT
 	_setup_controller.present_party_setup_status(text, is_error)
+
+
+func present_spell_recipient(event: DomainEvent) -> void:
+	_spell_recipient_text = "%s: %s" % [event.payload.get("targetName", ""), event.payload["spellName"]]
+	_narrative.text = _spell_recipient_text
+	narrative_appended.emit(_spell_recipient_text)
+
+
+func clear_spell_recipient() -> void:
+	if _spell_recipient_text.is_empty(): return
+	_spell_recipient_text = ""
+	_narrative.text = _latest_classic_text if _choice_context_visible else _narrative_history
+	_narrative.scroll_to_line(_narrative.get_line_count())
 
 
 func show_activity_indicator(kind: StringName) -> void:
@@ -160,6 +175,13 @@ func present_event(event: DomainEvent, current_view: GameView) -> void:
 		&"secret_discovered": append_narrative("A secret is revealed.")
 		&"battle_started": append_narrative("Battle begins.")
 		&"battle_completed": append_narrative("Battle completed • %s" % event.payload.get("outcome", "resolved"))
+		&"field_spell_group_resolved":
+			var members: int = event.payload.get("characterCount", 0)
+			var allies: int = event.payload.get("allyCount", 0)
+			var recipients := "%d party member%s" % [members, "" if members == 1 else "s"]
+			if allies > 0:
+				recipients += " and %d %s" % [allies, "ally" if allies == 1 else "allies"]
+			append_narrative("%s: %s." % [event.payload.get("spellName", "Spell"), recipients])
 
 
 func _present_age_change(event: DomainEvent) -> void:
@@ -179,7 +201,7 @@ func append_narrative(text: String) -> void:
 		_narrative_history = text
 	else:
 		_narrative_history += "\n\n%s" % text
-	if not _choice_context_visible:
+	if not _choice_context_visible and _spell_recipient_text.is_empty():
 		if first_message:
 			_narrative.text = text
 		else:

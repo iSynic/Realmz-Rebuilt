@@ -4,12 +4,16 @@ class_name FieldMagicResolver
 extends RefCounted
 
 
-static func group_target_ids(party: PartyState, spell: SpellDefinition) -> Array[String]:
+static func group_target_ids(party: PartyState, spell: SpellDefinition, power: int = 1) -> Array[String]:
 	var ids := _party_character_ids(party)
-	if spell.target_type in [3, 9]:
+	if includes_allies(party, spell, power):
 		for ally: MonsterState in party.allies():
 			ids.append(ally.id)
 	return ids
+
+
+static func includes_allies(party: PartyState, spell: SpellDefinition, power: int) -> bool:
+	return spell.target_type in [3, 9] or spell.target_type == 0 and power > party.characters().size()
 
 
 static func selected_targets(party: PartyState, target_ids: Array[String], include_allies: bool) -> Variant:
@@ -65,11 +69,28 @@ static func append_events(context: SessionWorkflowContext, events: Array[DomainE
 			payload["unequippedItemIds"] = target_resolution.unequipped_item_ids.duplicate()
 		payload.merge(event_context, true)
 		events.append(DomainEvent.new(event_kind, payload))
+		if spell.target_type == 0 and special > 0 and special < 41 and target_resolution.damage == 0 and not target_resolution.saved and not target_resolution.resisted:
+			_append_condition_feedback(context.state.party, events, spell, resolution.target_ids[index], sound_source)
 		if target_resolution.aging != null and target_resolution.aging.changed_group():
 			var target := context.state.party.character_by_id(resolution.target_ids[index])
 			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, context.content.characters.race_by_id(target.race_id))))
+	if spell.target_type == 0 and special > 0 and special < 41:
+		events.append(DomainEvent.new(&"field_spell_group_resolved", {"spellName": spell.name, "characterCount": resolution.target_kinds.count(&"character"), "allyCount": resolution.target_kinds.count(&"monster")}))
 	if spell.target_type == 11 and spell.sound_end + 600 != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": String(sound_source)}))
+
+
+static func _append_condition_feedback(party: PartyState, events: Array[DomainEvent], spell: SpellDefinition, target_id: String, source: StringName) -> void:
+	# resolvespell.c shows each condition recipient and plays sound2 before spelleffect.c's eight frames.
+	var character := party.character_by_id(target_id)
+	var target_name := character.name if character != null else ""
+	for ally: MonsterState in party.allies():
+		if ally.id == target_id:
+			target_name = ally.name
+	if spell.sound_end + 600 != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": String(source)}))
+	var first_resource := 12032 if spell.look_end == 0 else 11992 + spell.look_end * 8
+	events.append(DomainEvent.new(&"character_effect_requested", {"characterId": target_id, "targetName": target_name, "spellName": spell.name, "resourceType": "cicn", "firstResourceId": first_resource, "frameCount": 8, "source": String(source)}))
 
 
 static func _ordered_party_targets(party: PartyState, selected: Dictionary) -> Array[CharacterState]:

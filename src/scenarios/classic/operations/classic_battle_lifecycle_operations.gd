@@ -318,6 +318,7 @@ func _continue_after_combat_result(result: CombatFlowResult, body: InteractionRe
 			]
 			return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), continuation, warning_events)
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
+	# Callers merge prior history after dispatch; only fresh events can request work.
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
 		return _wait_for_combat_age_updates(continuation.kind, caller, request_id, result.events, previous_round)
 	if not CombatActionEvents.death_macro_request(result.events).is_empty():
@@ -541,9 +542,10 @@ func _continue_after_battle_macro(source_kind: StringName, caller: ScenarioBattl
 	if _game_state.combat.completed:
 		return _finish_battle_with_allies(source_kind, caller, request_id, committed)
 	var result := _rules.combat_flow.rounds.continue_after_battle_macro(_game_state, _content, _rng)
-	result.events = committed + result.events
 	var continuation := ScenarioCombatContinuations.battle(source_kind, _game_state.combat.battle_id, caller)
-	return _continue_after_combat_result(result, InteractionResponse.CombatBody.new(&"finish", ""), continuation, caller, _game_state.combat.turns.round_number, request_id)
+	var resumed := _continue_after_combat_result(result, InteractionResponse.CombatBody.new(&"finish", ""), continuation, caller, _game_state.combat.turns.round_number, request_id)
+	resumed.events = committed + resumed.events
+	return resumed
 
 
 func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCaller, preceding_events: Array[DomainEvent], request_id: String) -> ScenarioRuntimeOperationResult:
@@ -620,9 +622,10 @@ func _continue_after_combat_death_macro(source_kind: StringName, caller: Scenari
 	var continued := _rules.combat_flow.continue_after_monster_death_macro(_game_state, _content, _rng, combatant_id)
 	if not continued.ok:
 		return ScenarioRuntimeOperationResult.failed(continued.error_code, continued.error_message)
-	continued.events = committed + continued.events
 	var continuation := ScenarioCombatContinuations.battle(source_kind, combat.battle_id, caller)
-	return _continue_after_combat_result(continued, InteractionResponse.CombatBody.new(&"finish", ""), continuation, caller, previous_round, request_id)
+	var resumed := _continue_after_combat_result(continued, InteractionResponse.CombatBody.new(&"finish", ""), continuation, caller, previous_round, request_id)
+	resumed.events = committed + resumed.events
+	return resumed
 
 
 func _wait_for_combat_age_updates(source_kind: StringName, caller: ScenarioBattleCaller, request_id: String, events: Array[DomainEvent], round_before: int) -> ScenarioRuntimeOperationResult:

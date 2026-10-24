@@ -34,7 +34,10 @@ func bind(
 	_audio_presenter = audio_presenter
 	_audio_presenter.character_effect_requested.connect(func(event: DomainEvent) -> void:
 		_shell_presenter.present_media_events([event], _catalog)
+		if event.payload.has("spellName"):
+			_shell_presenter.status.present_spell_recipient(event)
 	)
+	_audio_presenter.sequence_finished.connect(_shell_presenter.status.clear_spell_recipient)
 
 
 func set_package_media(media: MediaSource) -> void:
