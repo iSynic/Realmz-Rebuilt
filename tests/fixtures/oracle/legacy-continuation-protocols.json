@@ -1,0 +1,1055 @@
+{
+  "runtime": [
+    {
+      "data": {
+        "ageIndex": 1.0,
+        "programId": "",
+        "resumeSlot": 1.0,
+        "returnProgramId": "",
+        "scanPending": true,
+        "timerIndex": 0.0,
+        "timerVm": {},
+        "updates": [
+          {
+            "ageDays": 0.0,
+            "ageGroup": 0.0,
+            "ageGroupName": "Adult",
+            "ageMaximumYears": 60.0,
+            "ageMinimumYears": 18.0,
+            "appliedAgeGroup": 1.0,
+            "changes": [],
+            "characterId": "character.1",
+            "characterName": "Ari",
+            "combatIconId": "icon.1",
+            "portraitId": "portrait.1",
+            "presentation": "classic-textbox",
+            "previousAgeDays": 0.0,
+            "previousAgeGroup": 0.0,
+            "prompt": "Ari grows older.",
+            "raceId": "race.1",
+            "raceName": "Human",
+            "soundId": 1.0,
+            "source": "test",
+            "transition": 1.0
+          }
+        ]
+      },
+      "kind": "classic-clock-refresh",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actorId": "character.1",
+        "battleId": "classic.battle.1",
+        "context": {},
+        "messageId": 1.0
+      },
+      "kind": "classic-scripted-fumble",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "messageId": 1.0
+      },
+      "kind": "classic-textbox",
+      "version": 1.0
+    },
+    {
+      "data": {},
+      "kind": "classic-acknowledge",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "playerMapId": "classic.player-map.1"
+      },
+      "kind": "classic-player-map",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "optionCount": 2.0
+      },
+      "kind": "safe-choice",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "gosub": false,
+        "values": [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0
+        ]
+      },
+      "kind": "classic-choice",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "encounterId": 0.0,
+        "gosub": false,
+        "optionIndexes": [
+          0.0
+        ]
+      },
+      "kind": "classic-simple-encounter",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "encounterId": 0.0,
+        "gosub": true
+      },
+      "kind": "classic-complex-encounter",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "encounterId": 0.0,
+        "gosub": false
+      },
+      "kind": "classic-thief-encounter",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actionIndex": 2.0,
+        "characterId": "character.1",
+        "encounterId": 0.0,
+        "gosub": false
+      },
+      "kind": "classic-pick-lock",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actionIndex": 2.0,
+        "characterId": "character.1",
+        "encounterId": 0.0,
+        "gosub": false,
+        "phase": "action-message",
+        "succeeded": true,
+        "trapPending": false
+      },
+      "kind": "classic-thief-resolution",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "allowDead": false,
+        "count": 1.0,
+        "invert": false
+      },
+      "kind": "classic-character-selection",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "gosub": false,
+        "values": [
+          1.0,
+          2.0,
+          3.0,
+          4.0,
+          5.0
+        ]
+      },
+      "kind": "classic-character-ability",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "directive": {
+          "kind": "finish-timeline"
+        },
+        "index": 1.0,
+        "updates": [
+          {
+            "ageDays": 0.0,
+            "ageGroup": 0.0,
+            "ageGroupName": "Adult",
+            "ageMaximumYears": 60.0,
+            "ageMinimumYears": 18.0,
+            "appliedAgeGroup": 1.0,
+            "changes": [],
+            "characterId": "character.1",
+            "characterName": "Ari",
+            "combatIconId": "icon.1",
+            "portraitId": "portrait.1",
+            "presentation": "classic-textbox",
+            "previousAgeDays": 0.0,
+            "previousAgeGroup": 0.0,
+            "prompt": "Ari grows older.",
+            "raceId": "race.1",
+            "raceName": "Human",
+            "soundId": 1.0,
+            "source": "test",
+            "transition": 1.0
+          }
+        ],
+        "value": {
+          "accepted": true
+        }
+      },
+      "kind": "classic-age-updates",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "directive": {},
+        "index": 1.0,
+        "updates": [
+          {
+            "ageDays": 0.0,
+            "ageGroup": 0.0,
+            "ageGroupName": "Adult",
+            "ageMaximumYears": 60.0,
+            "ageMinimumYears": 18.0,
+            "appliedAgeGroup": 1.0,
+            "changes": [],
+            "characterId": "character.1",
+            "characterName": "Ari",
+            "combatIconId": "icon.1",
+            "portraitId": "portrait.1",
+            "presentation": "classic-textbox",
+            "previousAgeDays": 0.0,
+            "previousAgeGroup": 0.0,
+            "prompt": "Ari grows older.",
+            "raceId": "race.1",
+            "raceName": "Human",
+            "soundId": 1.0,
+            "source": "test",
+            "transition": 1.0
+          }
+        ],
+        "value": null
+      },
+      "kind": "safe-age-updates",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "acceptRanges": [
+          1.0,
+          2.0,
+          3.0,
+          4.0
+        ],
+        "shopId": "classic.shop.1"
+      },
+      "kind": "classic-shop",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "bankAvailable": true,
+        "costPercent": 100.0,
+        "selectedCharacterId": "character.1"
+      },
+      "kind": "classic-temple",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "bankAvailable": false,
+        "costPercent": 100.0,
+        "selectedCharacterId": "character.1"
+      },
+      "kind": "classic-temple-exit",
+      "version": 1.0
+    },
+    {
+      "data": {},
+      "kind": "classic-banking",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "sourceKind": "classic-combat"
+      },
+      "kind": "classic-combat",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "sourceKind": "safe-combat"
+      },
+      "kind": "safe-combat",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actorId": "character.1",
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "destination": [
+          46.0,
+          45.0
+        ],
+        "mode": "friendly",
+        "sourceKind": "classic-combat"
+      },
+      "kind": "classic-combat-friendly-collision",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actorId": "character.1",
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "destination": [
+          46.0,
+          45.0
+        ],
+        "mode": "friendly",
+        "sourceKind": "safe-combat"
+      },
+      "kind": "safe-combat-friendly-collision",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actorId": "character.1",
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "destination": [
+          -100000.0,
+          -100000.0
+        ],
+        "mode": "explicit",
+        "sourceKind": "classic-combat"
+      },
+      "kind": "classic-combat-retreat-confirmation",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actorId": "character.1",
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "destination": [
+          4.0,
+          5.0
+        ],
+        "mode": "edge",
+        "sourceKind": "safe-combat"
+      },
+      "kind": "safe-combat-retreat-confirmation",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "index": 1.0,
+        "roundBefore": 1.0,
+        "sourceKind": "classic-combat",
+        "updates": [
+          {
+            "ageDays": 0.0,
+            "ageGroup": 0.0,
+            "ageGroupName": "Adult",
+            "ageMaximumYears": 60.0,
+            "ageMinimumYears": 18.0,
+            "appliedAgeGroup": 1.0,
+            "changes": [],
+            "characterId": "character.1",
+            "characterName": "Ari",
+            "combatIconId": "icon.1",
+            "portraitId": "portrait.1",
+            "presentation": "classic-textbox",
+            "previousAgeDays": 0.0,
+            "previousAgeGroup": 0.0,
+            "prompt": "Ari grows older.",
+            "raceId": "race.1",
+            "raceName": "Human",
+            "soundId": 1.0,
+            "source": "test",
+            "transition": 1.0
+          }
+        ]
+      },
+      "kind": "classic-combat-age-updates",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "index": 1.0,
+        "roundBefore": 1.0,
+        "sourceKind": "safe-combat",
+        "updates": [
+          {
+            "ageDays": 0.0,
+            "ageGroup": 0.0,
+            "ageGroupName": "Adult",
+            "ageMaximumYears": 60.0,
+            "ageMinimumYears": 18.0,
+            "appliedAgeGroup": 1.0,
+            "changes": [],
+            "characterId": "character.1",
+            "characterName": "Ari",
+            "combatIconId": "icon.1",
+            "portraitId": "portrait.1",
+            "presentation": "classic-textbox",
+            "previousAgeDays": 0.0,
+            "previousAgeGroup": 0.0,
+            "prompt": "Ari grows older.",
+            "raceId": "race.1",
+            "raceName": "Human",
+            "soundId": 1.0,
+            "source": "test",
+            "transition": 1.0
+          }
+        ]
+      },
+      "kind": "safe-combat-age-updates",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "macroVm": {
+          "classicRecordId": "",
+          "frames": [],
+          "halted": true,
+          "lastOutcome": {
+            "type": "null"
+          },
+          "nativeContext": null,
+          "nativeInvocationBegun": false,
+          "noSecondDoor": false,
+          "pendingContinuation": null,
+          "pendingRequest": null,
+          "requestCounter": 0.0,
+          "returnedEarly": false,
+          "schemaVersion": 4.0,
+          "secondaryDoor": false,
+          "trace": []
+        },
+        "programId": "xap:1",
+        "sourceKind": "classic-combat"
+      },
+      "kind": "classic-combat-macro",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "macroVm": {
+          "classicRecordId": "",
+          "frames": [],
+          "halted": true,
+          "lastOutcome": {
+            "type": "null"
+          },
+          "nativeContext": null,
+          "nativeInvocationBegun": false,
+          "noSecondDoor": false,
+          "pendingContinuation": null,
+          "pendingRequest": null,
+          "requestCounter": 0.0,
+          "returnedEarly": false,
+          "schemaVersion": 4.0,
+          "secondaryDoor": false,
+          "trace": []
+        },
+        "programId": "scenario.action.1",
+        "sourceKind": "safe-combat"
+      },
+      "kind": "safe-combat-macro",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "combatantId": "monster.1",
+        "macroVm": {
+          "classicRecordId": "",
+          "frames": [],
+          "halted": true,
+          "lastOutcome": {
+            "type": "null"
+          },
+          "nativeContext": null,
+          "nativeInvocationBegun": false,
+          "noSecondDoor": false,
+          "pendingContinuation": null,
+          "pendingRequest": null,
+          "requestCounter": 0.0,
+          "returnedEarly": false,
+          "schemaVersion": 4.0,
+          "secondaryDoor": false,
+          "trace": []
+        },
+        "programId": "xap:1",
+        "resetTraitorOnComplete": false,
+        "sourceKind": "classic-combat"
+      },
+      "kind": "classic-combat-death-macro",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "combatantId": "monster.1",
+        "macroVm": {
+          "classicRecordId": "",
+          "frames": [],
+          "halted": true,
+          "lastOutcome": {
+            "type": "null"
+          },
+          "nativeContext": null,
+          "nativeInvocationBegun": false,
+          "noSecondDoor": false,
+          "pendingContinuation": null,
+          "pendingRequest": null,
+          "requestCounter": 0.0,
+          "returnedEarly": false,
+          "schemaVersion": 4.0,
+          "secondaryDoor": false,
+          "trace": []
+        },
+        "programId": "scenario.action.1",
+        "resetTraitorOnComplete": true,
+        "sourceKind": "safe-combat"
+      },
+      "kind": "safe-combat-death-macro",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleId": "classic.battle.1",
+        "combatantId": "monster.1",
+        "macroVm": {
+          "classicRecordId": "",
+          "frames": [],
+          "halted": true,
+          "lastOutcome": {
+            "type": "null"
+          },
+          "nativeContext": null,
+          "nativeInvocationBegun": false,
+          "noSecondDoor": false,
+          "pendingContinuation": null,
+          "pendingRequest": null,
+          "requestCounter": 0.0,
+          "returnedEarly": false,
+          "schemaVersion": 4.0,
+          "secondaryDoor": false,
+          "trace": []
+        },
+        "programId": "xap:1",
+        "remainingCombatantIds": [
+          "monster.2"
+        ]
+      },
+      "kind": "classic-opcode-death-macro",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "sourceKind": "classic-combat"
+      },
+      "kind": "classic-combat-ally-selection",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "sourceKind": "safe-combat"
+      },
+      "kind": "safe-combat-ally-selection",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "branchTarget": 0.0,
+            "gosub": false,
+            "mode": 0.0,
+            "opcode": 2.0
+          },
+          "kind": "classic",
+          "version": 1.0
+        },
+        "battleId": "classic.battle.1",
+        "sourceKind": "classic-combat"
+      },
+      "kind": "classic-combat-fumble-recovery",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleCaller": {
+          "data": {
+            "policy": "continue"
+          },
+          "kind": "safe",
+          "version": 1.0
+        },
+        "battleId": "safe.battle.1",
+        "sourceKind": "safe-combat"
+      },
+      "kind": "safe-combat-fumble-recovery",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "state": {
+          "battleStage": "ordinary",
+          "bonusTreasureClassicId": 0.0,
+          "completionPending": false,
+          "experienceAwards": {},
+          "experiencePool": 0.0,
+          "experienceShare": 0.0,
+          "identified": false,
+          "initialWealth": {
+            "gems": 0.0,
+            "gold": 0.0,
+            "jewelry": 0.0
+          },
+          "items": [],
+          "levelCharacterIds": [],
+          "levelIndex": 0.0,
+          "magicDetected": false,
+          "magicDetectedItemIds": [],
+          "origin": "battle",
+          "pendingLevelResult": {},
+          "phase": "items",
+          "sourceId": "classic.battle.1",
+          "spellCharacterIds": [],
+          "spellIndex": 0.0
+        }
+      },
+      "kind": "classic-reward",
+      "version": 1.0
+    }
+  ],
+  "session": [
+    {
+      "data": {
+        "activeRandomProgramId": "",
+        "activeRandomRegionId": "",
+        "activeTimedProgramId": "",
+        "checkRandom": false,
+        "directionX": 0.0,
+        "directionY": 0.0,
+        "mapId": "land:0",
+        "midnightRecoveryPending": false,
+        "movementMarkerPending": true,
+        "randomBattleStage": "",
+        "randomRegionIds": [],
+        "randomRegionIndex": -1.0,
+        "resumeKind": "completed",
+        "timedCheckX": -1.0,
+        "timedCheckY": -1.0,
+        "timedDay": 2.0,
+        "timedEncounterIndex": 0.0,
+        "timedScanPending": false,
+        "x": 12.0,
+        "y": 34.0
+      },
+      "kind": "post-clock",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actionPointDestinationDepth": 0.0,
+        "activeRandomProgramId": "",
+        "activeRandomRegionId": "",
+        "activeTriggerId": "",
+        "mapId": "land:0",
+        "randomBattleStage": "",
+        "randomRegionIds": [],
+        "randomRegionIndex": -1.0,
+        "triggerIds": [],
+        "triggerIndex": 0.0,
+        "x": 13.0,
+        "y": 34.0
+      },
+      "kind": "post-move",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "action": "board",
+        "directionX": 1.0,
+        "directionY": 0.0,
+        "sourceMapId": "land:0",
+        "sourceX": 12.0,
+        "sourceY": 34.0,
+        "targetMapId": "land:0",
+        "targetX": 13.0,
+        "targetY": 34.0
+      },
+      "kind": "boat-choice",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "hook": "start-game",
+        "partyRevived": false,
+        "programId": "xap:1",
+        "resumeKind": "begin-adventure",
+        "serviceId": ""
+      },
+      "kind": "application-hook",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1",
+        "remaining": 3.0
+      },
+      "kind": "character-spell-confirmation",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1"
+      },
+      "kind": "character-vault-publication",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1",
+        "instanceId": "item.1",
+        "power": 1.0,
+        "spellId": "classic.spell.1",
+        "startingCharges": 2.0,
+        "targetCount": 1.0
+      },
+      "kind": "item-use-target-selection",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1",
+        "power": 1.0,
+        "spellId": "classic.spell.1",
+        "startingSpellPoints": 10.0,
+        "targetCount": 1.0
+      },
+      "kind": "field-spell-target-selection",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1",
+        "power": 1.0,
+        "scrollSlot": 0.0,
+        "spellId": "classic.spell.1",
+        "targetCount": 1.0
+      },
+      "kind": "scroll-target-selection",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1",
+        "power": 1.0,
+        "scrollSlot": 0.0,
+        "spellId": "classic.spell.1"
+      },
+      "kind": "scroll-discard-confirmation",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1",
+        "instanceId": "item.1"
+      },
+      "kind": "drop-item-confirmation",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "characterId": "character.1",
+        "instanceId": "item.1",
+        "itemId": "classic.item.1",
+        "programId": "xap:1",
+        "sourceBattleId": ""
+      },
+      "kind": "item-xap",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "runtimeContinuation": {
+          "data": {},
+          "kind": "classic-banking",
+          "version": 1.0
+        },
+        "serviceId": "bank.1"
+      },
+      "kind": "service-interaction",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "directionX": 1.0,
+        "directionY": 0.0,
+        "stage": "warning"
+      },
+      "kind": "pooled-wealth-departure",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "index": 1.0,
+        "resumeContinuation": {},
+        "resumeKind": "completed",
+        "updates": [
+          {
+            "ageDays": 0.0,
+            "ageGroup": 0.0,
+            "ageGroupName": "Adult",
+            "ageMaximumYears": 60.0,
+            "ageMinimumYears": 18.0,
+            "appliedAgeGroup": 1.0,
+            "changes": [],
+            "characterId": "character.1",
+            "characterName": "Ari",
+            "combatIconId": "icon.1",
+            "portraitId": "portrait.1",
+            "presentation": "classic-textbox",
+            "previousAgeDays": 0.0,
+            "previousAgeGroup": 0.0,
+            "prompt": "Ari grows older.",
+            "raceId": "race.1",
+            "raceName": "Human",
+            "soundId": 1.0,
+            "source": "test",
+            "transition": 1.0
+          }
+        ]
+      },
+      "kind": "age-updates",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actorId": "character.1",
+        "battleId": "classic.battle.1",
+        "destination": [
+          -100000.0,
+          -100000.0
+        ],
+        "mode": "explicit"
+      },
+      "kind": "combat-retreat-confirmation",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "actorId": "character.1",
+        "battleId": "classic.battle.1",
+        "destination": [
+          4.0,
+          5.0
+        ],
+        "mode": "friendly"
+      },
+      "kind": "combat-friendly-collision",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleId": "classic.battle.1",
+        "combatantId": "monster.1",
+        "programId": "xap:2",
+        "resetTraitorOnComplete": true
+      },
+      "kind": "combat-death-macro",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleId": "classic.battle.1",
+        "programId": "xap:2"
+      },
+      "kind": "combat-round-macro",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleId": "classic.battle.1"
+      },
+      "kind": "combat-ally-selection",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleId": "classic.battle.1"
+      },
+      "kind": "combat-fumble-recovery",
+      "version": 1.0
+    },
+    {
+      "data": {
+        "battleId": "classic.battle.1",
+        "runtimeContinuation": {
+          "data": {
+            "state": {
+              "battleStage": "ordinary",
+              "bonusTreasureClassicId": 0.0,
+              "completionPending": false,
+              "experienceAwards": {},
+              "experiencePool": 0.0,
+              "experienceShare": 0.0,
+              "identified": false,
+              "initialWealth": {
+                "gems": 0.0,
+                "gold": 0.0,
+                "jewelry": 0.0
+              },
+              "items": [],
+              "levelCharacterIds": [],
+              "levelIndex": 0.0,
+              "magicDetected": false,
+              "magicDetectedItemIds": [],
+              "origin": "battle",
+              "pendingLevelResult": {},
+              "phase": "items",
+              "sourceId": "classic.battle.1",
+              "spellCharacterIds": [],
+              "spellIndex": 0.0
+            }
+          },
+          "kind": "classic-reward",
+          "version": 1.0
+        }
+      },
+      "kind": "combat-reward",
+      "version": 1.0
+    }
+  ],
+  "source": "tests/scenario/test_scenario_vm.gd",
+  "sourcePublicCommit": "122b99420702002328657c7a146ce65ac4719872",
+  "sourceGitBlob": "d2a2093d4f04ede52c520aa82fa0f5d664006dea",
+  "sourceTag": "v0.1.0-beta.27"
+}

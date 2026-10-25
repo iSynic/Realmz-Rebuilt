@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "evidence": "runtime-unit",
+  "description": "Synthetic idle legacy VM wire shapes; v3 preserves a begun invocation's historical stepCount.",
+  "vm2": {
+    "schemaVersion": 2,
+    "frames": [],
+    "pendingRequest": null,
+    "pendingContinuation": null,
+    "trace": [],
+    "requestCounter": 0,
+    "halted": true,
+    "lastOutcome": null,
+    "stepCount": 0
+  },
+  "vm3": {
+    "schemaVersion": 3,
+    "frames": [],
+    "pendingRequest": null,
+    "pendingContinuation": null,
+    "trace": [],
+    "requestCounter": 0,
+    "halted": true,
+    "lastOutcome": null,
+    "stepCount": 47,
+    "classicRecordId": "",
+    "nativeContext": null,
+    "secondaryDoor": false,
+    "noSecondDoor": false,
+    "returnedEarly": false
+  },
+  "vm4": {
+    "schemaVersion": 4,
+    "frames": [],
+    "pendingRequest": null,
+    "pendingContinuation": null,
+    "trace": [],
+    "requestCounter": 0,
+    "halted": true,
+    "lastOutcome": {
+      "type": "null"
+    },
+    "nativeInvocationBegun": false,
+    "classicRecordId": "",
+    "nativeContext": null,
+    "secondaryDoor": false,
+    "noSecondDoor": false,
+    "returnedEarly": false
+  }
+}

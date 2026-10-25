@@ -95,7 +95,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		_context.actions().mark_character_bleeding(state, actor, resolution.killed)
 		CombatOccupancyRules.remove_defeated_position(state.combat, actor.id, resolution.killed)
 		return false
-	var death_macro_requested := resolution.killed and _context.actions().events().request_monster_death_macro(monster_target, target_definition, events)
+	var death_macro_requested := resolution.killed and CombatDeathMacroOperations.request_immediate(state.combat, monster_target, target_definition, events)
 	CombatOccupancyRules.remove_defeated_position(state.combat, monster_target.id, resolution.killed and not death_macro_requested)
 	return death_macro_requested
 

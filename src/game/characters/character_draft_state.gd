@@ -44,15 +44,13 @@ static func from_data(value: Variant) -> CharacterDraftState:
 			return null
 	if not value["name"] is String or not value["raceId"] is String or not value["casteId"] is String or not value["portraitId"] is String or not value["combatIconId"] is String or not value["finalized"] is bool:
 		return null
-	if not value["gender"] is int or int(value["gender"]) not in [1, 2]:
+	var gender_value := _integer(value["gender"])
+	if gender_value not in [1, 2]:
 		return null
 	var result := CharacterDraftState.new()
 	result.name = value["name"]
-	result.gender = value["gender"]
-	var starting_level_value: Variant = value.get("startingLevel", 1)
-	if not starting_level_value is int:
-		return null
-	result.starting_level = starting_level_value
+	result.gender = gender_value
+	result.starting_level = _integer(value.get("startingLevel", 1))
 	if not CharacterRules.STARTING_LEVELS.has(result.starting_level):
 		return null
 	result.race_id = value["raceId"]
@@ -65,3 +63,11 @@ static func from_data(value: Variant) -> CharacterDraftState:
 		if result.generated_character == null:
 			return null
 	return result
+
+
+static func _integer(value: Variant) -> int:
+	if value is int: return value
+	if value is float:
+		var number: float = value
+		if is_finite(number) and number == floorf(number) and absf(number) <= 9_007_199_254_740_991.0: return int(number)
+	return -1

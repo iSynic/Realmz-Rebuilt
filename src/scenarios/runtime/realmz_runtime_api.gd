@@ -30,14 +30,14 @@ var _service_operations: ClassicServiceOperations
 var _presentation_operations: ClassicPresentationOpcodeHandler
 var _world_time_operations: ClassicWorldTimeOpcodeHandler
 var _time_operations: ClassicTimeOperations
-var _encounter_operations: ClassicEncounterOpcodeHandler
+var encounters: ClassicEncounterOpcodeHandler
 var _thief_operations: ClassicThiefEncounterOperations
 var _classic_handlers: ClassicOpcodeHandlerRegistry
 var _handler_registration_error: String = ""
 var _classic_execution: ClassicExecutionState
+var _classic_source: ScenarioClassicExecutionState
 var native_action_points: ClassicActionPointOperations
-## Nonserialized weak claim on the current run's shared ScenarioStepBudget.
-var step_budget_ref: WeakRef
+var macros: ScenarioMacroLifecycle
 
 
 func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action_state: ScenarioActionState, rules: RealmzRules = null, native_execution: ClassicExecutionState = null) -> void:
@@ -49,33 +49,60 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 	native_action_points = ClassicActionPointOperations.new(content, game_state, rng, _classic_execution)
 	_rules = rules if rules != null else RealmzRules.new(content.package_schema_version >= 7)
 	_character_operations = ClassicCharacterOperations.new(_content, _game_state, _rng, _rules)
-	_battle_reward_operations = ClassicBattleRewardOperations.new(_content, _game_state, _rng, _rules)
-	_battle_reward_operations.bind_runtime_api(self)
-	_combat_operations = ClassicCombatOperations.new(_content, _game_state, _rules, _rng)
-	_combat_operations.bind_runtime_api(self)
+	macros = ScenarioMacroLifecycle.new(_content, _game_state, _rng, _rules)
+	_battle_reward_operations = ClassicBattleRewardOperations.new(_content, _game_state, _rng, _rules, macros)
+	_combat_operations = ClassicCombatOperations.new(_content, _game_state, _rules, _rng, macros)
 	_control_flow_operations = ClassicControlFlowOperations.new(_content, _game_state, _rng)
 	_inventory_operations = ClassicInventoryOperations.new(_content, _game_state, _rules)
 	_service_operations = ClassicServiceOperations.new(_content, _game_state, _rng, _rules)
 	_presentation_operations = ClassicPresentationOpcodeHandler.new(_content, _game_state, _rng)
-	_world_time_operations = ClassicWorldTimeOpcodeHandler.new(_content, _game_state, _rng)
+	_world_time_operations = ClassicWorldTimeOpcodeHandler.new(_content, _game_state, _rng, _classic_execution)
 	_time_operations = ClassicTimeOperations.new(_content, _game_state, _rng, _rules)
-	_time_operations.bind_runtime_api(self)
-	_encounter_operations = ClassicEncounterOpcodeHandler.new(_content, _game_state)
-	_thief_operations = ClassicThiefEncounterOperations.new(_content, _game_state, _rng, _rules, _encounter_operations)
+	encounters = ClassicEncounterOpcodeHandler.new(_content, _game_state)
+	_thief_operations = ClassicThiefEncounterOperations.new(_content, _game_state, _rng, _rules, encounters)
 	_classic_handlers = ClassicOpcodeHandlerRegistry.new()
-	for handler: ClassicOpcodeHandler in [_control_flow_operations, _character_operations, _inventory_operations, _service_operations, _combat_operations, _battle_reward_operations, _presentation_operations, _world_time_operations, _time_operations, _encounter_operations]:
+	for handler: ClassicOpcodeHandler in [_control_flow_operations, _character_operations, _inventory_operations, _service_operations, _combat_operations, _battle_reward_operations, _presentation_operations, _world_time_operations, _time_operations, encounters]:
 		if not _classic_handlers.register(handler):
 			_handler_registration_error = _classic_handlers.registration_error()
 			break
+
+
+func complete_program_call(call: ScenarioProgramCall, request_id: String) -> ScenarioRuntimeOperationResult:
+	if call == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_program_return", "The program return kind is unavailable.")
+	if call.kind == ScenarioProgramCall.Kind.APPLICATION: return ScenarioRuntimeOperationResult.failed(&"invalid_application_return", "Application return belongs to the execution runner.")
+	if call.kind == ScenarioProgramCall.Kind.TIMER: return _time_operations.complete_timer(call.timer_scan, request_id)
+	var macro := call.macro
+	match macro.return_kind:
+		ScenarioMacroCall.ReturnKind.DIRECT:
+			var returned := macros.complete(macro)
+			if not returned.ok: return ScenarioRuntimeOperationResult.failed(returned.error_code, returned.error_message, returned.events)
+			var result := ScenarioRuntimeOperationResult.completed(null, returned.events)
+			result.direct_combat_return = returned
+			return result
+		ScenarioMacroCall.ReturnKind.DESTRUCTION:
+			return _combat_operations.complete_macro_call(macro)
+		_:
+			return _battle_reward_operations.complete_macro_call(macro, request_id)
 
 
 func classic_execution() -> ClassicExecutionState:
 	return _classic_execution
 
 
+func bind_execution(shared: ScenarioClassicExecutionState, invocation: ScenarioClassicInvocationRecord = null) -> void:
+	_classic_source = shared
+	_combat_operations.native_state = shared
+	_combat_operations.native_invocation = invocation
+	_character_operations.native_invocation = invocation
+	_thief_operations.native_state = shared
+	encounters.native_state = shared
+	encounters.native_invocation = invocation
+
+
 func execute_classic(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
-	if _classic_execution.header_replaced and context != null and (not context.trigger_id.is_empty() or context.is_native_mode_one()):
-		context = context.copy()
+	if not _classic_execution.trigger_id.is_empty():
+		context = context.copy() if context != null else ScenarioExecutionContext.empty()
 		context.trigger_id = _classic_execution.trigger_id
 	# Castle does not read these combat-only operands outside a battle.
 	var unavailable := ClassicCompatibility.missing_extra_code(_content, action, context) if action.opcode not in [121, 123, 124, 125] or _game_state.combat != null else null
@@ -91,7 +118,6 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		if turn != null and owns_spell_context: turn.classic_spell_active = true
 		var result := _classic_handlers.execute(action, request_id, ScenarioExecutionContext.empty() if context == null else context)
 		if turn != null and owns_spell_context: turn.classic_spell_active = false
-		_classic_execution.observe(action.opcode, result.events)
 		return result
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_classic_opcode", "No Realmz Runtime API operation owns Classic opcode %d." % action.opcode)
 
@@ -106,7 +132,8 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 			var minutes: int = arguments["minutes"] if _whole_number(arguments.get("minutes")) else -1
 			if minutes < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Advance Time requires non-negative integer minutes.")
-			return _with_age_update_interactions(ScenarioRuntimeOperationResult.completed(true, _rules.clock.advance_minutes(_game_state, _content, minutes)), request_id, ScenarioRuntimeContinuation.SAFE_AGE_UPDATES)
+			var changed := _rules.clock.advance_minutes(_game_state, _content, minutes)
+			return _with_age_update_interactions(ScenarioRuntimeOperationResult.completed(true, changed.events).with_age_updates(changed.age_updates), request_id, ScenarioRuntimeContinuation.SAFE_AGE_UPDATES)
 		"core.inventory.grant-item":
 			if not arguments.get("characterId") is String or not arguments.get("itemId") is String or arguments.get("identified", false) is not bool:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Grant Item requires characterId, itemId, and optional identified bool.")
@@ -185,18 +212,14 @@ func resume_safe(continuation: ScenarioRuntimeContinuation, response: Interactio
 			if response.kind != &"scenario_choice" or choice == null or choice.index < 0 or choice.index >= option_count:
 				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Scenario choice response must identify an available option.")
 			return ScenarioRuntimeOperationResult.completed(choice.index)
-		ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
+		ScenarioRuntimeContinuation.SAFE_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_ALLY, ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
 			return _battle_reward_operations.resume(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_interaction_continuation", "Scenario Action interaction continuation is unavailable.")
 
 
-func simple_encounter_by_id(encounter_id: int) -> SimpleEncounterDefinition:
-	return _content.scenario_records.simple_encounter_by_id(encounter_id)
-
-
-func request_classic_encounter(kind: StringName, encounter_id: int, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
-	return _encounter_operations.request_encounter(kind, encounter_id, false, request_id, context)
+func request_classic_encounter(kind: StringName, encounter_id: int, request_id: String, context: ScenarioExecutionContext, load_record: bool = true) -> ScenarioRuntimeOperationResult:
+	return encounters.request_encounter(kind, encounter_id, false, request_id, context, false, load_record)
 
 
 func write_action_state(state_scope: String, owner_id: String, name: String, value: Variant) -> bool:
@@ -226,7 +249,7 @@ func request_available_bank(request_id: String) -> ScenarioRuntimeOperationResul
 
 static func party_defeat_handoff_is_valid(content: RealmzContent, state: GameState, handoff: ScenarioRuntimeHandoff) -> bool:
 	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_CLOCK:
-		return ClassicTimeOperations.handoff_is_valid(content, state, handoff)
+		return false # Historical nested clock handoffs convert at the legacy boundary.
 	if handoff != null and handoff.source_kind in [ScenarioRuntimeHandoff.CLASSIC_HEALTH, ScenarioRuntimeHandoff.CLASSIC_SPELL]:
 		return ClassicHealthOperations.handoff_is_valid(state, handoff) and (handoff.source_kind != ScenarioRuntimeHandoff.CLASSIC_SPELL or content.magic.spell_by_classic_id(handoff.effect_extra_code[0]) != null and handoff.effect_extra_code[1] >= 0)
 	return ClassicBattleRewardOperations.party_defeat_handoff_is_valid(content, state, handoff)
@@ -234,7 +257,7 @@ static func party_defeat_handoff_is_valid(content: RealmzContent, state: GameSta
 
 func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:
 	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_CLOCK:
-		return _time_operations.complete_handoff(handoff) if party_defeat_handoff_is_valid(_content, _game_state, handoff) else ScenarioRuntimeOperationResult.failed(&"invalid_clock_handoff", "The suspended clock no longer matches its timed program.")
+		return ScenarioRuntimeOperationResult.failed(&"legacy_execution_requires_restore", "Historical clock handoffs must be converted before resuming.")
 	if handoff != null and handoff.source_kind == ScenarioRuntimeHandoff.CLASSIC_SPELL:
 		if not party_defeat_handoff_is_valid(_content, _game_state, handoff):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_party_defeat_handoff", "The suspended Classic spell no longer matches the party.")
@@ -290,16 +313,14 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.exploration.has_map(player_map_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic player-map continuation references unavailable acquired content.")
 			return ScenarioRuntimeOperationResult.completed(true)
-		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_DEATH_MACRO, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
+		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
 			return _battle_reward_operations.resume(continuation, response, request_id)
-		ScenarioRuntimeContinuation.CLASSIC_OPCODE_DEATH_MACRO:
-			return _combat_operations.resume_opcode_death_macro(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_CHARACTER_SELECTION:
 			return _resume_character_selection(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_CHARACTER_ABILITY:
 			return _resume_character_ability(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_CHOICE:
-			return _encounter_operations.resume_classic_choice(continuation, response)
+			return encounters.resume_classic_choice(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_SHOP, ScenarioRuntimeContinuation.CLASSIC_TEMPLE, ScenarioRuntimeContinuation.CLASSIC_TEMPLE_EXIT, ScenarioRuntimeContinuation.CLASSIC_BANKING:
 			return _service_operations.resume(continuation, response, request_id)
 		_:
@@ -309,7 +330,7 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, request_id: String, continuation_kind: StringName) -> ScenarioRuntimeOperationResult:
 	if operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
 		return operation
-	var updates := CharacterAgingResult.update_bodies(operation.events)
+	var updates := operation.age_updates
 	if updates.is_empty():
 		return operation
 	var continuation := ScenarioAgeContinuations.updates(continuation_kind, updates, 1, operation.value, operation.directive)
@@ -339,7 +360,7 @@ func _resume_age_update_interactions(continuation: ScenarioRuntimeContinuation, 
 
 func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
 	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
-	var encounter := _content.scenario_records.simple_encounter_by_id(choice_continuation.encounter_id)
+	var encounter := encounters.memory.simple_definition()
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Simple Encounter is unavailable.")
 	var choice := response.body as InteractionResponse.ChoiceBody
@@ -348,7 +369,7 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	if choice.cancelled:
 		if not encounter.can_back_out:
 			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "This Simple Encounter cannot be cancelled.")
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
+		return encounters.cancel(&"simple")
 	var selected_index := choice.index
 	var option_indexes := choice_continuation.option_indexes
 	if not option_indexes.is_empty():
@@ -364,13 +385,15 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	var attempt := choice_continuation.encounter_attempt + (0 if choice_continuation.reopen_result else 1)
 	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index).set_encounter_attempt(attempt)
 	var repeat := attempt < encounter.max_times
-	var directive := ScenarioVmDirective.branch_program(selected.result_program_id, false, context) if choice_continuation.reopen_result else ScenarioVmDirective.branch_encounter_result(selected.result_program_id, choice_continuation.gosub, context, repeat)
-	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index, "attempt": attempt, "willRepeat": repeat})], directive)
+	var result := encounters.memory.simple_result(selected_index, context)
+	result.value = selected.id
+	result.events.append(DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index, "attempt": attempt, "willRepeat": repeat}))
+	return result.with_encounter_selection(&"simple", encounter.id, attempt)
 
 
 func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var choice_continuation := continuation.body as ScenarioChoiceContinuationBody
-	var encounter := _content.scenario_records.complex_encounter_by_id(choice_continuation.encounter_id)
+	var encounter := encounters.memory.complex_definition()
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Complex Encounter is unavailable.")
 	var selection := response.body as InteractionResponse.ComplexEncounterBody
@@ -385,7 +408,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		"back":
 			if not encounter.can_back_out:
 				return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
-			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish_timeline())
+			return encounters.cancel(&"complex")
 		"choice":
 			var selected_slots := selection.selected_slots.duplicate()
 			if selected_slots.is_empty() and selection.slot >= 0:
@@ -415,7 +438,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 			return _thief_operations.begin(encounter, choice_continuation.gosub, request_id, choice_continuation.encounter_attempt)
 		_:
 			return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "Complex Encounter action '%s' is unavailable." % action)
-	if outcome == 4 and encounter.max_times > 1 and attempt >= encounter.max_times:
+	if outcome == 4 and encounter.max_times > 1 and (_classic_source.encounter_remaining == 1 if _classic_source != null else attempt >= encounter.max_times):
 		outcome = 3
 	if outcome < 1 or outcome > 4:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter produced invalid result %d." % outcome)
@@ -445,13 +468,10 @@ static func _complex_choice_is_exact(encounter: ComplexEncounterDefinition, sele
 
 
 func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub: bool, context: ScenarioExecutionContext, events: Array[DomainEvent] = [], repeat: bool = false) -> ScenarioRuntimeOperationResult:
-	var program_id := encounter.result_program_id(outcome)
-	if program_id.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter result is outside 1 through 4.")
-	if _game_state.scenario_progress.encounters.complex_result_is_eliminated(encounter.id, outcome - 1):
-		events.append(DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-44"}))
-		return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.finish_timeline())
-	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_encounter_result(program_id, gosub, context, repeat))
+	var result := encounters.memory.copy_result(&"complex", outcome - 1, context)
+	result.value = outcome
+	result.events.assign(events)
+	return result.with_encounter_selection(&"complex", encounter.id, maxi(0, context.encounter_attempt))
 
 
 func _complex_word_outcome(encounter: ComplexEncounterDefinition, entered_word: String) -> int:

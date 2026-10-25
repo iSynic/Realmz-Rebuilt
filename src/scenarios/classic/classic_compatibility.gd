@@ -58,9 +58,14 @@ static func missing_extra_code(content: RealmzContent, action: ClassicActionDefi
 	# These operations mutate only the selected target. No supplied operands means
 	# no mutation. Branches, payments and interactions instead cancel their timeline.
 	if action.opcode in [-23, 7, 12, 13, 15, 16, 22, 23, 30, 41, 43, 45, 50, 51, 52, 54, 57, 60, 61, 63, 68, 69, 70, 90, 92, 103, 106, 120, 121, 123, 124, 125]:
-		return skip(&"unavailable-mutation-operands", "Data EDCD", target)
+		var result := skip(&"unavailable-mutation-operands", "Data EDCD", target)
+		if action.opcode == 45: result.suppress_header_recheck = true
+		return result
 	if action.opcode in [2, 3, 17, 18, 19, 20, 21, 31, 33, 37, 38, 40, 42, 46, 48, 53, 55, 56, 58, 59, 64, 65, 67, 72, 73, 74, 75, 76, 77, 78, 81, 85, 86, 87, 107, 108, 122, 126]:
-		return cancel_interaction(&"unavailable-operation-operands", "Data EDCD", target, context)
+		var result := cancel_interaction(&"unavailable-operation-operands", "Data EDCD", target, context)
+		result.secondary_door_completed = action.opcode == 20
+		result.invocation_returned_early = action.opcode == 37
+		return result
 	return null
 
 
@@ -71,7 +76,7 @@ static func skip(operation: StringName, native_path: String, native_id: int) -> 
 static func cancel_interaction(operation: StringName, native_path: String, native_id: int, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var result := skip(operation, native_path, native_id)
 	result.events.append(DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "native-compatibility"}))
-	result.directive = ScenarioVmDirective.finish_timeline()
+	result.directive = ScenarioVmDirective.native_return(0)
 	return result
 
 

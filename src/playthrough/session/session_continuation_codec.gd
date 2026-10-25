@@ -107,8 +107,11 @@ static func _decode_boat(data: Dictionary) -> SessionContinuation:
 static func _decode_application_hook(data: Dictionary) -> SessionContinuation:
 	var scenario_defeat: bool = data.get("resumeKind") == "scenario-party-defeat"
 	var fields: Array[String] = ["hook", "programId", "resumeKind", "serviceId", "partyRevived"]
+	var explicit_owner := data.has("applicationOwnerId")
+	if explicit_owner: fields.append("applicationOwnerId")
 	if scenario_defeat:
-		fields.append_array(["suspendedVm", "suspendedOwner", "vmHandoff"])
+		fields.append("suspendedOwner")
+		if not explicit_owner: fields.append_array(["suspendedVm", "vmHandoff"])
 	if not _has_exact_fields(data, fields) or not data.get("hook") is String or not _is_nonempty_string(data.get("programId")) or not data.get("resumeKind") is String or not data.get("serviceId") is String or not data.get("partyRevived") is bool:
 		return null
 	var body := ScenarioApplicationContinuationBody.new()
@@ -119,14 +122,17 @@ static func _decode_application_hook(data: Dictionary) -> SessionContinuation:
 	body.resume_kind = StringName(resume_kind)
 	body.service_id = data["serviceId"]
 	body.party_revived = data["partyRevived"]
+	body.application_owner_id = _signed_integer(data["applicationOwnerId"]) if explicit_owner else -1
+	if explicit_owner and body.application_owner_id < 1: return null
 	if not _valid_application_hook(body):
 		return null
 	if scenario_defeat:
-		body.suspended_vm = ScenarioVmSnapshot.from_data(data["suspendedVm"])
 		body.suspended_owner = SessionContinuation.from_data(data["suspendedOwner"])
-		body.vm_handoff = ScenarioVmHandoff.from_data(data["vmHandoff"])
-		if body.suspended_vm == null or body.suspended_owner == null or body.suspended_owner.kind not in [&"post-clock", &"post-move"] or body.vm_handoff == null:
-			return null
+		if body.suspended_owner == null or body.suspended_owner.kind not in [&"post-clock", &"post-move", &"item-xap"]: return null
+		if not explicit_owner:
+			body.suspended_vm = ScenarioVmSnapshot.from_data(data["suspendedVm"])
+			body.vm_handoff = ScenarioVmHandoff.from_data(data["vmHandoff"])
+			if body.suspended_vm == null or body.vm_handoff == null: return null
 	return ScenarioContinuations.application_hook(body)
 
 

@@ -7,6 +7,7 @@ const CLASSIC_ALLY_RECORD_CORRECTIONS: Dictionary = {
 	"scenario-tutorial": {149: 116},
 }
 
+var native_invocation: ScenarioClassicInvocationRecord
 var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
@@ -125,7 +126,7 @@ func _branch_on_spell_points(action: ClassicActionDefinition, context: ScenarioE
 	var event := DomainEvent.new(&"spell_point_branch_checked", {"selector": action.extra_code[0], "minimumSpellPoints": action.extra_code[1], "matched": matched, "characterIds": candidates.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})
 	if not matched:
 		if action.extra_code[2] == 1:
-			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-75"})], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-75"})], ScenarioVmDirective.keep_codes())
 		return ScenarioRuntimeOperationResult.completed(false, [event])
 	var branch := _branch_to_destination(action.extra_code[3], action.extra_code[4], action.gosub)
 	branch.events.append(event)
@@ -246,7 +247,7 @@ func _branch_on_party_condition(action: ClassicActionDefinition) -> ScenarioRunt
 		return ScenarioRuntimeOperationResult.completed(false)
 	# This switch's default ends the script, unlike ordinary destination fallthrough.
 	if action.extra_code[1] not in [1, 2, 3]:
-		return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish_timeline())
+		return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.end_record())
 	return _branch_to_destination(action.extra_code[1] - 1, action.extra_code[2], action.gosub)
 
 
@@ -410,10 +411,10 @@ func _branch_on_picked_characters(action: ClassicActionDefinition) -> ScenarioRu
 		var message := _content.scenario_records.message_by_id(action.extra_code[4])
 		if message == null:
 			if ClassicCompatibility.source_unavailable(_content, "Data SD2", action.extra_code[4]):
-				return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
+				return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.native_return(0))
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 55 references unavailable message %d." % action.extra_code[4])
-		return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-picked-branch"})], ScenarioVmDirective.finish())
-	return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
+		return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-picked-branch"})], ScenarioVmDirective.native_return(0))
+	return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.end_record())
 
 
 func _set_spellcasting_flags(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -481,9 +482,9 @@ func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 			var message := _content.scenario_records.message_by_id(action.extra_code[4])
 			if message == null:
 				if ClassicCompatibility.source_unavailable(_content, "Data SD2", action.extra_code[4]):
-					return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.finish())
+					return ScenarioRuntimeOperationResult.completed(false, [event], ScenarioVmDirective.native_return(0))
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 87 references unavailable message %d." % action.extra_code[4])
-			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], ScenarioVmDirective.native_return(0))
 	return ScenarioRuntimeOperationResult.completed(false, [event])
 
 
@@ -615,7 +616,7 @@ func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, request_id: String) -> ScenarioRuntimeOperationResult:
 	if operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
 		return operation
-	var updates := CharacterAgingResult.update_bodies(operation.events)
+	var updates := operation.age_updates
 	if updates.is_empty():
 		return operation
 	var continuation := ScenarioAgeContinuations.updates(ScenarioRuntimeContinuation.CLASSIC_AGE_UPDATES, updates, 1, operation.value, operation.directive)
@@ -626,7 +627,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 
 
 func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
-	return ClassicScenarioSpellOperations.apply(_content, _game_state, _rng, _rules, action, entire_party, context)
+	return ClassicScenarioSpellOperations.apply(_content, _game_state, _rng, _rules, action, entire_party, context, native_invocation.queued_source if native_invocation != null else null)
 
 
 func resume_scenario_spell(handoff: ScenarioRuntimeHandoff) -> ScenarioRuntimeOperationResult:

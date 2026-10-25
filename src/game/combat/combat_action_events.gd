@@ -237,43 +237,14 @@ static func append_attack_sound(events: Array[DomainEvent], native_sound_id: int
 	events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-combat-attack"}))
 
 
-static func request_monster_death_macro(monster: MonsterState, definition: MonsterDefinition, events: Array[DomainEvent]) -> bool:
-	if monster == null or definition == null or not definition.has_death_macro():
-		return false
-	append_monster_death_macro_request(monster, definition, events, false)
-	return true
-
-
-static func queue_spell_death_macro(combat: CombatState, monster: MonsterState, definition: MonsterDefinition) -> bool:
-	return combat != null and monster != null and definition != null and definition.has_death_macro() and combat.spell_runtime.queue_death_macro(monster.id)
-
-
-static func request_next_spell_death_macro(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
-	var combatant_id := combat.spell_runtime.pending_death_macro_id() if combat != null else ""
-	var monster := combat.roster.monster_by_id(combatant_id) if combat != null else null
-	var definition := content.combat.monster_by_id(monster.definition_id) if monster != null and content != null else null
-	if monster == null or definition == null or not definition.has_death_macro():
-		return false
-	append_monster_death_macro_request(monster, definition, events, true)
-	return true
-
-
-static func append_monster_death_macro_request(monster: MonsterState, definition: MonsterDefinition, events: Array[DomainEvent], queued_by_spell: bool) -> void:
+static func append_monster_death_macro_request(request: CombatDeathMacroRequest, events: Array[DomainEvent]) -> void:
 	events.append(DomainEvent.new(&"monster_death_macro_requested", {
-		"combatantId": monster.id,
-		"definitionId": monster.definition_id,
-		"classicMonsterId": definition.classic_id,
-		"programId": "xap:%d" % definition.death_macro,
-		"macroId": definition.death_macro,
-		"traitor": monster.traitor,
-		"queuedBySpell": queued_by_spell,
-		"resetTraitorOnComplete": not queued_by_spell,
+		"combatantId": request.combatant_id,
+		"definitionId": request.definition_id,
+		"classicMonsterId": request.classic_monster_id,
+		"programId": request.program_id(),
+		"macroId": request.macro_id,
+		"traitor": request.source.classic_traitor != 0,
+		"queuedBySpell": request.queued_by_spell,
+		"resetTraitorOnComplete": not request.queued_by_spell,
 	}))
-
-
-static func death_macro_request(events: Array[DomainEvent]) -> Dictionary:
-	for index: int in range(events.size() - 1, -1, -1):
-		var event := events[index]
-		if event.kind == &"monster_death_macro_requested":
-			return event.payload
-	return {}

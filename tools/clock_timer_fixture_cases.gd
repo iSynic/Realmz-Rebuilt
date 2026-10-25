@@ -76,16 +76,16 @@ func _saved_gosub(content: RealmzContent, session: GameSession, step: SessionSte
 	var repository := SaveRepository.new(_root.path_join("gosub"))
 	var written := before != null and step.state == SessionStep.State.WAITING_FOR_INTERACTION and repository.save(content.campaign_id, "A", before)
 	var saved := repository.load(content.campaign_id, "A", content.package_hash) if written else null
-	_check(saved != null and CanonicalJson.encode(saved.to_data()) == CanonicalJson.encode(SaveEnvelope.from_snapshot(before).to_data()), "GOSUB header survives actual v6 write/readback at the callee ACK")
+	_check(saved != null and CanonicalJson.encode(saved.to_data()) == CanonicalJson.encode(SaveEnvelope.from_snapshot(before).to_data()), "GOSUB header survives actual v9 write/readback at the callee ACK")
 	if saved == null: return
 	for mutation: String in ["missing", "null", "map", "coordinate"]:
 		var document := saved.to_data()
-		var caller: Dictionary = document["scenarioVm"]["pendingContinuation"]["data"]["runtime"]["data"]["timerVm"]["frames"][0]
+		var caller: Dictionary = document["scenarioVm"]["classic"]["returns"][0]
 		match mutation:
-			"missing": caller.erase("nativeReturnDestination")
-			"null": caller["nativeReturnDestination"] = null
-			"map": caller["nativeReturnDestination"]["mapId"] = "missing-map"
-			"coordinate": caller["nativeReturnDestination"]["x"] = 2_147_483_647
+			"missing": caller.erase("destination")
+			"null": caller["destination"] = null
+			"map": caller["destination"]["mapId"] = "missing-map"
+			"coordinate": caller["destination"]["x"] = 2_147_483_647
 		var bad := SaveEnvelope.from_data(document)
 		var candidate := GameSession.new()
 		_check(bad == null or candidate.restore(content, bad).state == SessionStep.State.FAILED, "GOSUB return header rejects " + mutation)
@@ -106,15 +106,15 @@ func _saved_arrival(content: RealmzContent, session: GameSession, step: SessionS
 	var repository := SaveRepository.new(_root.path_join(mode))
 	var written := repository.save(content.campaign_id, "A", before)
 	var restored := repository.load(content.campaign_id, "A", content.package_hash) if written else null
-	_check(restored != null and CanonicalJson.encode(SaveEnvelope.from_snapshot(before).to_data()) == CanonicalJson.encode(restored.to_data()), "timer arrival complete v6 write/readback preserves shared and invocation facts")
+	_check(restored != null and CanonicalJson.encode(SaveEnvelope.from_snapshot(before).to_data()) == CanonicalJson.encode(restored.to_data()), "timer arrival complete v9 write/readback preserves shared and invocation facts")
 	if restored == null: return
 	for mutation: String in ["map", "trigger", "coordinate", "missing-shared"]:
 		var document := restored.to_data()
 		match mutation:
-			"map": document["classicExecution"]["mapId"] = "missing-map"
-			"trigger": document["classicExecution"]["triggerId"] = "missing-trigger"
-			"coordinate": document["classicExecution"]["x"] = 2_147_483_647
-			"missing-shared": document["classicExecution"] = ClassicExecutionState.new().to_data()
+			"map": document["scenarioVm"]["classic"]["header"]["mapId"] = "missing-map"
+			"trigger": document["scenarioVm"]["classic"]["header"]["triggerId"] = "missing-trigger"
+			"coordinate": document["scenarioVm"]["classic"]["header"]["x"] = 2_147_483_647
+			"missing-shared": document["scenarioVm"]["classic"]["header"] = ClassicExecutionState.new().to_data()
 		var bad := SaveEnvelope.from_data(document)
 		var candidate := GameSession.new()
 		_check(bad != null and candidate.restore(content, bad).state == SessionStep.State.FAILED, "saved timer rejects " + mutation + " without guessing header history")

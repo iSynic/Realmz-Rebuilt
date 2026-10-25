@@ -7,23 +7,17 @@ var _content: RealmzContent
 var _game_state: GameState
 var _rules: RealmzRules
 var _rng: RealmzRng
-var _runtime_api_ref: WeakRef
+var _macros: ScenarioMacroLifecycle
+var native_state: ScenarioClassicExecutionState
+var native_invocation: ScenarioClassicInvocationRecord
 
 
-func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rng: RealmzRng) -> void:
+func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rng: RealmzRng, macros: ScenarioMacroLifecycle) -> void:
 	_content = content
 	_game_state = game_state
 	_rules = rules
 	_rng = rng
-
-
-func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:
-	_runtime_api_ref = weakref(runtime_api)
-
-
-func _runtime_api() -> RealmzRuntimeApi:
-	var runtime_api: Variant = _runtime_api_ref.get_ref() if _runtime_api_ref != null else null
-	return runtime_api if runtime_api is RealmzRuntimeApi else null
+	_macros = macros
 
 
 func opcode_ids() -> Array[int]:
@@ -55,28 +49,12 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 	return super.execute(action, request_id, context)
 
 
-func resume_opcode_death_macro(continuation: ScenarioRuntimeContinuation, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	var body := continuation.body as ScenarioOpcodeDeathContinuationBody
-	var runtime_api := _runtime_api()
-	if body == null or runtime_api == null or _game_state.combat == null or _game_state.combat.completed or _game_state.combat.battle_id != body.battle_id:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_continuation", "Classic opcode 125 lost its saved battle or death-macro state.")
-	var vm := ScenarioVm.new()
-	vm.configure(_content.scenario)
-	if not vm.restore(body.macro_vm):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_continuation", "Classic opcode 125 cannot restore its pending death macro.")
-	var result := vm.resume(response, runtime_api)
-	if result.is_rejection:
-		return ScenarioRuntimeOperationResult.rejected(result.error_code, result.error_message)
-	if result.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
-	if result.state == ScenarioVmResult.State.SUSPENDED:
-		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
-	if result.state == ScenarioVmResult.State.WAITING:
-		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioCombatContinuations.opcode_death_macro(body.battle_id, body.combatant_id, body.program_id, body.remaining_combatant_ids, vm.snapshot()), result.events)
-	var events: Array[DomainEvent] = []
-	events.assign(result.events)
-	_complete_opcode_death_macro(body.combatant_id, body.program_id, events)
-	return _run_opcode_death_macros(body.remaining_combatant_ids, events)
+func complete_macro_call(call: ScenarioMacroCall) -> ScenarioRuntimeOperationResult:
+	if call.return_kind != ScenarioMacroCall.ReturnKind.DESTRUCTION:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_macro_return", "The macro has no destruction return owner.")
+	var result := _macros.complete(call)
+	if not result.ok: return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
+	return _run_opcode_death_macros(call.remaining_combatant_ids, result.events)
 
 
 func _destroy_related_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -110,54 +88,33 @@ func _run_opcode_death_macros(combatant_ids: Array[String], preceding_events: Ar
 		if not finalized.ok:
 			return ScenarioRuntimeOperationResult.failed(finalized.error_code, finalized.error_message)
 		return ScenarioRuntimeOperationResult.completed(true, preceding_events + finalized.events)
-	var runtime_api := _runtime_api()
-	if runtime_api == null or _game_state.combat == null:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 cannot execute monster death macros without an active runtime.")
+	if _game_state.combat == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 requires an active battle.")
 	var remaining := combatant_ids.duplicate()
 	var combatant_id: String = remaining.pop_front()
 	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
 	var definition := _content.combat.monster_by_id(monster.definition_id) if monster != null else null
 	if monster == null or definition == null or not definition.has_death_macro():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Classic opcode 125 references unavailable monster death-macro content.")
-	var program_id := "xap:%d" % definition.death_macro
-	var vm := ScenarioVm.new()
-	vm.configure(_content.scenario)
-	var death_context := ScenarioExecutionContext.calling(&"monster-death-macro").set_battle(_game_state.combat.battle_id)
-	death_context.set_combatant(monster.id, definition.classic_id, monster.traitor, true)
-	var started := vm.start_program(program_id, death_context)
-	if started.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message, started.events)
-	var result := vm.run(runtime_api)
-	var events: Array[DomainEvent] = []
-	events.assign(preceding_events)
-	events.append(DomainEvent.new(&"monster_death_macro_started", {"battleId": _game_state.combat.battle_id, "combatantId": monster.id, "programId": program_id}))
-	events.append_array(result.events)
-	if result.state == ScenarioVmResult.State.FAILED:
-		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
-	if result.state == ScenarioVmResult.State.SUSPENDED:
-		return ScenarioRuntimeOperationResult.failed(&"nested_host_handoff", "A monster death macro cannot suspend a second battle into the application host.")
-	if result.state == ScenarioVmResult.State.WAITING:
-		return ScenarioRuntimeOperationResult.waiting(result.interaction, ScenarioCombatContinuations.opcode_death_macro(_game_state.combat.battle_id, monster.id, program_id, remaining, vm.snapshot()), events)
-	_complete_opcode_death_macro(monster.id, program_id, events)
-	return _run_opcode_death_macros(remaining, events)
-
-
-func _complete_opcode_death_macro(combatant_id: String, program_id: String, events: Array[DomainEvent]) -> void:
-	if _game_state.combat.turns.active_turn != null:
-		_game_state.combat.turns.active_turn.classic_physical_active = false
-	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
-	if monster != null:
-		_game_state.combat.clear_classic_death_macro_traitor(monster, _game_state.party)
-		if monster.current_health <= 0 and _game_state.combat.battlefield != null:
-			_game_state.combat.battlefield.actors.remove_monster(monster.id)
-	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": _game_state.combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
+	var call := ScenarioMacroCall.new()
+	call.kind = ScenarioMacroCall.Kind.DEATH
+	call.return_kind = ScenarioMacroCall.ReturnKind.DESTRUCTION
+	call.battle_id = _game_state.combat.battle_id
+	call.program_id = "xap:%d" % definition.death_macro
+	call.combatant_id = monster.id
+	call.classic_monster_id = definition.classic_id
+	call.traitor = monster.traitor
+	call.has_classic_monster_id = true
+	call.has_traitor = true
+	call.remaining_combatant_ids.assign(remaining)
+	return _macros.begin(call, preceding_events)
 
 
 func _finish_battle() -> ScenarioRuntimeOperationResult:
 	var result := _rules.combat_flow.finish_classic_macro_victory(_game_state, _content)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
-	return ScenarioRuntimeOperationResult.completed(true, result.events, ScenarioVmDirective.finish_timeline())
+	return ScenarioRuntimeOperationResult.completed(true, result.events, ScenarioVmDirective.end_record(true))
 
 
 func cause_fumble(action: ClassicActionDefinition, context: ScenarioExecutionContext, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -201,19 +158,14 @@ func _commit_scripted_fumble(actor_id: String, context: ScenarioExecutionContext
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	events.append_array(result.events)
-	if result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_fumble_skipped" and event.payload.get("reason") == "cursed-weapon"):
+	if result.fumble == CombatFlowResult.Fumble.CURSED_WEAPON:
 		events.append(DomainEvent.new(&"classic_notification_requested", {"text": "This item appears to be cursed!", "soundId": 6000, "source": "classic-warning-7"}))
-	if result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_fumble_skipped" and event.payload.get("reason") in ["unarmed", "cursed-weapon"]):
+	if result.fumble in [CombatFlowResult.Fumble.UNARMED,CombatFlowResult.Fumble.CURSED_WEAPON]:
 		# newland.c returns 0 here: stop this invocation, retaining its AP.
 		if context != null and not context.trigger_id.is_empty():
 			events.append(DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id}))
-		return ScenarioRuntimeOperationResult.completed(false, events, ScenarioVmDirective.finish_timeline())
-	var changed := false
-	for event: DomainEvent in result.events:
-		if event.kind == &"combatant_fumbled":
-			changed = true
-			break
-	return ScenarioRuntimeOperationResult.completed(changed, events)
+		return ScenarioRuntimeOperationResult.completed(false, events, ScenarioVmDirective.native_return(0))
+	return ScenarioRuntimeOperationResult.completed(result.fumble == CombatFlowResult.Fumble.COMMITTED, events)
 
 
 func _revive_after_combat_macro(context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
@@ -227,11 +179,12 @@ func _revive_after_combat_macro(context: ScenarioExecutionContext) -> ScenarioRu
 			character.current_health = 1
 			character.conditions.set_value(ConditionRules.ANIMATED, 0)
 			revived_party.append(character.id)
-		return ScenarioRuntimeOperationResult.completed(revived_party, [DomainEvent.new(&"party_revived", {"characterIds": revived_party, "source": "classic-death-macro"})], ScenarioVmDirective.finish())
+		var result := ScenarioRuntimeOperationResult.completed(revived_party, [DomainEvent.new(&"party_revived", {"characterIds": revived_party, "source": "classic-death-macro"})], ScenarioVmDirective.native_return(-1))
+		result.party_revived = true
+		return result
 	if _game_state.combat == null:
 		return ScenarioRuntimeOperationResult.failed(&"revival_outside_combat", "Classic opcode 119 has no combatant to revive.")
-	var combatant_id := context.combatant_id
-	var monster := _game_state.combat.roster.monster_by_id(combatant_id)
+	var monster := _macro_monster(context, false)
 	if monster == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_combatant_context", "Classic opcode 119 requires its death-macro combatant identity.")
 	_game_state.combat.reconcile_classic_counters(_game_state.party)
@@ -291,10 +244,12 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Scenario
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 123 requires a five-value Extra Code row.")
 	var source_traitor := 1
-	var source_id := context.combatant_id
-	var source_monster := _game_state.combat.roster.monster_by_id(source_id)
+	var source_monster := _macro_monster(context)
 	if source_monster != null:
 		source_traitor = source_monster.classic_traitor
+	if native_invocation != null and native_invocation.queued_source != null:
+		if not native_invocation.queued_source.available: return ScenarioRuntimeOperationResult.failed(&"unavailable_macro_source", "The historical queued macro did not retain its source allegiance.")
+		source_traitor = native_invocation.queued_source.classic_traitor
 	var definition_ids: Dictionary = {}
 	for classic_id: int in action.extra_code:
 		if classic_id == 0:
@@ -395,24 +350,32 @@ func _build_classic_spawn(definition: MonsterDefinition, traitor_override: int, 
 
 func _classic_spawn_source_coordinate(context: ScenarioExecutionContext) -> Vector2i:
 	var battlefield := _game_state.combat.battlefield
-	if context != null and not context.combatant_id.is_empty() and battlefield.actors.has_actor(context.combatant_id):
-		return battlefield.actors.actor_position(context.combatant_id)
-	# Castle's battle-round macro path leaves macromonster at its default slot
-	# zero, so source-order monster zero is the placement center.
-	for monster: MonsterState in _game_state.combat.roster.monsters():
-		if battlefield.actors.has_actor(monster.id):
-			return battlefield.actors.actor_position(monster.id)
+	if native_invocation != null and native_invocation.queued_source != null:
+		var captured := native_invocation.queued_source
+		return captured.position if captured.available and captured.has_position else Vector2i(-1,-1)
+	var source := _macro_monster(context)
+	if source != null and battlefield.actors.has_actor(source.id):
+		return battlefield.actors.actor_position(source.id)
 	return Vector2i(-1, -1)
 
 
 func _classic_spawn_traitor_override(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> int:
 	if action.extra_code[4] != 0:
 		return action.extra_code[4]
-	if context != null and not context.combatant_id.is_empty():
-		var source := _game_state.combat.roster.monster_by_id(context.combatant_id)
-		if source != null:
-			return source.classic_traitor
+	if native_invocation != null and native_invocation.queued_source != null: return native_invocation.queued_source.classic_traitor
+	if native_state != null and native_state.battle_macro_active: return MonsterState.UNKNOWN_CLASSIC_ROUTE_ID
+	var source := _macro_monster(context)
+	if source != null: return source.classic_traitor
 	return MonsterState.UNKNOWN_CLASSIC_ROUTE_ID
+
+
+func _macro_monster(context: ScenarioExecutionContext, use_queue: bool = true) -> MonsterState:
+	var monsters := _game_state.combat.roster.monsters()
+	if native_invocation != null and native_invocation.queued_source != null and not native_invocation.queued_source.available: return null
+	if native_state != null and not (use_queue and native_invocation != null and native_invocation.queued_source != null):
+		return monsters[native_state.macro_monster_index] if native_state.macro_monster_index >= 0 and native_state.macro_monster_index < monsters.size() else null
+	if context != null and not context.combatant_id.is_empty(): return _game_state.combat.roster.monster_by_id(context.combatant_id)
+	return monsters[0] if not monsters.is_empty() else null
 
 
 func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -422,7 +385,7 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 126 requires a five-value Extra Code row.")
 	var combat := _game_state.combat
 	if combat.macro_id > 0:
-		return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.finish())
+		return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.native_return(0))
 	var mode := action.extra_code[0]
 	var matched := false
 	match mode:
@@ -434,7 +397,7 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 			# Castle tests only modes zero and one; other modes branch unconditionally.
 			matched = true
 	if not matched:
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"battle_macro_tested", {"matched": false, "mode": mode, "round": combat.turns.round_number, "source": "classic"})], ScenarioVmDirective.finish())
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"battle_macro_tested", {"matched": false, "mode": mode, "round": combat.turns.round_number, "source": "classic"})], ScenarioVmDirective.native_return(0))
 	if action.extra_code[2] != 1:
 		combat.macro_id = 0
 	var target_id := action.extra_code[3]
@@ -448,7 +411,7 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
 		if _content.package_schema_version >= 7:
-			return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.native_return(0))
 		return ScenarioRuntimeOperationResult.failed(&"monster_test_outside_combat", "Classic opcode 127 requires an active battle macro.")
 	var present := false
 	for monster: MonsterState in _game_state.combat.roster.monsters():
@@ -457,5 +420,5 @@ func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRu
 		if present_definition != null and native_name == action.operand_id and monster.current_health > 0:
 			present = true
 			break
-	var directive: ScenarioVmDirective = null if present else ScenarioVmDirective.finish()
+	var directive: ScenarioVmDirective = null if present else ScenarioVmDirective.native_return(0)
 	return ScenarioRuntimeOperationResult.completed(present, [DomainEvent.new(&"battle_monster_presence_checked", {"classicMonsterId": action.operand_id, "present": present, "source": "classic"})], directive)

@@ -66,13 +66,13 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 			var current_anchor := state.combat.battlefield.actors.actor_position(actor.id)
 			if not visited_anchors.has(current_anchor):
 				visited_anchors.append(current_anchor)
-		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null or state.combat.pending_reaction != null:
+		if result.completed or result.death_macro != null or state.combat.pending_monster_attack != null or state.combat.pending_reaction != null:
 			break
 	_context.processing_auto = previous_processing
 	if operation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.turns.active_actor_id() == actor_id and state.combat.turns.round_number == starting_round:
 		return CombatFlowResult.failed(&"combat_auto_operation_limit", "Automatic combat exceeded its 256-operation safety limit without committing a partial activation.")
 	events.append(DomainEvent.new(&"combat_auto_completed", {"actorId": actor.id, "operations": operation_count, "source": "classic"}))
-	return CombatFlowResult.succeeded(events, state.combat == null or state.combat.completed)
+	return CombatFlowResult.from_combat(state.combat, events, state.combat == null or state.combat.completed)
 
 
 func _execute_auto_choice(state: GameState, content: RealmzContent, actor: CharacterState, choice: Dictionary, rng: RealmzRng, visited_anchors: Array[Vector2i]) -> CombatFlowResult:
@@ -102,7 +102,7 @@ func _execute_auto_choice(state: GameState, content: RealmzContent, actor: Chara
 
 func run_persistent_auto_characters(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
 	if state == null or content == null or rng == null or state.combat == null or state.combat.completed or state.combat.round_cursor != null:
-		return CombatFlowResult.succeeded([])
+		return CombatFlowResult.from_combat(state.combat, [])
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
 	var result := _run_persistent_auto_unchecked(state, content, rng)
@@ -111,11 +111,11 @@ func run_persistent_auto_characters(state: GameState, content: RealmzContent, rn
 
 func _run_persistent_auto_unchecked(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
 	if state.combat == null or state.combat.completed:
-		return CombatFlowResult.succeeded([], true)
+		return CombatFlowResult.from_combat(state.combat, [], true)
 	var actor_id := state.combat.turns.active_actor_id()
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null or actor.traitor or not state.combat_auto_enabled(actor_id):
-		return CombatFlowResult.succeeded([])
+		return CombatFlowResult.from_combat(state.combat, [])
 	return _run_auto_turn_unchecked(state, content, actor_id, rng)
 
 
@@ -193,10 +193,3 @@ static func _direct_auto_swap_probe(battlefield: BattlefieldState, actor_id: Str
 	if visited_anchors.has(destination) or not swappable_ids.has(battlefield.actors.actor_at(destination, actor_id)):
 		return null
 	return BattlefieldStepResult.permitted(destination, 5)
-
-
-static func _events_include(events: Array[DomainEvent], kind: StringName) -> bool:
-	for event: DomainEvent in events:
-		if event.kind == kind:
-			return true
-	return false

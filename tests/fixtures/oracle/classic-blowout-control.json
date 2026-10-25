@@ -1,0 +1,88 @@
+{
+  "baseCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+  "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+  "cases": [
+    {
+      "case": "25-clears-retained-gosub-and-stack",
+      "fixtureId": "c652549c1d1e280546e4dae1cff285f6",
+      "expected": [
+        [
+          -64,
+          1200,
+          0
+        ],
+        [
+          25,
+          0,
+          1
+        ],
+        [
+          0,
+          982,
+          0
+        ]
+      ],
+      "passed": true
+    }
+  ],
+  "schemaVersion": 1,
+  "evidence": "castle-runtime",
+  "recipe": {
+    "name": "25-clears-retained-gosub-and-stack",
+    "root": [
+      [
+        -64,
+        1200
+      ],
+      [
+        0,
+        981
+      ]
+    ],
+    "programs": {
+      "512": [
+        [
+          25,
+          0
+        ],
+        [
+          0,
+          982
+        ]
+      ]
+    },
+    "ec": {
+      "1200": [
+        -1,
+        -1,
+        0,
+        512,
+        512
+      ]
+    },
+    "expected": [
+      [
+        -64,
+        1200,
+        0
+      ],
+      [
+        25,
+        0,
+        1
+      ],
+      [
+        0,
+        982,
+        0
+      ]
+    ],
+    "absent": 981
+  },
+  "limits": [
+    "Stack reset and following marker are executable observations; gosub reset is source-control-flow evidence.",
+    "Rebuilt immediate timeline termination is the deliberate FD-SCENARIO-028 correction.",
+    "No whole-campaign or full VM parity claim."
+  ]
+}

@@ -268,7 +268,7 @@ func _session_readback(content: RealmzContent, snapshot: SessionSnapshot, name: 
 	var loaded := repository.load(content.campaign_id, "A", content.package_hash) if saved else null
 	var session := GameSession.new()
 	var result := session.restore(content, loaded) if loaded != null else null
-	_check(result != null and result.state == SessionStep.State.COMPLETED, name + " actual v6 write/readback and detached session restore" + (": " + result.error_message if result != null else ""))
+	_check(result != null and result.state == SessionStep.State.COMPLETED, name + " actual v9 write/readback and detached session restore" + (": " + result.error_message if result != null else ""))
 	return session if result != null and result.state == SessionStep.State.COMPLETED else null
 
 

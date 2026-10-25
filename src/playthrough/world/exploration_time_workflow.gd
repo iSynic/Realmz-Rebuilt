@@ -10,10 +10,12 @@ class ClockTransitionResult:
 	var error_code: StringName
 	var error_message: String
 	var events: Array[DomainEvent]
+	var age_updates: Array[AgeUpdateRequestBody] = []
 	var map: MapDefinition
 	var check_random: bool
 	var timed_day: int
 	var timed_scan_pending: bool = false
+	var secrets_discovered: bool = false
 
 	static func failed(code: StringName, message: String, committed_events: Array[DomainEvent] = []) -> ClockTransitionResult:
 		var result := ClockTransitionResult.new()
@@ -22,13 +24,14 @@ class ClockTransitionResult:
 		result.events = committed_events
 		return result
 
-	static func completed(current_map: MapDefinition, committed_events: Array[DomainEvent], should_check_random: bool, midnight_day: int, midnight_occurred: bool = false) -> ClockTransitionResult:
+	static func completed(current_map: MapDefinition, committed_events: Array[DomainEvent], should_check_random: bool, midnight_day: int, midnight_occurred: bool = false, updates: Array[AgeUpdateRequestBody] = []) -> ClockTransitionResult:
 		var result := ClockTransitionResult.new()
 		result.ok = true
 		result.map = current_map
 		result.events = committed_events
 		result.check_random = should_check_random
 		result.timed_day = midnight_day
+		result.age_updates.assign(updates)
 		result.timed_scan_pending = midnight_occurred
 		return result
 
@@ -49,9 +52,10 @@ static func toggle_camp(context: SessionWorkflowContext) -> ClockTransitionResul
 	if map == null:
 		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Camp.", events)
 	var previous_day := context.state.clock.day()
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 3 if context.state.party_camping else 2, classic_time_scale(map), true))
+	var changed := context.rules.clock.advance_classic_field_time(context.state, context.content, 3 if context.state.party_camping else 2, classic_time_scale(map), true)
+	events.append_array(changed.events)
 	var crossed_midnight := context.state.clock.day() != previous_day
-	return ClockTransitionResult.completed(map, events, false, context.state.clock.day() if crossed_midnight else 0, crossed_midnight)
+	return ClockTransitionResult.completed(map, events, false, context.state.clock.day() if crossed_midnight else 0, crossed_midnight, changed.age_updates)
 
 
 static func complete_camp_entry(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ClockTransitionResult:
@@ -61,8 +65,9 @@ static func complete_camp_entry(context: SessionWorkflowContext, preceding_event
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
 	var previous_day := context.state.clock.day()
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 2, classic_time_scale(map), true))
-	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day)
+	var changed := context.rules.clock.advance_classic_field_time(context.state, context.content, 2, classic_time_scale(map), true)
+	events.append_array(changed.events)
+	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day, changed.age_updates)
 
 
 static func rest(context: SessionWorkflowContext) -> ClockTransitionResult:
@@ -77,8 +82,9 @@ static func rest(context: SessionWorkflowContext) -> ClockTransitionResult:
 	context.rules.clock.change_fatigue(context.state.party, -2)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": context.state.party.fatigue, "reason": "rest", "source": "classic"})]
 	var previous_day := context.state.clock.day()
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 3, classic_time_scale(map), true))
-	return ClockTransitionResult.completed(map, events, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day)
+	var changed := context.rules.clock.advance_classic_field_time(context.state, context.content, 3, classic_time_scale(map), true)
+	events.append_array(changed.events)
+	return ClockTransitionResult.completed(map, events, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day, changed.age_updates)
 
 
 static func complete_rest(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ClockTransitionResult:
@@ -88,9 +94,10 @@ static func complete_rest(context: SessionWorkflowContext, preceding_events: Arr
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
 	var previous_day := context.state.clock.day()
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 2, classic_time_scale(map), true))
+	var changed := context.rules.clock.advance_classic_field_time(context.state, context.content, 2, classic_time_scale(map), true)
+	events.append_array(changed.events)
 	events.append(DomainEvent.new(&"party_rested", {"timeclicks": 5, "mapId": map.id, "source": "classic"}))
-	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day)
+	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day, changed.age_updates)
 
 
 static func heal(context: SessionWorkflowContext) -> ClockTransitionResult:
@@ -104,8 +111,9 @@ static func heal(context: SessionWorkflowContext) -> ClockTransitionResult:
 	var previous_day := context.state.clock.day()
 	# Castle buttonchoice.c plays 10105 before the held loop; the command owner supplies it.
 	var events: Array[DomainEvent] = []
-	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 5 if map.level_type == &"dungeon" else 1, classic_time_scale(map), true))
-	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day)
+	var changed := context.rules.clock.advance_classic_field_time(context.state, context.content, 5 if map.level_type == &"dungeon" else 1, classic_time_scale(map), true)
+	events.append_array(changed.events)
+	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day, changed.age_updates)
 
 
 static func complete_heal(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> SessionWorkflowResult:

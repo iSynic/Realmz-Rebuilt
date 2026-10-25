@@ -36,7 +36,7 @@ func _probe_character_turn(state: GameState, content: RealmzContent, caster_id: 
 		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
 	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "The caster does not own an active combat turn.")
-	if not combat.spell_runtime.pending_death_macro_id().is_empty():
+	if not combat.death_macros.pending_id().is_empty():
 		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	return CombatSpellCastProbe.permitted()
 
@@ -268,12 +268,12 @@ static func spell_target_view(state: GameState, content: RealmzContent, target_i
 	return null
 
 
-func spell_actor_target_is_valid(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int) -> bool:
+func spell_actor_target_is_valid(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int, origin: Vector2i = Vector2i(-1,-1)) -> bool:
 	if ClassicSpellSpecialEffectRules.is_combat_remove_curse_spell(spell) and state.party.character_by_id(target_id) == null: return false
 	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
-	return terrain_set != null and target_coordinate(state.combat.battlefield, terrain_set, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0).x >= 0
+	return terrain_set != null and target_coordinate(state.combat.battlefield, terrain_set, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0, origin).x >= 0
 
 
 func target_coordinate(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, caster_id: String, target_id: String, maximum_range: int, require_line_of_sight: bool = true, origin_override: Vector2i = Vector2i(-1, -1), occupied_cells: Dictionary = {}) -> Vector2i:

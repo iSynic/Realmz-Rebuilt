@@ -8,6 +8,7 @@ var events: Array[DomainEvent]
 var error_code: StringName
 var error_message: String
 var is_rejection: bool = false
+var age_updates: Array[AgeUpdateRequestBody] = []
 
 
 func _init(succeeded: bool, committed_events: Array[DomainEvent] = [], code: StringName = &"", message: String = "") -> void:
@@ -17,8 +18,10 @@ func _init(succeeded: bool, committed_events: Array[DomainEvent] = [], code: Str
 	error_message = message
 
 
-static func completed(committed_events: Array[DomainEvent] = []) -> SessionWorkflowResult:
-	return SessionWorkflowResult.new(true, committed_events)
+static func completed(committed_events: Array[DomainEvent] = [], updates: Array[AgeUpdateRequestBody] = []) -> SessionWorkflowResult:
+	var result := SessionWorkflowResult.new(true, committed_events)
+	result.age_updates.assign(updates)
+	return result
 
 
 static func failed(code: StringName, message: String) -> SessionWorkflowResult:

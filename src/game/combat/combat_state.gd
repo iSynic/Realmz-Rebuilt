@@ -24,6 +24,8 @@ var turns: CombatTurnSequenceState
 var actor_statuses: CombatActorStatusState
 var dropped_items: CombatDroppedItemState
 var spell_runtime: CombatSpellRuntimeState
+var death_macros: CombatDeathMacroState
+var pending_operations := CombatPendingOperations.new()
 
 
 func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0, initial_battlefield: BattlefieldState = null) -> void:
@@ -34,7 +36,9 @@ func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [],
 	turns = CombatTurnSequenceState.new(roster)
 	actor_statuses = CombatActorStatusState.new()
 	spell_runtime = CombatSpellRuntimeState.new()
-	spell_runtime.bind(roster, turns)
+	spell_runtime.bind(turns)
+	death_macros = CombatDeathMacroState.new()
+	death_macros.bind(roster, turns)
 	dropped_items = CombatDroppedItemState.new()
 	reconcile_classic_counters()
 

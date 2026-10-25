@@ -1,5 +1,5 @@
 # Scenario VM
 
-`ScenarioVm` schedules the immutable instruction stream and is the only owner of its frame stack. Each step dispatches a preserved Classic instruction or a typed Safe Scenario Action phase, applies any returned directive, and either advances, yields a serializable interaction, returns a frame, or halts.
+`ScenarioVm` is the sole execution runner. It schedules ordered Classic invocations, Safe calls and gameplay operations, applies explicit transitions, and suspends at the exact typed interaction owner.
 
-Start with `scenario_vm.gd`, then inspect `scenario_frame.gd` for the live cursor and `scenario_vm_snapshot.gd` for persistence. Classic opcode meaning and frame-control policy live in `../classic`; Safe expression evaluation and action state live in `../actions`; gameplay operations and suspended-operation payloads live in `../runtime`.
+Start with `scenario_vm.gd`, `scenario_execution_state.gd` and `scenario_vm_snapshot.gd`. Classic state, manual returns and compiled/native positions are separate records. `scenario_legacy_execution_codec.gd`, `scenario_legacy_call_codec.gd` and `scenario_legacy_macro_codec.gd` convert historical frames and nested snapshots before live assignment; they never create another runner. Classic opcode meaning lives in `../classic`, Safe evaluation in `../actions`, and gameplay operations in `../runtime`.

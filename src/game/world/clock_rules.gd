@@ -19,23 +19,27 @@ func change_fatigue(party: PartyState, amount: int) -> int:
 	return party.fatigue
 
 
-func advance_minutes(state: GameState, content: RealmzContent, minutes: int, condition_ticks: int = 0) -> Array[DomainEvent]:
+func advance_minutes(state: GameState, content: RealmzContent, minutes: int, condition_ticks: int = 0) -> ClockMutationResult:
+	var result := ClockMutationResult.new()
 	var elapsed := maxi(0, minutes)
 	var previous_day := state.clock.day()
 	if not state.clock.advance_minutes(elapsed):
-		return [DomainEvent.new(&"classic_clock_overflow_skipped", {"operation": "elapsed-minutes"})]
-	var events: Array[DomainEvent] = [DomainEvent.new(&"time_advanced", {"minutes": elapsed, "day": state.clock.day(), "hour": state.clock.hour(), "minute": state.clock.minute()})]
+		result.events.append(DomainEvent.new(&"classic_clock_overflow_skipped", {"operation": "elapsed-minutes"}))
+		return result
+	var events := result.events
+	events.append(DomainEvent.new(&"time_advanced", {"minutes": elapsed, "day": state.clock.day(), "hour": state.clock.hour(), "minute": state.clock.minute()}))
 	for day_index: int in state.clock.day() - previous_day:
-		events.append_array(_advance_age_day(state.party, content))
+		events.append_array(_advance_age_day(state.party, content, result))
 	for tick: int in condition_ticks:
 		events.append_array(_conditions.tick_party(state.party))
-	return events
+	return result
 
 
-func advance_classic_field_time(state: GameState, content: RealmzContent, timeclicks: int, minutes_per_timeclick: int, defer_midnight_recovery: bool = false) -> Array[DomainEvent]:
+func advance_classic_field_time(state: GameState, content: RealmzContent, timeclicks: int, minutes_per_timeclick: int, defer_midnight_recovery: bool = false) -> ClockMutationResult:
+	var result := ClockMutationResult.new()
 	var clicks := maxi(0, timeclicks)
 	var scale := clampi(minutes_per_timeclick, 1, 5)
-	var events: Array[DomainEvent] = []
+	var events := result.events
 	for click_index: int in clicks:
 		var flags := state.clock.advance_classic_click(scale)
 		if flags < 0:
@@ -49,23 +53,26 @@ func advance_classic_field_time(state: GameState, content: RealmzContent, timecl
 			events.append(DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": state.party.fatigue, "reason": "hour-boundary", "source": "classic"}))
 			events.append_array(_restore_spell_points(state.party))
 			if flags & RealmzClock.MIDNIGHT:
-				events.append_array(_advance_age_day(state.party, content))
+				events.append_array(_advance_age_day(state.party, content, result))
 			if state.clock.hour() in [0, 12] and not (defer_midnight_recovery and flags & RealmzClock.MIDNIGHT):
 				events.append_array(_restore_half_day_health(state.party, content))
-	return events
+	return result
 
 
-func alter_classic_time(state: GameState, content: RealmzContent, mode: int, days: int, hours: int, minutes: int) -> Array[DomainEvent]:
+func alter_classic_time(state: GameState, content: RealmzContent, mode: int, days: int, hours: int, minutes: int) -> ClockMutationResult:
+	var result := ClockMutationResult.new()
 	var flags := state.clock.alter_classic(mode, days, hours, minutes)
 	if flags < 0:
-		return [DomainEvent.new(&"classic_clock_overflow_skipped", {"operation": "opcode-63"})]
-	var events: Array[DomainEvent] = [DomainEvent.new(&"game_time_changed", {"mode": mode, "day": state.clock.day(), "hour": state.clock.hour(), "minute": state.clock.minute(), "totalMinutes": state.clock.total_minutes(), "timerScan": bool(flags & RealmzClock.MIDNIGHT), "source": "classic"})]
-	if flags & RealmzClock.MIDNIGHT:
-		events.append_array(_advance_age_day(state.party, content))
-	return events
+		result.events.append(DomainEvent.new(&"classic_clock_overflow_skipped", {"operation": "opcode-63"}))
+		return result
+	result.scan_timers = bool(flags & RealmzClock.MIDNIGHT)
+	result.events.append(DomainEvent.new(&"game_time_changed", {"mode": mode, "day": state.clock.day(), "hour": state.clock.hour(), "minute": state.clock.minute(), "totalMinutes": state.clock.total_minutes(), "timerScan": result.scan_timers, "source": "classic"}))
+	if result.scan_timers:
+		result.events.append_array(_advance_age_day(state.party, content, result))
+	return result
 
 
-func _advance_age_day(party: PartyState, content: RealmzContent) -> Array[DomainEvent]:
+func _advance_age_day(party: PartyState, content: RealmzContent, clock_result: ClockMutationResult) -> Array[DomainEvent]:
 	var events: Array[DomainEvent] = []
 	for character: CharacterState in party.characters():
 		var race := content.characters.race_by_id(character.race_id) if content != null else null
@@ -73,7 +80,9 @@ func _advance_age_day(party: PartyState, content: RealmzContent) -> Array[Domain
 		if race == null or caste == null: continue
 		var aging := _characters.advance_age_days(character, race, caste, 1)
 		if aging != null and aging.changed_group():
-			events.append(DomainEvent.new(&"character_age_changed", aging.event_payload(character, race)))
+			var update := aging.update_body(character, race)
+			events.append(DomainEvent.new(&"character_age_changed", update.to_data()))
+			clock_result.age_updates.append(update)
 	return events
 
 

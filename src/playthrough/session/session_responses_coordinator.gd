@@ -433,8 +433,9 @@ func _finish_prompted_combat_result(result: CombatFlowResult, pending_interactio
 	return finish_combat_result(result)
 
 
-func finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionCoordinatorResult:
-	var updates := CharacterAgingResult.update_bodies(events)
+func finish_with_age_updates(events: Array[DomainEvent], updates: Array[AgeUpdateRequestBody], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionCoordinatorResult:
+	if resume_kind == &"combat-monster-turns" and _context.state.combat != null:
+		_context.state.combat.pending_operations.age_updates.clear()
 	if updates.is_empty():
 		if resume_kind == &"post-move":
 			_context.set_continuation(resume_continuation.copy())
@@ -497,10 +498,10 @@ func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> Se
 	if not continued.ok:
 		return SessionCoordinatorResult.failed(continued.error_code, continued.error_message, events)
 	events.append_array(continued.events)
-	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
-		return finish_with_age_updates(events, "combat-monster-turns")
-	if not _context.event_payload(continued.events, &"monster_death_macro_requested").is_empty():
-		return _context.scenario().start_session_death_macro(events)
+	if not continued.age_updates.is_empty():
+		return finish_with_age_updates(events, continued.age_updates, &"combat-monster-turns")
+	if continued.death_macro != null:
+		return _context.scenario().start_session_death_macro(continued.death_macro, events)
 	if _context.state.combat.round_cursor != null and _context.state.combat.round_cursor.phase == &"battle-macro":
 		return SessionBattleMacroWorkflow.start(_context, events)
 	if continued.completed:
@@ -564,7 +565,6 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionCoo
 	if continuation.runtime_continuation == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "The battle reward continuation is unavailable.")
 	var return_continuation := _context.battle_return_continuation.copy()
-	var battle_outcome := _context.state.combat.outcome
 	var result := _context.runtime_api.resume_classic(continuation.runtime_continuation, response, response.request_id)
 	if result.is_rejection:
 		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
@@ -576,7 +576,7 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionCoo
 		return SessionCoordinatorResult.waiting(_context.session_interaction, result.events)
 	_context.session_interaction = null
 	_context.session_continuation.clear()
-	return _context.scenario().finish_after_direct_battle(result.events, return_continuation, battle_outcome)
+	return _context.scenario().finish_after_direct_battle(result.events, return_continuation, result.battle_return)
 
 
 func finish_magic_transition(result: MagicTransitionResult) -> SessionCoordinatorResult:
@@ -585,24 +585,12 @@ func finish_magic_transition(result: MagicTransitionResult) -> SessionCoordinato
 	if not result.ok:
 		return SessionCoordinatorResult.rejected(result.error_code, result.error_message) if result.is_rejection else SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if result.completed:
-		if result.process_age_updates:
-			return _finish_magic_workflow(SessionWorkflowResult.completed(result.events))
-		return SessionCoordinatorResult.completed(result.events)
+		return finish_with_age_updates(result.events, result.age_updates, &"completed")
 	if result.continuation == null or result.continuation.is_empty() or result.interaction == null:
 		return SessionCoordinatorResult.failed(&"invalid_workflow_result", "The magic workflow returned an incomplete interaction transition.")
 	_context.set_continuation(result.continuation)
 	_context.session_interaction = result.interaction
 	return SessionCoordinatorResult.waiting(_context.session_interaction, result.events)
-
-
-func _finish_magic_workflow(result: SessionWorkflowResult) -> SessionCoordinatorResult:
-	if result == null:
-		return SessionCoordinatorResult.failed(&"invalid_workflow_result", "The magic workflow returned no result.")
-	if not result.ok:
-		return SessionCoordinatorResult.failed(result.error_code, result.error_message)
-	if not CharacterAgingResult.update_payloads(result.events).is_empty():
-		return finish_with_age_updates(result.events, &"completed")
-	return SessionCoordinatorResult.completed(result.events)
 
 
 func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionCoordinatorResult:
@@ -622,10 +610,10 @@ func finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
 		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message)
-	if not CharacterAgingResult.update_payloads(result.events).is_empty():
-		return finish_with_age_updates(result.events, &"combat-monster-turns")
-	if not _context.event_payload(result.events, &"monster_death_macro_requested").is_empty():
-		return _context.scenario().start_session_death_macro(result.events)
+	if not result.age_updates.is_empty():
+		return finish_with_age_updates(result.events, result.age_updates, &"combat-monster-turns")
+	if result.death_macro != null:
+		return _context.scenario().start_session_death_macro(result.death_macro, result.events)
 	if _context.state.combat != null and _context.state.combat.round_cursor != null and _context.state.combat.round_cursor.phase == &"battle-macro":
 		return SessionBattleMacroWorkflow.start(_context, result.events)
 	var pending := _context.state.combat.pending_reaction if _context.state.combat != null else null

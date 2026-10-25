@@ -73,6 +73,12 @@ static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> S
 
 
 static func _decode_clock(data: Dictionary, depth: int) -> ScenarioRuntimeContinuation:
+	if data.size() != 4: return _decode_legacy_clock(data, depth)
+	var scan := ScenarioClockScanBody.from_data(data)
+	return scan.as_continuation() if scan != null and scan.age_index >= 1 and scan.scan_pending and scan.timer_index == 0 else null
+
+
+static func _decode_legacy_clock(data: Dictionary, depth: int) -> ScenarioRuntimeContinuation:
 	if data.size() != 8 or not data.has_all(["updates", "ageIndex", "scanPending", "timerIndex", "programId", "timerVm", "resumeSlot", "returnProgramId"]) or not data["updates"] is Array:
 		return null
 	var update_data: Array = data["updates"]
@@ -94,7 +100,7 @@ static func _decode_clock(data: Dictionary, depth: int) -> ScenarioRuntimeContin
 	var timer_vm_data: Dictionary = data["timerVm"]
 	if not timer_vm_data.is_empty():
 		body.timer_vm = ScenarioVmSnapshot.from_data(timer_vm_data, depth + 1)
-		if body.timer_vm == null or body.timer_vm.halted or body.timer_vm.frames.is_empty() or not body.scan_pending or body.program_id.is_empty() or body.timer_index < 1 or body.age_index != body.updates.size(): return null
+		if body.timer_vm == null or body.timer_vm.halted or not body.timer_vm.has_execution_records() or not body.scan_pending or body.program_id.is_empty() or body.timer_index < 1 or body.age_index != body.updates.size(): return null
 	elif not body.program_id.is_empty() or body.age_index < 1 or body.age_index > body.updates.size():
 		return null
 	return ScenarioRuntimeContinuation.new(ScenarioRuntimeContinuation.CLASSIC_CLOCK, body)
@@ -295,7 +301,14 @@ static func _decode_opcode_death_macro(data: Dictionary, depth: int) -> Scenario
 	if remaining.size() != _collection_size(remaining_data) or remaining.size() > 100:
 		return null
 	var macro_vm := ScenarioVmSnapshot.from_data(data.get("macroVm"), depth + 1)
-	return ScenarioCombatContinuations.opcode_death_macro(battle_id, combatant_id, program_id, remaining, macro_vm) if macro_vm != null else null
+	if macro_vm == null: return null
+	var body := ScenarioOpcodeDeathContinuationBody.new()
+	body.battle_id = battle_id
+	body.combatant_id = combatant_id
+	body.program_id = program_id
+	body.remaining_combatant_ids.assign(remaining)
+	body.macro_vm = macro_vm
+	return ScenarioRuntimeContinuation.new(ScenarioRuntimeContinuation.CLASSIC_OPCODE_DEATH_MACRO, body)
 
 
 static func _safe_combat_kinds() -> Array[StringName]:

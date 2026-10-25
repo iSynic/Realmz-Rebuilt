@@ -117,7 +117,7 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: SpellIn
 	var target_ids := field_spell_target_ids(context, character, spell, scroll.power, payload.target_ids, payload.target_id)
 	var required_count := field_spell_target_count(context, spell, scroll.power)
 	if target_ids.size() == required_count:
-		return MagicTransitionResult.committed(commit_field_scroll(context, character.id, payload.scroll_slot, spell.id, scroll.power, target_ids), true)
+		return MagicTransitionResult.committed(commit_field_scroll(context, character.id, payload.scroll_slot, spell.id, scroll.power, target_ids))
 	if not target_ids.is_empty():
 		return MagicTransitionResult.rejected(&"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
 	var targeting := TargetingContinuationBody.new()
@@ -164,7 +164,7 @@ static func resume_field_scroll(context: SessionWorkflowContext, targeting: Targ
 	if spell == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The scroll spell awaiting a target is unavailable.")
 	var resolved_targets := field_spell_target_ids(context, character, spell, targeting.power, target_ids, "")
-	return MagicTransitionResult.committed(commit_field_scroll(context, targeting.character_id, targeting.scroll_slot, targeting.spell_id, targeting.power, resolved_targets), true)
+	return MagicTransitionResult.committed(commit_field_scroll(context, targeting.character_id, targeting.scroll_slot, targeting.spell_id, targeting.power, resolved_targets))
 
 
 static func commit_field_scroll(context: SessionWorkflowContext, character_id: String, slot_index: int, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionWorkflowResult:
@@ -186,8 +186,8 @@ static func commit_field_scroll(context: SessionWorkflowContext, character_id: S
 	if not character.clear_scroll(slot_index):
 		return SessionWorkflowResult.failed(&"scroll_commit_failed", "The resolved scroll could not be removed from its case.")
 	var events: Array[DomainEvent] = [DomainEvent.new(&"scroll_used", {"characterId": character.id, "slot": slot_index, "spellId": spell.id, "power": power, "source": "classic"})]
-	FieldMagicResolver.append_events(context, events, character, spell, power, resolution, &"classic-scroll", &"classic-scroll", &"scroll_spell_resolved")
-	return SessionWorkflowResult.completed(events)
+	var updates := FieldMagicResolver.append_events(context, events, character, spell, power, resolution, &"classic-scroll", &"classic-scroll", &"scroll_spell_resolved")
+	return SessionWorkflowResult.completed(events, updates)
 
 
 static func field_spell_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
@@ -252,7 +252,7 @@ static func begin_field_spell(context: SessionWorkflowContext, payload: SpellInt
 	var target_ids := field_spell_target_ids(context, character, spell, payload.power, payload.target_ids, payload.target_id)
 	var required_count := field_spell_target_count(context, spell, payload.power)
 	if target_ids.size() == required_count:
-		return MagicTransitionResult.committed(commit_field_spell(context, character.id, spell.id, payload.power, target_ids), true)
+		return MagicTransitionResult.committed(commit_field_spell(context, character.id, spell.id, payload.power, target_ids))
 	if not target_ids.is_empty():
 		return MagicTransitionResult.rejected(&"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
 	var targeting := TargetingContinuationBody.new()
@@ -279,7 +279,7 @@ static func resume_field_spell(context: SessionWorkflowContext, targeting: Targe
 	if spell == null:
 		return MagicTransitionResult.failed(&"invalid_session_continuation", "The field spell awaiting a target is unavailable.")
 	var resolved_targets := field_spell_target_ids(context, character, spell, targeting.power, target_ids, "")
-	return MagicTransitionResult.committed(commit_field_spell(context, targeting.character_id, targeting.spell_id, targeting.power, resolved_targets), true)
+	return MagicTransitionResult.committed(commit_field_spell(context, targeting.character_id, targeting.spell_id, targeting.power, resolved_targets))
 
 
 static func commit_field_spell(context: SessionWorkflowContext, character_id: String, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionWorkflowResult:
@@ -300,8 +300,8 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 		return SessionWorkflowResult.failed(&"field_spell_failed", "The field spell could not be resolved.")
 	var events: Array[DomainEvent] = [DomainEvent.new(&"field_spell_cast", {"characterId": character.id, "spellId": spell.id, "power": power, "cost": resolution.cost, "source": "classic"})]
 	character.lifetime_record.record_spell_cast()
-	FieldMagicResolver.append_events(context, events, character, spell, power, resolution, &"classic-field-spell", &"classic", &"field_spell_resolved")
-	return SessionWorkflowResult.completed(events)
+	var updates := FieldMagicResolver.append_events(context, events, character, spell, power, resolution, &"classic-field-spell", &"classic", &"field_spell_resolved")
+	return SessionWorkflowResult.completed(events, updates)
 
 
 

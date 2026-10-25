@@ -3,7 +3,9 @@
 class_name ScenarioVmSnapshot
 extends RefCounted
 
-const SCHEMA_VERSION: int = 4
+const SCHEMA_VERSION: int = 5
+
+var execution: ScenarioExecutionState
 
 var frames: Array[ScenarioFrame] = []
 var pending_request: InteractionRequest
@@ -24,15 +26,12 @@ var legacy_values: bool = false
 var legacy_step_count: int = 0
 
 
-func rekey_pending_request(request_id: String, depth: int = 0) -> bool:
-	if depth > 32 or pending_request == null: return false
-	pending_request.request_id = request_id
-	var runtime := pending_continuation.runtime if pending_continuation != null else null
-	var nested := runtime.nested_vm() if runtime != null else null
-	return nested == null or nested.rekey_pending_request(request_id, depth + 1)
+func has_execution_records() -> bool:
+	return not execution.records.is_empty() if execution != null else not frames.is_empty()
 
 
 func to_data() -> Dictionary:
+	if execution != null: return execution.to_data()
 	var frame_data: Array[Dictionary] = []
 	for frame: ScenarioFrame in frames:
 		frame_data.append(frame.to_data(not legacy_values))
@@ -42,7 +41,7 @@ func to_data() -> Dictionary:
 	var data := {
 		# An unrestored legacy snapshot keeps its schema-3 shape so nested copies
 		# retain the declared-type coercion owed when the VM finally restores it.
-		"schemaVersion": 3 if legacy_values else SCHEMA_VERSION,
+		"schemaVersion": 3 if legacy_values else 4,
 		"frames": frame_data,
 		"pendingRequest": pending_data,
 		"pendingContinuation": null if pending_continuation == null else pending_continuation.to_data(),
@@ -67,9 +66,11 @@ static func from_data(value: Variant, depth: int = 0) -> ScenarioVmSnapshot:
 	if depth > 32 or not value is Dictionary:
 		return null
 	var data: Dictionary = value
-	if not ((data.size() == 9 and data.get("schemaVersion") == 2) or (data.size() == 14 and (data.get("schemaVersion") == 3 or data.get("schemaVersion") == SCHEMA_VERSION) and data.get("classicRecordId") is String)):
+	if data.get("schemaVersion") == SCHEMA_VERSION:
+		return from_execution(data, depth)
+	if not ((data.size() == 9 and data.get("schemaVersion") == 2) or (data.size() == 14 and (data.get("schemaVersion") == 3 or data.get("schemaVersion") == 4) and data.get("classicRecordId") is String)):
 		return null
-	var typed: bool = data.get("schemaVersion") == SCHEMA_VERSION
+	var typed: bool = data.get("schemaVersion") == 4
 	for field: String in ["frames", "pendingRequest", "pendingContinuation", "trace", "requestCounter", "nativeInvocationBegun" if typed else "stepCount", "halted", "lastOutcome"]:
 		if not data.has(field):
 			return null
@@ -78,17 +79,8 @@ static func from_data(value: Variant, depth: int = 0) -> ScenarioVmSnapshot:
 	if not data["frames"] is Array or not (data["pendingContinuation"] == null or data["pendingContinuation"] is Dictionary) or not data["trace"] is Array or saved_request_counter < 0 or not native_begun is bool or not data["halted"] is bool:
 		return null
 	var snapshot := ScenarioVmSnapshot.new()
-	snapshot.legacy_values = data["schemaVersion"] != SCHEMA_VERSION
-	if data["schemaVersion"] != 2:
-		if not data.has_all(["nativeContext", "secondaryDoor", "noSecondDoor", "returnedEarly"]): return null
-		for field: String in ["secondaryDoor", "noSecondDoor", "returnedEarly"]:
-			if not data.get(field) is bool: return null
-		if data.get("nativeContext") != null:
-			snapshot.native_context = ScenarioExecutionContextCodec.decode(data["nativeContext"])
-			if snapshot.native_context == null or not snapshot.native_context.is_native_mode_one(): return null
-		snapshot.secondary_door = data["secondaryDoor"]
-		snapshot.no_second_door = data["noSecondDoor"]
-		snapshot.returned_early = data["returnedEarly"]
+	snapshot.legacy_values = data["schemaVersion"] != 4
+	if data["schemaVersion"] != 2 and not snapshot.read_legacy_native_state(data): return null
 	for frame_data: Variant in data["frames"]:
 		var frame := ScenarioFrame.from_data(frame_data, not snapshot.legacy_values)
 		if frame == null:
@@ -122,6 +114,45 @@ static func from_data(value: Variant, depth: int = 0) -> ScenarioVmSnapshot:
 		snapshot.last_outcome = outcome["value"]
 	snapshot.classic_record_id = data.get("classicRecordId", "")
 	return snapshot
+
+
+func read_legacy_native_state(data: Dictionary) -> bool:
+	if not data.has_all(["nativeContext", "secondaryDoor", "noSecondDoor", "returnedEarly"]): return false
+	for field: String in ["secondaryDoor", "noSecondDoor", "returnedEarly"]:
+		if not data.get(field) is bool: return false
+	if data.get("nativeContext") != null:
+		native_context = ScenarioExecutionContextCodec.decode(data["nativeContext"])
+		if native_context == null or not native_context.is_native_mode_one(): return false
+	secondary_door = data["secondaryDoor"]
+	no_second_door = data["noSecondDoor"]
+	returned_early = data["returnedEarly"]
+	return true
+
+
+static func from_execution(data: Dictionary, depth: int) -> ScenarioVmSnapshot:
+	var state := ScenarioExecutionState.from_data(data, depth)
+	if state == null: return null
+	var current := ScenarioVmSnapshot.new()
+	current.set_execution(state)
+	return current
+
+
+## Transitional read projections for session validators; only execution is written.
+func set_execution(state: ScenarioExecutionState) -> void:
+	execution = state
+	pending_request = state.pending_request
+	halted = state.halted
+	request_counter = state.request_counter
+	trace = state.trace.duplicate(true)
+	last_outcome = state.last_outcome
+	classic_record_id = state.classic.code.program_id if state.classic.code != null else ""
+	secondary_door = state.completion.header_suppressed
+	no_second_door = state.completion.recheck_suppressed
+	returned_early = state.completion.exit_path == ScenarioNativeCompletion.Exit.NATIVE_RETURN
+	if state.pending_request == null: return
+	var record: ScenarioExecutionRecord = state.records.back()
+	var call := record.operation
+	pending_continuation = ScenarioVmPendingContinuation.safe(call.continuation, state.records.size() - 2, call.result_target) if call.return_kind == ScenarioOperationExecutionRecord.ReturnKind.SAFE else ScenarioVmPendingContinuation.classic(call.continuation)
 
 
 static func _integer(value: Variant) -> int:

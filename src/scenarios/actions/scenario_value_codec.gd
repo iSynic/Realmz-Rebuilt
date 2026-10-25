@@ -31,13 +31,14 @@ static func is_safe(value: Variant, depth: int = 0) -> bool:
 	return false
 
 
-static func encode(value: Variant) -> Dictionary:
+static func encode(value: Variant, decimal_integers: bool = false) -> Dictionary:
 	if value == null:
 		return {"type": "null"}
 	if value is bool:
 		return {"type": "bool", "value": value}
 	if value is int:
-		return {"type": "int", "value": value}
+		# JSON numbers pass through a double. Decimal text retains all 64 bits.
+		return {"type": "int", "value": str(value) if decimal_integers else value}
 	if value is float:
 		return {"type": "float", "value": value}
 	if value is String or value is StringName:
@@ -46,7 +47,7 @@ static func encode(value: Variant) -> Dictionary:
 	if value is Array:
 		var entries: Array[Dictionary] = []
 		for child: Variant in value:
-			entries.append(encode(child))
+			entries.append(encode(child, decimal_integers))
 		return {"type": "array", "value": entries}
 	if not value is Dictionary:
 		push_error("Safe Action value of type %s cannot be encoded; it is saved as null." % type_string(typeof(value)))
@@ -56,12 +57,12 @@ static func encode(value: Variant) -> Dictionary:
 	var keys: Array = record.keys()
 	keys.sort()
 	for key: Variant in keys:
-		fields[key] = encode(record[key])
+		fields[key] = encode(record[key], decimal_integers)
 	return {"type": "record", "value": fields}
 
 
 ## Returns {"ok": bool, "value": Variant}; depth is bounded at 32.
-static func decode(value: Variant, depth: int = 0) -> Dictionary:
+static func decode(value: Variant, depth: int = 0, decimal_integers: bool = false) -> Dictionary:
 	if depth > 32 or not value is Dictionary:
 		return {"ok": false}
 	var data: Dictionary = value
@@ -73,7 +74,7 @@ static func decode(value: Variant, depth: int = 0) -> Dictionary:
 		"bool":
 			return {"ok": data.size() == 2 and data.get("value") is bool, "value": data.get("value")}
 		"int":
-			var integer: Variant = _integer(data.get("value"))
+			var integer: Variant = _integer(data.get("value"), decimal_integers)
 			return {"ok": data.size() == 2 and integer != null, "value": integer}
 		"float":
 			var number: Variant = data.get("value")
@@ -90,7 +91,7 @@ static func decode(value: Variant, depth: int = 0) -> Dictionary:
 				return {"ok": false}
 			var entries: Array = []
 			for child: Variant in items:
-				var decoded := decode(child, depth + 1)
+				var decoded := decode(child, depth + 1, decimal_integers)
 				if not decoded["ok"]:
 					return {"ok": false}
 				entries.append(decoded["value"])
@@ -105,7 +106,7 @@ static func decode(value: Variant, depth: int = 0) -> Dictionary:
 			for key: Variant in record.keys():
 				if not key is String:
 					return {"ok": false}
-				var decoded := decode(record[key], depth + 1)
+				var decoded := decode(record[key], depth + 1, decimal_integers)
 				if not decoded["ok"]:
 					return {"ok": false}
 				fields[key] = decoded["value"]
@@ -113,11 +114,19 @@ static func decode(value: Variant, depth: int = 0) -> Dictionary:
 	return {"ok": false}
 
 
-static func _integer(value: Variant) -> Variant:
+static func _integer(value: Variant, decimal_integers: bool) -> Variant:
+	if value is String and decimal_integers:
+		var text: String = value
+		if text.length() > 20 or not text.is_valid_int():
+			return null
+		var number := text.to_int()
+		return number if str(number) == text else null
+	if decimal_integers:
+		return null
 	if value is int:
 		return value
 	if value is float:
 		var number: float = value
-		if is_equal_approx(number, roundf(number)):
-			return int(number)
+		# Numeric payloads are the schema-4 representation, retained for reading.
+		return int(number) if is_equal_approx(number, roundf(number)) else null
 	return null

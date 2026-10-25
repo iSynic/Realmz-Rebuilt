@@ -31,9 +31,11 @@ static func encode(combat: CombatState) -> Dictionary:
 		"attackedActorIds": combat.actor_statuses.attacked_actor_ids(),
 		"bleedingCharacterIds": combat.actor_statuses.bleeding_character_ids(),
 		"turnUndeadActorIds": combat.actor_statuses.turn_undead_actor_ids(),
-		"spellDeathMacroQueue": combat.spell_runtime.death_macro_queue(),
-		"spellMacroActorId": combat.spell_runtime.macro_actor_id(),
-		"spellMacroAdvancesTurn": combat.spell_runtime.macro_advances_turn(),
+		"spellDeathMacroQueue": combat.death_macros.ids(),
+		"spellDeathMacroFacts": combat.death_macros.facts().map(func(request: CombatDeathMacroRequest) -> Dictionary: return request.to_data()),
+		"pendingOperations": combat.pending_operations.to_data(),
+		"spellMacroActorId": combat.death_macros.actor_id(),
+		"spellMacroAdvancesTurn": combat.death_macros.advances_turn(),
 		"persistentFields": combat.spell_runtime.persistent_fields().map(func(field: PersistentCombatField) -> Dictionary: return field.to_data()),
 		"persistentFieldCollisionSlots": combat.spell_runtime.field_collision_slots(),
 		"battlefield": null if combat.battlefield == null else BattlefieldStateCodec.to_data(combat.battlefield),
@@ -65,7 +67,7 @@ static func decode(data: Variant) -> CombatState:
 		return null
 	if not result.restore_classic_counters(fields.get("classicEnemyCounters")):
 		return null
-	if not _restore_actor_statuses(result, data, order) or not _restore_spell_runtime(result, data, order):
+	if not _restore_actor_statuses(result, data, order) or not _restore_macro_state(result, data, order):
 		return null
 	if not _restore_inventory_and_modes(result, data, order) or not _restore_pending_state(result, data):
 		return null
@@ -159,18 +161,33 @@ static func _apply_actor_marker(statuses: CombatActorStatusState, actor_id: Stri
 	return false
 
 
-static func _restore_spell_runtime(result: CombatState, data: Dictionary, order: Array[String]) -> bool:
+static func _restore_macro_state(result: CombatState, data: Dictionary, order: Array[String]) -> bool:
 	var queue: Variant = data.get("spellDeathMacroQueue", [])
 	var actor: Variant = data.get("spellMacroActorId", "")
 	var advances: Variant = data.get("spellMacroAdvancesTurn", false)
-	if not queue is Array or queue.size() > CombatSpellRuntimeState.MAX_DEATH_MACROS or not actor is String or not advances is bool:
+	if not queue is Array or queue.size() > CombatDeathMacroState.MAX_DEATH_MACROS or not actor is String or not advances is bool:
 		return false
 	var loaded_queue: Array[String] = []
 	for combatant_id: Variant in queue:
 		if not combatant_id is String or combatant_id.is_empty() or result.roster.monster_by_id(combatant_id) == null:
 			return false
 		loaded_queue.append(combatant_id)
-	result.spell_runtime.restore_death_macro_sequence(loaded_queue, actor, advances)
+	var facts: Array[CombatDeathMacroRequest] = []
+	if data.has("spellDeathMacroFacts"):
+		if not data["spellDeathMacroFacts"] is Array: return false
+		var rows: Array = data["spellDeathMacroFacts"]
+		if rows.size() != loaded_queue.size(): return false
+		for index: int in rows.size():
+			var request := CombatDeathMacroRequest.from_data(rows[index])
+			if request == null or request.combatant_id != loaded_queue[index] or not request.queued_by_spell: return false
+			facts.append(request)
+	else:
+		for id: String in loaded_queue: facts.append(CombatDeathMacroRequest.legacy(id))
+	result.death_macros.restore(facts, actor, advances)
+	result.pending_operations = CombatPendingOperations.from_data(data.get("pendingOperations",{"deathMacro":null,"ageUpdates":[]}))
+	if result.pending_operations == null: return false
+	var pending := result.pending_operations.death_macro
+	if pending != null and result.roster.monster_by_id(pending.combatant_id) == null: return false
 	return _restore_persistent_fields(result, data, order)
 
 
@@ -274,7 +291,7 @@ static func _loaded_state_is_consistent(result: CombatState) -> bool:
 	if result.turns.active_turn != null and (result.completed or result.turns.active_turn.actor_id != result.turns.active_actor_id()): return false
 	if result.turns.active_turn != null and not result.turns.active_turn.staged_item_instance_id.is_empty() and result.roster.monster_by_id(result.turns.active_turn.actor_id) != null: return false
 	if result.turns.active_turn != null and result.turns.active_turn.cast_commitment != null:
-		if result.roster.monster_by_id(result.turns.active_turn.actor_id) != null or result.pending_reaction != null or result.pending_monster_attack != null or not result.spell_runtime.pending_death_macro_id().is_empty(): return false
+		if result.roster.monster_by_id(result.turns.active_turn.actor_id) != null or result.pending_reaction != null or result.pending_monster_attack != null or not result.death_macros.pending_id().is_empty(): return false
 	if not _undo_is_consistent(result) or not _spell_sequence_is_consistent(result) or not _reaction_is_consistent(result): return false
 	return _pending_attack_is_consistent(result)
 
@@ -286,10 +303,11 @@ static func _undo_is_consistent(result: CombatState) -> bool:
 
 
 static func _spell_sequence_is_consistent(result: CombatState) -> bool:
-	var queue := result.spell_runtime.death_macro_queue()
-	var actor_id := result.spell_runtime.macro_actor_id()
-	if queue.is_empty() != actor_id.is_empty() or not actor_id.is_empty() and (result.completed or result.turns.active_actor_id() != actor_id): return false
-	return not queue.is_empty() or not result.spell_runtime.macro_advances_turn()
+	var queue := result.death_macros.ids()
+	var actor_id := result.death_macros.actor_id()
+	if queue.is_empty() and not actor_id.is_empty() or not queue.is_empty() and result.completed: return false
+	if not actor_id.is_empty() and result.turns.active_actor_id() != actor_id: return false
+	return not actor_id.is_empty() or not result.death_macros.advances_turn()
 
 
 static func _reaction_is_consistent(result: CombatState) -> bool:

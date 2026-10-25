@@ -1,0 +1,3855 @@
+{
+  "schemaVersion": 1,
+  "evidence": "castle-runtime",
+  "baseCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "instrumentationCommit": "37027cc85970070b6c4478053fb5883e86af92ef",
+  "sourceFingerprint": "git:37027cc85970070b6c4478053fb5883e86af92ef;clean",
+  "executableSha256": "acfada9c208934720b6587b6194b16b94ec33ea3d36849ff6fecf66927b0cefa",
+  "preparation": {
+    "nativeEntryMode": -1,
+    "selectedActionPoint": "Data DD:0:52",
+    "nativeLoaders": true,
+    "syntheticRecordFiles": [
+      "Data DD",
+      "Data ED3",
+      "Data EDCD"
+    ],
+    "doorRecordBytes": 40,
+    "extraCodeRecordBytes": 10,
+    "byteOrder": "big-endian",
+    "nativeTraceProgramIdIsHeaderOwner": true
+  },
+  "bounds": "Synthetic native control evidence, including an explicit mode -1 Keep Codes encounter epilogue. Per-case observation overrides identify newer instrumentation, entry modes and RNG preparation; the ordinary-movement cases enter mode zero. Not ordinary campaign, save compatibility or campaign certification. Slot 8 is an unsafe native access, not a defined no-op.",
+  "cases": [
+    {
+      "name": "retained-positive-gosub",
+      "root": [
+        [
+          -64,
+          1200
+        ],
+        [
+          0,
+          901
+        ]
+      ],
+      "programs": {
+        "512": [
+          [
+            64,
+            1201
+          ],
+          [
+            0,
+            902
+          ],
+          [
+            111,
+            0
+          ]
+        ],
+        "513": [
+          [
+            0,
+            903
+          ],
+          [
+            111,
+            0
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          -1,
+          -1,
+          0,
+          512,
+          512
+        ],
+        "1201": [
+          -1,
+          -1,
+          0,
+          513,
+          513
+        ]
+      },
+      "expectedTrace": [
+        [
+          -64,
+          1200,
+          0
+        ],
+        [
+          64,
+          1201,
+          1
+        ],
+        [
+          0,
+          903,
+          2
+        ],
+        [
+          111,
+          0,
+          2
+        ],
+        [
+          0,
+          902,
+          1
+        ],
+        [
+          111,
+          0,
+          1
+        ],
+        [
+          0,
+          901,
+          0
+        ]
+      ],
+      "rngDraws": 0,
+      "observedOutsideNativeSlots": [],
+      "files": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "bd2bca208f5fa9784c1eabaccca0c220d7b675ff40b767d46b4e38ce6785e83b"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "1d39f6e8130c32171f06f4b93a8b452898ca3c13dffc7dc9d48433213022da34"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "a8f3c51131f1a2ec7ba0dc489d1670fed23395b705ad4727bf075b3ecb3a84ab"
+        }
+      ]
+    },
+    {
+      "name": "natural-end-does-not-return",
+      "root": [
+        [
+          -64,
+          1200
+        ],
+        [
+          0,
+          911
+        ]
+      ],
+      "programs": {
+        "512": [
+          [
+            0,
+            912
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          -1,
+          -1,
+          0,
+          512,
+          512
+        ]
+      },
+      "expectedTrace": [
+        [
+          -64,
+          1200,
+          0
+        ],
+        [
+          0,
+          912,
+          1
+        ]
+      ],
+      "rngDraws": 0,
+      "observedOutsideNativeSlots": [],
+      "files": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "c51d460e30d8d891748004fc50cff8b234c7146aa393207d097889d6d60513a7"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "cef0bd623014d04e7bb2939e9c3b1b4a4970a3ecffd3607c0c3e784befaf455a"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "d847305dc37db27b537d4f3f5734b3d13f11cc2262a9b62768de9c8041393744"
+        }
+      ]
+    },
+    {
+      "name": "112-discards-return",
+      "root": [
+        [
+          -64,
+          1200
+        ],
+        [
+          0,
+          921
+        ]
+      ],
+      "programs": {
+        "512": [
+          [
+            112,
+            0
+          ],
+          [
+            111,
+            0
+          ],
+          [
+            0,
+            922
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          -1,
+          -1,
+          0,
+          512,
+          512
+        ]
+      },
+      "expectedTrace": [
+        [
+          -64,
+          1200,
+          0
+        ],
+        [
+          112,
+          0,
+          1
+        ],
+        [
+          111,
+          0,
+          0
+        ],
+        [
+          0,
+          922,
+          0
+        ]
+      ],
+      "rngDraws": 0,
+      "observedOutsideNativeSlots": [],
+      "files": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "89b819ec2a8100ef25b634f1d10ab303630f3d249b16ba06bde1f8a67b4c0c5e"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "2a83393c36c4b6fa7cb8791f3c9d67f438da5e95f9a8fdeab5093ee19b86e042"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "d847305dc37db27b537d4f3f5734b3d13f11cc2262a9b62768de9c8041393744"
+        }
+      ]
+    },
+    {
+      "name": "39-replaces-without-push",
+      "root": [
+        [
+          -39,
+          512
+        ],
+        [
+          0,
+          931
+        ]
+      ],
+      "programs": {
+        "512": [
+          [
+            111,
+            0
+          ],
+          [
+            0,
+            932
+          ]
+        ]
+      },
+      "extraCode": {},
+      "expectedTrace": [
+        [
+          -39,
+          512,
+          0
+        ],
+        [
+          111,
+          0,
+          0
+        ],
+        [
+          0,
+          932,
+          0
+        ]
+      ],
+      "rngDraws": 0,
+      "observedOutsideNativeSlots": [],
+      "files": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "dc7ead83aacaeeb60003f00e3e71373a19ab0aed058fbbdff86981a3e6697921"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "487bd00b291770adb71e0e4f06419a806f723c4a8c837381782065564705d7d3"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0"
+        }
+      ]
+    },
+    {
+      "name": "58-forcebranch-without-push",
+      "root": [
+        [
+          -58,
+          1200
+        ],
+        [
+          0,
+          941
+        ]
+      ],
+      "programs": {
+        "512": [
+          [
+            111,
+            0
+          ],
+          [
+            0,
+            942
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          -32768,
+          1,
+          0,
+          512,
+          0
+        ]
+      },
+      "expectedTrace": [
+        [
+          -58,
+          1200,
+          0
+        ],
+        [
+          111,
+          0,
+          0
+        ],
+        [
+          0,
+          942,
+          0
+        ]
+      ],
+      "rngDraws": 0,
+      "observedOutsideNativeSlots": [],
+      "files": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "b151c4386eddaf083c73fa7cfd42e6587d6fee2018a4b519616938ef106811a3"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "4391a8a0f244e375703076bb310ce3e52cf5c55567721c7972a9526608f83430"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "f1da005d3ea8530166ab6c8fbfe68b89fa79011f531fc605e252038c69622fb9"
+        }
+      ]
+    },
+    {
+      "name": "empty-111-falls-through",
+      "root": [
+        [
+          111,
+          0
+        ],
+        [
+          0,
+          951
+        ]
+      ],
+      "programs": {},
+      "extraCode": {},
+      "expectedTrace": [
+        [
+          111,
+          0,
+          0
+        ],
+        [
+          0,
+          951,
+          0
+        ]
+      ],
+      "rngDraws": 0,
+      "observedOutsideNativeSlots": [],
+      "files": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "6c169fc55f8894299f69ab7355ff2c1b0825126c01073652b88edefb2db5e583"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0"
+        }
+      ]
+    },
+    {
+      "name": "slot-seven-unsafe-native-fetch",
+      "root": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          -64,
+          1200
+        ]
+      ],
+      "programs": {
+        "512": [
+          [
+            111,
+            0
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          -1,
+          -1,
+          0,
+          512,
+          512
+        ]
+      },
+      "expectedTrace": [
+        [
+          -64,
+          1200,
+          0
+        ],
+        [
+          111,
+          0,
+          1
+        ]
+      ],
+      "rngDraws": 0,
+      "observedOutsideNativeSlots": [
+        8
+      ],
+      "files": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "8cc30d8878517fe18aa0f7e93711fb0d14ce0d0052fa903c91296e9cda93bd94"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "fb88d3da606d3af55d1a6d10fec388cdfcdc7426e30ec8587f8bf5f5018b009f"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "d847305dc37db27b537d4f3f5734b3d13f11cc2262a9b62768de9c8041393744"
+        }
+      ]
+    },
+    {
+      "name": "macro-keepcodes-enters-encounter-epilogue",
+      "root": [
+        [
+          4,
+          0
+        ]
+      ],
+      "programs": {
+        "simple:0:result:0": [],
+        "simple:0:result:1": [],
+        "simple:0:result:2": [],
+        "simple:0:result:3": [
+          [
+            0,
+            971
+          ],
+          [
+            42,
+            1200
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          100,
+          2,
+          0,
+          0,
+          0
+        ]
+      },
+      "automaticSimpleTwice": true,
+      "drawCount": 2,
+      "rngTrace": [
+        {
+          "drawIndex": 0,
+          "range": 100,
+          "raw": 24027,
+          "result": 74,
+          "tag": "classic.percent-branch"
+        },
+        {
+          "drawIndex": 1,
+          "range": 100,
+          "raw": -11021,
+          "result": 34,
+          "tag": "classic.percent-branch"
+        }
+      ],
+      "expectedTrace": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          971,
+          0
+        ],
+        [
+          42,
+          1200,
+          0
+        ],
+        [
+          0,
+          971,
+          0
+        ],
+        [
+          42,
+          1200,
+          0
+        ]
+      ],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "sharedRngCheckpoint": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "finalRng": {
+          "drawCount": 2,
+          "state": 1623577843
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 100,
+            "raw": 24027,
+            "result": 74
+          },
+          {
+            "drawIndex": 1,
+            "range": 100,
+            "raw": -11021,
+            "result": 34
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "06ce2ec4ee142b197d2ba2e60a8b66ef10b545adeba948fa303ad4c72cc258c9"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "2bf6883efd8cb6ce9dc3858382733c595f77a13945ebaf5d8544380a06c34b23"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          }
+        ],
+        "markers": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 971,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 971,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 1,
+            "slot": 0,
+            "stackDepth": 0
+          }
+        ],
+        "semanticReady": true,
+        "tagMapping": "Native Rand calls at opcode 42 map to classic.percent-branch; ranges, raw values, results and order are observed unchanged."
+      }
+    },
+    {
+      "name": "fresh-complex-buffer-keep-result",
+      "root": [
+        [
+          44,
+          2
+        ],
+        [
+          3,
+          1200
+        ],
+        [
+          0,
+          981
+        ]
+      ],
+      "programs": {},
+      "extraCode": {
+        "1200": [
+          0,
+          3,
+          1,
+          0,
+          0
+        ]
+      },
+      "drawCount": 0,
+      "expectedTrace": [
+        [
+          44,
+          2,
+          0
+        ],
+        [
+          3,
+          1200,
+          0
+        ],
+        [
+          24,
+          0,
+          0
+        ]
+      ],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "sharedRngCheckpoint": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "finalRng": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "nativeRngTrace": [],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "d6c3900c7293cee46b56f8bafd823d9eceef8c9ff6c92e9bd1ead1251ebb87df"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "50c74fa9c66dd459d97f9eb77ac06f54978de8b5389e91cb74b318af3c9a7ca4"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          }
+        ],
+        "trace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 2,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 44,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 3,
+            "rngDrawCount": 0,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 2,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 3,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 4,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 5,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 6,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 24,
+            "rngDrawCount": 0,
+            "slot": 7,
+            "stackDepth": 0
+          }
+        ],
+        "semanticReady": true,
+        "proofMode": "prepared-native-direct-entry-and-visible-Yes",
+        "controls": [
+          "Yes"
+        ],
+        "bounds": "Fresh process Complex buffer; opcode 44 writes result two, then opcode 3 copies it after visible Yes. No Complex encounter is loaded or stored. Seven zero slots precede opcode 24 at slot seven; later marker 981 is not executed."
+      }
+    },
+    {
+      "name": "46-dropout-retains-source-push",
+      "root": [
+        [
+          -46,
+          1200
+        ],
+        [
+          0,
+          991
+        ],
+        [
+          24,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          0
+        ],
+        [
+          111,
+          0
+        ]
+      ],
+      "programs": {},
+      "extraCode": {
+        "1200": [
+          0,
+          2,
+          -1,
+          0,
+          0
+        ]
+      },
+      "drawCount": 0,
+      "expectedTrace": [
+        [
+          -46,
+          1200,
+          0
+        ],
+        [
+          111,
+          0,
+          1
+        ],
+        [
+          0,
+          991,
+          0
+        ],
+        [
+          24,
+          0,
+          0
+        ]
+      ],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "sharedRngCheckpoint": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "finalRng": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "nativeRngTrace": [],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "8d799048c37437df0e388c1ab2e7f0ba88cb65a42cc7d225ec35ea14385a8f47"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "46a1dfe24440a8cebc9b143ad4abbd64f3f0588f4f00a38bfca9e5e22e6b2168"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          }
+        ],
+        "trace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": -46,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 111,
+            "rngDrawCount": 0,
+            "slot": 7,
+            "stackDepth": 1
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 991,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 24,
+            "rngDrawCount": 0,
+            "slot": 2,
+            "stackDepth": 0
+          }
+        ],
+        "semanticReady": true,
+        "proofMode": "prepared-native-direct-entry"
+      }
+    },
+    {
+      "name": "46-unmatched-destination-retains-source-push",
+      "root": [
+        [
+          -46,
+          1200
+        ],
+        [
+          111,
+          0
+        ],
+        [
+          0,
+          992
+        ],
+        [
+          24,
+          0
+        ]
+      ],
+      "programs": {},
+      "extraCode": {
+        "1200": [
+          0,
+          2,
+          9,
+          0,
+          0
+        ]
+      },
+      "drawCount": 0,
+      "expectedTrace": [
+        [
+          -46,
+          1200,
+          0
+        ],
+        [
+          111,
+          0,
+          1
+        ],
+        [
+          111,
+          0,
+          0
+        ],
+        [
+          0,
+          992,
+          0
+        ],
+        [
+          24,
+          0,
+          0
+        ]
+      ],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "sharedRngCheckpoint": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "finalRng": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "nativeRngTrace": [],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "dba3f777599966e55951647229486b490b7e6d439d1e3aa2e5666dd641b13020"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "236aeaa156c316ddc5a61959c916df4ec48e1b0c571f7fb73c2e315dfef2df04"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          }
+        ],
+        "trace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": -46,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 111,
+            "rngDrawCount": 0,
+            "slot": 1,
+            "stackDepth": 1
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 111,
+            "rngDrawCount": 0,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 992,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 2,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 24,
+            "rngDrawCount": 0,
+            "slot": 3,
+            "stackDepth": 0
+          }
+        ],
+        "semanticReady": true,
+        "proofMode": "prepared-native-direct-entry"
+      }
+    },
+    {
+      "name": "timer-return-retains-child-stack-and-code",
+      "root": [
+        [
+          63,
+          1200
+        ],
+        [
+          111,
+          0
+        ],
+        [
+          0,
+          995
+        ],
+        [
+          24,
+          0
+        ]
+      ],
+      "extraCode": {
+        "1200": [
+          1,
+          1,
+          24,
+          0,
+          0
+        ],
+        "1201": [
+          1,
+          1,
+          1,
+          1,
+          513
+        ]
+      },
+      "programs": {
+        "512": [
+          [
+            -76,
+            1201
+          ],
+          [
+            0,
+            996
+          ],
+          [
+            24,
+            0
+          ]
+        ],
+        "513": [
+          [
+            24,
+            0
+          ],
+          [
+            111,
+            0
+          ],
+          [
+            0,
+            998
+          ],
+          [
+            24,
+            0
+          ]
+        ]
+      },
+      "expectedTrace": [
+        [
+          63,
+          1200,
+          0
+        ],
+        [
+          -76,
+          1201,
+          0
+        ],
+        [
+          24,
+          0,
+          1
+        ],
+        [
+          111,
+          0,
+          1
+        ],
+        [
+          0,
+          996,
+          0
+        ],
+        [
+          24,
+          0,
+          0
+        ]
+      ],
+      "drawCount": 1,
+      "midnightTimerMacroId": 512,
+      "rngTrace": [
+        {
+          "drawIndex": 0,
+          "range": 100,
+          "raw": 24027,
+          "result": 74,
+          "tag": "timed-encounter.0"
+        }
+      ],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "sharedRngCheckpoint": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "finalRng": {
+          "drawCount": 1,
+          "state": 2907611
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 100,
+            "raw": 24027,
+            "result": 74
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "ca9b0847477f1d576201f8a1fc805f6d1781c15f7f6d679053d5f0984b4dbcaa"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "8efa2e3723b24d84c951cc6d84b450ad1b22af6727b71bc634f00c08531b4d74"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "8f9f6b37b8d387d7a318fc29d75b5a5db758f5b802442c41c60ae6a062d0a0fd"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "a47b7e21aedae2c5bbc1c6501113e38eb7415cc0a84994cf0d5b50c7f88d241d"
+          }
+        ],
+        "trace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 63,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 1201,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": -76,
+            "rngDrawCount": 1,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 24,
+            "rngDrawCount": 1,
+            "slot": 0,
+            "stackDepth": 1
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 111,
+            "rngDrawCount": 1,
+            "slot": 1,
+            "stackDepth": 1
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 996,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 1,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 24,
+            "rngDrawCount": 1,
+            "slot": 2,
+            "stackDepth": 0
+          }
+        ],
+        "semanticReady": true,
+        "proofMode": "prepared-native-direct-entry",
+        "timerRecord": {
+          "nativeFile": "Data TD3",
+          "recordBytes": 40,
+          "row": 0,
+          "words": [
+            2,
+            0,
+            100,
+            512,
+            -1,
+            -1,
+            -1,
+            -1,
+            0,
+            -1,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "bounds": "Prepared mode-minus-one outer entry and mode-one timer return; no ordinary campaign route or full header acceptance."
+      }
+    },
+    {
+      "name": "75-keepcodes-retains-encounter-epilogue",
+      "root": [
+        [
+          4,
+          0
+        ]
+      ],
+      "programs": {
+        "simple:0:result:0": [],
+        "simple:0:result:1": [],
+        "simple:0:result:2": [],
+        "simple:0:result:3": [
+          [
+            0,
+            969
+          ],
+          [
+            75,
+            1200
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          0,
+          32767,
+          1,
+          0,
+          0
+        ]
+      },
+      "automaticSimpleTwice": true,
+      "drawCount": 0,
+      "rngTrace": [],
+      "expectedTrace": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          969,
+          0
+        ],
+        [
+          75,
+          1200,
+          0
+        ],
+        [
+          0,
+          969,
+          0
+        ],
+        [
+          75,
+          1200,
+          0
+        ]
+      ],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "sharedRngCheckpoint": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "finalRng": {
+          "drawCount": 0,
+          "state": 173
+        },
+        "nativeRngTrace": [],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "d4c7de418d101516c1523adf63d5e7a774037fa36941cc4cf4360478760c4bff"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "64a8abcd121061284ae461f122c962dee61fa6a5b20f0f7c2c42e1f15a13768f"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 4,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 969,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 75,
+            "rngDrawCount": 0,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 969,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 75,
+            "rngDrawCount": 0,
+            "slot": 1,
+            "stackDepth": 0
+          }
+        ],
+        "semanticReady": true,
+        "proofMode": "prepared-native-direct-entry",
+        "bounds": "Prepared mode-minus-one entry and explicit opcode-75 Keep Codes epilogue; no ordinary campaign route or placed-AP header claim."
+      }
+    },
+    {
+      "name": "40-natural-retains-encounter",
+      "callingContext": "action",
+      "root": [
+        [
+          4,
+          0
+        ]
+      ],
+      "programs": {
+        "simple:0:result:0": [],
+        "simple:0:result:1": [],
+        "simple:0:result:2": [],
+        "simple:0:result:3": [
+          [
+            0,
+            975
+          ],
+          [
+            40,
+            1200
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          2,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "automaticSimpleTwice": true,
+      "expectedTrace": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          975,
+          0
+        ],
+        [
+          40,
+          1200,
+          0
+        ],
+        [
+          0,
+          975,
+          0
+        ],
+        [
+          40,
+          1200,
+          0
+        ]
+      ],
+      "drawCount": 4,
+      "rngTrace": [],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "proofMode": "prepared-native-ordinary-movement",
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 4,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 975,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 40,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 975,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 40,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          }
+        ],
+        "nativePreparationDraws": 4,
+        "instructionDraws": 0,
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "f3609d071f1da6631768a444328071ea60f4e55a88ec2608467d1d4d23fd1efc"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "8ff7a4f8f5340075533856b7785846e1cd7dcb8115d8405d3be6637548bca853"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Ordinary movement into a synthetic placed AP. Four movement/admission draws precede the trace; the instructions consume none. Runner comparison covers the encounter control trace and restored instruction execution, separately from native movement and placed-AP removal.",
+        "nativeEntryMode": 0,
+        "sharedRngCheckpoint": {
+          "drawCount": 4,
+          "state": 744044721
+        }
+      },
+      "rngState": 744044721,
+      "rngCount": 4,
+      "expectedChance": 100
+    },
+    {
+      "name": "103-natural-retains-encounter",
+      "callingContext": "action",
+      "root": [
+        [
+          4,
+          0
+        ]
+      ],
+      "programs": {
+        "simple:0:result:0": [],
+        "simple:0:result:1": [],
+        "simple:0:result:2": [],
+        "simple:0:result:3": [
+          [
+            0,
+            976
+          ],
+          [
+            103,
+            1200
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "automaticSimpleTwice": true,
+      "expectedTrace": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          976,
+          0
+        ],
+        [
+          103,
+          1200,
+          0
+        ],
+        [
+          0,
+          976,
+          0
+        ],
+        [
+          103,
+          1200,
+          0
+        ]
+      ],
+      "drawCount": 4,
+      "rngTrace": [],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "proofMode": "prepared-native-ordinary-movement",
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 4,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 976,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 103,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 976,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 103,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          }
+        ],
+        "nativePreparationDraws": 4,
+        "instructionDraws": 0,
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "50b17a299e9b13ac56dc471bdacdd0f63fc38d3284da4935009bfcc9b66bc25d"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "45440079f29c53b0b8065a2b9c8b6853a7f72684d0255cbc2445e91e5b7e0904"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Ordinary movement into a synthetic placed AP. Four movement/admission draws precede the trace; the instructions consume none. Runner comparison covers the encounter control trace and restored instruction execution, separately from native movement and placed-AP removal.",
+        "nativeEntryMode": 0,
+        "sharedRngCheckpoint": {
+          "drawCount": 4,
+          "state": 744044721
+        }
+      },
+      "rngState": 744044721,
+      "rngCount": 4,
+      "expectedChance": 100
+    },
+    {
+      "name": "placed-natural-erases-selected",
+      "root": [
+        [
+          0,
+          970
+        ]
+      ],
+      "programs": {},
+      "extraCode": {},
+      "callingContext": "action",
+      "expectedTrace": [
+        [
+          0,
+          970,
+          0
+        ]
+      ],
+      "expectedChance": -1,
+      "rngState": 744044721,
+      "rngCount": 4,
+      "drawCount": 4,
+      "rngTrace": [],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "nativeEntryMode": 0,
+        "proofMode": "prepared-native-ordinary-movement",
+        "sharedRngCheckpoint": {
+          "state": 744044721,
+          "drawCount": 4
+        },
+        "finalRng": {
+          "drawCount": 4,
+          "state": 744044721
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 10000,
+            "raw": 24027,
+            "result": 7333
+          },
+          {
+            "drawIndex": 1,
+            "range": 10000,
+            "raw": -11021,
+            "result": 3364
+          },
+          {
+            "drawIndex": 2,
+            "range": 10000,
+            "raw": -12505,
+            "result": 3817
+          },
+          {
+            "drawIndex": 3,
+            "range": 100,
+            "raw": 14513,
+            "result": 45
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 970,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 2,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 3,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 4,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 5,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 6,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 7,
+            "stackDepth": 0
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "8e77148ac188e00c387cf2a5059b159e1e4b7e3f96f14f2abf64ae8083abbe55"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "da38a63fb4cf0af4d7b0575ef1864b60a74225548064faa7402983621217af99"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Synthetic selected-AP ownership and exit control. Ordinary-movement preparation contributes four draws before the shared instruction checkpoint. No physical-control or campaign-completion certification."
+      }
+    },
+    {
+      "name": "placed-keep-skips-erasure",
+      "root": [
+        [
+          24,
+          0
+        ]
+      ],
+      "programs": {},
+      "extraCode": {},
+      "callingContext": "action",
+      "expectedTrace": [
+        [
+          24,
+          0,
+          0
+        ]
+      ],
+      "expectedChance": 100,
+      "rngState": 744044721,
+      "rngCount": 4,
+      "drawCount": 4,
+      "rngTrace": [],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "nativeEntryMode": 0,
+        "proofMode": "prepared-native-ordinary-movement",
+        "sharedRngCheckpoint": {
+          "state": 744044721,
+          "drawCount": 4
+        },
+        "finalRng": {
+          "drawCount": 4,
+          "state": 744044721
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 10000,
+            "raw": 24027,
+            "result": 7333
+          },
+          {
+            "drawIndex": 1,
+            "range": 10000,
+            "raw": -11021,
+            "result": 3364
+          },
+          {
+            "drawIndex": 2,
+            "range": 10000,
+            "raw": -12505,
+            "result": 3817
+          },
+          {
+            "drawIndex": 3,
+            "range": 100,
+            "raw": 14513,
+            "result": 45
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 24,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "cd33d79f4d3f4e92b51b069cf8d5f024278171365911951c3cd983496bb24364"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "da38a63fb4cf0af4d7b0575ef1864b60a74225548064faa7402983621217af99"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Synthetic selected-AP ownership and exit control. Ordinary-movement preparation contributes four draws before the shared instruction checkpoint. No physical-control or campaign-completion certification."
+      }
+    },
+    {
+      "name": "timer-keep-does-not-own-placed-return",
+      "root": [
+        [
+          63,
+          1200
+        ],
+        [
+          0,
+          972
+        ]
+      ],
+      "programs": {
+        "512": [
+          [
+            24,
+            0
+          ],
+          [
+            0,
+            973
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          1,
+          1,
+          24,
+          0,
+          0
+        ]
+      },
+      "callingContext": "action",
+      "expectedTrace": [
+        [
+          63,
+          1200,
+          0
+        ],
+        [
+          24,
+          0,
+          0
+        ],
+        [
+          0,
+          973,
+          0
+        ]
+      ],
+      "expectedChance": -1,
+      "rngState": 744044721,
+      "rngCount": 4,
+      "drawCount": 5,
+      "rngTrace": [
+        {
+          "drawIndex": 4,
+          "range": 100,
+          "raw": 822,
+          "result": 3,
+          "tag": "timed-encounter.0"
+        }
+      ],
+      "midnightTimerMacroId": 512,
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "nativeEntryMode": 0,
+        "proofMode": "prepared-native-ordinary-movement",
+        "sharedRngCheckpoint": {
+          "state": 744044721,
+          "drawCount": 4
+        },
+        "finalRng": {
+          "drawCount": 5,
+          "state": 362349366
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 10000,
+            "raw": 24027,
+            "result": 7333
+          },
+          {
+            "drawIndex": 1,
+            "range": 10000,
+            "raw": -11021,
+            "result": 3364
+          },
+          {
+            "drawIndex": 2,
+            "range": 10000,
+            "raw": -12505,
+            "result": 3817
+          },
+          {
+            "drawIndex": 3,
+            "range": 100,
+            "raw": 14513,
+            "result": 45
+          },
+          {
+            "drawIndex": 4,
+            "range": 100,
+            "raw": 822,
+            "result": 3
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 63,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 24,
+            "rngDrawCount": 5,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 973,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 2,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 3,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 4,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 5,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 6,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 7,
+            "stackDepth": 0
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "dab470281d7bfb8ec04350f11350d16d0c76150eb9ac5f9bd7ced249f62e9dc2"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "da38a63fb4cf0af4d7b0575ef1864b60a74225548064faa7402983621217af99"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "a47b7e21aedae2c5bbc1c6501113e38eb7415cc0a84994cf0d5b50c7f88d241d"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Synthetic selected-AP ownership and exit control. Ordinary-movement preparation contributes four draws before the shared instruction checkpoint. No physical-control or campaign-completion certification."
+      }
+    },
+    {
+      "name": "encounter-natural-skips-placed-erasure",
+      "root": [
+        [
+          4,
+          0
+        ]
+      ],
+      "programs": {
+        "simple:0:result:0": [],
+        "simple:0:result:1": [],
+        "simple:0:result:2": [],
+        "simple:0:result:3": [
+          [
+            0,
+            974
+          ]
+        ]
+      },
+      "extraCode": {},
+      "callingContext": "action",
+      "expectedTrace": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          974,
+          0
+        ]
+      ],
+      "expectedChance": 100,
+      "rngState": 744044721,
+      "rngCount": 4,
+      "drawCount": 4,
+      "rngTrace": [],
+      "automaticSimpleTwice": true,
+      "simpleMaxTimes": 1,
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "nativeEntryMode": 0,
+        "proofMode": "prepared-native-ordinary-movement",
+        "sharedRngCheckpoint": {
+          "state": 744044721,
+          "drawCount": 4
+        },
+        "finalRng": {
+          "drawCount": 4,
+          "state": 744044721
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 10000,
+            "raw": 24027,
+            "result": 7333
+          },
+          {
+            "drawIndex": 1,
+            "range": 10000,
+            "raw": -11021,
+            "result": 3364
+          },
+          {
+            "drawIndex": 2,
+            "range": 10000,
+            "raw": -12505,
+            "result": 3817
+          },
+          {
+            "drawIndex": 3,
+            "range": 100,
+            "raw": 14513,
+            "result": 45
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 4,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 974,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 2,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 3,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 4,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 5,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 6,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 7,
+            "stackDepth": 0
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "da38a63fb4cf0af4d7b0575ef1864b60a74225548064faa7402983621217af99"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "ea34777965185fa1e728a9038fc6159153fc4c4c8a8e5360a50786b7931a4cff"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Synthetic selected-AP ownership and exit control. Ordinary-movement preparation contributes four draws before the shared instruction checkpoint. No physical-control or campaign-completion certification."
+      }
+    },
+    {
+      "name": "macro-erase-skips-default-removal",
+      "root": [
+        [
+          42,
+          1200
+        ]
+      ],
+      "programs": {},
+      "extraCode": {
+        "1200": [
+          100,
+          -2,
+          0,
+          0,
+          0
+        ]
+      },
+      "callingContext": "battle-macro",
+      "expectedTrace": [
+        [
+          42,
+          1200,
+          0
+        ]
+      ],
+      "expectedChance": 100,
+      "rngState": 173,
+      "rngCount": 0,
+      "drawCount": 1,
+      "rngTrace": [
+        {
+          "drawIndex": 0,
+          "range": 100,
+          "raw": 24027,
+          "result": 74,
+          "tag": "classic.percent-branch"
+        }
+      ],
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "nativeEntryMode": -1,
+        "proofMode": "prepared-native-direct-entry",
+        "sharedRngCheckpoint": {
+          "state": 173,
+          "drawCount": 0
+        },
+        "finalRng": {
+          "drawCount": 1,
+          "state": 2907611
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 100,
+            "raw": 24027,
+            "result": 74
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 42,
+            "rngDrawCount": 0,
+            "slot": 0,
+            "stackDepth": 0
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0debdabb121cd171f7d205b30b93efd1127dd7104553c15e4d0d5ff655003096"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "656ed74b34404d4619563340ae605fb71975c861b38e26cf603ea7457365fda9"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Synthetic selected-AP ownership and exit control. Ordinary-movement preparation contributes four draws before the shared instruction checkpoint. No physical-control or campaign-completion certification."
+      }
+    },
+    {
+      "name": "encounter-erase-retains-repetition",
+      "root": [
+        [
+          4,
+          0
+        ]
+      ],
+      "programs": {
+        "simple:0:result:0": [],
+        "simple:0:result:1": [],
+        "simple:0:result:2": [],
+        "simple:0:result:3": [
+          [
+            0,
+            977
+          ],
+          [
+            42,
+            1200
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          100,
+          -2,
+          0,
+          0,
+          0
+        ]
+      },
+      "callingContext": "action",
+      "expectedTrace": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          977,
+          0
+        ],
+        [
+          42,
+          1200,
+          0
+        ],
+        [
+          0,
+          977,
+          0
+        ],
+        [
+          42,
+          1200,
+          0
+        ]
+      ],
+      "expectedChance": 100,
+      "rngState": 744044721,
+      "rngCount": 4,
+      "drawCount": 6,
+      "rngTrace": [
+        {
+          "drawIndex": 4,
+          "range": 100,
+          "raw": 822,
+          "result": 3,
+          "tag": "classic.percent-branch"
+        },
+        {
+          "drawIndex": 5,
+          "range": 100,
+          "raw": -9907,
+          "result": 31,
+          "tag": "classic.percent-branch"
+        }
+      ],
+      "automaticSimpleTwice": true,
+      "simpleMaxTimes": 2,
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "nativeEntryMode": 0,
+        "proofMode": "prepared-native-ordinary-movement",
+        "sharedRngCheckpoint": {
+          "state": 744044721,
+          "drawCount": 4
+        },
+        "finalRng": {
+          "drawCount": 6,
+          "state": 1889655117
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 10000,
+            "raw": 24027,
+            "result": 7333
+          },
+          {
+            "drawIndex": 1,
+            "range": 10000,
+            "raw": -11021,
+            "result": 3364
+          },
+          {
+            "drawIndex": 2,
+            "range": 10000,
+            "raw": -12505,
+            "result": 3817
+          },
+          {
+            "drawIndex": 3,
+            "range": 100,
+            "raw": 14513,
+            "result": 45
+          },
+          {
+            "drawIndex": 4,
+            "range": 100,
+            "raw": 822,
+            "result": 3
+          },
+          {
+            "drawIndex": 5,
+            "range": 100,
+            "raw": -9907,
+            "result": 31
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 4,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 977,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 42,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 977,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 5,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 1,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 42,
+            "rngDrawCount": 5,
+            "slot": 1,
+            "stackDepth": 0
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "656ed74b34404d4619563340ae605fb71975c861b38e26cf603ea7457365fda9"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "efaa2917da38340d6560492b564ef0dce5a87f10e0010c498e02825ee927c9e5"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Synthetic selected-AP ownership and exit control. Ordinary-movement preparation contributes four draws before the shared instruction checkpoint. No physical-control or campaign-completion certification."
+      }
+    },
+    {
+      "name": "disabled-recheck-returns-before-encounter-epilogue",
+      "root": [
+        [
+          4,
+          0
+        ]
+      ],
+      "programs": {
+        "simple:0:result:0": [],
+        "simple:0:result:1": [],
+        "simple:0:result:2": [],
+        "simple:0:result:3": [
+          [
+            0,
+            978
+          ],
+          [
+            13,
+            1200
+          ],
+          [
+            20,
+            1201
+          ]
+        ]
+      },
+      "extraCode": {
+        "1200": [
+          0,
+          52,
+          0,
+          0,
+          0
+        ],
+        "1201": [
+          0,
+          1,
+          0,
+          0,
+          0
+        ]
+      },
+      "callingContext": "action",
+      "expectedTrace": [
+        [
+          4,
+          0,
+          0
+        ],
+        [
+          0,
+          978,
+          0
+        ],
+        [
+          13,
+          1200,
+          0
+        ],
+        [
+          20,
+          1201,
+          0
+        ]
+      ],
+      "expectedChance": 0,
+      "rngState": 744044721,
+      "rngCount": 4,
+      "drawCount": 4,
+      "rngTrace": [],
+      "automaticSimpleTwice": true,
+      "simpleMaxTimes": 2,
+      "observation": {
+        "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+        "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+        "nativeEntryMode": 0,
+        "proofMode": "prepared-native-ordinary-movement",
+        "sharedRngCheckpoint": {
+          "state": 744044721,
+          "drawCount": 4
+        },
+        "finalRng": {
+          "drawCount": 4,
+          "state": 744044721
+        },
+        "nativeRngTrace": [
+          {
+            "drawIndex": 0,
+            "range": 10000,
+            "raw": 24027,
+            "result": 7333
+          },
+          {
+            "drawIndex": 1,
+            "range": 10000,
+            "raw": -11021,
+            "result": 3364
+          },
+          {
+            "drawIndex": 2,
+            "range": 10000,
+            "raw": -12505,
+            "result": 3817
+          },
+          {
+            "drawIndex": 3,
+            "range": 100,
+            "raw": 14513,
+            "result": 45
+          }
+        ],
+        "nativeTrace": [
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 0,
+            "encounterRemaining": 0,
+            "id": 0,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 4,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 978,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 0,
+            "rngDrawCount": 4,
+            "slot": 0,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 1200,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 13,
+            "rngDrawCount": 4,
+            "slot": 1,
+            "stackDepth": 0
+          },
+          {
+            "battleMacroActive": false,
+            "doorId": 2008,
+            "doorIndex": 52,
+            "encounterFlag": 1,
+            "encounterRemaining": 2,
+            "id": 1201,
+            "location": [
+              8,
+              20
+            ],
+            "macroMonsterIndex": 0,
+            "programId": "trigger:Data DD:0:52",
+            "rawOpcode": 20,
+            "rngDrawCount": 4,
+            "slot": 2,
+            "stackDepth": 0
+          }
+        ],
+        "syntheticFiles": [
+          {
+            "name": "Data DD",
+            "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+            "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+          },
+          {
+            "name": "Data ED3",
+            "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+            "preparedSha256": "82a9b05729120172ee42e6d495fe46c082f44b5b63a6efaf07034223ccfe4b41"
+          },
+          {
+            "name": "Data EDCD",
+            "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+            "preparedSha256": "a96e4e82a677c850d2e3a36c139650da7efd64c4ab7be10985c1a53de77dc707"
+          },
+          {
+            "name": "Data ED",
+            "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+            "preparedSha256": "f28ab8fa59057472e1c55e7364e8a3e4e237213a95e503e31786b2d88814a39d"
+          },
+          {
+            "name": "Data BD",
+            "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+            "preparedSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890"
+          },
+          {
+            "name": "Data TD3",
+            "originalSha256": "057f071b980c679a781c9b039d816d64bd7b2ca681c86accf90f91a052bdc846",
+            "preparedSha256": "ff5878f34004f655aa35284f87f0581db8390fb4bad172b002c9bda2d145eeaa"
+          }
+        ],
+        "semanticReady": true,
+        "bounds": "Synthetic selected-AP ownership and exit control. Ordinary-movement preparation contributes four draws before the shared instruction checkpoint. No physical-control or campaign-completion certification.",
+        "nativeExtraCode": {
+          "1200": [
+            0,
+            52,
+            0,
+            0,
+            0
+          ],
+          "1201": [
+            0,
+            8,
+            20,
+            0,
+            0
+          ]
+        },
+        "coordinateMapping": {
+          "native": [
+            8,
+            20
+          ],
+          "runner": [
+            1,
+            0
+          ],
+          "purpose": "Use the existing synthetic package marker while preserving the same selected AP and failed recheck."
+        }
+      }
+    }
+  ]
+}

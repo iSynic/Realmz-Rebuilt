@@ -208,8 +208,8 @@ static func commit_field_spell_item(context: SessionWorkflowContext, character_i
 	var native_sound_id := item.sound_id + 600
 	if item.sound_id != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
-	FieldMagicResolver.append_events(context, events, character, spell, power, resolution, &"classic-item", &"classic-item", &"item_spell_resolved", {"itemId": item.id, "instanceId": instance_id})
-	return SessionWorkflowResult.completed(events)
+	var updates := FieldMagicResolver.append_events(context, events, character, spell, power, resolution, &"classic-item", &"classic-item", &"item_spell_resolved", {"itemId": item.id, "instanceId": instance_id})
+	return SessionWorkflowResult.completed(events, updates)
 
 
 static func item_owner(context: SessionWorkflowContext, instance_id: String) -> CharacterState:

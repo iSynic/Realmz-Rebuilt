@@ -6,7 +6,7 @@ extends RefCounted
 ## Evaluates bounded Safe Scenario Action expressions against one VM frame.
 
 
-static func evaluate(expression: SafeExpressionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+static func evaluate(expression: SafeExpressionDefinition, frame: ScenarioExpressionScope, runtime_api: RealmzRuntimeApi) -> Dictionary:
 	if expression == null:
 		return {"ok": false, "error": "Safe expression is missing."}
 	match expression.kind:
@@ -54,7 +54,7 @@ static func evaluate(expression: SafeExpressionDefinition, frame: ScenarioFrame,
 	return {"ok": false, "error": "Safe expression kind is unavailable."}
 
 
-static func evaluate_call_arguments(action_call: CallScenarioActionInstruction, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+static func evaluate_call_arguments(action_call: CallScenarioActionInstruction, frame: ScenarioExpressionScope, runtime_api: RealmzRuntimeApi) -> Dictionary:
 	var result: Dictionary = {}
 	for name: String in action_call.argument_names():
 		var evaluated := evaluate(action_call.argument(name), frame, runtime_api)
@@ -64,7 +64,7 @@ static func evaluate_call_arguments(action_call: CallScenarioActionInstruction, 
 	return {"ok": true, "value": result}
 
 
-static func evaluate_instruction_arguments(instruction: SafeInstructionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+static func evaluate_instruction_arguments(instruction: SafeInstructionDefinition, frame: ScenarioExpressionScope, runtime_api: RealmzRuntimeApi) -> Dictionary:
 	var result: Dictionary = {}
 	for name: String in instruction.argument_names():
 		var evaluated := evaluate(instruction.argument(name), frame, runtime_api)
@@ -105,7 +105,7 @@ static func value_matches_type(value: Variant, value_type: StringName, max_lengt
 	return false
 
 
-static func _evaluate_variable(expression: SafeExpressionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+static func _evaluate_variable(expression: SafeExpressionDefinition, frame: ScenarioExpressionScope, runtime_api: RealmzRuntimeApi) -> Dictionary:
 	match expression.scope:
 		&"parameter":
 			return {"ok": true, "value": frame.parameter(expression.name)}
@@ -122,7 +122,7 @@ static func _evaluate_variable(expression: SafeExpressionDefinition, frame: Scen
 	return {"ok": false, "error": "Safe variable scope '%s' is unavailable." % expression.scope}
 
 
-static func _evaluate_unary(expression: SafeExpressionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+static func _evaluate_unary(expression: SafeExpressionDefinition, frame: ScenarioExpressionScope, runtime_api: RealmzRuntimeApi) -> Dictionary:
 	var operand := evaluate(expression.operand, frame, runtime_api)
 	if not operand["ok"]:
 		return operand
@@ -159,7 +159,7 @@ static func _evaluate_binary(operator: StringName, left: Variant, right: Variant
 	return {"ok": false, "error": "Safe binary operator '%s' received incompatible values." % operator}
 
 
-static func _evaluate_collection(expression: SafeExpressionDefinition, frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> Dictionary:
+static func _evaluate_collection(expression: SafeExpressionDefinition, frame: ScenarioExpressionScope, runtime_api: RealmzRuntimeApi) -> Dictionary:
 	var collection_result := evaluate(expression.collection, frame, runtime_api)
 	if not collection_result["ok"] or not collection_result["value"] is Array:
 		return {"ok": false, "error": "Safe collection expression input is not an array."}
@@ -192,7 +192,7 @@ static func _evaluate_collection(expression: SafeExpressionDefinition, frame: Sc
 	return {"ok": false, "error": "Safe collection operation '%s' is unavailable." % expression.operator}
 
 
-static func _restore_local(frame: ScenarioFrame, name: String, had_previous: bool, previous: Variant) -> void:
+static func _restore_local(frame: ScenarioExpressionScope, name: String, had_previous: bool, previous: Variant) -> void:
 	if had_previous:
 		frame.set_local(name, previous)
 	else:

@@ -406,7 +406,7 @@ func _incompatible_schema_message_for_data(data: Variant) -> String:
 	var version: Variant = data.get("formatVersion")
 	if version is float and is_equal_approx(version, round(version)):
 		version = int(version)
-	if not version is int or version in [5, 6, 7, SaveEnvelope.FORMAT_VERSION]:
+	if not version is int or version in [5, 6, 7, 8, SaveEnvelope.FORMAT_VERSION]:
 		return ""
 	return "Save format v%d is incompatible with Realmz Rebuilt save v%d." % [version, SaveEnvelope.FORMAT_VERSION]
 

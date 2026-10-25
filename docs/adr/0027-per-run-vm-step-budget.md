@@ -1,6 +1,6 @@
 # ADR 0027: Per-run Scenario VM step budget
 
-Status: accepted for the VM schema 4 / save v7 batch.
+Status: accepted for VM schema 4 / save v7; its per-run policy is retained, while ADR 0029 supersedes the nested-VM budget mechanism for VM schema 5.
 
 ## Problem
 

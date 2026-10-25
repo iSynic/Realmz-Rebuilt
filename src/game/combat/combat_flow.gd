@@ -50,7 +50,7 @@ func run_auto_activation_chain(state: GameState, content: RealmzContent, actor_i
 
 
 func run_persistent_auto_characters(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
-	if CombatCastResources.pending(state) != null: return CombatFlowResult.succeeded([])
+	if CombatCastResources.pending(state) != null: return CombatFlowResult.from_combat(state.combat, [])
 	return automation.run_persistent_auto_characters(state, content, rng)
 
 

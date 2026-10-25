@@ -618,9 +618,9 @@ func _complete_reward(reward: ClassicRewardState, request_id: String, events: Ar
 		# The completed battle remains session-owned through every ally, fumble,
 		# treasure, level, and spell boundary. Release it only after the terminal
 		# reward transaction has committed so both direct and VM callers return once.
-		var directive := ScenarioVmDirective.finish_timeline() if combat.classic_post_battle_sentinel == 8 else null
+		var directive := ScenarioVmDirective.end_record(true) if combat.classic_post_battle_sentinel == 8 else null
 		_game_state.combat = null
-		return ScenarioRuntimeOperationResult.completed(reward.source_id, completed_events, directive)
+		return ScenarioRuntimeOperationResult.completed(reward.source_id, completed_events, directive).with_battle_return(BattleReturnResult.new(reward.source_id,outcome))
 	return ScenarioRuntimeOperationResult.completed(reward.source_id, completed_events)
 
 

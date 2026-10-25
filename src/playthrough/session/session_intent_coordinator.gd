@@ -176,9 +176,9 @@ func _camp() -> SessionCoordinatorResult:
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	if not _context.state.party_camping and not result.timed_scan_pending:
-		return _context.responses().finish_with_age_updates(result.events, &"completed")
+		return _context.responses().finish_with_age_updates(result.events, result.age_updates, &"completed")
 	_context.exploration().set_post_time_continuation(result.map, "camp-entry-second" if _context.state.party_camping else "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
-	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+	return _context.responses().finish_with_age_updates(result.events, result.age_updates, &"post-clock", _context.session_continuation.copy())
 
 
 func _rest() -> SessionCoordinatorResult:
@@ -186,7 +186,7 @@ func _rest() -> SessionCoordinatorResult:
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	_context.exploration().set_post_time_continuation(result.map, "rest-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
-	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+	return _context.responses().finish_with_age_updates(result.events, result.age_updates, &"post-clock", _context.session_continuation.copy())
 
 
 func _heal() -> SessionCoordinatorResult:
@@ -196,7 +196,7 @@ func _heal() -> SessionCoordinatorResult:
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	_context.exploration().set_post_time_continuation(result.map, "heal", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
-	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+	return _context.responses().finish_with_age_updates(result.events, result.age_updates, &"post-clock", _context.session_continuation.copy())
 
 
 func _search() -> SessionCoordinatorResult:
@@ -204,7 +204,7 @@ func _search() -> SessionCoordinatorResult:
 	if not result.ok:
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 	_context.exploration().set_post_time_continuation(result.map, "area-search-second", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
-	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+	return _context.responses().finish_with_age_updates(result.events, result.age_updates, &"post-clock", _context.session_continuation.copy())
 
 
 func _move(direction: Vector2i, aligns_dungeon_heading: bool) -> SessionCoordinatorResult:

@@ -10,9 +10,11 @@ Within that aggregate, `BattlefieldState` identifies the constructed battle map 
 
 Battlefield construction, physical attack policy and resolution, initiative, monster rules, and their typed command, retreat, attack, build, step, and projectile records are colocated here. These are pure collaborators rather than Nodes; the visible battlefield scene remains under `src/ui/combat`.
 
-`CombatRoundBoundary` executes the source-ordered round transition after a negative battle macro: party conditions and character effects/decay, character fields and bleeding, then each monster's decay, regeneration, disease, poison, signed spell-point effects and field collision. `CombatRoundCursor` retains the next phase and actor across death macros. Scripted and direct battles resume that same cursor before automation or resolution; save v8 preserves it, while older macro waits keep their already committed effects.
+`CombatRoundBoundary` executes the source-ordered round transition after a negative battle macro: party conditions and character effects/decay, character fields and bleeding, then each monster's decay, regeneration, disease, poison, signed spell-point effects and field collision. `CombatRoundCursor` retains the next phase and actor across death macros. Scripted and direct battles resume that same cursor before automation or resolution; save v9 preserves it, while older macro waits keep their already committed effects.
 
-`CombatRoundBoundary` executes the source-ordered round transition after a negative battle macro: party conditions and character effects/decay, character fields and bleeding, then each monster's decay, regeneration, disease, poison, signed spell-point effects and field collision. `CombatRoundCursor` retains the next phase and actor across death macros. Scripted and direct battles resume that same cursor before automation or resolution; save v8 preserves it, while older macro waits keep their already committed effects.
+`CombatDeathMacroState` owns the ordered captured death queue. `CombatDeathMacroOperations` records required work separately from feedback, and `CombatFlowResult` carries the detached next request. Queued source facts survive later changes to the monster and save/restore. Scenario and direct callers enter the same runner lifecycle.
+
+`CombatFlowResult` carries required age/death work and a closed scripted-fumble outcome. Completed reward/retreat operations carry `BattleReturnResult`; presentation history does not select their return.
 
 Important invariants:
 

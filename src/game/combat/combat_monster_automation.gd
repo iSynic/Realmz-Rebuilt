@@ -51,17 +51,17 @@ func monster_actions() -> CombatMonsterActions:
 func process_monster_turns(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> CombatFlowResult:
 	_failure = null
 	var combat := state.combat
-	if combat == null: return CombatFlowResult.succeeded(events, true)
-	var spell_runtime := combat.spell_runtime
+	if combat == null: return CombatFlowResult.from_combat(state.combat, events, true)
+	var death_macros := combat.death_macros
 	var turns := combat.turns
 	var roster := combat.roster
 	var actor_statuses := combat.actor_statuses
-	if combat.round_cursor != null or not spell_runtime.pending_death_macro_id().is_empty(): return CombatFlowResult.succeeded(events)
+	if combat.pending_operations.death_macro != null or combat.round_cursor != null or not death_macros.pending_id().is_empty(): return CombatFlowResult.from_combat(state.combat, events)
 	# The order may grow while this loop is active when a monster casts a
 	# multi-summon or a death macro adds combatants. Bound the scan by the
 	# authoritative actor capacities instead of the order's stale entry count.
 	var guard := MAX_MONSTERS + state.party.characters().size()
-	while guard > 0 and combat.round_cursor == null and not combat.completed and spell_runtime.pending_death_macro_id().is_empty():
+	while guard > 0 and combat.pending_operations.death_macro == null and combat.round_cursor == null and not combat.completed and death_macros.pending_id().is_empty():
 		var actor_id := turns.active_actor_id()
 		var monster := roster.monster_by_id(actor_id)
 		if monster == null:
@@ -76,7 +76,7 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 				break
 			var charmed_result := _process_charmed_character_activation(state, content, character, rng, events)
 			if _failure != null: return _failure
-			if charmed_result == CHARMED_ACTOR_RETURN: return CombatFlowResult.succeeded(events)
+			if charmed_result == CHARMED_ACTOR_RETURN: return CombatFlowResult.from_combat(state.combat, events)
 			if charmed_result == CHARMED_ACTOR_BREAK: break
 			guard -= 1
 			continue
@@ -99,11 +99,11 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 		var selected_plan: Dictionary = {}
 		var active_turn := _prepare_active_monster_turn(turns, monster, definition, state, content, rng, selected_plan)
 		if _process_selected_monster_action(state, content, monster, definition, active_turn, rng, events, selected_plan) != MONSTER_ATTACK_COMPLETED:
-			return _failure if _failure != null else CombatFlowResult.succeeded(events)
+			return _failure if _failure != null else CombatFlowResult.from_combat(state.combat, events)
 		if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events):
 			break
 		guard -= 1
-	return CombatFlowResult.succeeded(events, combat.completed)
+	return CombatFlowResult.from_combat(state.combat, events, combat.completed)
 
 
 func _fail(code: StringName, message: String) -> int:
@@ -360,7 +360,7 @@ func _append_monster_spell_resolution_events(state: GameState, content: RealmzCo
 func _handle_monster_spell_defeat(state: GameState, content: RealmzContent, caster: MonsterState, target_id: String, events: Array[DomainEvent]) -> void:
 	var defeated_monster := state.combat.roster.monster_by_id(target_id)
 	var defeated_definition := content.combat.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
-	var queued := _context.actions().events().queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
+	var queued := CombatDeathMacroOperations.queue_spell(state.combat, defeated_monster, defeated_definition)
 	if not queued and defeated_definition != null and defeated_definition.has_death_macro():
 		_fail(&"invalid_spell_death_macro_queue", "Actor '%s' could not queue defeated actor '%s' death macro." % [caster.id, target_id])
 	# Castle continues after reflection kills the caster, so retain its anchor until
@@ -369,8 +369,8 @@ func _handle_monster_spell_defeat(state: GameState, content: RealmzContent, cast
 
 
 func _finish_monster_cast(state: GameState, content: RealmzContent, monster: MonsterState, did_cast: bool, events: Array[DomainEvent]) -> int:
-	if not state.combat.spell_runtime.pending_death_macro_id().is_empty():
-		if not state.combat.spell_runtime.begin_death_macro_sequence(monster.id, true) or not _context.actions().events().request_next_spell_death_macro(state.combat, content, events):
+	if not state.combat.death_macros.pending_id().is_empty():
+		if not state.combat.death_macros.begin_sequence(monster.id, true) or not CombatDeathMacroOperations.request_next(state.combat, content, events):
 			return _fail(&"invalid_spell_death_macro_queue", "Actor '%s' could not begin its spell death-macro sequence." % monster.id)
 		return MONSTER_ATTACK_DEATH_MACRO
 	if monster.current_health <= 0:
@@ -621,7 +621,9 @@ func _resolve_attack_against_character(state: GameState, content: RealmzContent,
 	if resolution.special_handled:
 		_context.actions().events().append_monster_special_events(events, monster.id, target.id, &"character", resolution)
 		if resolution.aging != null and resolution.aging.changed_group():
-			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(target, race)))
+			var update := resolution.aging.update_body(target, race)
+			state.combat.pending_operations.age_updates.append(update)
+			events.append(DomainEvent.new(&"character_age_changed", update.to_data()))
 			state.combat.pending_monster_attack = PendingMonsterAttack.new(monster.id, target.id, active_turn.action, resolution.damage, resolution.chance, resolution.roll, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after, resolution.physical_feedback_sound_id)
 			return MONSTER_ATTACK_WAITING
 	_context.actions().events().append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
@@ -659,7 +661,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 	if resolution.killed:
 		active_turn.target_id = ""
 		monster.target_id = ""
-		var death_macro_requested := _context.actions().events().request_monster_death_macro(target, target_definition, events)
+		var death_macro_requested := CombatDeathMacroOperations.request_immediate(state.combat, target, target_definition, events)
 		remove_defeated_position(state.combat, target.id, not death_macro_requested)
 		if death_macro_requested:
 			if active_turn.attack_index >= _monster_actions.attack_limit(monster, definition):

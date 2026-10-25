@@ -85,8 +85,12 @@ static func from_data(value: Variant, depth: int = 0) -> ScenarioVmHandoff:
 
 
 static func is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapshot) -> bool:
-	if saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null or handoff == null or handoff.runtime == null:
+	if saved == null or saved.halted or not saved.has_execution_records() or saved.pending_request != null or saved.pending_continuation != null or handoff == null or handoff.runtime == null:
 		return false
+	if saved.execution != null:
+		var record: ScenarioExecutionRecord = saved.execution.records.back()
+		if record.kind != ScenarioExecutionRecord.Kind.OPERATION or record.operation.phase != ScenarioOperationExecutionRecord.Phase.HOST_RETURN: return false
+		return record.operation.handoff.to_data() == handoff.runtime.to_data()
 	match handoff.kind:
 		ScenarioVmHandoff.CLASSIC_OPERATION:
 			return saved.frames.back().kind == ScenarioFrame.PROGRAM

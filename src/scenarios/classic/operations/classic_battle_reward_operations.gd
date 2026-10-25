@@ -8,13 +8,13 @@ var _battle: ClassicBattleLifecycleOperations
 var _rewards: ClassicRewardOperations
 
 
-func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules: RealmzRules) -> void:
+func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules: RealmzRules, macros: ScenarioMacroLifecycle) -> void:
 	_rewards = ClassicRewardOperations.new(content, game_state, rng, rules)
-	_battle = ClassicBattleLifecycleOperations.new(content, game_state, rng, rules, _rewards)
+	_battle = ClassicBattleLifecycleOperations.new(content, game_state, rng, rules, _rewards, macros)
 
 
-func bind_runtime_api(runtime_api: RealmzRuntimeApi) -> void:
-	_battle.bind_runtime_api(runtime_api)
+func complete_macro_call(call: ScenarioMacroCall, request_id: String) -> ScenarioRuntimeOperationResult:
+	return _battle.complete_macro_call(call, request_id)
 
 
 func opcode_ids() -> Array[int]:

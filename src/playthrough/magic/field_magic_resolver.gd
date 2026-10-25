@@ -46,7 +46,8 @@ static func resolve(context: SessionWorkflowContext, caster: CharacterState, sel
 	return context.rules.magic.resolve_field_spell(caster, targets, spell, power, context.rng, castes, races, spend_spell_points, allow_empty, context.content.items.definitions(), allies, definitions)
 
 
-static func append_events(context: SessionWorkflowContext, events: Array[DomainEvent], character: CharacterState, spell: SpellDefinition, power: int, resolution: GroupSpellResolution, sound_source: StringName, state_source: StringName, event_kind: StringName, event_context: Dictionary = {}) -> void:
+static func append_events(context: SessionWorkflowContext, events: Array[DomainEvent], character: CharacterState, spell: SpellDefinition, power: int, resolution: GroupSpellResolution, sound_source: StringName, state_source: StringName, event_kind: StringName, event_context: Dictionary = {}) -> Array[AgeUpdateRequestBody]:
+	var updates: Array[AgeUpdateRequestBody] = []
 	var start_sound := spell.sound_start + 600
 	if start_sound != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(start_sound), "waitForCompletion": true, "source": String(sound_source)}))
@@ -73,11 +74,15 @@ static func append_events(context: SessionWorkflowContext, events: Array[DomainE
 			_append_condition_feedback(context.state.party, events, spell, resolution.target_ids[index], sound_source)
 		if target_resolution.aging != null and target_resolution.aging.changed_group():
 			var target := context.state.party.character_by_id(resolution.target_ids[index])
-			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, context.content.characters.race_by_id(target.race_id))))
+			var update := target_resolution.aging.update_body(target, context.content.characters.race_by_id(target.race_id))
+			updates.append(update)
+			events.append(DomainEvent.new(&"character_age_changed", update.to_data()))
 	if spell.target_type == 0 and special > 0 and special < 41:
 		events.append(DomainEvent.new(&"field_spell_group_resolved", {"spellName": spell.name, "characterCount": resolution.target_kinds.count(&"character"), "allyCount": resolution.target_kinds.count(&"monster")}))
 	if spell.target_type == 11 and spell.sound_end + 600 != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": String(sound_source)}))
+
+	return updates
 
 
 static func _append_condition_feedback(party: PartyState, events: Array[DomainEvent], spell: SpellDefinition, target_id: String, source: StringName) -> void:

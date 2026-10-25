@@ -163,11 +163,11 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		if not search_result.ok:
 			return SessionCoordinatorResult.failed(search_result.error_code, search_result.error_message, search_result.events)
 		var final_resume_kind := &"post-move" if resume_kind == &"attempt-search-post-move" else &"completed"
-		movement_marker_pending = movement_marker_pending or _context.events_have(search_result.events, &"secret_discovered")
+		movement_marker_pending = movement_marker_pending or search_result.secrets_discovered
 		if search_result.check_random:
 			set_post_time_continuation(search_result.map, final_resume_kind, Vector2i.ZERO, true, search_result.timed_day, _context.state.party.coordinate, search_result.timed_scan_pending)
 			_context.session_continuation.exploration().movement_marker_pending = movement_marker_pending
-			return _context.responses().finish_with_age_updates(search_result.events, &"post-clock", _context.session_continuation.copy())
+			return _context.responses().finish_with_age_updates(search_result.events, search_result.age_updates, &"post-clock", _context.session_continuation.copy())
 		if final_resume_kind == &"post-move":
 			if not movement_marker_pending: return SessionCoordinatorResult.completed(search_result.events)
 			set_post_move_continuation(search_result.map, _context.state.party.coordinate)
@@ -178,19 +178,19 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		if not result.ok:
 			return SessionCoordinatorResult.failed(result.error_code, result.error_message, result.events)
 		set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate, result.timed_scan_pending)
-		return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+		return _context.responses().finish_with_age_updates(result.events, result.age_updates, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"camp-entry-second":
 		var camp_result := ExplorationTimeWorkflow.complete_camp_entry(_context.workflow_context(), events)
 		if not camp_result.ok:
 			return SessionCoordinatorResult.failed(camp_result.error_code, camp_result.error_message, camp_result.events)
 		set_post_time_continuation(camp_result.map, "completed", Vector2i.ZERO, camp_result.check_random, camp_result.timed_day, _context.state.party.coordinate, camp_result.timed_scan_pending)
-		return _context.responses().finish_with_age_updates(camp_result.events, &"post-clock", _context.session_continuation.copy())
+		return _context.responses().finish_with_age_updates(camp_result.events, camp_result.age_updates, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"rest-second":
 		var rest_result := ExplorationTimeWorkflow.complete_rest(_context.workflow_context(), events)
 		if not rest_result.ok:
 			return SessionCoordinatorResult.failed(rest_result.error_code, rest_result.error_message, rest_result.events)
 		set_post_time_continuation(rest_result.map, "completed", Vector2i.ZERO, rest_result.check_random, rest_result.timed_day, _context.state.party.coordinate, rest_result.timed_scan_pending)
-		return _context.responses().finish_with_age_updates(rest_result.events, &"post-clock", _context.session_continuation.copy())
+		return _context.responses().finish_with_age_updates(rest_result.events, rest_result.age_updates, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"heal":
 		var heal_result := ExplorationTimeWorkflow.complete_heal(_context.workflow_context(), events)
 		return SessionCoordinatorResult.completed(heal_result.events) if heal_result.ok else SessionCoordinatorResult.failed(heal_result.error_code, heal_result.error_message, heal_result.events)
@@ -293,7 +293,7 @@ func set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destin
 
 
 func start_debug_action_point(trigger_id: String) -> SessionCoordinatorResult:
-	return SessionActionPointCoordinator.new(_context, self).start_debug(trigger_id)
+	return SessionActionPointCoordinator.new(_context).start_debug(trigger_id)
 
 
 func continue_post_move(events: Array[DomainEvent]) -> SessionCoordinatorResult:
@@ -339,20 +339,13 @@ func _resume_completed_post_move_trigger(post_move: PostMoveContext, events: Arr
 		if completed_trigger == null:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
-		var backout_kind: StringName = &"choice" if _context.events_have(events, &"classic_choice_backout_requested") else &"encounter" if _context.events_have(events, &"encounter_cancelled") else &""
+		var completion := _context.scenario_vm.native_completion()
+		var backout_kind: StringName = &"choice" if completion.backout == ScenarioNativeCompletion.Backout.CHOICE else &"encounter" if completion.backout == ScenarioNativeCompletion.Backout.ENCOUNTER else &""
 		if not backout_kind.is_empty():
 			return _complete_classic_backout(post_move.map, post_move.coordinate, active_trigger_id, events, backout_kind)
-		if _context.events_have(events, &"party_backed_up"):
+		if completion.backout == ScenarioNativeCompletion.Backout.BACKED_UP:
 			_context.session_continuation.clear()
 			return SessionCoordinatorResult.completed(events)
-		_context.scenario().finalize_completed_trigger(completed_trigger, events)
-		if _context.scenario().apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
-			if _context.scenario_vm.native_recheck_suppressed():
-				_context.session_continuation.clear()
-				return SessionCoordinatorResult.completed(events)
-			var destination_map := _context.content.world.map_by_id(_context.state.party.map_id)
-			set_post_move_continuation(destination_map, _context.state.party.coordinate, 1)
-			return continue_post_move(events)
 		exploration.active_trigger_id = ""
 		exploration.trigger_index = exploration.trigger_ids.size()
 	return null
@@ -378,7 +371,7 @@ func _run_next_post_move_trigger(post_move: PostMoveContext, events: Array[Domai
 			exploration.trigger_index = trigger_ids.size()
 			break
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
-		var step := SessionActionPointCoordinator.new(_context, self).execute(post_move, trigger, events)
+		var step := SessionActionPointCoordinator.new(_context).execute(post_move, trigger, events)
 		if step != null:
 			return step
 	return null
@@ -519,7 +512,7 @@ func finish_exploration_movement(result: ExplorationMovementWorkflow.MovementTra
 	if not result.post_clock:
 		return SessionCoordinatorResult.completed(result.events)
 	set_post_time_continuation(result.map, result.resume_kind, result.direction, result.check_random, result.timed_day, result.timed_coordinate, result.timed_scan_pending)
-	return _context.responses().finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+	return _context.responses().finish_with_age_updates(result.events, result.age_updates, &"post-clock", _context.session_continuation.copy())
 
 
 func _begin_boat_choice(result: ExplorationMovementWorkflow.MovementTransitionResult) -> SessionCoordinatorResult:
@@ -570,14 +563,14 @@ func start_random_battle(region: RandomEncounterRegion, surprise: int, events: A
 		var exploration := _context.session_continuation.exploration()
 		exploration.random_region_index = -1 if region.only else exploration.random_region_index - 1
 		_context.battle_return_continuation = _context.session_continuation.copy()
-	if not CharacterAgingResult.update_payloads(battle_result.events).is_empty():
+	if not battle_result.age_updates.is_empty():
 		_context.session_interaction = null
 		_context.session_continuation.clear()
-		return _context.responses().finish_with_age_updates(events, &"combat-monster-turns")
-	if not _context.event_payload(battle_result.events, &"monster_death_macro_requested").is_empty():
+		return _context.responses().finish_with_age_updates(events, battle_result.age_updates, &"combat-monster-turns")
+	if battle_result.death_macro != null:
 		_context.session_interaction = null
 		_context.session_continuation.clear()
-		return _context.scenario().start_session_death_macro(events)
+		return _context.scenario().start_session_death_macro(battle_result.death_macro, events)
 	_context.session_interaction = null
 	_context.session_continuation.clear()
 	if battle_result.completed:

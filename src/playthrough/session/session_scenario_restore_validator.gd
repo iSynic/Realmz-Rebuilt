@@ -30,8 +30,22 @@ static func combat_vm_continuation_is_valid(state: GameState, rules: RealmzRules
 
 static func native_operation_continuation_is_valid(content: RealmzContent, state: GameState, snapshot: ScenarioVmSnapshot, depth: int = 0) -> bool:
 	if depth > 32 or snapshot == null: return false
+	if snapshot.execution != null and not execution_calls_are_valid(content, state, snapshot.execution): return false
 	var runtime := snapshot.pending_continuation.runtime if snapshot.pending_continuation != null else null
 	if runtime == null: return true
+	var age := runtime.body as ScenarioAgeContinuationBody
+	if age != null: return _age_batch_is_valid(state, age.updates, age.index, snapshot.pending_request)
+	if runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE]:
+		var combat_age := runtime.combat()
+		if state.combat == null or state.combat.completed or state.combat.pending_monster_attack == null or combat_age == null or combat_age.battle_id != state.combat.battle_id: return false
+		return _age_batch_is_valid(state, combat_age.updates, combat_age.index, snapshot.pending_request)
+	if runtime.body is ScenarioClockScanBody:
+		var scan := runtime.body as ScenarioClockScanBody
+		if scan.timer_index > content.scenario_records.timed_encounters().size() or snapshot.pending_request == null: return false
+		for update: AgeUpdateRequestBody in scan.updates:
+			if not age_update_payload_is_valid(state, update): return false
+		var request := InteractionRequest.age_update_body(snapshot.pending_request.request_id, scan.updates[scan.age_index - 1])
+		return request.to_data() == snapshot.pending_request.to_data()
 	var clock_body := runtime.body as ScenarioClockContinuationBody
 	var nested := runtime.nested_vm()
 	if runtime.body is ScenarioFumbleContinuationBody:
@@ -46,9 +60,8 @@ static func native_operation_continuation_is_valid(content: RealmzContent, state
 		if not clock_body.return_program_id.is_empty() and content.scenario.program_by_id(clock_body.return_program_id) == null: return false
 		if nested != null:
 			if clock_body.timer_index < 1 or encounters[clock_body.timer_index - 1].program_id != clock_body.program_id: return false
-			var vm := ScenarioVm.new()
-			vm.configure(content.scenario)
-			if not vm.restore(nested): return false
+			var execution := nested.execution if nested.execution != null else ScenarioLegacyExecutionCodec.convert(nested, content.scenario)
+			if not ScenarioExecutionRestoreRules.is_valid(execution, content.scenario): return false
 		else:
 			for update: AgeUpdateRequestBody in clock_body.updates:
 				if not age_update_payload_is_valid(state, update): return false
@@ -57,6 +70,14 @@ static func native_operation_continuation_is_valid(content: RealmzContent, state
 			request.request_id = snapshot.pending_request.request_id
 			if request.to_data() != snapshot.pending_request.to_data(): return false
 	return nested == null or nested.pending_request != null and snapshot.pending_request != null and nested.pending_request.to_data() == snapshot.pending_request.to_data() and native_operation_continuation_is_valid(content, state, nested, depth + 1)
+
+
+static func _age_batch_is_valid(state: GameState, updates: Array[AgeUpdateRequestBody], index: int, request: InteractionRequest) -> bool:
+	if request == null or request.kind != InteractionRequest.AGE_UPDATE or index < 1 or index > updates.size(): return false
+	for update: AgeUpdateRequestBody in updates:
+		if not age_update_payload_is_valid(state, update): return false
+	var body := request.body as AgeUpdateRequestBody
+	return body != null and body.same_values(updates[index - 1])
 
 
 static func vm_reward_continuation_is_valid(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
@@ -217,7 +238,9 @@ static func reward_continuation_is_valid(content: RealmzContent, state: GameStat
 
 
 static func age_update_payload_is_valid(state: GameState, update: AgeUpdateRequestBody) -> bool:
-	return update != null and not update.character_id.is_empty() and state.party.character_by_id(update.character_id) != null \
+	var character := state.party.character_by_id(update.character_id) if update != null else null
+	return character != null and update.character_name == character.name and update.race_id == character.race_id \
+		and update.portrait_id == character.portrait_id and update.combat_icon_id == character.combat_icon_id \
 		and update.presentation == &"classic-age-update" \
 		and update.age_group >= 1 and update.age_group <= 5 \
 		and update.transition in [-1, 1] \
@@ -239,12 +262,22 @@ static func ready_post_move_continuation_is_valid(content: RealmzContent, state:
 
 
 static func round_cursor_owner_is_valid(state: GameState, continuation: SessionContinuation, snapshot: ScenarioVmSnapshot) -> bool:
+	if snapshot != null and snapshot.execution != null and not direct_macro_owner_is_valid(continuation, snapshot.execution): return false
 	var combat := state.combat
 	if combat == null or combat.round_cursor == null: return true
 	var cursor := combat.round_cursor
 	var macro_wait := cursor.phase == &"battle-macro"
-	var subject := cursor.waiting_monster_id if not cursor.waiting_monster_id.is_empty() else combat.spell_runtime.pending_death_macro_id()
+	var subject := cursor.waiting_monster_id if not cursor.waiting_monster_id.is_empty() else combat.death_macros.pending_id()
 	if not macro_wait and subject.is_empty(): return false
+	if snapshot != null and snapshot.execution != null:
+		for record: ScenarioExecutionRecord in snapshot.execution.records:
+			if record.kind != ScenarioExecutionRecord.Kind.OPERATION or record.operation.child_call == null: continue
+			if record.operation.child_call.kind != ScenarioProgramCall.Kind.MACRO: continue
+			var call := record.operation.child_call.macro
+			if call.battle_id != combat.battle_id: continue
+			if macro_wait and call.kind == ScenarioMacroCall.Kind.ROUND and call.program_id == "xap:%d" % absi(combat.macro_id): return true
+			if not macro_wait and call.kind == ScenarioMacroCall.Kind.DEATH and call.combatant_id == subject: return true
+		return false
 	var direct := continuation.combat()
 	if direct != null:
 		if direct.battle_id != combat.battle_id: return false
@@ -263,3 +296,75 @@ static func round_cursor_owner_is_valid(state: GameState, continuation: SessionC
 				return body.combatant_id == subject
 		snapshot = runtime.nested_vm()
 	return false
+
+
+static func execution_calls_are_valid(content: RealmzContent, state: GameState, execution: ScenarioExecutionState) -> bool:
+	var shared := execution.classic
+	if shared.encounter_kind == &"simple" and content.scenario_records.simple_encounter_by_id(shared.encounter_id) == null: return false
+	if shared.encounter_kind == &"complex" and content.scenario_records.complex_encounter_by_id(shared.encounter_id) == null: return false
+	for record: ScenarioExecutionRecord in execution.records:
+		if record.kind != ScenarioExecutionRecord.Kind.OPERATION or record.operation.child_call == null: continue
+		var child := record.operation.child_call
+		if child.kind == ScenarioProgramCall.Kind.TIMER:
+			var encounters := content.scenario_records.timed_encounters()
+			var index := child.timer_scan.timer_index
+			if index < 1 or index > encounters.size() or encounters[index - 1].program_id != child.timer_program_id or encounters[index - 1].id != child.timer_context.timed_encounter_id: return false
+			continue
+		if child.kind == ScenarioProgramCall.Kind.APPLICATION:
+			if content.scenario.application_hook_program_id(child.application.context.application_hook) != child.application.program_id: return false
+			continue
+		var call := child.macro
+		if state.combat == null or call.battle_id != state.combat.battle_id: return false
+		if call.kind == ScenarioMacroCall.Kind.DEATH and state.combat.roster.monster_by_id(call.combatant_id) == null: return false
+		if call.queued_source != null:
+			if state.combat.death_macros.actor_id().is_empty(): return false
+			var queued := state.combat.death_macros.pending_request()
+			if queued == null or queued.combatant_id != call.combatant_id: return false
+			if queued.macro_id != 0 and (queued.program_id() != call.program_id or queued.classic_monster_id != call.classic_monster_id or queued.source.to_data() != call.queued_source.to_data()): return false
+	return true
+
+
+static func pending_combat_work_is_valid(state: GameState, owner: SessionContinuation, saved: ScenarioVmSnapshot, interaction: InteractionRequest) -> bool:
+	if not _captured_death_queue_has_owner(state, owner, saved, interaction): return false
+	if state.combat != null and not state.combat.pending_operations.age_updates.is_empty(): return false
+	if state.combat == null or state.combat.pending_operations.death_macro == null: return true
+	if state.combat.completed: return false
+	var age := owner.age() if owner != null else null
+	if age != null:
+		return age.resume_kind == &"combat-monster-turns" and interaction != null and interaction.kind == InteractionRequest.AGE_UPDATE
+	if saved.pending_request == null or saved.pending_request.kind != InteractionRequest.AGE_UPDATE or saved.pending_continuation == null: return false
+	var runtime := saved.pending_continuation.runtime
+	var combat := runtime.combat() if runtime != null else null
+	return combat != null and combat.battle_id == state.combat.battle_id and not combat.updates.is_empty()
+
+
+static func _captured_death_queue_has_owner(state: GameState, owner: SessionContinuation, saved: ScenarioVmSnapshot, interaction: InteractionRequest) -> bool:
+	var combat := state.combat
+	if combat == null or combat.death_macros.pending_id().is_empty() or not combat.death_macros.actor_id().is_empty(): return true
+	if combat.completed or saved.execution == null: return false
+	for request: CombatDeathMacroRequest in combat.death_macros.facts():
+		if request.macro_id == 0 or not request.source.available: return false
+	for record: ScenarioExecutionRecord in saved.execution.records:
+		if record.kind != ScenarioExecutionRecord.Kind.OPERATION or record.operation.phase != ScenarioOperationExecutionRecord.Phase.CHILD: continue
+		var child := record.operation.child_call
+		if child != null and child.kind == ScenarioProgramCall.Kind.MACRO and child.macro.battle_id == combat.battle_id: return true
+	var pending := interaction if interaction != null else saved.pending_request
+	if combat.pending_reaction == null or pending == null: return false
+	var runtime := saved.pending_continuation.runtime if saved.pending_continuation != null else null
+	if pending.kind == InteractionRequest.AGE_UPDATE:
+		return combat.pending_monster_attack != null and (owner != null and owner.kind == &"age-updates" or runtime != null and runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.SAFE_COMBAT_AGE])
+	return combat.pending_reaction.awaits_friendly_collision_choice() and (owner != null and owner.kind == &"combat-friendly-collision" or runtime != null and runtime.kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION])
+
+
+static func direct_macro_owner_is_valid(continuation: SessionContinuation, execution: ScenarioExecutionState) -> bool:
+	var direct_wait := continuation != null and continuation.kind in [&"combat-round-macro", &"combat-death-macro"]
+	if execution.records.is_empty(): return not direct_wait
+	var root := execution.records[0]
+	if root.kind != ScenarioExecutionRecord.Kind.OPERATION or root.operation.return_kind != ScenarioOperationExecutionRecord.ReturnKind.DIRECT:
+		return not direct_wait
+	if root.operation.child_call == null or root.operation.child_call.kind != ScenarioProgramCall.Kind.MACRO: return false
+	var call := root.operation.child_call.macro
+	var caller := continuation.combat() if continuation != null else null
+	if call.return_kind != ScenarioMacroCall.ReturnKind.DIRECT or caller == null or caller.battle_id != call.battle_id or caller.program_id != call.program_id: return false
+	if call.kind == ScenarioMacroCall.Kind.ROUND: return continuation.kind == &"combat-round-macro"
+	return continuation.kind == &"combat-death-macro" and caller.combatant_id == call.combatant_id and caller.reset_traitor_on_complete == call.reset_traitor_on_complete

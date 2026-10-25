@@ -239,4 +239,4 @@ func _complete_mode_ten_battle(combat: CombatState, caller: ScenarioBattleCaller
 			_append_battle_after_message(battle, events)
 		events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": "victory"}))
 	_game_state.combat = null
-	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive)
+	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive).with_battle_return(BattleReturnResult.new(battle_id,combat.outcome) if combat.outcome == &"victory" else null)

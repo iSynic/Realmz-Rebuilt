@@ -86,7 +86,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	if advances_turn and not defeated:
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
+		return CombatFlowResult.from_combat(state.combat, events, true)
 	if defeated and combat.turns.active_actor_id() == caster.id:
 		_context.rounds().advance_turn(state, content, rng, events)
 	return _context.automation().process_monster_turns(state, content, rng, events)

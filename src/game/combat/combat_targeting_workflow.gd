@@ -29,7 +29,7 @@ func command(state: GameState, content: RealmzContent, operation: StringName, se
 		if state.adventure_rules.free_targeting_cancellation:
 			return _cancel_without_cost(state, content)
 		CombatCastResources.abort(state)
-		return CombatFlowResult.succeeded([])
+		return CombatFlowResult.from_combat(state.combat, [])
 	if operation == &"adjust_cast": return _adjust_power(state, content, selection)
 	if commitment != null: return blocked()
 	var expected := {&"begin_spell": &"cast_spell", &"begin_scroll": &"use_scroll", &"begin_item": &"use_item", &"begin_projectile": &"attack"}
@@ -47,7 +47,7 @@ func command(state: GameState, content: RealmzContent, operation: StringName, se
 		return CombatFlowResult.failed(&"cast_reservation_failed", "The selected combat source could not be committed.")
 	if not state.adventure_rules.free_targeting_cancellation:
 		state.combat.turns.invalidate_undo()
-	return CombatFlowResult.succeeded([])
+	return CombatFlowResult.from_combat(state.combat, [])
 
 
 ## FD-COMBAT-022 is opt-in; Castle's default Abort arithmetic stays separate.
@@ -60,7 +60,7 @@ func _cancel_without_cost(state: GameState, content: RealmzContent) -> CombatFlo
 			return CombatFlowResult.failed(&"cast_rollback_failed", "The failed cancellation could not restore its pending action.")
 		return CombatFlowResult.failed(&"cast_restoration_failed", "The reserved combat source could not be restored; targeting remains pending.")
 	state.combat.turns.clear_staged_random_item_power()
-	return CombatFlowResult.succeeded([])
+	return CombatFlowResult.from_combat(state.combat, [])
 
 
 func probe_source(state: GameState, content: RealmzContent, selection: CombatCastSelection) -> CombatSpellCastProbe:
@@ -126,7 +126,7 @@ func _adjust_power(state: GameState, content: RealmzContent, selection: CombatCa
 	state.party.character_by_id(selection.actor_id).spell_points += commitment.spell_points_paid - cost
 	commitment.spell_points_paid = cost
 	commitment.selection.power = selection.power
-	return CombatFlowResult.succeeded([])
+	return CombatFlowResult.from_combat(state.combat, [])
 
 
 func confirm(state: GameState, content: RealmzContent, body: InteractionResponse.CombatBody, rng: RealmzRng) -> CombatFlowResult:
@@ -179,7 +179,7 @@ func _active_character(state: GameState, actor_id: String) -> bool:
 	if state == null or state.combat == null or state.combat.completed: return false
 	var combat := state.combat
 	var caster := state.party.character_by_id(actor_id)
-	return combat.turns.active_actor_id() == actor_id and caster != null and caster.current_health > 0 and not caster.traitor and combat.battlefield != null and combat.battlefield.actors.has_actor(actor_id) and combat.pending_reaction == null and combat.pending_monster_attack == null and combat.spell_runtime.pending_death_macro_id().is_empty()
+	return combat.turns.active_actor_id() == actor_id and caster != null and caster.current_health > 0 and not caster.traitor and combat.battlefield != null and combat.battlefield.actors.has_actor(actor_id) and combat.pending_reaction == null and combat.pending_monster_attack == null and combat.death_macros.pending_id().is_empty()
 
 
 static func blocked() -> CombatFlowResult:

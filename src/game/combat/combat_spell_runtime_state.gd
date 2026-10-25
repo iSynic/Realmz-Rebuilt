@@ -1,73 +1,17 @@
-## Owns battle-scoped spell continuations and persistent field state.
+## Owns persistent field lifetimes and per-activation collision slots.
 
 class_name CombatSpellRuntimeState
 extends RefCounted
 
-const MAX_DEATH_MACROS := 100
 const MAX_PERSISTENT_FIELDS := 60
 
-var _roster: CombatRosterState
 var _turns: CombatTurnSequenceState
-var _death_macro_queue: Array[String] = []
-var _macro_actor_id: String = ""
-var _macro_advances_turn: bool = false
 var _persistent_fields: Array[PersistentCombatField] = []
 var _field_collision_slots: Dictionary = {}
 
 
-func bind(roster: CombatRosterState, turns: CombatTurnSequenceState) -> void:
-	_roster = roster
+func bind(turns: CombatTurnSequenceState) -> void:
 	_turns = turns
-
-
-func queue_death_macro(combatant_id: String) -> bool:
-	if combatant_id.is_empty() or _roster == null or _roster.monster_by_id(combatant_id) == null or _death_macro_queue.size() >= MAX_DEATH_MACROS:
-		return false
-	_death_macro_queue.append(combatant_id)
-	return true
-
-
-func begin_death_macro_sequence(actor_id: String, advances_turn: bool) -> bool:
-	if _turns == null or _death_macro_queue.is_empty() or actor_id.is_empty() or actor_id != _turns.active_actor_id() or not _macro_actor_id.is_empty():
-		return false
-	_macro_actor_id = actor_id
-	_macro_advances_turn = advances_turn
-	return true
-
-
-func pending_death_macro_id() -> String:
-	return "" if _death_macro_queue.is_empty() else _death_macro_queue[0]
-
-
-func complete_death_macro(combatant_id: String) -> bool:
-	if combatant_id.is_empty() or pending_death_macro_id() != combatant_id:
-		return false
-	_death_macro_queue.pop_front()
-	return true
-
-
-func death_macro_queue() -> Array[String]:
-	return _death_macro_queue.duplicate()
-
-
-func macro_actor_id() -> String:
-	return _macro_actor_id
-
-
-func macro_advances_turn() -> bool:
-	return _macro_advances_turn
-
-
-func clear_death_macro_sequence() -> void:
-	_death_macro_queue.clear()
-	_macro_actor_id = ""
-	_macro_advances_turn = false
-
-
-func restore_death_macro_sequence(queue: Array[String], actor_id: String, advances_turn: bool) -> void:
-	_death_macro_queue = queue.duplicate()
-	_macro_actor_id = actor_id
-	_macro_advances_turn = advances_turn
 
 
 func persistent_fields() -> Array[PersistentCombatField]:

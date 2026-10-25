@@ -222,7 +222,7 @@ func _test_live_aging_and_maximum_age() -> void:
 	clock_character.age_group = 1
 	var clock_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, _characters([clock_character])), RealmzClock.new(RealmzClock.MINUTES_PER_DAY - 1))
 	var aging_content := RealmzContent.new("aging", "0".repeat(64), "aging-content", "realmz-classic-1", "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [race], [caste])
-	var clock_events := rules.clock.advance_minutes(clock_state, aging_content, 1)
+	var clock_events := rules.clock.advance_minutes(clock_state, aging_content, 1).events
 	assert_equal(clock_character.age_days, 20 * 365, "each crossed midnight adds one day to every character")
 	assert_true(clock_events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_age_changed"), "a midnight age-band transition publishes a typed domain event")
 

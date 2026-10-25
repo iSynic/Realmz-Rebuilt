@@ -3,12 +3,6 @@ class_name ScenarioVmRestoreRules
 extends RefCounted
 
 
-static func classic_caller_index(frames: Array[ScenarioFrame]) -> int:
-	for index: int in range(frames.size() - 1, 0, -1):
-		if frames[index].counts_as_classic_call: return index
-	return -1
-
-
 static func frames_are_valid(definition: ScenarioDefinition, saved: ScenarioVmSnapshot, classic_limit: int, action_limit: int) -> bool:
 	if saved == null or definition == null or saved.frames.size() > classic_limit + action_limit + 1: return false
 	var action_depth := 0

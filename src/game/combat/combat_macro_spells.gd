@@ -10,14 +10,17 @@ func _init(context: CombatContext) -> void:
 	_context = context
 
 
-func cast(state: GameState, content: RealmzContent, source_id: String, authored_spell: SpellDefinition, power: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng) -> CombatFlowResult:
+func cast(state: GameState, content: RealmzContent, source_id: String, authored_spell: SpellDefinition, power: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, queued_source: CombatQueuedMacroSource = null) -> CombatFlowResult:
 	var combat := state.combat
 	if combat == null or combat.completed or combat.battlefield == null or not combat.battlefield.actors.has_actor(source_id) or power < 1:
 		return CombatFlowResult.failed(&"invalid_macro_spell_source", "A monster macro spell requires its retained battlefield source.")
 	var spell := authored_spell.with_scenario_adjustments(extra_save_adjust, force_affect)
 	if not _supports_spell(spell):
 		return CombatFlowResult.failed(&"unsupported_macro_spell", "Monster macros require an area, side-group, or repeated-target combat spell.")
-	var center := combat.battlefield.actors.actor_position(source_id)
+	if queued_source != null and (not queued_source.available or not queued_source.has_position): return CombatFlowResult.failed(&"unavailable_macro_source", "The queued macro has no retained source coordinate.")
+	var center := queued_source.position if queued_source != null else combat.battlefield.actors.actor_position(source_id)
+	var source := combat.roster.monster_by_id(source_id)
+	var source_side := queued_source.classic_traitor if queued_source != null else source.classic_traitor if source != null else 0
 	# FD-SCENARIO-016: opcode 17 supplies one source coordinate, no actor index
 	# or ray endpoint. Use that cell for types 1/6; never alias pos[] or invent a ray.
 	var shape := _context.spell_areas.shape_for(spell, power) if spell.target_type in [3, 4] else (1 if spell.target_type in [1, 6] else 0)
@@ -28,7 +31,7 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 		persistent_field = _context.fields().queue_persistent_field(combat, source_id, spell, power, spell.classic_tier(), rng, center, 0, shape)
 		if persistent_field == null:
 			return CombatFlowResult.failed(&"persistent_field_queue_failed", "The monster macro field could not be queued.")
-	var selections := _targets(state, content, source_id, spell, center, shape, power, rng)
+	var selections := _targets(state, content, source_id, spell, center, shape, power, rng, source_side)
 	var group := _resolve(state, content, selections, spell, power, rng, source_id)
 	if group == null or not group.cast:
 		if group != null and not group.error_code.is_empty():
@@ -40,16 +43,16 @@ func cast(state: GameState, content: RealmzContent, source_id: String, authored_
 	CombatSpellEventBuilder.append_cast(events, source_id, spell, group, center, shape, SOURCE)
 	for index: int in group.resolutions.size():
 		_append_result(state, content, source_id, spell, power, group, index, center, shape, events)
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 static func _supports_spell(spell: SpellDefinition) -> bool:
 	return spell != null and spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12] and (spell.queue_icon == 0 or spell.target_type in [3, 4])
 
 
-func _targets(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, center: Vector2i, shape: int, power: int, rng: RealmzRng) -> Array[SpellTargetSelection]:
+func _targets(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, center: Vector2i, shape: int, power: int, rng: RealmzRng, source_side: int) -> Array[SpellTargetSelection]:
 	if spell.target_type == 0:
-		return _repeated_targets(state, content, source_id, spell, power)
+		return _repeated_targets(state, content, source_id, spell, power, center, source_side)
 	var selected: Dictionary = {}
 	for offset: Vector2i in _context.spell_areas.pattern(shape):
 		var actor_id := state.combat.battlefield.actors.actor_at(center + offset)
@@ -73,10 +76,8 @@ func _targets(state: GameState, content: RealmzContent, source_id: String, spell
 	return result
 
 
-func _repeated_targets(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, power: int) -> Array[SpellTargetSelection]:
+func _repeated_targets(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, power: int, center: Vector2i, source_traitor: int) -> Array[SpellTargetSelection]:
 	var max_targets := spell.fixed_target_count if spell.fixed_target_count > 0 else power
-	var source_monster := state.combat.roster.monster_by_id(source_id)
-	var source_traitor := source_monster.classic_traitor if source_monster != null else 0
 	var friendly_only := spell.cannot == 4
 	var result: Array[SpellTargetSelection] = []
 	for character: CharacterState in state.party.characters():
@@ -87,7 +88,7 @@ func _repeated_targets(state: GameState, content: RealmzContent, source_id: Stri
 		var is_friendly := character.classic_traitor == source_traitor
 		if (friendly_only and not is_friendly) or (not friendly_only and is_friendly):
 			continue
-		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, source_id, character.id, spell, power):
+		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, source_id, character.id, spell, power, center):
 			continue
 		result.append(SpellTargetSelection.for_character(character))
 	for candidate_monster: MonsterState in state.combat.roster.monsters():
@@ -100,7 +101,7 @@ func _repeated_targets(state: GameState, content: RealmzContent, source_id: Stri
 		var is_friendly := candidate_monster.classic_traitor == source_traitor
 		if (friendly_only and not is_friendly) or (not friendly_only and is_friendly):
 			continue
-		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, source_id, candidate_monster.id, spell, power):
+		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, source_id, candidate_monster.id, spell, power, center):
 			continue
 		var definition := content.combat.monster_by_id(candidate_monster.definition_id)
 		if definition != null:
@@ -191,5 +192,5 @@ func _append_result(state: GameState, content: RealmzContent, source_id: String,
 		return
 	var defeated := state.combat.roster.monster_by_id(target_id)
 	var definition := content.combat.monster_by_id(defeated.definition_id) if defeated != null else null
-	var queued: bool = _context.actions().events().queue_spell_death_macro(state.combat, defeated, definition)
+	var queued: bool = CombatDeathMacroOperations.queue_spell(state.combat, defeated, definition)
 	_context.automation().remove_defeated_position(state.combat, target_id, not queued)

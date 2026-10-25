@@ -142,16 +142,16 @@ func commit(state: GameState, content: RealmzContent, caster: CharacterState, sp
 	for index: int in group.resolutions.size():
 		_append_resolution(state, content, caster, spell, power_level, cast_level, group, index, center, shape, event_source, item_instance_id, events)
 	var advances_turn := not _context.actions().character_can_continue(caster)
-	if not combat.spell_runtime.pending_death_macro_id().is_empty():
+	if not combat.death_macros.pending_id().is_empty():
 		# resolvespell keeps inspell set while killbody runs every queued macro.
 		combat.turns.active_turn.classic_spell_active = true
-		if not combat.spell_runtime.begin_death_macro_sequence(caster.id, advances_turn) or not _context.actions().events().request_next_spell_death_macro(combat, content, events):
+		if not combat.death_macros.begin_sequence(caster.id, advances_turn) or not CombatDeathMacroOperations.request_next(combat, content, events):
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The multi-target spell death-macro queue could not retain its caster and source order.")
-		return CombatFlowResult.succeeded(events)
+		return CombatFlowResult.from_combat(state.combat, events)
 	if advances_turn:
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
+		return CombatFlowResult.from_combat(state.combat, events, true)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
@@ -215,5 +215,5 @@ func _remove_defeated_target(state: GameState, content: RealmzContent, target_id
 		return
 	var defeated_monster := state.combat.roster.monster_by_id(target_id)
 	var defeated_definition := content.combat.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
-	var queued := _context.actions().events().queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
+	var queued := CombatDeathMacroOperations.queue_spell(state.combat, defeated_monster, defeated_definition)
 	_context.automation().remove_defeated_position(state.combat, target_id, not queued)

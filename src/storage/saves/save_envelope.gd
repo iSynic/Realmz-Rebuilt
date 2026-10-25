@@ -4,11 +4,12 @@ class_name SaveEnvelope
 extends SessionSnapshot
 
 const FORMAT: String = "realmz2-save"
-const FORMAT_VERSION: int = 8
+const FORMAT_VERSION: int = 9
 const MAX_MAP_PREVIEW_BYTES: int = 256 * 1024
 
 var map_preview_jpeg: PackedByteArray = PackedByteArray()
 var character_art := CharacterArtBundle.new()
+var legacy_wire: Dictionary = {}
 
 
 func _init(campaign: String, package_identity: String, rules: String, revision: int, state: GameState, random_state: RealmzRngState, vm_state: ScenarioVmSnapshot = null, action_state: ScenarioActionState = null, pending_continuation: SessionContinuation = null, pending_battle_return: SessionContinuation = null, pending_session_interaction: InteractionRequest = null, native_execution: ClassicExecutionState = null) -> void:
@@ -16,6 +17,8 @@ func _init(campaign: String, package_identity: String, rules: String, revision: 
 
 
 func to_data() -> Dictionary:
+	if not legacy_wire.is_empty(): return legacy_wire.duplicate(true)
+	if scenario_vm.execution == null: return {}
 	var data := {
 		"format": FORMAT,
 		"formatVersion": FORMAT_VERSION,
@@ -31,7 +34,6 @@ func to_data() -> Dictionary:
 		"sessionContinuation": {} if continuation == null else continuation.to_data(),
 		"battleReturnContinuation": {} if battle_return_continuation == null else battle_return_continuation.to_data(),
 		"sessionInteraction": {} if session_interaction == null else session_interaction.to_data(),
-		"classicExecution": classic_execution.to_data(),
 	}
 	if not map_preview_jpeg.is_empty():
 		data["mapPreviewJpeg"] = Marshalls.raw_to_base64(map_preview_jpeg)
@@ -41,7 +43,7 @@ func to_data() -> Dictionary:
 
 
 static func from_snapshot(snapshot: SessionSnapshot, preview_jpeg: PackedByteArray = PackedByteArray()) -> SaveEnvelope:
-	if snapshot == null or not snapshot.is_complete:
+	if snapshot == null or not snapshot.is_complete or snapshot.scenario_vm.execution == null:
 		return null
 	var envelope := SaveEnvelope.new(snapshot.campaign_id, snapshot.package_hash, snapshot.rules_version, snapshot.view_revision, snapshot.game_state, snapshot.rng_state, snapshot.scenario_vm, snapshot.scenario_action_state, snapshot.continuation, snapshot.battle_return_continuation, snapshot.session_interaction, snapshot.classic_execution)
 	envelope.deviation_ids = snapshot.deviation_ids.duplicate()
@@ -51,19 +53,14 @@ static func from_snapshot(snapshot: SessionSnapshot, preview_jpeg: PackedByteArr
 	return envelope
 
 
-static func from_data(data: Variant) -> SaveEnvelope:
-	var version := _integer(data.get("formatVersion")) if data is Dictionary else -1
-	var fields: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "battleReturnContinuation", "sessionInteraction"]
-	if version in [6, 7, 8]: fields.append("classicExecution")
-	if not data is Dictionary or data.size() != fields.size() + (1 if data.has("mapPreviewJpeg") else 0) + (1 if data.has("characterArt") else 0):
-		return null
-	for field: String in fields:
-		if not data.has(field):
-			return null
-	if data["format"] != FORMAT or version not in [5, 6, 7, FORMAT_VERSION]:
-		return null
-	if not _clock_shape_is_valid(data["gameState"], version) or not _rules_shape_is_valid(data["gameState"], version):
-		return null
+static func from_data(value: Variant) -> SaveEnvelope:
+	if not value is Dictionary: return null
+	var data: Dictionary = value
+	var version := _integer(data.get("formatVersion"))
+	if not _envelope_fields_are_valid(data, version): return null
+	var game_data: Dictionary = data["gameState"]
+	if game_data.has("classicEncounterMemory") != (version == 9): return null
+	if not _combat_execution_fields_are_valid(game_data, version): return null
 	var preview_jpeg := PackedByteArray()
 	if data.has("mapPreviewJpeg"):
 		if not data["mapPreviewJpeg"] is String or data["mapPreviewJpeg"].length() > MAX_MAP_PREVIEW_BYTES * 2:
@@ -84,14 +81,15 @@ static func from_data(data: Variant) -> SaveEnvelope:
 	var state := GameState.from_data(data["gameState"])
 	var random_state := RealmzRngState.from_data(data["rng"])
 	var vm_state := ScenarioVmSnapshot.from_data(data["scenarioVm"])
-	var action_state := ScenarioActionState.from_data(data["scenarioActionState"])
-	var native_execution := ClassicExecutionState.from_data(data["classicExecution"]) if version >= 6 else ClassicExecutionState.new()
+	var action_state := ScenarioActionState.from_data(data["scenarioActionState"], version >= 9)
+	var native_execution := native_header(data, vm_state, version)
 	if state == null or random_state == null or vm_state == null or action_state == null or native_execution == null:
 		return null
 	# ADR 0026: v5/v6 predate VM schema 4. v7 may still carry an unrestored
 	# legacy VM copied from an older envelope; restore applies its coercion.
 	if version < 7 and not vm_state.legacy_values:
 		return null
+	if (version == 9) != (vm_state.execution != null): return null
 	var typed_continuation := SessionContinuation.from_data(data["sessionContinuation"]) if not data["sessionContinuation"].is_empty() else null
 	if not data["sessionContinuation"].is_empty() and typed_continuation == null:
 		return null
@@ -111,7 +109,22 @@ static func from_data(data: Variant) -> SaveEnvelope:
 		return null
 	if version >= 6 and not _current_execution_facts_match(data, envelope):
 		return null
+	if version < 9: envelope.legacy_wire = data.duplicate(true)
 	return envelope
+
+
+static func _envelope_fields_are_valid(data: Dictionary, version: int) -> bool:
+	var fields: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "battleReturnContinuation", "sessionInteraction"]
+	if version in [6, 7, 8]: fields.append("classicExecution")
+	if data.size() != fields.size() + (1 if data.has("mapPreviewJpeg") else 0) + (1 if data.has("characterArt") else 0): return false
+	if not data.has_all(fields) or data["format"] != FORMAT or version not in [5, 6, 7, 8, FORMAT_VERSION]: return false
+	return _clock_shape_is_valid(data["gameState"], version) and _rules_shape_is_valid(data["gameState"], version)
+
+
+static func native_header(data: Dictionary, vm: ScenarioVmSnapshot, version: int) -> ClassicExecutionState:
+	if version == 9:
+		return vm.execution.classic.header if vm != null and vm.execution != null else null
+	return ClassicExecutionState.from_data(data["classicExecution"]) if version >= 6 else ClassicExecutionState.new()
 
 
 static func _clock_shape_is_valid(state: Variant, version: int) -> bool:
@@ -120,8 +133,17 @@ static func _clock_shape_is_valid(state: Variant, version: int) -> bool:
 	return clock.size() == 1 and clock.has("totalMinutes") if version == 5 else clock.size() == 3 and clock.has_all(["day", "hour", "minute"])
 
 
+static func _combat_execution_fields_are_valid(game: Dictionary, version: int) -> bool:
+	var value: Variant = game.get("combat")
+	if value == null: return true
+	if not value is Dictionary: return false
+	var combat: Dictionary = value
+	return combat.has("spellDeathMacroFacts") == (version == 9) and combat.has("pendingOperations") == (version == 9)
+
+
 static func _current_execution_facts_match(data: Dictionary, envelope: SaveEnvelope) -> bool:
 	var expected := {"scenarioVm": envelope.scenario_vm.to_data(), "sessionContinuation": {} if envelope.continuation == null else envelope.continuation.to_data(), "battleReturnContinuation": {} if envelope.battle_return_continuation == null else envelope.battle_return_continuation.to_data()}
+	if data["formatVersion"] == 9: expected["scenarioActionState"] = envelope.scenario_action_state.to_data()
 	for field: String in expected:
 		if CanonicalJson.encode(data[field]) != CanonicalJson.encode(expected[field]): return false
 	var combat := envelope.game_state.combat

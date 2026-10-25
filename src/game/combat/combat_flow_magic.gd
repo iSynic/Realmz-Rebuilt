@@ -45,8 +45,8 @@ func selection() -> CombatSpellSelection:
 	return _selection
 
 
-func cast_macro_spell(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, power: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng) -> CombatFlowResult:
-	return CombatMacroSpells.new(_context).cast(state, content, source_id, spell, power, extra_save_adjust, force_affect, rng)
+func cast_macro_spell(state: GameState, content: RealmzContent, source_id: String, spell: SpellDefinition, power: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, queued_source: CombatQueuedMacroSource = null) -> CombatFlowResult:
+	return CombatMacroSpells.new(_context).cast(state, content, source_id, spell, power, extra_save_adjust, force_affect, rng, queued_source)
 
 func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
 	var source_probe := _source_admission.probe_item(state, content, caster_id, instance_id)
@@ -154,7 +154,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		power_level = rng.draw(7, StringName("combat.item.power.%s" % instance.id))
 		if not state.combat.turns.stage_random_item_power(caster.id, instance.id, power_level, item.id if state.adventure_rules.free_targeting_cancellation else ""):
 			return CombatFlowSpellRollback.item(state, rng, stage_state_checkpoint, stage_rng_checkpoint, &"item_power_stage_failed", "The random item power could not be staged for targeting.")
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_item_power_staged", {"actorId": caster.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power_level, "source": "classic-item"})])
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_item_power_staged", {"actorId": caster.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power_level, "source": "classic-item"})])
 	if spell.target_type in [3, 4] and target_coordinate == INVALID_COORDINATE:
 		return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield center for this area item.")
 	if summon_spell and target_coordinates.is_empty():

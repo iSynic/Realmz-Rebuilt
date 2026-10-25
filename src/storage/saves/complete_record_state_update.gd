@@ -44,26 +44,82 @@ func translate(original: SaveEnvelope, pair: Dictionary, new_hash: String) -> Di
 		stock[translated_key] = data.gameState.shopOverrides[key]
 	data.gameState.shopOverrides = stock
 	var vm: Dictionary = data.scenarioVm
-	for frame: Dictionary in vm.frames:
-		if not _context(frame.context): return {}
-	var pending: Variant = vm.pendingContinuation
-	if pending != null:
-		var runtime: Dictionary = pending.data.runtime
-		if runtime.kind in ["classic-opcode-death-macro", "classic-combat-death-macro", "safe-combat-death-macro", "classic-combat-macro", "safe-combat-macro"]:
-			return _fail("Finish the nested monster macro in the original campaign before updating this save.")
-		if runtime.kind == "classic-simple-encounter":
-			var body: Dictionary = runtime.data
-			var options: Variant = body.get("optionIndexes")
-			if options == null:
-				return _fail("This pending choice predates explicit response positions; finish it before updating.")
-			var mapped: Array[int] = []
-			for index: int in options:
-				var slot := _slot(int(body.encounterId), index)
-				if slot < 0: return {}
-				mapped.append(slot)
-			body.optionIndexes = mapped
+	if not _vm(vm): return {}
 	data.packageHash = new_hash
 	return data
+
+
+func _vm(vm: Dictionary) -> bool:
+	if vm.get("schemaVersion") == 5: return _execution(vm)
+	for frame: Dictionary in vm.frames:
+		if not _context(frame.context): return false
+	var pending: Variant = vm.pendingContinuation
+	if pending == null: return true
+	var envelope: Dictionary = pending
+	var data: Dictionary = envelope.data
+	return _optional_runtime(data.runtime)
+
+
+func _execution(vm: Dictionary) -> bool:
+	var classic: Dictionary = vm.classic
+	if not _optional_code(classic.code): return false
+	for entry: Dictionary in classic.returns:
+		if not _optional_code(entry.code): return false
+	for record: Dictionary in vm.records:
+		var body: Dictionary = record.data
+		var kind: int = record.kind
+		match kind:
+			ScenarioExecutionRecord.Kind.CLASSIC:
+				var context: Dictionary = body.context
+				if not _context(context): return false
+				if body.encounterExit != null:
+					var exit_record: Dictionary = body.encounterExit
+					if not _optional_code(exit_record.code): return false
+			ScenarioExecutionRecord.Kind.SAFE:
+				var scope: Dictionary = body.scope
+				var context: Dictionary = scope.context
+				if not _context(context): return false
+			ScenarioExecutionRecord.Kind.OPERATION:
+				if not _optional_code(body.restoreCode) or not _optional_runtime(body.continuation): return false
+	return true
+
+
+func _optional_code(value: Variant) -> bool:
+	if value == null: return true
+	if not value is Dictionary: return false
+	var code: Dictionary = value
+	var context: Dictionary = code.context
+	if not _context(context): return false
+	if code.timelineValues == null: return true
+	var scope: Dictionary = code.timelineValues
+	var scope_context: Dictionary = scope.context
+	return _context(scope_context)
+
+
+func _optional_runtime(value: Variant) -> bool:
+	if value == null: return true
+	if not value is Dictionary: return false
+	var runtime: Dictionary = value
+	return _runtime(runtime)
+
+
+func _runtime(runtime: Dictionary) -> bool:
+	if runtime.kind in ["classic-opcode-death-macro", "classic-combat-death-macro", "safe-combat-death-macro", "classic-combat-macro", "safe-combat-macro"]:
+		last_error = "Finish the nested monster macro in the original campaign before updating this save."
+		return false
+	if runtime.kind != "classic-simple-encounter": return true
+	var body: Dictionary = runtime.data
+	var options: Variant = body.get("optionIndexes")
+	if options == null:
+		last_error = "This pending choice predates explicit response positions; finish it before updating."
+		return false
+	var mapped: Array[int] = []
+	for index: int in options:
+		var slot := _slot(int(body.encounterId), index)
+		if slot < 0: return false
+		mapped.append(slot)
+	body.optionIndexes = mapped
+	return true
 
 
 func _continuation(continuation: Dictionary, pair: Dictionary) -> bool:

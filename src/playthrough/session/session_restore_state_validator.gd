@@ -13,6 +13,22 @@ static func selected_character_rules_are_valid(content: RealmzContent, state: Ga
 	return true
 
 
+static func combat_macro_sources_are_valid(content: RealmzContent, state: GameState) -> bool:
+	if state.combat == null: return true
+	var combat := state.combat
+	var requests := combat.death_macros.facts()
+	var pending := combat.pending_operations.death_macro
+	if pending != null: requests.append(pending)
+	var monsters := combat.roster.monsters()
+	for request: CombatDeathMacroRequest in requests:
+		if request.macro_id == 0: continue
+		var definition := content.combat.monster_by_id(request.definition_id)
+		var source := request.source
+		if definition == null or definition.classic_id != request.classic_monster_id or definition.death_macro != request.macro_id or definition.classic_name_id != source.native_name_id: return false
+		if not source.available or source.monster_index >= monsters.size() or monsters[source.monster_index].id != request.combatant_id: return false
+	return true
+
+
 static func normalize_age_groups(state: GameState, content: RealmzContent, rules: RealmzRules) -> void:
 	for character: CharacterState in state.party.characters():
 		var race := content.characters.race_by_id(character.race_id)

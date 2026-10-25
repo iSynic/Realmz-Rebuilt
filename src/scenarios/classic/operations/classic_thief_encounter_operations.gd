@@ -11,6 +11,7 @@ var _state: GameState
 var _rng: RealmzRng
 var _rules: RealmzRules
 var _encounters: ClassicEncounterOpcodeHandler
+var native_state: ScenarioClassicExecutionState
 
 
 func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules: RealmzRules, encounter_operations: ClassicEncounterOpcodeHandler) -> void:
@@ -31,7 +32,7 @@ func begin(encounter: ComplexEncounterDefinition, gosub: bool, request_id: Strin
 func resume_thief(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var owner := continuation.body as ScenarioThiefContinuationBody
 	var selection := response.body as InteractionResponse.ThiefEncounterBody
-	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var encounter := _encounters.memory.complex_definition() if owner != null else null
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Thief Encounter is unavailable.")
 	if response.kind != InteractionRequest.THIEF_ENCOUNTER or selection == null:
@@ -47,7 +48,7 @@ func resume_thief(continuation: ScenarioRuntimeContinuation, response: Interacti
 func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var owner := continuation.body as ScenarioThiefContinuationBody
 	var selection := response.body as InteractionResponse.PickLockBody
-	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var encounter := _encounters.memory.complex_definition() if owner != null else null
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(owner.character_id) if owner != null else null
 	if encounter == null or thief == null or character == null or character.current_health <= 0:
@@ -71,7 +72,7 @@ func resume_pick_lock(continuation: ScenarioRuntimeContinuation, response: Inter
 func resume_resolution(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var owner := continuation.body as ScenarioThiefContinuationBody
 	var acknowledgement := response.body as InteractionResponse.AcknowledgeBody
-	var encounter := _content.scenario_records.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var encounter := _encounters.memory.complex_definition() if owner != null else null
 	var thief := _thief_definition(encounter)
 	var character := _state.party.character_by_id(owner.character_id) if owner != null else null
 	if owner == null or encounter == null or thief == null or character == null:
@@ -143,14 +144,16 @@ func _finish_action(encounter: ComplexEncounterDefinition, thief: ThiefEncounter
 	if outcome == 0:
 		return _wait_for_thief(encounter, gosub, request_id, events, encounter_attempt)
 	var attempt := encounter_attempt + 1
-	if outcome == 4 and encounter.max_times > 1 and attempt >= encounter.max_times:
+	if outcome == 4 and encounter.max_times > 1 and (native_state.encounter_remaining == 1 if native_state != null else attempt >= encounter.max_times):
 		outcome = 3
 	if outcome < 1 or outcome > 4:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Thief Encounter produced invalid result %d." % outcome)
 	_state.scenario_progress.encounters.record_attempt(&"complex", encounter.id)
 	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, &"thief").set_thief_action(action_index, character.id).set_encounter_attempt(attempt)
-	var program_id := encounter.result_program_id(outcome)
-	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_encounter_result(program_id, gosub, context, attempt < encounter.max_times))
+	var result := _encounters.memory.copy_result(&"complex", outcome - 1, context)
+	result.value = outcome
+	result.events.assign(events)
+	return result.with_encounter_selection(&"complex", encounter.id, attempt)
 
 
 func _present_action_result(encounter: ComplexEncounterDefinition, thief: ThiefEncounterDefinition, gosub: bool, character: CharacterState, action_index: int, succeeded: bool, trap_pending: bool, request_id: String, events: Array[DomainEvent], encounter_attempt: int) -> ScenarioRuntimeOperationResult:

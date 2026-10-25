@@ -21,15 +21,10 @@ func begin_timer(current_map_id: String, current_coordinate: Vector2i) -> void:
 	coordinate = current_coordinate
 
 
-func observe(opcode: int, events: Array[DomainEvent]) -> void:
-	if opcode not in [20, 45, 61, 70]: return
-	for event: DomainEvent in events:
-		if event.kind not in [&"party_teleported", &"party_shifted", &"party_position_restored"]: continue
-		header_replaced = true
-		if opcode != 61 or map_id.is_empty(): map_id = event.payload["mapId"]
-		var x: int = event.payload["x"]
-		var y: int = event.payload["y"]
-		coordinate = Vector2i(x, y)
+func set_destination(destination_map_id: String, destination_coordinate: Vector2i, preserve_map: bool = false) -> void:
+	header_replaced = true
+	if not preserve_map or map_id.is_empty(): map_id = destination_map_id
+	coordinate = destination_coordinate
 
 
 func copy() -> ClassicExecutionState:

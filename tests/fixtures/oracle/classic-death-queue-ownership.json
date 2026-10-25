@@ -1,0 +1,194 @@
+{
+  "schemaVersion": 1,
+  "evidence": "castle-runtime",
+  "baseCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+  "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+  "preparation": {
+    "nativeLoaders": true,
+    "entryMode": -1,
+    "selectedActionPoint": "Data DD:0:52",
+    "seed": 173,
+    "battle": 0,
+    "battleExtraCode": [
+      0,
+      0,
+      30005,
+      0,
+      10
+    ],
+    "battleMacro": -903,
+    "battleSlots": [
+      2,
+      3,
+      4
+    ],
+    "monsterSets": [
+      "Data MD",
+      "Data MD-1",
+      "Data MD1",
+      "Data MD2"
+    ],
+    "monsterOverrides": [
+      {
+        "id": 2,
+        "hitDice": 1,
+        "staminaBonus": 1,
+        "poison": -100,
+        "deathMacro": 901
+      },
+      {
+        "id": 3,
+        "hitDice": 1,
+        "staminaBonus": 1,
+        "deathMacro": 902
+      },
+      {
+        "id": 4,
+        "hitDice": 1,
+        "staminaBonus": 255,
+        "deathMacro": 0
+      }
+    ],
+    "macro903": [
+      [
+        0,
+        970
+      ]
+    ],
+    "macro901": [
+      [
+        0,
+        971
+      ],
+      [
+        17,
+        1199
+      ],
+      [
+        0,
+        972
+      ]
+    ],
+    "extraCode1199": [
+      1203,
+      30,
+      -100,
+      1,
+      0
+    ],
+    "macro902": [
+      [
+        0,
+        973
+      ],
+      [
+        100,
+        0
+      ]
+    ],
+    "xap30005": [
+      [
+        0,
+        978
+      ]
+    ],
+    "controls": [
+      "Finish x6",
+      "Done after rewards"
+    ]
+  },
+  "syntheticFiles": [
+    {
+      "name": "Data DD",
+      "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+      "preparedSha256": "1c052367d8b7668988dd20d1124eb586fc54e27b377bec35445e0a8aa0ce967a"
+    },
+    {
+      "name": "Data ED3",
+      "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+      "preparedSha256": "e50c52bcd023e83b216faee9e66d406a7b5a51ba44792abfc36bf6ac191ff669"
+    },
+    {
+      "name": "Data EDCD",
+      "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+      "preparedSha256": "f4478bc0c13cf9e10dbe6605676ea6de8fa92226dfd55a21c38bb856a1a24b92"
+    },
+    {
+      "name": "Data ED",
+      "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+      "preparedSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3"
+    },
+    {
+      "name": "Data BD",
+      "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+      "preparedSha256": "76b1a9ade759d979b16128c0d37a13a1fdd73894e711d8eccd999ee2187fed1a"
+    },
+    {
+      "name": "Data MD",
+      "originalSha256": "6a1496e62e7c0b96c4d5b6e532c2a8c8d99fdbbd54048b73ba386dbb2e43df6d",
+      "preparedSha256": "652f184dcec945d56d8fb0b5f2ee563b54533e65fbfe4228ea994defb0a343fd"
+    },
+    {
+      "name": "Data MD-1",
+      "originalSha256": "6c4337695d8828612b3faf006fe0e5152698c56684d841399d890d8daf373fe7",
+      "preparedSha256": "5ead57063cb5e32eb561664e32079f2884294c1809b6d5364273cb052e5553f2"
+    },
+    {
+      "name": "Data MD1",
+      "originalSha256": "176c493a4e21e420eded7370fadd2eb298629ef17ed1618459f9526373ff6c99",
+      "preparedSha256": "e9a6c91cb3723f48f649c278dbb4e45c2405f714b42f23fd1901c8e46b34a312"
+    },
+    {
+      "name": "Data MD2",
+      "originalSha256": "f42b60a3a4facafaad8a46b166d318b150e84921fecb3448076a8faa88a16e62",
+      "preparedSha256": "ca626b1e8c8015acff929a0f4e2aed7f6c82d78403ed1eb125a262ea904c25ea"
+    }
+  ],
+  "observedMarkers": [
+    {
+      "id": 970,
+      "battleMacroActive": true,
+      "macroMonsterIndex": 0,
+      "rngDrawCount": 3064
+    },
+    {
+      "id": 971,
+      "battleMacroActive": false,
+      "macroMonsterIndex": 0,
+      "rngDrawCount": 3064
+    },
+    {
+      "id": 972,
+      "battleMacroActive": false,
+      "macroMonsterIndex": 0,
+      "rngDrawCount": 3098
+    },
+    {
+      "id": 973,
+      "battleMacroActive": false,
+      "macroMonsterIndex": 1,
+      "rngDrawCount": 3098
+    },
+    {
+      "id": 978,
+      "battleMacroActive": false,
+      "macroMonsterIndex": 1,
+      "rngDrawCount": 3103
+    }
+  ],
+  "sourceControlFlow": [
+    "killbody.c:87-145 captures a death during macro/inspell and returns from the immediate macro before emptyque drains it.",
+    "emptyque.c:5-14 iterates the live FIFO count, including newly appended deaths.",
+    "getup.c:54-70 and combat.c:1086-1094 finish the interrupted round/choice before the outer queue drain."
+  ],
+  "claims": [
+    "Immediate macro tail 972 precedes queued macro entry 973.",
+    "The queued entry uses captured monster index 1."
+  ],
+  "limits": [
+    "Prepared synthetic native battle followed by visible controls; no ordinary campaign route.",
+    "No mirrored Native/Rebuilt RNG parity or whole-combat certification.",
+    "Remaining-round phase order is source-control-flow evidence; marker trace proves the immediate-tail/FIFO observation."
+  ]
+}

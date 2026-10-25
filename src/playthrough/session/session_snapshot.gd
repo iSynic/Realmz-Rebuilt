@@ -28,11 +28,15 @@ func _init(campaign: String, package_identity: String, rules: String, revision: 
 	game_state = GameState.from_data(state.to_data())
 	rng_state = RealmzRngState.from_data(random_state.to_data())
 	scenario_vm = ScenarioVmSnapshot.from_data(vm_state.to_data()) if vm_state != null else ScenarioVmSnapshot.new()
+	if vm_state == null: scenario_vm.set_execution(ScenarioExecutionState.new())
 	scenario_action_state = ScenarioActionState.from_data(action_state.to_data()) if action_state != null else ScenarioActionState.new()
 	continuation = SessionContinuation.from_data(pending_continuation.to_data()) if pending_continuation != null else null
 	battle_return_continuation = SessionContinuation.from_data(pending_battle_return.to_data()) if pending_battle_return != null else null
 	session_interaction = InteractionRequest.from_data(pending_session_interaction.to_data()) if pending_session_interaction != null else null
 	classic_execution = native_execution.copy() if native_execution != null else ClassicExecutionState.new()
+	if scenario_vm != null and scenario_vm.execution != null:
+		if native_execution != null: scenario_vm.execution.classic.header = classic_execution
+		else: classic_execution = scenario_vm.execution.classic.header
 	# Release builds strip assert(), so record detachment failures explicitly.
 	is_complete = game_state != null and rng_state != null and scenario_vm != null and scenario_action_state != null and (pending_continuation == null or continuation != null) and (pending_battle_return == null or battle_return_continuation != null) and (pending_session_interaction == null or session_interaction != null)
 	if not is_complete:

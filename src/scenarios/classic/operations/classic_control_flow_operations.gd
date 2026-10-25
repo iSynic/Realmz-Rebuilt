@@ -6,12 +6,14 @@ extends ClassicOpcodeHandler
 var _content: RealmzContent
 var _game_state: GameState
 var _rng: RealmzRng
+var _encounter_memory: ClassicEncounterMemoryOperations
 
 
 func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> void:
 	_content = content
 	_game_state = game_state
 	_rng = rng
+	_encounter_memory = ClassicEncounterMemoryOperations.new(content, game_state.scenario_progress.encounters)
 
 
 func opcode_ids() -> Array[int]:
@@ -32,7 +34,7 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Scena
 			if not trigger_id.is_empty():
 				_game_state.world.triggers.disable_trigger(trigger_id)
 				events.append(DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"}))
-			return ScenarioRuntimeOperationResult.completed(true, events, ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, events, ScenarioVmDirective.blowout())
 		42:
 			return _percent_branch(action, context)
 		46:
@@ -67,15 +69,13 @@ func _percent_branch(action: ClassicActionDefinition, context: ScenarioExecution
 	var event := DomainEvent.new(&"percent_branch_checked", {"chance": action.extra_code[0], "roll": roll, "matched": true})
 	match action.extra_code[1]:
 		-2:
-			if not context.trigger_id.is_empty():
-				_game_state.world.triggers.disable_trigger(context.trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.end_record())
 		1:
 			var branch := _branch_from_values(action.extra_code, action.gosub, context)
 			branch.events.append(event)
 			return branch
 		2:
-			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-42"})], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-42"})], ScenarioVmDirective.keep_codes())
 	return ScenarioRuntimeOperationResult.completed(true, [event])
 
 
@@ -88,15 +88,13 @@ func _branch_on_difficulty(action: ClassicActionDefinition, context: ScenarioExe
 		return ScenarioRuntimeOperationResult.completed(false, [event])
 	match action.extra_code[1]:
 		-2:
-			if not context.trigger_id.is_empty():
-				_game_state.world.triggers.disable_trigger(context.trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.end_record())
 		1:
 			var branch := _branch_from_values(action.extra_code, action.gosub, context)
 			branch.events.append(event)
 			return branch
 		2:
-			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-58"})], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-58"})], ScenarioVmDirective.keep_codes())
 	return ScenarioRuntimeOperationResult.completed(true, [event])
 
 
@@ -120,15 +118,13 @@ func _branch_on_faced_tile_source_defect(action: ClassicActionDefinition, contex
 	# compares it. Preserve that source defect: the authored behavior is unconditional.
 	match action.extra_code[1]:
 		-2:
-			if not context.trigger_id.is_empty():
-				_game_state.world.triggers.disable_trigger(context.trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.end_record())
 		1:
 			var branch := _branch_from_values(action.extra_code, action.gosub, context)
 			branch.events.append(event)
 			return branch
 		2:
-			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-59"})], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [event, DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic-opcode-59"})], ScenarioVmDirective.keep_codes())
 	return ScenarioRuntimeOperationResult.completed(true, [event])
 
 
@@ -140,7 +136,10 @@ func _branch_on_quest(action: ClassicActionDefinition, context: ScenarioExecutio
 	var is_set := _game_state.scenario_progress.quest_is_set(action.extra_code[0])
 	var condition := action.extra_code[1]
 	var should_branch := condition == 2 or condition == 1 and is_set or condition == 0 and not is_set
-	return _branch_from_values(action.extra_code, action.gosub, context) if should_branch else ScenarioRuntimeOperationResult.completed(false)
+	if not should_branch: return ScenarioRuntimeOperationResult.completed(false)
+	var result := _branch_from_values(action.extra_code, false, context)
+	result.push_classic_return = action.gosub
+	return result
 
 
 func _branch_on_game_time(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -324,7 +323,7 @@ func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecu
 		1, 2:
 			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.keep_codes(true))
 	# Castle's shared result-branch switch has no action for other modes.
 	return ScenarioRuntimeOperationResult.completed(false)
 
@@ -339,12 +338,9 @@ func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioR
 
 func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var kind := &"simple" if mode == 1 else &"complex"
-	if context == null or context.encounter_kind != kind or context.encounter_id < 0:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic branch mode %d requires an active %s Encounter result." % [mode, String(kind).capitalize()])
 	if result_index < 0 or result_index > 3 or entry_cursor < 0 or entry_cursor > 7:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_branch", "Classic encounter-result branches require result 0 through 3 and code cursor 0 through 7.")
-	var program_id := "%s:%d:result:%d" % [String(kind), context.encounter_id, result_index]
-	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_program_at(program_id, gosub, context, entry_cursor))
+	return _encounter_memory.copy_result(kind, result_index, context, entry_cursor, gosub)
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
@@ -368,7 +364,7 @@ func _opcode_25_trigger_id(context: ScenarioExecutionContext) -> String:
 func _keep_action_point(context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var events: Array[DomainEvent] = []
 	events.append(DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"}))
-	return ScenarioRuntimeOperationResult.completed(null, events, ScenarioVmDirective.finish_timeline())
+	return ScenarioRuntimeOperationResult.completed(null, events, ScenarioVmDirective.keep_codes(true))
 
 
 func resolve_program_id(program_id: String) -> String:
@@ -433,11 +429,11 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Scenario
 
 
 func _replace_program(target_program_id: String, source_program_id: String, values: Array[int]) -> ScenarioRuntimeOperationResult:
-	_game_state.scenario_progress.encounters.set_program_override(target_program_id, source_program_id)
-	if values[0] == -1:
-		_game_state.scenario_progress.encounters.classic_loaded_simple_id = values[1]
-	elif values[0] == -2:
-		_game_state.scenario_progress.encounters.classic_loaded_complex_id = values[1]
+	if values[0] in [-1, -2]:
+		if not _encounter_memory.replace_result(&"simple" if values[0] == -1 else &"complex", values[1], values[4], source_program_id):
+			return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_replacement", "The selected encounter structure cannot be replaced.")
+	else:
+		_game_state.scenario_progress.encounters.set_program_override(target_program_id, source_program_id)
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"scenario_program_replaced", {"sourceProgramId": target_program_id, "targetProgramId": source_program_id, "source": "classic"})])
 
 

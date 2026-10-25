@@ -20,11 +20,13 @@ var _battle_id := ""
 var _facts: Dictionary = {}
 var _lines: Array[String] = []
 var _last_frame_id := 0
+var _log_render_pending := false
 var _actor_id := ""
 var _target_id := ""
 
 
 func _ready() -> void:
+	visibility_changed.connect(_render_log)
 	%ReviewLog.pressed.connect(func() -> void: review_requested.emit())
 
 
@@ -155,5 +157,14 @@ func _bind_preview(combatant_id: String, icon: TextureRect, name_label: Label, v
 
 
 func _render_log() -> void:
+	# Skip may record many outcomes before the next draw.
+	if _log_render_pending: return
+	_log_render_pending = true
+	_flush_log.call_deferred()
+
+
+func _flush_log() -> void:
+	_log_render_pending = false
+	if not is_inside_tree() or is_queued_for_deletion() or not is_visible_in_tree(): return
 	_log.text = "\n".join(_lines.slice(maxi(0, _lines.size() - VISIBLE_LINES)))
 	_log.scroll_to_line(maxi(0, _log.get_line_count() - 1))

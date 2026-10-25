@@ -29,6 +29,8 @@ static func _validate_snapshot_header(content: RealmzContent, snapshot: SessionS
 	if saved_map == null or saved_map.topology.cell_at(snapshot.game_state.party.coordinate) == null:
 		return SessionRestoreResult.failed(&"invalid_saved_location", "The saved party location is unavailable.")
 	var combat := snapshot.game_state.combat
+	if combat != null and snapshot.scenario_vm.execution == null and not combat.death_macros.pending_id().is_empty() and combat.death_macros.actor_id().is_empty():
+		return SessionRestoreResult.failed(&"invalid_saved_death_queue", "The historical save has no active death-queue owner.")
 	if combat != null and combat.battlefield != null and content.world.map_by_id(combat.battlefield.map_id) == null:
 		return SessionRestoreResult.failed(&"invalid_saved_battlefield", "The saved battlefield source map is unavailable.")
 	return null
@@ -42,13 +44,16 @@ static func _restore_core(content: RealmzContent, snapshot: SessionSnapshot) -> 
 	var replacement_action_state := ScenarioActionState.from_data(snapshot.scenario_action_state.to_data())
 	if replacement_state == null or replacement_action_state == null:
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved game or Scenario Action state is invalid.")
+	if not replacement_state.scenario_progress.encounters.memory.is_bound_to(content):
+		return SessionRestoreResult.failed(&"invalid_encounter_memory", "A saved encounter structure, result or text source is unavailable in this package.")
 	var replacement_rules := RealmzRules.new(content.package_schema_version >= 7)
 	var state_error := _validate_restored_state(content, replacement_state, replacement_rules)
 	if state_error != null:
 		return state_error
 	var replacement_vm := ScenarioVm.new()
 	replacement_vm.configure(content.scenario)
-	if not replacement_vm.restore(snapshot.scenario_vm):
+	var vm_snapshot := SessionLegacyExecutionRestoreRules.normalize(content, snapshot, replacement_state)
+	if vm_snapshot == null or not replacement_vm.restore(vm_snapshot):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM state is invalid.")
 	if not SessionScenarioRestoreValidator.vm_reward_continuation_is_valid(content, replacement_state, replacement_vm):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM reward continuation is invalid.")
@@ -66,6 +71,8 @@ static func _restore_core(content: RealmzContent, snapshot: SessionSnapshot) -> 
 
 
 static func _validate_restored_state(content: RealmzContent, replacement_state: GameState, replacement_rules: RealmzRules) -> SessionRestoreResult:
+	if not SessionRestoreStateValidator.combat_macro_sources_are_valid(content, replacement_state):
+		return SessionRestoreResult.failed(&"invalid_macro_source", "The saved macro capture does not match its original definition or subject slot.")
 	if content.package_schema_version >= 7 and not SessionRestoreStateValidator.selected_character_rules_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"unavailable_character_rules", "A saved character's selected race or class is unavailable in this campaign package.")
 	if content.package_schema_version >= 7 and replacement_state.combat != null:
@@ -125,21 +132,54 @@ static func _restore_continuations(content: RealmzContent, snapshot: SessionSnap
 		var battle_exploration := replacement_battle_return.exploration()
 		if replacement_battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or battle_exploration.timed_scan_pending or battle_exploration.midnight_recovery_pending or not _valid_post_time_continuation(content, candidate.state, replacement_battle_return, null, null, true):
 			return SessionRestoreResult.failed(&"invalid_battle_return_continuation", "The saved battle return references an unavailable exploration continuation.")
+	if not _restore_legacy_destination(snapshot, replacement_continuation, candidate):
+		return SessionRestoreResult.failed(&"invalid_native_destination_owner", "The saved arrival has no matching native header guard.")
 	var replacement_session_interaction: InteractionRequest = null
 	if snapshot.session_interaction != null:
 		replacement_session_interaction = InteractionRequest.from_data(snapshot.session_interaction.to_data())
 		if replacement_session_interaction == null:
 			return SessionRestoreResult.failed(&"invalid_session_interaction", "The saved session interaction is invalid.")
+	var application := replacement_continuation.application_hook()
+	if application == null and SessionApplicationRestoreRules.has_application(candidate.scenario_vm.snapshot().execution):
+		return SessionRestoreResult.failed(&"invalid_application_return", "The saved hook has no session caller.")
+	if application != null:
+		var execution := SessionApplicationRestoreRules.normalize(candidate.scenario_vm.snapshot().execution, application, content.scenario, candidate.classic_execution)
+		if execution == null or not SessionApplicationRestoreRules.is_valid(content, candidate.state, application, execution):
+			return SessionRestoreResult.failed(&"invalid_application_return", "The saved application hook has no matching execution owner.")
+		var normalized := ScenarioVmSnapshot.new()
+		normalized.set_execution(execution)
+		if not candidate.scenario_vm.restore(normalized): return SessionRestoreResult.failed(&"invalid_vm_state", "The application hook execution state is invalid.")
+	if snapshot.scenario_vm.execution == null:
+		var macro_execution := SessionLegacyMacroRestoreRules.normalize(candidate.scenario_vm.snapshot().execution, replacement_continuation)
+		if macro_execution == null: return SessionRestoreResult.failed(&"invalid_macro_return", "The historical macro has no matching saved caller.")
+		var normalized := ScenarioVmSnapshot.new()
+		normalized.set_execution(macro_execution)
+		if not candidate.scenario_vm.restore(normalized): return SessionRestoreResult.failed(&"invalid_vm_state", "The historical macro execution state is invalid.")
 	if not replacement_continuation.is_empty() and not _valid_session_continuation(content, candidate.state, replacement_continuation, candidate.scenario_vm.pending_request(), replacement_session_interaction):
 		return SessionRestoreResult.failed(&"invalid_session_continuation", "The saved session continuation is invalid.")
 	if replacement_continuation.is_empty() and replacement_session_interaction != null:
 		return SessionRestoreResult.failed(&"invalid_session_interaction", "The saved session interaction has no owning continuation.")
 	if not SessionScenarioRestoreValidator.round_cursor_owner_is_valid(candidate.state, replacement_continuation, candidate.scenario_vm.snapshot()):
 		return SessionRestoreResult.failed(&"invalid_round_continuation", "The saved combat round has no matching macro continuation.")
+	if not SessionScenarioRestoreValidator.pending_combat_work_is_valid(candidate.state, replacement_continuation, candidate.scenario_vm.snapshot(), replacement_session_interaction):
+		return SessionRestoreResult.failed(&"invalid_combat_operation", "The pending combat work has no saved acknowledgement owner.")
 	candidate.continuation = replacement_continuation
 	candidate.battle_return_continuation = replacement_battle_return
 	candidate.session_interaction = replacement_session_interaction
 	return SessionRestoreResult.succeeded(candidate)
+
+
+static func _restore_legacy_destination(snapshot: SessionSnapshot, owner: SessionContinuation, candidate: SessionRestoreCandidate) -> bool:
+	var normalized := candidate.scenario_vm.snapshot()
+	if snapshot.scenario_vm.execution != null:
+		return SessionNativeHeaderRestoreRules.destination_guard_is_valid(owner, normalized.execution)
+	if owner.kind != &"post-move": return true
+	var body := owner.exploration()
+	if body == null: return false
+	if body.action_point_destination_depth == 0 or body.active_trigger_id.is_empty(): return true
+	if not SessionNativeHeaderRestoreRules.normalize_legacy_destination(owner, normalized.execution): return false
+	normalized.execution.classic.header = candidate.classic_execution.copy()
+	return candidate.scenario_vm.restore(normalized)
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
@@ -205,6 +245,7 @@ static func _valid_application_continuation(content: RealmzContent, state: GameS
 		&"scenario-party-defeat":
 			if application.hook != ScenarioApplicationHooks.PARTY_DEATH or not application.service_id.is_empty() or application.suspended_owner == null:
 				return false
+			if application.application_owner_id >= 1: return application.suspended_vm == null and application.vm_handoff == null
 			var saved := application.suspended_vm
 			return ScenarioVmHandoff.is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.runtime) and suspended_scenario_owner_is_valid(content, state, application.suspended_owner, saved)
 	return false
@@ -299,10 +340,13 @@ static func _valid_combat_death_continuation(content: RealmzContent, state: Game
 	var death_monster := state.combat.roster.monster_by_id(combat.combatant_id)
 	if death_monster == null or content.scenario.program_by_id(combat.program_id) == null:
 		return false
-	var queued_id := state.combat.spell_runtime.pending_death_macro_id()
-	if not queued_id.is_empty():
+	var queued_id := state.combat.death_macros.pending_id()
+	if not queued_id.is_empty() and not state.combat.death_macros.actor_id().is_empty():
+		var queued := state.combat.death_macros.pending_request()
+		if queued_id != combat.combatant_id or combat.reset_traitor_on_complete: return false
+		if queued.macro_id != 0: return combat.program_id == queued.program_id()
 		var definition := content.combat.monster_by_id(death_monster.definition_id)
-		return queued_id == combat.combatant_id and not combat.reset_traitor_on_complete and definition != null and combat.program_id == "xap:%d" % definition.death_macro
+		return definition != null and combat.program_id == "xap:%d" % definition.death_macro
 	return combat.reset_traitor_on_complete
 
 
@@ -496,12 +540,10 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 
 
 static func suspended_scenario_owner_is_valid(content: RealmzContent, state: GameState, owner: SessionContinuation, saved: ScenarioVmSnapshot) -> bool:
-	if owner == null or owner.kind not in [&"post-clock", &"post-move", &"item-xap"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null:
+	if owner == null or owner.kind not in [&"post-clock", &"post-move", &"item-xap"] or saved == null or saved.halted or not saved.has_execution_records() or saved.pending_request != null or saved.pending_continuation != null:
 		return false
-	var test_vm := ScenarioVm.new()
-	test_vm.configure(content.scenario)
-	if not test_vm.restore(saved):
-		return false
+	var execution := saved.execution if saved.execution != null else ScenarioLegacyExecutionCodec.convert(saved, content.scenario)
+	if not ScenarioExecutionRestoreRules.is_valid(execution, content.scenario): return false
 	var sentinel := InteractionRequest.acknowledge("internal.suspended-scenario", "Suspended scenario validation")
 	return _valid_session_continuation(content, state, owner, sentinel, null)
 

@@ -143,7 +143,7 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combatant_retreated", {"actorId": actor.id, "mode": String(mode), "forced": probe.forced, "prestigePenalty": 200, "nearestEnemyRange": probe.nearest_enemy_range, "source": "classic"})]
 	if not _context.rounds().has_loyal_battlefield_character(state):
 		_context.rounds().complete_battle(state, content, &"retreated", events)
-		return CombatFlowResult.succeeded(events, true)
+		return CombatFlowResult.from_combat(state.combat, events, true)
 	_context.rounds().advance_turn(state, content, rng, events)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
@@ -212,7 +212,7 @@ func _resolve_friendly_collision(state: GameState, content: RealmzContent, actio
 		return CombatFlowResult.failed(&"invalid_friendly_collision", "The adjacent ally is no longer available.")
 	if action == &"cancel":
 		combat.pending_reaction = null
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_friendly_collision_cancelled", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "destination": [reaction.destination.x, reaction.destination.y], "source": "classic"})], false)
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_friendly_collision_cancelled", {"actorId": reaction.mover_id, "targetId": reaction.friendly_collision_target_id, "destination": [reaction.destination.x, reaction.destination.y], "source": "classic"})], false)
 	if action == &"attack" and combat.actor_statuses.character_weapon_mode(reaction.mover_id) != &"melee":
 		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an adjacent ally.")
 	if action == &"attack":
@@ -231,17 +231,17 @@ func _resolve_friendly_collision(state: GameState, content: RealmzContent, actio
 func _finish_character_movement(state: GameState, content: RealmzContent, mover_id: String, reaction_result: int, rng: RealmzRng, events: Array[DomainEvent]) -> CombatFlowResult:
 	var combat := state.combat
 	if reaction_result in [REACTION_WAITING, REACTION_DEATH_MACRO]:
-		return CombatFlowResult.succeeded(events, combat.completed)
+		return CombatFlowResult.from_combat(state.combat, events, combat.completed)
 	if reaction_result == REACTION_MOVER_DEFEATED and combat.turns.active_actor_id() == mover_id:
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
+		return CombatFlowResult.from_combat(state.combat, events, true)
 	var mover := state.party.character_by_id(mover_id)
 	# Rebuilt handoff correction: Guard charm cannot return a loyal-player turn.
 	var charmed_active_mover := mover != null and mover.traitor and combat.turns.active_actor_id() == mover_id
 	if reaction_result == REACTION_MOVER_DEFEATED or charmed_active_mover:
 		return _context.automation().process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, combat.completed)
+	return CombatFlowResult.from_combat(state.combat, events, combat.completed)
 
 
 func friendly_collision_target_id(state: GameState, actor_id: String, destination: Vector2i) -> String:
@@ -479,7 +479,7 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 		events.append(reaction_event)
 		if reaction_resolution.killed:
 			combat.pending_reaction.mover_killed = true
-			var death_macro_requested := _context.actions().events().request_monster_death_macro(monster_target, definition, events)
+			var death_macro_requested := CombatDeathMacroOperations.request_immediate(state.combat, monster_target, definition, events)
 			_context.automation().remove_defeated_position(combat, monster_target.id, not death_macro_requested)
 			return REACTION_DEATH_MACRO if death_macro_requested else REACTION_MOVER_DEFEATED
 		return REACTION_COMPLETED
@@ -543,7 +543,9 @@ func _resolve_monster_character_reaction(state: GameState, content: RealmzConten
 	if resolution.special_handled:
 		_context.actions().events().append_monster_special_events(events, attacker.id, target.id, &"character", resolution)
 		if resolution.aging != null and resolution.aging.changed_group():
-			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(target, race)))
+			var update := resolution.aging.update_body(target, race)
+			combat.pending_operations.age_updates.append(update)
+			events.append(DomainEvent.new(&"character_age_changed", update.to_data()))
 			combat.pending_monster_attack = PendingMonsterAttack.new(attacker.id, target.id, action, resolution.damage, resolution.chance, resolution.roll, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after, resolution.physical_feedback_sound_id)
 			return REACTION_WAITING
 	_context.actions().events().append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
@@ -582,7 +584,7 @@ func _resolve_monster_monster_reaction(state: GameState, content: RealmzContent,
 	events.append(event)
 	if resolution.killed:
 		combat.pending_reaction.mover_killed = true
-		var death_macro_requested := _context.actions().events().request_monster_death_macro(target, target_definition, events)
+		var death_macro_requested := CombatDeathMacroOperations.request_immediate(state.combat, target, target_definition, events)
 		_context.automation().remove_defeated_position(combat, target.id, not death_macro_requested)
 		return REACTION_DEATH_MACRO if death_macro_requested else REACTION_MOVER_DEFEATED
 	return REACTION_COMPLETED

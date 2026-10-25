@@ -600,7 +600,7 @@
         "src/scenarios/classic",
         "src/scenarios/classic/classic_opcode_catalog.gd",
         "src/scenarios/classic/classic_opcode_handler_registry.gd",
-        "src/scenarios/classic/scenario_classic_control_flow.gd",
+        "src/scenarios/classic/scenario_classic_execution_rules.gd",
         "src/scenarios/classic/operations/classic_control_flow_operations.gd",
         "src/scenarios/classic/operations/classic_reward_state.gd",
         "src/scenarios/runtime/realmz_runtime_api.gd",
@@ -609,7 +609,10 @@
         "src/scenarios/runtime/scenario_runtime_continuation.gd",
         "src/scenarios/runtime/continuations",
         "src/scenarios/vm",
-        "src/scenarios/vm/scenario_vm.gd"
+        "src/scenarios/vm/scenario_vm.gd",
+        "src/scenarios/vm/scenario_execution_state.gd",
+        "src/scenarios/vm/scenario_vm_snapshot.gd",
+        "src/scenarios/runtime/scenario_macro_lifecycle.gd"
       ],
       "publicInterfaces": [
         "SafeExpressionEvaluator",
@@ -617,7 +620,7 @@
         "ClassicOpcodeCatalog",
         "ClassicOpcodeHandler",
         "ClassicOpcodeHandlerRegistry",
-        "ScenarioClassicControlFlow",
+        "ScenarioClassicExecutionRules",
         "ClassicControlFlowOperations",
         "ClassicRewardState",
         "ScenarioVm",
@@ -632,7 +635,10 @@
         "ScenarioServiceContinuations",
         "ScenarioCombatContinuations",
         "ScenarioRewardContinuations",
-        "ClassicCompatibility"
+        "ClassicCompatibility",
+        "ScenarioExecutionState",
+        "ScenarioVmSnapshot",
+        "ScenarioMacroLifecycle"
       ],
       "tests": [
         "tests/scenario/test_scenario_vm.gd",

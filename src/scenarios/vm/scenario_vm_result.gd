@@ -18,6 +18,11 @@ var error_code: StringName = &""
 var error_message: String = ""
 var outcome: Variant
 var is_rejection: bool = false
+## The direct caller dispatches this fresh result before prepending earlier VM events.
+var direct_combat_return: CombatFlowResult
+var application_return: ScenarioApplicationReturn
+var application_owner_id: int = 0
+var party_revived: bool = false
 
 
 static func completed(committed_events: Array[DomainEvent] = [], result: Variant = null) -> ScenarioVmResult:

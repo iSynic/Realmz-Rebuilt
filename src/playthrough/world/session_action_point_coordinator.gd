@@ -9,12 +9,10 @@ class TriggerContext extends RefCounted:
 	var coordinate: Vector2i
 
 var _context: SessionContext
-var _exploration: SessionExplorationCoordinator
 
 
-func _init(context: SessionContext, exploration: SessionExplorationCoordinator) -> void:
+func _init(context: SessionContext) -> void:
 	_context = context
-	_exploration = exploration
 
 
 func start_debug(trigger_id: String) -> SessionCoordinatorResult:
@@ -57,7 +55,7 @@ func execute(trigger_context: Variant, trigger: TriggerDefinition, events: Array
 	var trigger_map_id: String = trigger_context.map.id
 	var trigger_coordinate: Vector2i = trigger_context.coordinate
 	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, trigger_map_id, trigger_coordinate, true)
-	var started := _context.scenario_vm.start_program(trigger.program_id, execution_context)
+	var started := _context.scenario_vm.start_program(trigger.program_id, execution_context, trigger.id)
 	if started.state == ScenarioVmResult.State.FAILED:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(started.error_code, started.error_message, events)
@@ -70,17 +68,9 @@ func execute(trigger_context: Variant, trigger: TriggerDefinition, events: Array
 	if result.state == ScenarioVmResult.State.FAILED:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
-	if _context.events_have(result.events, &"party_backed_up"):
+	if _context.scenario_vm.native_completion().backout == ScenarioNativeCompletion.Backout.BACKED_UP:
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.completed(events)
-	_context.scenario().finalize_completed_trigger(trigger, events)
-	if _context.scenario().apply_trigger_destination(trigger, events, continuation.action_point_destination_depth == 0 and not _context.events_have(events, &"party_position_restored")):
-		if _context.scenario_vm.native_recheck_suppressed():
-			_context.session_continuation.clear()
-			return SessionCoordinatorResult.completed(events)
-		var destination_map := _context.content.world.map_by_id(_context.state.party.map_id)
-		_exploration.set_post_move_continuation(destination_map, _context.state.party.coordinate, 1)
-		return _exploration.continue_post_move(events)
 	continuation.active_trigger_id = ""
 	continuation.trigger_index = continuation.trigger_ids.size()
 	return null

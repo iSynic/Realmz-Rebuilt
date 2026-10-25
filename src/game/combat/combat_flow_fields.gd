@@ -92,10 +92,10 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 		_context.automation().remove_defeated_position(combat, actor_id, true)
 	else:
 		var definition := content.combat.monster_by_id(monster.definition_id)
-		var queued: bool = _context.actions().events().queue_spell_death_macro(combat, monster, definition)
+		var queued: bool = CombatDeathMacroOperations.queue_spell(combat, monster, definition)
 		_context.automation().remove_defeated_position(combat, actor_id, not queued)
-	if begin_death_macros and not combat.spell_runtime.pending_death_macro_id().is_empty():
-		return COLLISION_DEATH_MACRO if begin_pending_death_macros(combat, content, events) else COLLISION_INVALID
+	if begin_death_macros and not combat.death_macros.pending_id().is_empty():
+		return COLLISION_DEATH_MACRO if CombatDeathMacroOperations.begin_pending(combat, content, events) else COLLISION_INVALID
 	return COLLISION_DEFEATED
 
 
@@ -153,14 +153,6 @@ static func _append_field_collision_event(events: Array[DomainEvent], field: Per
 	if spell.target_type in [9, 10]:
 		payload["classicTargetType"] = spell.target_type
 	events.append(DomainEvent.new(&"combat_spell_resolved", payload))
-
-
-func begin_pending_death_macros(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
-	if combat == null or content == null or combat.spell_runtime.pending_death_macro_id().is_empty():
-		return false
-	if not combat.spell_runtime.macro_actor_id().is_empty():
-		return true
-	return combat.spell_runtime.begin_death_macro_sequence(combat.turns.active_actor_id(), false) and _context.actions().events().request_next_spell_death_macro(combat, content, events)
 
 
 func _field_intersects_footprint(field: PersistentCombatField, footprint: Array[Vector2i]) -> bool:

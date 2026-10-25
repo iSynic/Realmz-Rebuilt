@@ -169,20 +169,6 @@ func set_continuation(continuation: SessionContinuation) -> void:
 	session_continuation = continuation
 
 
-func events_have(events: Array[DomainEvent], kind: StringName) -> bool:
-	for event in events:
-		if event.kind == kind:
-			return true
-	return false
-
-
-func event_payload(events: Array[DomainEvent], kind: StringName) -> Dictionary:
-	for event in events:
-		if event.kind == kind:
-			return event.payload
-	return {}
-
-
 func item_instance(character: CharacterState, instance_id: String) -> ItemInstance:
 	if character == null or instance_id.is_empty():
 		return null

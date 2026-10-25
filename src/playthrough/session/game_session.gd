@@ -217,8 +217,6 @@ func respond(response: InteractionResponse) -> SessionStep:
 		_debug_operation_active = false
 	var events: Array[DomainEvent] = []
 	events.append_array(result.events)
-	if _context.session_continuation.kind == &"application-hook" and _events_have(result.events, &"party_revived"):
-		_context.session_continuation.application_hook().party_revived = true
 	return _finish_resumed_vm_result(result, events)
 
 
@@ -319,10 +317,6 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 func _start_application_hook(hook: StringName, resume_kind: StringName, service_id: String, preceding_events: Array[DomainEvent], suspended: ScenarioApplicationContinuationBody = null) -> SessionStep:
 	_ensure_coordinators()
 	return _commit_coordinator_result(_scenario_coordinator.start_application_hook(hook, resume_kind, service_id, preceding_events, suspended))
-
-
-func _events_have(events: Array[DomainEvent], kind: StringName) -> bool:
-	return _context.events_have(events, kind)
 
 
 func _finish_completed(events: Array[DomainEvent]) -> SessionStep:

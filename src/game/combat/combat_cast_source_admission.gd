@@ -18,7 +18,7 @@ func probe_item(state: GameState, content: RealmzContent, caster_id: String, ins
 		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
 	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Only the active character may use an item in combat.")
-	if not combat.spell_runtime.pending_death_macro_id().is_empty():
+	if not combat.death_macros.pending_id().is_empty():
 		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	var instance := inventory_instance(caster, instance_id)
@@ -52,7 +52,7 @@ func probe_scroll(state: GameState, content: RealmzContent, caster_id: String, s
 		return CombatSpellCastProbe.fault(&"missing_battlefield", "The active battle has no validated battlefield.")
 	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_turn", "Only the active character may use a scroll in combat.")
-	if not combat.spell_runtime.pending_death_macro_id().is_empty():
+	if not combat.death_macros.pending_id().is_empty():
 		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null or caster.current_health <= 0 or caster.conditions.is_active(ConditionRules.ANIMATED):

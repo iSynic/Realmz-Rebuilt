@@ -11,10 +11,10 @@ func _init(context: CombatContext) -> void:
 
 func begin(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	state.combat.round_cursor = CombatRoundCursor.new()
-	var prior_death := CombatActionEvents.death_macro_request(events)
-	if not prior_death.is_empty():
+	var prior_death := state.combat.pending_operations.death_macro
+	if prior_death != null:
 		state.combat.round_cursor.phase = &"prior-death-macro"
-		state.combat.round_cursor.waiting_monster_id = prior_death["combatantId"]
+		state.combat.round_cursor.waiting_monster_id = prior_death.combatant_id
 	elif state.combat.macro_id < 0:
 		state.combat.round_cursor.phase = &"battle-macro"
 	else:
@@ -25,7 +25,7 @@ func resume(state: GameState, content: RealmzContent, rng: RealmzRng, events: Ar
 	var combat := state.combat
 	while combat.round_cursor != null and not combat.completed:
 		var cursor := combat.round_cursor
-		if cursor.phase == &"battle-macro" or not cursor.waiting_monster_id.is_empty() or not combat.spell_runtime.pending_death_macro_id().is_empty():
+		if cursor.phase == &"battle-macro" or not cursor.waiting_monster_id.is_empty() or not combat.death_macros.actor_id().is_empty():
 			return
 		match cursor.phase:
 			&"party":
@@ -111,7 +111,7 @@ func _damage_monster(state: GameState, content: RealmzContent, monster: MonsterS
 		return
 	CombatActionEvents.append_defeat_audio(events, monster.id)
 	var definition := content.combat.monster_by_id(monster.definition_id)
-	var requested := CombatActionEvents.request_monster_death_macro(monster, definition, events)
+	var requested := CombatDeathMacroOperations.request_immediate(state.combat, monster, definition, events)
 	if requested:
 		state.combat.round_cursor.waiting_monster_id = monster.id
 	_context.automation().remove_defeated_position(state.combat, monster.id, not requested)

@@ -204,6 +204,24 @@ Final native captures use the same Windows host with an NVIDIA RTX 3080. Each ro
 
 All three native runs pass. Separate continuous Auto runs keep the battle state between twelve party activations and reach round three, rejecting more than one party Auto activation in any committed job. The dense fixture records 54 attacks, five spell casts and 375 movements; the caster fixture records 37 attacks, six casts, 88 movements and one bandage. These counts include both sides and retain ordered event payloads in the private receipts. Reduced Motion accelerates only these continuous checks. Each run also cancels an initial in-flight roster enable through viewport Escape before its flag is committed and compares the complete result with sequential enable/disable commands. Accepted quit precedes a queued Auto activation; lifecycle prompts, incomplete-job quarantine and joined shutdown pass. Canonical and compact screenshots were inspected independently of the timing assertions.
 
+## Combat account rendering and VM handoff closeout
+
+Skipped playback can deliver several committed result frames synchronously. Reformatting and scrolling the latest eighty log lines for each result repeated text layout inside the worker-publication frame. `CombatActivityStrip` now retains every ordered line immediately and schedules one visible render before drawing; hidden strips defer typesetting until shown. Its history, previews, battle reset, review and input ownership remain unchanged. No Auto decision or simulation code changes.
+
+The unchanged worker probe passes complete synchronous/worker comparisons, Escape, queue toggles, fault quarantine, lifecycle and joined shutdown at both 1280x720 and 800x600. These are prepared direct battle fixtures on the same RTX 3080 host.
+
+| Workload / renderer | Maximum measured frame | Escape through next draw, Wide / Compact |
+|---|---:|---:|
+| Trouble 46 / Mobile | 46.730 ms | 6.713 / 2.651 ms |
+| Bywater 53 / Mobile | 47.304 ms | 6.660 / 3.448 ms |
+| Bywater 178 / Mobile | 36.326 ms | 6.569 / 2.935 ms |
+| Bywater 53 / OpenGL repeat | 40.888 ms | 7.838 / 3.481 ms |
+| Bywater 53 / OpenGL confirmation | 39.999 ms | 8.258 / 2.983 ms |
+
+Every completed run above has seventeen sample records and no failed checks. The 50-ms frame and 100-ms acknowledgement limits are unchanged. The earlier repeatable Trouble failure was 56.473 ms on Beta 27 and 56.429 ms on the VM candidate. An initial OpenGL attempt after the correction had an 84.043-ms Escape/draw outlier; it is retained as failed, with no asserted cause. Both unchanged fresh repeats pass. This is bounded measured acceptance, not a guarantee for every first-use or hardware condition.
+
+The direct log lifecycle proof passes eight checks, including a 2,005-result burst, full retained order/bounds, exact visible tail, duplicate suppression, health, hidden/show, battle replacement and teardown. The existing combat, shell, system and Builder suites pass 2,423 assertions. Private receipts retain the diagnostic instrumentation, restored-source hashes, failed runs and native captures; temporary instrumentation is absent from production.
+
 ## Verification boundary
 
 Focused startup, package/prewarm, vault, session, presentation, architecture, and aggregate checks own deterministic correctness. Native rendered probes own the frame measurements above. Direct battle fixtures and bounded Auto continuations do not establish ordinary campaign reachability, full battle or campaign certification, or physical-controller acceptance.

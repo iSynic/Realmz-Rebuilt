@@ -43,11 +43,11 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	if action == &"retreat":
 		return _context.reactions().retreat_character(state, content, actor_id, &"explicit", INVALID_COORDINATE, rng)
 	var action_result := _submit_standard_action(state, content, actor, action, target_id, rng, allow_friendly_contact)
-	if not action_result.ok or _action_waits_for_continuation(combat, action, action_result.events):
+	if not action_result.ok or _action_waits_for_continuation(combat, action, action_result):
 		return action_result
 	var events := action_result.events
 	if _context.rounds().finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
+		return CombatFlowResult.from_combat(state.combat, events, true)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
@@ -82,7 +82,7 @@ func _submit_guard(state: GameState, content: RealmzContent, actor: CharacterSta
 	state.combat.actor_statuses.set_guarding(actor.id, true)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": guard_sound, "waitForCompletion": false, "source": "classic-combat-guard"}), DomainEvent.new(&"combatant_guarded", {"actorId": actor.id, "roll": guard_roll, "soundId": guard_sound, "source": "classic"})]
 	_context.rounds().advance_turn(state, content, rng, events)
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 func _submit_delay(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
@@ -95,7 +95,7 @@ func _submit_delay(state: GameState, content: RealmzContent, actor: CharacterSta
 	var events: Array[DomainEvent] = []
 	_context.rounds().after_turn_changed(state, content, rng, events, round_advanced)
 	events.append(DomainEvent.new(&"combat_turn_delayed", {"actorId": actor.id, "roundAdvanced": round_advanced, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-012"}))
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 func _submit_bandage(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng) -> CombatFlowResult:
@@ -114,7 +114,7 @@ func _submit_bandage(state: GameState, content: RealmzContent, actor: CharacterS
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": bandage_sound, "waitForCompletion": false, "source": "classic-combat-auto-bandage"}))
 	events.append(DomainEvent.new(&"combatant_bandaged", {"actorId": actor.id, "targetId": target_id, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-013"}))
 	_context.rounds().advance_turn(state, content, rng, events)
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 func _submit_undo(state: GameState, actor: CharacterState) -> CombatFlowResult:
@@ -133,7 +133,7 @@ func _submit_undo(state: GameState, actor: CharacterState) -> CombatFlowResult:
 	if not actor.conditions.is_active(ConditionRules.ANIMATED):
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 138, "waitForCompletion": false, "source": "classic-combat-activation"}))
 	events.append(DomainEvent.new(&"combat_turn_undone", {"actorId": actor.id, "from": [from_position.x, from_position.y], "to": [start_position.x, start_position.y], "attacksRemaining": actor.attacks_remaining, "movementRemaining": actor.movement, "source": "classic"}))
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 func _submit_pass(state: GameState, content: RealmzContent, actor: CharacterState, action: StringName, rng: RealmzRng) -> CombatFlowResult:
@@ -142,7 +142,7 @@ func _submit_pass(state: GameState, content: RealmzContent, actor: CharacterStat
 	state.combat.actor_statuses.set_guarding(actor.id, false)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)})]
 	_context.rounds().advance_turn(state, content, rng, events)
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 func _submit_auto(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
@@ -152,8 +152,8 @@ func _submit_auto(state: GameState, content: RealmzContent, actor: CharacterStat
 	return result
 
 
-func _action_waits_for_continuation(combat: CombatState, action: StringName, events: Array[DomainEvent]) -> bool:
-	return action == &"attack" and _events_include(events, &"monster_death_macro_requested") or action == &"turn_undead" and not combat.spell_runtime.pending_death_macro_id().is_empty()
+func _action_waits_for_continuation(combat: CombatState, action: StringName, result: CombatFlowResult) -> bool:
+	return action == &"attack" and result.death_macro != null or action == &"turn_undead" and not combat.death_macros.pending_id().is_empty()
 
 
 func _switch_character_weapon(state: GameState, content: RealmzContent, actor: CharacterState) -> CombatFlowResult:
@@ -171,7 +171,7 @@ func _switch_character_weapon(state: GameState, content: RealmzContent, actor: C
 	prepare_character_turn(combat, actor)
 	if not combat.actor_statuses.set_character_weapon_mode(actor.id, next_mode):
 		return CombatFlowResult.failed(&"invalid_weapon_mode", "The active character's battle weapon mode could not be changed.")
-	return CombatFlowResult.succeeded([DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": actor.id, "mode": String(next_mode)})])
+	return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": actor.id, "mode": String(next_mode)})])
 
 
 func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
@@ -199,7 +199,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 			mark_character_bleeding(state, actor, resolution.killed)
 			_context.automation().remove_defeated_position(combat, actor.id, resolution.killed)
 		else:
-			var macro_requested := resolution.killed and _events.request_monster_death_macro(monster_target, definition, events)
+			var macro_requested := resolution.killed and CombatDeathMacroOperations.request_immediate(state.combat, monster_target, definition, events)
 			_context.automation().remove_defeated_position(combat, monster_target.id, resolution.killed and not macro_requested)
 	else:
 		var character_target := state.party.character_by_id(target_id)
@@ -220,7 +220,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		_context.automation().remove_defeated_position(combat, victim.id, resolution.killed)
 	consume_character_attack(actor)
 	if not character_can_continue(actor): _context.rounds().advance_turn(state, content, rng, events)
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 func _prepare_character_projectile(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
@@ -242,7 +242,7 @@ func _prepare_character_projectile(state: GameState, content: RealmzContent, act
 	var power := rng.draw(7, StringName("combat.projectile.%s.power" % instance_id))
 	if not combat.turns.stage_random_item_power(actor.id, instance_id, power, projectile_item.id if state.adventure_rules.free_targeting_cancellation else ""):
 		return CombatFlowResult.failed(&"projectile_power_roll_unavailable", "The projectile power could not be staged for this activation.")
-	return CombatFlowResult.succeeded([DomainEvent.new(&"combat_projectile_power_staged", {"actorId": actor.id, "itemInstanceId": instance_id, "itemId": projectile_item.id, "power": power, "source": "classic"})])
+	return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_projectile_power_staged", {"actorId": actor.id, "itemInstanceId": instance_id, "itemId": projectile_item.id, "power": power, "source": "classic"})])
 
 
 func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbe:
@@ -337,7 +337,7 @@ func turn_undead(state: GameState, content: RealmzContent, actor: CharacterState
 	var combat := state.combat
 	var target_ids := turn_undead_target_ids(state, content)
 	var macro_count := _turn_undead_macro_count(combat, content, target_ids)
-	if macro_count > CombatSpellRuntimeState.MAX_DEATH_MACROS - combat.spell_runtime.death_macro_queue().size():
+	if macro_count > CombatDeathMacroState.MAX_DEATH_MACROS - combat.death_macros.ids().size():
 		return CombatFlowResult.failed(&"combat_turn_undead_macro_limit", "Turn Undead would exceed the bounded death-macro queue.")
 	prepare_character_turn(combat, actor)
 	combat.turns.invalidate_undo()
@@ -374,7 +374,7 @@ func _resolve_turn_undead_target(combat: CombatState, content: RealmzContent, ac
 		experience_award = 25 * target.hit_dice
 		target.current_health = 0
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
-		if not _events.queue_spell_death_macro(combat, target, definition):
+		if not CombatDeathMacroOperations.queue_spell(combat, target, definition):
 			_context.automation().remove_defeated_position(combat, target.id, true)
 	elif margin >= 30:
 		result_kind = "turned"
@@ -403,13 +403,13 @@ func _resolve_turn_undead_target(combat: CombatState, content: RealmzContent, ac
 func _finish_turn_undead(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> CombatFlowResult:
 	var combat := state.combat
 	var advances_turn := not character_can_continue(actor)
-	if not combat.spell_runtime.pending_death_macro_id().is_empty():
-		if not combat.spell_runtime.begin_death_macro_sequence(actor.id, advances_turn) or not _events.request_next_spell_death_macro(combat, content, events):
+	if not combat.death_macros.pending_id().is_empty():
+		if not combat.death_macros.begin_sequence(actor.id, advances_turn) or not CombatDeathMacroOperations.request_next(combat, content, events):
 			return CombatFlowResult.failed(&"invalid_turn_undead_macro_queue", "Turn Undead could not begin its source-ordered death-macro continuation.")
-		return CombatFlowResult.succeeded(events)
+		return CombatFlowResult.from_combat(state.combat, events)
 	if advances_turn:
 		_context.rounds().advance_turn(state, content, rng, events)
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 static func is_fresh_character_activation(combat: CombatState, actor: CharacterState) -> bool:
@@ -447,21 +447,21 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 		return CombatFlowResult.failed(&"invalid_fumble_actor", "Classic opcode 122 can affect only the active physical combatant.")
 	var reason := scripted_fumble_guard_reason(state)
 	if not reason.is_empty():
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": String(reason), "source": "classic"})])
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": String(reason), "source": "classic"})])
 	var events: Array[DomainEvent] = []
 	var character := state.party.character_by_id(actor_id)
 	var equipment := _context.equipment.combat_equipment(character, content.items.definitions())
 	if not equipment.valid:
 		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	if not equipment.is_armed():
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "unarmed", "source": "classic"})])
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "unarmed", "source": "classic"})]).with_fumble(CombatFlowResult.Fumble.UNARMED)
 	if not state.combat.dropped_items.can_queue():
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "queue-full", "source": "classic"})])
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "queue-full", "source": "classic"})])
 	if not equipment.melee_weapon.cursed_item_id.is_empty():
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "cursed-weapon", "source": "classic"})])
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "cursed-weapon", "source": "classic"})]).with_fumble(CombatFlowResult.Fumble.CURSED_WEAPON)
 	if not _events.commit_character_fumble(state, content, character, equipment, events):
 		return CombatFlowResult.failed(&"invalid_fumble_state", "The active character's melee weapon could not enter the recovery queue.")
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events).with_fumble(CombatFlowResult.Fumble.COMMITTED)
 
 
 func fire_character_projectile(state: GameState, content: RealmzContent, actor: CharacterState, equipment: CharacterCombatEquipment, target_id: String, rng: RealmzRng) -> CombatFlowResult:
@@ -515,14 +515,14 @@ func fire_character_projectile(state: GameState, content: RealmzContent, actor: 
 		"defeated": resolution.target_defeated,
 		"source": "classic",
 	}))
-	var death_macro_requested := resolution.target_defeated and _events.request_monster_death_macro(target, definition, events)
+	var death_macro_requested := resolution.target_defeated and CombatDeathMacroOperations.request_immediate(state.combat, target, definition, events)
 	_context.automation().remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_requested)
 	if not character_can_continue(actor):
 		_context.rounds().advance_turn(state, content, rng, events)
 	if death_macro_requested:
-		return CombatFlowResult.succeeded(events)
+		return CombatFlowResult.from_combat(state.combat, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
+		return CombatFlowResult.from_combat(state.combat, events, true)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
@@ -565,7 +565,3 @@ func consume_character_attack(character: CharacterState) -> void:
 
 static func character_can_continue(character: CharacterState) -> bool:
 	return character.current_health > 0 and character.attacks_remaining >= 2
-
-
-static func _events_include(events: Array[DomainEvent], kind: StringName) -> bool:
-	return events.any(func(event: DomainEvent) -> bool: return event.kind == kind)

@@ -3,7 +3,7 @@ class_name ClassicScenarioSpellOperations
 extends RefCounted
 
 
-static func apply(content: RealmzContent, state: GameState, rng: RealmzRng, rules: RealmzRules, action: ClassicActionDefinition, entire_party: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+static func apply(content: RealmzContent, state: GameState, rng: RealmzRng, rules: RealmzRules, action: ClassicActionDefinition, entire_party: bool, context: ScenarioExecutionContext, queued_source: CombatQueuedMacroSource = null) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 4:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode %d requires a four-value Extra Code row." % action.opcode)
 	var spell := content.magic.spell_by_classic_id(int(action.extra_code[0]))
@@ -12,7 +12,7 @@ static func apply(content: RealmzContent, state: GameState, rng: RealmzRng, rule
 			return ClassicCompatibility.cancel_interaction(&"unavailable-scenario-spell", "Data Spell", action.extra_code[0], context)
 		return ScenarioRuntimeOperationResult.failed(&"unknown_spell", "Classic opcode %d references unavailable packed spell %d." % [action.opcode, int(action.extra_code[0])])
 	if not entire_party and not context.combatant_id.is_empty():
-		var result := rules.combat_flow.magic.cast_macro_spell(state, content, context.combatant_id, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, rng)
+		var result := rules.combat_flow.magic.cast_macro_spell(state, content, context.combatant_id, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, rng, queued_source)
 		return ScenarioRuntimeOperationResult.completed(true, result.events) if result.ok else ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	var targets := state.party.characters() if entire_party else state.scenario_progress.selected_characters()
 	if targets.is_empty() or spell.target_type == 7 or absi(spell.special) == 68:
@@ -49,6 +49,7 @@ static func resume(content: RealmzContent, state: GameState, rng: RealmzRng, rul
 static func _continue(content: RealmzContent, state: GameState, rng: RealmzRng, rules: RealmzRules, action: ClassicActionDefinition, targets: Array[CharacterState], start_index: int) -> ScenarioRuntimeOperationResult:
 	var spell := content.magic.spell_by_classic_id(action.extra_code[0])
 	var events: Array[DomainEvent] = []
+	var updates: Array[AgeUpdateRequestBody] = []
 	for index: int in range(start_index, targets.size()):
 		var character := targets[index]
 		var before_health := character.current_health
@@ -76,11 +77,13 @@ static func _continue(content: RealmzContent, state: GameState, rng: RealmzRng, 
 			"source": "classic",
 		}))
 		if resolution.aging != null and resolution.aging.changed_group():
-			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character, race)))
+			var update := resolution.aging.update_body(character, race)
+			updates.append(update)
+			events.append(DomainEvent.new(&"character_age_changed", update.to_data()))
 		# Castle resolvespell -> killbody -> partyloss interrupts the target loop here.
 		if state.combat == null and state.party.characters().all(func(member: CharacterState) -> bool: return member.current_health <= 0):
 			var target_ids: Array[String] = []
 			for target: CharacterState in targets:
 				target_ids.append(target.id)
 			return ScenarioRuntimeOperationResult.suspended(ScenarioRuntimeHandoff.character_defeat(action.opcode, action.extra_code, target_ids, index + 1), events)
-	return ScenarioRuntimeOperationResult.completed(targets.size(), events)
+	return ScenarioRuntimeOperationResult.completed(targets.size(), events).with_age_updates(updates)

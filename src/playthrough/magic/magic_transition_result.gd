@@ -5,7 +5,7 @@ extends RefCounted
 
 var ok: bool
 var completed: bool
-var process_age_updates: bool
+var age_updates: Array[AgeUpdateRequestBody] = []
 var events: Array[DomainEvent]
 var continuation: SessionContinuation
 var interaction: InteractionRequest
@@ -28,7 +28,7 @@ static func rejected(code: StringName, message: String) -> MagicTransitionResult
 	return result
 
 
-static func committed(workflow_result: SessionWorkflowResult, should_process_age_updates: bool = false) -> MagicTransitionResult:
+static func committed(workflow_result: SessionWorkflowResult) -> MagicTransitionResult:
 	if workflow_result == null:
 		return failed(&"invalid_workflow_result", "The magic workflow returned no result.")
 	if not workflow_result.ok:
@@ -36,7 +36,7 @@ static func committed(workflow_result: SessionWorkflowResult, should_process_age
 	var result := MagicTransitionResult.new()
 	result.ok = true
 	result.completed = true
-	result.process_age_updates = should_process_age_updates
+	result.age_updates.assign(workflow_result.age_updates)
 	result.events = workflow_result.events
 	return result
 

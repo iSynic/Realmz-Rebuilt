@@ -110,7 +110,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	var rng_checkpoint := rng.checkpoint()
 	var definition := _select_classic_summon_definition(state, content, spell, rng)
 	if definition == null:
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": event_source})])
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": event_source})])
 	var consumption := MonsterConsumptionProbe.inspect(content, definition)
 	if consumption.outcome == MonsterConsumptionProbe.Outcome.PACKAGE_DEFECT:
 		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"missing_monster_dependency", consumption.reason)
@@ -156,7 +156,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	if advances_turn:
 		_context.rounds().advance_turn(state, content, rng, events)
 	if _context.rounds().finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
+		return CombatFlowResult.from_combat(state.combat, events, true)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
@@ -170,7 +170,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 	var rng_checkpoint := rng.checkpoint()
 	var definition := _select_classic_summon_definition(state, content, spell, rng)
 	if definition == null:
-		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": "classic-monster"})])
+		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_summon_denied", {"actorId": caster.id, "spellId": spell.id, "power": power_level, "reason": "no-eligible-classic-monster", "source": "classic-monster"})])
 	var consumption := MonsterConsumptionProbe.inspect(content, definition)
 	if consumption.outcome == MonsterConsumptionProbe.Outcome.PACKAGE_DEFECT:
 		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"missing_monster_dependency", consumption.reason)
@@ -215,7 +215,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 		CombatSpellEventBuilder.append_sound(events, spell.sound_end, "classic-monster-spell-result")
 		events.append(DomainEvent.new(&"combat_summoned", {"actorId": caster.id, "monsterId": summoned.id, "monsterDefinitionId": definition.id, "classicMonsterId": definition.classic_id, "coordinate": [target_coordinates[index].x, target_coordinates[index].y], "size": definition.size, "spellId": spell.id, "power": power_level, "castSequenceIndex": index, "castSequenceCount": target_coordinates.size(), "source": "classic-monster"}))
 	events.insert(1, DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": summoned_ids[0] if not summoned_ids.is_empty() else "", "targetIds": summoned_ids, "targetCoordinates": target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y]), "spellId": spell.id, "spellName": spell.name, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": "classic-monster"}))
-	return CombatFlowResult.succeeded(events)
+	return CombatFlowResult.from_combat(state.combat, events)
 
 
 func automatic_coordinate(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Vector2i:

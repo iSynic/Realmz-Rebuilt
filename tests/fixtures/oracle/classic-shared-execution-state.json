@@ -1,0 +1,427 @@
+{
+  "schemaVersion": 1,
+  "evidence": "castle-runtime",
+  "baseCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "instrumentationCommit": "9673ca8196b8bdf900edb6aed6e95286694136ee",
+  "executableSha256": "9d7251f74f3e0849c08073b5a96f84e4b091d2474189d2e78e2395e9a17e7785",
+  "preparation": {
+    "nativeLoaders": true,
+    "entryMode": -1,
+    "selectedActionPoint": "Data DD:0:52",
+    "seed": 173,
+    "root": [
+      4,
+      0
+    ],
+    "simple0": {
+      "maxTimes": 2,
+      "choiceResults": [
+        -4,
+        2,
+        3,
+        4
+      ],
+      "result4": [
+        [
+          0,
+          961
+        ],
+        [
+          2,
+          1200
+        ],
+        [
+          0,
+          963
+        ]
+      ]
+    },
+    "simple1": {
+      "maxTimes": 3,
+      "choiceResults": [
+        -4,
+        2,
+        3,
+        4
+      ],
+      "result4": [
+        [
+          0,
+          965
+        ],
+        [
+          125,
+          1202
+        ],
+        [
+          68,
+          1203
+        ],
+        [
+          0,
+          966
+        ]
+      ]
+    },
+    "battle0": {
+      "monsterRow": 2,
+      "row": 6,
+      "column": 6,
+      "macro": -512,
+      "messageBefore": 0,
+      "messageAfter": 0
+    },
+    "xap512": [
+      [
+        0,
+        964
+      ],
+      [
+        4,
+        1
+      ]
+    ],
+    "xap30005": [
+      0,
+      962
+    ],
+    "extraCodes": {
+      "1200": [
+        0,
+        0,
+        30005,
+        0,
+        10
+      ],
+      "1202": [
+        2,
+        1,
+        0,
+        0,
+        1
+      ],
+      "1203": [
+        99,
+        0,
+        30005,
+        0,
+        0
+      ]
+    },
+    "nativeRecordBytes": {
+      "program": 40,
+      "extraCode": 10,
+      "simple": 426,
+      "simpleStructure": 106,
+      "battle": 346,
+      "monster": 210
+    },
+    "byteOrder": "big-endian",
+    "input": "Six visible Finish controls through the first round; the intervening enemy activation runs normally."
+  },
+  "bounds": "Prepared native direct entry followed by actual combat controls. Proves selected shared-state transitions and a saved encounter-structure copy. Not a mirrored combat RNG trace, ordinary campaign journey, save compatibility proof, or campaign certification. The existing mode-10 Rebuilt fidelity correction is separate.",
+  "cases": [
+    {
+      "name": "round-macro-preserves-shared-encounter",
+      "syntheticFiles": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "d9c4815ad8402db3dbbc9e37e9d48dbe2939054459c240f4abe92e7fe5add9a9"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "5ba99cf2bbba9b617c0ace90b0a1d8adaac355326eb9b4864309376eaa06d6bc"
+        },
+        {
+          "name": "Data ED",
+          "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+          "preparedSha256": "65f93b1d6750a8e0ea52ead5fe6d923d82c080b87cad00922a1d9e2b7f898fc2"
+        },
+        {
+          "name": "Data BD",
+          "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+          "preparedSha256": "fb418814e2dc967a05577608af82250850e7dee83b3b6829467fcd58831982f2"
+        }
+      ],
+      "markers": [
+        {
+          "battleMacroActive": false,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 2,
+          "id": 961,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 0,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": true,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 0,
+          "encounterRemaining": 2,
+          "id": 964,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": true,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 965,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": true,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 966,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 3,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": false,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 962,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 0,
+          "stackDepth": 0
+        }
+      ],
+      "gameplayDrawCount": 3095,
+      "semanticReady": true
+    },
+    {
+      "name": "simple-buffer-written-to-caller-record",
+      "xap30005": [
+        [
+          0,
+          962
+        ],
+        [
+          35,
+          2
+        ]
+      ],
+      "syntheticFiles": [
+        {
+          "name": "Data DD",
+          "originalSha256": "7cfbce96914c487b93165b209bda1968243d587ff68e86921e248d111b1c6070",
+          "preparedSha256": "0946c9b2104cce936e1431566ac81e80e9f645732d3117795ab61b375485d5d3"
+        },
+        {
+          "name": "Data ED3",
+          "originalSha256": "45dfa676f690aacbf2dffe5b7ebf01d18c48f9eff1e0a8a23021762787327809",
+          "preparedSha256": "26e9c8454f6a331b3ecf9eb9b2887e188a71f5d63fcc352274c6f640d2d4e4c6"
+        },
+        {
+          "name": "Data EDCD",
+          "originalSha256": "8e1dd94fe396f68341a2e087256c15c88d5868184baac92f455fbcdfc727faa0",
+          "preparedSha256": "5ba99cf2bbba9b617c0ace90b0a1d8adaac355326eb9b4864309376eaa06d6bc"
+        },
+        {
+          "name": "Data ED",
+          "originalSha256": "b0543f45bbe5725ff85fb42f4070b05349a05bd46a7c2e9df4a8884d19c582d3",
+          "preparedSha256": "65f93b1d6750a8e0ea52ead5fe6d923d82c080b87cad00922a1d9e2b7f898fc2"
+        },
+        {
+          "name": "Data BD",
+          "originalSha256": "63820ae6eb639d4e1d110cdf4eb82a6f522627d1a5d4eb30f7b9dd9332987890",
+          "preparedSha256": "fb418814e2dc967a05577608af82250850e7dee83b3b6829467fcd58831982f2"
+        }
+      ],
+      "markers": [
+        {
+          "battleMacroActive": false,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 2,
+          "id": 961,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 0,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": true,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 0,
+          "encounterRemaining": 2,
+          "id": 964,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": true,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 965,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": true,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 966,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 3,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": false,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 962,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": false,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 965,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 0,
+          "stackDepth": 0
+        },
+        {
+          "battleMacroActive": false,
+          "doorId": 2008,
+          "doorIndex": 52,
+          "encounterFlag": 1,
+          "encounterRemaining": 3,
+          "id": 966,
+          "location": [
+            8,
+            20
+          ],
+          "macroMonsterIndex": 0,
+          "programId": "trigger:Data DD:0:52",
+          "rawOpcode": 0,
+          "rngDrawCount": 3095,
+          "slot": 3,
+          "stackDepth": 0
+        }
+      ],
+      "savedStructure": {
+        "structBytes": 106,
+        "targetRecord": 0,
+        "loadedRecord": 1,
+        "eliminatedOption": 2,
+        "structCopied": true,
+        "targetTextPreserved": true,
+        "structSha256": "21278b85053194a2287f65710912f9d068750ae26e04886622c86305e1d8853d"
+      },
+      "semanticReady": true
+    }
+  ]
+}

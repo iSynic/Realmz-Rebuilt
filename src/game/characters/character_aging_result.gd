@@ -26,63 +26,36 @@ func changed_group() -> bool:
 	return transition != 0
 
 
-func event_payload(character: CharacterState, race: RaceDefinition) -> Dictionary:
-	var applied_changes: Array[int] = []
-	if race != null and applied_age_group >= 1 and applied_age_group <= 5:
-		for value: int in race.age_change(applied_age_group - 1):
-			applied_changes.append(transition * value)
+func update_body(character: CharacterState, race: RaceDefinition) -> AgeUpdateRequestBody:
+	var result := AgeUpdateRequestBody.new()
+	result.character_id = character.id
+	result.character_name = character.name
+	result.portrait_id = character.portrait_id
+	result.combat_icon_id = character.combat_icon_id
+	result.race_id = character.race_id
+	result.race_name = race.name if race != null else character.race_id
+	result.previous_age_days = previous_age_days
+	result.age_days = age_days
+	result.previous_age_group = previous_age_group
+	result.age_group = age_group
+	result.age_group_name = age_group_name(age_group)
 	var age_range := race.age_range(age_group - 1) if race != null and age_group >= 1 and age_group <= 5 else Vector2i.ZERO
-	var group_name := age_group_name(age_group)
+	result.age_minimum_years = age_range.x
+	result.age_maximum_years = age_range.y
+	result.transition = transition
+	result.applied_age_group = applied_age_group
+	if race != null and applied_age_group >= 1 and applied_age_group <= 5:
+		for value: int in race.age_change(applied_age_group - 1): result.changes.append(transition * value)
 	var direction_text := "grown into" if transition > 0 else "returned to"
-	return {
-		"characterId": character.id,
-		"characterName": character.name,
-		"portraitId": character.portrait_id,
-		"combatIconId": character.combat_icon_id,
-		"raceId": character.race_id,
-		"raceName": race.name if race != null else character.race_id,
-		"previousAgeDays": previous_age_days,
-		"ageDays": age_days,
-		"previousAgeGroup": previous_age_group,
-		"ageGroup": age_group,
-		"ageGroupName": group_name,
-		"ageMinimumYears": age_range.x,
-		"ageMaximumYears": age_range.y,
-		"transition": transition,
-		"appliedAgeGroup": applied_age_group,
-		"changes": applied_changes,
-		"prompt": "%s has %s the %s age group." % [character.name, direction_text, group_name],
-		"presentation": "classic-age-update",
-		"soundId": 3002,
-		"source": "classic",
-	}
+	result.prompt = "%s has %s the %s age group." % [character.name, direction_text, result.age_group_name]
+	result.presentation = &"classic-age-update"
+	result.sound_id = 3002
+	result.source = &"classic"
+	return result
 
 
 static func age_group_name(group: int) -> String:
 	return AGE_GROUP_NAMES[group] if group >= 1 and group < AGE_GROUP_NAMES.size() else AGE_GROUP_NAMES[0]
-
-
-static func update_payloads(events: Array[DomainEvent]) -> Array[Dictionary]:
-	var updates: Array[Dictionary] = []
-	for event: DomainEvent in events:
-		if event.kind == &"character_age_changed" and event.payload.get("presentation") == "classic-age-update":
-			updates.append(event.payload.duplicate(true))
-	return updates
-
-
-static func update_bodies(events: Array[DomainEvent]) -> Array[AgeUpdateRequestBody]:
-	var updates: Array[AgeUpdateRequestBody] = []
-	for payload: Dictionary in update_payloads(events):
-		var request := InteractionRequest.age_update("character-aging", payload)
-		if request == null or not request.body is AgeUpdateRequestBody:
-			push_error("A committed character-age event does not satisfy the typed interaction contract.")
-			continue
-		updates.append(request.body as AgeUpdateRequestBody)
-	return updates
-
-
-static func sound_event(payload: Dictionary) -> DomainEvent:
-	return DomainEvent.new(&"sound_requested", {"soundId": int(payload.get("soundId", 3002)), "waitForCompletion": false, "source": "classic-age-update"})
 
 
 static func sound_event_for_update(update: AgeUpdateRequestBody) -> DomainEvent:

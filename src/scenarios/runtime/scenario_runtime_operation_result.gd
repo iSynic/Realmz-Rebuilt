@@ -8,6 +8,7 @@ enum State {
 	WAITING,
 	SUSPENDED,
 	FAILED,
+	CALL,
 }
 
 var state: State = State.COMPLETED
@@ -20,6 +21,54 @@ var directive: ScenarioVmDirective
 var error_code: StringName = &""
 var error_message: String = ""
 var is_rejection: bool = false
+var call: ScenarioProgramCall
+var direct_combat_return: CombatFlowResult
+var battle_return: BattleReturnResult
+## Native state changes committed by this operation, consumed before scheduling.
+var began_combat: bool = false
+var loaded_encounter_kind: StringName = &""
+var loaded_encounter_id: int = -1
+var loaded_encounter_max_times: int = 0
+var selected_encounter_kind: StringName = &""
+var selected_encounter_id: int = -1
+var selected_encounter_attempt: int = 0
+var push_classic_return: bool = false
+var secondary_door_completed: bool = false
+var suppress_header_recheck: bool = false
+var suppress_header_completion: bool = false
+var invocation_returned_early: bool = false
+var recheck_destination: bool = false
+var party_revived: bool = false
+var age_updates: Array[AgeUpdateRequestBody] = []
+
+
+func with_battle_return(returned: BattleReturnResult) -> ScenarioRuntimeOperationResult:
+	battle_return = returned
+	return self
+
+
+func with_age_updates(updates: Array[AgeUpdateRequestBody]) -> ScenarioRuntimeOperationResult:
+	age_updates.assign(updates)
+	return self
+
+
+func with_encounter_load(kind: StringName, encounter_id: int, max_times: int) -> ScenarioRuntimeOperationResult:
+	loaded_encounter_kind = kind
+	loaded_encounter_id = encounter_id
+	loaded_encounter_max_times = max_times
+	return self
+
+
+func with_combat_entry() -> ScenarioRuntimeOperationResult:
+	began_combat = true
+	return self
+
+
+func with_encounter_selection(kind: StringName, encounter_id: int, attempt: int) -> ScenarioRuntimeOperationResult:
+	selected_encounter_kind = kind
+	selected_encounter_id = encounter_id
+	selected_encounter_attempt = attempt
+	return self
 
 
 static func completed(result_value: Variant = null, committed_events: Array[DomainEvent] = [], vm_directive: ScenarioVmDirective = null) -> ScenarioRuntimeOperationResult:
@@ -42,6 +91,13 @@ static func suspended(host_handoff: ScenarioRuntimeHandoff, committed_events: Ar
 	var result := completed(null, committed_events)
 	result.state = State.SUSPENDED
 	result.handoff = host_handoff.copy() if host_handoff != null else null
+	return result
+
+
+static func calling(program_call: ScenarioProgramCall, committed_events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
+	var result := completed(null, committed_events)
+	result.state = State.CALL
+	result.call = program_call.copy()
 	return result
 
 

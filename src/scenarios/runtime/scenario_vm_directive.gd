@@ -3,8 +3,13 @@
 class_name ScenarioVmDirective
 extends RefCounted
 
+const NATIVE_RETURN: StringName = &"native-return"
+const END_RECORD: StringName = &"end-record"
+const BLOWOUT: StringName = &"blowout"
 const FINISH: StringName = &"finish"
 const FINISH_TIMELINE: StringName = &"finish-timeline"
+const KEEP_CODES: StringName = &"keep-codes"
+const COPY_RECORD: StringName = &"copy-record"
 const RESUME_AFTER_ENCOUNTER: StringName = &"resume-after-encounter"
 const BRANCH_XAP: StringName = &"branch-xap"
 const BRANCH_PROGRAM: StringName = &"branch-program"
@@ -13,6 +18,7 @@ const BRANCH_ENCOUNTER_RESULT: StringName = &"branch-encounter-result"
 const RESTART_CURRENT_PROGRAM: StringName = &"restart-current-program"
 const DROPOUT: StringName = &"dropout"
 const CLOCK_TIMER_RETURN: StringName = &"clock-timer-return"
+const RESET_CODE: StringName = &"reset-code"
 const RECHECK_PROGRAM: StringName = &"recheck-program"
 const PUSH_CLASSIC_RETURN: StringName = &"push-classic-return"
 
@@ -24,18 +30,47 @@ var entry_cursor: int = 0
 var context: ScenarioExecutionContext = ScenarioExecutionContext.empty()
 var repeat_encounter: bool
 var encounter_kind: StringName
+var copied_code: ScenarioClassicProgramState
+var native_slot: int = 0
+var return_value: int = 0
+var clear_encounter: bool = false
+var backout: ScenarioNativeCompletion.Backout = ScenarioNativeCompletion.Backout.NONE
+var admitted: bool = true
 
 
 func _init(directive_kind: StringName) -> void:
 	kind = directive_kind
 
 
-static func finish() -> ScenarioVmDirective:
-	return ScenarioVmDirective.new(FINISH)
+static func native_return(value: int, reason: ScenarioNativeCompletion.Backout = ScenarioNativeCompletion.Backout.NONE) -> ScenarioVmDirective:
+	var result := ScenarioVmDirective.new(NATIVE_RETURN)
+	result.return_value = value
+	result.backout = reason
+	return result
 
 
-static func finish_timeline() -> ScenarioVmDirective:
-	return ScenarioVmDirective.new(FINISH_TIMELINE)
+static func end_record(clear_flag: bool = false) -> ScenarioVmDirective:
+	var result := ScenarioVmDirective.new(END_RECORD)
+	result.clear_encounter = clear_flag
+	return result
+
+
+static func blowout() -> ScenarioVmDirective:
+	return ScenarioVmDirective.new(BLOWOUT)
+
+
+static func keep_codes(clear_flag: bool = false) -> ScenarioVmDirective:
+	var result := ScenarioVmDirective.new(KEEP_CODES)
+	result.clear_encounter = clear_flag
+	return result
+
+
+static func copy_record(code: ScenarioClassicProgramState, slot: int = 0, use_gosub: bool = false) -> ScenarioVmDirective:
+	var directive := ScenarioVmDirective.new(COPY_RECORD)
+	directive.copied_code = code.copy()
+	directive.native_slot = slot
+	directive.gosub = use_gosub
+	return directive
 
 
 static func resume_after_encounter() -> ScenarioVmDirective:
@@ -93,10 +128,18 @@ static func dropout() -> ScenarioVmDirective:
 	return ScenarioVmDirective.new(DROPOUT)
 
 
-static func clock_timer_return(program: String, cursor: int, frame_context: ScenarioExecutionContext = null) -> ScenarioVmDirective:
-	var directive := ScenarioVmDirective.new(CLOCK_TIMER_RETURN)
+static func reset_code(program: String, cursor: int, source_context: ScenarioExecutionContext) -> ScenarioVmDirective:
+	var result := ScenarioVmDirective.new(RESET_CODE)
+	result.program_id = program
+	result.entry_cursor = cursor
+	result.context = source_context.copy()
+	return result
+
+
+static func recheck_program(program: String, accepted: bool, frame_context: ScenarioExecutionContext = null) -> ScenarioVmDirective:
+	var directive := ScenarioVmDirective.new(RECHECK_PROGRAM)
 	directive.program_id = program
-	directive.entry_cursor = cursor
+	directive.admitted = accepted
 	directive.context = ScenarioExecutionContext.empty() if frame_context == null else frame_context.copy()
 	return directive
 
@@ -107,12 +150,20 @@ func copy() -> ScenarioVmDirective:
 
 func to_data() -> Dictionary:
 	match kind:
-		FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT, PUSH_CLASSIC_RETURN:
+		NATIVE_RETURN:
+			return {"kind": String(kind), "returnValue": return_value,"backout":backout}
+		END_RECORD, KEEP_CODES:
+			return {"kind": String(kind), "clearEncounter": clear_encounter}
+		COPY_RECORD:
+			return {"kind": String(kind), "code": copied_code.to_data(), "nativeSlot": native_slot, "gosub": gosub}
+		FINISH, FINISH_TIMELINE, BLOWOUT, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT, PUSH_CLASSIC_RETURN:
 			return {"kind": String(kind)}
 		BRANCH_XAP:
 			return {"kind": String(kind), "targetId": target_id, "gosub": gosub}
-		CLOCK_TIMER_RETURN, RECHECK_PROGRAM:
+		CLOCK_TIMER_RETURN, RESET_CODE:
 			return {"kind": String(kind), "programId": program_id, "entryCursor": entry_cursor, "context": ScenarioExecutionContextCodec.encode(context)}
+		RECHECK_PROGRAM:
+			return {"kind":String(kind),"programId":program_id,"admitted":admitted,"context":ScenarioExecutionContextCodec.encode(context)}
 		BRANCH_PROGRAM:
 			var data := {"kind": String(kind), "programId": program_id, "gosub": gosub, "context": ScenarioExecutionContextCodec.encode(context)}
 			if entry_cursor != 0:
@@ -132,9 +183,13 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 	if not data.get("kind") is String:
 		return null
 	var kind_text: String = data["kind"]
-	if StringName(kind_text) in [FINISH, FINISH_TIMELINE, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT, PUSH_CLASSIC_RETURN]:
+	if StringName(kind_text) in [FINISH, FINISH_TIMELINE, BLOWOUT, RESUME_AFTER_ENCOUNTER, RESTART_CURRENT_PROGRAM, DROPOUT, PUSH_CLASSIC_RETURN]:
 		return _empty_directive(StringName(kind_text)) if data.size() == 1 else null
 	match StringName(kind_text):
+		END_RECORD, KEEP_CODES, NATIVE_RETURN:
+			return _exit_directive(data, StringName(kind_text))
+		COPY_RECORD:
+			return _copied_record(data)
 		BRANCH_XAP:
 			if data.size() != 3 or not data.get("targetId") is int or not data.get("gosub") is bool:
 				return null
@@ -150,15 +205,8 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 			var use_gosub: bool = data["gosub"]
 			var cursor: int = cursor_value
 			return null if restored_context == null else branch_program_at(program, use_gosub, restored_context, cursor)
-		CLOCK_TIMER_RETURN, RECHECK_PROGRAM:
-			var cursor_value: Variant = data.get("entryCursor")
-			var restored_context := ScenarioExecutionContextCodec.decode(data.get("context"))
-			if data.size() != 4 or restored_context == null or _nonempty_string(data.get("programId")).is_empty() or not _whole_number(cursor_value) or cursor_value < 0 or cursor_value > 4096: return null
-			var program: String = data["programId"]
-			var cursor: int = cursor_value
-			var directive := clock_timer_return(program, cursor, restored_context)
-			directive.kind = StringName(kind_text)
-			return directive
+		CLOCK_TIMER_RETURN, RESET_CODE, RECHECK_PROGRAM:
+			return _record_transfer(data,StringName(kind_text))
 		ENTER_ENCOUNTER:
 			var encounter_kind_value: Variant = data.get("encounterKind")
 			var encounter_id_value: Variant = data.get("encounterId")
@@ -179,10 +227,48 @@ static func from_data(value: Variant) -> ScenarioVmDirective:
 	return null
 
 
+static func _exit_directive(data: Dictionary, kind_value: StringName) -> ScenarioVmDirective:
+	if kind_value == NATIVE_RETURN:
+		if not ScenarioExecutionWire.fields(data, ["kind", "returnValue","backout"]): return null
+		var value := ScenarioExecutionWire.integer(data["returnValue"], -1, 1)
+		var reason := ScenarioExecutionWire.integer(data["backout"],ScenarioNativeCompletion.Backout.NONE,ScenarioNativeCompletion.Backout.BACKED_UP)
+		return null if value < -1 or reason < 0 or reason != ScenarioNativeCompletion.Backout.NONE and value != 1 else native_return(value,reason as ScenarioNativeCompletion.Backout)
+	if not ScenarioExecutionWire.fields(data, ["kind", "clearEncounter"]) or not data["clearEncounter"] is bool: return null
+	var clear_flag: bool = data["clearEncounter"]
+	return end_record(clear_flag) if kind_value == END_RECORD else keep_codes(clear_flag)
+
+
+static func _record_transfer(data: Dictionary, kind_value: StringName) -> ScenarioVmDirective:
+	var context_value := ScenarioExecutionContextCodec.decode(data.get("context"))
+	if context_value == null or _nonempty_string(data.get("programId")).is_empty(): return null
+	var program: String = data["programId"]
+	if kind_value == RECHECK_PROGRAM:
+		if not ScenarioExecutionWire.fields(data,["kind","programId","admitted","context"]) or not data["admitted"] is bool: return null
+		var accepted: bool = data["admitted"]
+		return recheck_program(program,accepted,context_value)
+	if not ScenarioExecutionWire.fields(data,["kind","programId","entryCursor","context"]): return null
+	var cursor := ScenarioExecutionWire.integer(data["entryCursor"],0,4096)
+	if cursor < 0: return null
+	if kind_value == RESET_CODE: return reset_code(program, cursor, context_value)
+	var legacy := ScenarioVmDirective.new(CLOCK_TIMER_RETURN)
+	legacy.program_id = program
+	legacy.entry_cursor = cursor
+	legacy.context = context_value
+	return legacy
+
+
+static func _copied_record(data: Dictionary) -> ScenarioVmDirective:
+	if not ScenarioExecutionWire.fields(data, ["kind", "code", "nativeSlot", "gosub"]) or not data["gosub"] is bool: return null
+	var code := ScenarioClassicProgramState.from_data(data["code"])
+	var slot := ScenarioExecutionWire.integer(data["nativeSlot"], 0, 8)
+	var use_gosub: bool = data["gosub"]
+	return copy_record(code, slot, use_gosub) if code != null and code.kind != ScenarioClassicProgramState.Kind.UNAVAILABLE and slot >= 0 else null
+
+
 static func _empty_directive(kind_value: StringName) -> ScenarioVmDirective:
 	match kind_value:
-		FINISH: return finish()
-		FINISH_TIMELINE: return finish_timeline()
+		FINISH, FINISH_TIMELINE: return ScenarioVmDirective.new(kind_value)
+		BLOWOUT: return blowout()
 		RESUME_AFTER_ENCOUNTER: return resume_after_encounter()
 		RESTART_CURRENT_PROGRAM: return restart_current_program()
 		DROPOUT: return dropout()

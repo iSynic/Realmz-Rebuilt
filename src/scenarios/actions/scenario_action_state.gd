@@ -22,16 +22,16 @@ func write(state_scope: String, owner_id: String, name: String, value: Variant) 
 	return true
 
 
-func to_data() -> Dictionary:
+func to_data(decimal_integers: bool = true) -> Dictionary:
 	var result: Dictionary = {}
 	var keys: Array = _values.keys()
 	keys.sort()
 	for key: Variant in keys:
-		result[key] = ScenarioValueCodec.encode(_values[key])
+		result[key] = ScenarioValueCodec.encode(_values[key], decimal_integers)
 	return result
 
 
-static func from_data(data: Variant) -> ScenarioActionState:
+static func from_data(data: Variant, decimal_integers: bool = true) -> ScenarioActionState:
 	if not data is Dictionary:
 		return null
 	var entries: Dictionary = data
@@ -44,7 +44,7 @@ static func from_data(data: Variant) -> ScenarioActionState:
 		var key_text: String = key
 		if key_text.is_empty():
 			return null
-		var decoded := ScenarioValueCodec.decode(entries[key])
+		var decoded := ScenarioValueCodec.decode(entries[key], 0, decimal_integers)
 		if not decoded["ok"]:
 			return null
 		state._values[key] = decoded["value"]

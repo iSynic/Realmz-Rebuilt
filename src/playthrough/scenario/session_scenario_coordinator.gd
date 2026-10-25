@@ -18,16 +18,17 @@ func start_application_hook(hook: StringName, resume_kind: StringName, service_i
 	var program_id := body.program_id
 	if program_id.is_empty():
 		return continue_application_hook(preceding_events)
-	var started := _context.scenario_vm.start_program(program_id, ScenarioApplicationHookWorkflow.start_context(hook, service_id))
-	if started.state == ScenarioVmResult.State.FAILED:
+	var call := ScenarioProgramCall.application_call(program_id, ScenarioApplicationHookWorkflow.start_context(hook, service_id))
+	var result := _context.scenario_vm.start_program_call(call, _context.runtime_api)
+	body.application_owner_id = result.application_owner_id
+	if result.state == ScenarioVmResult.State.FAILED and result.application_owner_id == 0:
 		_context.session_continuation.clear()
-		return SessionCoordinatorResult.failed(started.error_code, started.error_message, preceding_events)
-	var result := _context.scenario_vm.run(_context.runtime_api)
+		return SessionCoordinatorResult.failed(result.error_code, result.error_message, preceding_events)
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
 	events.append(DomainEvent.new(&"application_hook_started", {"hook": String(hook), "programId": program_id}))
 	events.append_array(result.events)
-	if _events_have(result.events, &"party_revived"):
+	if result.party_revived:
 		body.party_revived = true
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return SessionCoordinatorResult.failed(&"nested_party_defeat_handoff", "An application hook cannot suspend another total-party defeat.", events)
@@ -36,10 +37,10 @@ func start_application_hook(hook: StringName, resume_kind: StringName, service_i
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
 	if result.state == ScenarioVmResult.State.WAITING:
 		return SessionCoordinatorResult.waiting(result.interaction, events)
-	return continue_application_hook(events)
+	return continue_application_hook(events, result.application_return)
 
 
-func continue_application_hook(events: Array[DomainEvent]) -> SessionCoordinatorResult:
+func continue_application_hook(events: Array[DomainEvent], returned: ScenarioApplicationReturn = null) -> SessionCoordinatorResult:
 	var body := _context.session_continuation.body as ScenarioApplicationContinuationBody
 	if body == null:
 		return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Application-hook continuation body is unavailable.", events)
@@ -48,9 +49,9 @@ func continue_application_hook(events: Array[DomainEvent]) -> SessionCoordinator
 	var resume_kind := String(body.resume_kind)
 	var service_id := body.service_id
 	var party_revived := body.party_revived
-	var suspended_vm := ScenarioVmSnapshot.from_data(body.suspended_vm.to_data()) if body.suspended_vm != null else null
 	var suspended_owner := body.suspended_owner
-	var vm_handoff := body.vm_handoff.copy() if body.vm_handoff != null else null
+	if not program_id.is_empty() and (returned == null or returned.owner_id != body.application_owner_id):
+		return SessionCoordinatorResult.failed(&"invalid_application_return", "The completed hook does not match its saved operation owner.", events)
 	_context.session_continuation.clear()
 	if not program_id.is_empty():
 		events.append(ScenarioApplicationHookWorkflow.completion_event(body))
@@ -79,7 +80,7 @@ func continue_application_hook(events: Array[DomainEvent]) -> SessionCoordinator
 		"scenario-party-defeat":
 			if not party_revived:
 				return SessionCoordinatorResult.closed(events, "party-defeat")
-			return resume_scenario_party_defeat(suspended_vm, suspended_owner, vm_handoff, events)
+			return resume_scenario_party_defeat(suspended_owner, returned, events)
 	return SessionCoordinatorResult.failed(&"invalid_session_continuation", "Application hook '%s' has invalid resume kind '%s'." % [hook, resume_kind], events)
 
 
@@ -98,24 +99,18 @@ func begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent]
 		_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(&"invalid_party_defeat_handoff", "The Scenario VM total-party defeat handoff is invalid.", events)
 	var suspended := ScenarioApplicationContinuationBody.new()
-	suspended.suspended_vm = ScenarioVmSnapshot.from_data(saved.to_data())
 	suspended.suspended_owner = _context.session_continuation.copy()
-	suspended.vm_handoff = result.handoff.copy()
-	_context.scenario_vm.reset()
 	return start_application_hook(ScenarioApplicationHooks.PARTY_DEATH, &"scenario-party-defeat", "", events, suspended)
 
 
-func resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: SessionContinuation, vm_handoff: ScenarioVmHandoff, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+func resume_scenario_party_defeat(suspended_owner: SessionContinuation, returned: ScenarioApplicationReturn, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+	var saved := _context.scenario_vm.snapshot()
+	var vm_handoff := returned.handoff if returned != null else null
 	if not ScenarioVmHandoff.is_valid(vm_handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_context.content, _context.state, vm_handoff.runtime) or not SessionRestoreValidator.suspended_scenario_owner_is_valid(_context.content, _context.state, suspended_owner, saved):
-		return SessionCoordinatorResult.failed(&"invalid_party_defeat_handoff", "The saved scenario defeat continuation is invalid.", events)
-	var restored_vm := ScenarioVm.new()
-	restored_vm.configure(_context.content.scenario)
-	if not restored_vm.restore(saved):
-		return SessionCoordinatorResult.failed(&"invalid_vm_state", "The suspended scenario cannot be restored after Party Death.", events)
+		return SessionCoordinatorResult.failed(&"invalid_party_defeat_handoff", "The suspended scenario defeat continuation is invalid.", events)
 	var operation := _context.runtime_api.complete_party_defeat_handoff(vm_handoff.runtime)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return SessionCoordinatorResult.failed(operation.error_code, operation.error_message, events)
-	_context.scenario_vm = restored_vm
 	var resumed := _context.scenario_vm.resume_handoff(vm_handoff, operation, _context.runtime_api)
 	events.append_array(resumed.events)
 	_context.set_continuation(suspended_owner.copy())
@@ -134,6 +129,8 @@ func resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: Se
 
 
 func finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+	var application := _context.session_continuation.application_hook()
+	if application != null and result.party_revived: application.party_revived = true
 	if result.is_rejection:
 		return SessionCoordinatorResult.rejected(result.error_code, result.error_message)
 	if result.state == ScenarioVmResult.State.SUSPENDED:
@@ -148,12 +145,12 @@ func finish_resumed_vm_result(result: ScenarioVmResult, events: Array[DomainEven
 			_context.session_continuation.clear()
 		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
 	if not _context.session_continuation.is_empty():
-		if _context.session_continuation.kind == &"combat-round-macro":
-			return SessionBattleMacroWorkflow.finish(_context, events)
-		if _context.session_continuation.kind == &"combat-death-macro":
-			return continue_session_death_macro(events)
+		if _context.session_continuation.kind in [&"combat-round-macro", &"combat-death-macro"]:
+			return SessionBattleMacroWorkflow.finish(_context, events, result.direct_combat_return)
 		if _context.session_continuation.kind == &"item-xap":
 			return _continue_item_xap(events)
+		if _context.session_continuation.kind == &"application-hook":
+			return continue_application_hook(events, result.application_return)
 		return _context.exploration().continue_exploration_continuation(events)
 	return SessionCoordinatorResult.completed(events)
 
@@ -230,127 +227,12 @@ func _rollback_item_xap(state_checkpoint: Dictionary, rng_checkpoint: Dictionary
 	return true
 
 
-func apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
-	var destination := trigger.post_action_location
-	if _context.classic_execution.header_replaced:
-		destination = TriggerDestinationDefinition.new(_context.classic_execution.map_id, _context.classic_execution.coordinate)
-	var destination_is_source: bool = destination != null and destination.map_id == trigger.map_id and destination.coordinate == trigger.coordinate
-	if not allow_destination or _context.scenario_vm.native_header_suppressed() or destination == null or destination_is_source and not _context.classic_execution.header_replaced or destination.map_id == _context.state.party.map_id and destination.coordinate == _context.state.party.coordinate:
-		return false
-	var map := _context.content.world.map_by_id(destination.map_id)
-	if map == null or map.topology.cell_at(destination.coordinate) == null: return false
-	var source_map_id := _context.state.party.map_id
-	var source_coordinate := _context.state.party.coordinate
-	_context.state.party.map_id = destination.map_id
-	_context.state.party.coordinate = destination.coordinate
-	_context.state.world.exploration.mark_visited(destination.map_id, destination.coordinate)
-	events.append(DomainEvent.new(&"party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": destination.map_id, "x": destination.coordinate.x, "y": destination.coordinate.y, "source": "action-point-destination", "triggerId": trigger.id}))
-	return true
 
-
-func finalize_completed_trigger(trigger: TriggerDefinition, events: Array[DomainEvent]) -> void:
-	if _context.scenario_vm.returned_early(): return
-	if _context.classic_execution.header_replaced:
-		trigger = _context.content.scenario_records.trigger_by_id(_context.classic_execution.trigger_id)
-		if trigger == null: return
-	if events_keep_trigger(events, trigger.id) or _context.state.world.triggers.trigger_is_disabled(trigger.id):
-		return
-	_context.state.world.triggers.disable_trigger(trigger.id)
-	events.append(DomainEvent.new(&"trigger_disabled", {"triggerId": trigger.id, "source": "classic-default-one-shot"}))
-
-
-static func _events_have(events: Array[DomainEvent], kind: StringName) -> bool:
-	for event: DomainEvent in events:
-		if event.kind == kind:
-			return true
-	return false
-
-
-static func events_keep_trigger(events: Array[DomainEvent], trigger_id: String) -> bool:
-	for event: DomainEvent in events:
-		if event.kind == &"action_point_kept" and str(event.payload.get("triggerId", "")) == trigger_id:
-			return true
-	return false
-
-
-static func _event_payload(events: Array[DomainEvent], kind: StringName) -> Dictionary:
-	for index: int in range(events.size() - 1, -1, -1):
-		if events[index].kind == kind:
-			return events[index].payload
-	return {}
-
-
-func start_session_death_macro(preceding_events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var request := _event_payload(preceding_events, &"monster_death_macro_requested")
+func start_session_death_macro(request: CombatDeathMacroRequest, preceding_events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var combat := _context.state.combat
-	if request.is_empty() or combat == null:
+	if request == null or combat == null:
 		return SessionCoordinatorResult.failed(&"invalid_death_macro_request", "Monster death-macro execution requires an active combatant request.", preceding_events)
-	var combatant_id := str(request.get("combatantId", ""))
-	var program_id := str(request.get("programId", ""))
-	var monster := combat.roster.monster_by_id(combatant_id)
-	if monster == null or (_context.content.scenario.program_by_id(program_id) == null and not _context.content.scenario.native_program_is_unavailable(program_id)):
-		return SessionCoordinatorResult.failed(&"invalid_death_macro_request", "Monster death-macro execution references unavailable content.", preceding_events)
-	var continuation_body := CombatContinuationBody.new()
-	continuation_body.battle_id = combat.battle_id
-	continuation_body.combatant_id = combatant_id
-	continuation_body.program_id = program_id
-	var reset_traitor: bool = request.get("resetTraitorOnComplete", true)
-	continuation_body.reset_traitor_on_complete = reset_traitor
-	_context.set_continuation(CombatContinuations.death_macro(continuation_body))
-	var death_context := ScenarioExecutionContext.calling(&"monster-death-macro")
-	death_context.set_battle(combat.battle_id)
-	var classic_monster_id: int = request.get("classicMonsterId", 0)
-	var traitor: bool = request.get("traitor", monster.traitor)
-	death_context.set_combatant(combatant_id, classic_monster_id, traitor, true)
-	var started := _context.scenario_vm.start_program(program_id, death_context)
-	if started.state == ScenarioVmResult.State.FAILED:
-		_context.session_continuation.clear()
-		return SessionCoordinatorResult.failed(started.error_code, started.error_message, preceding_events)
-	var result := _context.scenario_vm.run(_context.runtime_api)
-	var events: Array[DomainEvent] = []
-	events.assign(preceding_events)
-	events.append(DomainEvent.new(&"monster_death_macro_started", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id}))
-	events.append_array(result.events)
-	if result.state == ScenarioVmResult.State.SUSPENDED:
-		_context.session_continuation.clear()
-		return SessionCoordinatorResult.failed(&"unsupported_vm_handoff_owner", "A session-owned monster death macro cannot suspend a total-party defeat.", events)
-	if result.state == ScenarioVmResult.State.FAILED:
-		_context.session_continuation.clear()
-		return SessionCoordinatorResult.failed(result.error_code, result.error_message, events)
-	if result.state == ScenarioVmResult.State.WAITING:
-		return SessionCoordinatorResult.waiting(result.interaction, events)
-	return continue_session_death_macro(events)
-
-
-func continue_session_death_macro(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var combat := _context.state.combat
-	var continuation := _context.session_continuation.combat()
-	if continuation == null:
-		return SessionCoordinatorResult.failed(&"invalid_battle_continuation", "Monster death-macro continuation is unavailable.", events)
-	var battle_id := continuation.battle_id
-	var combatant_id := continuation.combatant_id
-	var program_id := continuation.program_id
-	if combat == null or combat.battle_id != battle_id:
-		_context.session_continuation.clear()
-		return SessionCoordinatorResult.failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.", events)
-	var monster := combat.roster.monster_by_id(combatant_id)
-	if monster != null and continuation.reset_traitor_on_complete:
-		monster.traitor = false
-	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
-	_context.session_continuation.clear()
-	var continued := _context.rules.combat_flow.continue_after_monster_death_macro(_context.state, _context.content, _context.rng, combatant_id)
-	if not continued.ok:
-		return SessionCoordinatorResult.failed(continued.error_code, continued.error_message, events)
-	events.append_array(continued.events)
-	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
-		return _context.responses().finish_with_age_updates(events, "combat-monster-turns")
-	if not _event_payload(continued.events, &"monster_death_macro_requested").is_empty():
-		return start_session_death_macro(events)
-	if _context.state.combat.round_cursor != null and _context.state.combat.round_cursor.phase == &"battle-macro":
-		return SessionBattleMacroWorkflow.start(_context, events)
-	if continued.completed:
-		return finish_direct_battle(events)
-	return SessionCoordinatorResult.completed(events)
+	return SessionBattleMacroWorkflow.start_call(_context,ScenarioMacroCall.death(request,combat.battle_id),preceding_events)
 
 
 func append_session_battle_after_message(battle_id: String, events: Array[DomainEvent]) -> void:
@@ -390,12 +272,11 @@ func finish_direct_battle_without_rewards(events: Array[DomainEvent]) -> Session
 	var battle_outcome := _context.state.combat.outcome
 	events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": String(battle_outcome)}))
 	_context.state.combat = null
-	return finish_after_direct_battle(events, return_continuation, battle_outcome)
+	return finish_after_direct_battle(events, return_continuation, BattleReturnResult.new(battle_id,battle_outcome))
 
 
 func begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 	var return_continuation := _context.battle_return_continuation.copy()
-	var battle_outcome := _context.state.combat.outcome
 	var request_id := "session.battle-reward.%d" % _context.next_revision()
 	var operation := _context.runtime_api.begin_completed_battle_reward(request_id)
 	events.append_array(operation.events)
@@ -407,12 +288,12 @@ func begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionCoordinato
 		return SessionCoordinatorResult.waiting(_context.session_interaction, events)
 	_context.session_interaction = null
 	_context.session_continuation.clear()
-	return finish_after_direct_battle(events, return_continuation, battle_outcome)
+	return finish_after_direct_battle(events, return_continuation, operation.battle_return)
 
 
-func finish_after_direct_battle(events: Array[DomainEvent], return_continuation: SessionContinuation, battle_outcome: StringName) -> SessionCoordinatorResult:
+func finish_after_direct_battle(events: Array[DomainEvent], return_continuation: SessionContinuation, returned: BattleReturnResult) -> SessionCoordinatorResult:
 	_context.battle_return_continuation.clear()
-	if return_continuation == null or return_continuation.is_empty() or battle_outcome == &"defeat" or not _events_have(events, &"battle_returned"):
+	if return_continuation == null or return_continuation.is_empty() or returned == null or returned.outcome == &"defeat":
 		return SessionCoordinatorResult.completed(events)
 	var exploration := return_continuation.exploration()
 	if exploration != null and (_context.state.party.map_id != exploration.map_id or _context.state.party.coordinate != exploration.coordinate):

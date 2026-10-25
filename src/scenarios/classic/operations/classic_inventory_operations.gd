@@ -6,12 +6,14 @@ extends ClassicOpcodeHandler
 var _content: RealmzContent
 var _game_state: GameState
 var _rules: RealmzRules
+var _encounter_memory: ClassicEncounterMemoryOperations
 
 
 func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules) -> void:
 	_content = content
 	_game_state = game_state
 	_rules = rules
+	_encounter_memory = ClassicEncounterMemoryOperations.new(content, game_state.scenario_progress.encounters)
 
 
 func opcode_ids() -> Array[int]:
@@ -80,9 +82,9 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 			var message := _content.scenario_records.message_by_id(values[4])
 			if message == null:
 				if ClassicCompatibility.source_unavailable(_content, "Data SD2", values[4]):
-					return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.finish())
+					return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.native_return(0))
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic item branch references unavailable message %d." % values[4])
-			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], ScenarioVmDirective.native_return(0))
 	# Castle continues when the absent-item mode is neither 0 nor 2.
 	return ScenarioRuntimeOperationResult.completed(false)
 
@@ -199,19 +201,16 @@ func _branch_from_values(values: Array[int], gosub: bool, context: ScenarioExecu
 		1, 2:
 			return _branch_encounter_result(values[2], values[3], values[4], gosub, context)
 		3:
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.finish_timeline())
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id if context != null else "", "source": "classic"})], ScenarioVmDirective.keep_codes(true))
 	# Castle's shared result-branch switch has no action for other modes.
 	return ScenarioRuntimeOperationResult.completed(false)
 
 
 func _branch_encounter_result(mode: int, result_index: int, entry_cursor: int, gosub: bool, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var kind := &"simple" if mode == 1 else &"complex"
-	if context == null or context.encounter_kind != kind or context.encounter_id < 0:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic branch mode %d requires an active %s Encounter result." % [mode, String(kind).capitalize()])
 	if result_index < 0 or result_index > 3 or entry_cursor < 0 or entry_cursor > 7:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_branch", "Classic encounter-result branches require result 0 through 3 and code cursor 0 through 7.")
-	var program_id := "%s:%d:result:%d" % [String(kind), context.encounter_id, result_index]
-	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_program_at(program_id, gosub, context, entry_cursor))
+	return _encounter_memory.copy_result(kind, result_index, context, entry_cursor, gosub)
 
 
 func _branch_to_destination(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:

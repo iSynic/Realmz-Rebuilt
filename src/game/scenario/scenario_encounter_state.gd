@@ -9,8 +9,11 @@ var _eliminated_complex_results: Dictionary = {}
 var _attempts: Dictionary = {}
 var _thief_type_flags: Dictionary = {}
 var _program_overrides: Dictionary = {}
-var classic_loaded_simple_id: int = -1
-var classic_loaded_complex_id: int = -1
+var memory := ClassicEncounterMemory.new()
+var classic_loaded_simple_id: int:
+	get: return memory.simple.record_id
+var classic_loaded_complex_id: int:
+	get: return memory.complex.record_id
 
 
 func set_timed_override(encounter_id: int, value: Dictionary) -> void:
@@ -41,6 +44,19 @@ func eliminate_complex_result(encounter_id: int, result_index: int) -> bool:
 
 func complex_result_is_eliminated(encounter_id: int, result_index: int) -> bool:
 	return _eliminated_complex_results.has("%d:%d" % [encounter_id, result_index])
+
+
+func store_loaded(kind: StringName, id: int) -> bool:
+	var buffer := memory.loaded(kind)
+	if id < 0 or id > 32767 or buffer == null or buffer.code == null: return false
+	memory.store(kind, id, buffer.code)
+	var marks := _eliminated_simple_options if kind == &"simple" else _eliminated_complex_results
+	for index: int in 4:
+		var key := "%d:%d" % [id, index]
+		marks.erase(key)
+		if buffer.marks[index]: marks[key] = true
+		_program_overrides.erase("%s:%d:result:%d" % [kind, id, index])
+	return true
 
 
 func attempts(kind: StringName, encounter_id: int) -> int:
@@ -82,6 +98,11 @@ func set_program_override(source_program_id: String, target_program_id: String) 
 
 
 func program_id(source_program_id: String) -> String:
+	var parts := source_program_id.split(":")
+	if parts.size() == 4 and parts[0] in ["simple", "complex"] and parts[2] == "result" and parts[1].is_valid_int() and parts[3].is_valid_int():
+		var code := memory.stored(StringName(parts[0]), parts[1].to_int())
+		var index := parts[3].to_int()
+		if code != null and index >= 0 and index < 4: return code.programs[index]
 	return str(_program_overrides.get(source_program_id, source_program_id))
 
 
@@ -94,15 +115,24 @@ func write_to(data: Dictionary) -> void:
 	data["scenarioProgramOverrides"] = _sorted_dictionary(_program_overrides)
 	data["classicLoadedSimpleId"] = classic_loaded_simple_id
 	data["classicLoadedComplexId"] = classic_loaded_complex_id
+	data["classicEncounterMemory"] = memory.to_data()
 
 
 func restore_collections(data: Dictionary) -> bool:
+	if data.has("classicEncounterMemory"):
+		memory = ClassicEncounterMemory.from_data(data["classicEncounterMemory"])
+		if memory == null or memory.simple.record_id != _loaded_id(data.get("classicLoadedSimpleId")) or memory.complex.record_id != _loaded_id(data.get("classicLoadedComplexId")): return false
 	for field: String in ["classicLoadedSimpleId", "classicLoadedComplexId"]:
 		var value := _loaded_id(data.get(field, -2))
 		if value < -2 or value > 32_767:
 			return false
-	classic_loaded_simple_id = _loaded_id(data.get("classicLoadedSimpleId", -2))
-	classic_loaded_complex_id = _loaded_id(data.get("classicLoadedComplexId", -2))
+	memory.simple.record_id = _loaded_id(data.get("classicLoadedSimpleId", -2))
+	memory.complex.record_id = _loaded_id(data.get("classicLoadedComplexId", -2))
+	if not data.has("classicEncounterMemory"):
+		if classic_loaded_simple_id != -1: memory.simple.code = null
+		if classic_loaded_complex_id != -1: memory.complex.code = null
+		if classic_loaded_simple_id != -1 or classic_loaded_complex_id != -1:
+			for slot: int in 9: memory.texts[slot] = ClassicEncounterTextReference.new(&"", -2)
 	for field: String in ["timedEncounterOverrides", "eliminatedSimpleOptions", "encounterAttempts", "thiefEncounterTypeFlags", "scenarioProgramOverrides"]:
 		if not data.has(field):
 			return false
