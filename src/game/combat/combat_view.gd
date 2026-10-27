@@ -208,7 +208,7 @@ func _populate_movement_actions(combat: CombatState, characters: Array[Character
 		var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, movement_allowance)
 		var contact_target_id := ""
 		var contact_target_name := ""
-		if weapon_mode == &"melee" and probe.reason == &"occupied" and _is_hostile_target(combat, characters, active_character, probe.occupant_id):
+		if probe.reason == &"occupied" and _is_hostile_target(combat, characters, active_character, probe.occupant_id):
 			contact_target_id = probe.occupant_id
 			contact_target_name = _target_name(combat, characters, contact_target_id)
 			contact_attack_available = true

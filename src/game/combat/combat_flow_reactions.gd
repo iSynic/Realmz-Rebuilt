@@ -176,13 +176,14 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 			friendly_collision_action = &"swap"
 	if not friendly_collision_action.is_empty() and (friendly_collision_action not in [&"swap", &"attack"] or friendly_target_id.is_empty()):
 		return CombatFlowResult.rejected(&"invalid_friendly_collision", "The selected Classic friendly-collision action is no longer available.")
-	if friendly_collision_action == &"attack" and combat.actor_statuses.character_weapon_mode(actor.id) != &"melee":
+	# Castle combatinfo-combatchoice.c:1659-1710 strikes on collision in either weapon mode; only a
+	# class-9/damage-9 projectile in missile mode needs Auto Weapon Switch, or warns (message 39).
+	var point_blank := combat.actor_statuses.character_weapon_mode(actor.id) != &"melee" and classic_projectile_uses_point_blank_auto_switch(actor, content)
+	if friendly_collision_action == &"attack" and point_blank:
 		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an adjacent ally.")
-	var should_auto_switch := false
-	if not contact_target_id.is_empty() and combat.actor_statuses.character_weapon_mode(actor.id) != &"melee":
-		if not auto_switch_to_melee or automatic_actor or not classic_projectile_uses_point_blank_auto_switch(actor, content):
-			return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an occupied hostile footprint.")
-		should_auto_switch = true
+	var should_auto_switch := not contact_target_id.is_empty() and point_blank
+	if should_auto_switch and (not auto_switch_to_melee or automatic_actor):
+		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an occupied hostile footprint.")
 	if not probe.allowed and contact_target_id.is_empty() and friendly_target_id.is_empty() and probe.reason == &"invalid_direction":
 		return CombatFlowResult.rejected(probe.reason, _movement_failure_message(probe))
 	if not contact_target_id.is_empty() or friendly_collision_action == &"attack":
@@ -350,7 +351,7 @@ func _submit_friendly_contact_attack(state: GameState, content: RealmzContent, r
 		previous_traitor = target_monster.classic_traitor
 		target_monster.traitor = not state.party.character_by_id(reaction.mover_id).traitor
 	combat.pending_reaction = null
-	var friendly_attack: CombatFlowResult = _context.actions().submit_action(state, content, reaction.mover_id, &"attack", reaction.friendly_collision_target_id, rng, true)
+	var friendly_attack: CombatFlowResult = _context.actions().submit_action(state, content, reaction.mover_id, &"attack", reaction.friendly_collision_target_id, rng, true, true)
 	if not friendly_attack.ok:
 		if target_monster != null:
 			target_monster.classic_traitor = previous_traitor
@@ -370,7 +371,7 @@ func _submit_hostile_contact_attack(state: GameState, content: RealmzContent, re
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-auto-weapon-switch"}))
 		events.append(DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": reaction.mover_id, "mode": "melee", "source": "classic-auto-weapon-switch"}))
 	combat.pending_reaction = null
-	var contact_result := _context.actions().submit_action(state, content, reaction.mover_id, &"attack", target_id, rng)
+	var contact_result := _context.actions().submit_action(state, content, reaction.mover_id, &"attack", target_id, rng, false, true)
 	if not contact_result.ok:
 		events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": target_id, "reason": String(contact_result.error_code)}))
 		return REACTION_COMPLETED

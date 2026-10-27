@@ -8,7 +8,7 @@ The old scenarios are more than maps and dialogue. They depend on a whole game's
 
 [Download the current beta for Windows, Linux, or macOS](https://github.com/iSynic/Realmz-Rebuilt/releases). Download the archive for your platform, extract it, and launch Realmz Rebuilt. The release includes the content needed for its bundled scenarios.
 
-[Beta 28 opt-in release notes](docs/beta-28.md) cover the new scenario runner, save v9, and how to keep a Beta 27 fallback. Beta 27 remains Latest; its [release notes](docs/beta-27.md) cover the death-macro and field-spell repairs retained in Beta 28.
+[Release Candidate 2 notes](docs/0.2.0-rc2.md) cover the numpad attack fix after firing a missile. The [Release Candidate 1 notes](docs/beta-28.md) cover the new scenario runner, save v9, and how to keep a Beta 27 fallback. Beta 27 remains Latest; its [release notes](docs/beta-27.md) cover the death-macro and field-spell repairs retained in both release candidates.
 
 You can assemble a party and head into overland maps, 2D and first-person dungeons, authored encounters, and tactical battles. Inventory, spells, treasure, services, and saving and loading are part of the game. You can use a keyboard and mouse or play entirely with a controller. If you're starting with an empty character vault, you'll also get editable copies of six Classic starter characters.
 

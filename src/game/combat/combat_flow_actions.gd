@@ -29,7 +29,7 @@ func _init(context: CombatContext) -> void:
 func events() -> CombatActionEvents:
 	return _events
 
-func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
+func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false, melee_contact: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	if combat == null or combat.completed:
 		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle is accepting combat actions.")
@@ -42,7 +42,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 		return _submit_auto(state, content, actor, rng)
 	if action == &"retreat":
 		return _context.reactions().retreat_character(state, content, actor_id, &"explicit", INVALID_COORDINATE, rng)
-	var action_result := _submit_standard_action(state, content, actor, action, target_id, rng, allow_friendly_contact)
+	var action_result := _submit_standard_action(state, content, actor, action, target_id, rng, allow_friendly_contact, melee_contact)
 	if not action_result.ok or _action_waits_for_continuation(combat, action, action_result):
 		return action_result
 	var events := action_result.events
@@ -51,10 +51,10 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
-func _submit_standard_action(state: GameState, content: RealmzContent, actor: CharacterState, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool) -> CombatFlowResult:
+func _submit_standard_action(state: GameState, content: RealmzContent, actor: CharacterState, action: StringName, target_id: String, rng: RealmzRng, allow_friendly_contact: bool, melee_contact: bool = false) -> CombatFlowResult:
 	match action:
 		&"attack":
-			return _submit_character_attack(state, content, actor, target_id, rng, allow_friendly_contact)
+			return _submit_character_attack(state, content, actor, target_id, rng, allow_friendly_contact, melee_contact)
 		&"prepare_projectile":
 			return _prepare_character_projectile(state, content, actor, rng)
 		&"switch_weapon":
@@ -174,12 +174,13 @@ func _switch_character_weapon(state: GameState, content: RealmzContent, actor: C
 	return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": actor.id, "mode": String(next_mode)})])
 
 
-func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false) -> CombatFlowResult:
+## A movement collision is melee even in missile mode: Castle attack() always strikes with armor[2].
+func _submit_character_attack(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, allow_friendly_contact: bool = false, melee_contact: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	var events: Array[DomainEvent] = []
 	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
 	if not equipment.valid: return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
-	if combat.actor_statuses.character_weapon_mode(actor.id) == &"missile": return fire_character_projectile(state, content, actor, equipment, target_id, rng)
+	if combat.actor_statuses.character_weapon_mode(actor.id) == &"missile" and not melee_contact: return fire_character_projectile(state, content, actor, equipment, target_id, rng)
 	if combat.battlefield == null: return CombatFlowResult.failed(&"missing_battlefield", "Melee requires the session-owned Classic battlefield.")
 	if not _context.battlefield.are_adjacent(combat.battlefield, actor.id, target_id): return CombatFlowResult.rejected(&"combat_target_not_adjacent", "Classic melee can target only an enemy in an adjacent battlefield footprint.")
 	var monster_target := combat.roster.monster_by_id(target_id)
