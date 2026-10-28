@@ -251,7 +251,10 @@ static func _combat_references_are_valid(state: GameState, party_state: PartySta
 			if character.current_health > 0 and not on_field and not combat.actor_statuses.has_character_retreated(character.id): return false
 			if combat.actor_statuses.has_character_retreated(character.id) and (character.current_health <= 0 or on_field): return false
 		for monster: MonsterState in combat.roster.monsters():
-			if monster.current_health > 0 and battlefield.actors.monster_position(monster.id).x < 0: return false
+			var monster_on_field := battlefield.actors.monster_position(monster.id).x >= 0
+			var sidelined := combat.roster.is_sidelined(monster.id)
+			if monster.current_health > 0 and not monster_on_field and not sidelined: return false
+			if sidelined and monster_on_field: return false
 	for monster: MonsterState in combat.roster.monsters():
 		if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and combat.roster.monster_by_id(monster.target_id) == null: return false
 	for character_id: String in combat.actor_statuses.bleeding_character_ids():

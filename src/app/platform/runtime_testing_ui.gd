@@ -51,8 +51,10 @@ func execute(params: Dictionary) -> Dictionary:
 		return _controller_button(params)
 	if params.get("action") == "controller-axis":
 		return _controller_axis(params)
+	if params.get("action") == "keyboard-key":
+		return _keyboard_key(params)
 	if not RuntimeTestingFixtureRequest.exact_fields(params, ["controlId", "action"]) or not params["controlId"] is String or params["action"] != "click":
-		return _observer.rejected("unsupported_ui_action", "UI input supports click, bounded controller-button, or bounded controller-axis input.")
+		return _observer.rejected("unsupported_ui_action", "UI input supports click, bounded controller-button, bounded controller-axis, or keyboard-key input.")
 	if DisplayServer.get_name() == "headless":
 		return _observer.rejected("ui_unavailable", "A rendered fixture window is required for UI-control proof.")
 	controls()
@@ -110,7 +112,21 @@ func _controller_axis(params: Dictionary) -> Dictionary:
 	return _push_controller_event(event, "axis-%d-%+.3f" % [event.axis, event.axis_value])
 
 
-func _push_controller_event(event: InputEvent, input_description: String) -> Dictionary:
+## Keyboard proof uses the physical key the application binds, so Classic shortcut and numpad routing apply unchanged.
+func _keyboard_key(params: Dictionary) -> Dictionary:
+	if not RuntimeTestingFixtureRequest.exact_fields(params, ["action", "keycode", "pressed"]) or not RuntimeTestingFixtureRequest.integer(params.get("keycode"), 1, 0x7FFFFFFF) or not params.get("pressed") is bool:
+		return _observer.rejected("invalid_params", "Keyboard input requires a positive Godot keycode and a pressed boolean.")
+	if DisplayServer.get_name() == "headless":
+		return _observer.rejected("ui_unavailable", "A rendered fixture window is required for keyboard input proof.")
+	var keycode: int = params["keycode"]
+	var event := InputEventKey.new()
+	event.keycode = keycode as Key
+	event.physical_keycode = event.keycode
+	event.pressed = params["pressed"]
+	return _push_controller_event(event, "key-%d-%s" % [event.keycode, "press" if event.pressed else "release"], "keyboard-input")
+
+
+func _push_controller_event(event: InputEvent, input_description: String, mode: String = "controller-input") -> Dictionary:
 	var before_revision := _observer.revision
 	var browser := _visible_file_dialog()
 	var viewport := browser as Viewport if browser != null else _root.get_viewport()
@@ -119,7 +135,7 @@ func _push_controller_event(event: InputEvent, input_description: String) -> Dic
 	_observer.revision += 1
 	if committed_step != null and committed_step.state == SessionStep.State.FAILED:
 		return _observer.rejected(String(committed_step.error_code), committed_step.error_message)
-	return _observer.accepted({"mode": "controller-input", "input": input_description, "observation": _observer.observe({"diagnostics": "complete"})["result"], "focus": controls()})
+	return _observer.accepted({"mode": mode, "input": input_description, "observation": _observer.observe({"diagnostics": "complete"})["result"], "focus": controls()})
 
 
 func _visible_file_dialog() -> FileDialog:

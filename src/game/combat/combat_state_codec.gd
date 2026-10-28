@@ -5,7 +5,7 @@ extends RefCounted
 
 
 static func encode(combat: CombatState) -> Dictionary:
-	return {
+	var data := {
 		"battleId": combat.battle_id,
 		"macroId": combat.macro_id,
 		"round": combat.turns.round_number,
@@ -40,6 +40,10 @@ static func encode(combat: CombatState) -> Dictionary:
 		"persistentFieldCollisionSlots": combat.spell_runtime.field_collision_slots(),
 		"battlefield": null if combat.battlefield == null else BattlefieldStateCodec.to_data(combat.battlefield),
 	}
+	# Additive v9 fact, omitted when empty so saves without a sidelined revival keep their prior shape.
+	if not combat.roster.sidelined_ids().is_empty():
+		data["sidelinedMonsterIds"] = combat.roster.sidelined_ids()
+	return data
 
 
 static func decode(data: Variant) -> CombatState:
@@ -67,7 +71,7 @@ static func decode(data: Variant) -> CombatState:
 		return null
 	if not result.restore_classic_counters(fields.get("classicEnemyCounters")):
 		return null
-	if not _restore_actor_statuses(result, data, order) or not _restore_macro_state(result, data, order):
+	if not _restore_actor_statuses(result, data, order) or not _restore_sidelined(result, fields.get("sidelinedMonsterIds", [])) or not _restore_macro_state(result, data, order):
 		return null
 	if not _restore_inventory_and_modes(result, data, order) or not _restore_pending_state(result, data):
 		return null
@@ -134,6 +138,18 @@ static func _restore_actor_statuses(result: CombatState, data: Dictionary, order
 	]
 	for descriptor: Array in descriptors:
 		if not _restore_actor_set(result, order, descriptor[0], descriptor[1], descriptor[2], descriptor[3]):
+			return false
+	return true
+
+
+static func _restore_sidelined(result: CombatState, values: Variant) -> bool:
+	if not values is Array:
+		return false
+	for value: Variant in values:
+		if not value is String:
+			return false
+		var monster_id: String = value
+		if result.roster.is_sidelined(monster_id) or not result.roster.mark_sidelined(monster_id):
 			return false
 	return true
 

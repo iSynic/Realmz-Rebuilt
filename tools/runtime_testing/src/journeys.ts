@@ -203,7 +203,7 @@ function readiness(result: Record<string, unknown>, command: JourneyStep["comman
   if (command === "act" && explicitSemanticReady(result, r) !== true && r.explorationInput !== true) failure("input_blocked", "the fixture is not accepting exploration input", command, stepIndex);
   if (command === "respond" && (result.pendingInteraction === null || typeof result.pendingInteraction !== "object")) failure("unexpected_interaction", "respond requires an observed pending interaction", command, stepIndex);
 	if (command === "ui") {
-		if (effectiveParams.action === "controller-button" || effectiveParams.action === "controller-axis") return;
+		if (effectiveParams.action === "controller-button" || effectiveParams.action === "controller-axis" || effectiveParams.action === "keyboard-key") return;
 		const controlId = effectiveParams.controlId;
     if (typeof controlId !== "string") failure("invalid_params", "ui requires a supplied controlId", command, stepIndex);
     const controls = Array.isArray(result.controls) ? result.controls : [];

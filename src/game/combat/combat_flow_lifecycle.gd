@@ -88,9 +88,8 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 			completed_combatant_id = expected_id
 		if not state.combat.death_macros.complete(completed_combatant_id):
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The completed spell death macro does not match the saved queue cursor.")
-		var completed_monster := state.combat.roster.monster_by_id(completed_combatant_id)
-		var same_subject_remains := state.combat.death_macros.ids().has(completed_combatant_id)
-		_context.automation().remove_defeated_position(state.combat, completed_combatant_id, completed_monster != null and completed_monster.current_health <= 0 and not same_subject_remains)
+		if not state.combat.death_macros.ids().has(completed_combatant_id):
+			CombatOccupancyRules.settle_death_macro_subject(state.combat, completed_combatant_id)
 		if not state.combat.death_macros.pending_id().is_empty():
 			if not CombatDeathMacroOperations.request_next(state.combat, content, events):
 				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The next queued spell death macro references unavailable content.")
@@ -105,6 +104,8 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		state.combat.death_macros.clear()
 		if advances_turn:
 			advance_turn(state, content, rng, events)
+	elif not completed_combatant_id.is_empty():
+		CombatOccupancyRules.settle_death_macro_subject(state.combat, completed_combatant_id)
 	if state.combat.round_cursor != null:
 		var cursor := state.combat.round_cursor
 		if not cursor.waiting_monster_id.is_empty() and cursor.waiting_monster_id != completed_combatant_id:

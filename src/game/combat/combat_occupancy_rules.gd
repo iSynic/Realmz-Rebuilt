@@ -71,3 +71,16 @@ static func remove_all_defeated_positions(state: GameState) -> void:
 		remove_defeated_position(state.combat, monster.id, monster.current_health <= 0)
 	for character: CharacterState in state.party.characters():
 		remove_defeated_position(state.combat, character.id, character.current_health <= 0)
+
+
+## Castle killbody restores a death-macro subject's cells to ground before running its macro and never
+## places it again, so a subject the macro revives (CODE 119) sits out the rest of the battle alive.
+static func settle_death_macro_subject(combat: CombatState, monster_id: String) -> void:
+	if combat == null or combat.battlefield == null or not combat.battlefield.actors.has_actor(monster_id):
+		return
+	var monster := combat.roster.monster_by_id(monster_id)
+	if monster == null:
+		return
+	if monster.current_health > 0:
+		combat.roster.mark_sidelined(monster_id)
+	combat.battlefield.actors.remove_monster(monster_id)
