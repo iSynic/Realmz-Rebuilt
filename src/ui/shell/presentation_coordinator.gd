@@ -58,6 +58,16 @@ var combat_text_custom_offset_y_logical_pixels: int = 0:
 		combat_text_custom_offset_y_logical_pixels = clampi(snappedi(value, 2), -64, 64)
 		if _battlefield_presenter != null:
 			_battlefield_presenter.result_text.custom_offset_y_logical_pixels = combat_text_custom_offset_y_logical_pixels
+var combat_hash_marks: bool = false:
+	set(value):
+		combat_hash_marks = value
+		if _battlefield_presenter != null:
+			_battlefield_presenter.combat_hash_marks = value
+var disease_damage_icon: bool = false:
+	set(value):
+		disease_damage_icon = value
+		if _combat_playback != null:
+			_combat_playback.disease_damage_icon = value
 var _reduced_motion: bool = false
 var _dungeon_3d_enabled: bool = true
 var drawn_revision: int = -1
@@ -527,6 +537,7 @@ func _present_request(request: InteractionRequest, game_view: GameView, characte
 
 func _bind_combat_playback() -> void:
 	_combat_playback = CombatPlaybackController.new()
+	_combat_playback.disease_damage_icon = disease_damage_icon
 	_combat_playback.frame_changed.connect(_on_combat_playback_frame_changed)
 	_combat_playback.sound_requested.connect(func(event: DomainEvent) -> void: _audio_presenter.present_events([event], _media_controller.catalog()))
 	_combat_playback.playback_finished.connect(_on_combat_playback_finished)

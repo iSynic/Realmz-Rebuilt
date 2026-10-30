@@ -36,6 +36,8 @@ static func emit_change(shell: GameShell, setting_id: StringName, value: Variant
 		&"show_exploration_minimap": shell.exploration_minimap_changed.emit(bool(value))
 		&"classic_exploration_visibility": shell.classic_exploration_visibility_changed.emit(bool(value))
 		&"custom_fog_tile_enabled": shell.custom_fog_tile_changed.emit(bool(value))
+		&"combat_hash_marks": shell.combat_hash_marks_changed.emit(value == true)
+		&"disease_damage_icon": shell.disease_damage_icon_changed.emit(value == true)
 		&"indoor_party_icon": shell.indoor_party_icon_changed.emit(int(value))
 		&"autojournal_enabled": shell.autojournal_changed.emit(bool(value))
 		&"controller_preferences": shell.controller_preferences_changed.emit(value as ControllerPreferences)

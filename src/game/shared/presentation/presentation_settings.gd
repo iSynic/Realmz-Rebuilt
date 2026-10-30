@@ -87,6 +87,8 @@ var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
 var classic_exploration_visibility: bool = true
 var custom_fog_tile_enabled: bool = false
+var combat_hash_marks: bool = false
+var disease_damage_icon: bool = false
 var indoor_party_icon: int = DEFAULT_INDOOR_PARTY_ICON
 # FD-SYSTEM-002: new players enable Auto Note; Castle's PRFN 128 defaults it off.
 var autojournal_enabled: bool = true
@@ -138,6 +140,8 @@ func copy_from(other: PresentationSettings) -> void:
 	show_exploration_minimap = other.show_exploration_minimap
 	classic_exploration_visibility = other.classic_exploration_visibility
 	custom_fog_tile_enabled = other.custom_fog_tile_enabled
+	combat_hash_marks = other.combat_hash_marks
+	disease_damage_icon = other.disease_damage_icon
 	indoor_party_icon = other.indoor_party_icon
 	autojournal_enabled = other.autojournal_enabled
 	interface_font = other.interface_font
@@ -191,6 +195,8 @@ func to_data() -> Dictionary:
 		"showExplorationMinimap": show_exploration_minimap,
 		"classicExplorationVisibility": classic_exploration_visibility,
 		"customFogTileEnabled": custom_fog_tile_enabled,
+		"combatHashMarks": combat_hash_marks,
+		"diseaseDamageIcon": disease_damage_icon,
 		"indoorPartyIcon": indoor_party_icon,
 		"autojournalEnabled": autojournal_enabled,
 		"interfaceFont": interface_font,
@@ -278,6 +284,8 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 	if schema_version >= 19 and data.has("clickToMoveEnabled") and not data["clickToMoveEnabled"] is bool:
 		return false
 	if data.has("classicKeyboardShortcuts") and not data["classicKeyboardShortcuts"] is bool:
+		return false
+	if data.has("combatHashMarks") and not data["combatHashMarks"] is bool or data.has("diseaseDamageIcon") and not data["diseaseDamageIcon"] is bool:
 		return false
 	if schema_version >= 20 and not _indoor_icon_is_valid(data.get("indoorPartyIcon")):
 		return false
@@ -468,6 +476,8 @@ static func _read_pacing(settings: PresentationSettings, data: Dictionary) -> vo
 	settings.combat_text_speed_percent = int(data.get("combatTextSpeedPercent", 100))
 	settings.combat_text_background_opacity_percent = int(data.get("combatTextBackgroundOpacityPercent", 50))
 	settings.hurry_spell_resolution = bool(data.get("hurrySpellResolution", false))
+	settings.combat_hash_marks = data.get("combatHashMarks", false) == true
+	settings.disease_damage_icon = data.get("diseaseDamageIcon", false) == true
 
 
 func music_mode(playlist_id: int) -> int:

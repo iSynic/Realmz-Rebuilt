@@ -27,6 +27,10 @@ var _target_edge_elapsed := 0.0
 ## Keep that detached presentation state instead of collapsing -1 and 0 into one bool.
 var _monster_facing_lr: Dictionary = {}
 var last_playback_media_diagnostic: Dictionary = {}
+var combat_hash_marks := false:
+	set(value):
+		combat_hash_marks = value
+		queue_redraw()
 var movement_preview: MovementRoutePreview:
 	get: return get_node_or_null("MovementPreview") as MovementRoutePreview
 
@@ -324,24 +328,15 @@ func _draw_persistent_fields(combat: CombatView, camera: Vector2i, visible_cells
 
 
 func _draw_revealed_relationships(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
-	if not interaction.reveal_friends:
-		return
-	var origin := BattlefieldPresentationGeometry.actor_position(combat, _view.party_members, combat.active_actor_id)
-	if not BattlefieldPresentationGeometry.coordinate_is_visible(origin, camera, visible_cells):
-		return
-	var start := BattlefieldPresentationGeometry.cell_rect(origin, camera, draw_origin).get_center()
-	for character: CharacterView in _view.party_members:
-		var coordinate := combat.battlefield.character_position(character.id)
-		if character.id == combat.active_actor_id or not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
-			continue
-		var color := Color(0.20, 0.42, 1.0, 0.90) if character.condition_values[ConditionRules.HELPLESS] != 0 else Color(0.18, 0.90, 0.38, 0.86) if combat.friendly_actor_ids.has(character.id) else Color(0.95, 0.22, 0.18, 0.86)
-		draw_line(start, BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin).get_center(), color, 2.0)
-	for monster: MonsterView in combat.monsters:
-		var coordinate := combat.battlefield.monster_position(monster.id)
-		if not BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
-			continue
-		var color := Color(0.20, 0.42, 1.0, 0.90) if monster.helpless else Color(0.18, 0.90, 0.38, 0.86) if combat.friendly_actor_ids.has(monster.id) else Color(0.95, 0.22, 0.18, 0.86)
-		draw_line(start, BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin).get_center(), color, 2.0)
+	var stage := Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE).intersection(Rect2(Vector2.ZERO, size))
+	var segments: BattlefieldRelationshipLines.Segments
+	if interaction.reveal_friends:
+		segments = BattlefieldRelationshipLines.reveal_segments(combat, _view.party_members, camera, draw_origin, stage)
+	elif combat_hash_marks and _view.party_members.any(func(character: CharacterView) -> bool: return character.id == combat.active_actor_id) and not (interaction.targeting != null and interaction.targeting.classic_backdrops):
+		# centerfield.c draws hash marks only on a character's turn (q[up] < 9); showrange skips them while inspell.
+		segments = BattlefieldRelationshipLines.hash_mark_segments(combat, _view.party_members, camera, draw_origin, stage)
+	if segments != null and not segments.colors.is_empty():
+		draw_multiline_colors(segments.points, segments.colors, 2.0)
 
 
 func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:

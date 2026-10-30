@@ -8,6 +8,7 @@ This folder contains the complete Godot-facing combat presentation: the retained
 - `battle_interaction.gd`: request binding, presentation modes, and typed command responses.
 - `classic_battlefield_presenter.gd`: algorithmic terrain, combatant, field, targeting, and playback drawing.
 - `battlefield_interaction_controller.gd`: pointer/keyboard projection, inspection focus, Reveal Friends, and movement-cost aid.
+- `battlefield_relationship_lines.gd`: clipped Reveal Friends and combat hash-mark relationship segments.
 - `combat_interaction_controller.gd`: coordination between the active request, deck, battlefield, roster spellbook, and Fast Spell dock.
 - `combat_roster_spellbook.tscn`: memorized-spell selection in the persistent party rail.
 - `fast_spell_dock.tscn`: transient Alt-held spell shortcuts.

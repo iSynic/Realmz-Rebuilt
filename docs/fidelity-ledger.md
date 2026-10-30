@@ -740,6 +740,12 @@ Each entry must include:
 - Random-power spell items and missile sources retain their drawn power by instance until consumption or activation end. Cancelling, switching items, Undo and save/restore cannot buy another draw or rewind shared RNG. This retention is part of the optional rule, not a claim about Castle's cancellation behavior.
 - Evidence is separated into source control flow for the default and deterministic Rebuilt fixtures for the optional rule; this is a deliberate gameplay option, not a Castle parity correction.
 
+## FD-COMBAT-023 - Optional disease damage icon
+
+- Castle authority: `491816ad60037394f92c428e99c004494d3c28b3`, `reduce.c:72-83`, `getup.c:145-151` and `showresults.c:388-396`. Each combat disease tick calls `showresults(target, 29, 0)`, which prints the amount, " Pts from Disease" and sound 684 but never sets the result `type`, so `showdamage` draws no icon. Poison's tick and disease infliction (case -34) both draw CICN 165. A controlled synthetic Castle play-test (issue #29) showed text-only disease ticks beside iconed poison ticks; Rebuilt's default matches.
+- Owner-requested departure: Settings > Adventure Rules offers the global, default-off **Show icon for disease damage** display preference. When enabled, combat disease ticks draw CICN 165 over the recipient, the icon Castle already uses for disease infliction. Field-time ticks, damage, sound, text, events and saves are unchanged; the preference persists only in presentation settings.
+- Tests: `test_classic_ui_system` covers default-off persistence, optional-key validation and the off/on playback icon.
+
 ## FD-SCENARIO-027 - Bound undefined native execution positions and exits
 
 - Castle authority: pinned `newland.c:108-115` pulls a GOSUB's saved slot and jumps directly to `startcode`, even when returning from slot seven yields index eight. The controlled synthetic `slot-seven-unsafe-native-fetch` case observes that extra native fetch with no RNG. This proves the access on that executable/input, not a defined no-op for other adjacent memory.

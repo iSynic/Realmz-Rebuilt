@@ -179,6 +179,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Use alternative fog-of-war tile"
 autowrap_mode = 2
+[node name="CombatHashMarks" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Use combat hash marks"
+tooltip_text = "During combat, short green, red, or blue marks at the battlefield edge point toward off-screen friends, enemies, and helpless combatants."
+autowrap_mode = 2
 
 [node name="IndoorPartyIcon" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content" instance=ExtResource("4_icons")]
 layout_mode = 2

@@ -106,6 +106,16 @@ func bind() -> void:
 	_shell.exploration_minimap_changed.connect(_on_exploration_minimap_changed)
 	_shell.classic_exploration_visibility_changed.connect(_on_classic_exploration_visibility_changed)
 	_shell.custom_fog_tile_changed.connect(_on_custom_fog_tile_changed)
+	_shell.combat_hash_marks_changed.connect(func(enabled: bool) -> void:
+		_settings.combat_hash_marks = enabled
+		_presentation.combat_hash_marks = enabled
+		_save()
+	)
+	_shell.disease_damage_icon_changed.connect(func(enabled: bool) -> void:
+		_settings.disease_damage_icon = enabled
+		_presentation.disease_damage_icon = enabled
+		_save()
+	)
 	_shell.indoor_party_icon_changed.connect(_on_indoor_party_icon_changed)
 	_shell.autojournal_changed.connect(_on_autojournal_changed)
 	_shell.controller_preferences_changed.connect(_on_controller_preferences_changed)
@@ -149,6 +159,8 @@ func apply_initial_settings() -> void:
 	_presentation.combat_text_custom_offset_y_logical_pixels = _settings.combat_text_custom_offset_y_logical_pixels
 	_presentation.set_combat_playback_speed_percent(_settings.combat_playback_speed_percent)
 	_presentation.set_hurry_spell_resolution(_settings.hurry_spell_resolution)
+	_presentation.combat_hash_marks = _settings.combat_hash_marks
+	_presentation.disease_damage_icon = _settings.disease_damage_icon
 	_presentation.set_exploration_speed_percent(_settings.exploration_speed_percent)
 	_apply_application_theme()
 	_interaction.set_text_scale(_settings.interface_text_scale)

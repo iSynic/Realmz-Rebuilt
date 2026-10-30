@@ -8,7 +8,7 @@ The old scenarios are more than maps and dialogue. They depend on a whole game's
 
 [Download the current beta for Windows, Linux, or macOS](https://github.com/iSynic/Realmz-Rebuilt/releases). Download the archive for your platform, extract it, and launch Realmz Rebuilt. The release includes the content needed for its bundled scenarios.
 
-[Release Candidate 3 notes](docs/0.2.0-rc3.md) cover scenario allies who could not die in battle. The [Release Candidate 2 notes](docs/0.2.0-rc2.md) cover the numpad attack fix after firing a missile, and the [Release Candidate 1 notes](docs/beta-28.md) cover the new scenario runner, save v9, and how to keep a Beta 27 fallback. Beta 27 remains Latest; its [release notes](docs/beta-27.md) cover the death-macro and field-spell repairs retained in every release candidate.
+The [0.2.0 notes](docs/0.2.0.md) cover the new scenario runner, the fixes from its three release candidates, the new optional combat displays, save v9, and how to keep a Beta 27 fallback. Beta 27's [release notes](docs/beta-27.md) cover the death-macro and field-spell repairs that 0.2.0 retains.
 
 You can assemble a party and head into overland maps, 2D and first-person dungeons, authored encounters, and tactical battles. Inventory, spells, treasure, services, and saving and loading are part of the game. You can use a keyboard and mouse or play entirely with a controller. If you're starting with an empty character vault, you'll also get editable copies of six Classic starter characters.
 
@@ -26,7 +26,7 @@ Rebuilt is playable, but we're still finding and fixing differences through real
 
 Please back up saves and character files you care about before testing a new beta. Rebuilt continues to use its existing local data folder, but it does not import saves or campaign projects from the earlier Realmz Remake.
 
-Beta 28 and the current development source write save v9 and read v5-v9. Beta 27 cannot read v9: keep an untouched v8-or-earlier save if you want to return to it. Both versions use the same local data folder; extracting another copy of the game does not isolate your saves or Character Files.
+0.2.0 and the current development source write save v9 and read v5-v9. Beta 27 cannot read v9: keep an untouched v8-or-earlier save if you want to return to it. Both versions use the same local data folder; extracting another copy of the game does not isolate your saves or Character Files.
 
 ## Help us improve it
 

@@ -26,6 +26,21 @@ text = "Adventure Rules"
 [node name="AdventureRulesPanel" parent="AdventureRulesScroll/AdventureRulesContent" instance=ExtResource("1_panel")]
 unique_name_in_owner = true
 
+[node name="CombatDisplayHeading" type="Label" parent="AdventureRulesScroll/AdventureRulesContent"]
+theme_type_variation = &"ClassicHeading"
+text = "Combat Display"
+
+[node name="DiseaseDamageIcon" type="CheckButton" parent="AdventureRulesScroll/AdventureRulesContent"]
+layout_mode = 2
+text = "Show icon for disease damage"
+autowrap_mode = 2
+
+[node name="DiseaseDamageIconHelp" type="Label" parent="AdventureRulesScroll/AdventureRulesContent"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Each round disease deals damage in combat, show the green condition icon over the combatant, as poison does. Classic Realmz shows only the text. This display preference applies to every adventure."
+autowrap_mode = 2
+
 [node name="RulesDraftStatus" type="Label" parent="."]
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
@@ -41,5 +56,5 @@ text = "Cancel"
 theme_type_variation = &"MenuAction"
 
 [node name="ApplyRules" type="Button" parent="RulesActions"]
-text = "Apply rules"
+text = "Apply"
 theme_type_variation = &"MenuAction"

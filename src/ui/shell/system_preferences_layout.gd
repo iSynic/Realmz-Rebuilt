@@ -119,8 +119,8 @@ func adventure_rules_page() -> AdventureRulesSettingsPage:
 	return get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Adventure Rules") as AdventureRulesSettingsPage
 
 
-func bind_adventure_rules(rules: AdventureRules, available: bool, reason: String, dirty: bool, pending: bool, status: String) -> void:
-	adventure_rules_page().bind_rules(rules, available, reason, dirty, pending, status)
+func bind_adventure_rules(rules: AdventureRules, available: bool, reason: String, status: String, can_apply: bool, can_cancel: bool) -> void:
+	adventure_rules_page().bind_rules(rules, available, reason, status, can_apply, can_cancel)
 
 
 func _update_screen_heading(save_mode: bool) -> void:

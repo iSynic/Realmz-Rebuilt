@@ -165,6 +165,7 @@ func refresh_preferences() -> void:
 	_workspace.call("bind_interface", settings, font_resolver)
 	_bind_hud_settings(settings)
 	_bind_controls(settings)
+	_bind_toggle((_workspace as SystemPreferencesLayout).adventure_rules_page().disease_damage_icon, settings.disease_damage_icon, &"disease_damage_icon")
 	_workspace.call("bind_diagnostics", settings)
 	_refresh_adventure_rules()
 	refresh_draft_footer()
@@ -177,6 +178,7 @@ func refresh_draft_footer() -> void:
 	var error := _draft_error if not _draft_error.is_empty() else _draft.validation_error()
 	(footer.get_node("DraftStatus") as Label).text = error if not error.is_empty() else "Unsaved changes" if has_dirty_draft() else "No unsaved changes"
 	(footer.get_node("Apply") as Button).disabled = not has_dirty_draft() or not _draft.validation_error().is_empty() or not controller.capture_action.is_empty()
+	_refresh_adventure_rules()
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -242,8 +244,15 @@ func _bind_workspace_observers() -> void:
 		_workspace.set_meta("system_category_observer", true)
 	if _workspace.has_signal("adventure_rules_changed") and not _workspace.has_meta("system_rules_observer"):
 		_workspace.connect("adventure_rules_changed", _stage_adventure_rules)
-		_workspace.connect("adventure_rules_apply_requested", apply_adventure_rules_draft)
-		_workspace.connect("adventure_rules_cancel_requested", discard_adventure_rules_draft)
+		_workspace.connect("adventure_rules_apply_requested", func() -> void:
+			if not has_dirty_draft() or apply_draft():
+				apply_adventure_rules_draft()
+		)
+		_workspace.connect("adventure_rules_cancel_requested", func() -> void:
+			discard_adventure_rules_draft()
+			if has_dirty_draft():
+				discard_draft()
+		)
 		_workspace.set_meta("system_rules_observer", true)
 	if _workspace.has_signal("setting_changed") and not _workspace.has_meta("system_setting_observer"):
 		_workspace.connect("setting_changed", stage_setting)
@@ -328,18 +337,21 @@ func _refresh_adventure_rules() -> void:
 	if system_layout == null:
 		return
 	var busy := _rules_submission != null
-	var status := _rules_error
+	var display_dirty := has_dirty_draft()
+	var display_ready := display_dirty and _draft.validation_error().is_empty() and controller.capture_action.is_empty()
+	var status := _rules_error if not _rules_error.is_empty() else _draft_error
 	if status.is_empty():
 		if busy:
 			status = "Applying rules to this adventure…"
-		elif _rules_dirty():
-			status = "Unsaved Adventure Rules changes"
+		elif _rules_dirty() or display_dirty:
+			status = "Unsaved changes"
 		else:
-			status = "No pending rule changes"
+			status = "No pending changes"
 	var reason := _rules_reason
 	if busy:
 		reason = "Waiting for this adventure to confirm the update."
-	system_layout.bind_adventure_rules(_rules_values, _rules_available and not busy, reason, _rules_dirty(), busy, status)
+	var can_apply := not busy and (_rules_dirty() and _rules_available or display_ready)
+	system_layout.bind_adventure_rules(_rules_values, _rules_available and not busy, reason, status, can_apply, not busy and (_rules_dirty() or display_dirty))
 
 
 func _bind_header(view: GameView) -> void:
@@ -406,6 +418,7 @@ func _bind_display(settings: PresentationSettings) -> void:
 	_bind_toggle(world_root.get_node("WorldOptions/Dungeon3d") as CheckButton, settings.dungeon_3d, &"dungeon_3d")
 	_bind_toggle(world_root.get_node("WorldOptions/ClassicExplorationVisibility") as CheckButton, settings.classic_exploration_visibility, &"classic_exploration_visibility")
 	_bind_toggle(world_root.get_node("WorldOptions/CustomFogTile") as CheckButton, settings.custom_fog_tile_enabled, &"custom_fog_tile_enabled")
+	_bind_toggle(world_root.get_node("WorldOptions/CombatHashMarks") as CheckButton, settings.combat_hash_marks, &"combat_hash_marks")
 	_refresh_interface_size_feedback()
 
 

@@ -61,6 +61,8 @@ var _frame_started: bool = false
 var _active: bool = false
 var _speed_percent: int = 100
 var _hurry_spell_resolution: bool = false
+## Optional departure FD-COMBAT-023: Castle's disease tick (showresults case 29) sets no result icon.
+var disease_damage_icon := false
 var _visible_fields: Array[PersistentCombatFieldView] = []
 var _hurry_cast_key: String = ""
 var _visible_health: Dictionary = {}
@@ -601,7 +603,8 @@ func _append_condition_damage(event: DomainEvent, positions: Dictionary, hidden:
 	var payload := {
 		"targetId": target_id, "damage": event.payload["amount"], "health": event.payload["health"],
 		"defeated": health <= 0,
-		"classicResultEffectResourceId": event.payload.get("classicResultEffectResourceId", 0),
+		# The optional disease icon is the CICN 165 Castle draws when disease is inflicted (showresults case -34).
+		"classicResultEffectResourceId": 165 if disease_damage_icon and condition == ConditionRules.DISEASED else event.payload.get("classicResultEffectResourceId", 0),
 	}
 	var result := _append_result(DomainEvent.new(event.kind, payload), positions, hidden)
 	result.result_kind = &"condition_damage"

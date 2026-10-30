@@ -51,6 +51,8 @@ func set_value(setting_id: StringName, value: Variant) -> void:
 		&"show_exploration_minimap": values.show_exploration_minimap = bool(value)
 		&"classic_exploration_visibility": values.classic_exploration_visibility = bool(value)
 		&"custom_fog_tile_enabled": values.custom_fog_tile_enabled = bool(value)
+		&"combat_hash_marks": values.combat_hash_marks = value == true
+		&"disease_damage_icon": values.disease_damage_icon = value == true
 		&"autojournal_enabled": values.autojournal_enabled = bool(value)
 		&"show_overworld_command_titles": values.show_overworld_command_titles = bool(value)
 		&"integer_fit_hidden_commands": values.integer_fit_hidden_commands = bool(value)

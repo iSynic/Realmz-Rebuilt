@@ -16,8 +16,13 @@ func _ready() -> void:
 	(get_node("RulesActions/CancelRules") as Button).pressed.connect(func() -> void: cancel_requested.emit())
 
 
-func bind_rules(rules: AdventureRules, available: bool, reason: String, dirty: bool, pending: bool, status: String) -> void:
+var disease_damage_icon: CheckButton:
+	get: return get_node("AdventureRulesScroll/AdventureRulesContent/DiseaseDamageIcon") as CheckButton
+
+
+## Apply and Cancel cover both the per-adventure rules draft and this page's global display preference.
+func bind_rules(rules: AdventureRules, available: bool, reason: String, status: String, can_apply: bool, can_cancel: bool) -> void:
 	panel.bind_rules(rules, available, reason)
 	(get_node("RulesDraftStatus") as Label).text = status
-	(get_node("RulesActions/ApplyRules") as Button).disabled = not available or not dirty or pending
-	(get_node("RulesActions/CancelRules") as Button).disabled = not dirty or pending
+	(get_node("RulesActions/ApplyRules") as Button).disabled = not can_apply
+	(get_node("RulesActions/CancelRules") as Button).disabled = not can_cancel
