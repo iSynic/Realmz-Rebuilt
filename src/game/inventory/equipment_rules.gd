@@ -43,12 +43,12 @@ func can_equip(character: CharacterState, item: ItemDefinition) -> bool:
 	return true
 
 
-func classic_equip_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition]) -> InventoryActionProbe:
+func classic_equip_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition], extra_category: int = -1) -> InventoryActionProbe:
 	if character == null or instance == null or item == null or instance.definition_id != item.id:
 		return InventoryActionProbe.block("The carried item is unavailable.")
 	if instance.equipped:
 		return InventoryActionProbe.block("This item is already equipped.")
-	var use_probe := _inventory.classic_use_probe(character, item, race, caste)
+	var use_probe := _inventory.classic_use_probe(character, item, race, caste, extra_category)
 	if not use_probe.allowed:
 		return use_probe
 	var item_type := absi(item.item_type)
@@ -77,8 +77,8 @@ func classic_unequip_probe(character: CharacterState, instance: ItemInstance, it
 	return InventoryActionProbe.permit()
 
 
-func equip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition], party_conditions: ConditionSet = null) -> InventoryActionProbe:
-	var probe := classic_equip_probe(character, instance, item, race, caste, party, definitions)
+func equip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition], party_conditions: ConditionSet = null, extra_category: int = -1) -> InventoryActionProbe:
+	var probe := classic_equip_probe(character, instance, item, race, caste, party, definitions, extra_category)
 	if not probe.allowed:
 		return probe
 	character.equipment_order.record_equipped(instance, character.inventory())

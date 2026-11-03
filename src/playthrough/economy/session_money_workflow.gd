@@ -44,13 +44,13 @@ static func perform(context: SessionWorkflowContext, payload: EconomyIntentPaylo
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-money-swap"}))
 		MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
 			var rate := MoneyChangingRules.rate(payload.action)
-			if not payload.character_id.is_empty() or payload.denomination != String(rate.source) or payload.amount != rate.source_amount:
+			if not payload.character_id.is_empty() or not MoneyChangingRules.valid_amount(payload.action, payload.denomination, payload.amount):
 				return SessionWorkflowResult.failed(&"invalid_money_increment", "The money-changing amount does not match the Castle rate.")
 			var probe := MoneyChangingRules.probe(context.state.party, changing_available(context), payload.action)
 			if not probe.allowed:
 				return SessionWorkflowResult.failed(&"money_action_unavailable", probe.reason)
-			MoneyChangingRules.convert(context.state.party, true, payload.action)
-			events.append(DomainEvent.new(&"wealth_changed", {"source": "classic-money", "action": String(payload.action), "from": String(rate.source), "spent": rate.source_amount, "to": String(rate.result), "received": rate.result_amount}))
+			var units := MoneyChangingRules.convert(context.state.party, true, payload.action, payload.amount)
+			events.append(DomainEvent.new(&"wealth_changed", {"source": "classic-money", "action": String(payload.action), "from": String(rate.source), "spent": rate.source_amount * units, "to": String(rate.result), "received": rate.result_amount * units}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10129, "waitForCompletion": payload.action == MoneyChangingRules.JEWELRY_TO_GEMS, "source": "classic-money-change"}))
 		_:
 			return SessionWorkflowResult.failed(&"unknown_money_action", "Money action '%s' is unavailable." % payload.action)

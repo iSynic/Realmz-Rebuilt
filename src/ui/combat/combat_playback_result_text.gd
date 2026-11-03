@@ -54,7 +54,7 @@ static func text_for(result_kind: StringName, amount: int, payload: Dictionary =
 		&"miss":
 			return "Miss"
 		&"blocked":
-			return "Blocked"
+			return _blocked_text(payload.get("blockReason", ""))
 		&"immune":
 			return "Immune"
 		&"resisted":
@@ -76,3 +76,17 @@ static func text_for(result_kind: StringName, amount: int, payload: Dictionary =
 		&"affected":
 			return "Affected"
 	return "No effect"
+
+
+## Castle showresults.c -15, -50, -51 and -45 name the weapon a blocked hit needed.
+static func _blocked_text(reason: Variant) -> String:
+	match reason:
+		"classic_magic_weapon_required":
+			return "Need Stronger Magic!"
+		"classic_blunt_weapon_required":
+			return "Need Blunt Weapon"
+		"classic_sharp_weapon_required":
+			return "Need Sharp Weapon"
+		"classic_specific_weapon_required":
+			return "Need Special Weapon"
+	return "Blocked"

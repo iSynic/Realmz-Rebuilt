@@ -422,7 +422,7 @@ func _test_public_monster_turn_matrix() -> void:
 func _test_half_truth_allied_blue_dragon_activation() -> void:
 	var loaded := load_test_package("res://src/storage/packages/bundled_campaigns/scenario-half-truth.realmz2")
 	if not loaded.is_ok(): return
-	var dragon_definition: MonsterDefinition = loaded.content.combat.monster_by_classic_id(39); var hostile_definition: MonsterDefinition = loaded.content.combat.monster_by_classic_id(40)
+	var sickle: ItemDefinition = loaded.content.items.item_by_id("classic.item.950"); var evoker := loaded.content.characters.caste_by_id("classic.caste.9"); assert_equal([sickle.item_category_mask_low, sickle.item_category_mask_high, InventoryRules.item_category_allowed(sickle, evoker.item_category_mask_low, evoker.item_category_mask_high), InventoryRules.item_category_allowed(sickle, loaded.content.characters.caste_by_id("classic.caste.13").item_category_mask_low, loaded.content.characters.caste_by_id("classic.caste.13").item_category_mask_high)], [0x10000000, 0x00080000, true, false], "Poisoned Sickle gains the Dagger category for its authored classes and keeps its authored bit"); var dragon_definition: MonsterDefinition = loaded.content.combat.monster_by_classic_id(39); var hostile_definition: MonsterDefinition = loaded.content.combat.monster_by_classic_id(40)
 	assert_true(dragon_definition != null and hostile_definition != null and dragon_definition.name == "Blue Dragon" and dragon_definition.size == 3 and dragon_definition.movement_max == 24, "the allied-activation fixture uses Half Truth's actual large Blue Dragon definition")
 	if dragon_definition == null or hostile_definition == null: return
 	var spells: Array[SpellDefinition] = []

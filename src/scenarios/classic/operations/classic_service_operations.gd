@@ -352,13 +352,13 @@ func _shop_money_action(shop: ShopDefinition, continuation: ScenarioRuntimeConti
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-shop-swap"}))
 		MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
 			var rate := MoneyChangingRules.rate(body.action)
-			if not body.character_id.is_empty() or body.denomination != String(rate.source) or body.amount != rate.source_amount:
+			if not body.character_id.is_empty() or not MoneyChangingRules.valid_amount(body.action, body.denomination, body.amount):
 				return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "The money-changing amount does not match the Castle rate.")
 			var probe := MoneyChangingRules.probe(_game_state.party, true, body.action)
 			if not probe.allowed:
 				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
-			MoneyChangingRules.convert(_game_state.party, true, body.action)
-			events.append(DomainEvent.new(&"wealth_changed", {"source": "classic-shop", "action": String(body.action), "from": String(rate.source), "spent": rate.source_amount, "to": String(rate.result), "received": rate.result_amount}))
+			var units := MoneyChangingRules.convert(_game_state.party, true, body.action, body.amount)
+			events.append(DomainEvent.new(&"wealth_changed", {"source": "classic-shop", "action": String(body.action), "from": String(rate.source), "spent": rate.source_amount * units, "to": String(rate.result), "received": rate.result_amount * units}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10129, "waitForCompletion": body.action == MoneyChangingRules.JEWELRY_TO_GEMS, "source": "classic-shop-change"}))
 	_money.recalculate_party_movement()
 	return _continue_shop(shop, continuation, request_id, events)

@@ -22,6 +22,18 @@ size_flags_horizontal = 3
 text = "Before you commit, cancel targeting and choose again. Cancellation restores spell points, resources, scrolls, and item charges, with no movement penalty. Committed actions keep Classic costs."
 autowrap_mode = 2
 
+[node name="BardDaggers" type="CheckButton" parent="."]
+layout_mode = 2
+text = "Bard daggers"
+button_pressed = false
+autowrap_mode = 2
+
+[node name="BardDaggersHelp" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Bards can equip and use daggers, including Fang, wherever the item's other limits allow. Applies to the standard Bard, not a scenario's own Bard class. A dagger already in hand stays equipped if you turn this off."
+autowrap_mode = 2
+
 [node name="RulesUnavailableReason" type="Label" parent="."]
 visible = false
 layout_mode = 2

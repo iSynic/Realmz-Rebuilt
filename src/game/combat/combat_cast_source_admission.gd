@@ -30,7 +30,7 @@ func probe_item(state: GameState, content: RealmzContent, caster_id: String, ins
 		return CombatSpellCastProbe.fault(&"unknown_spell", "Item '%s' references unavailable spell %d." % [item.id, item.special_2])
 	var race := content.characters.race_by_id(caster.race_id) if caster != null else null
 	var caste := content.characters.caste_by_id(caster.caste_id) if caster != null else null
-	var use_probe := _context.inventory.classic_spell_item_probe(caster, instance, item, spell, race, caste, true)
+	var use_probe := _context.inventory.classic_spell_item_probe(caster, instance, item, spell, race, caste, true, BardDaggersRule.category(state.adventure_rules, caste, content))
 	if not use_probe.allowed:
 		return CombatSpellCastProbe.blocked(item_use_reason_code(instance, item, spell), use_probe.reason)
 	if ClassicSpellDispositionRules.combat_item_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:

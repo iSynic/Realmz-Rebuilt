@@ -305,6 +305,11 @@ autowrap_mode = 2
 [node name="SaveWorkspaceFooter" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load"]
 layout_mode = 2
 theme_override_constants/separation = 5
+[node name="LoadFailure" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.466667, 0.439216, 1)
+autowrap_mode = 2
 [node name="ConfirmActionRow" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
 visible = false
 layout_mode = 2

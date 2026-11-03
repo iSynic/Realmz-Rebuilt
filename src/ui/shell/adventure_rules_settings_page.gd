@@ -2,7 +2,7 @@
 class_name AdventureRulesSettingsPage
 extends VBoxContainer
 
-signal value_changed(enabled: bool)
+signal value_changed(rule: StringName, enabled: bool)
 signal apply_requested
 signal cancel_requested
 
@@ -11,7 +11,7 @@ var panel: AdventureRulesPanel:
 
 
 func _ready() -> void:
-	panel.value_changed.connect(func(enabled: bool) -> void: value_changed.emit(enabled))
+	panel.value_changed.connect(func(rule: StringName, enabled: bool) -> void: value_changed.emit(rule, enabled))
 	(get_node("RulesActions/ApplyRules") as Button).pressed.connect(func() -> void: apply_requested.emit())
 	(get_node("RulesActions/CancelRules") as Button).pressed.connect(func() -> void: cancel_requested.emit())
 

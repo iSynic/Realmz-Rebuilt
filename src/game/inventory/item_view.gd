@@ -133,6 +133,7 @@ func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) 
 		if race_class_only != 0:
 			restrictions.append("Only selected Classic race groups may use this item.")
 		return
+	# FD-INVENTORY-005: Castle lists class groups, so "Usable only by" names only members whose category mask admits the item.
 	var excluded_castes: Array[String] = []
 	var allowed_castes: Array[String] = []
 	for caste: CasteDefinition in content.characters.caste_definitions():
@@ -140,24 +141,33 @@ func _populate_restrictions(definition: ItemDefinition, content: RealmzContent) 
 		var bit := (1 << (15 - caste_class_index)) if caste_class_index >= 0 and caste_class_index <= 6 else 0
 		if bit != 0 and (caste_restrictions & bit) != 0:
 			excluded_castes.append(caste.name)
-		if bit != 0 and (caste_class_only & bit) != 0:
+		if bit != 0 and (caste_class_only & bit) != 0 and InventoryRules.item_category_allowed(definition, caste.item_category_mask_low, caste.item_category_mask_high):
 			allowed_castes.append(caste.name)
+		elif bit != 0 and (caste_class_only & bit) != 0 and InventoryRules.item_category_allowed(definition, 0, 0, BardDaggersRule.DAGGER_CATEGORY) and BardDaggersRule.admits(caste, content):
+			# FD-INVENTORY-007: name the optional rule rather than make shared item text depend on one adventure's settings.
+			allowed_castes.append("%s (Bard Daggers rule)" % caste.name)
 	_add_name_restriction("Not usable by", excluded_castes)
-	_add_name_restriction("Usable only by", allowed_castes)
+	_add_allowed_restriction(caste_class_only, allowed_castes, "class")
 	var excluded_races: Array[String] = []
 	var allowed_races: Array[String] = []
 	for race: RaceDefinition in content.characters.race_definitions():
 		if race_restrictions != 0 and (race_restrictions & race.descriptor_flags) != 0:
 			excluded_races.append(race.name)
-		if race_class_only != 0 and (race_class_only & race.descriptor_flags) == race_class_only:
+		if race_class_only != 0 and (race_class_only & race.descriptor_flags) == race_class_only and InventoryRules.item_category_allowed(definition, race.item_category_mask_low, race.item_category_mask_high):
 			allowed_races.append(race.name)
 	_add_name_restriction("Not usable by", excluded_races)
-	_add_name_restriction("Usable only by", allowed_races)
+	_add_allowed_restriction(race_class_only, allowed_races, "race")
 
 
 func _add_numeric_fact(id: StringName, label: String, amount: int) -> void:
 	if amount != 0:
 		facts.append(ItemFactView.new(id, label, "%+d" % amount))
+
+
+func _add_allowed_restriction(class_only_mask: int, names: Array[String], kind: String) -> void:
+	if class_only_mask != 0 and names.is_empty():
+		restrictions.append("Usable by no %s." % kind)
+	_add_name_restriction("Usable only by", names)
 
 
 func _add_name_restriction(prefix: String, names: Array[String]) -> void:

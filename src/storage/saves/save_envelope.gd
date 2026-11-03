@@ -195,7 +195,7 @@ static func _rules_shape_is_valid(value: Variant, version: int) -> bool:
 	var rules := AdventureRules.from_data(state.get("adventureRules", {"freeTargetingCancellation": false}))
 	if rules == null or version >= 8 and not state.has("adventureRules"): return false
 	var combat: Variant = state.get("combat")
-	if version < 8 and rules.free_targeting_cancellation: return false
+	if version < 8 and rules.free_targeting_cancellation or version < 9 and rules.bard_daggers: return false
 	if combat == null: return true
 	if not combat is Dictionary: return false
 	var battle: Dictionary = combat

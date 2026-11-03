@@ -579,10 +579,12 @@ func _resolve_monster_monster_reaction(state: GameState, content: RealmzContent,
 	_context.actions().events().append_monster_attack_audio(events, attacker, definition, 0, weapon, resolution, rng, target.id)
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": target.id, "targetKind": "monster", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
+	CombatActionEvents.append_weapon_requirement_block(event.payload, resolution)
 	_context.actions().events().append_physical_result_effect(event, resolution.hit, weapon != null)
 	CombatElementalFeedback.append_attack(event, resolution)
 	append_reaction_identity(event, action, behind)
 	events.append(event)
+	CombatActionEvents.commit_creature_disarm(attacker, resolution, events)
 	if resolution.killed:
 		combat.pending_reaction.mover_killed = true
 		var death_macro_requested := CombatDeathMacroOperations.request_immediate(state.combat, target, target_definition, events)
@@ -592,10 +594,7 @@ func _resolve_monster_monster_reaction(state: GameState, content: RealmzContent,
 
 
 static func append_reaction_identity(event: DomainEvent, action: StringName, behind: bool) -> void:
-	event.payload["action"] = String(action)
-	event.payload["reaction"] = true
-	event.payload["behind"] = behind
-	event.payload["automatic"] = true
+	event.payload.merge({"action": String(action), "reaction": true, "behind": behind, "automatic": true}, true)
 
 
 func guarding_hostiles(state: GameState, mover_id: String, anchor_override: Vector2i = Vector2i(-1, -1)) -> Array[String]:

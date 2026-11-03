@@ -13,6 +13,8 @@ const MUTED := Color("9aa0a8")
 const WORKSPACE_SCENE_PATH := "res://src/ui/services/services_workspace.tscn"
 const MONEY_REPEAT_DELAY := 0.35
 const MONEY_REPEAT_INTERVAL := 0.09
+const MONEY_CHANGE_TEN_TIMES_PULSE := 33
+const MONEY_CHANGE_HUNDRED_TIMES_PULSE := 88
 
 var _money_character_id: String = ""
 var _text_scale: float = 1.0
@@ -23,6 +25,7 @@ var _browse_only_reason: String = ""
 var _return_to_shop := false
 var _held_button: Button
 var _held_intent: PlayerIntent
+var _held_pulses := 0
 
 
 func set_text_scale(scale: float) -> void:
@@ -226,12 +229,12 @@ func _bind_transfer(view: GameView, money: MoneyWorkspaceView, selected: MoneyCh
 func _bind_changing(view: GameView, money: MoneyWorkspaceView) -> void:
 	var status := _workspace.changing_pane().get_node("Content/Header/Status") as Label
 	var available := money.changing_available and _browse_only_reason.is_empty()
-	_bind_label(status, "Available here · converts pooled wealth · hold to repeat" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
+	_bind_label(status, "Available here · converts pooled wealth · hold to speed up" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
 	var buttons := _workspace.changing_buttons()
 	for index in mini(buttons.size(), money.changes.size()):
 		var rate := money.changes[index]
 		var button := buttons[index]
-		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change · hold to repeat" if available and rate.availability.enabled else "Unavailable here"]
+		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change · hold to speed up" if available and rate.availability.enabled else "Unavailable here"]
 		_bind_money_action(button, view, rate.availability, EconomyIntents.money(rate.action, "", String(rate.source), rate.source_amount), true)
 
 
@@ -281,6 +284,7 @@ func _bind_money_action(button: Button, view: GameView, local: ActionAvailabilit
 	else:
 		button.tooltip_text = "%s · Hold to repeat" % button.text if repeat_while_held else button.text
 		if repeat_while_held:
+			button.set_meta(&"hold_to_repeat", true)
 			button.button_down.connect(_start_repeat.bind(button, intent))
 			button.button_up.connect(_stop_repeat)
 		else:
@@ -304,6 +308,7 @@ func _start_repeat(button: Button, intent: PlayerIntent) -> void:
 	_stop_repeat()
 	_held_button = button
 	_held_intent = intent
+	_held_pulses = 0
 	var timer := _workspace.repeat_timer()
 	if not timer.timeout.is_connected(_repeat_step):
 		timer.timeout.connect(_repeat_step)
@@ -316,9 +321,24 @@ func _repeat_step() -> void:
 	if not is_instance_valid(_held_button) or _held_button.disabled or not _held_button.is_visible_in_tree():
 		_stop_repeat()
 		return
-	intent_submitted.emit(_held_intent)
+	_held_pulses += 1
+	intent_submitted.emit(_held_pulse_intent())
 	if is_instance_valid(_held_button) and not _held_button.disabled and _workspace.repeat_timer().is_inside_tree():
 		_workspace.repeat_timer().start(MONEY_REPEAT_INTERVAL)
+
+
+## Castle's hold loop runs as fast as the machine allows, so a long hold reaches large sums while a short one stays exact.
+static func money_change_multiplier(pulses: int) -> int:
+	if pulses >= MONEY_CHANGE_HUNDRED_TIMES_PULSE:
+		return 100
+	return 10 if pulses >= MONEY_CHANGE_TEN_TIMES_PULSE else 1
+
+
+func _held_pulse_intent() -> PlayerIntent:
+	var money := _held_intent.payload as EconomyIntentPayloads.Money
+	if money == null or money.action not in MoneyChangingRules.ACTIONS:
+		return _held_intent
+	return EconomyIntents.money(money.action, "", money.denomination, money.amount * money_change_multiplier(_held_pulses))
 
 
 func _stop_repeat() -> void:

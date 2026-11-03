@@ -335,10 +335,16 @@ func _mutate_triggers(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 			return ClassicCompatibility.skip(&"action-point-map-mutation", "Data DL" if level_type == &"dungeon" else "Data LD", action.extra_code[0])
 		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic trigger mutation references unavailable map %d." % action.extra_code[0])
 	var record_indexes: Array[int] = []
-	if action.extra_code[1] != 0:
+	# FD-SCENARIO-029 deliberately departs from Castle, which skips record 0 here: with no range, EC1 zero names Action Point 0.
+	if action.extra_code[1] != 0 or (action.extra_code[3] == 0 and action.extra_code[4] == 0):
 		record_indexes.append(action.extra_code[1])
 	if action.extra_code[3] != 0:
+		# FD-SCENARIO-030 deliberately departs from Castle's signed loop: EC3's sign only selects the dungeon, so the range runs by record number.
 		for record_index: int in range(absi(action.extra_code[3]), absi(action.extra_code[4]) + 1):
+			if not record_indexes.has(record_index):
+				record_indexes.append(record_index)
+		# Castle's own nonnegative loop records, such as AP 0 from -12..0, still change; its negative door[] writes do not.
+		for record_index: int in range(maxi(action.extra_code[3], 0), action.extra_code[4] + 1):
 			if not record_indexes.has(record_index):
 				record_indexes.append(record_index)
 	var changed: Array[String] = []

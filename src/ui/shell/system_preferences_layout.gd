@@ -5,7 +5,7 @@ extends SystemWorkspace
 signal category_selected(category: StringName)
 signal setting_changed(setting_id: StringName, value: Variant)
 signal action_requested(action_id: StringName, value: Variant)
-signal adventure_rules_changed(enabled: bool)
+signal adventure_rules_changed(rule: StringName, enabled: bool)
 signal adventure_rules_apply_requested
 signal adventure_rules_cancel_requested
 
@@ -53,7 +53,7 @@ func _ready() -> void:
 	var combat_text := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Pacing/PacingSettingsScroll/PacingSettingsPanel/Content/CombatTextPreferences") as CombatTextPreferencesPanel
 	combat_text.setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: setting_changed.emit(setting_id, value))
 	var rules_page := adventure_rules_page()
-	rules_page.value_changed.connect(func(enabled: bool) -> void: adventure_rules_changed.emit(enabled))
+	rules_page.value_changed.connect(func(rule: StringName, enabled: bool) -> void: adventure_rules_changed.emit(rule, enabled))
 	rules_page.apply_requested.connect(func() -> void: adventure_rules_apply_requested.emit())
 	rules_page.cancel_requested.connect(func() -> void: adventure_rules_cancel_requested.emit())
 	var search := get_node("PreferencesSearch") as PreferencesSearch

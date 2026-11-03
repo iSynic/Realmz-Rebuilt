@@ -5,6 +5,7 @@ extends RefCounted
 
 var _popup_owner: WeakRef
 var _popup_index: int = 0
+var _held_button: BaseButton
 
 
 func move(root: Node, direction: Vector2i) -> Control:
@@ -109,10 +110,7 @@ func activate_focused(root: Node) -> bool:
 		check.pressed.emit()
 		return true
 	if focused is BaseButton and not (focused as BaseButton).disabled:
-		var button := focused as BaseButton
-		if button.toggle_mode:
-			button.button_pressed = true if button.button_group != null else not button.button_pressed
-		button.pressed.emit()
+		_activate_button(focused as BaseButton)
 		return true
 	if focused is ItemList:
 		var list := focused as ItemList
@@ -129,6 +127,31 @@ func activate_focused(root: Node) -> bool:
 			tree.item_activated.emit()
 			return true
 	return false
+
+
+func _activate_button(button: BaseButton) -> void:
+	if button.has_meta(&"hold_to_repeat"):
+		_hold(button)
+		return
+	if button.toggle_mode:
+		button.button_pressed = true if button.button_group != null else not button.button_pressed
+	button.pressed.emit()
+
+
+## Hold-to-repeat buttons act on button_down, so Confirm presses them as a pointer would until release_held.
+func _hold(button: BaseButton) -> void:
+	if _held_button == button:
+		return
+	release_held()
+	_held_button = button
+	button.button_down.emit()
+
+
+func release_held() -> void:
+	var button := _held_button
+	_held_button = null
+	if is_instance_valid(button):
+		button.button_up.emit()
 
 
 func cancel_active_popup(root: Node = null) -> bool:

@@ -16,19 +16,24 @@ static func normalize_caste_mask(raw_mask: int) -> int:
 	return (raw_mask & 0xFFFF) & CLASSIC_CASTE_MASK
 
 
-func classic_use_probe(character: CharacterState, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition) -> InventoryActionProbe:
+## Castle's canuse tests only the item's first category bit against each race and caste mask; an Adventure Rule may add one category.
+static func item_category_allowed(item: ItemDefinition, mask_low: int, mask_high: int, extra_category: int = -1) -> bool:
+	var category := _first_category(item.item_category_mask_low, item.item_category_mask_high)
+	return _mask_has(mask_low, mask_high, category) or category >= 0 and category == extra_category
+
+
+func classic_use_probe(character: CharacterState, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, extra_category: int = -1) -> InventoryActionProbe:
 	if character == null or item == null or race == null or caste == null:
 		return InventoryActionProbe.block("The character or immutable item definition is unavailable.")
 	if not item.specific_race_id.is_empty() and item.specific_race_id != character.race_id:
 		return InventoryActionProbe.block("This item requires %s." % item.specific_race_id.replace("_", " ").capitalize())
 	if not item.specific_caste_id.is_empty() and item.specific_caste_id != character.caste_id:
 		return InventoryActionProbe.block("This item requires %s." % item.specific_caste_id.replace("_", " ").capitalize())
-	var category := _first_category(item.item_category_mask_low, item.item_category_mask_high)
-	if category < 0:
+	if _first_category(item.item_category_mask_low, item.item_category_mask_high) < 0:
 		return InventoryActionProbe.block("This item has no Classic usability category.")
-	if not _mask_has(race.item_category_mask_low, race.item_category_mask_high, category):
+	if not item_category_allowed(item, race.item_category_mask_low, race.item_category_mask_high):
 		return InventoryActionProbe.block("This race cannot use this item category.")
-	if not _mask_has(caste.item_category_mask_low, caste.item_category_mask_high, category):
+	if not item_category_allowed(item, caste.item_category_mask_low, caste.item_category_mask_high, extra_category):
 		return InventoryActionProbe.block("This class cannot use this item category.")
 	var race_restrictions := normalize_race_mask(item.race_restrictions)
 	if race_restrictions != 0 and (race_restrictions & race.descriptor_flags) != 0:
@@ -61,10 +66,10 @@ static func presentation_definition(instance: ItemInstance, definition: ItemDefi
 	return definition
 
 
-func classic_spell_item_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, race: RaceDefinition, caste: CasteDefinition, in_combat: bool) -> InventoryActionProbe:
+func classic_spell_item_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, race: RaceDefinition, caste: CasteDefinition, in_combat: bool, extra_category: int = -1) -> InventoryActionProbe:
 	if instance == null or item == null or instance.definition_id != item.id:
 		return InventoryActionProbe.block("The carried item is unavailable.")
-	var use_probe := classic_use_probe(character, item, race, caste)
+	var use_probe := classic_use_probe(character, item, race, caste, extra_category)
 	if not use_probe.allowed:
 		return use_probe
 	if item.special_2 <= 1100:

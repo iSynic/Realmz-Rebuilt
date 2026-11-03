@@ -51,6 +51,18 @@ func set_save_previews(previews: Array[SaveSlotPreview], selected_slot_id: Strin
 		_refresh_save_detail()
 
 
+func present_load_failure(message: String) -> void:
+	if not is_instance_valid(_workspace):
+		return
+	var failure := _load_failure_label()
+	failure.text = "Load failed • %s" % message
+	failure.show()
+
+
+func _load_failure_label() -> Label:
+	return _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/LoadFailure") as Label
+
+
 func set_save_and_quit_mode(enabled: bool) -> void:
 	if enabled and not _save_and_quit_mode:
 		_selected_save_key = _active_slot_id + ":primary"
@@ -300,6 +312,7 @@ func _clear_save_confirmation() -> void:
 func _update_save_confirmation() -> void:
 	if _workspace == null:
 		return
+	_load_failure_label().hide()
 	var row := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/ConfirmActionRow") as BoxContainer
 	var migrating := _pending_save_action == &"load_legacy_into_slot"
 	(row.get_node("Confirm") as Button).disabled = migrating and _legacy_target_slot.is_empty()

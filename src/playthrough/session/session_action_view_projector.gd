@@ -376,7 +376,7 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			if not context_reason.is_empty():
 				actions.block_all(context_reason)
 				continue
-			var equip_probe := rules.equipment.classic_equip_probe(character, instance, definition, race, caste, party, definitions)
+			var equip_probe := rules.equipment.classic_equip_probe(character, instance, definition, race, caste, party, definitions, BardDaggersRule.category(state.adventure_rules, caste, context.content))
 			var unequip_probe := rules.equipment.classic_unequip_probe(character, instance, definition, definitions)
 			var drop_probe := rules.inventory.classic_drop_probe(character, instance)
 			var split_probe := rules.inventory.classic_split_probe(character, instance, definition)

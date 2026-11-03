@@ -73,11 +73,11 @@ func handle_input(event: InputEvent) -> void:
 
 
 func handle_controller_action(action_id: StringName, pressed: bool, repeated: bool = false) -> void:
+	if not pressed and action_id == &"realmz_controller_confirm":
+		_release_confirm()
 	if _application.shell_presenter.controller.handle_navigation_modal_controller(action_id, pressed, _controller_direction(action_id)):
 		_mark_handled()
 		return
-	if not pressed and action_id == &"realmz_controller_confirm":
-		_application.shell_presenter.controller.radial.release_hold()
 	var direction_action := _controller_direction(action_id)
 	if _update_controller_direction(action_id, direction_action, pressed):
 		return
@@ -131,6 +131,11 @@ func handle_controller_action(action_id: StringName, pressed: bool, repeated: bo
 	if _handle_controller_navigation_action(action_id):
 		return
 	_handle_controller_direction(routed_direction, repeated)
+
+
+func _release_confirm() -> void:
+	_focus.release_held()
+	_application.shell_presenter.controller.radial.release_hold()
 
 
 func handle_controller_direction(direction: Vector2i, repeated: bool = false) -> void:

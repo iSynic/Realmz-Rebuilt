@@ -39,7 +39,7 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"combatant_bled_to_death",
 	&"combat_turn_delayed",
 	&"combat_turn_undone",
-	&"combatant_fumbled",
+	&"combatant_fumbled", &"combatant_disarmed",
 	&"condition_damaged",
 	&"combat_attack_blocked",
 	&"combatant_retreated",
@@ -288,6 +288,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 		&"combatant_bled_to_death": _append_bleeding_result(event, positions, hidden, true)
 		&"combat_turn_delayed": _append_simple_result(event, positions, hidden, &"delay", "Delayed")
 		&"combatant_fumbled": _append_simple_result(event, positions, hidden, &"fumble", "Fumble")
+		&"combatant_disarmed": _append_simple_result(event, positions, hidden, &"fumble", "Creature Disarms")
 		&"condition_damaged": _append_condition_damage(event, positions, hidden)
 		&"combat_attack_blocked": _append_simple_result(event, positions, hidden, &"blocked", "Blocked")
 		&"combatant_retreated": _append_retreat(event, positions, hidden)

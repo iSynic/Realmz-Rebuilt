@@ -5,6 +5,11 @@ extends PackageDecoderBase
 
 ## Builds the typed game domain from already verified package documents.
 
+const POISONED_SICKLE_CAMPAIGN_ID := "scenario-half-truth"
+const POISONED_SICKLE_ITEM_ID := "classic.item.950"
+const POISONED_SICKLE_AUTHORED_CATEGORY_HIGH := 0x00080000
+const DAGGER_CATEGORY_LOW := 0x10000000
+
 
 class StoryContent extends RefCounted:
 	var campaign: CampaignDefinition
@@ -56,8 +61,10 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	var rules_content := _decode_rules_content(content_decoder, media_validator, content, media_assets, trusted_install, application_content, application_media_assets, allow_deferred, native_records)
 	if rules_content == null:
 		return null
+	var campaign_id: String = manifest["campaignId"]
+	_apply_item_corrections(campaign_id, rules_content.items)
 	var scenario_decoder := PackageScenarioDecoder.new(_diagnostic)
-	var scenario_definition := scenario_decoder.decode_scenario(scenario, manifest["campaignId"], allow_deferred)
+	var scenario_definition := scenario_decoder.decode_scenario(scenario, campaign_id, allow_deferred)
 	if scenario_definition == null:
 		return null
 	var reference_validator := PackageCrossReferenceValidator.new(_diagnostic)
@@ -138,6 +145,9 @@ func assemble_setup(manifest: Dictionary, content: Dictionary, media_assets: Arr
 		_reject("The scenario character catalog is malformed.")
 		return null
 	var catalogs := _compose_catalogs(races, castes, items, spells, media_assets, application_content, application_media, native_records)
+	var campaign_id: String = manifest["campaignId"]
+	var catalog_items: Array = catalogs.get("items", [])
+	_apply_item_corrections(campaign_id, catalog_items)
 	if catalogs.is_empty(): return null
 	var references := PackageCrossReferenceValidator.new(_diagnostic)
 	if not references.validate_rule_references(catalogs.races, catalogs.castes, catalogs.items, catalogs.spells, [], [], [], [], {}, manifest.get("capabilities", []).has("realmz.scenario.deferred-references-v1"), native_records): return null
@@ -322,6 +332,17 @@ func _validate_start(manifest: Dictionary, world: WorldContent, validator: Packa
 				if not validator.defer_or_reject(allow_deferred, &"trigger", trigger.id, "postAction.coordinate", -1, &"map-cell", "%s:%s" % [destination_map.id, trigger.post_action_location.coordinate], "Trigger '%s' references an unavailable post-action location." % trigger.id):
 					return null
 	return start_coordinate
+
+
+## FD-INVENTORY-006: Half Truth limits Poisoned Sickle to Enchanter, Evoker and Warlock but gives it a category closed to all three.
+## The package bytes stay as authored; only this exact record gains the dagger category, which those classes can use.
+static func _apply_item_corrections(campaign_id: String, items: Array) -> void:
+	if campaign_id != POISONED_SICKLE_CAMPAIGN_ID:
+		return
+	for item: ItemDefinition in items:
+		if item.id == POISONED_SICKLE_ITEM_ID and item.item_category_mask_low == 0 and item.item_category_mask_high == POISONED_SICKLE_AUTHORED_CATEGORY_HIGH:
+			item.item_category_mask_low = DAGGER_CATEGORY_LOW
+			return
 
 
 func _compose_catalogs(races_value: Variant, castes_value: Variant, items_value: Variant, spells_value: Variant, scenario_media: Array[MediaAsset], application_content: RealmzContent, application_media: Array[MediaAsset], native_records: ClassicRecordCatalog = null) -> Dictionary:

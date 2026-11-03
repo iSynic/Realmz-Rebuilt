@@ -69,6 +69,22 @@ func save(content: RealmzContent, slot_id: String) -> bool:
 
 
 func load(content: RealmzContent, slot_id: String, backup: bool = false, replacement_slot: String = "") -> SessionStep:
+	var step := _restore(content, slot_id, backup, replacement_slot)
+	if step != null and step.state == SessionStep.State.FAILED:
+		_shell.navigator.content_presenter.system_preferences.saves.present_load_failure(step.error_message)
+	return step
+
+
+## The status line and the restored adventure are both hidden behind Pause and Save & Load, so a committed restore must leave them.
+func _return_to_adventure() -> void:
+	var route: StringName = &"combat" if _session.view().combat_view != null else &"exploration"
+	if _shell.pause_active:
+		_shell.pause_controller.resume_restored(route)
+	elif _shell.navigator.current_screen() == &"save_load":
+		_shell.navigator.open_screen(route, false)
+
+
+func _restore(content: RealmzContent, slot_id: String, backup: bool, replacement_slot: String) -> SessionStep:
 	if _session.is_busy():
 		_deferred_load = {"content": content, "slot": slot_id, "backup": backup, "replacement": replacement_slot}
 		_shell.status.set_status("Loading after this activation.")
@@ -119,6 +135,7 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false, replace
 	if step.state != SessionStep.State.FAILED:
 		_load_committed_operation.call()
 		refresh(content, resolved_slot)
+		_return_to_adventure()
 	elif not previous_slot.is_empty() and not _repository_host.set_active_slot(content, previous_slot):
 		_shell.status.set_status("Load failed • %s; previous Quick Save target could not be restored." % step.error_message, true)
 		return step

@@ -6,6 +6,7 @@ const JEWELRY_TO_GEMS: StringName = &"change-jewelry-to-gems"
 const GEMS_TO_GOLD: StringName = &"change-gems-to-gold"
 const GOLD_TO_GEMS: StringName = &"change-gold-to-gems"
 const ACTIONS: Array[StringName] = [JEWELRY_TO_GEMS, GEMS_TO_GOLD, GOLD_TO_GEMS]
+const MAXIMUM_BATCH := 100
 
 
 static func rate(action: StringName) -> MoneyChangeView:
@@ -30,13 +31,22 @@ static func probe(party: PartyState, location_available: bool, action: StringNam
 	return EconomyActionProbe.new(true)
 
 
-static func convert(party: PartyState, location_available: bool, action: StringName) -> bool:
-	if not probe(party, location_available, action).allowed:
-		return false
+## Castle changes one unit per button poll; a held pulse may request whole units up to the batch limit.
+static func valid_amount(action: StringName, denomination: String, amount: int) -> bool:
 	var conversion := rate(action)
-	party.pooled_wealth.add(_kind(conversion.source), -conversion.source_amount)
-	party.pooled_wealth.add(_kind(conversion.result), conversion.result_amount)
-	return true
+	return conversion != null and denomination == String(conversion.source) and amount >= conversion.source_amount and amount <= conversion.source_amount * MAXIMUM_BATCH and amount % conversion.source_amount == 0
+
+
+## Changes as many requested units as the pool affords and returns that count, so a final batch stops where Castle's loop would.
+static func convert(party: PartyState, location_available: bool, action: StringName, amount: int) -> int:
+	if not probe(party, location_available, action).allowed:
+		return 0
+	var conversion := rate(action)
+	@warning_ignore("integer_division")
+	var units := mini(amount, party.pooled_wealth.amount(_kind(conversion.source))) / conversion.source_amount
+	party.pooled_wealth.add(_kind(conversion.source), -conversion.source_amount * units)
+	party.pooled_wealth.add(_kind(conversion.result), conversion.result_amount * units)
+	return units
 
 
 static func _kind(denomination: StringName) -> WealthState.Kind:

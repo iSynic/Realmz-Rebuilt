@@ -172,7 +172,7 @@ func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationR
 					if replacement_instance == null:
 						return ScenarioRuntimeOperationResult.failed(&"inventory_full", "Classic replacement item no longer fits the character inventory.")
 					if was_equipped:
-						var equip_probe := _rules.equipment.equip_classic(character, replacement_instance, replacement, _content.characters.race_by_id(character.race_id), _content.characters.caste_by_id(character.caste_id), _game_state.party.characters(), _content.items.definitions(), _game_state.party.conditions)
+						var equip_probe := _rules.equipment.equip_classic(character, replacement_instance, replacement, _content.characters.race_by_id(character.race_id), _content.characters.caste_by_id(character.caste_id), _game_state.party.characters(), _content.items.definitions(), _game_state.party.conditions, BardDaggersRule.category(_game_state.adventure_rules, _content.characters.caste_by_id(character.caste_id), _content))
 						if not equip_probe.allowed:
 							return ScenarioRuntimeOperationResult.failed(&"replacement_cannot_equip", equip_probe.reason)
 			changed += 1

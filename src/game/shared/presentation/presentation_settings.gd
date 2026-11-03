@@ -76,12 +76,12 @@ var classic_keyboard_shortcuts: bool = false
 var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var combat_playback_speed_percent: int = 100
-var combat_text_speed_percent: int = 100
-var combat_text_background_opacity_percent: int = 50
-var combat_text_motion: String = COMBAT_TEXT_FLOATING
-var combat_text_size_percent: int = 100
+var combat_text_speed_percent: int = 150
+var combat_text_background_opacity_percent: int = 0
+var combat_text_motion: String = COMBAT_TEXT_STATIONARY
+var combat_text_size_percent: int = 85
 var combat_text_travel_logical_pixels: int = 32
-var combat_text_anchor: String = COMBAT_TEXT_ANCHOR_ABOVE_ICON
+var combat_text_anchor: String = COMBAT_TEXT_ANCHOR_CUSTOM
 var combat_text_custom_offset_y_logical_pixels: int = 0
 var hurry_spell_resolution: bool = false
 var show_exploration_minimap: bool = false
@@ -414,8 +414,7 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	settings.classic_keyboard_shortcuts = bool(data.get("classicKeyboardShortcuts", false))
 	settings.window_mode = String(data.get("windowMode", WINDOWED))
 	_read_pacing(settings, data)
-	if _schema_version_from_data(data) >= 28:
-		_read_combat_text_settings(settings, data)
+	_read_combat_text_settings(settings, data)
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.classic_exploration_visibility = bool(data.get("classicExplorationVisibility", true))
 	settings.custom_fog_tile_enabled = bool(data.get("customFogTileEnabled", false))
@@ -444,6 +443,11 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 
 
 static func _read_combat_text_settings(settings: PresentationSettings, data: Dictionary) -> void:
+	if _schema_version_from_data(data) < 28:
+		settings.combat_text_motion = COMBAT_TEXT_FLOATING
+		settings.combat_text_size_percent = 100
+		settings.combat_text_anchor = COMBAT_TEXT_ANCHOR_ABOVE_ICON
+		return
 	var motion: Variant = data["combatTextMotion"]
 	if motion is String:
 		settings.combat_text_motion = motion

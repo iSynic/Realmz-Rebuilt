@@ -655,9 +655,11 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 	_context.actions().events().append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng, target.id)
 	var monster_attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	CombatActionEvents.append_helpless_condition_state(monster_attack_event.payload, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after)
+	CombatActionEvents.append_weapon_requirement_block(monster_attack_event.payload, resolution)
 	_context.actions().events().append_physical_result_effect(monster_attack_event, resolution.hit, weapon != null)
 	CombatElementalFeedback.append_attack(monster_attack_event, resolution)
 	events.append(monster_attack_event)
+	CombatActionEvents.commit_creature_disarm(monster, resolution, events)
 	if resolution.killed:
 		active_turn.target_id = ""
 		monster.target_id = ""

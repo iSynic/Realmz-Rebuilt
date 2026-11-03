@@ -88,6 +88,12 @@ func resume() -> void:
 	_restore_focus = null
 
 
+## A restore replaces the paused adventure, so play continues on its route instead of the pause origin.
+func resume_restored(route: StringName) -> void:
+	_origin = route
+	resume()
+
+
 func rebuild() -> void:
 	if not _active or not _view.visible and _workspace: return
 	var owner := _owner()

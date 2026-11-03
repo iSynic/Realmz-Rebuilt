@@ -326,12 +326,9 @@ static func _monster_attack_row(attacks: Array[MonsterAttackDefinition], attack_
 static func _monster_required_weapon_reason(weapon: ItemDefinition, defender: MonsterDefinition) -> StringName:
 	if defender.required_weapon == 0:
 		return &""
+	# Castle attack2 checks blunt and sharp only while the monster holds a weapon, so natural attacks pass them.
 	if weapon == null:
-		if defender.required_weapon == -1:
-			return &"classic_blunt_weapon_required"
-		if defender.required_weapon == -2:
-			return &"classic_sharp_weapon_required"
-		return &"classic_specific_weapon_required"
+		return &"" if defender.required_weapon in [-1, -2] else &"classic_specific_weapon_required"
 	if defender.required_weapon == -1:
 		return &"" if weapon.blunt == -1 else &"classic_blunt_weapon_required"
 	if defender.required_weapon == -2:

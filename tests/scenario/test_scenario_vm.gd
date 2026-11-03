@@ -905,9 +905,9 @@ func _test_opcode_13_trigger_mutation_modes(content: RealmzContent) -> void:
 		return
 	var triggers: Array[TriggerDefinition] = [
 		TriggerDefinition.new("opcode13.land.1", "", land.id, Vector2i.ZERO, true, 100, null, 1),
-		TriggerDefinition.new("opcode13.land.2", "", land.id, Vector2i.ZERO, true, 100, null, 2),
+		TriggerDefinition.new("opcode13.land.0", "", land.id, Vector2i.ZERO, true, 100, null, 0), TriggerDefinition.new("opcode13.land.2", "", land.id, Vector2i.ZERO, true, 100, null, 2),
 		TriggerDefinition.new("opcode13.land.4", "", land.id, Vector2i.ZERO, true, 100, null, 4),
-		TriggerDefinition.new("opcode13.dungeon.1", "", dungeon.id, Vector2i.ZERO, true, 100, null, 1),
+		TriggerDefinition.new("opcode13.dungeon.0", "", dungeon.id, Vector2i.ZERO, true, 100, null, 0), TriggerDefinition.new("opcode13.dungeon.1", "", dungeon.id, Vector2i.ZERO, true, 100, null, 1),
 		TriggerDefinition.new("opcode13.dungeon.2", "", dungeon.id, Vector2i.ZERO, true, 100, null, 2),
 	]
 	var fixture := RealmzContent.new("opcode13", "1".repeat(64), "opcode13", content.rules_version, land.id, Vector2i.ZERO, content.world, ScenarioDefinition.new([], []), [], triggers)
@@ -916,10 +916,10 @@ func _test_opcode_13_trigger_mutation_modes(content: RealmzContent) -> void:
 	var api := RealmzRuntimeApi.new(fixture, state, rng, ScenarioActionState.new())
 	var land_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, 25, 2, 4]), "opcode13.land")
 	var dungeon_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 0, -1, -1, -2]), "opcode13.dungeon")
-	var single_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, 75, 0, 99]), "opcode13.single")
+	var single_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, 75, 0, 99]), "opcode13.single"); var zero_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 0, 40, 0, 0]), "opcode13.zero"); var range_end_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 0, 55, 0, 1]), "opcode13.range-end"); var through_zero_result := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [0, 1, -50, -2, 0]), "opcode13.through-zero")
 	var saved := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_equal([land_result.value, dungeon_result.value, single_result.value], [["opcode13.land.1", "opcode13.land.2", "opcode13.land.4"], ["opcode13.dungeon.1", "opcode13.dungeon.2"], ["opcode13.land.1"]], "opcode 13 combines its optional single record with an inclusive land range, uses a negative range for dungeon records, and silently skips unplaced native rows")
-	assert_equal([state.world.triggers.trigger_chance("opcode13.land.1", 100), state.world.triggers.trigger_chance("opcode13.land.2", 100), state.world.triggers.trigger_chance("opcode13.land.4", 100), state.world.triggers.trigger_chance("opcode13.dungeon.1", 100), state.world.triggers.trigger_is_disabled("opcode13.dungeon.2"), rng.snapshot().draw_count], [75, 25, 25, -1, true, 0], "opcode 13 stores clamped runtime chance overrides and canonical disablement without consuming RNG")
+	assert_equal([land_result.value, dungeon_result.value, single_result.value, zero_result.value, range_end_result.value, through_zero_result.value], [["opcode13.land.1", "opcode13.land.2", "opcode13.land.4"], ["opcode13.dungeon.1", "opcode13.dungeon.2"], ["opcode13.land.1"], ["opcode13.land.0"], [], ["opcode13.dungeon.1", "opcode13.dungeon.0"]], "opcode 13 combines its optional single record with an inclusive land range, uses a negative range for dungeon records, keeps Castle's nonnegative records from a range through zero, silently skips unplaced native rows, and names Action Point 0 only when no range value is given")
+	assert_equal([state.world.triggers.trigger_chance("opcode13.land.1", 100), state.world.triggers.trigger_chance("opcode13.land.2", 100), state.world.triggers.trigger_chance("opcode13.land.4", 100), state.world.triggers.trigger_chance("opcode13.dungeon.1", 100), state.world.triggers.trigger_is_disabled("opcode13.dungeon.2"), state.world.triggers.trigger_chance("opcode13.land.0", 100), rng.snapshot().draw_count], [75, 25, 25, -1, true, 40, 0], "opcode 13 stores clamped runtime chance overrides and canonical disablement without consuming RNG")
 	assert_true(saved != null and saved.world.triggers.trigger_chance("opcode13.land.2", 100) == 25 and saved.world.triggers.trigger_is_disabled("opcode13.dungeon.1"), "opcode 13's land and dungeon overrides survive the public save-owned state codec")
 	var before_invalid := state.to_data()
 	var invalid := api.execute_classic(ClassicActionDefinition.new(0, 13, 13, 0, false, [99, 1, 50, 0, 0]), "opcode13.invalid")

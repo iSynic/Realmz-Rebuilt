@@ -200,6 +200,15 @@ Import Party from Save offers party-level reuse of player characters in a fresh 
 - Tests: `test_money_workflow.gd` records the Castle source result, verifies the corrected capacity result, covers all three denominations, source order, sounds, movement recalculation, typed intents, and save restoration. `test_classic_ui_system.gd` verifies detached disabled reasons. The differential case is `economy.pool-share`.
 - Legacy quirk: none. Overloading through Share contradicts Swap and the ordinary maximum-load invariant.
 
+## FD-ECONOMY-004 — Held money changing uses timed accelerating pulses
+
+- Affected rule: holding Jewelry to Gems, Gems to Gold, or Gold to Gems at a shop or temple.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/swap.c`, `swap`, lines 170–230. While the button is held and the pool can pay, Castle changes one unit per loop with no timer, so its speed follows the machine. This is `source-control-flow` evidence, not a Castle-runtime measurement.
+- Player-facing problem: one unit every 90 milliseconds took about a minute to change 60,000 gold.
+- Chosen 2.0 behavior: the first press and short holds change exactly one unit per pulse. Pulses change ten units from about three seconds and one hundred from about eight. Rates, the shop-or-temple requirement, and the stop at what the pool affords stay Castle's; a pulse plays one sound instead of one per unit.
+- Tests: `test_money_workflow.gd` covers the batch limit, affordable stop and exact rate. `test_classic_ui_system.gd` covers the acceleration steps. The Shop path shares `MoneyChangingRules` and keeps its `test_scenario_vm.gd` coverage.
+- Legacy quirk: none. Castle has no fixed cadence to preserve.
+
 ## FD-INVENTORY-001 — Safe equipped-item trade
 
 - Affected rule: moving an equipped carried item between party members in the ordinary two-character Trade workspace.
@@ -229,6 +238,33 @@ Import Party from Save offers party-level reuse of player characters in a fresh 
 - Chosen 2.0 behavior: Normalize race masks with `CLASSIC_RACE_MASK` (`0xFF80`) and caste masks with `CLASSIC_CASTE_MASK` (`0xFE00`), stripping legacy padding and reserved bits outside the semantic range. If a normalized mask is zero, the field is unconstrained. `ItemView` normalizes masks before testing, suppressing phantom restriction lines when only padding is present.
 - Tests: `test_realmz_rules.gd::_test_item_eligibility_and_restriction_masks` verifies mask normalization, padding-only pass-through (`raceClassOnly = 1` permitting unconstrained races), semantic trait matching (`513` matching `512` and rejecting `0`), caste matching (`4097` admitting class 4 and rejecting class 1), Sentinel's Quiver (`24577` admitting class 2 and rejecting classes 1 and 4 without race rejection), and `ItemView` restriction strings (null content and live content).
 - Legacy quirk: none. Low padding bits in item definition records are legacy artifact data ignored by Castle's bit tests; treating them as semantic mask constraints was an implementation defect.
+
+## FD-INVENTORY-005 — "Usable only by" names only classes that can use the item
+
+- Affected rule: the race and class names in item descriptions. `canuse` is unchanged.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/showitems-showspecial.c`. `canuse` (line 256) requires the item's first category bit in both the caste and race `itemtypes` masks before it tests the class-only masks. The description (lines 577–655) prints STR# 141 group names from `casteclassonly` alone. This is `source-control-flow` evidence, not a Castle-runtime measurement.
+- Player-facing problem: Rebuilt expands each class group into individual class names, so Fang (item 927 in Trouble in the Sword Lands) read "Usable only by" a list that included Bard, although the dagger category is closed to Bards and the Equip button stayed disabled.
+- Chosen 2.0 behavior: "Usable only by" lists a race or class only when it also passes the item's category test. Eligibility stays Castle's, so Bards still cannot use daggers. If nothing remains, the text reads "Usable by no class." or "Usable by no race." "Not usable by" text is unchanged, since it is true either way.
+- Tests: `test_realmz_rules.gd::_test_item_eligibility_and_restriction_masks` covers a class-only member whose category mask refuses the item and a list that filtering empties.
+- Legacy quirk: Castle's group names can name a class that cannot use the item. Rebuilt's individual names would turn that into a false claim, so the list is corrected rather than preserved.
+
+## FD-INVENTORY-006 — Poisoned Sickle is usable by its authored classes
+
+- Affected rule: item 950, Poisoned Sickle, in Half Truth.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/showitems-showspecial.c`, `canuse`, line 256. The item's only category is 44, while its `casteClassOnly` admits only class group 6. Enchanter, Evoker and Warlock all lack category 44, so `canuse` refuses every character. This is `source-control-flow` evidence, not a Castle-runtime measurement.
+- Player-facing problem: an authored weapon that could be carried but never equipped by anyone. Its only placement is the Druid Novice monster.
+- Chosen 2.0 behavior: owner-approved. The class limit stays as authored, and the record also gains category 3, the Dagger category, which comes first and is open to all three classes. Only `scenario-half-truth` item 950 with the authored mask changes, at package assembly. The archive, package hash, saves and the rest of the item stay as they were, so existing Half Truth saves gain the correction without an update. Race restrictions and combat values are unchanged. Other items whose class and category conflict are not affected.
+- Tests: `test_combat_flow.gd::_test_half_truth_allied_blue_dragon_activation` loads the real package and covers an Evoker, a Bard and the preserved authored bit.
+- Legacy quirk: Castle refuses the item for everyone. Rebuilt corrects that one record rather than preserving it.
+
+## FD-INVENTORY-007 — Optional Bard Daggers adventure rule
+
+- Affected rule: whether the stock Bard may use the Dagger item category (category 3).
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/showitems-showspecial.c`, `canuse`, line 256. The application Bard's `itemtypes` mask omits category 3, so Castle refuses every dagger to Bards, including Fang (item 927 in Trouble in the Sword Lands), whose class group admits them. This is `source-control-flow` evidence, not a Castle-runtime measurement.
+- Player-facing problem: players reported that Bards cannot use Fang (GitHub #30). `FD-INVENTORY-005` already removed the misleading text; this rule lets players opt in to Bard daggers.
+- Chosen 2.0 behavior: owner-approved, default-off, per adventure. When `AdventureRules.bard_daggers` is on, `classic_use_probe` also admits category 3 for `classic.caste.13` while the scenario uses the application's Bard definition. A scenario that supplies its own differing Bard is unaffected. Every other check still applies: race masks, class-group, race-group and restriction masks, specific race or class, unique items and slots. Equipping, item spells and fumble recovery honor it. Auto and allies never equip weapons, so they are unchanged. Item text says "Bard (Bard Daggers rule)" wherever a dagger's class list would otherwise omit the Bard, so the text holds either way. Turning the rule off keeps a dagger already equipped, though it cannot be equipped again. Characters carried to another adventure keep their equipment the same way. Saves write `bardDaggers` only when enabled. Save v9 reads it as optional, earlier versions reject it, and builds without this rule reject only saves that enable it.
+- Tests: `test_realmz_rules.gd::_test_item_eligibility_and_restriction_masks` covers off and on, another closed category, a non-Bard class, the optional save field and the item text.
+- Legacy quirk: none preserved. With the rule off, Castle's refusal stays.
 
 ## FD-INVENTORY-004 — Classic weapon-condition item fields classification and admission
 
@@ -758,3 +794,19 @@ Each entry must include:
 - Castle authority: pinned `newland.c:2345-2354` clears `gosub`, `stackindex` and `encountflag`, marks removal and continues the following slot. The controlled native `25-clears-retained-gosub-and-stack` fixture observes stack depth one at opcode 25 and zero at the following marker; its instrumentation does not expose the flag. The flag reset is source evidence.
 - Chosen behavior: clear those shared controls through an explicit `BLOWOUT` transition and retain Rebuilt's existing immediate end of the complete issuing timeline. This deliberate continuation correction prevents a rewound encounter from reopening after explicit AP removal; it is not Castle's next-slot behavior. The selected AP identity and header remain independently owned. A source-less XAP still finishes without inventing a removal target.
 - Evidence: the source/executable pins and synthetic inputs are in `classic-blowout-control.json`. The existing public VM proof owns retained AP origin through Choice/XAP transfer, skipped following instructions and source-less completion. Prepared JSON restoration independently covers the retained signed GOSUB and Safe/Classic wait before removal, including zero draws and unchanged rejected responses. This does not certify ordinary authored routes.
+
+## FD-SCENARIO-029 - Let opcode 13 name Action Point 0
+
+- Castle authority: pinned `newland.c:1881-1917` guards its single-record assignment with `if (extracode[1])` and runs its range only for a nonzero start, so `[level, 0, percent, 0, 0]` changes nothing. A land AP 0 is therefore unreachable through opcode 13; only a negative start counting up through zero reaches a dungeon AP 0. Record 0 is an ordinary placed `door[]` entry, opcode 7 addresses it without a guard, and Divinity's help offers no warning.
+- Player-facing problem: authors wrote that row to switch an AP 0 on or off and it silently did nothing. In Trouble in the Sword Lands the ice-cave AP stays live after the dragon's death, so a party without Discover Secret can be trapped in the pocket behind it.
+- Chosen behavior: for every scenario, when EC1, EC3 and EC4 are all zero the step names record 0 on the map it already addresses, with unchanged map resolution, chance clamping and silent handling of an unplaced record. Any range value keeps EC1 zero meaning "no single target". This is a deliberate correction, not Classic behavior, and it applies only to steps run after the change: saves keep their recorded state and nothing replays.
+- Consequences in the 13 bundled packages: 52 steps match the rule; 21 have no effect, and 31 change play, mostly by making an authored AP 0 toggle work. Trouble's mine-trap lizard battle 148 becomes reachable. Authored AP 0 steps in imported scenarios are unreviewed.
+- Evidence: the opcode 13 scenario VM proof covers record 0 selection and the unchanged no-op with a range value. Local fixtures walked Trouble's cave from the reporter's save, including reload, War's Naaz'Tzaraneen gate and Trouble's lizard AP. This does not certify the remaining affected routes.
+
+## FD-SCENARIO-030 - Run opcode 13 dungeon ranges by record number
+
+- Castle authority: pinned `newland.c:1881-1917` reads a negative EC3 as Divinity's dungeon flag, then loops `tt` from the signed EC3 up to the signed EC4. A range authored as dungeon records 39 through 47 arrives as `-39..-47` and never iterates, so only the EC1 record changes; a range written `-47..-39` would write negative `door[]` indexes. No authored dungeon range can work in Castle.
+- Player-facing problem: authors used dungeon ranges deliberately to open, close and reset groups of rooms, and Castle silently dropped every partner record. Trouble in the Sword Lands' temple raid switches off only AP 39, so uncleared rooms still fire after the climax; its watch room leaves the basement text armed.
+- Chosen behavior: for every scenario, a nonzero EC3 range runs over the inclusive record numbers `abs(EC3)..abs(EC4)` on the map selected by EC3's sign. The nonnegative records Castle's signed loop reaches still change too, so a range authored through zero such as `-12..0` keeps Castle's AP 0; the correction only adds records. No negative record is ever written, which bounds Castle's out-of-range `door[]` writes. EC1 still applies alongside the range under FD-SCENARIO-029. This is a deliberate correction, not Classic behavior.
+- Consequences in the 13 bundled packages: 28 steps touch additional placed Action Points (Trouble 17, War 8, Wrath 3) and none lose a Castle record. Trouble's temple exits re-arm APs 39-47 together, so its rooms, fights and treasure repeat after leaving and returning until the raid closes them. War's stair step re-arms AP 63 for its authored assassin ambush even after the dart trap was disarmed, and its fleeing-warriors step arms both paired junction traps. Mithril's `[1, 47, 18, -194, 0]` keeps Castle's AP 0 change, so the sage appears 18% of the time after the alarm. Across the 27 other private-corpus scenarios, 7 steps in Dragon of Death, Price of Power and Search for the Lost City add placed records, and Dark Portal's `[2, 12, -50, -12, 0]` keeps Castle's AP 0 change; those routes are unplayed.
+- Evidence: the opcode 13 scenario VM proof covers a negative dungeon range by magnitude and a range through zero. Local fixtures walked Trouble's temple exit and re-entry (APs 39-41 replayed, 42-47 confirmed re-armed), War's AP 63 ambush and both War junction traps, with forced battle wins and boosted party HP. The Castle column is source analysis, not a played Castle route.

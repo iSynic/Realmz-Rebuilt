@@ -76,12 +76,12 @@ func commit_character_fumble(state: GameState, content: RealmzContent, character
 	if not _context.equipment.force_unequip(character, instance, equipment.melee_weapon, content.items.definitions(), race, state.party.conditions):
 		return false
 	if not state.combat.dropped_items.queue(instance):
-		_context.equipment.equip_classic(character, instance, equipment.melee_weapon, race, content.characters.caste_by_id(character.caste_id), state.party.characters(), content.items.definitions(), state.party.conditions)
+		_context.equipment.equip_classic(character, instance, equipment.melee_weapon, race, content.characters.caste_by_id(character.caste_id), state.party.characters(), content.items.definitions(), state.party.conditions, BardDaggersRule.category(state.adventure_rules, content.characters.caste_by_id(character.caste_id), content))
 		return false
 	var removed := _context.inventory.remove_item(character, instance.id, equipment.melee_weapon)
 	if removed == null:
 		state.combat.dropped_items.remove(instance.id)
-		_context.equipment.equip_classic(character, instance, equipment.melee_weapon, race, content.characters.caste_by_id(character.caste_id), state.party.characters(), content.items.definitions(), state.party.conditions)
+		_context.equipment.equip_classic(character, instance, equipment.melee_weapon, race, content.characters.caste_by_id(character.caste_id), state.party.characters(), content.items.definitions(), state.party.conditions, BardDaggersRule.category(state.adventure_rules, content.characters.caste_by_id(character.caste_id), content))
 		return false
 	# FD-COMBAT-005 preserves the exact runtime item and its remaining charges.
 	# Castle's short-only queue reconstructs the item from its definition at booty.
@@ -218,6 +218,23 @@ static func append_monster_attack_audio(events: Array[DomainEvent], attacker: Mo
 static func append_defeat_audio(events: Array[DomainEvent], target_id: String) -> void:
 	# killbody/showresults owns sound 132; playback starts it with the skull cue.
 	events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-defeat", "targetId": target_id, "playbackBoundary": "defeat"}))
+
+
+## Monster attacks carry Castle's weapon-requirement block so playback names it instead of showing a miss.
+static func append_weapon_requirement_block(payload: Dictionary, resolution: AttackResolution) -> void:
+	if resolution.blocked and weapon_requirement_sound(resolution.block_reason) != 0:
+		payload["blocked"] = true
+		payload["blockReason"] = String(resolution.block_reason)
+
+
+## Castle attack2 disarms an armed monster after a blunt or sharp requirement refuses its hit on another monster (showresults -52).
+static func commit_creature_disarm(monster: MonsterState, resolution: AttackResolution, events: Array[DomainEvent]) -> void:
+	if not resolution.blocked or resolution.block_reason not in [&"classic_blunt_weapon_required", &"classic_sharp_weapon_required"] or monster.weapon_id.is_empty():
+		return
+	var weapon_id := monster.weapon_id
+	monster.weapon_id = ""
+	events.append(DomainEvent.new(&"sound_requested", {"soundId": 655, "waitForCompletion": false, "source": "classic-creature-disarm"}))
+	events.append(DomainEvent.new(&"combatant_disarmed", {"actorId": monster.id, "targetId": monster.id, "itemId": weapon_id, "source": "classic"}))
 
 
 static func weapon_requirement_sound(reason: StringName) -> int:

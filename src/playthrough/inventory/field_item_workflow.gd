@@ -69,7 +69,8 @@ static func identify_inventory(context: SessionWorkflowContext, payload: SpellIn
 
 
 static func field_spell_item_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> InventoryActionProbe:
-	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.characters.race_by_id(character.race_id) if character != null else null, context.content.characters.caste_by_id(character.caste_id) if character != null else null, false)
+	var caste := context.content.characters.caste_by_id(character.caste_id) if character != null else null
+	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.characters.race_by_id(character.race_id) if character != null else null, caste, false, BardDaggersRule.category(context.state.adventure_rules, caste, context.content))
 	if not probe.allowed:
 		return probe
 	if ClassicSpellDispositionRules.field_character_disposition(spell) != ClassicSpellDispositionRules.DISPOSITION_EXECUTABLE:

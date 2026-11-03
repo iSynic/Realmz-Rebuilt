@@ -13,7 +13,7 @@ static func equip_item(context: SessionWorkflowContext, payload: InventoryIntent
 	var combat_guard := combat_edit_guard(context, character, "equip")
 	if not combat_guard.is_empty():
 		return SessionWorkflowResult.failed(&"item_cannot_equip", combat_guard)
-	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
+	var probe := context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions, BardDaggersRule.category(context.state.adventure_rules, context.content.characters.caste_by_id(character.caste_id), context.content))
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_equip", probe.reason)
 	invalidate_combat_undo(context)
@@ -93,7 +93,7 @@ static func trade_item(context: SessionWorkflowContext, payload: InventoryIntent
 			var returned := context.rules.inventory.remove_item(destination, instance.id, definition)
 			if returned != null and context.rules.inventory.restore_item(source, returned, definition):
 				if source_equipped:
-					context.rules.equipment.equip_classic(source, returned, definition, context.content.characters.race_by_id(source.race_id), context.content.characters.caste_by_id(source.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
+					context.rules.equipment.equip_classic(source, returned, definition, context.content.characters.race_by_id(source.race_id), context.content.characters.caste_by_id(source.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions, BardDaggersRule.category(context.state.adventure_rules, context.content.characters.caste_by_id(source.caste_id), context.content))
 			source.set_scroll_case(transferred_scrolls)
 			destination.set_scroll_case(destination_scrolls)
 			return SessionWorkflowResult.failed(&"scroll_case_transfer_failed", "The scroll case records could not be transferred.")
@@ -162,7 +162,7 @@ static func join_item(context: SessionWorkflowContext, payload: InventoryIntentP
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_join_failed", probe.reason)
 	if had_equipped_stack:
-		probe = context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions)
+		probe = context.rules.equipment.equip_classic(character, instance, definition, context.content.characters.race_by_id(character.race_id), context.content.characters.caste_by_id(character.caste_id), context.state.party.characters(), context.content.items.definitions(), context.state.party.conditions, BardDaggersRule.category(context.state.adventure_rules, context.content.characters.caste_by_id(character.caste_id), context.content))
 		if not probe.allowed:
 			return SessionWorkflowResult.failed(&"item_join_failed", probe.reason)
 	invalidate_combat_undo(context)

@@ -465,7 +465,8 @@ static func _valid_item_target_selection(content: RealmzContent, state: GameStat
 		return false
 	var authored_power := absi(definition.special_1)
 	var expected_count := state.party.characters().size() if spell.target_type > 2 else mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
-	var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.characters.race_by_id(character.race_id), content.characters.caste_by_id(character.caste_id), false)
+	var caste := content.characters.caste_by_id(character.caste_id)
+	var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.characters.race_by_id(character.race_id), caste, false, BardDaggersRule.category(state.adventure_rules, caste, content))
 	var supported := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9 or absi(spell.special) == 57
 	return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == FieldMagicTargetRequestBuilder.item_target_request(session_interaction.request_id, character, instance.id, definition, spell, targeting.power, expected_count, state.party.characters()).to_data()
 

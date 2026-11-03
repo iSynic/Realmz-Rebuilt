@@ -121,10 +121,10 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	assert_true(final_restore.view().money_workspace.changing_available, "temple availability exposes Castle changing rates")
 	var jewelry_change := final_restore.submit_intent(EconomyIntents.money(MoneyChangingRules.JEWELRY_TO_GEMS, "", "jewelry", 1)); assert_equal([jewelry_change.state, final_restore._context.state.party.pooled_wealth.to_data()], [SessionStep.State.COMPLETED, {"gold": 115, "gems": 6, "jewelry": 0}], "one jewelry becomes five pooled gems")
 	assert_true(jewelry_change.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10129), "changing requests Castle sound 10129")
-	assert_equal(final_restore.submit_intent(EconomyIntents.money(MoneyChangingRules.GOLD_TO_GEMS, "", "gold", 100)).error_code, &"invalid_money_increment", "forged conversion rate is rejected")
+	assert_equal(final_restore.submit_intent(EconomyIntents.money(MoneyChangingRules.GOLD_TO_GEMS, "", "gold", 100)).error_code, &"invalid_money_increment", "forged conversion rate is rejected"); assert_equal(final_restore.submit_intent(EconomyIntents.money(MoneyChangingRules.GOLD_TO_GEMS, "", "gold", 115 * (MoneyChangingRules.MAXIMUM_BATCH + 1))).error_code, &"invalid_money_increment", "a held batch cannot exceed its limit")
 	assert_equal(final_restore.submit_intent(EconomyIntents.money(MoneyChangingRules.GOLD_TO_GEMS, "", "gold", 115)).state, SessionStep.State.COMPLETED, "115 pooled gold buys one gem")
-	assert_equal(final_restore.submit_intent(EconomyIntents.money(MoneyChangingRules.GEMS_TO_GOLD, "", "gems", 1)).state, SessionStep.State.COMPLETED, "one pooled gem becomes 100 gold")
-	assert_equal(final_restore._context.state.party.pooled_wealth.to_data(), {"gold": 100, "gems": 6, "jewelry": 0}, "sequential conversions preserve exact pooled denominations")
+	var batch_pool := final_restore.view().money_workspace; var batch_gems := batch_pool.pooled_gems; var batch_gold := batch_pool.pooled_gold; assert_equal(final_restore.submit_intent(EconomyIntents.money(MoneyChangingRules.GEMS_TO_GOLD, "", "gems", batch_gems + 5)).state, SessionStep.State.COMPLETED, "one pooled gem becomes 100 gold and a held batch stops at what the pool affords"); assert_equal([final_restore.view().money_workspace.pooled_gems, final_restore.view().money_workspace.pooled_gold], [0, batch_gold + batch_gems * 100], "a held batch keeps the exact Castle rate")
+	assert_equal(final_restore._context.state.party.pooled_wealth.to_data(), {"gold": 700, "gems": 0, "jewelry": 0}, "sequential conversions preserve exact pooled denominations")
 
 
 func _test_pooled_wealth_departure(content: RealmzContent) -> void:
