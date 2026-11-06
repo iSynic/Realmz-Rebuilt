@@ -11,9 +11,6 @@ const MONSTER_ATTACK_FAILED := 4
 const REACTION_WAITING := 1
 const REACTION_DEATH_MACRO := 2
 const REACTION_MOVER_DEFEATED := 3
-const CHARMED_ACTOR_CONTINUE := &"continue"
-const CHARMED_ACTOR_BREAK := &"break"
-const CHARMED_ACTOR_RETURN := &"return"
 const MAX_MONSTERS: int = 100
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
@@ -32,7 +29,7 @@ var _context: CombatContext
 var _ai_scoring: CombatAiScoring
 var _monster_actions: CombatMonsterActions
 var _occupancy: CombatOccupancyRules
-var _charmed_character_automation: CombatCharmedCharacterAutomation
+var _activation_conditions: CombatActivationConditions
 var _failure: CombatFlowResult
 
 
@@ -41,7 +38,7 @@ func _init(context: CombatContext) -> void:
 	_ai_scoring = CombatAiScoring.new(context)
 	_monster_actions = CombatMonsterActions.new(context)
 	_occupancy = CombatOccupancyRules.new(context)
-	_charmed_character_automation = CombatCharmedCharacterAutomation.new(context, _monster_actions)
+	_activation_conditions = CombatActivationConditions.new(context, _monster_actions)
 
 
 func monster_actions() -> CombatMonsterActions:
@@ -71,13 +68,10 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 					break
 				guard -= 1
 				continue
-			if not character.traitor:
-				_context.actions().prepare_character_turn(combat, character)
-				break
-			var charmed_result := _process_charmed_character_activation(state, content, character, rng, events)
-			if _failure != null: return _failure
-			if charmed_result == CHARMED_ACTOR_RETURN: return CombatFlowResult.from_combat(state.combat, events)
-			if charmed_result == CHARMED_ACTOR_BREAK: break
+			var activation := _activation_conditions.process_character(state, content, character, rng, events)
+			if _activation_conditions.failure_result != null: return _activation_conditions.failure_result
+			if activation == CombatActivationConditions.RETURN: return CombatFlowResult.from_combat(state.combat, events)
+			if activation == CombatActivationConditions.BREAK: break
 			guard -= 1
 			continue
 		if monster.current_health <= 0 or combat.battlefield == null or not combat.battlefield.actors.has_actor(monster.id):
@@ -85,9 +79,10 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 				break
 			guard -= 1
 			continue
-		if turns.active_turn == null:
+		var fresh_activation := turns.active_turn == null
+		if fresh_activation:
 			actor_statuses.set_guarding(monster.id, true)
-		if monster.conditions.is_active(ConditionRules.HELPLESS):
+		if monster.conditions.is_active(ConditionRules.HELPLESS) or fresh_activation and _activation_conditions.confused_monster_loses_turn(state, monster, rng, events):
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "incapacitated"}))
 			if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events):
 				break
@@ -109,22 +104,6 @@ func process_monster_turns(state: GameState, content: RealmzContent, rng: Realmz
 func _fail(code: StringName, message: String) -> int:
 	_failure = CombatFlowResult.failed(code, message)
 	return MONSTER_ATTACK_FAILED
-
-
-func _process_charmed_character_activation(state: GameState, content: RealmzContent, character: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> StringName:
-	var movement_result := _charmed_character_automation.advance_charmed_character(state, content, character, rng, events)
-	if movement_result in [REACTION_WAITING, REACTION_DEATH_MACRO]:
-		return CHARMED_ACTOR_RETURN
-	if movement_result == REACTION_MOVER_DEFEATED:
-		return CHARMED_ACTOR_BREAK if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events) else CHARMED_ACTOR_CONTINUE
-	var death_macro := _charmed_character_automation.process_charmed_character_turn(state, content, character, rng, events)
-	if _charmed_character_automation.failure_result != null:
-		_failure = _charmed_character_automation.failure_result
-		return CHARMED_ACTOR_RETURN
-	if death_macro:
-		_context.rounds().advance_turn(state, content, rng, events)
-		return CHARMED_ACTOR_RETURN
-	return CHARMED_ACTOR_BREAK if _context.rounds().advance_turn_and_check_resolved(state, content, rng, events) else CHARMED_ACTOR_CONTINUE
 
 
 func _prepare_active_monster_turn(turns: CombatTurnSequenceState, monster: MonsterState, definition: MonsterDefinition, state: GameState, content: RealmzContent, rng: RealmzRng, selected_plan: Dictionary) -> CombatTurnState:

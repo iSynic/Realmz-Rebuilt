@@ -238,8 +238,8 @@ func _finish_character_movement(state: GameState, content: RealmzContent, mover_
 	if _context.rounds().finish_if_resolved(state, content, events):
 		return CombatFlowResult.from_combat(state.combat, events, true)
 	var mover := state.party.character_by_id(mover_id)
-	# Rebuilt handoff correction: Guard charm cannot return a loyal-player turn.
-	var charmed_active_mover := mover != null and mover.traitor and combat.turns.active_actor_id() == mover_id
+	# Rebuilt handoff correction: Guard charm, confusion or fear cannot return a manual turn.
+	var charmed_active_mover := CombatActivationConditions.automates(combat, mover)
 	if reaction_result == REACTION_MOVER_DEFEATED or charmed_active_mover:
 		return _context.automation().process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.from_combat(state.combat, events, combat.completed)

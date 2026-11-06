@@ -245,7 +245,7 @@ func _continue_after_age_reaction(state: GameState, content: RealmzContent, rng:
 		if finish_if_resolved(state, content, events):
 			return CombatFlowResult.from_combat(state.combat, events, true)
 		return _context.automation().process_monster_turns(state, content, rng, events)
-	if reaction_kind == CombatReactionState.CHARACTER_MOVE:
+	if reaction_kind == CombatReactionState.CHARACTER_MOVE and not CombatActivationConditions.automates(combat, state.party.character_by_id(mover_id)):
 		return CombatFlowResult.from_combat(state.combat, events)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 

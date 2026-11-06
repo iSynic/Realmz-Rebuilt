@@ -190,10 +190,11 @@ func _draw() -> void:
 	_draw_persistent_fields(combat, camera, visible_cells, draw_origin)
 	_draw_revealed_relationships(combat, camera, visible_cells, draw_origin)
 	_draw_movement_options(combat, camera, visible_cells, draw_origin)
-	_draw_targeting_preview(combat, camera, visible_cells, draw_origin)
 	_actor_clip = Rect2(draw_origin, Vector2(visible_cells) * NATIVE_CELL_SIZE).intersection(Rect2(Vector2.ZERO, size))
 	_draw_characters(combat, camera, visible_cells, draw_origin)
 	_draw_monsters(combat, camera, visible_cells, draw_origin)
+	# Castle centerfield.c draws bodies and backdrops before showtargets and misc.c drawspell overlay the target marks.
+	_draw_targeting_preview(combat, camera, visible_cells, draw_origin)
 	_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
 	result_text.draw(self, camera, visible_cells, draw_origin)
 	_draw_tactical_legend()
