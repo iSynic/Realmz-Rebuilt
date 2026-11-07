@@ -95,7 +95,7 @@ var autojournal_enabled: bool = true
 var interface_font: String = ""
 var narrative_font: String = ""
 var menu_visibility: String = MENU_VISIBLE
-var show_overworld_command_titles: bool = true
+var show_hud_button_titles: bool = false
 var integer_fit_hidden_commands: bool = false
 var last_campaign_id: String = ""
 var controller := ControllerPreferences.new()
@@ -147,7 +147,7 @@ func copy_from(other: PresentationSettings) -> void:
 	interface_font = other.interface_font
 	narrative_font = other.narrative_font
 	menu_visibility = other.menu_visibility
-	show_overworld_command_titles = other.show_overworld_command_titles
+	show_hud_button_titles = other.show_hud_button_titles
 	integer_fit_hidden_commands = other.integer_fit_hidden_commands
 	last_campaign_id = other.last_campaign_id
 	controller = other.controller.duplicate_value()
@@ -202,7 +202,7 @@ func to_data() -> Dictionary:
 		"interfaceFont": interface_font,
 		"narrativeFont": narrative_font,
 		"menuVisibility": menu_visibility,
-		"showOverworldCommandTitles": show_overworld_command_titles,
+		"showOverworldCommandTitles": show_hud_button_titles,
 		"integerFitHiddenCommands": integer_fit_hidden_commands,
 		"lastCampaignId": last_campaign_id,
 		"controller": controller.to_data(),
@@ -430,8 +430,9 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 			settings.interface_font = "bundled:alegreya-sans"
 		if settings.narrative_font.is_empty():
 			settings.narrative_font = "bundled:alegreya"
+	settings.show_hud_button_titles = true  # Schemas before 24 always showed captions; only fresh settings default them off.
 	if int(data["schemaVersion"]) >= 24:
-		settings.show_overworld_command_titles = data["showOverworldCommandTitles"]
+		settings.show_hud_button_titles = data["showOverworldCommandTitles"]
 		settings.integer_fit_hidden_commands = data["integerFitHiddenCommands"]
 	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
 	if int(data["schemaVersion"]) >= 27:

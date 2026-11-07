@@ -74,7 +74,7 @@ func _policy(installed_root: String, bundle_root: String = MarkerSaveUpdate.BUND
 
 
 func _host(saves: SaveRepository, installed_root: String) -> SaveHostController:
-	return SaveHostController.new(saves, null, null, null, null, null, null, CompleteRecordSaveUpdate.new(installed_root))
+	return SaveHostController.new(saves, null, null, null, null, null, null, CompleteRecordSaveUpdate.new(installed_root), TerrainSaveUpdate.new(installed_root))
 
 
 func _check_corrected_archive_failure(current: RealmzContent, installed_root: String, scratch: String) -> void:

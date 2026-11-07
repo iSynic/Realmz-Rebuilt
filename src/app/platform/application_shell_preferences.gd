@@ -13,8 +13,8 @@ static func bind(shell: GameShell, settings: PresentationSettings, persist: Call
 			settings.narrative_font = identity
 		fonts_changed.call()
 	)
-	shell.show_overworld_command_titles_changed.connect(func(enabled: bool) -> void:
-		settings.show_overworld_command_titles = enabled
+	shell.show_hud_button_titles_changed.connect(func(enabled: bool) -> void:
+		settings.show_hud_button_titles = enabled
 		shell.apply_settings(settings)
 		persist.call()
 	)

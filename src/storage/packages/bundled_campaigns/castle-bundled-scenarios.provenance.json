@@ -1017,11 +1017,16 @@
       "name": "Trouble in the Sword Lands",
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a",
-      "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
-      "contentId": "b1c458bb08018f3deaceabaf70914f195d985f4277fc9edd43f9604a1c2dea20",
-      "archiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
-      "bytes": 8753239,
+      "compilerRevision": "84b531c5374903921fd578060656559927db208f",
+      "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
+      "contentId": "719a430ccc982f87fe1523cb4d553ef6c695f4ee2dfb3abd56300aa29458a0a5",
+      "archiveSha256": "73f5b2166485355f022de306666facd5908ee80e977b17c63a746b5a6448d2f3",
+      "bytes": 8753153,
+      "sourceOverride": {
+        "kind": "project-owner-designated-snapshot",
+        "catalog": "trouble-in-the-sword-lands.source.json",
+        "snapshotSha256": "967ff3b15de0baf281c0db236d2a90bfe074c01484c86afee7eaf522e7e429c2"
+      },
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
         "archiveSha256": "10cb5cae1af68109084fd84b95254663ccf397e6a704813514f90c795ed88c42",
@@ -1134,6 +1139,17 @@
           "compilerRevision": "e31b36fb52e9445a93b68298a6f871b413d68239"
         },
         "sourceFiles": 38
+      },
+      "terrainCorrection": {
+        "operation": "retain-owner-terrain-correction",
+        "receiptFile": "trouble-terrain-correction.json",
+        "previousPackage": {
+          "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
+          "contentId": "b1c458bb08018f3deaceabaf70914f195d985f4277fc9edd43f9604a1c2dea20",
+          "archiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
+          "bytes": 8753239,
+          "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a"
+        }
       }
     },
     {

@@ -19,6 +19,7 @@ import complete_record_history_pairs as history_pairs
 import compose_complete_record_history as composition
 import prepare_complete_record_updates as updates
 import verify_classic_records as native
+import verify_trouble_terrain as terrain
 
 ROOT = Path(__file__).resolve().parent.parent
 BUNDLE = ROOT / "src/storage/packages/bundled_campaigns"
@@ -73,17 +74,24 @@ def archive(path, identity):
     return manifest, files
 
 
-def check_movement(final_bytes, baseline_bytes):
+def check_movement(final_bytes, baseline_bytes, corrections=None):
+    """Owner terrain corrections alone may change native words; their cells keep compiled movement."""
     current = {row["id"]: row for row in json.loads(final_bytes)["maps"]}
     baseline = {row["id"]: row for row in json.loads(baseline_bytes)["maps"]}
     require(set(current) == set(baseline), "reviewed movement map inventory differs")
     for map_id, row in current.items():
         old = baseline[map_id]
-        for key in ("width", "height", "levelType", "levelIndex", "classicTileValues", "topologyFormat"):
+        for key in ("width", "height", "levelType", "levelIndex", "topologyFormat"):
             require(row[key] == old[key], f"native map changed during movement retention: {map_id}:{key}")
+        corrected = {y * row["width"] + x: value for (mid, x, y), value in (corrections or {}).items() if mid == map_id}
+        tiles = list(old["classicTileValues"])
+        for index, (before, after) in corrected.items():
+            require(tiles[index] == before, f"terrain correction preimage differs: {map_id}:{index}")
+            tiles[index] = after
+        require(row["classicTileValues"] == tiles, f"native map changed during movement retention: {map_id}:classicTileValues")
         require(len(row["cells"]) == len(old["cells"]), f"movement cell count differs: {map_id}")
         for index, (cell, prior) in enumerate(zip(row["cells"], old["cells"])):
-            require(all(cell[column] == prior[column] for column in MOVEMENT_COLUMNS),
+            require(index in corrected or all(cell[column] == prior[column] for column in MOVEMENT_COLUMNS),
                     f"unreviewed movement change: {map_id}:{index}")
         require(row["boatReplacementProfiles"] == old["boatReplacementProfiles"],
                 f"unreviewed boat profile change: {map_id}")
@@ -228,11 +236,17 @@ def verify(package_root):
     corrections = native.correction_map(inventory["nativeCorrections"])
     contexts = native.source_context_campaigns(inventory["sourceContexts"])
     checks, sources = [], 0
+    owner_terrain = inventory["terrainCorrection"]
+    terrain_files = [name for name, row in rows.items() if row["campaignId"] == owner_terrain["campaignId"]]
+    require(len(terrain_files) == 1, "owner terrain correction campaign differs")
+    terrain_check = terrain.verify(package_root, inventory, rows[terrain_files[0]], provenance[terrain_files[0]])
+    terrain_cells = terrain.correction_cells(json.loads((ROOT / owner_terrain["receipt"]["file"]).read_bytes())["terrainCorrections"])
     for index, filename in enumerate(sorted(rows)):
         row, pin, entry = rows[filename], expected[filename], provenance[filename]
         manifest, files = archive(package_root / filename, row)
+        compiler = owner_terrain["compiler"] if filename in terrain_files else inventory["compiler"]
         require(manifest["schemaVersion"] == 7 and manifest["schemaHash"] == inventory["schemaSha256"]
-                and manifest["compiler"] == inventory["compiler"], f"compiler/schema identity differs: {filename}")
+                and manifest["compiler"] == compiler, f"compiler/schema identity differs: {filename}")
         for field in ("campaignId", "packageHash", "archiveSha256", "bytes"):
             require(row[field] == pin[field] == entry[field], f"reviewed identity differs: {filename}:{field}")
         facts = json.loads(files["content.json"])["classicRecords"]
@@ -259,14 +273,16 @@ def verify(package_root):
         old_rows = {row["file"]: row for row in baseline_catalog["scenarios"]}
         for filename, row in rows.items():
             with zipfile.ZipFile(old_root / filename) as old, zipfile.ZipFile(package_root / filename) as current:
-                check_movement(current.read("world.json"), old.read("world.json"))
+                check_movement(current.read("world.json"), old.read("world.json"),
+                               terrain_cells if filename in terrain_files else None)
             baseline_pair = [p for p in row["previousRevisions"] if p["packageHash"] == old_rows[filename]["packageHash"]]
             require(len(baseline_pair) == 1 and baseline_pair[0]["archiveSha256"] == old_rows[filename]["archiveSha256"],
                     f"immediate v6 update pair differs: {filename}")
         verify_history_maps(package_root, old_root, inventory, rows)
     return {"kind": "realmz.complete-records-verification", "formatVersion": 1,
             "campaigns": len(rows), "originalSourceFiles": sources,
-            "historicalEndpoints": 13, "explicitSaveTransitions": 53, "passed": True}
+            "historicalEndpoints": 13, "explicitSaveTransitions": 53,
+            "terrainCorrections": terrain_check["terrainCorrections"], "passed": True}
 
 
 def main():

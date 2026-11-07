@@ -54,7 +54,7 @@ func set_value(setting_id: StringName, value: Variant) -> void:
 		&"combat_hash_marks": values.combat_hash_marks = value == true
 		&"disease_damage_icon": values.disease_damage_icon = value == true
 		&"autojournal_enabled": values.autojournal_enabled = bool(value)
-		&"show_overworld_command_titles": values.show_overworld_command_titles = bool(value)
+		&"show_hud_button_titles": values.show_hud_button_titles = bool(value)
 		&"integer_fit_hidden_commands": values.integer_fit_hidden_commands = bool(value)
 		&"world_zoom": values.world_zoom = int(value)
 		&"exploration_speed_percent": values.exploration_speed_percent = int(value)

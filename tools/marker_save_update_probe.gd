@@ -121,8 +121,9 @@ func _check_campaign(repository: PackageRepository, entry: Dictionary, originals
 	_check(SaveEnvelope.from_snapshot(session.snapshot()).to_data() == active_before and host.active_slot(current) == "J", "active adventure and Quick Save target stay unchanged")
 	_check(not policy.eligible(entry.campaignId, "f".repeat(64), current.package_hash) and not policy.eligible("imported-example", old_content.package_hash, current.package_hash), "unlisted predecessor and imported campaign reject")
 	_check(FileAccess.get_sha256(source_path) == source_hash and FileAccess.get_sha256(installed.installed_path) == source_hash, "retained and installed originals stay byte-identical")
-	if entry.campaignId == "scenario-city-of-bywater":
+	if _exercises_failures(entry):
 		_check_failures(repository, host, saves, old_content, current, source_path, installed_root, scratch)
+	if _exercises_failures(entry) and _exercises_shared_paths():
 		_check_artwork(host, saves, session, old_content, current)
 		_check_pending_shop(host, saves, session, old_content, current)
 	_results.append({"campaignId": entry.campaignId, "oldPackageHash": old_content.package_hash, "newPackageHash": current.package_hash, "passed": _failures == failures_before})
@@ -246,6 +247,14 @@ func _check_failures(repository: PackageRepository, host: SaveHostController, sa
 	_check(readback_saves.save(old_content.campaign_id, "source", original, original.map_preview_jpeg), "readback fixture source writes")
 	var readback_failure := _host(readback_saves, installed_root)
 	_check(readback_failure.update_save(current, "source").is_empty() and not FileAccess.file_exists(readback_root.path_join(current.campaign_id).path_join(_policy("").updated_slot_id("source", false, current.package_hash) + ".r2save")), "failed readback removes only the unpublished copy")
+	if _exercises_shared_paths():
+		_check_installation_receipts(repository, current, source, scratch)
+	_check_corrected_archive_failure(current, installed_root, scratch)
+	_check(FileAccess.get_sha256(_save_path(old_content.campaign_id, "A")) == primary_hash and FileAccess.get_sha256(_save_path(old_content.campaign_id, "A") + ".bak") == backup_hash and host.active_slot(current) == "J", "failures preserve primary, backup and active-slot pointer")
+	_check(FileAccess.get_sha256(installed_root.path_join(old_content.campaign_id).path_join(old_content.package_hash + ".realmz2")) == FileAccess.get_sha256(source), "rejection fixtures do not alter the valid original installation")
+
+
+func _check_installation_receipts(repository: PackageRepository, current: RealmzContent, source: String, scratch: String) -> void:
 	var bad_root := scratch.path_join("rejected-packages")
 	var installed := repository.install_package(source, bad_root)
 	if not _check(installed.is_ok(), "isolated rejection package installs"):
@@ -278,9 +287,6 @@ func _check_failures(repository: PackageRepository, host: SaveHostController, sa
 	var archive_bytes := FileAccess.get_file_as_bytes(path)
 	_write_bytes(path, archive_bytes + PackedByteArray([0]))
 	_check(not rejected.validate_archives(current) and rejected.last_error.contains("archive"), "altered original archive rejects")
-	_check_corrected_archive_failure(current, installed_root, scratch)
-	_check(FileAccess.get_sha256(_save_path(old_content.campaign_id, "A")) == primary_hash and FileAccess.get_sha256(_save_path(old_content.campaign_id, "A") + ".bak") == backup_hash and host.active_slot(current) == "J", "failures preserve primary, backup and active-slot pointer")
-	_check(FileAccess.get_sha256(installed_root.path_join(old_content.campaign_id).path_join(old_content.package_hash + ".realmz2")) == FileAccess.get_sha256(source), "rejection fixtures do not alter the valid original installation")
 
 
 func _check_corrected_archive_failure(current: RealmzContent, installed_root: String, scratch: String) -> void:
@@ -290,6 +296,16 @@ func _check_corrected_archive_failure(current: RealmzContent, installed_root: St
 	var bytes := FileAccess.get_file_as_bytes(MarkerSaveUpdate.BUNDLE_ROOT.path_join(entry.file))
 	_write_bytes(bad_bundle.path_join(entry.file), bytes + PackedByteArray([0]))
 	_check(not _policy(installed_root, bad_bundle).validate_archives(current), "altered corrected archive rejects")
+
+
+func _exercises_failures(entry: Dictionary) -> bool:
+	return entry.campaignId == "scenario-city-of-bywater"
+
+
+## Installation-receipt revalidation, artwork and pending-shop copies run only
+## through shared SaveUpdateInstallation and SaveHostController paths.
+func _exercises_shared_paths() -> bool:
+	return true
 
 
 func _previous(entry: Dictionary) -> Dictionary:
@@ -306,7 +322,7 @@ func _policy(installed_root: String, bundle_root: String = MarkerSaveUpdate.BUND
 
 func _host(saves: SaveRepository, installed_root: String) -> SaveHostController:
 	# Every policy reads the scratch installation; a default would consult the player's real user://packages.
-	return SaveHostController.new(saves, HalfTruthMediaSaveUpdate.new(installed_root.path_join("scenario-half-truth").path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")), ShopSaveUpdate.new(installed_root), MarkerSaveUpdate.new(installed_root), PaymentSaveUpdate.new(installed_root), ProgramSaveUpdate.new(installed_root), CompressionSaveUpdate.new(installed_root), CompleteRecordSaveUpdate.new(installed_root))
+	return SaveHostController.new(saves, HalfTruthMediaSaveUpdate.new(installed_root.path_join("scenario-half-truth").path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")), ShopSaveUpdate.new(installed_root), MarkerSaveUpdate.new(installed_root), PaymentSaveUpdate.new(installed_root), ProgramSaveUpdate.new(installed_root), CompressionSaveUpdate.new(installed_root), CompleteRecordSaveUpdate.new(installed_root), TerrainSaveUpdate.new(installed_root))
 
 
 func _save_path(campaign: String, slot: String) -> String:

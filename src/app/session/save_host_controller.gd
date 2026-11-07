@@ -11,10 +11,11 @@ var _payment_update: PaymentSaveUpdate
 var _program_update: ProgramSaveUpdate
 var _compression_update: CompressionSaveUpdate
 var _record_update: CompleteRecordSaveUpdate
+var _terrain_update: TerrainSaveUpdate
 var _last_error := ""
 
 
-func _init(repository: SaveRepository = null, half_truth_update: HalfTruthMediaSaveUpdate = null, shop_update: ShopSaveUpdate = null, marker_update: MarkerSaveUpdate = null, payment_update: PaymentSaveUpdate = null, program_update: ProgramSaveUpdate = null, compression_update: CompressionSaveUpdate = null, record_update: CompleteRecordSaveUpdate = null) -> void:
+func _init(repository: SaveRepository = null, half_truth_update: HalfTruthMediaSaveUpdate = null, shop_update: ShopSaveUpdate = null, marker_update: MarkerSaveUpdate = null, payment_update: PaymentSaveUpdate = null, program_update: ProgramSaveUpdate = null, compression_update: CompressionSaveUpdate = null, record_update: CompleteRecordSaveUpdate = null, terrain_update: TerrainSaveUpdate = null) -> void:
 	_repository = repository if repository != null else SaveRepository.new()
 	_half_truth_update = half_truth_update if half_truth_update != null else HalfTruthMediaSaveUpdate.new()
 	_shop_update = shop_update if shop_update != null else ShopSaveUpdate.new()
@@ -23,6 +24,7 @@ func _init(repository: SaveRepository = null, half_truth_update: HalfTruthMediaS
 	_program_update = program_update if program_update != null else ProgramSaveUpdate.new()
 	_compression_update = compression_update if compression_update != null else CompressionSaveUpdate.new()
 	_record_update = record_update if record_update != null else CompleteRecordSaveUpdate.new()
+	_terrain_update = terrain_update if terrain_update != null else TerrainSaveUpdate.new()
 
 
 func save(content: RealmzContent, slot_id: String, snapshot: SessionSnapshot, preview_jpeg: PackedByteArray = PackedByteArray()) -> bool:
@@ -88,7 +90,7 @@ func previews(content: RealmzContent) -> Array[SaveSlotPreview]:
 
 
 func _can_update(campaign_id: String, old_hash: String, current_hash: String) -> bool:
-	return _record_update.eligible(campaign_id, old_hash, current_hash) or _compression_update.eligible(campaign_id, old_hash, current_hash) or _program_update.eligible(campaign_id, old_hash, current_hash) or _payment_update.eligible(campaign_id, old_hash, current_hash) or _marker_update.eligible(campaign_id, old_hash, current_hash) or _shop_update.eligible(campaign_id, old_hash, current_hash) or _half_truth_update.eligible(campaign_id, old_hash, current_hash)
+	return _terrain_update.eligible(campaign_id, old_hash, current_hash) or _record_update.eligible(campaign_id, old_hash, current_hash) or _compression_update.eligible(campaign_id, old_hash, current_hash) or _program_update.eligible(campaign_id, old_hash, current_hash) or _payment_update.eligible(campaign_id, old_hash, current_hash) or _marker_update.eligible(campaign_id, old_hash, current_hash) or _shop_update.eligible(campaign_id, old_hash, current_hash) or _half_truth_update.eligible(campaign_id, old_hash, current_hash)
 
 
 func assign_legacy_slot(content: RealmzContent, envelope: SessionSnapshot, replacement_slot: String = "") -> String:
@@ -104,6 +106,8 @@ func update_save(content: RealmzContent, slot_id: String, backup: bool = false) 
 	if content == null:
 		return ""
 	for preview: SaveSlotPreview in _repository.list_previews(content.campaign_id, ""):
+		if preview.slot_id == slot_id and (preview.source == SaveSlotPreview.BACKUP) == backup and _terrain_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
+			return _update_terrain_save(content, slot_id, backup)
 		if preview.slot_id == slot_id and (preview.source == SaveSlotPreview.BACKUP) == backup and _record_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
 			return _update_complete_record_save(content, slot_id, backup, preview.package_hash)
 		if preview.slot_id == slot_id and (preview.source == SaveSlotPreview.BACKUP) == backup and _compression_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
@@ -151,6 +155,18 @@ func _update_payment_save(content: RealmzContent, slot_id: String, backup: bool)
 		_last_error = _payment_update.last_error
 		return ""
 	return _copy_updated_save(content, original, _payment_update.updated_slot_id(slot_id, backup, content.package_hash))
+
+
+func _update_terrain_save(content: RealmzContent, slot_id: String, backup: bool) -> String:
+	# Verify the exact package pair before reading the save body.
+	if not _terrain_update.validate_archives(content):
+		_last_error = _terrain_update.last_error
+		return ""
+	var original := _repository.read_for_explicit_update(content.campaign_id, slot_id, _terrain_update.previous_hash(), backup)
+	if original == null:
+		_last_error = _repository.last_error
+		return ""
+	return _copy_updated_save(content, original, _terrain_update.updated_slot_id(slot_id, backup, content.package_hash))
 
 
 func _update_program_save(content: RealmzContent, slot_id: String, backup: bool, old_hash: String) -> String:
