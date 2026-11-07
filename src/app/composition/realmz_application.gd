@@ -151,7 +151,7 @@ func _create_save_host(scratch_root: String) -> SaveHostController:
 		return SaveHostController.new()
 	var packages := scratch_root.path_join("packages")
 	var half_truth := packages.path_join(HalfTruthMediaSaveUpdate.CAMPAIGN_ID).path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")
-	return SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves")), HalfTruthMediaSaveUpdate.new(half_truth), ShopSaveUpdate.new(packages), MarkerSaveUpdate.new(packages), PaymentSaveUpdate.new(packages), ProgramSaveUpdate.new(packages), CompressionSaveUpdate.new(packages), CompleteRecordSaveUpdate.new(packages))
+	return SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves")), HalfTruthMediaSaveUpdate.new(half_truth), ShopSaveUpdate.new(packages), MarkerSaveUpdate.new(packages), PaymentSaveUpdate.new(packages), ProgramSaveUpdate.new(packages), CompressionSaveUpdate.new(packages), CompleteRecordSaveUpdate.new(packages), TerrainSaveUpdate.new(packages))
 
 
 func _bind_debug_and_movement() -> void:

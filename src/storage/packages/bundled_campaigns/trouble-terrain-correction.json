@@ -1,0 +1,648 @@
+{
+  "kind": "realmz-rebuilt.trouble-terrain-correction",
+  "formatVersion": 1,
+  "campaignId": "scenario-trouble-in-the-sword-lands",
+  "file": "scenario-trouble-in-the-sword-lands.realmz2",
+  "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
+  "contentId": "719a430ccc982f87fe1523cb4d553ef6c695f4ee2dfb3abd56300aa29458a0a5",
+  "archiveSha256": "73f5b2166485355f022de306666facd5908ee80e977b17c63a746b5a6448d2f3",
+  "bytes": 8753153,
+  "compilerRevision": "84b531c5374903921fd578060656559927db208f",
+  "previousPackage": {
+    "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
+    "contentId": "b1c458bb08018f3deaceabaf70914f195d985f4277fc9edd43f9604a1c2dea20",
+    "archiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
+    "bytes": 8753239,
+    "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a"
+  },
+  "sourceCatalog": {
+    "file": "trouble-in-the-sword-lands.source.json",
+    "sha256": "d8dc7f1d781cb5a912d446fcf206167d0678a5cb7915c615ed459fccc58c04e4",
+    "snapshotSha256": "967ff3b15de0baf281c0db236d2a90bfe074c01484c86afee7eaf522e7e429c2"
+  },
+  "nativeFile": "Data LD",
+  "nativeBeforeSha256": "b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7",
+  "nativeAfterSha256": "b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e",
+  "toolchain": {
+    "adapter": {
+      "commit": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "sha256": "79aecfb2054689322ed7c8013306a55369fbdc6d4a0df954abd8829e31d33ed0"
+    },
+    "writer": {
+      "tool": "providence-application-library",
+      "command": "retain-reviewed-projections",
+      "commit": "84b531c5374903921fd578060656559927db208f",
+      "sourceTree": "6009d5d34e5672830099a0d25e89bf4e47cf7c5d",
+      "sha256": "d039bcfaa0bd27bfe96b9fba2ef0b8262ae1cfe7e1a00459290093be6073b46b",
+      "sourceBundle": {
+        "file": "providence-converter-terrain-corrections.bundle",
+        "sha256": "6d518f44157c84544b1a80b8ac201e769c57633cc549ecc04e924692144a2a2d",
+        "baseCommit": "49aec55e045cad2bd15b94489727fcf74f96d77a"
+      }
+    },
+    "rawCandidateArchiveSha256": "f299e555eb81f6427d2ab3e42e33e480c9429c28303ae77c480bfc107d01986e",
+    "projectionReceiptSha256": "ad42fc6a257600644f124946163d15492cbb8203e626055134c3ced215a435ee",
+    "projectionReceipt": "tools/fixtures/trouble-terrain-correction/terrain-projection-receipt.json",
+    "previousPackageRecipe": {
+      "file": "tools/fixtures/trouble-terrain-correction/scenario-trouble-in-the-sword-lands.realmz2.recipe.json.zlib",
+      "sha256": "e68fe178d3bfa9ca125fd4008a4c4f5dcfbb4927d04e11d3655839e6cfb59367"
+    }
+  },
+  "terrainCorrections": [
+    {
+      "mapId": "land:0",
+      "x": 11,
+      "y": 0,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:0",
+      "x": 57,
+      "y": 0,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:0",
+      "x": 12,
+      "y": 1,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:0",
+      "x": 13,
+      "y": 2,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:0",
+      "x": 14,
+      "y": 2,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 0,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 1,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 2,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 3,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 4,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 5,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 6,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 7,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 8,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 9,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 10,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 11,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 12,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 13,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 14,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 15,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 16,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 17,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 18,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 19,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 20,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 21,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 22,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 23,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 24,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 25,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 26,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 27,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 28,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 29,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 30,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 31,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 32,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 33,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 34,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 35,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 36,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 37,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 38,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 39,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 40,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 41,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 42,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 43,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 44,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 45,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 46,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 47,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 48,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 49,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 50,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 51,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 52,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 53,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 54,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 55,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 56,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 57,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 9,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 10,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 1,
+      "y": 10,
+      "before": 61,
+      "after": 169
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 11,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 2,
+      "y": 33,
+      "before": 61,
+      "after": 169
+    },
+    {
+      "mapId": "land:10",
+      "x": 1,
+      "y": 34,
+      "before": 61,
+      "after": 169
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 55,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 56,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 57,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 58,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 59,
+      "before": 169,
+      "after": 61
+    },
+    {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 63,
+      "before": 169,
+      "after": 61
+    }
+  ],
+  "changedFiles": {
+    "assets/index.json": {
+      "before": {
+        "bytes": 158109,
+        "sha256": "ed2fdc7fa347614506f2f6ca50c565595859527d2fa694649230dd27b99aafaf"
+      },
+      "after": {
+        "bytes": 158109,
+        "sha256": "ee6ec7b3a727529597871ab06bd6e048cfd85fc5c6750277d07e03cb59d1d45f"
+      }
+    },
+    "assets/media/51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9.json": {
+      "before": {
+        "bytes": 18688,
+        "sha256": "51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9"
+      },
+      "after": null
+    },
+    "assets/media/b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e.bin": {
+      "before": null,
+      "after": {
+        "bytes": 324000,
+        "sha256": "b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e"
+      }
+    },
+    "assets/media/b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7.bin": {
+      "before": {
+        "bytes": 324000,
+        "sha256": "b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7"
+      },
+      "after": null
+    },
+    "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json": {
+      "before": null,
+      "after": {
+        "bytes": 18688,
+        "sha256": "c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc"
+      }
+    },
+    "content.json": {
+      "before": {
+        "bytes": 4973061,
+        "sha256": "9bbb93a8781671d4adc8c41e3c7c6131f0300cd7bb46490c97b57368f14019b2"
+      },
+      "after": {
+        "bytes": 4973061,
+        "sha256": "bd62c354827e5cff95db22d849ecf0d59702ed05e2b219bc21cbee6587872edd"
+      }
+    },
+    "manifest.json": {
+      "before": {
+        "bytes": 55566,
+        "sha256": "b1a0ec7973d9f1eaa8e74b0ee2c664ae43b6b965f5d8dc39f5ec58196cc484e6"
+      },
+      "after": {
+        "bytes": 55566,
+        "sha256": "f81482a5d1e594cefc2707dc7aab68a6372f8dab926f3382fa9fdb1b6c39ab4b"
+      }
+    },
+    "world.json": {
+      "before": {
+        "bytes": 36812555,
+        "sha256": "7c996492736fb83db7cb6d496cc880adab70ff803827ab61e0d8b6758a032bde"
+      },
+      "after": {
+        "bytes": 36812210,
+        "sha256": "ad9042e049352dd808b22071112756745618eceb6b10bbbd69aee67e07075734"
+      }
+    }
+  }
+}

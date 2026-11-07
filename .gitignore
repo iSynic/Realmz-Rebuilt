@@ -14,6 +14,8 @@ release-evidence/
 !tools/providence-converter-map-markers-v6.bundle
 !tools/providence-converter-program-closure.bundle
 !tools/providence-converter-complete-records-v7.bundle
+!tools/providence-converter-source-compression.bundle
+!tools/providence-converter-terrain-corrections.bundle
 *.pyc
 __pycache__/
 user-data/

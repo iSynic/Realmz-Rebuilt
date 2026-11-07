@@ -1,0 +1,597 @@
+{
+ "kind": "realmz.reviewed-record-projections",
+ "formatVersion": 1,
+ "campaigns": [
+  {
+   "campaignId": "scenario-trouble-in-the-sword-lands",
+   "sourceHashes": {
+    "Scenario.rsrc": "244d2da63512a50c28da82c2800ba56322e10e23a6eb53a359573644a2bfae1a",
+    "Data ED3": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5",
+    "Data LD": "b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e",
+    "Data DL": "9e55a21cf05c5075b5b236984c34d15f115181587c69cb59afaba91746710464"
+   },
+   "authorityReceipts": {
+    "source-text-dispositions-final.json": "157624d01eb292566a4d2ebc907e18d1364455e2235ec7434121a6c3a3da5e16",
+    "trouble-payment-restoration.json": "f0bc470d9f0c6f220b911b9ab74c451fb115bd221d6d851efbe1854d3ef26067",
+    "baseline:scenario-trouble-in-the-sword-lands.realmz2": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846"
+   },
+   "fields": [
+    {
+     "document": "content.json",
+     "family": "items",
+     "id": "classic.item.992",
+     "slot": null,
+     "field": "name",
+     "before": "Unknown item",
+     "after": "Y?",
+     "authority": "source-text-dispositions-final.json"
+    },
+    {
+     "document": "scenario.json",
+     "family": "programs",
+     "id": "xap:330",
+     "slot": 0,
+     "field": "extraCode",
+     "before": [
+      70,
+      0,
+      10049,
+      81,
+      0
+     ],
+     "after": null,
+     "authority": "trouble-payment-restoration.json"
+    },
+    {
+     "document": "scenario.json",
+     "family": "programs",
+     "id": "xap:330",
+     "slot": 7,
+     "field": "extraCode",
+     "before": [
+      -1,
+      -1,
+      0,
+      100,
+      0
+     ],
+     "after": null,
+     "authority": "trouble-payment-restoration.json"
+    }
+   ],
+   "worldProjection": {
+    "beforeSha256": "e9ca44c0867ba79b3cc6cd87ed167a26c2eb2bf87d584fa151235f6f9ad61af0",
+    "afterSha256": "ad9042e049352dd808b22071112756745618eceb6b10bbbd69aee67e07075734",
+    "baselineWorldSha256": "7c996492736fb83db7cb6d496cc880adab70ff803827ab61e0d8b6758a032bde",
+    "baselineArchiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
+    "terrainCorrections": [
+     {
+      "mapId": "land:0",
+      "x": 11,
+      "y": 0,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:0",
+      "x": 57,
+      "y": 0,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:0",
+      "x": 12,
+      "y": 1,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:0",
+      "x": 13,
+      "y": 2,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:0",
+      "x": 14,
+      "y": 2,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 9,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 10,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 1,
+      "y": 10,
+      "before": 61,
+      "after": 169
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 11,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 2,
+      "y": 33,
+      "before": 61,
+      "after": 169
+     },
+     {
+      "mapId": "land:10",
+      "x": 1,
+      "y": 34,
+      "before": 61,
+      "after": 169
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 55,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 56,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 57,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 58,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 59,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:10",
+      "x": 0,
+      "y": 63,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 0,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 1,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 2,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 3,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 4,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 5,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 6,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 7,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 8,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 9,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 10,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 11,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 12,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 13,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 14,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 15,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 16,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 17,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 18,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 19,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 20,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 21,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 22,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 23,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 24,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 25,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 26,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 27,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 28,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 29,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 30,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 31,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 32,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 33,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 34,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 35,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 36,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 37,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 38,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 39,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 40,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 41,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 42,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 43,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 44,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 45,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 46,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 47,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 48,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 49,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 50,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 51,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 52,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 53,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 54,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 55,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 56,
+      "before": 169,
+      "after": 61
+     },
+     {
+      "mapId": "land:9",
+      "x": 89,
+      "y": 57,
+      "before": 169,
+      "after": 61
+     }
+    ]
+   }
+  }
+ ]
+}

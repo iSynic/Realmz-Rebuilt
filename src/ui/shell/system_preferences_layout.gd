@@ -269,16 +269,16 @@ func bind_audio(settings: PresentationSettings) -> void:
 
 func bind_command_titles(settings: PresentationSettings) -> void:
 	var world := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Interface/InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Commands")
-	var titles := world.get_node("OverworldCommandTitles") as CheckButton
+	var titles := world.get_node("HudButtonTitles") as CheckButton
 	var fit := world.get_node("FitHiddenCommandArt") as CheckButton
 	SystemSignalBinding.clear_toggled(titles)
-	titles.button_pressed = settings.show_overworld_command_titles
+	titles.button_pressed = settings.show_hud_button_titles
 	titles.toggled.connect(func(value: bool) -> void:
 		fit.disabled = value
-		setting_changed.emit(&"show_overworld_command_titles", value)
+		setting_changed.emit(&"show_hud_button_titles", value)
 	)
 	_bind_toggle(fit, settings.integer_fit_hidden_commands, &"integer_fit_hidden_commands")
-	fit.disabled = settings.show_overworld_command_titles
+	fit.disabled = settings.show_hud_button_titles
 
 
 func bind_pacing(settings: PresentationSettings) -> void:

@@ -153,10 +153,10 @@ layout_mode = 2
 theme_type_variation = &"ClassicNarrativeText"
 text = "The road bends through the forest, and distant bells carry on the wind."
 autowrap_mode = 2
-[node name="OverworldCommandTitles" type="CheckButton" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Commands"]
+[node name="HudButtonTitles" type="CheckButton" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs/Commands"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Show overworld command titles"
+text = "Show HUD button titles"
 tooltip_text = "Show captions on Search, Area Search, Camp, and Rest. Tooltips and controller labels remain available when captions are hidden."
 autowrap_mode = 2
 

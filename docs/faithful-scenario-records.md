@@ -61,7 +61,7 @@ Random-region overrides and VM/session continuation identities translate by exac
 
 Historical media, shop, marker, payment, program-restoration and compression receipts remain immutable. Supporting an earlier revision requires verifying its original transition before the independently pinned v7 transition. There is no general hash rebinding or automatic migration, and no character repair is part of this change.
 
-The complete-record receipt names thirteen immediate v6 pairs and forty already-supported historical predecessors. Older media/shop transitions whose original archives are unavailable are not silently broadened into direct v7 pairs. Their original policies and receipts remain retained. The authoritative maintainer source is `complete-records.json`; the game reads only its hash-pinned zlib copy, verifies exact decompressed length and source hash, then caches the parsed receipt. Unavailable or mismatched evidence disables the update.
+The complete-record receipt names thirteen immediate v6 pairs and forty already-supported historical predecessors. Trouble's row targets its owner-terrain-corrected bundle; its predecessors keep their state maps, and its immediately preceding v7 bundle uses the separate terrain receipt. Older media/shop transitions whose original archives are unavailable are not silently broadened into direct v7 pairs. Their original policies and receipts remain retained. The authoritative maintainer source is `complete-records.json`; the game reads only its hash-pinned zlib copy, verifies exact decompressed length and source hash, then caches the parsed receipt. Unavailable or mismatched evidence disables the update.
 
 ## Verification
 

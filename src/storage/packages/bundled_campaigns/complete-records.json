@@ -70190,12 +70190,12 @@
     {
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "packageHash": "e748ee9afbd060c17e60c0229b332f90edd24fda107433d3af5d62536581afd1",
-      "archiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
-      "bytes": 8753239,
+      "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
+      "archiveSha256": "73f5b2166485355f022de306666facd5908ee80e977b17c63a746b5a6448d2f3",
+      "bytes": 8753153,
       "files": {
         "assets/index.json": {
-          "sha256": "ed2fdc7fa347614506f2f6ca50c565595859527d2fa694649230dd27b99aafaf",
+          "sha256": "ee6ec7b3a727529597871ab06bd6e048cfd85fc5c6750277d07e03cb59d1d45f",
           "bytes": 158109
         },
         "assets/media/000c4130ad878b62c7a53bcf6ecf82ec3dfc49f8c67d17a958154b1fc204df2a.png": {
@@ -70605,10 +70605,6 @@
         "assets/media/51aad5a9c8bfe79d93db17465ad3268d8caccdc64b4ea0feba4c463837c76b15.png": {
           "sha256": "51aad5a9c8bfe79d93db17465ad3268d8caccdc64b4ea0feba4c463837c76b15",
           "bytes": 4196
-        },
-        "assets/media/51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9.json": {
-          "sha256": "51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9",
-          "bytes": 18688
         },
         "assets/media/52cd2a87f4762bd011622fb22ce00e3e58b77c6fbc4b29abec2188525dd5afc1.png": {
           "sha256": "52cd2a87f4762bd011622fb22ce00e3e58b77c6fbc4b29abec2188525dd5afc1",
@@ -71082,6 +71078,10 @@
           "sha256": "b26e7cc22a19fab1cf6e345f370c76f072b7a73c0435caa533f63e2418e3e53f",
           "bytes": 241158
         },
+        "assets/media/b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e.bin": {
+          "sha256": "b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e",
+          "bytes": 324000
+        },
         "assets/media/b3957bdf5b6048c4cd182ce5610e787797e8b426d7add3281b5d25111edb135a.png": {
           "sha256": "b3957bdf5b6048c4cd182ce5610e787797e8b426d7add3281b5d25111edb135a",
           "bytes": 4196
@@ -71117,10 +71117,6 @@
         "assets/media/b8dc6e494cd17b9a33a89d99f4163f3090ad0f46335b0a177d8f0105c133010b.png": {
           "sha256": "b8dc6e494cd17b9a33a89d99f4163f3090ad0f46335b0a177d8f0105c133010b",
           "bytes": 4196
-        },
-        "assets/media/b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7.bin": {
-          "sha256": "b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7",
-          "bytes": 324000
         },
         "assets/media/ba2504b9fff69510fe57ff0eb5179f66380ba883254ce3a508ef1ba12d290c21.png": {
           "sha256": "ba2504b9fff69510fe57ff0eb5179f66380ba883254ce3a508ef1ba12d290c21",
@@ -71173,6 +71169,10 @@
         "assets/media/c4461f47440f988c9e94fa7b84192b5881cd43a1463aba3fea9f11b82c1dea75.png": {
           "sha256": "c4461f47440f988c9e94fa7b84192b5881cd43a1463aba3fea9f11b82c1dea75",
           "bytes": 8324
+        },
+        "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json": {
+          "sha256": "c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc",
+          "bytes": 18688
         },
         "assets/media/c8b28dc20f936a3d509e58e34cb149f0bd6d1326cfd972fd5e631cacd5418d2e.png": {
           "sha256": "c8b28dc20f936a3d509e58e34cb149f0bd6d1326cfd972fd5e631cacd5418d2e",
@@ -71435,11 +71435,11 @@
           "bytes": 410018
         },
         "content.json": {
-          "sha256": "9bbb93a8781671d4adc8c41e3c7c6131f0300cd7bb46490c97b57368f14019b2",
+          "sha256": "bd62c354827e5cff95db22d849ecf0d59702ed05e2b219bc21cbee6587872edd",
           "bytes": 4973061
         },
         "manifest.json": {
-          "sha256": "b1a0ec7973d9f1eaa8e74b0ee2c664ae43b6b965f5d8dc39f5ec58196cc484e6",
+          "sha256": "f81482a5d1e594cefc2707dc7aab68a6372f8dab926f3382fa9fdb1b6c39ab4b",
           "bytes": 55566
         },
         "scenario.json": {
@@ -71447,8 +71447,8 @@
           "bytes": 3391616
         },
         "world.json": {
-          "sha256": "7c996492736fb83db7cb6d496cc880adab70ff803827ab61e0d8b6758a032bde",
-          "bytes": 36812555
+          "sha256": "ad9042e049352dd808b22071112756745618eceb6b10bbbd69aee67e07075734",
+          "bytes": 36812210
         }
       },
       "previousRevisions": [
@@ -72832,7 +72832,6 @@
             "assets/media/4eed5d14af81c9813f3f0866a03f94df39eada0b16cefcd0d2a6813a8e3e1f90.png",
             "assets/media/511f666e918c0dbf47b59c6e93b83d2cb69e089d62e552963bb1b2067ebe2d37.png",
             "assets/media/51aad5a9c8bfe79d93db17465ad3268d8caccdc64b4ea0feba4c463837c76b15.png",
-            "assets/media/51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9.json",
             "assets/media/52cd2a87f4762bd011622fb22ce00e3e58b77c6fbc4b29abec2188525dd5afc1.png",
             "assets/media/52daf846d87d97ed2c6f6c50455cddb7053c7f9658d727cf41d132a962d832ea.png",
             "assets/media/577068414543f9fab3da154360c855d02b697c0846c8d2f8eb1238238a34c8c1.png",
@@ -72962,6 +72961,7 @@
             "assets/media/b0cdace03a86b53cd88ef1c1772c786a2c91aa1a808fb8c8a112dc40fc583de9.png",
             "assets/media/b221c7a2a9c7314e9abcffe9b1c2c70812e315fa31cd011d4a0b9cbe32c4f3ea.png",
             "assets/media/b26e7cc22a19fab1cf6e345f370c76f072b7a73c0435caa533f63e2418e3e53f.bin",
+            "assets/media/b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e.bin",
             "assets/media/b533a638856e612056bdbbd297094bfce2bca7f93f0e288819224bc86d47e8a8.png",
             "assets/media/b57b81ba257ff68a959e0a3a76b3ae05e3f8e6f341940056e9462c130063751f.png",
             "assets/media/b665e3e111c3604f86b3ca688b86cecf04d7a5a625f87a683da51b04043e540a.png",
@@ -72970,6 +72970,7 @@
             "assets/media/b83797823067b6cc7e364490913324a54900d5c2f3eef437a44908d8ee0725df.png",
             "assets/media/b889741676f830a719d5fb66b061082604116c8c0db75a137e70f3ce2950778c.png",
             "assets/media/b8dc6e494cd17b9a33a89d99f4163f3090ad0f46335b0a177d8f0105c133010b.png",
+            "assets/media/b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7.bin",
             "assets/media/b9dba50d596191537a2c2104153d7207abed8918d473499dd46392d7e08320c6.png",
             "assets/media/ba8c664e21f29223c491bb7e3f875b41d1ef64cb99adc89ebe1977c53f0bab05.png",
             "assets/media/bb68d6aa68ef35fd718e9df9c57caca379019fd4dfe5661a3668c5bb5cb9ac11.png",
@@ -72984,6 +72985,7 @@
             "assets/media/c29cd7db7d7b538a145def160c79896fd7b4a374161d9feb86595bf7ab572e75.png",
             "assets/media/c3675786e9b0005242309798d66744b4c5ba584dcd14591dc65bf5ef91d5badc.png",
             "assets/media/c4adb7fa6692566e7d7502496c1c0b38aee86a5dd45089427a84ff5ddf281a1c.png",
+            "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json",
             "assets/media/c8b9066bee99e052a65b628029267a498af95567aeb69631d60fd75ffe9b3a36.png",
             "assets/media/c9532d1f4935733e957bd56a022a97019343b1600a667dd185d078aa8f970615.png",
             "assets/media/c9e43c8658beb2a141d178900ee043b03ee0d3299217facb3af0f8716074e28e.png",
@@ -85326,7 +85328,6 @@
             "assets/media/4eed5d14af81c9813f3f0866a03f94df39eada0b16cefcd0d2a6813a8e3e1f90.png",
             "assets/media/511f666e918c0dbf47b59c6e93b83d2cb69e089d62e552963bb1b2067ebe2d37.png",
             "assets/media/51aad5a9c8bfe79d93db17465ad3268d8caccdc64b4ea0feba4c463837c76b15.png",
-            "assets/media/51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9.json",
             "assets/media/52cd2a87f4762bd011622fb22ce00e3e58b77c6fbc4b29abec2188525dd5afc1.png",
             "assets/media/52daf846d87d97ed2c6f6c50455cddb7053c7f9658d727cf41d132a962d832ea.png",
             "assets/media/577068414543f9fab3da154360c855d02b697c0846c8d2f8eb1238238a34c8c1.png",
@@ -85456,6 +85457,7 @@
             "assets/media/b0cdace03a86b53cd88ef1c1772c786a2c91aa1a808fb8c8a112dc40fc583de9.png",
             "assets/media/b221c7a2a9c7314e9abcffe9b1c2c70812e315fa31cd011d4a0b9cbe32c4f3ea.png",
             "assets/media/b26e7cc22a19fab1cf6e345f370c76f072b7a73c0435caa533f63e2418e3e53f.bin",
+            "assets/media/b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e.bin",
             "assets/media/b533a638856e612056bdbbd297094bfce2bca7f93f0e288819224bc86d47e8a8.png",
             "assets/media/b57b81ba257ff68a959e0a3a76b3ae05e3f8e6f341940056e9462c130063751f.png",
             "assets/media/b665e3e111c3604f86b3ca688b86cecf04d7a5a625f87a683da51b04043e540a.png",
@@ -85464,6 +85466,7 @@
             "assets/media/b83797823067b6cc7e364490913324a54900d5c2f3eef437a44908d8ee0725df.png",
             "assets/media/b889741676f830a719d5fb66b061082604116c8c0db75a137e70f3ce2950778c.png",
             "assets/media/b8dc6e494cd17b9a33a89d99f4163f3090ad0f46335b0a177d8f0105c133010b.png",
+            "assets/media/b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7.bin",
             "assets/media/b9dba50d596191537a2c2104153d7207abed8918d473499dd46392d7e08320c6.png",
             "assets/media/ba8c664e21f29223c491bb7e3f875b41d1ef64cb99adc89ebe1977c53f0bab05.png",
             "assets/media/bb68d6aa68ef35fd718e9df9c57caca379019fd4dfe5661a3668c5bb5cb9ac11.png",
@@ -85478,6 +85481,7 @@
             "assets/media/c29cd7db7d7b538a145def160c79896fd7b4a374161d9feb86595bf7ab572e75.png",
             "assets/media/c3675786e9b0005242309798d66744b4c5ba584dcd14591dc65bf5ef91d5badc.png",
             "assets/media/c4adb7fa6692566e7d7502496c1c0b38aee86a5dd45089427a84ff5ddf281a1c.png",
+            "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json",
             "assets/media/c8b9066bee99e052a65b628029267a498af95567aeb69631d60fd75ffe9b3a36.png",
             "assets/media/c9532d1f4935733e957bd56a022a97019343b1600a667dd185d078aa8f970615.png",
             "assets/media/c9e43c8658beb2a141d178900ee043b03ee0d3299217facb3af0f8716074e28e.png",
@@ -97686,7 +97690,6 @@
             "assets/media/4eed5d14af81c9813f3f0866a03f94df39eada0b16cefcd0d2a6813a8e3e1f90.png",
             "assets/media/511f666e918c0dbf47b59c6e93b83d2cb69e089d62e552963bb1b2067ebe2d37.png",
             "assets/media/51aad5a9c8bfe79d93db17465ad3268d8caccdc64b4ea0feba4c463837c76b15.png",
-            "assets/media/51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9.json",
             "assets/media/52cd2a87f4762bd011622fb22ce00e3e58b77c6fbc4b29abec2188525dd5afc1.png",
             "assets/media/52daf846d87d97ed2c6f6c50455cddb7053c7f9658d727cf41d132a962d832ea.png",
             "assets/media/577068414543f9fab3da154360c855d02b697c0846c8d2f8eb1238238a34c8c1.png",
@@ -97828,6 +97831,7 @@
             "assets/media/af421ef0c053225d6ae6d90ff29514fab3f1316362b319780aa720a7fba9eb4a.png",
             "assets/media/b0cdace03a86b53cd88ef1c1772c786a2c91aa1a808fb8c8a112dc40fc583de9.png",
             "assets/media/b221c7a2a9c7314e9abcffe9b1c2c70812e315fa31cd011d4a0b9cbe32c4f3ea.png",
+            "assets/media/b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e.bin",
             "assets/media/b533a638856e612056bdbbd297094bfce2bca7f93f0e288819224bc86d47e8a8.png",
             "assets/media/b57b81ba257ff68a959e0a3a76b3ae05e3f8e6f341940056e9462c130063751f.png",
             "assets/media/b665e3e111c3604f86b3ca688b86cecf04d7a5a625f87a683da51b04043e540a.png",
@@ -97837,7 +97841,6 @@
             "assets/media/b83797823067b6cc7e364490913324a54900d5c2f3eef437a44908d8ee0725df.png",
             "assets/media/b889741676f830a719d5fb66b061082604116c8c0db75a137e70f3ce2950778c.png",
             "assets/media/b8dc6e494cd17b9a33a89d99f4163f3090ad0f46335b0a177d8f0105c133010b.png",
-            "assets/media/b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7.bin",
             "assets/media/b9dba50d596191537a2c2104153d7207abed8918d473499dd46392d7e08320c6.png",
             "assets/media/ba8c664e21f29223c491bb7e3f875b41d1ef64cb99adc89ebe1977c53f0bab05.png",
             "assets/media/bb68d6aa68ef35fd718e9df9c57caca379019fd4dfe5661a3668c5bb5cb9ac11.png",
@@ -97853,6 +97856,7 @@
             "assets/media/c29cd7db7d7b538a145def160c79896fd7b4a374161d9feb86595bf7ab572e75.png",
             "assets/media/c3675786e9b0005242309798d66744b4c5ba584dcd14591dc65bf5ef91d5badc.png",
             "assets/media/c4adb7fa6692566e7d7502496c1c0b38aee86a5dd45089427a84ff5ddf281a1c.png",
+            "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json",
             "assets/media/c8b9066bee99e052a65b628029267a498af95567aeb69631d60fd75ffe9b3a36.png",
             "assets/media/c9532d1f4935733e957bd56a022a97019343b1600a667dd185d078aa8f970615.png",
             "assets/media/c9e43c8658beb2a141d178900ee043b03ee0d3299217facb3af0f8716074e28e.png",
@@ -102431,7 +102435,6 @@
             "assets/media/4eed5d14af81c9813f3f0866a03f94df39eada0b16cefcd0d2a6813a8e3e1f90.png",
             "assets/media/511f666e918c0dbf47b59c6e93b83d2cb69e089d62e552963bb1b2067ebe2d37.png",
             "assets/media/51aad5a9c8bfe79d93db17465ad3268d8caccdc64b4ea0feba4c463837c76b15.png",
-            "assets/media/51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9.json",
             "assets/media/52cd2a87f4762bd011622fb22ce00e3e58b77c6fbc4b29abec2188525dd5afc1.png",
             "assets/media/52daf846d87d97ed2c6f6c50455cddb7053c7f9658d727cf41d132a962d832ea.png",
             "assets/media/577068414543f9fab3da154360c855d02b697c0846c8d2f8eb1238238a34c8c1.png",
@@ -102573,6 +102576,7 @@
             "assets/media/af421ef0c053225d6ae6d90ff29514fab3f1316362b319780aa720a7fba9eb4a.png",
             "assets/media/b0cdace03a86b53cd88ef1c1772c786a2c91aa1a808fb8c8a112dc40fc583de9.png",
             "assets/media/b221c7a2a9c7314e9abcffe9b1c2c70812e315fa31cd011d4a0b9cbe32c4f3ea.png",
+            "assets/media/b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e.bin",
             "assets/media/b533a638856e612056bdbbd297094bfce2bca7f93f0e288819224bc86d47e8a8.png",
             "assets/media/b57b81ba257ff68a959e0a3a76b3ae05e3f8e6f341940056e9462c130063751f.png",
             "assets/media/b665e3e111c3604f86b3ca688b86cecf04d7a5a625f87a683da51b04043e540a.png",
@@ -102582,7 +102586,6 @@
             "assets/media/b83797823067b6cc7e364490913324a54900d5c2f3eef437a44908d8ee0725df.png",
             "assets/media/b889741676f830a719d5fb66b061082604116c8c0db75a137e70f3ce2950778c.png",
             "assets/media/b8dc6e494cd17b9a33a89d99f4163f3090ad0f46335b0a177d8f0105c133010b.png",
-            "assets/media/b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7.bin",
             "assets/media/b9dba50d596191537a2c2104153d7207abed8918d473499dd46392d7e08320c6.png",
             "assets/media/ba8c664e21f29223c491bb7e3f875b41d1ef64cb99adc89ebe1977c53f0bab05.png",
             "assets/media/bb68d6aa68ef35fd718e9df9c57caca379019fd4dfe5661a3668c5bb5cb9ac11.png",
@@ -102598,6 +102601,7 @@
             "assets/media/c29cd7db7d7b538a145def160c79896fd7b4a374161d9feb86595bf7ab572e75.png",
             "assets/media/c3675786e9b0005242309798d66744b4c5ba584dcd14591dc65bf5ef91d5badc.png",
             "assets/media/c4adb7fa6692566e7d7502496c1c0b38aee86a5dd45089427a84ff5ddf281a1c.png",
+            "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json",
             "assets/media/c8b9066bee99e052a65b628029267a498af95567aeb69631d60fd75ffe9b3a36.png",
             "assets/media/c9532d1f4935733e957bd56a022a97019343b1600a667dd185d078aa8f970615.png",
             "assets/media/c9e43c8658beb2a141d178900ee043b03ee0d3299217facb3af0f8716074e28e.png",
@@ -107178,7 +107182,6 @@
             "assets/media/4eed5d14af81c9813f3f0866a03f94df39eada0b16cefcd0d2a6813a8e3e1f90.png",
             "assets/media/511f666e918c0dbf47b59c6e93b83d2cb69e089d62e552963bb1b2067ebe2d37.png",
             "assets/media/51aad5a9c8bfe79d93db17465ad3268d8caccdc64b4ea0feba4c463837c76b15.png",
-            "assets/media/51b50f0d7001c16aed410023d2c88c2a9835893304a8640c18668e70961d5cf9.json",
             "assets/media/52cd2a87f4762bd011622fb22ce00e3e58b77c6fbc4b29abec2188525dd5afc1.png",
             "assets/media/52daf846d87d97ed2c6f6c50455cddb7053c7f9658d727cf41d132a962d832ea.png",
             "assets/media/577068414543f9fab3da154360c855d02b697c0846c8d2f8eb1238238a34c8c1.png",
@@ -107320,6 +107323,7 @@
             "assets/media/af421ef0c053225d6ae6d90ff29514fab3f1316362b319780aa720a7fba9eb4a.png",
             "assets/media/b0cdace03a86b53cd88ef1c1772c786a2c91aa1a808fb8c8a112dc40fc583de9.png",
             "assets/media/b221c7a2a9c7314e9abcffe9b1c2c70812e315fa31cd011d4a0b9cbe32c4f3ea.png",
+            "assets/media/b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e.bin",
             "assets/media/b533a638856e612056bdbbd297094bfce2bca7f93f0e288819224bc86d47e8a8.png",
             "assets/media/b57b81ba257ff68a959e0a3a76b3ae05e3f8e6f341940056e9462c130063751f.png",
             "assets/media/b665e3e111c3604f86b3ca688b86cecf04d7a5a625f87a683da51b04043e540a.png",
@@ -107329,7 +107333,6 @@
             "assets/media/b83797823067b6cc7e364490913324a54900d5c2f3eef437a44908d8ee0725df.png",
             "assets/media/b889741676f830a719d5fb66b061082604116c8c0db75a137e70f3ce2950778c.png",
             "assets/media/b8dc6e494cd17b9a33a89d99f4163f3090ad0f46335b0a177d8f0105c133010b.png",
-            "assets/media/b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7.bin",
             "assets/media/b9dba50d596191537a2c2104153d7207abed8918d473499dd46392d7e08320c6.png",
             "assets/media/ba8c664e21f29223c491bb7e3f875b41d1ef64cb99adc89ebe1977c53f0bab05.png",
             "assets/media/bb68d6aa68ef35fd718e9df9c57caca379019fd4dfe5661a3668c5bb5cb9ac11.png",
@@ -107345,6 +107348,7 @@
             "assets/media/c29cd7db7d7b538a145def160c79896fd7b4a374161d9feb86595bf7ab572e75.png",
             "assets/media/c3675786e9b0005242309798d66744b4c5ba584dcd14591dc65bf5ef91d5badc.png",
             "assets/media/c4adb7fa6692566e7d7502496c1c0b38aee86a5dd45089427a84ff5ddf281a1c.png",
+            "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json",
             "assets/media/c8b9066bee99e052a65b628029267a498af95567aeb69631d60fd75ffe9b3a36.png",
             "assets/media/c9532d1f4935733e957bd56a022a97019343b1600a667dd185d078aa8f970615.png",
             "assets/media/c9e43c8658beb2a141d178900ee043b03ee0d3299217facb3af0f8716074e28e.png",
@@ -167917,5 +167921,5 @@
       ]
     }
   ],
-  "inventorySha256": "84c4ad40a1d0c84b0d6741b542f79a1b0c96b4a085da6a82af6e173bbf5fdcf2"
+  "inventorySha256": "c81a42f8e58af8d6e03679756a3f370c13e12bec4cd5781bc0a6dc6ce7e8764a"
 }

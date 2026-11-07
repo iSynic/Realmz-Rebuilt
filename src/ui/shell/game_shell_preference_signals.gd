@@ -14,7 +14,7 @@ static func emit_change(shell: GameShell, setting_id: StringName, value: Variant
 		&"music_transition": shell.music_transition_changed.emit(String(value))
 		&"interface_text_scale": shell.interface_text_scale_changed.emit(float(value))
 		&"narrative_text_scale": shell.narrative_text_scale_changed.emit(float(value))
-		&"show_overworld_command_titles": shell.show_overworld_command_titles_changed.emit(bool(value))
+		&"show_hud_button_titles": shell.show_hud_button_titles_changed.emit(bool(value))
 		&"integer_fit_hidden_commands": shell.integer_fit_hidden_commands_changed.emit(bool(value))
 		&"ui_scale_mode": shell.ui_scale_mode_changed.emit(String(value))
 		&"display_scaling_mode": shell.display_scaling_mode_changed.emit(String(value))

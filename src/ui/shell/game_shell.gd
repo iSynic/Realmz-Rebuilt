@@ -27,7 +27,7 @@ signal interface_text_scale_changed(value: float)
 signal narrative_text_scale_changed(value: float)
 signal font_choice_changed(role: StringName, identity: String)
 signal pause_changed(active: bool)
-signal show_overworld_command_titles_changed(enabled: bool)
+signal show_hud_button_titles_changed(enabled: bool)
 signal integer_fit_hidden_commands_changed(enabled: bool)
 signal ui_scale_mode_changed(value: String)
 signal display_scaling_mode_changed(value: String)
@@ -297,8 +297,20 @@ func bind_hud_content(modular: bool) -> void:
 		_party_effects.present(_current_view)
 
 
+# Interaction workspaces (Encounter Items, Skills, Spells) rebuild rows after
+# their first render; those rows need the same profile as the initial mount.
+func _inside_interaction_presenter(node: Node) -> bool:
+	var application := get_parent()
+	var current := node.get_parent()
+	while current != null and current != application:
+		if current is InteractionPresenter:
+			return true
+		current = current.get_parent()
+	return false
+
+
 func _on_tree_node_added(node: Node) -> void:
-	if is_ancestor_of(node) or (get_parent().is_ancestor_of(node) and (node.scene_file_path.begins_with("res://src/ui/shared/interactions/") or node.scene_file_path == "res://src/ui/combat/fast_spell_dock.tscn")):
+	if is_ancestor_of(node) or (get_parent().is_ancestor_of(node) and (node.scene_file_path.begins_with("res://src/ui/shared/interactions/") or node.scene_file_path == "res://src/ui/combat/fast_spell_dock.tscn" or _inside_interaction_presenter(node))):
 		UiSizing.bind_added.call_deferred(node.get_instance_id())
 	if node is Window and is_ancestor_of(node):
 		_sync_window_theme(node as Window)

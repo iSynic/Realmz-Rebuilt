@@ -47,9 +47,13 @@ func _render_character() -> void:
 		return
 	_selected_character_index = clampi(_selected_character_index, 0, _body.characters.size() - 1)
 	var character := _body.characters[_selected_character_index]
-	_portrait.texture = _portrait_texture(character.portrait_id)
+	# Rescale the replacement portrait like the first one; a plain texture
+	# assignment would draw the native 44-pixel art inside the enlarged slot.
+	UiSizing.artwork(_portrait, _portrait_texture(character.portrait_id))
 	_character_name.text = "%s · Thief actions" % character.name
+	# Detach before freeing so the card never measures both action sets at once.
 	for child: Node in _action_grid.get_children():
+		_action_grid.remove_child(child)
 		child.queue_free()
 	for action: InteractionRequestValue.ThiefAction in character.actions:
 		var button := (load(THIEF_ACTION_BUTTON_SCENE_PATH) as PackedScene).instantiate() as Button

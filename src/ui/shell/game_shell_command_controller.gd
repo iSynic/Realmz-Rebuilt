@@ -84,7 +84,7 @@ func rebuild() -> void:
 			else:
 				bitmap.set_art_scale(owner.layout_profile.bitmap_scale)
 		if button.has_method("set_command_title_visible"):
-			var show_command_title: bool = not owner.hud.active and (context != &"exploration" or owner.settings.show_overworld_command_titles)
+			var show_command_title: bool = not owner.hud.active and (context != &"exploration" or owner.settings.show_hud_button_titles)
 			button.call("set_command_title_visible", show_command_title, not owner.hud.active and owner.settings.integer_fit_hidden_commands)
 		if not owner.hud.active and button.has_method("set_modular_icon_layout"):
 			button.call("set_modular_icon_layout", 0, 0)
