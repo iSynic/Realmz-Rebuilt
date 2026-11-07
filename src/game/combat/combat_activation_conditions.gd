@@ -11,6 +11,8 @@ const FLEEING_ACTION := &"retreat"
 const REACTION_WAITING := 1
 const REACTION_DEATH_MACRO := 2
 const REACTION_MOVER_DEFEATED := 3
+## Bounds repeated zero jukes, which Castle leaves to chance; each choice otherwise spends movement or attacks.
+const ANIMATED_CHOICE_LIMIT := 10_000
 const CONFUSION_UNCHANGED := &"unchanged"
 const CONFUSION_TURNED := &"turned"
 const CONFUSION_RECOVERED := &"recovered"
@@ -117,9 +119,8 @@ func _roll_confusion(actor_id: String, hostile: bool, conditions: ConditionSet, 
 
 func _run_animated(state: GameState, content: RealmzContent, character: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> StringName:
 	var attacked := false
-	# Castle combat.c:958-962 repeats combatchoice until fewer than two half-attacks remain.
-	while character.current_health > 0:
-		# Each combatchoice tries the missile weapon before moving to strike.
+	# Castle combat.c:962-967 calls combatchoice, then ends the activation once fewer than two half-attacks remain.
+	for _choice: int in ANIMATED_CHOICE_LIMIT:
 		var shot := _animated.process_charmed_missile(state, content, character, rng, events)
 		if _animated.failure_result != null:
 			failure_result = _animated.failure_result
@@ -131,26 +132,27 @@ func _run_animated(state: GameState, content: RealmzContent, character: Characte
 			return RETURN
 		if shot == CombatCharmedCharacterAutomation.ATTACKED:
 			attacked = true
-			if not CombatFlowActions.character_can_continue(character):
+		else:
+			var approach := _animated.advance_charmed_character(state, content, character, rng, events)
+			if approach in [REACTION_WAITING, REACTION_DEATH_MACRO]:
+				return RETURN
+			if approach in [REACTION_MOVER_DEFEATED, CombatCharmedCharacterAutomation.APPROACH_GUARDED]:
 				break
-			continue
-		var movement_result := _animated.advance_charmed_character(state, content, character, rng, events)
-		if movement_result in [REACTION_WAITING, REACTION_DEATH_MACRO]:
-			return RETURN
-		if movement_result == REACTION_MOVER_DEFEATED:
-			break
-		var attack := _animated.process_charmed_character_turn(state, content, character, rng, events)
-		if _animated.failure_result != null:
-			failure_result = _animated.failure_result
-			return RETURN
-		if attack == CombatCharmedCharacterAutomation.DEATH_MACRO:
-			_context.rounds().advance_turn(state, content, rng, events)
-			return RETURN
-		if attack == CombatCharmedCharacterAutomation.NO_TARGET:
-			if not attacked:
-				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": character.id, "action": "advance", "reason": "no-legal-contact"}))
-			break
-		attacked = true
+			if approach == CombatCharmedCharacterAutomation.APPROACH_NO_TARGET:
+				if not attacked:
+					events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": character.id, "action": "advance", "reason": "no-legal-contact"}))
+				break
+			if approach == CombatCharmedCharacterAutomation.APPROACH_CONTACT:
+				var attack := _animated.process_charmed_character_turn(state, content, character, _animated.contact_target_id, rng, events)
+				if _animated.failure_result != null:
+					failure_result = _animated.failure_result
+					return RETURN
+				if attack == CombatCharmedCharacterAutomation.DEATH_MACRO:
+					_context.rounds().advance_turn(state, content, rng, events)
+					return RETURN
+				if attack == CombatCharmedCharacterAutomation.NO_TARGET:
+					break
+				attacked = true
 		if not CombatFlowActions.character_can_continue(character):
 			break
 	return _finish_activation(state, content, rng, events)

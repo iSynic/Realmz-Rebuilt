@@ -43,6 +43,9 @@ static func encode(combat: CombatState) -> Dictionary:
 	# Additive v9 fact, omitted when empty so saves without a sidelined revival keep their prior shape.
 	if not combat.roster.sidelined_ids().is_empty():
 		data["sidelinedMonsterIds"] = combat.roster.sidelined_ids()
+	# Additive v9 fact, omitted until an animated character keeps a target; earlier readers ignore it.
+	if not combat.turns.character_targets_data().is_empty():
+		data["characterTargets"] = combat.turns.character_targets_data()
 	return data
 
 
@@ -248,6 +251,8 @@ static func _restore_inventory_and_modes(result: CombatState, data: Dictionary, 
 		var mode: Variant = modes[actor_id]
 		if not actor_id is String or actor_id.is_empty() or not mode is String or mode not in ["melee", "missile"] or not order.has(actor_id) or result.roster.monster_by_id(actor_id) != null or not result.actor_statuses.set_character_weapon_mode(actor_id, StringName(mode)):
 			return false
+	if not _restore_character_targets(result, data.get("characterTargets", {}), order):
+		return false
 	var item_data: Variant = data.get("fumbledItems", [])
 	if not item_data is Array or item_data.size() > CombatDroppedItemState.MAX_ITEMS:
 		return false
@@ -255,6 +260,24 @@ static func _restore_inventory_and_modes(result: CombatState, data: Dictionary, 
 		var item := ItemInstance.from_data(entry)
 		if item == null or item.equipped or not result.dropped_items.queue(item):
 			return false
+	return true
+
+
+static func _restore_character_targets(result: CombatState, value: Variant, order: Array[String]) -> bool:
+	if not value is Dictionary:
+		return false
+	var targets: Dictionary = value
+	if targets.size() > 6:
+		return false
+	for key: Variant in targets:
+		var target_value: Variant = targets[key]
+		if not key is String or not target_value is String:
+			return false
+		var actor_id: String = key
+		var target_id: String = target_value
+		if actor_id == target_id or not order.has(actor_id) or not order.has(target_id) or result.roster.monster_by_id(actor_id) != null:
+			return false
+		result.turns.set_character_target(actor_id, target_id)
 	return true
 
 

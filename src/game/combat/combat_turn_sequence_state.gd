@@ -12,6 +12,7 @@ var retained_item_powers: Array[CombatItemPowerRoll] = []
 var _roster: CombatRosterState
 var _turn_order: Array[String] = []
 var _actor_ids: Dictionary = {}
+var _character_targets: Dictionary[String, String] = {}
 
 
 func _init(roster: CombatRosterState) -> void:
@@ -62,6 +63,26 @@ func delay_active_actor() -> bool:
 	var actor_id: String = _turn_order.pop_at(turn_index)
 	_turn_order.append(actor_id)
 	return false
+
+
+## Castle `c[].target`: keeps an animated character's target across its activations for the battle.
+func set_character_target(actor_id: String, target_id: String) -> void:
+	if not actor_id.is_empty() and not target_id.is_empty() and actor_id != target_id:
+		_character_targets[actor_id] = target_id
+
+
+func character_target(actor_id: String) -> String:
+	return _character_targets[actor_id] if _character_targets.has(actor_id) else ""
+
+
+func character_targets_data() -> Dictionary:
+	var actor_ids: Array[String] = []
+	actor_ids.assign(_character_targets.keys())
+	actor_ids.sort()
+	var result: Dictionary = {}
+	for actor_id: String in actor_ids:
+		result[actor_id] = _character_targets[actor_id]
+	return result
 
 
 func begin_active_turn() -> CombatTurnState:
