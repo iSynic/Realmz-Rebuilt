@@ -119,6 +119,21 @@ func _run_animated(state: GameState, content: RealmzContent, character: Characte
 	var attacked := false
 	# Castle combat.c:958-962 repeats combatchoice until fewer than two half-attacks remain.
 	while character.current_health > 0:
+		# Each combatchoice tries the missile weapon before moving to strike.
+		var shot := _animated.process_charmed_missile(state, content, character, rng, events)
+		if _animated.failure_result != null:
+			failure_result = _animated.failure_result
+			return RETURN
+		if shot == CombatCharmedCharacterAutomation.MACRO_SEQUENCE:
+			return RETURN
+		if shot == CombatCharmedCharacterAutomation.DEATH_MACRO:
+			_context.rounds().advance_turn(state, content, rng, events)
+			return RETURN
+		if shot == CombatCharmedCharacterAutomation.ATTACKED:
+			attacked = true
+			if not CombatFlowActions.character_can_continue(character):
+				break
+			continue
 		var movement_result := _animated.advance_charmed_character(state, content, character, rng, events)
 		if movement_result in [REACTION_WAITING, REACTION_DEATH_MACRO]:
 			return RETURN

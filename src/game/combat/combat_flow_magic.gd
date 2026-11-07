@@ -364,6 +364,31 @@ static func item_used_event(caster_id: String, instance_id: String, item: ItemDe
 	return DomainEvent.new(&"item_used", {"characterId": caster_id, "instanceId": instance_id, "itemId": item.id, "spellId": spell.id, "power": power_level, "chargesRemaining": remaining, "droppedOnEmpty": dropped, "source": "classic"})
 
 
+## Fires an animated character's single-target item missile and leaves its activation to the automation loop.
+func fire_animated_item_missile(state: GameState, content: RealmzContent, caster: CharacterState, instance_id: String, target_id: String, power_level: int, rng: RealmzRng) -> CombatFlowResult:
+	var instance := inventory_instance(caster, instance_id)
+	var item: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
+	var spell: SpellDefinition = null if item == null else content.magic.spell_by_classic_id(absi(item.special_2))
+	if spell == null or spell.target_type != 1:
+		return CombatFlowResult.failed(&"projectile_spell_unavailable", "The animated missile has no single-target item spell.")
+	var state_checkpoint := state.to_data()
+	var rng_checkpoint := rng.checkpoint()
+	if not _context.inventory.use_charge(caster, instance.id, item):
+		return CombatFlowResult.failed(&"item_charge_commit_failed", "The animated missile charge could not be committed.")
+	state.combat.turns.invalidate_undo()
+	var result := _resolution.resolve_targeted_item(state, content, caster, instance, item, spell, power_level, spell.classic_tier(), rng, target_id, state_checkpoint, rng_checkpoint, true)
+	if not result.ok:
+		return result
+	state.combat.turns.consume_random_item_power(instance.id)
+	var events: Array[DomainEvent] = [item_used_event(caster.id, instance.id, item, spell, power_level, caster)]
+	var native_sound_id := item.sound_id + 600
+	if item.sound_id != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
+	events.append_array(result.events)
+	result.events = events
+	return result
+
+
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
 	var spell := content.magic.spell_by_id(spell_id) if content != null else null
 	var effective_target_id := caster_id if spell != null and spell.target_type == 5 else target_id
