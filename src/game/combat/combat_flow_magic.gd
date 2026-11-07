@@ -13,6 +13,8 @@ const REACTION_COMPLETED := 0
 const REACTION_WAITING := 1
 const REACTION_DEATH_MACRO := 2
 const REACTION_MOVER_DEFEATED := 3
+## Item spell target types an animated missile resolves: actor, centered area and ray, the only types bundled missiles carry.
+const ANIMATED_MISSILE_TARGET_TYPES: Array[int] = [1, 3, 6]
 const MAX_MONSTERS: int = 100
 const MAX_AUTO_OPERATIONS: int = 256
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
@@ -195,11 +197,7 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 	elif spell.target_type == 0:
 		result = _resolve_repeated_spell_item(state, content, caster, instance, spell, power_level, cast_level, rng, target_ids, state_checkpoint, rng_checkpoint)
 	elif spell.target_type == 6:
-		var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell, power_level)
-		var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
-		if ray == null or not ray.cast:
-			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item ray spell could not be resolved.")
-		result = _resolution.commit(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
+		result = _resolve_ray_spell_item(state, content, caster, instance, spell, power_level, cast_level, rng, target_id, state_checkpoint, rng_checkpoint)
 	elif spell.target_type == 7:
 		var party := _context.magic.resolve_character_group_spell(caster, [], [], [], spell, power_level, cast_level, rng, true, false)
 		result = CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The party item spell could not be resolved.") if party == null or not party.cast else _resolution.commit(state, content, caster, spell, power_level, cast_level, party, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
@@ -210,7 +208,15 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 	return result
 
 
-func _resolve_area_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_coordinate: Vector2i, rotation: int, state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> CombatFlowResult:
+func _resolve_ray_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_id: String, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false) -> CombatFlowResult:
+	var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell, power_level)
+	var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
+	if ray == null or not ray.cast:
+		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item ray spell could not be resolved.")
+	return _resolution.commit(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, [], animated)
+
+
+func _resolve_area_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_coordinate: Vector2i, rotation: int, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false) -> CombatFlowResult:
 	var shape := _context.spell_areas.shape_for(spell, power_level, rotation)
 	var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 	var selected_ids: Dictionary = {}
@@ -226,7 +232,7 @@ func _resolve_area_spell_item(state: GameState, content: RealmzContent, caster: 
 		if area != null and not area.error_code.is_empty():
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, area.error_code, area.error_message)
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
-	return _resolution.commit(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance.id, false, [persistent_field])
+	return _resolution.commit(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance.id, false, [persistent_field], animated)
 
 
 func _resolve_repeated_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_ids: Array[String], state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> CombatFlowResult:
@@ -362,6 +368,40 @@ static func item_used_event(caster_id: String, instance_id: String, item: ItemDe
 			dropped = false
 			break
 	return DomainEvent.new(&"item_used", {"characterId": caster_id, "instanceId": instance_id, "itemId": item.id, "spellId": spell.id, "power": power_level, "chargesRemaining": remaining, "droppedOnEmpty": dropped, "source": "classic"})
+
+
+## Fires an animated character's item missile at one chosen actor and leaves its activation to the automation loop.
+## Castle combatinfo-combatchoice.c:456-459 casts the loaded spell at that actor's square, so ammunition
+## carrying an area (type 3) or ray (type 6) spell centers or aims on the target as well.
+func fire_animated_item_missile(state: GameState, content: RealmzContent, caster: CharacterState, instance_id: String, target_id: String, power_level: int, rng: RealmzRng) -> CombatFlowResult:
+	var instance := inventory_instance(caster, instance_id)
+	var item: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
+	var spell: SpellDefinition = null if item == null else content.magic.spell_by_classic_id(absi(item.special_2))
+	if spell == null or not ANIMATED_MISSILE_TARGET_TYPES.has(spell.target_type):
+		return CombatFlowResult.failed(&"projectile_spell_unavailable", "The animated missile has no actor, area or ray item spell.")
+	var state_checkpoint := state.to_data()
+	var rng_checkpoint := rng.checkpoint()
+	if not _context.inventory.use_charge(caster, instance.id, item):
+		return CombatFlowResult.failed(&"item_charge_commit_failed", "The animated missile charge could not be committed.")
+	state.combat.turns.invalidate_undo()
+	var result: CombatFlowResult
+	if spell.target_type == 3:
+		var center := state.combat.battlefield.actors.actor_position(target_id)
+		result = _resolve_area_spell_item(state, content, caster, instance, item, spell, power_level, spell.classic_tier(), rng, center, 0, state_checkpoint, rng_checkpoint, true)
+	elif spell.target_type == 6:
+		result = _resolve_ray_spell_item(state, content, caster, instance, spell, power_level, spell.classic_tier(), rng, target_id, state_checkpoint, rng_checkpoint, true)
+	else:
+		result = _resolution.resolve_targeted_item(state, content, caster, instance, item, spell, power_level, spell.classic_tier(), rng, target_id, state_checkpoint, rng_checkpoint, true)
+	if not result.ok:
+		return result
+	state.combat.turns.consume_random_item_power(instance.id)
+	var events: Array[DomainEvent] = [item_used_event(caster.id, instance.id, item, spell, power_level, caster)]
+	var native_sound_id := item.sound_id + 600
+	if item.sound_id != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
+	events.append_array(result.events)
+	result.events = events
+	return result
 
 
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:

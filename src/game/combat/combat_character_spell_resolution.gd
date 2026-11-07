@@ -95,7 +95,7 @@ func cast_area(state: GameState, content: RealmzContent, caster: CharacterState,
 	return commit(state, content, caster, spell, power_level, cast_level, area, rng, center, shape, "classic", "", true, [persistent_field])
 
 
-func resolve_targeted_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_id: String, state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> CombatFlowResult:
+func resolve_targeted_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_id: String, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false) -> CombatFlowResult:
 	var effective_target_id := caster.id if spell.target_type == 5 else target_id
 	var selection := _selection.spell_target_selection(state, content, effective_target_id)
 	var field_center := state.combat.battlefield.actors.actor_position(caster.id) if spell.target_type == 5 else INVALID_COORDINATE
@@ -119,16 +119,19 @@ func resolve_targeted_item(state: GameState, content: RealmzContent, caster: Cha
 		if targeted != null and not targeted.error_code.is_empty():
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, targeted.error_code, targeted.error_message)
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
-	return commit(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-item", instance.id, false, [persistent_field] if persistent_field != null else [])
+	return commit(state, content, caster, spell, power_level, cast_level, targeted, rng, field_center, 1 if spell.target_type == 5 and persistent_field != null else 0, "classic-item", instance.id, false, [persistent_field] if persistent_field != null else [], animated)
 
 
-func commit(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = INVALID_COORDINATE, shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = []) -> CombatFlowResult:
+## An animated commit leaves the activation to its automation loop: a death macro still ends it.
+func commit(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = INVALID_COORDINATE, shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true, persistent_fields: Array = [], animated: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	if count_spell_cast:
 		combat.turns.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
-	caster.movement = maxi(0, caster.movement - 12)
+	# Castle combatinfo-combatchoice.c:458 spends only two half-attacks on an animated shot.
+	if not animated:
+		caster.movement = maxi(0, caster.movement - 12)
 	var events: Array[DomainEvent] = []
 	_context.fields().append_created_events(events, persistent_fields, event_source)
 	CombatSpellEventBuilder.append_sound(events, spell.sound_start, "classic-combat-spell-start")
@@ -141,12 +144,14 @@ func commit(state: GameState, content: RealmzContent, caster: CharacterState, sp
 		events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetKind": "party", "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "duration": group.duration, "partyCondition": party_condition, "partyConditionValue": state.party.conditions.value(party_condition), "source": event_source}))
 	for index: int in group.resolutions.size():
 		_append_resolution(state, content, caster, spell, power_level, cast_level, group, index, center, shape, event_source, item_instance_id, events)
-	var advances_turn := not _context.actions().character_can_continue(caster)
+	var advances_turn := animated or not _context.actions().character_can_continue(caster)
 	if not combat.death_macros.pending_id().is_empty():
 		# resolvespell keeps inspell set while killbody runs every queued macro.
 		combat.turns.active_turn.classic_spell_active = true
 		if not combat.death_macros.begin_sequence(caster.id, advances_turn) or not CombatDeathMacroOperations.request_next(combat, content, events):
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The multi-target spell death-macro queue could not retain its caster and source order.")
+		return CombatFlowResult.from_combat(state.combat, events)
+	if animated:
 		return CombatFlowResult.from_combat(state.combat, events)
 	if advances_turn:
 		_context.rounds().advance_turn(state, content, rng, events)

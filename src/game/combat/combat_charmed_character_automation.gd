@@ -6,6 +6,15 @@ extends RefCounted
 const ATTACKED := 0
 const NO_TARGET := 1
 const DEATH_MACRO := 2
+## A spell death-macro sequence owns the rest of the activation and advances the turn when it completes.
+const MACRO_SEQUENCE := 3
+## Castle actor-slot layout used by the animated missile target loop (variables.h maxloopminus and maxmon).
+const CLASSIC_PARTY_SLOT_COUNT := 6
+const CLASSIC_FIRST_MONSTER_SLOT := 10
+const CLASSIC_LAST_ACTOR_SLOT := 109
+const CLASSIC_MONSTER_SLOT_COUNT := 100
+## Bounds the redraw loop; getrange already guarantees a reachable target, so Castle never needs this many draws.
+const CLASSIC_TARGET_LOOP_LIMIT := 100_000
 
 var _context: CombatContext
 var _monster_actions: CombatMonsterActions
@@ -50,6 +59,167 @@ func advance_charmed_character(state: GameState, content: RealmzContent, actor: 
 		combat.pending_reaction.set_origin_hostiles([])
 		combat.pending_reaction.set_phase(CombatReactionState.GUARD_BEFORE, [])
 	return 0
+
+
+## Fires one automatic missile, or reports NO_TARGET so the activation moves and strikes in melee.
+## Castle tomissle (tomissle-weap.c) shoots only with no adjacent enemy and a single-target missile
+## weapon; combatinfo-combatchoice.c:393-466 then fires at an opposed actor within spell range.
+func process_charmed_missile(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	failure_result = null
+	var combat := state.combat
+	if combat.pending_reaction != null or not _occupancy.hostile_adjacent_ids(state, actor.id).is_empty():
+		return NO_TARGET
+	var equipment := _context.equipment.combat_equipment(actor, content.items.definitions())
+	if not equipment.valid:
+		failure_result = CombatFlowResult.failed(equipment.error_code, equipment.error_message)
+		return NO_TARGET
+	if equipment.missile_weapon == null:
+		return NO_TARGET
+	var weapon_spell := content.magic.spell_by_classic_id(absi(equipment.missile_weapon.special_2))
+	if weapon_spell == null or weapon_spell.target_type != 1:
+		return NO_TARGET
+	_context.actions().prepare_character_turn(combat, actor)
+	var profile := _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	if profile.error_code == &"projectile_power_roll_required":
+		# Castle rolls Rand(7) for a power-eight missile before choosing its target.
+		var power := rng.draw(7, StringName("combat.projectile.%s.power" % profile.item_instance_id))
+		if not combat.turns.stage_random_item_power(actor.id, profile.item_instance_id, power, profile.item.id if state.adventure_rules.free_targeting_cancellation else ""):
+			failure_result = CombatFlowResult.failed(&"projectile_power_roll_unavailable", "The animated missile power could not be staged.")
+			return NO_TARGET
+		profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
+	if not profile.available or not CombatFlowMagic.ANIMATED_MISSILE_TARGET_TYPES.has(profile.spell.target_type):
+		return NO_TARGET
+	var target_id := _missile_target(state, content, actor, profile, rng)
+	if target_id.is_empty():
+		return NO_TARGET
+	combat.turns.active_turn.target_id = target_id
+	# Castle sets toggle on an animated shot, so the character stays in missile mode afterwards.
+	combat.actor_statuses.set_character_weapon_mode(actor.id, &"missile")
+	var monster := combat.roster.monster_by_id(target_id)
+	if monster != null and profile.spell.target_type == 1 and ClassicSpellSourceRules.is_supported_projectile_item_profile(profile.spell):
+		return _fire_physical_missile(state, content, actor, profile, monster, rng, events)
+	return _fire_item_missile(state, content, actor, profile, target_id, rng, events)
+
+
+## Castle combatinfo-combatchoice.c:396-475: with any opposed actor in range and sight (getrange), keep the
+## retained target while it is in range, otherwise redraw randrange(0, maxloopminus) over party slots 0-5
+## and monster slots 10-109. After twenty opposed out-of-range picks it sweeps upward from
+## randrange(0, maxmon); after fifty more it gives up and the activation moves to melee.
+func _missile_target(state: GameState, content: RealmzContent, actor: CharacterState, profile: ProjectileAttackProfile, rng: RealmzRng) -> String:
+	var combat := state.combat
+	var needs_sight := profile.spell.range_min + profile.spell.range_max > 0
+	var in_range := func(id: String) -> bool:
+		return CombatAiTargetFacts.health(state, id) > 0 and _context.reactions().projectile_target_is_valid(combat, content, actor.id, id, profile.maximum_range, needs_sight)
+	var any_in_range := false
+	for id: String in combat.battlefield.actors.actor_ids():
+		if not CombatAiTargetFacts.character_is_friendly(state, actor, id) and in_range.call(id):
+			any_in_range = true
+			break
+	if not any_in_range:
+		return ""
+	var slot := _classic_slot(state, combat.turns.active_turn.target_id)
+	var tries := 0
+	var cycle := false
+	for _guard: int in CLASSIC_TARGET_LOOP_LIMIT:
+		var id := _slot_actor(state, slot)
+		if not id.is_empty() and not CombatAiTargetFacts.character_is_friendly(state, actor, id):
+			combat.turns.active_turn.target_id = id
+			tries += 1
+			if tries > 51 and cycle:
+				return ""
+			if tries > 20 and not cycle:
+				tries = 0
+				cycle = true
+				slot = rng.draw_between(0, CLASSIC_MONSTER_SLOT_COUNT, &"combat.charmed_missile.cycle_start")
+			elif in_range.call(id):
+				return id
+		if cycle:
+			slot = 0 if slot >= CLASSIC_LAST_ACTOR_SLOT else slot + 1
+		else:
+			slot = rng.draw_between(0, CLASSIC_LAST_ACTOR_SLOT, &"combat.charmed_missile.target")
+	return ""
+
+
+## Castle actor slot for a party member (0-5) or roster monster (10 + index); -1 when absent.
+static func _classic_slot(state: GameState, actor_id: String) -> int:
+	if actor_id.is_empty():
+		return -1
+	var characters := state.party.characters()
+	for index: int in characters.size():
+		if characters[index].id == actor_id:
+			return index
+	var monsters := state.combat.roster.monsters()
+	for index: int in monsters.size():
+		if monsters[index].id == actor_id:
+			return CLASSIC_FIRST_MONSTER_SLOT + index
+	return -1
+
+
+## Actor in a Castle slot that its missile loop treats as present: a party member still in battle or a living monster.
+static func _slot_actor(state: GameState, slot: int) -> String:
+	if slot < 0:
+		return ""
+	if slot < CLASSIC_FIRST_MONSTER_SLOT:
+		var characters := state.party.characters()
+		if slot >= mini(characters.size(), CLASSIC_PARTY_SLOT_COUNT) or not state.combat.battlefield.actors.has_actor(characters[slot].id):
+			return ""
+		return characters[slot].id
+	var monsters := state.combat.roster.monsters()
+	var index := slot - CLASSIC_FIRST_MONSTER_SLOT
+	return monsters[index].id if index < monsters.size() and monsters[index].current_health > 0 else ""
+
+
+func _fire_physical_missile(state: GameState, content: RealmzContent, actor: CharacterState, profile: ProjectileAttackProfile, target: MonsterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var definition := content.combat.monster_by_id(target.definition_id)
+	var caste := content.characters.caste_by_id(actor.caste_id)
+	if definition == null or caste == null:
+		failure_result = CombatFlowResult.failed(&"projectile_target_unavailable", "Animated missile resolution requires the target monster and caster caste definitions.")
+		return NO_TARGET
+	if not _context.inventory.use_charge(actor, profile.item_instance_id, profile.item):
+		failure_result = CombatFlowResult.failed(&"projectile_charge_unavailable", "The animated missile charge could not be consumed atomically.")
+		return NO_TARGET
+	combat.turns.invalidate_undo()
+	var resolution := _context.magic.resolve_character_projectile(actor, caste, profile.item, target, profile.spell, profile.power_level, rng)
+	if resolution == null:
+		failure_result = CombatFlowResult.failed(&"unsupported_projectile_spell", "The animated missile cannot be resolved by the source-backed missile rules.")
+		return NO_TARGET
+	actor.lifetime_record.add_projectile_damage_given(resolution.total_damage, resolution.hit_count, resolution.miss_count, resolution.target_defeated)
+	if resolution.total_damage > 0:
+		combat.actor_statuses.mark_attacked(target.id)
+	combat.turns.active_turn.commit_physical_action()
+	combat.turns.consume_random_item_power(profile.item_instance_id)
+	# Castle combatinfo-combatchoice.c:458 spends two half-attacks and no movement on an animated shot.
+	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - 2)
+	CombatSpellEventBuilder.append_weapon_projectile(events, actor.id, target.id, profile.spell, resolution, "classic-combat-projectile")
+	events.append(DomainEvent.new(&"combat_projectile_resolved", {
+		"actorId": actor.id,
+		"targetId": target.id,
+		"targetKind": "monster",
+		"itemId": profile.item.id,
+		"spellId": profile.spell.id,
+		"special": absi(profile.spell.special),
+		"powerLevel": profile.power_level,
+		"range": _context.battlefield.classic_range(combat.battlefield, actor.id, target.id),
+		"hitCount": resolution.hit_count,
+		"missCount": resolution.miss_count,
+		"damage": resolution.total_damage,
+		"defeated": resolution.target_defeated,
+		"automatic": true,
+		"source": "classic",
+	}))
+	var death_macro_requested := resolution.target_defeated and CombatDeathMacroOperations.request_immediate(combat, target, definition, events)
+	CombatOccupancyRules.remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_requested)
+	return DEATH_MACRO if death_macro_requested else ATTACKED
+
+
+func _fire_item_missile(state: GameState, content: RealmzContent, actor: CharacterState, profile: ProjectileAttackProfile, target_id: String, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var result := _context.magic_flow().fire_animated_item_missile(state, content, actor, profile.item_instance_id, target_id, profile.power_level, rng)
+	if not result.ok:
+		failure_result = result
+		return NO_TARGET
+	events.append_array(result.events)
+	return MACRO_SEQUENCE if not state.combat.death_macros.actor_id().is_empty() else ATTACKED
 
 
 ## Resolves one automatic melee attack and reports ATTACKED, NO_TARGET or DEATH_MACRO.
