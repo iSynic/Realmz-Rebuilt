@@ -1,4 +1,4 @@
-## Resolves movement and automatic attacks for animated party actors.
+## Resolves movement and automatic attacks for animated party actors: charmed, confused and frightened.
 
 class_name CombatCharmedCharacterAutomation
 extends RefCounted
@@ -21,6 +21,19 @@ const APPROACH_CONTACT := 10
 const APPROACH_STEPPED := 11
 const APPROACH_GUARDED := 12
 const APPROACH_NO_TARGET := 13
+## The character waits for the player's Embrace Cowardice or Stay and Fight answer.
+const APPROACH_FLEE_QUESTION := 14
+## The character left the battle from the outermost battlefield cells.
+const APPROACH_FLED := 15
+const DUTY_NONE := 0
+const DUTY_BANDAGED := 1
+const DUTY_TURNED := 2
+const EDGE_NONE := 0
+const EDGE_QUESTION := 1
+const EDGE_FORCED := 2
+## Castle's large battle view (screensize 1) keeps an actor in its window only at field cells 1-87.
+const CLASSIC_WINDOW_FIRST_CELL := 1
+const CLASSIC_WINDOW_LAST_CELL := 87
 
 var _context: CombatContext
 var _monster_actions: CombatMonsterActions
@@ -36,31 +49,115 @@ func _init(context: CombatContext, monster_actions: CombatMonsterActions) -> voi
 	_occupancy = CombatOccupancyRules.new(context)
 
 
-## Castle forcemove (combatinfo-combatchoice.c:1497-1866) for one combatchoice of an animated character.
-## Returns APPROACH_CONTACT with contact_target_id set when an opposed actor is adjacent; APPROACH_STEPPED after a
-## step, swap or zero juke, so the next combatchoice decides again; APPROACH_GUARDED when juke passes or movement
-## run out; APPROACH_NO_TARGET without an opponent; otherwise the result of a suspended reaction.
-func advance_charmed_character(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+## Castle forcemove (combatinfo-combatchoice.c:1497-1866) for one combatchoice of an animated character; a
+## fleeing one reverses its step. Returns APPROACH_CONTACT with contact_target_id set when it strikes an opposed
+## actor; APPROACH_STEPPED after a step, swap or zero juke, so the next combatchoice decides again; APPROACH_GUARDED
+## when juke passes or movement run out; APPROACH_NO_TARGET without an opponent; APPROACH_FLEE_QUESTION or
+## APPROACH_FLED at the battlefield edge; otherwise the result of a suspended reaction.
+func advance_charmed_character(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent], fleeing: bool = false) -> int:
 	var combat := state.combat
 	contact_target_id = ""
+	failure_result = null
 	_context.actions().prepare_character_turn(combat, actor)
-	if combat.pending_reaction != null:
+	var resumed := combat.pending_reaction != null
+	if resumed:
 		var continuation: int = _context.reactions().continue_pending_reaction(state, content, rng, events)
-		return continuation if continuation != 0 else APPROACH_STEPPED
+		if continuation != 0:
+			return continuation
+	if combat.turns.active_turn.juke_step_cost > 0:
+		return _resume_juke(state, content, actor, rng, events)
+	if resumed:
+		return APPROACH_STEPPED
+	var origin := combat.battlefield.actors.actor_position(actor.id)
+	var edge := classic_window_edge(origin)
+	if edge == EDGE_FORCED:
+		return _flee_battle(state, content, actor, origin, rng, events)
+	if edge == EDGE_QUESTION:
+		combat.turns.active_turn.action = CombatActivationConditions.FLEE_QUESTION_ACTION
+		events.append(DomainEvent.new(&"combat_flee_question_requested", {"actorId": actor.id, "source": "classic"}))
+		return APPROACH_FLEE_QUESTION
 	var adjacent := _first_adjacent_opponent(state, actor)
-	if not adjacent.is_empty():
-		var guards := _guard_strikes(state, content, actor, adjacent, rng, events)
+	if not fleeing and not adjacent.is_empty():
+		var toward := combat.battlefield.actors.actor_position(adjacent) - origin
+		var guards := _guard_strikes(state, content, actor, origin + Vector2i(signi(toward.x), signi(toward.y)), rng, events)
 		return guards if guards != APPROACH_CONTACT else _contact(state, actor, adjacent)
-	var target_id := _approach_target(state, actor, rng)
+	var target_id := adjacent
+	if adjacent.is_empty():
+		target_id = _approach_target(state, actor, rng)
+	else:
+		combat.turns.set_character_target(actor.id, adjacent)
+		combat.turns.active_turn.target_id = adjacent
 	if target_id.is_empty():
 		return APPROACH_NO_TARGET
-	var origin := combat.battlefield.actors.actor_position(actor.id)
 	var goal := combat.battlefield.actors.actor_position(target_id)
 	var direction := Vector2i(signi(goal.x - origin.x), signi(goal.y - origin.y))
-	# Castle asks whether to flee when the straight step leaves the field (canflee); FD-COMBAT-024 guards instead.
-	if _context.reactions().probe_edge_retreat(combat, actor.id, origin + direction).allowed:
-		return _guard_activation(state, actor)
+	if fleeing:
+		direction = -direction
+		# moveforward's checkforenemy(0) lets guarding neighbors strike before the fleeing step.
+		var guards := _guard_strikes(state, content, actor, origin + direction, rng, events)
+		if guards != APPROACH_CONTACT:
+			return guards
 	return _step_or_juke(state, content, actor, direction, rng, events)
+
+
+## Castle forcemove's window check on the large battle view (inwindow, centerfield, canflee). The camera keeps
+## the acting character inside cells 1-87 whenever it can, so only the outermost cells leave it outside: cell 0
+## or 89 forces flight, and cell 88 asks Embrace Cowardice or Stay and Fight.
+static func classic_window_edge(position: Vector2i) -> int:
+	if position.x >= CLASSIC_WINDOW_FIRST_CELL and position.x <= CLASSIC_WINDOW_LAST_CELL and position.y >= CLASSIC_WINDOW_FIRST_CELL and position.y <= CLASSIC_WINDOW_LAST_CELL:
+		return EDGE_NONE
+	if position.x < 1 or position.y < 1 or position.x > 88 or position.y > 88:
+		return EDGE_FORCED
+	return EDGE_QUESTION
+
+
+## An animated character's flight from its own cell (destination == origin): Castle forcemove's canflee forces it
+## from cells 0 and 89, and the Embrace Cowardice answer releases it from cell 88.
+static func probe_edge_flight(combat: CombatState, origin: Vector2i, direction: Vector2i) -> CombatRetreatProbe:
+	var turn := combat.turns.active_turn if direction == Vector2i.ZERO else null
+	var edge := classic_window_edge(origin)
+	if turn != null and edge == EDGE_FORCED and turn.action in [CombatActivationConditions.ANIMATED_ACTION, CombatActivationConditions.FLEEING_ACTION]:
+		return CombatRetreatProbe.permitted(127, true)
+	if turn != null and edge == EDGE_QUESTION and turn.action == CombatActivationConditions.FLEE_QUESTION_ACTION:
+		return CombatRetreatProbe.permitted(127, false)
+	return CombatRetreatProbe.blocked(&"invalid_direction", "Battlefield-edge retreat requires one adjacent movement direction.")
+
+
+## Castle combatinfo-combatchoice.c:205-275: an animated loyal character that is not fleeing first bandages the
+## first bleeding party member, which ends its activation, then turns undead once when it can.
+func process_loyal_duties(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	failure_result = null
+	var combat := state.combat
+	var bleeding := _context.actions().bandage_candidate_ids(state)
+	if not bleeding.is_empty():
+		_context.actions().prepare_character_turn(combat, actor)
+		if not combat.actor_statuses.set_character_bleeding(bleeding[0], false):
+			failure_result = CombatFlowResult.failed(&"invalid_bandage_target", "The bleeding state could not be cleared.")
+			return DUTY_NONE
+		var roll := rng.draw(100, StringName("combat.animated.%s.bandage-sound" % actor.id))
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 10105, "waitForCompletion": false, "source": "classic-combat-bandage"}))
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 10121 if roll < 50 else 10123, "waitForCompletion": false, "source": "classic-combat-auto-bandage"}))
+		events.append(DomainEvent.new(&"combatant_bandaged", {"actorId": actor.id, "targetId": bleeding[0], "automatic": true, "source": "classic"}))
+		actor.attacks_remaining = 0
+		return DUTY_BANDAGED
+	if not _context.actions().probe_turn_undead(state, content, actor.id).allowed:
+		return DUTY_NONE
+	var turned := _context.actions().turn_undead(state, content, actor, rng)
+	if not turned.ok:
+		failure_result = turned
+		return DUTY_NONE
+	events.append_array(turned.events)
+	return DUTY_TURNED
+
+
+func _flee_battle(state: GameState, content: RealmzContent, actor: CharacterState, origin: Vector2i, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var fled := _context.reactions().retreat_character(state, content, actor.id, &"edge", origin, rng, false)
+	if not fled.ok:
+		failure_result = fled
+		return APPROACH_GUARDED
+	events.append(DomainEvent.new(&"classic_notification_requested", {"text": "Sorry...This PCs position forces him to flee from battle.", "soundId": 6000, "source": "classic-forced-flee"}))
+	events.append_array(fled.events)
+	return APPROACH_FLED
 
 
 ## Castle checkforenemy(1) scans the surrounding cells row by row; enemy[0] is the first opposed actor found.
@@ -82,16 +179,15 @@ func _is_present_opponent(state: GameState, actor: CharacterState, id: String) -
 	return state.party.character_by_id(id) != null or CombatAiTargetFacts.health(state, id) > 0
 
 
-## Castle moveforward runs checkforenemy(0) before the blow: each guarding adjacent opponent strikes first and
-## stops guarding. Returns APPROACH_CONTACT when the blow may follow, otherwise the suspended reaction result.
-func _guard_strikes(state: GameState, content: RealmzContent, actor: CharacterState, target_id: String, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+## Castle moveforward runs checkforenemy(0) before the blow or fleeing step: each guarding adjacent opponent
+## strikes first and stops guarding. Returns APPROACH_CONTACT when the choice may go on, otherwise the suspended
+## reaction result.
+func _guard_strikes(state: GameState, content: RealmzContent, actor: CharacterState, destination: Vector2i, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var guards := _context.reactions().guarding_hostiles(state, actor.id)
 	if guards.is_empty():
 		return APPROACH_CONTACT
-	var actors := state.combat.battlefield.actors
-	var origin := actors.actor_position(actor.id)
-	var toward := actors.actor_position(target_id) - origin
-	var reaction := CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, origin + Vector2i(signi(toward.x), signi(toward.y)), 0)
+	var origin := state.combat.battlefield.actors.actor_position(actor.id)
+	var reaction := CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, destination, 0)
 	reaction.set_origin_hostiles(_context.automation().hostile_adjacent_ids(state, actor.id))
 	reaction.set_phase(CombatReactionState.GUARD_AFTER, guards)
 	state.combat.pending_reaction = reaction
@@ -129,11 +225,9 @@ func _approach_target(state: GameState, actor: CharacterState, rng: RealmzRng) -
 
 ## Castle moveforward/loopposs: try the step; when blocked, juke by -2 + Rand(3) on each axis, and guard
 ## after more than twenty passes or once movement is spent. A blocking friend swaps places for five movement.
-func _step_or_juke(state: GameState, content: RealmzContent, actor: CharacterState, direction: Vector2i, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+func _step_or_juke(state: GameState, content: RealmzContent, actor: CharacterState, direction: Vector2i, rng: RealmzRng, events: Array[DomainEvent], passes: int = -1, juking: bool = false) -> int:
 	var combat := state.combat
 	var terrain := _monster_actions.battle_terrain_set(content, combat.battlefield)
-	var passes := -1
-	var juking := false
 	for _guard: int in CLASSIC_TARGET_LOOP_LIMIT:
 		if juking:
 			var previous := passes
@@ -156,10 +250,24 @@ func _step_or_juke(state: GameState, content: RealmzContent, actor: CharacterSta
 		if not probe.allowed:
 			continue
 		var result := _begin_step(state, content, actor, origin, probe.destination, probe.movement_cost, "", rng, events)
+		if combat.pending_reaction != null and actor.current_health > 0:
+			# The step waits on a reaction; its resumption continues this loop (_resume_juke).
+			combat.turns.active_turn.juke_passes = passes
+			combat.turns.active_turn.juke_step_cost = probe.movement_cost
 		# Castle juke-checks again when the movement left cannot pay for the step just taken.
 		if result != APPROACH_STEPPED or actor.current_health <= 0 or actor.movement >= probe.movement_cost:
 			return result
 	return _guard_activation(state, actor)
+
+
+## Continues the juke loop of a step that waited on a reaction, once that step has finished.
+func _resume_juke(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var turn := state.combat.turns.active_turn
+	var cost := turn.juke_step_cost
+	turn.juke_step_cost = 0
+	if actor.current_health <= 0 or not state.combat.battlefield.actors.has_actor(actor.id) or actor.movement >= cost:
+		return APPROACH_STEPPED
+	return _step_or_juke(state, content, actor, Vector2i.ZERO, rng, events, turn.juke_passes, true)
 
 
 ## Castle swaps an animated character with a blocking friend when it has more than four movement and the friend
@@ -177,7 +285,7 @@ func _begin_step(state: GameState, content: RealmzContent, actor: CharacterState
 	if not swap_id.is_empty():
 		reaction.friendly_collision_target_id = swap_id
 		reaction.friendly_collision_action = &"swap"
-	# Castle runs checkforenemy(0) once before this combatchoice's attempts, with no opponent adjacent.
+	# Castle's checkforenemy(0) for this combatchoice already ran (_guard_strikes) or had no adjacent opponent.
 	reaction.set_phase(CombatReactionState.GUARD_BEFORE, [])
 	combat.pending_reaction = reaction
 	var continuation: int = _context.reactions().continue_pending_reaction(state, content, rng, events)
@@ -215,7 +323,7 @@ func process_charmed_missile(state: GameState, content: RealmzContent, actor: Ch
 			failure_result = CombatFlowResult.failed(&"projectile_power_roll_unavailable", "The animated missile power could not be staged.")
 			return NO_TARGET
 		profile = _context.reactions().character_projectile_profile(actor, content, equipment, state)
-	if not profile.available or not CombatFlowMagic.ANIMATED_MISSILE_TARGET_TYPES.has(profile.spell.target_type):
+	if not profile.available or CombatFlowSummoning.is_summon_spell(profile.spell):
 		return NO_TARGET
 	var target_id := _missile_target(state, content, actor, profile, rng)
 	if target_id.is_empty():
@@ -269,6 +377,13 @@ func _missile_target(state: GameState, content: RealmzContent, actor: CharacterS
 	return ""
 
 
+## Field square Castle tomissle hands cast() for an actor (combatinfo-combatchoice.c:430-438): its slot as x and
+## 1 for a party member or 2 for a monster as y. Spells above type 1 land on this square, not on the actor.
+static func classic_target_square(state: GameState, actor_id: String) -> Vector2i:
+	var slot := _classic_slot(state, actor_id)
+	return Vector2i(slot, 1 if slot < CLASSIC_FIRST_MONSTER_SLOT else 2)
+
+
 ## Castle actor slot for a party member (0-5) or roster monster (10 + index); -1 when absent.
 static func _classic_slot(state: GameState, actor_id: String) -> int:
 	if actor_id.is_empty():
@@ -317,6 +432,7 @@ func _fire_physical_missile(state: GameState, content: RealmzContent, actor: Cha
 	if resolution.total_damage > 0:
 		combat.actor_statuses.mark_attacked(target.id)
 	combat.turns.active_turn.commit_physical_action()
+	combat.classic_blank_rounds = 0
 	combat.turns.consume_random_item_power(profile.item_instance_id)
 	# Castle combatinfo-combatchoice.c:458 spends two half-attacks and no movement on an animated shot.
 	actor.attacks_remaining = _context.arithmetic.signed_16(actor.attacks_remaining - 2)
@@ -343,7 +459,7 @@ func _fire_physical_missile(state: GameState, content: RealmzContent, actor: Cha
 
 
 func _fire_item_missile(state: GameState, content: RealmzContent, actor: CharacterState, profile: ProjectileAttackProfile, target_id: String, rng: RealmzRng, events: Array[DomainEvent]) -> int:
-	var result := _context.magic_flow().fire_animated_item_missile(state, content, actor, profile.item_instance_id, target_id, profile.power_level, rng)
+	var result := _context.magic_flow().fire_item_missile(state, content, actor, profile.item_instance_id, target_id, profile.power_level, rng)
 	if not result.ok:
 		failure_result = result
 		return NO_TARGET
@@ -377,6 +493,7 @@ func process_charmed_character_turn(state: GameState, content: RealmzContent, ac
 		return NO_TARGET
 	active_turn.physical_action_committed = true
 	active_turn.classic_physical_active = true
+	state.combat.classic_blank_rounds = 0
 	var resolution := _context.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day(), false, true, state.combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(monster_target.id)
@@ -403,6 +520,7 @@ func _resolve_charmed_attack_character(state: GameState, content: RealmzContent,
 		return NO_TARGET
 	active_turn.physical_action_committed = true
 	active_turn.classic_physical_active = true
+	state.combat.classic_blank_rounds = 0
 	var resolution := _context.combat.resolve_character_attack_character(actor, equipment, target, target_equipment, rng, false, true, state.combat.dropped_items.can_queue())
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(target.id)

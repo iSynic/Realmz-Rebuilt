@@ -19,6 +19,7 @@ import complete_record_history_pairs as history_pairs
 import compose_complete_record_history as composition
 import prepare_complete_record_updates as updates
 import verify_classic_records as native
+import verify_trouble_program as program
 import verify_trouble_terrain as terrain
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -236,15 +237,16 @@ def verify(package_root):
     corrections = native.correction_map(inventory["nativeCorrections"])
     contexts = native.source_context_campaigns(inventory["sourceContexts"])
     checks, sources = [], 0
-    owner_terrain = inventory["terrainCorrection"]
+    owner_terrain, owner_program = inventory["terrainCorrection"], inventory["programCorrection"]
     terrain_files = [name for name, row in rows.items() if row["campaignId"] == owner_terrain["campaignId"]]
-    require(len(terrain_files) == 1, "owner terrain correction campaign differs")
-    terrain_check = terrain.verify(package_root, inventory, rows[terrain_files[0]], provenance[terrain_files[0]])
+    require(len(terrain_files) == 1 and owner_program["campaignId"] == owner_terrain["campaignId"],
+            "owner correction campaign differs")
+    owner_check = program.verify(package_root, inventory, rows[terrain_files[0]], provenance[terrain_files[0]])
     terrain_cells = terrain.correction_cells(json.loads((ROOT / owner_terrain["receipt"]["file"]).read_bytes())["terrainCorrections"])
     for index, filename in enumerate(sorted(rows)):
         row, pin, entry = rows[filename], expected[filename], provenance[filename]
         manifest, files = archive(package_root / filename, row)
-        compiler = owner_terrain["compiler"] if filename in terrain_files else inventory["compiler"]
+        compiler = owner_program["compiler"] if filename in terrain_files else inventory["compiler"]
         require(manifest["schemaVersion"] == 7 and manifest["schemaHash"] == inventory["schemaSha256"]
                 and manifest["compiler"] == compiler, f"compiler/schema identity differs: {filename}")
         for field in ("campaignId", "packageHash", "archiveSha256", "bytes"):
@@ -282,7 +284,8 @@ def verify(package_root):
     return {"kind": "realmz.complete-records-verification", "formatVersion": 1,
             "campaigns": len(rows), "originalSourceFiles": sources,
             "historicalEndpoints": 13, "explicitSaveTransitions": 53,
-            "terrainCorrections": terrain_check["terrainCorrections"], "passed": True}
+            "terrainCorrections": owner_check["terrainCorrections"],
+            "programCorrections": owner_check["programCorrections"], "passed": True}
 
 
 def main():

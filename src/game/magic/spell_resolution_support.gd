@@ -114,6 +114,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	if absi(spell.special) == 60:
 		return _drain_character_spell_points(target, damage, duration, 0, saved)
 	var traitor_before := target.traitor
+	# spelllist.c:394-400: charm to a new hostile side clears c[].target.
+	var clears_target := ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell) and caster.classic_traitor != 0 and target.classic_traitor != caster.classic_traitor
 	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
 		target.classic_traitor = caster.classic_traitor
 	if rolled_damage != 0 and damage == 0:
@@ -128,6 +130,7 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	result.applied_condition = applied_condition
 	if applied_condition >= 0:
 		result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
+	result.clears_character_target = clears_target
 	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 
@@ -201,6 +204,8 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 	if absi(spell.special) == 60:
 		return _drain_character_spell_points(target, damage, duration, spell_cost, saved)
 	var traitor_before := target.traitor
+	# spelllist.c:394-400: charm to a new hostile side clears c[].target.
+	var clears_target := ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell) and caster.classic_traitor != 0 and target.classic_traitor != caster.classic_traitor
 	if ClassicSpellSpecialEffectRules.is_combat_charm_spell(spell):
 		target.classic_traitor = caster.classic_traitor
 	if rolled_damage != 0 and damage == 0:
@@ -215,6 +220,7 @@ func _resolve_monster_spell_character_target(caster: MonsterState, target: Chara
 	result.applied_condition = applied_condition
 	if applied_condition >= 0:
 		result.record_helpless_state(helpless_before, target.conditions.is_active(ConditionRules.HELPLESS))
+	result.clears_character_target = clears_target
 	_record_allegiance_change(result, traitor_before, target.traitor)
 	return result
 

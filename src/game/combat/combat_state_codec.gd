@@ -46,6 +46,9 @@ static func encode(combat: CombatState) -> Dictionary:
 	# Additive v9 fact, omitted until an animated character keeps a target; earlier readers ignore it.
 	if not combat.turns.character_targets_data().is_empty():
 		data["characterTargets"] = combat.turns.character_targets_data()
+	# Additive v9 fact, omitted at zero; earlier readers ignore it.
+	if combat.classic_blank_rounds != 0:
+		data["classicBlankRounds"] = combat.classic_blank_rounds
 	return data
 
 
@@ -128,7 +131,8 @@ static func _restore_header(result: CombatState, data: Dictionary, order: Array[
 	result.rewards_started = data.get("rewardsStarted", false)
 	result.rewards_completed = data.get("rewardsCompleted", false)
 	result.classic_post_battle_sentinel = _integer(data.get("classicPostBattleSentinel", 0))
-	return result.classic_post_battle_sentinel in [0, 8] and not (result.rewards_completed and not result.rewards_started)
+	result.classic_blank_rounds = _integer(data.get("classicBlankRounds", 0))
+	return result.classic_post_battle_sentinel in [0, 8] and result.classic_blank_rounds >= 0 and result.classic_blank_rounds <= 10 and not (result.rewards_completed and not result.rewards_started)
 
 
 static func _restore_actor_statuses(result: CombatState, data: Dictionary, order: Array[String]) -> bool:

@@ -136,6 +136,8 @@ func _resolve_actor_field(state: GameState, content: RealmzContent, field: Persi
 	if resolution.damage > 0 or resolution.damage < 0 and monster != null:
 		combat.actor_statuses.mark_attacked(character.id if character != null else monster.id)
 	var target_id := character.id if character != null else monster.id
+	if resolution.clears_character_target:
+		combat.turns.set_character_target(target_id, "")
 	_append_field_collision_event(events, field, spell, target_id, character != null, resolution)
 	return COLLISION_COMPLETED
 

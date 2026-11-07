@@ -13,6 +13,8 @@ var classic_post_battle_sentinel: int = 0
 var classic_enemy_count: int = 0
 var classic_kill_count: int = 0
 var classic_counters_available: bool = true
+## Castle blankround: round ends since the last attack()/attack2() or cast() (getup.c:85-88).
+var classic_blank_rounds: int = 0
 var _classic_actor_counts: Dictionary = {}
 var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
@@ -66,7 +68,9 @@ func _record_classic_actor(actor_id: String, side: int, alive: bool, positioned:
 		var old_positioned: bool = previous[2]
 		var delta := (1 if side != 0 else 0) - (1 if old_side != 0 else 0)
 		classic_enemy_count = RealmzArithmetic.new().signed_8(classic_enemy_count + delta)
-		if side != 0 and (old_alive and not alive or old_positioned and not positioned and (alive or character)):
+		# Castle's forceflee (combatinfo-combatchoice.c:1604-1619) leaves numenemy and killmon alone, so a
+		# character leaving the field alive is never a kill.
+		if side != 0 and (old_alive and not alive or old_positioned and not positioned and alive and not character):
 			classic_kill_count = RealmzArithmetic.new().signed_8(classic_kill_count + 1)
 	_classic_actor_counts[actor_id] = current
 

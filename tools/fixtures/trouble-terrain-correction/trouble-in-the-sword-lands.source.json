@@ -1,0 +1,817 @@
+{
+  "formatVersion": 1,
+  "campaignId": "scenario-trouble-in-the-sword-lands",
+  "authority": "project-owner-designated",
+  "designationDate": "2026-11-06",
+  "upstreamStatus": "castle-source-with-owner-terrain-correction",
+  "baseSource": {
+    "repository": "Realmz Castle",
+    "nativeFile": "Data LD",
+    "bytes": 324000,
+    "sha256": "b9b57fec44471f5ec213d4354e98b9eec459cd7cdba9c41c2f7cfc92325a69a7"
+  },
+  "terrainCorrection": {
+    "nativeFile": "Data LD",
+    "encoding": "big-endian-int16-x-major-90x90-per-level",
+    "cells": [
+      {
+        "mapId": "land:0",
+        "level": 0,
+        "x": 11,
+        "y": 0,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:0",
+        "level": 0,
+        "x": 57,
+        "y": 0,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:0",
+        "level": 0,
+        "x": 12,
+        "y": 1,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:0",
+        "level": 0,
+        "x": 13,
+        "y": 2,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:0",
+        "level": 0,
+        "x": 14,
+        "y": 2,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 0,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 1,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 2,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 3,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 4,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 5,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 6,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 7,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 8,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 9,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 10,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 11,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 12,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 13,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 14,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 15,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 16,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 17,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 18,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 19,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 20,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 21,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 22,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 23,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 24,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 25,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 26,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 27,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 28,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 29,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 30,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 31,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 32,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 33,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 34,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 35,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 36,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 37,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 38,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 39,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 40,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 41,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 42,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 43,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 44,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 45,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 46,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 47,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 48,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 49,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 50,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 51,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 52,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 53,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 54,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 55,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 56,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:9",
+        "level": 9,
+        "x": 89,
+        "y": 57,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 9,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 10,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 1,
+        "y": 10,
+        "before": 61,
+        "after": 169
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 11,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 2,
+        "y": 33,
+        "before": 61,
+        "after": 169
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 1,
+        "y": 34,
+        "before": 61,
+        "after": 169
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 55,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 56,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 57,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 58,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 59,
+        "before": 169,
+        "after": 61
+      },
+      {
+        "mapId": "land:10",
+        "level": 10,
+        "x": 0,
+        "y": 63,
+        "before": 169,
+        "after": 61
+      }
+    ]
+  },
+  "snapshot": {
+    "algorithm": "sha256-utf8-file-null-bytes-null-sha256-lines-v1",
+    "fileCount": 38,
+    "bytes": 4347851,
+    "sha256": "967ff3b15de0baf281c0db236d2a90bfe074c01484c86afee7eaf522e7e429c2"
+  },
+  "files": [
+    {
+      "file": "Custom 1 Music",
+      "bytes": 241158,
+      "sha256": "b26e7cc22a19fab1cf6e345f370c76f072b7a73c0435caa533f63e2418e3e53f"
+    },
+    {
+      "file": "Custom 2 Music",
+      "bytes": 60224,
+      "sha256": "0ba9022f65d5cee0b57103c64264fc64f8fb0f84d63cf70445f2747ead9f2471"
+    },
+    {
+      "file": "Data BD",
+      "bytes": 123868,
+      "sha256": "57813ae59cad9d5b42b4ac01fe5bd5ae072aa5f18675c4aab77079052135730d"
+    },
+    {
+      "file": "Data CI",
+      "bytes": 4608,
+      "sha256": "f56a2757efce38698830fb69da843240b1e5c609c00c81d5a8b20a7d6f9c9d09"
+    },
+    {
+      "file": "Data CS",
+      "bytes": 316,
+      "sha256": "2e6ba0bec34fe95afd49f563389233008652cd01516e88bec4e7721dff758c73"
+    },
+    {
+      "file": "Data Custom 1 BD",
+      "bytes": 8104,
+      "sha256": "1af95365d1a6ec2bf625e3ba5cfdaf54783e651611f3b48fc1019c03e12c0fe9"
+    },
+    {
+      "file": "Data Custom 2 BD",
+      "bytes": 8104,
+      "sha256": "cc4b9accb90dd37c5a0a6b8f3dc49f718909feaac495586c496a125a07e8bb5c"
+    },
+    {
+      "file": "Data DD",
+      "bytes": 80000,
+      "sha256": "d42672777a6323f80e49da743ef7333356c0e2a3385b2c98c6ef0ff039b4da5b"
+    },
+    {
+      "file": "Data DDD",
+      "bytes": 16000,
+      "sha256": "400ec3c95c412f84c55103b778ba352cd3153bdf553af21aa7112a0db9392573"
+    },
+    {
+      "file": "Data DES",
+      "bytes": 61952,
+      "sha256": "a8e1388631a254b97b903f5d3ad58b64614240e2d5de7bee3dcdd037bc0ba6ca"
+    },
+    {
+      "file": "Data DL",
+      "bytes": 64800,
+      "sha256": "9e55a21cf05c5075b5b236984c34d15f115181587c69cb59afaba91746710464"
+    },
+    {
+      "file": "Data ED",
+      "bytes": 57720,
+      "sha256": "4d805ef30249d067ad650b8a03472648dcc75623e364fe663914d95f4080a681"
+    },
+    {
+      "file": "Data ED2",
+      "bytes": 48360,
+      "sha256": "129bbd14a1f1ede6ba8f1788c1aff4d30d9abd02114d197b51ec47f720fb234b"
+    },
+    {
+      "file": "Data ED3",
+      "bytes": 93360,
+      "sha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5"
+    },
+    {
+      "file": "Data EDCD",
+      "bytes": 160200,
+      "sha256": "fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b"
+    },
+    {
+      "file": "Data LD",
+      "bytes": 324000,
+      "sha256": "b2a6b285d326c1d6366f2240d1ccbfb6a13a5bbe4825733af94367bf8c9a464e"
+    },
+    {
+      "file": "Data MD",
+      "bytes": 50820,
+      "sha256": "97061ce019e37ce4650ab52a8851b54e78f40695430b0f266c3c5ee0e7e74945"
+    },
+    {
+      "file": "Data MD-1",
+      "bytes": 50820,
+      "sha256": "8c66e972842f3879a8d8482cab7987c308f727564dc430fa43d944a0c69bd229"
+    },
+    {
+      "file": "Data MD1",
+      "bytes": 50820,
+      "sha256": "c08e38a3add21522f730f40962cb87a0200e784cd3660cd5b5f49bba77adf648"
+    },
+    {
+      "file": "Data MD2",
+      "bytes": 6800,
+      "sha256": "e84a405145902b657994eff2529831c0d5b761741b146b7c1fa3383819aea71c"
+    },
+    {
+      "file": "Data NI",
+      "bytes": 20000,
+      "sha256": "44e353c423b1efc1051c783a3e9b86e9417dec368ced2bd609b26b08219b5792"
+    },
+    {
+      "file": "Data RD",
+      "bytes": 12880,
+      "sha256": "2594c079463a86b5bb7c94f72390c0fa84190cc3a5b7494fd86a7371dd920f2c"
+    },
+    {
+      "file": "Data RDD",
+      "bytes": 2576,
+      "sha256": "331d1e8314a2aafcbf7cc2dca70125e7e417126a23a3a545d370c6e1b71fd1a2"
+    },
+    {
+      "file": "Data RI",
+      "bytes": 320,
+      "sha256": "17ca3049fd55f5b3834146dfb94b355a8aadd4bc8fdacba99254ea365e7d232e"
+    },
+    {
+      "file": "Data SD",
+      "bytes": 114076,
+      "sha256": "1df7b58bb3f21383e62b6abc62216ef0cc8530cf409fe1b79a522eef1af28568"
+    },
+    {
+      "file": "Data SD2",
+      "bytes": 812544,
+      "sha256": "97a80b25c540c621566140b038ed398fd25ecba815870abd6357ff2bfe253e51"
+    },
+    {
+      "file": "Data Solids",
+      "bytes": 1024,
+      "sha256": "6382a9bc01c713ba75b0fc342789535111a65fc688b4ab6abb91615ecec17880"
+    },
+    {
+      "file": "Data Spell",
+      "bytes": 9016,
+      "sha256": "b6eb7e7c4a95a231913d5e04350647a505ce60f7b229bc1e9d674c8a2f148d8f"
+    },
+    {
+      "file": "Data Spell.rsrc",
+      "bytes": 2219,
+      "sha256": "9be3ebb2cb1b185312ce683275511a146d2af4cf1a4d382516774a00da21e26f"
+    },
+    {
+      "file": "Data TD",
+      "bytes": 9312,
+      "sha256": "57d4e61fa37ab0e09c4ba11238774536ba992815710c440a9c17d92fa1e2b841"
+    },
+    {
+      "file": "Data TD2",
+      "bytes": 7198,
+      "sha256": "68e948c0385777ba42e5d27ed40602dea323abbadeff38916af5175d1cfa0f07"
+    },
+    {
+      "file": "Data TD3",
+      "bytes": 840,
+      "sha256": "284be3a80d7e89c623ef97615dc84491e6391bc6628e88f5f1c16e84afd4ad6c"
+    },
+    {
+      "file": "Global",
+      "bytes": 60,
+      "sha256": "001ade93b17fe137403627a90bb651f95b7cfeb80d2894fcec99ff8c9dd5470b"
+    },
+    {
+      "file": "Layout",
+      "bytes": 256,
+      "sha256": "1e2fe74ebff81650c0267f0a25fbd6d98189532af414d7add86e51435e848f9c"
+    },
+    {
+      "file": "Scenario",
+      "bytes": 600,
+      "sha256": "5d603b567cd7642ec4e45552943650d3ed4ab887ba409728cc36a43631d320bf"
+    },
+    {
+      "file": "Scenario.rsrc",
+      "bytes": 1842294,
+      "sha256": "244d2da63512a50c28da82c2800ba56322e10e23a6eb53a359573644a2bfae1a"
+    },
+    {
+      "file": "Trouble in the Sword Lands",
+      "bytes": 316,
+      "sha256": "84e877c01a212f397302ca46ed8ef3684b81b693fee30278f4abffd3afb12467"
+    },
+    {
+      "file": "Trouble in the Sword Lands.rsrc",
+      "bytes": 286,
+      "sha256": "145c12840a133ee613b56c5b24481161a6f1122129b9694bdef4841bcdf61815"
+    }
+  ]
+}

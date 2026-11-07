@@ -92,18 +92,22 @@ func _adjacent_actor_ids(combat: CombatState, battlefield_rules: BattlefieldRule
 	return adjacent_ids
 
 
+## Melee targets are adjacent actors opposed to the active character, so a charmed character the player
+## controls after Stay and Fight targets its loyal former allies.
 func _populate_combatants(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, adjacent_ids: Array[String]) -> void:
+	var active := _active_character(characters)
+	var allegiance := active.classic_traitor if active != null else 0
 	for monster: MonsterState in combat.roster.monsters():
 		var definition := content.combat.monster_by_id(monster.definition_id) if content != null else null
 		var view := MonsterView.new(monster, definition, content)
 		monsters.append(view)
-		if monster.current_health > 0 and monster.traitor and adjacent_ids.has(monster.id):
+		if monster.current_health > 0 and (monster.classic_traitor != allegiance if active != null else monster.traitor) and adjacent_ids.has(monster.id):
 			targets.append(view)
 	for character: CharacterState in characters:
 		if character.id == active_actor_id:
 			attack_units_remaining = character.attacks_remaining
 			movement_remaining = character.maximum_movement if combat.turns.active_turn == null else character.movement
-		if character.current_health > 0 and character.traitor and adjacent_ids.has(character.id):
+		if character.current_health > 0 and character.id != active_actor_id and (character.classic_traitor != allegiance if active != null else character.traitor) and adjacent_ids.has(character.id):
 			character_targets.append(CharacterView.new(character, content))
 
 
@@ -184,11 +188,16 @@ func _populate_projectile_targets(combat: CombatState, content: RealmzContent, c
 				return
 		ranged_attack_unavailable_reason = "The equipped item's effect has no available Classic target."
 		return
+	# Castle's missile cursor accepts any living actor in range and sight, the shooter's own side included.
+	var sight := profile.spell.range_min + profile.spell.range_max > 0
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and monster.classic_traitor != active_character.classic_traitor and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
+		if monster.current_health > 0 and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, sight):
 			targets.append(MonsterView.new(monster, content.combat.monster_by_id(monster.definition_id), content))
-	if targets.is_empty():
-		ranged_attack_unavailable_reason = "No hostile monster is within the projectile's Classic range and line of sight."
+	for character: CharacterState in game_state.party.characters():
+		if character.current_health > 0 and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, character.id, profile.maximum_range, sight):
+			character_targets.append(CharacterView.new(character, content))
+	if targets.is_empty() and character_targets.is_empty():
+		ranged_attack_unavailable_reason = "No combatant is within the projectile's Classic range and line of sight."
 	else:
 		legal_actions.append(&"attack")
 

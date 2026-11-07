@@ -29,6 +29,8 @@ func resume(state: GameState, content: RealmzContent, rng: RealmzRng, events: Ar
 			return
 		match cursor.phase:
 			&"party":
+				if _blank_rounds_end_battle(state, content, events):
+					return
 				_process_party(state, events)
 				cursor.phase = &"character-fields"
 			&"character-fields":
@@ -48,6 +50,20 @@ func resume(state: GameState, content: RealmzContent, rng: RealmzRng, events: Ar
 					cursor.phase = &"warning"
 				else:
 					_process_monster(state, content, combat.roster.monsters()[cursor.actor_index], rng, events)
+
+
+## Castle getup.c:85-88 after the battle macro: a round that ends with blankround already above eight
+## sets killmon = numenemy and coward, ending the battle without treasure as if the party fled.
+func _blank_rounds_end_battle(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
+	var combat := state.combat
+	var expired := combat.classic_blank_rounds > 8
+	combat.classic_blank_rounds += 1
+	if not expired:
+		return false
+	combat.round_cursor = null
+	events.append(DomainEvent.new(&"combat_blank_rounds_expired", {"battleId": combat.battle_id, "source": "classic"}))
+	_context.rounds().complete_battle(state, content, &"retreated", events)
+	return true
 
 
 func _process_party(state: GameState, events: Array[DomainEvent]) -> void:

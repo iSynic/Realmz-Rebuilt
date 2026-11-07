@@ -17,7 +17,6 @@ var _path := ""
 var _seed := 1
 var _mode: StringName = &"setup"
 var _waiting := false
-var _pending_update := false
 var _setup_path := ""
 var _selected_setup_path := ""
 var _browser_campaign := ""
@@ -51,7 +50,6 @@ func _init(packages: PackageHostController, session: GameSessionController, file
 	browser.load_requested.connect(request_load)
 	browser.legacy_load_requested.connect(request_load)
 	browser.refresh_requested.connect(refresh_browser)
-	browser.update_requested.connect(request_update)
 
 
 func begin_setup(path: String, seed_value: int) -> bool:
@@ -59,7 +57,6 @@ func begin_setup(path: String, seed_value: int) -> bool:
 	_seed = seed_value
 	_selected_setup_path = path
 	_waiting = false
-	_pending_update = false
 	_navigator.setup_controller.campaign_library.setup_ready = path == _setup_path and _session.view().party_setup_available
 	var started := _prepare(path)
 	if _candidate != null: accept_package(_candidate)
@@ -112,12 +109,11 @@ func accept_package(prepared: PreparedPackage, source_path: String = "") -> void
 		if _setup_path != _path or not _session.view().party_setup_available:
 			_install_setup(ScenarioSetupCatalog.new(prepared.content, _files.library_content().package_hash), prepared.media)
 		if _waiting: request_play()
-	elif _pending_update:
-		_finish_update()
 	elif _waiting:
 		_finish_load()
 	else:
-		_navigator.startup.browser.set_progress("Ready to load.")
+		var notice := _apply_updates()
+		_navigator.startup.browser.set_progress(notice if not notice.is_empty() else "Ready to load.")
 
 
 func progress(operation: PackageOperationView) -> void:
@@ -202,10 +198,12 @@ func _refresh_previews() -> void:
 	_previews.clear()
 	if not _browser_campaign.is_empty(): _previews = _saves.campaign_previews(_browser_campaign, _current_hash())
 	for preview: SaveSlotPreview in _previews:
+		# A save with a pinned update loads through the current revision, which applies it.
+		preview.can_load = preview.can_load or preview.can_update
 		if preview.can_load and _revision_path(preview).is_empty():
 			preview.can_load = false
 			preview.status = SaveSlotPreview.PACKAGE_MISMATCH
-			preview.error_message = "This save needs scenario revision %s, which is not installed. Restore that exact package or use an offered Update Save action." % preview.package_hash.left(12)
+			preview.error_message = "This save needs scenario revision %s, which is not installed. Restore that exact package to load it." % preview.package_hash.left(12)
 	if _selected_preview() == null:
 		var remembered := _saves.remembered_slot(_browser_campaign)
 		var selected: SaveSlotPreview
@@ -223,7 +221,6 @@ func _refresh_previews() -> void:
 func select_save(slot: String, backup: bool) -> void:
 	_selected_key = "%s:%s" % [slot, "backup" if backup else "primary"]
 	_waiting = false
-	_pending_update = false
 	_mode = &"load"
 	_replacement_slot = ""
 	var preview := _selected_preview()
@@ -253,7 +250,7 @@ func request_load(slot: String, backup: bool, replacement_slot: String = "") -> 
 
 func _finish_load() -> void:
 	var preview := _selected_preview()
-	if preview == null or _candidate.content.package_hash != preview.package_hash or _candidate.content.campaign_id != preview.campaign_id:
+	if preview == null or (_candidate.content.package_hash != preview.package_hash and not preview.can_update) or _candidate.content.campaign_id != preview.campaign_id:
 		_fail("The prepared scenario does not match the selected save. Select the save again to retry.")
 		return
 	var step := _storage.load(_candidate.content, preview.slot_id, preview.source == SaveSlotPreview.BACKUP, _replacement_slot)
@@ -267,30 +264,15 @@ func _finish_load() -> void:
 	_navigator.startup.finish_loading(true)
 
 
-func request_update(slot: String, backup: bool) -> void:
-	_selected_key = "%s:%s" % [slot, "backup" if backup else "primary"]
+## Once the current revision is prepared for a selected save that has a pinned update,
+## applies every such update to this campaign's saves and returns a brief notice.
+func _apply_updates() -> String:
 	var preview := _selected_preview()
-	if preview == null or not preview.can_update: return
-	_mode = &"load"
-	_pending_update = true
-	_waiting = false
-	for campaign: CampaignPackageView in _campaigns:
-		if campaign.campaign_id == _browser_campaign and campaign.package_hash == _current_hash():
-			_prepare(campaign.path)
-			if _candidate != null: _finish_update()
-			return
-
-
-func _finish_update() -> void:
-	_pending_update = false
-	var preview := _selected_preview()
-	if preview == null: return
-	var updated_slot := _storage.update_save(_candidate.content, preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
-	if not updated_slot.is_empty():
-		_selected_key = updated_slot + ":primary"
-		refresh_browser()
-	else:
-		_fail(_saves.last_error())
+	if preview == null or not preview.can_update or _candidate.content.package_hash != _current_hash(): return ""
+	var updated := _saves.apply_updates(_candidate.content)
+	if updated.is_empty(): return ""
+	_refresh_previews()
+	return "Updated %s for the current campaign revision. Originals are kept as backups." % ("1 save" if updated.size() == 1 else "%d saves" % updated.size())
 
 
 func cancel_wait() -> void:
@@ -300,7 +282,6 @@ func cancel_wait() -> void:
 
 func _browser_closed() -> void:
 	_waiting = false
-	_pending_update = false
 	_discard_completion = true
 	_packages.cancel()
 
@@ -310,7 +291,6 @@ func _fail(message: String) -> void:
 	_candidate = null
 	if _mode == &"setup": _selected_setup_path = _setup_path
 	_waiting = false
-	_pending_update = false
 	_navigator.startup.finish_loading()
 	_navigator.startup.browser.set_progress(message + " Select Load to retry.")
 	_navigator.setup_controller.campaign_library.set_package_operation(PackageOperationView.new(PackageOperationView.FAILED, &"", 0, 0, message, &"preparation_failed", _path, &"install_scenario"))
@@ -327,6 +307,9 @@ func _key(preview: SaveSlotPreview) -> String:
 
 
 func _revision_path(preview: SaveSlotPreview) -> String:
+	if preview.can_update:
+		for campaign: CampaignPackageView in _campaigns:
+			if campaign.campaign_id == preview.campaign_id and campaign.package_hash == _current_hash(): return campaign.path
 	for revision: PackageDiscoveryResult in _revisions:
 		if revision.ready and revision.campaign_id == preview.campaign_id and revision.package_hash == preview.package_hash: return revision.path
 	return ""

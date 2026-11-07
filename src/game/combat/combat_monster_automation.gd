@@ -224,6 +224,7 @@ func process_monster_cast(state: GameState, content: RealmzContent, monster: Mon
 			return MONSTER_ATTACK_FALLBACK
 		if _failure != null: return MONSTER_ATTACK_FAILED
 		active_turn.spell_cast_count += 1
+		if spell.target_type not in [9, 10, 12]: state.combat.classic_blank_rounds = 0
 		did_cast = true
 	return _finish_monster_cast(state, content, monster, did_cast, events)
 
@@ -304,6 +305,8 @@ func _append_monster_spell_resolution_events(state: GameState, content: RealmzCo
 		var reflected := resolutions.reflected_targets[index]
 		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
 			state.combat.actor_statuses.mark_attacked(resolved_target_id)
+		if resolution.clears_character_target:
+			state.combat.turns.set_character_target(resolved_target_id, "")
 		CombatSpellEventBuilder.append_projectile(events, monster.id, resolved_target_id, spell, "classic-monster")
 		CombatSpellEventBuilder.append_sound(events, spell.sound_end, "classic-monster-spell-result")
 		if resolution.target_defeated:
@@ -592,6 +595,7 @@ func _resolve_attack_against_character(state: GameState, content: RealmzContent,
 	var defender_armor := equipment.effective_armor if equipment.valid else target.armor
 	var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
 	var attack_context := MonsterAttackContext.new(weapon, state.clock.day(), false, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
+	state.combat.classic_blank_rounds = 0
 	var resolution := _context.combat.resolve_monster_attack(monster, definition, attack_index, target, race, caste, rng, charm_bonus, attack_context, true)
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(target.id)
@@ -624,6 +628,7 @@ func _resolve_attack_against_monster(state: GameState, content: RealmzContent, m
 	var target_definition := content.combat.monster_by_id(target.definition_id)
 	var weapon := content.items.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 	var attack_context := MonsterAttackContext.new(weapon, state.clock.day())
+	state.combat.classic_blank_rounds = 0
 	var resolution := _context.combat.resolve_monster_attack_monster(monster, definition, attack_index, target, target_definition, rng, attack_context, true)
 	if resolution.total_damage() > 0:
 		state.combat.actor_statuses.mark_attacked(target.id)

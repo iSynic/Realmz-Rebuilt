@@ -154,8 +154,8 @@ def verify_catalog_entry(entry, terrain, receipt):
             "terrain provenance identity differs")
 
 
-def verify(package_root, inventory, current_row, catalog_entry):
-    terrain = inventory["terrainCorrection"]
+def verify(new_path, terrain, current_row, catalog_entry):
+    """Check the terrain correction at `new_path`, the archive identified by `current_row`."""
     receipt = json.loads(pinned(terrain["receipt"]))
     verify_catalog_entry(catalog_entry, terrain, receipt)
     require(receipt.get("kind") == "realmz-rebuilt.trouble-terrain-correction" and receipt.get("formatVersion") == 1
@@ -172,7 +172,6 @@ def verify(package_root, inventory, current_row, catalog_entry):
             "terrain toolchain pins differ")
     pinned(terrain["sourceBundle"])
     cells = correction_cells(receipt["terrainCorrections"])
-    new_path = package_root / receipt["file"]
     new_files = read_archive(new_path)
     sources = json.loads(new_files["content.json"])["classicRecords"]["sources"]
     rows = verify_source_catalog(json.loads(pinned(terrain["sourceCatalog"])), receipt, cells, sources)

@@ -1,0 +1,212 @@
+{
+  "kind": "realmz-rebuilt.trouble-program-correction",
+  "formatVersion": 1,
+  "campaignId": "scenario-trouble-in-the-sword-lands",
+  "file": "scenario-trouble-in-the-sword-lands.realmz2",
+  "packageHash": "f1fb9584ecdb3c96b0ff6f05dad2a759071cc5326e221f8c7ec9009587d199ac",
+  "contentId": "bdaa09142a54f7cc142a1a41ddcaee38d8897daee3d650e437ac082b3e25ef86",
+  "archiveSha256": "330d030daec3f5489daf91b001967c3adf1f6f8c9cf2ee3db5b6cdb83ffd6272",
+  "bytes": 8753194,
+  "compilerRevision": "84b531c5374903921fd578060656559927db208f",
+  "previousPackage": {
+    "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
+    "contentId": "719a430ccc982f87fe1523cb4d553ef6c695f4ee2dfb3abd56300aa29458a0a5",
+    "archiveSha256": "73f5b2166485355f022de306666facd5908ee80e977b17c63a746b5a6448d2f3",
+    "bytes": 8753153,
+    "compilerRevision": "84b531c5374903921fd578060656559927db208f"
+  },
+  "sourceCatalog": {
+    "file": "trouble-in-the-sword-lands.source.json",
+    "sha256": "5c64cb14ba828f3b9daa21aaba9f022a37c8deabfbb1046c1208e8d22b434260",
+    "snapshotSha256": "f339157f0c9b8c608eaa5e2149a0dfe9a2b2fb75dbe4dcc25a057522a98e7ae4"
+  },
+  "nativeFiles": [
+    {
+      "file": "Data ED3",
+      "before": {
+        "bytes": 93360,
+        "sha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5"
+      },
+      "after": {
+        "bytes": 93360,
+        "sha256": "cd123907400d60892db9e26decd00a9dc9361314b4707b043dcc92f5b756c391"
+      }
+    },
+    {
+      "file": "Data EDCD",
+      "before": {
+        "bytes": 160200,
+        "sha256": "fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b"
+      },
+      "after": {
+        "bytes": 160210,
+        "sha256": "1eb80eeed5f5c0b317d0c299e4efe03137149abbb987aa3f2072c9f6047d16ce"
+      }
+    }
+  ],
+  "nativeChanges": [
+    {
+      "nativeFile": "Data ED3",
+      "record": 1794,
+      "slot": 7,
+      "field": "code",
+      "before": 24,
+      "after": 23
+    },
+    {
+      "nativeFile": "Data ED3",
+      "record": 1794,
+      "slot": 7,
+      "field": "id",
+      "before": 0,
+      "after": 16020
+    },
+    {
+      "nativeFile": "Data EDCD",
+      "row": 16020,
+      "before": null,
+      "after": [
+        14,
+        15,
+        0,
+        -1,
+        -1
+      ]
+    }
+  ],
+  "program": {
+    "id": "xap:1794",
+    "slot": 7,
+    "before": {
+      "opcode": 24,
+      "id": 0,
+      "extraCode": [
+        -1,
+        -1,
+        0,
+        100,
+        0
+      ]
+    },
+    "after": {
+      "opcode": 23,
+      "id": 16020,
+      "extraCode": [
+        14,
+        15,
+        0,
+        -1,
+        -1
+      ]
+    }
+  },
+  "toolchain": {
+    "adapter": {
+      "commit": "49aec55e045cad2bd15b94489727fcf74f96d77a",
+      "sha256": "79aecfb2054689322ed7c8013306a55369fbdc6d4a0df954abd8829e31d33ed0"
+    },
+    "writer": {
+      "tool": "providence-application-library",
+      "command": "retain-reviewed-projections",
+      "commit": "84b531c5374903921fd578060656559927db208f",
+      "sourceTree": "6009d5d34e5672830099a0d25e89bf4e47cf7c5d",
+      "sha256": "d039bcfaa0bd27bfe96b9fba2ef0b8262ae1cfe7e1a00459290093be6073b46b",
+      "sourceBundle": {
+        "file": "providence-converter-terrain-corrections.bundle",
+        "sha256": "6d518f44157c84544b1a80b8ac201e769c57633cc549ecc04e924692144a2a2d",
+        "baseCommit": "49aec55e045cad2bd15b94489727fcf74f96d77a"
+      }
+    },
+    "rawCandidateArchiveSha256": "b18a454751a6356514896ada4a2ddb1651d85e3dc8db743919aa3882cd362d59",
+    "projectionReceiptSha256": "2dad72cc7017cb293a85189ee6967ec1de0340890c74bce017f662fadb425447",
+    "projectionReceipt": "tools/fixtures/trouble-program-correction/program-projection-receipt.json",
+    "previousPackageRecipe": {
+      "file": "tools/fixtures/trouble-program-correction/scenario-trouble-in-the-sword-lands.realmz2.recipe.json.zlib",
+      "sha256": "2407d2460fda473e1fd65c71e81c79bfdd009d8c3bb39a914a971fd8c0499a7a"
+    }
+  },
+  "changedFiles": {
+    "assets/index.json": {
+      "before": {
+        "bytes": 158109,
+        "sha256": "ee6ec7b3a727529597871ab06bd6e048cfd85fc5c6750277d07e03cb59d1d45f"
+      },
+      "after": {
+        "bytes": 158109,
+        "sha256": "4855fdace4d00de499a401581d9fde3c74c5e1ffbbb0d74c5211e6f6fb0f132b"
+      }
+    },
+    "assets/media/1eb80eeed5f5c0b317d0c299e4efe03137149abbb987aa3f2072c9f6047d16ce.bin": {
+      "before": null,
+      "after": {
+        "bytes": 160210,
+        "sha256": "1eb80eeed5f5c0b317d0c299e4efe03137149abbb987aa3f2072c9f6047d16ce"
+      }
+    },
+    "assets/media/7fd03ee881dab238911a7ab0006720bebfd5e1b9849fecd0b186c9045be76545.json": {
+      "before": null,
+      "after": {
+        "bytes": 18688,
+        "sha256": "7fd03ee881dab238911a7ab0006720bebfd5e1b9849fecd0b186c9045be76545"
+      }
+    },
+    "assets/media/9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5.bin": {
+      "before": {
+        "bytes": 93360,
+        "sha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5"
+      },
+      "after": null
+    },
+    "assets/media/c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc.json": {
+      "before": {
+        "bytes": 18688,
+        "sha256": "c710dfdcf0141a2f6f406ce8205a8e2a946e74f75a33aafcb5736bf8ab5dfedc"
+      },
+      "after": null
+    },
+    "assets/media/cd123907400d60892db9e26decd00a9dc9361314b4707b043dcc92f5b756c391.bin": {
+      "before": null,
+      "after": {
+        "bytes": 93360,
+        "sha256": "cd123907400d60892db9e26decd00a9dc9361314b4707b043dcc92f5b756c391"
+      }
+    },
+    "assets/media/fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b.bin": {
+      "before": {
+        "bytes": 160200,
+        "sha256": "fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b"
+      },
+      "after": null
+    },
+    "content.json": {
+      "before": {
+        "bytes": 4973061,
+        "sha256": "bd62c354827e5cff95db22d849ecf0d59702ed05e2b219bc21cbee6587872edd"
+      },
+      "after": {
+        "bytes": 4973103,
+        "sha256": "69d818eaad26f2206052c77b3c85d4155d3198a4d56c37b9ba0791d8b5f28c07"
+      }
+    },
+    "manifest.json": {
+      "before": {
+        "bytes": 55566,
+        "sha256": "f81482a5d1e594cefc2707dc7aab68a6372f8dab926f3382fa9fdb1b6c39ab4b"
+      },
+      "after": {
+        "bytes": 55566,
+        "sha256": "78eb3d349be0348b9566f243e75cd577b83dca857012521ef9b64afd19684b39"
+      }
+    },
+    "scenario.json": {
+      "before": {
+        "bytes": 3391616,
+        "sha256": "c5e8765c5ed6f105a2a19ded4a1f1a5c5d229917069898d504963cf0c38dc50f"
+      },
+      "after": {
+        "bytes": 3391620,
+        "sha256": "c0f17ab23c8b053a8e336f46229b0f23c08c008d811ec9160eeb10f51bbb7947"
+      }
+    }
+  }
+}

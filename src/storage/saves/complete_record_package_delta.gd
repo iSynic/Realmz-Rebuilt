@@ -3,9 +3,9 @@ class_name CompleteRecordPackageDelta
 extends RefCounted
 
 const RECEIPT_PATH := "res://src/storage/packages/bundled_campaigns/complete-records.json.zlib"
-const RECEIPT_SHA256 := "26a6d89732758ca7d16a9313973bd26d14ab2008cba861f324d6c046391b37dd"
-const COMPRESSED_SHA256 := "81141967bfd777a6355706c58ffbca110f45b860163029251ec2f1af223bb358"
-const RECEIPT_BYTES := 6954145
+const RECEIPT_SHA256 := "962bc680cd671cbfff29c6074c1172973c746d2bfcb30d32879c366a9d89355d"
+const COMPRESSED_SHA256 := "d0f703bb945f29cccbe33ff04209aae05be81a88e8059187f4bf6bd894244395"
+const RECEIPT_BYTES := 6954921
 static var _receipt: Dictionary = {}
 
 

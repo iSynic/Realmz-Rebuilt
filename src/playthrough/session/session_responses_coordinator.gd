@@ -403,6 +403,8 @@ func _respond_session_retreat(response: InteractionResponse) -> SessionCoordinat
 	var pending_continuation := _context.session_continuation.copy()
 	_context.session_interaction = null
 	_context.session_continuation.clear()
+	if not body.accepted and CombatActivationConditions.awaits_flee_question(_context.state.combat, continuation.actor_id):
+		return _finish_prompted_combat_result(_context.rules.combat_flow.submit_action(_context.state, _context.content, continuation.actor_id, &"stay_and_fight", "", _context.rng), pending_interaction, pending_continuation)
 	if not body.accepted:
 		return SessionCoordinatorResult.completed(_single_event(DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation.actor_id, "mode": String(continuation.mode), "source": "classic"})))
 	var result := _context.rules.combat_flow.retreat_character(_context.state, _context.content, continuation.actor_id, continuation.mode, continuation.destination, _context.rng)
@@ -625,6 +627,17 @@ func finish_combat_result(result: CombatFlowResult) -> SessionCoordinatorResult:
 		collision.destination = pending.destination
 		_context.set_continuation(CombatContinuations.friendly_collision(collision))
 		_context.session_interaction = CombatInteractionRequestBuilder.friendly_collision("session.combat-friendly-collision:%d" % _context.next_revision())
+		return SessionCoordinatorResult.waiting(_context.session_interaction, result.events)
+	var active_id := _context.state.combat.turns.active_actor_id() if _context.state.combat != null else ""
+	if not result.completed and CombatActivationConditions.awaits_flee_question(_context.state.combat, active_id):
+		# Castle forcemove canflee asks before an animated character's next step (FD-COMBAT-024).
+		var question := CombatContinuationBody.new()
+		question.battle_id = _context.state.combat.battle_id
+		question.actor_id = active_id
+		question.mode = &"edge"
+		question.destination = _context.state.combat.battlefield.actors.actor_position(active_id)
+		_context.set_continuation(CombatContinuations.retreat_confirmation(question))
+		_context.session_interaction = SessionInteractionFactory.retreat_confirmation("session.combat-retreat:%d" % _context.next_revision())
 		return SessionCoordinatorResult.waiting(_context.session_interaction, result.events)
 	if result.completed:
 		return _context.scenario().finish_direct_battle(result.events)

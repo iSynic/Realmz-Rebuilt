@@ -20,7 +20,7 @@ func probe_character_spell_choice(state: GameState, content: RealmzContent, cast
 	var spell := content.magic.spell_by_id(spell_id)
 	if spell == null and caster != null and caster.known_spells().has(spell_id):
 		return CombatSpellCastProbe.fault(&"unknown_spell", "Known spell '%s' has no immutable definition." % spell_id)
-	if caster == null or caster.current_health <= 0 or caster.traitor or spell == null or power_level < 1 or power_level > 7:
+	if caster == null or caster.current_health <= 0 or not CombatActivationConditions.accepts_commands(combat, caster) or spell == null or power_level < 1 or power_level > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, or power is unavailable.")
 	if not caster.known_spells().has(spell.id):
 		return CombatSpellCastProbe.blocked(&"spell_not_known", "The caster does not know '%s'." % spell.id)
@@ -138,8 +138,8 @@ func character_spell_admissions(state: GameState, content: RealmzContent, caster
 	var turn_probe := _probe_character_turn(state, content, caster_id)
 	if not turn_probe.allowed: return result
 	var caster := state.party.character_by_id(caster_id)
-	if caster == null or caster.current_health <= 0 or caster.traitor: return result
 	var combat := state.combat
+	if caster == null or caster.current_health <= 0 or not CombatActivationConditions.accepts_commands(combat, caster): return result
 	if not _probe_caster_casting(state, combat, caster).allowed: return result
 	for spell_id: String in caster.known_spells():
 		var spell := content.magic.spell_by_id(spell_id)
@@ -300,6 +300,8 @@ static func group_spell_target_label(target_type: int) -> String:
 	return {9: "All Friendly", 10: "All Enemies", 12: "Everybody"}.get(target_type, "Automatic Targets")
 
 
+## Character casters pass side 0: Castle player group spells pick the loyal side for type 9 and every traitor
+## side for type 10, even when a charmed character casts them.
 static func group_target_matches(target_type: int, target_traitor: int, caster_traitor: int) -> bool:
 	if target_type == 12: return true
 	if target_type == 9: return target_traitor == caster_traitor

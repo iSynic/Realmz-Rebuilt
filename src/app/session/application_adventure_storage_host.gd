@@ -146,20 +146,13 @@ func _restore(content: RealmzContent, slot_id: String, backup: bool, replacement
 	return step
 
 
-func update_save(content: RealmzContent, slot_id: String, backup: bool = false) -> String:
-	if _session.is_busy():
-		_shell.status.set_status("Save updating is unavailable while combat is resolving.", true)
-		return ""
-	var updated_slot := _repository_host.update_save(content, slot_id, backup)
-	if updated_slot.is_empty():
-		_shell.status.set_status("Save update failed • %s" % _repository_host.last_error(), true)
-		return ""
-	_shell.navigator.content_presenter.system_preferences.saves.set_save_previews(_repository_host.previews(content), updated_slot, _repository_host.active_slot(content))
-	if _shell.navigator.current_screen() == &"save_load":
-		_shell.navigator.refresh_current_workspace()
-	_shell.status.set_status("Updated copy %s verified • original unchanged" % updated_slot)
+## Applies every pinned update that reaches `content` to the listed saves, with one brief notice.
+func apply_updates(content: RealmzContent) -> void:
+	var updated := _repository_host.apply_updates(content)
+	if updated.is_empty():
+		return
+	_shell.status.set_status("Updated %s for the current campaign revision • originals kept as backups" % ("1 save" if updated.size() == 1 else "%d saves" % updated.size()))
 	_shell.status.show_activity_indicator(&"save")
-	return updated_slot
 
 
 func poll() -> void:
@@ -170,6 +163,7 @@ func poll() -> void:
 
 
 func refresh(content: RealmzContent, selected_slot_id: String = "") -> void:
+	apply_updates(content)
 	_shell.navigator.content_presenter.system_preferences.saves.set_save_previews(_repository_host.previews(content), selected_slot_id, _repository_host.active_slot(content))
 	if _shell.navigator.current_screen() == &"save_load" and _session.view().session_started:
 		_shell.navigator.refresh_current_workspace()

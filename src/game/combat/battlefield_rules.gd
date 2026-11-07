@@ -184,7 +184,7 @@ func _sample_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTer
 
 func ray_actor_ids(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i, stop_at_los_blocker: bool = true, origin_override: Vector2i = Vector2i(-1, -1), occupied_cells: Dictionary = {}) -> Array[String]:
 	var result: Array[String] = []
-	if battlefield == null or terrain_set == null or not battlefield.actors.has_actor(from_actor_id) or not BattlefieldGrid.contains(destination):
+	if battlefield == null or terrain_set == null or not battlefield.actors.has_actor(from_actor_id) or destination.x < 0 or destination.y < 0:
 		return result
 	var encountered: Dictionary = {from_actor_id: true}
 	var origin := battlefield.actors.actor_position(from_actor_id) if origin_override.x < 0 else origin_override

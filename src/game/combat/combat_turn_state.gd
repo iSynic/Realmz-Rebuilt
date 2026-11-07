@@ -15,6 +15,9 @@ var spell_cast_count: int = 0
 var monster_cast_attempt_count: int = 0
 var staged_item_instance_id: String = ""
 var staged_item_power: int = 0
+## An animated character's juke loop saved while its step waits on a reaction (cost 0 when none is saved).
+var juke_passes: int = -1
+var juke_step_cost: int = 0
 var cast_commitment: CombatCastCommitment
 
 
@@ -44,19 +47,30 @@ func to_data() -> Dictionary:
 	}
 	if cast_commitment != null:
 		data["castCommitment"] = cast_commitment.to_data()
+	if juke_step_cost > 0:
+		data["jukePasses"] = juke_passes
+		data["jukeStepCost"] = juke_step_cost
 	return data
 
 
 static func from_data(data: Variant) -> CombatTurnState:
-	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8, 10, 11, 12, 13]:
+	if not data is Dictionary:
 		return null
-	var allowed_fields: Array[String] = ["actorId", "action", "attackIndex", "targetId", "physicalActionCommitted", "movementRemaining", "spellCastCount", "monsterCastAttemptCount", "stagedItemInstanceId", "stagedItemPower", "castCommitment", "classicPhysicalActive", "classicSpellActive"]
+	var fields: Dictionary = data
+	var juke_fields := 2 if fields.has("jukeStepCost") else 0
+	var juke_passes := _integer(fields.get("jukePasses", -1))
+	var juke_cost := _integer(fields.get("jukeStepCost", 0))
+	if fields.has("jukePasses") != fields.has("jukeStepCost") or fields.size() - juke_fields not in [4, 5, 6, 7, 8, 10, 11, 12, 13]:
+		return null
+	if juke_fields > 0 and (juke_passes < -1 or juke_passes > 21 or juke_cost < 1 or juke_cost > 127):
+		return null
+	var allowed_fields: Array[String] = ["actorId", "action", "attackIndex", "targetId", "physicalActionCommitted", "movementRemaining", "spellCastCount", "monsterCastAttemptCount", "stagedItemInstanceId", "stagedItemPower", "castCommitment", "classicPhysicalActive", "classicSpellActive", "jukePasses", "jukeStepCost"]
 	for key: Variant in data.keys():
 		if not key is String or key not in allowed_fields:
 			return null
 	if data.has("classicPhysicalActive") != data.has("classicSpellActive") or data.has("classicPhysicalActive") and (not data["classicPhysicalActive"] is bool or not data["classicSpellActive"] is bool):
 		return null
-	if data.has("castCommitment") and data.size() != (13 if data.has("classicPhysicalActive") else 11):
+	if data.has("castCommitment") and data.size() - juke_fields != (13 if data.has("classicPhysicalActive") else 11):
 		return null
 	for field: String in ["actorId", "action", "attackIndex", "targetId"]:
 		if not data.has(field):
@@ -74,7 +88,7 @@ static func from_data(data: Variant) -> CombatTurnState:
 	if data.has("stagedItemInstanceId") != data.has("stagedItemPower") or data.has("stagedItemInstanceId") and (not data["stagedItemInstanceId"] is String or data["stagedItemInstanceId"].is_empty() != (_integer(data["stagedItemPower"]) == 0) or _integer(data["stagedItemPower"]) < 0 or _integer(data["stagedItemPower"]) > 7):
 		return null
 	var loaded_attack_index := _integer(data["attackIndex"])
-	if loaded_attack_index < 0 or data["action"] not in ["", "advance", "missile", "cast", "retreat"]:
+	if loaded_attack_index < 0 or data["action"] not in ["", "advance", "missile", "cast", "retreat", "flee_question", "stay"]:
 		return null
 	var result := CombatTurnState.new(data["actorId"])
 	result.action = StringName(data["action"])
@@ -89,6 +103,8 @@ static func from_data(data: Variant) -> CombatTurnState:
 	result.monster_cast_attempt_count = _integer(data.get("monsterCastAttemptCount", 0))
 	result.staged_item_instance_id = String(data.get("stagedItemInstanceId", ""))
 	result.staged_item_power = _integer(data.get("stagedItemPower", 0))
+	result.juke_passes = juke_passes
+	result.juke_step_cost = juke_cost
 	if data.has("castCommitment"):
 		result.cast_commitment = CombatCastCommitment.from_data(data["castCommitment"])
 		if result.cast_commitment == null or result.cast_commitment.selection.actor_id != result.actor_id or result.cast_commitment.reserved_spell_count and result.spell_cast_count == 0:

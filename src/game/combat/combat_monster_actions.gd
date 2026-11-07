@@ -64,6 +64,7 @@ func process_projectile(state: GameState, content: RealmzContent, monster: Monst
 	active_turn.physical_action_committed = true
 	active_turn.classic_physical_active = true
 	combat.actor_statuses.set_guarding(monster.id, false)
+	combat.classic_blank_rounds = 0
 	var resolution := _context.magic.resolve_monster_projectile(monster, projectile_item, target, projectile_spell, 1, rng)
 	if resolution == null:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "projectile-resolution-failed", "source": "classic"}))

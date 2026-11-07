@@ -8,7 +8,6 @@ signal load_requested(slot_id: String, backup: bool)
 signal legacy_load_requested(slot_id: String, backup: bool, replacement_slot: String)
 signal refresh_requested
 signal back_requested
-signal update_requested(slot_id: String, backup: bool)
 
 @onready var _workspace: PanelContainer = %Workspace
 @onready var _title: Label = %PageTitle
@@ -28,7 +27,6 @@ signal update_requested(slot_id: String, backup: bool)
 @onready var _map_preview: TextureRect = %MapPreview
 @onready var _map_preview_note: Label = %MapPreviewNote
 @onready var _refresh_button: Button = %RefreshButton
-@onready var _update_button: Button = %UpdateSaveButton
 @onready var _load_button: Button = %LoadButton
 
 var _campaigns: Array[CampaignPackageView] = []
@@ -47,7 +45,6 @@ func _ready() -> void:
 	_campaign_picker.item_selected.connect(_on_campaign_selected)
 	_back.pressed.connect(func() -> void: back_requested.emit())
 	_refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
-	_update_button.pressed.connect(_request_update)
 	_load_button.pressed.connect(_request_load)
 	_backups_toggle.pressed.connect(_toggle_backups)
 	%ReplaceCancel.pressed.connect(func() -> void: %ReplaceConfirmation.hide())
@@ -241,9 +238,6 @@ func _refresh_selection_actions() -> void:
 	var preview := _find_preview(_selected_key)
 	_load_button.disabled = preview == null or not preview.can_load
 	_load_button.tooltip_text = "Select a validated save to load." if preview == null else preview.error_message if not preview.can_load else "Load this saved adventure."
-	_update_button.visible = preview != null and preview.can_update
-	_update_button.disabled = preview == null or not preview.can_update
-	_update_button.tooltip_text = "Create a verified copy and keep the original save and backup." if _update_button.visible else ""
 
 
 func _request_load() -> void:
@@ -268,12 +262,6 @@ func _confirm_replacement() -> void:
 	var slot := SaveSlotPreview.SCENARIO_SLOTS.substr(%ReplaceSlot.selected, 1)
 	%ReplaceConfirmation.hide()
 	legacy_load_requested.emit(preview.slot_id, preview.source == SaveSlotPreview.BACKUP, slot)
-
-
-func _request_update() -> void:
-	var preview := _find_preview(_selected_key)
-	if preview != null and preview.can_update:
-		update_requested.emit(preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
 
 
 func _toggle_backups() -> void:
@@ -363,11 +351,9 @@ func _fit_layout() -> void:
 	UiSizing.font_size(_back, &"font_size", 18)
 	UiSizing.font_size(_backups_toggle, &"font_size", 16)
 	UiSizing.font_size(_refresh_button, &"font_size", 18)
-	UiSizing.font_size(_update_button, &"font_size", 18)
 	UiSizing.font_size(_load_button, &"font_size", 18)
 	UiSizing.minimum_size(_back, Vector2(110.0, 42.0))
 	UiSizing.minimum_size(_refresh_button, Vector2(0.0, 42.0))
-	UiSizing.minimum_size(_update_button, Vector2(0.0, 42.0))
 	UiSizing.minimum_size(_load_button, Vector2(0.0, 42.0))
 	UiSizing.minimum_size(_save_template, Vector2(0.0, 42.0 if not compact else 36.0))
 

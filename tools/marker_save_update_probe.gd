@@ -114,8 +114,8 @@ func _check_campaign(repository: PackageRepository, entry: Dictionary, originals
 	_check(host.save(old_content, "A", session.snapshot(), jpeg), "second save retains original backup")
 	_check(host.set_active_slot(old_content, "J"), "scratch Quick Save target set")
 	var active_before := SaveEnvelope.from_snapshot(session.snapshot()).to_data()
-	_check(host.load(current, "A") == null, "ordinary mismatched load rejects")
-	_check(host.previews(current).filter(func(preview: SaveSlotPreview) -> bool: return preview.slot_id == "A" and preview.can_update).size() == 2, "primary and backup offer Update Save")
+	_check(saves.load(current.campaign_id, "A", current.package_hash) == null, "the repository still rejects a mismatched package")
+	_check(host.previews(current).filter(func(preview: SaveSlotPreview) -> bool: return preview.slot_id == "A" and preview.can_update).size() == 2, "primary and backup are updateable")
 	for backup: bool in [false, true]:
 		_verify_copy(host, saves, old_content, current, "A", backup)
 	_check(SaveEnvelope.from_snapshot(session.snapshot()).to_data() == active_before and host.active_slot(current) == "J", "active adventure and Quick Save target stay unchanged")
@@ -126,6 +126,7 @@ func _check_campaign(repository: PackageRepository, entry: Dictionary, originals
 	if _exercises_failures(entry) and _exercises_shared_paths():
 		_check_artwork(host, saves, session, old_content, current)
 		_check_pending_shop(host, saves, session, old_content, current)
+	_check_automatic(host, saves, session, old_content, current)
 	_results.append({"campaignId": entry.campaignId, "oldPackageHash": old_content.package_hash, "newPackageHash": current.package_hash, "passed": _failures == failures_before})
 	print("MARKER_SAVE_UPDATE campaign=%s complete failures=%d" % [entry.campaignId, _failures - failures_before])
 
@@ -184,6 +185,28 @@ func _verify_copy(host: SaveHostController, saves: SaveRepository, old_content: 
 	var destination := _save_path(current.campaign_id, copied_slot)
 	var collision_hash := FileAccess.get_sha256(destination)
 	_check(host.update_save(current, slot, backup).is_empty() and FileAccess.get_sha256(destination) == collision_hash, "conflicting copy is rejected without overwrite")
+
+
+## The player route: listing republishes the save in its own slot, the original becomes
+## its backup, an older backup is kept beside it, and a backup load updates only in memory.
+func _check_automatic(host: SaveHostController, saves: SaveRepository, session: GameSession, old_content: RealmzContent, current: RealmzContent) -> void:
+	var slot := "automatic"
+	var path := _save_path(old_content.campaign_id, slot)
+	_check(host.save(old_content, slot, session.snapshot()) and host.save(old_content, slot, session.snapshot()), "automatic source and its backup write")
+	var original_hash := FileAccess.get_sha256(path)
+	var earlier_hash := FileAccess.get_sha256(path + ".bak")
+	var active := host.active_slot(current)
+	_check(host.previews(current).any(func(preview: SaveSlotPreview) -> bool: return preview.slot_id == slot and preview.can_load and preview.can_update), "listed mismatched save loads through its update")
+	_check(host.apply_updates(current).has(slot), "listing applies the pinned update: " + host.last_error())
+	var published := saves.load(current.campaign_id, slot, current.package_hash)
+	_check(published != null and GameSession.new().restore(current, published).state == SessionStep.State.COMPLETED, "updated save restores from its own slot")
+	_check(FileAccess.get_sha256(path + ".bak") == original_hash, "original becomes the slot's backup byte for byte")
+	_check(FileAccess.get_sha256(_save_path(old_content.campaign_id, "%s-earlier-%s" % [slot, earlier_hash.left(8)])) == earlier_hash, "older backup is kept beside it")
+	_check(not host.apply_updates(current).has(slot) and FileAccess.get_sha256(path + ".bak") == original_hash, "a second listing leaves the slot alone")
+	_check(host.active_slot(current) == active, "Quick Save target still names the slot")
+	var from_backup := host.load(current, slot, true) as SaveEnvelope
+	_check(from_backup != null and from_backup.package_hash == current.package_hash and FileAccess.get_sha256(path + ".bak") == original_hash, "a backup load updates in memory and leaves the file")
+	_check(host.save(old_content, "on-load", session.snapshot()) and host.load(current, "on-load") != null and saves.load(current.campaign_id, "on-load", current.package_hash) != null, "loading an old save applies its update first")
 
 
 func _check_pending_shop(host: SaveHostController, saves: SaveRepository, session: GameSession, old_content: RealmzContent, current: RealmzContent) -> void:
@@ -322,7 +345,7 @@ func _policy(installed_root: String, bundle_root: String = MarkerSaveUpdate.BUND
 
 func _host(saves: SaveRepository, installed_root: String) -> SaveHostController:
 	# Every policy reads the scratch installation; a default would consult the player's real user://packages.
-	return SaveHostController.new(saves, HalfTruthMediaSaveUpdate.new(installed_root.path_join("scenario-half-truth").path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")), ShopSaveUpdate.new(installed_root), MarkerSaveUpdate.new(installed_root), PaymentSaveUpdate.new(installed_root), ProgramSaveUpdate.new(installed_root), CompressionSaveUpdate.new(installed_root), CompleteRecordSaveUpdate.new(installed_root), TerrainSaveUpdate.new(installed_root))
+	return SaveHostController.new(saves, HalfTruthMediaSaveUpdate.new(installed_root.path_join("scenario-half-truth").path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")), ShopSaveUpdate.new(installed_root), MarkerSaveUpdate.new(installed_root), PaymentSaveUpdate.new(installed_root), ProgramSaveUpdate.new(installed_root), CompressionSaveUpdate.new(installed_root), CompleteRecordSaveUpdate.new(installed_root), OwnerCorrectionSaveUpdate.new(installed_root))
 
 
 func _save_path(campaign: String, slot: String) -> String:

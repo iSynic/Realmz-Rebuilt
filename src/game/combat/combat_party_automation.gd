@@ -115,7 +115,7 @@ func _run_persistent_auto_unchecked(state: GameState, content: RealmzContent, rn
 	var actor_id := state.combat.turns.active_actor_id()
 	var actor := state.party.character_by_id(actor_id)
 	# Castle combat.c:517 never runs persistent Auto for a frightened character.
-	if actor == null or actor.traitor or actor.conditions.is_active(ConditionRules.RUNS_AWAY) or CombatActivationConditions.automates(state.combat, actor) or not state.combat_auto_enabled(actor_id):
+	if actor == null or actor.traitor or actor.conditions.is_active(ConditionRules.RUNS_AWAY) or CombatActivationConditions.automates(state.combat, actor) or CombatActivationConditions.awaits_flee_question(state.combat, actor_id) or not state.combat_auto_enabled(actor_id):
 		return CombatFlowResult.from_combat(state.combat, [])
 	return _run_auto_turn_unchecked(state, content, actor_id, rng)
 

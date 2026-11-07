@@ -218,6 +218,7 @@ func _commit_resumed_age_attack(state: GameState, content: RealmzContent, rng: R
 	var attacker := result.combat.roster.monster_by_id(result.pending.actor_id)
 	var definition := content.combat.monster_by_id(attacker.definition_id) if attacker != null else null
 	var weapon := content.items.item_by_id(attacker.weapon_id) if attacker != null and not attacker.weapon_id.is_empty() else null
+	result.combat.classic_blank_rounds = 0
 	var resolution := AttackResolution.new(true, result.defeated, result.pending.chance, result.pending.roll, result.pending.damage)
 	_context.actions().events().append_monster_attack_audio(events, attacker, definition, attack_index, weapon, resolution, rng, target.id)
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": result.pending.actor_id, "targetId": result.pending.target_id, "action": String(result.pending.action), "attackIndex": attack_index, "hit": true, "damage": result.pending.damage, "defeated": result.defeated, "chance": result.pending.chance, "roll": result.pending.roll})
@@ -461,6 +462,8 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 func finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
 	state.prune_combat_auto_characters()
 	var combat := state.combat
+	if combat.completed:
+		return true
 	combat.reconcile_classic_counters(state.party)
 	if combat.pending_operations.death_macro != null or combat.round_cursor != null or not combat.death_macros.pending_id().is_empty() or not combat.death_macros.actor_id().is_empty():
 		return false

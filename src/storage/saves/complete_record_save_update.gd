@@ -1,4 +1,4 @@
-## Offers separately named saves only for pinned, fully inventoried v7 package pairs.
+## Admits save updates only for pinned, fully inventoried v7 package pairs.
 class_name CompleteRecordSaveUpdate
 extends RefCounted
 

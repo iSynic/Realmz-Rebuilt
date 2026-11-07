@@ -128,7 +128,6 @@ func _bind_save_footer(view: GameView) -> void:
 	var quick_two := actions.get_node("QuickSave2") as Button
 	var save_selected := actions.get_node("SaveSelectedSlot") as Button
 	var load_selected := actions.get_node("LoadSelectedSave") as Button
-	var update_save := actions.get_node("UpdateSave") as Button
 	var refresh := actions.get_node("RefreshSaves") as Button
 	var main_menu := actions.get_node("MainMenu") as Button
 	var new_row := root.get_node("NewSaveSlotRow") as BoxContainer
@@ -147,11 +146,6 @@ func _bind_save_footer(view: GameView) -> void:
 	quick_one.text = "Quick Save · %s" % _active_slot_id
 	_bind_action(save_selected, func() -> void: _save_selected_preview())
 	_bind_action(load_selected, func() -> void: _load_selected_preview())
-	_bind_action(update_save, func() -> void:
-		var preview := _selected_preview()
-		if preview != null and preview.can_update:
-			action_requested.emit(&"update_save", {"slotId": preview.slot_id, "backup": preview.source == SaveSlotPreview.BACKUP})
-	)
 	_bind_action(refresh, func() -> void: action_requested.emit(&"refresh_saves", null))
 	_bind_action(main_menu, func() -> void: action_requested.emit(&"end_adventure", null))
 	save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
@@ -190,12 +184,9 @@ func _refresh_save_detail() -> void:
 	save_selected.disabled = not primary_slot
 	save_selected.text = "Save to %s" % slot_id if primary_slot else "Save to Slot"
 	var load_selected := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions/LoadSelectedSave") as Button
-	var update_save := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions/UpdateSave") as Button
 	load_selected.disabled = preview == null or not preview.can_load
 	load_selected.tooltip_text = "Select a validated save record." if preview == null else preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
 	load_selected.text = "Load %s" % slot_id if preview != null and preview.can_load else "Load Slot"
-	update_save.visible = preview != null and preview.can_update
-	update_save.tooltip_text = "Create a verified copy for the corrected campaign. Earlier event results are kept. The original save and backup remain untouched."
 	_update_save_confirmation()
 	var record := _workspace.save_detail_record()
 	var empty := _workspace.save_detail_empty()
@@ -218,7 +209,7 @@ func _refresh_save_detail() -> void:
 	map_status.visible = preview.can_load and map_image.texture == null
 	var error := record.get_node("Error") as Label
 	error.visible = preview.status != SaveSlotPreview.VALID
-	SystemPreferencesLayout.bind_label(error, "%s\nUpdate Save creates a verified copy; this original remains untouched. Earlier event results are kept." % preview.error_message if preview.can_update else preview.error_message, MUTED, 14)
+	SystemPreferencesLayout.bind_label(error, "This save updates to the current campaign revision when it loads. The original is kept as its backup." if preview.can_update else preview.error_message, MUTED, 14)
 	var valid := preview.status == SaveSlotPreview.VALID
 	for path: String in ["Location", "Party", "Divider", "Package", "Rules", "Saved"]:
 		record.get_node(path).visible = valid
@@ -317,7 +308,7 @@ func _update_save_confirmation() -> void:
 	var migrating := _pending_save_action == &"load_legacy_into_slot"
 	(row.get_node("Confirm") as Button).disabled = migrating and _legacy_target_slot.is_empty()
 	var actions := row.get_parent().get_node("SaveWorkspaceActions")
-	for action: String in ["QuickSave1", "SaveAndQuitSelected", "UpdateSave"]:
+	for action: String in ["QuickSave1", "SaveAndQuitSelected"]:
 		(actions.get_node(action) as Button).disabled = migrating
 	if migrating:
 		(actions.get_node("SaveSelectedSlot") as Button).disabled = true

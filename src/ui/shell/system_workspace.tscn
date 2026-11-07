@@ -345,10 +345,6 @@ text = "Save Selected"
 [node name="LoadSelectedSave" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Load Selected"
-[node name="UpdateSave" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
-layout_mode = 2
-visible = false
-text = "Update Save"
 [node name="RefreshSaves" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Refresh"

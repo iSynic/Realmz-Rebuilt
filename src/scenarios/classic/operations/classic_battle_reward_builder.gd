@@ -205,8 +205,8 @@ func _recovered_fumble_items(combat: CombatState) -> Variant:
 
 
 func _complete_mode_ten_battle(combat: CombatState, caller: ScenarioBattleCaller) -> ScenarioRuntimeOperationResult:
-	if combat.outcome not in [&"victory", &"defeat"]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Classic battle mode 10 requires victory or total defeat.")
+	if combat.outcome not in [&"victory", &"defeat", &"retreated"]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Classic battle mode 10 requires a completed battle.")
 	combat.rewards_started = true
 	combat.rewards_completed = true
 	var battle_id := combat.battle_id
@@ -226,7 +226,8 @@ func _complete_mode_ten_battle(combat: CombatState, caller: ScenarioBattleCaller
 			# positive XAP and take the nested continuation above.
 			events.append(DomainEvent.new(&"classic_battle_restart_requested", {"battleId": battle_id, "callerOpcode": 2}))
 			directive = ScenarioVmDirective.restart_current_program()
-	elif combat.outcome == &"victory":
+	else:
+		# Castle newland.c:1482-1500 returns a mode-10 coward end (blank rounds or full retreat) like a victory.
 		_game_state.party.pooled_wealth = WealthState.new()
 		var restored := _game_state.party.restore_equipment()
 		if restored:
@@ -237,6 +238,6 @@ func _complete_mode_ten_battle(combat: CombatState, caller: ScenarioBattleCaller
 		var battle := _content.combat.battle_by_id(battle_id)
 		if battle != null:
 			_append_battle_after_message(battle, events)
-		events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": "victory"}))
+		events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": String(combat.outcome)}))
 	_game_state.combat = null
-	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive).with_battle_return(BattleReturnResult.new(battle_id,combat.outcome) if combat.outcome == &"victory" else null)
+	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive).with_battle_return(BattleReturnResult.new(battle_id,combat.outcome) if combat.outcome != &"defeat" else null)

@@ -151,7 +151,7 @@ func _create_save_host(scratch_root: String) -> SaveHostController:
 		return SaveHostController.new()
 	var packages := scratch_root.path_join("packages")
 	var half_truth := packages.path_join(HalfTruthMediaSaveUpdate.CAMPAIGN_ID).path_join(HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH + ".realmz2")
-	return SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves")), HalfTruthMediaSaveUpdate.new(half_truth), ShopSaveUpdate.new(packages), MarkerSaveUpdate.new(packages), PaymentSaveUpdate.new(packages), ProgramSaveUpdate.new(packages), CompressionSaveUpdate.new(packages), CompleteRecordSaveUpdate.new(packages), TerrainSaveUpdate.new(packages))
+	return SaveHostController.new(SaveRepository.new(scratch_root.path_join("saves")), HalfTruthMediaSaveUpdate.new(half_truth), ShopSaveUpdate.new(packages), MarkerSaveUpdate.new(packages), PaymentSaveUpdate.new(packages), ProgramSaveUpdate.new(packages), CompressionSaveUpdate.new(packages), CompleteRecordSaveUpdate.new(packages), OwnerCorrectionSaveUpdate.new(packages))
 
 
 func _bind_debug_and_movement() -> void:
@@ -267,7 +267,6 @@ func _bind_shell_and_settings() -> void:
 	shell_presenter.load_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id))
 	shell_presenter.load_backup_requested.connect(func(slot_id: String) -> void: adventure_storage.load(_active_content, slot_id, true))
 	shell_presenter.legacy_save_load_requested.connect(func(slot_id: String, backup: bool, target_slot_id: String) -> void: adventure_storage.load(_active_content, slot_id, backup, target_slot_id))
-	shell_presenter.update_save_requested.connect(func(slot_id: String, backup: bool) -> void: adventure_storage.update_save(_active_content, slot_id, backup))
 	shell_presenter.refresh_saves_requested.connect(func() -> void: adventure_storage.refresh(_active_content))
 	shell_presenter.end_adventure_requested.connect(lifecycle_host.request_end_adventure)
 	shell_presenter.quit_requested.connect(lifecycle_host.request_quit)

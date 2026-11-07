@@ -113,14 +113,16 @@ func probe_edge_retreat(combat: CombatState, actor_id: String, destination: Vect
 	var origin := combat.battlefield.actors.actor_position(actor_id)
 	var direction := destination - origin
 	if direction == Vector2i.ZERO or absi(direction.x) > 1 or absi(direction.y) > 1:
-		return CombatRetreatProbe.blocked(&"invalid_direction", "Battlefield-edge retreat requires one adjacent movement direction.")
+		return CombatCharmedCharacterAutomation.probe_edge_flight(combat, origin, direction)
 	if destination.x >= 2 and destination.y >= 2 and destination.x <= 87 and destination.y <= 87:
 		return CombatRetreatProbe.blocked(&"not_battlefield_edge", "This movement does not enter Castle's retreat band.")
 	var forced := origin.x < 1 or origin.y < 1 or origin.x > 88 or origin.y > 88
 	return CombatRetreatProbe.permitted(127, forced)
 
 
-func retreat_character(state: GameState, content: RealmzContent, actor_id: String, mode: StringName, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
+## Removes the active character from battle. With continue_turns false (automatic flight) the next activation is
+## left to the caller's automation loop.
+func retreat_character(state: GameState, content: RealmzContent, actor_id: String, mode: StringName, destination: Vector2i, rng: RealmzRng, continue_turns: bool = true) -> CombatFlowResult:
 	var combat := state.combat
 	if combat == null or combat.completed or combat.battlefield == null or combat.turns.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The active character cannot retreat.")
@@ -145,6 +147,8 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 		_context.rounds().complete_battle(state, content, &"retreated", events)
 		return CombatFlowResult.from_combat(state.combat, events, true)
 	_context.rounds().advance_turn(state, content, rng, events)
+	if not continue_turns:
+		return CombatFlowResult.from_combat(state.combat, events)
 	return _context.automation().process_monster_turns(state, content, rng, events)
 
 
@@ -159,7 +163,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	if combat.turns.active_actor_id() != actor_id:
 		return CombatFlowResult.rejected(&"wrong_combat_actor", "Combat movement actor '%s' does not own the current turn." % actor_id)
 	var actor := state.party.character_by_id(actor_id)
-	if actor == null or actor.current_health <= 0 or actor.traitor or combat.battlefield == null:
+	if actor == null or actor.current_health <= 0 or not CombatActivationConditions.accepts_commands(combat, actor) or combat.battlefield == null:
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The current combat actor or battlefield is unavailable.")
 	var terrain_set := _context.automation().monster_actions().battle_terrain_set(content, combat.battlefield)
 	if terrain_set == null:
@@ -248,7 +252,7 @@ func _finish_character_movement(state: GameState, content: RealmzContent, mover_
 func friendly_collision_target_id(state: GameState, actor_id: String, destination: Vector2i) -> String:
 	var combat := state.combat if state != null else null
 	var actor := state.party.character_by_id(actor_id) if state != null else null
-	if combat == null or combat.completed or combat.battlefield == null or actor == null or actor.current_health <= 0 or actor.traitor or combat.turns.active_actor_id() != actor_id:
+	if combat == null or combat.completed or combat.battlefield == null or actor == null or actor.current_health <= 0 or combat.turns.active_actor_id() != actor_id or actor.traitor and not CombatActivationConditions.accepts_commands(combat, actor):
 		return ""
 	var origin := combat.battlefield.actors.actor_position(actor_id)
 	var direction := destination - origin
@@ -470,8 +474,8 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 	if monster_target != null:
 		var definition := content.combat.monster_by_id(monster_target.definition_id)
 		var reaction_resolution := _context.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.dropped_items.can_queue())
-		if reaction_resolution.total_damage() > 0:
-			combat.actor_statuses.mark_attacked(monster_target.id)
+		combat.classic_blank_rounds = 0
+		if reaction_resolution.total_damage() > 0: combat.actor_statuses.mark_attacked(monster_target.id)
 		if reaction_resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, attacker, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 		_context.actions().events().append_character_attack_audio(events, attacker, equipment, reaction_resolution, &"monster", monster_target.id)
@@ -491,9 +495,9 @@ func resolve_character_reaction(state: GameState, content: RealmzContent, attack
 	if not target_equipment.valid:
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(target_equipment.error_code)}))
 		return REACTION_COMPLETED
+	combat.classic_blank_rounds = 0
 	var resolution := _context.combat.resolve_character_attack_character(attacker, equipment, character_target, target_equipment, rng, behind, true, combat.dropped_items.can_queue())
-	if resolution.total_damage() > 0:
-		combat.actor_statuses.mark_attacked(character_target.id)
+	if resolution.total_damage() > 0: combat.actor_statuses.mark_attacked(character_target.id)
 	if resolution.fumbled and not _context.actions().events().commit_character_fumble(state, content, attacker, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 	_context.actions().events().append_character_attack_audio(events, attacker, equipment, resolution, &"character", character_target.id)

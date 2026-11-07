@@ -192,6 +192,7 @@ func cast_monster_summon(state: GameState, content: RealmzContent, caster: Monst
 		return _rollback_failed_summon(state, rng, state_checkpoint, rng_checkpoint, &"insufficient_spell_points", "The monster no longer has enough spell points for this summon.")
 	caster.spell_points -= cost
 	state.combat.turns.active_turn.spell_cast_count += 1
+	if spell.target_type not in [9, 10, 12]: state.combat.classic_blank_rounds = 0
 	var events: Array[DomainEvent] = []
 	if unsafe_native:
 		# The selected native row ends this attempt after normal costs; do not reroll.
@@ -310,6 +311,7 @@ func _spend_character_summon(state: GameState, caster: CharacterState, spell: Sp
 	if count_spell_cast:
 		state.combat.turns.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
+	if spell.target_type <= 8: state.combat.classic_blank_rounds = 0
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	return true

@@ -1018,14 +1018,14 @@
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
       "compilerRevision": "84b531c5374903921fd578060656559927db208f",
-      "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
-      "contentId": "719a430ccc982f87fe1523cb4d553ef6c695f4ee2dfb3abd56300aa29458a0a5",
-      "archiveSha256": "73f5b2166485355f022de306666facd5908ee80e977b17c63a746b5a6448d2f3",
-      "bytes": 8753153,
+      "packageHash": "f1fb9584ecdb3c96b0ff6f05dad2a759071cc5326e221f8c7ec9009587d199ac",
+      "contentId": "bdaa09142a54f7cc142a1a41ddcaee38d8897daee3d650e437ac082b3e25ef86",
+      "archiveSha256": "330d030daec3f5489daf91b001967c3adf1f6f8c9cf2ee3db5b6cdb83ffd6272",
+      "bytes": 8753194,
       "sourceOverride": {
         "kind": "project-owner-designated-snapshot",
         "catalog": "trouble-in-the-sword-lands.source.json",
-        "snapshotSha256": "967ff3b15de0baf281c0db236d2a90bfe074c01484c86afee7eaf522e7e429c2"
+        "snapshotSha256": "f339157f0c9b8c608eaa5e2149a0dfe9a2b2fb75dbe4dcc25a057522a98e7ae4"
       },
       "sourceArchive": {
         "compilerRevision": "cbd2608c1655cfd7395341689a7ad242db341c70",
@@ -1149,6 +1149,17 @@
           "archiveSha256": "d4abcc8e9c711d0d9d4fc027e53b59c07e4edbbfe7fad9d57a51630a185c5846",
           "bytes": 8753239,
           "compilerRevision": "49aec55e045cad2bd15b94489727fcf74f96d77a"
+        }
+      },
+      "programCorrection": {
+        "operation": "retain-owner-program-correction",
+        "receiptFile": "trouble-program-correction.json",
+        "previousPackage": {
+          "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
+          "contentId": "719a430ccc982f87fe1523cb4d553ef6c695f4ee2dfb3abd56300aa29458a0a5",
+          "archiveSha256": "73f5b2166485355f022de306666facd5908ee80e977b17c63a746b5a6448d2f3",
+          "bytes": 8753153,
+          "compilerRevision": "84b531c5374903921fd578060656559927db208f"
         }
       }
     },

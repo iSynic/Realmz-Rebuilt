@@ -12,7 +12,6 @@ signal save_and_quit_requested(slot_id: String)
 signal load_requested(slot_id: String)
 signal load_backup_requested(slot_id: String)
 signal legacy_save_load_requested(slot_id: String, backup: bool, target_slot_id: String)
-signal update_save_requested(slot_id: String, backup: bool)
 signal refresh_saves_requested
 signal end_adventure_requested
 signal quit_requested
@@ -583,7 +582,6 @@ func handle_system_action_requested(action_id: StringName, value: Variant) -> vo
 		&"load": load_requested.emit("quick" if value == null else String(value))
 		&"load_backup": load_backup_requested.emit("quick" if value == null else String(value))
 		&"load_legacy_into_slot": legacy_save_load_requested.emit(String(value.get("slotId", "")), bool(value.get("backup", false)), String(value.get("targetSlotId", "")))
-		&"update_save": update_save_requested.emit(String(value.get("slotId", "")), bool(value.get("backup", false)))
 		&"refresh_saves": refresh_saves_requested.emit()
 		&"end_adventure": end_adventure_requested.emit()
 		&"campaigns": show_campaign_selection()

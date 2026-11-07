@@ -179,6 +179,8 @@ func _revive_after_combat_macro(context: ScenarioExecutionContext) -> ScenarioRu
 			character.current_health = 1
 			character.conditions.set_value(ConditionRules.ANIMATED, 0)
 			revived_party.append(character.id)
+			if _game_state.combat != null:
+				_forget_targets_naming(character.id)
 		var result := ScenarioRuntimeOperationResult.completed(revived_party, [DomainEvent.new(&"party_revived", {"characterIds": revived_party, "source": "classic-death-macro"})], ScenarioVmDirective.native_return(-1))
 		result.party_revived = true
 		return result
@@ -190,6 +192,7 @@ func _revive_after_combat_macro(context: ScenarioExecutionContext) -> ScenarioRu
 	_game_state.combat.reconcile_classic_counters(_game_state.party)
 	monster.current_health = 1
 	_game_state.combat.clear_classic_death_macro_traitor(monster, _game_state.party)
+	_forget_targets_naming(monster.id)
 	return ScenarioRuntimeOperationResult.completed(monster.id, [DomainEvent.new(&"monster_revived", {"monsterId": monster.id, "source": "classic-death-macro"})])
 
 
@@ -422,3 +425,12 @@ func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRu
 			break
 	var directive: ScenarioVmDirective = null if present else ScenarioVmDirective.native_return(0)
 	return ScenarioRuntimeOperationResult.completed(present, [DomainEvent.new(&"battle_monster_presence_checked", {"classicMonsterId": action.operand_id, "present": present, "source": "classic"})], directive)
+
+
+## Castle killbody (killbody.c:190-192) clears every c[].target naming a killed actor. A dead target is rejected
+## and redrawn exactly like a cleared one, so Rebuilt clears the references when that actor is revived.
+func _forget_targets_naming(target_id: String) -> void:
+	var targets := _game_state.combat.turns.character_targets_data()
+	for actor_id: String in targets:
+		if targets[actor_id] == target_id:
+			_game_state.combat.turns.set_character_target(actor_id, "")

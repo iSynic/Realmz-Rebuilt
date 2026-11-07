@@ -14,7 +14,6 @@ const REACTION_WAITING := 1
 const REACTION_DEATH_MACRO := 2
 const REACTION_MOVER_DEFEATED := 3
 ## Item spell target types an animated missile resolves: actor, centered area and ray, the only types bundled missiles carry.
-const ANIMATED_MISSILE_TARGET_TYPES: Array[int] = [1, 3, 6]
 const MAX_MONSTERS: int = 100
 const MAX_AUTO_OPERATIONS: int = 256
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
@@ -125,10 +124,10 @@ func _probe_item_area_spell(state: GameState, content: RealmzContent, caster: Ch
 func _probe_item_group_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition) -> CombatSpellCastProbe:
 	var group_target_count := 0
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, 0):
 			group_target_count += 1
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
+		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.classic_traitor, 0):
 			continue
 		if content.combat.monster_by_id(monster.definition_id) == null:
 			return CombatSpellCastProbe.fault(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
@@ -208,20 +207,21 @@ func _resolve_spell_item(state: GameState, content: RealmzContent, caster: Chara
 	return result
 
 
-func _resolve_ray_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_id: String, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false) -> CombatFlowResult:
-	var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell, power_level)
+## A destination replaces the target actor's square (Castle's animated missile slot square).
+func _resolve_ray_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_id: String, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false, destination: Vector2i = INVALID_COORDINATE) -> CombatFlowResult:
+	var ray_selections := _resolution.ray_selections(state, content, caster.id, target_id, spell, power_level) if destination == INVALID_COORDINATE else _resolution.ray_selections_toward(state, content, caster.id, destination, spell)
 	var ray := _context.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
 	if ray == null or not ray.cast:
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item ray spell could not be resolved.")
 	return _resolution.commit(state, content, caster, spell, power_level, cast_level, ray, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, [], animated)
 
 
-func _resolve_area_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_coordinate: Vector2i, rotation: int, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false) -> CombatFlowResult:
-	var shape := _context.spell_areas.shape_for(spell, power_level, rotation)
+func _resolve_area_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, target_coordinate: Vector2i, rotation: int, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false, shape_override: int = 0) -> CombatFlowResult:
+	var shape := shape_override if shape_override > 0 else _context.spell_areas.shape_for(spell, power_level, rotation)
 	var persistent_field: RefCounted = _context.fields().queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 	var selected_ids: Dictionary = {}
 	for offset: Vector2i in _context.spell_areas.pattern(shape):
-		var actor_id := state.combat.battlefield.actors.actor_at(target_coordinate + offset)
+		var actor_id := state.combat.battlefield.actors.actor_at(BattlefieldGrid.classic_field_cell(target_coordinate + offset))
 		if not actor_id.is_empty():
 			selected_ids[actor_id] = true
 	var area_targets := _resolution.group_targets(state, content, caster, spell, selected_ids, true)
@@ -249,15 +249,15 @@ func _resolve_repeated_spell_item(state: GameState, content: RealmzContent, cast
 	return _resolution.commit(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, repeated_fields)
 
 
-func _resolve_group_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> CombatFlowResult:
+func _resolve_group_spell_item(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, animated: bool = false) -> CombatFlowResult:
 	var character_targets: Array[CharacterState] = []
 	var monster_targets: Array[MonsterState] = []
 	var monster_definitions: Array[MonsterDefinition] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, 0):
 			character_targets.append(character)
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
+		if monster.current_health <= 0 or not state.combat.battlefield.actors.has_actor(monster.id) or not _selection.group_target_matches(spell.target_type, monster.classic_traitor, 0):
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
@@ -269,7 +269,7 @@ func _resolve_group_spell_item(state: GameState, content: RealmzContent, caster:
 		if group != null and not group.error_code.is_empty():
 			return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, group.error_code, group.error_message)
 		return CombatFlowSpellRollback.item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The item spell could not be resolved.")
-	return _resolution.commit(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false)
+	return _resolution.commit(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-item", instance.id, false, [], animated)
 
 
 func character_item_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatItemOptionView]:
@@ -370,28 +370,34 @@ static func item_used_event(caster_id: String, instance_id: String, item: ItemDe
 	return DomainEvent.new(&"item_used", {"characterId": caster_id, "instanceId": instance_id, "itemId": item.id, "spellId": spell.id, "power": power_level, "chargesRemaining": remaining, "droppedOnEmpty": dropped, "source": "classic"})
 
 
-## Fires an animated character's item missile at one chosen actor and leaves its activation to the automation loop.
-## Castle combatinfo-combatchoice.c:456-459 casts the loaded spell at that actor's square, so ammunition
-## carrying an area (type 3) or ray (type 6) spell centers or aims on the target as well.
-func fire_animated_item_missile(state: GameState, content: RealmzContent, caster: CharacterState, instance_id: String, target_id: String, power_level: int, rng: RealmzRng) -> CombatFlowResult:
+## Fires a character's item missile at one chosen actor; an animated shot leaves its activation to the automation
+## loop. Castle combatinfo-combatchoice.c:430-459 and spelltargets.c:54-56 cast types 0 and 1 at the actor, groups
+## at their sides, and every other type at the actor's fixed slot square: rays head there, type 3 and 4 areas use
+## their sizes there, and the rest use the one-cell pattern.
+func fire_item_missile(state: GameState, content: RealmzContent, caster: CharacterState, instance_id: String, target_id: String, power_level: int, rng: RealmzRng, animated: bool = true) -> CombatFlowResult:
 	var instance := inventory_instance(caster, instance_id)
 	var item: ItemDefinition = null if instance == null else content.items.item_by_id(instance.definition_id)
 	var spell: SpellDefinition = null if item == null else content.magic.spell_by_classic_id(absi(item.special_2))
-	if spell == null or not ANIMATED_MISSILE_TARGET_TYPES.has(spell.target_type):
-		return CombatFlowResult.failed(&"projectile_spell_unavailable", "The animated missile has no actor, area or ray item spell.")
+	if spell == null or CombatFlowSummoning.is_summon_spell(spell):
+		return CombatFlowResult.failed(&"projectile_spell_unavailable", "The missile has no castable item spell.")
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
 	if not _context.inventory.use_charge(caster, instance.id, item):
 		return CombatFlowResult.failed(&"item_charge_commit_failed", "The animated missile charge could not be committed.")
 	state.combat.turns.invalidate_undo()
+	# Castle's animated missile runs through attack(), which resets blankround (attack.c:30).
+	state.combat.classic_blank_rounds = 0
 	var result: CombatFlowResult
-	if spell.target_type == 3:
-		var center := state.combat.battlefield.actors.actor_position(target_id)
-		result = _resolve_area_spell_item(state, content, caster, instance, item, spell, power_level, spell.classic_tier(), rng, center, 0, state_checkpoint, rng_checkpoint, true)
+	var square := CombatCharmedCharacterAutomation.classic_target_square(state, target_id)
+	if spell.target_type in [0, 1]:
+		result = _resolution.resolve_targeted_item(state, content, caster, instance, item, spell, power_level, spell.classic_tier(), rng, target_id, state_checkpoint, rng_checkpoint, animated)
+	elif spell.target_type in [9, 10, 12]:
+		result = _resolve_group_spell_item(state, content, caster, instance, spell, power_level, spell.classic_tier(), rng, state_checkpoint, rng_checkpoint, animated)
 	elif spell.target_type == 6:
-		result = _resolve_ray_spell_item(state, content, caster, instance, spell, power_level, spell.classic_tier(), rng, target_id, state_checkpoint, rng_checkpoint, true)
+		result = _resolve_ray_spell_item(state, content, caster, instance, spell, power_level, spell.classic_tier(), rng, target_id, state_checkpoint, rng_checkpoint, animated, square)
 	else:
-		result = _resolution.resolve_targeted_item(state, content, caster, instance, item, spell, power_level, spell.classic_tier(), rng, target_id, state_checkpoint, rng_checkpoint, true)
+		var shape := _context.spell_areas.shape_for(spell, power_level) if spell.target_type in [3, 4] else 1
+		result = _resolve_area_spell_item(state, content, caster, instance, item, spell, power_level, spell.classic_tier(), rng, square, 0, state_checkpoint, rng_checkpoint, animated, shape)
 	if not result.ok:
 		return result
 	state.combat.turns.consume_random_item_power(instance.id)
@@ -549,10 +555,10 @@ func _probe_scroll_area_spell(state: GameState, content: RealmzContent, caster: 
 func _probe_scroll_group_spell(state: GameState, caster: CharacterState, spell: SpellDefinition) -> CombatSpellCastProbe:
 	var group_count := 0
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
+		if character.current_health > 0 and state.combat.battlefield.actors.has_actor(character.id) and _selection.group_target_matches(spell.target_type, character.classic_traitor, 0):
 			group_count += 1
 	for monster: MonsterState in state.combat.roster.monsters():
-		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id) and _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
+		if monster.current_health > 0 and state.combat.battlefield.actors.has_actor(monster.id) and _selection.group_target_matches(spell.target_type, monster.classic_traitor, 0):
 			group_count += 1
 	if group_count == 0:
 		return CombatSpellCastProbe.blocked(&"scroll_target_unavailable", "The scroll has no available group target.")

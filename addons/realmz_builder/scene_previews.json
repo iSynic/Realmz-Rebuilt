@@ -17,7 +17,7 @@
     "save-load": {"rawSceneNodes":["SystemWorkspace","SavePreview_A_primary","SavePreview_B_primary","SavePreview_C_primary","SavePreview_D_primary","SavePreview_E_primary","SavePreview_F_primary","SavePreview_G_primary","SavePreview_H_primary","SavePreview_I_primary","SavePreview_J_primary","RouteBackAction"],"populatedPreviewNodes":["SavePreview_*"]},
     "campaign-selection": {"rawSceneNodes":["CampaignScroll"],"populatedPreviewNodes":["CampaignScroll"]},
     "party-assembly": {"rawSceneNodes":["PartySlots"],"populatedPreviewNodes":["PartySlots"]},
-    "saved-adventure-browser": {"rawSceneNodes":["PageTitle","CampaignPicker","SaveRows","DetailsScroll","SelectedSaveTitle","IdentityStatus","RefreshButton","UpdateSaveButton","LoadButton","BackButton"],"populatedPreviewNodes":["CampaignPicker","SaveRows","DetailsScroll","SelectedSaveTitle","IdentityStatus"]},
+    "saved-adventure-browser": {"rawSceneNodes":["PageTitle","CampaignPicker","SaveRows","DetailsScroll","SelectedSaveTitle","IdentityStatus","RefreshButton","LoadButton","BackButton"],"populatedPreviewNodes":["CampaignPicker","SaveRows","DetailsScroll","SelectedSaveTitle","IdentityStatus"]},
     "loading-adventure": {"rawSceneNodes":["LoadingTitle","LoadingProgress","ReturnHint","CancelButton"],"populatedPreviewNodes":["LoadingTitle","LoadingProgress","CancelButton"]},
     "party-import-from-save": {"rawSceneNodes":["CandidateList","ImportCapacity","EmptySources","LoadingSource"],"populatedPreviewNodes":["Candidate*"]},
     "character-creation": {"rawSceneNodes":["CreatorSteps"],"populatedPreviewNodes":["CharacterName"]},

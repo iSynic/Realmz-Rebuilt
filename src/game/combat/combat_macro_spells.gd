@@ -156,6 +156,8 @@ func _append_result(state: GameState, content: RealmzContent, source_id: String,
 	var target_kind := group.target_kinds[index]
 	if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
 		state.combat.actor_statuses.mark_attacked(target_id)
+	if resolution.clears_character_target:
+		state.combat.turns.set_character_target(target_id, "")
 	CombatSpellEventBuilder.append_projectile(events, source_id, target_id, spell, SOURCE)
 	if resolution.special_result == &"turned":
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))

@@ -70,7 +70,7 @@ func _check_campaign(repository: PackageRepository, entry: Dictionary, originals
 	session.restore(old_content, snapshot)
 	_check(host.save(old_content, "A", session.snapshot()), "second write retains backup")
 	_check(host.load(content, "A") == null, "ordinary mismatched load still rejects")
-	_check(host.previews(content).any(func(p: SaveSlotPreview) -> bool: return p.slot_id == "A" and p.can_update), "Update Save is offered")
+	_check(host.previews(content).any(func(p: SaveSlotPreview) -> bool: return p.slot_id == "A" and p.can_update), "the save is updateable")
 	for backup: bool in [false, true]:
 		_verify_copy(host, saves, old_content, content, "A", backup)
 	_check(not policy.eligible(content.campaign_id, "f".repeat(64), content.package_hash), "unapproved hash is ineligible")

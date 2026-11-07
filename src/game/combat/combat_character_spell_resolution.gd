@@ -22,6 +22,20 @@ func ray_selections(state: GameState, content: RealmzContent, caster_id: String,
 	return result
 
 
+## Selections along a ray toward a fixed square, which may lie beyond the field: the ray stops at its edge.
+func ray_selections_toward(state: GameState, content: RealmzContent, caster_id: String, destination: Vector2i, spell: SpellDefinition) -> Array[SpellTargetSelection]:
+	var result: Array[SpellTargetSelection] = []
+	var map := content.world.map_by_id(state.combat.battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_for_map(map, state.world) if map != null else null
+	if terrain_set == null:
+		return result
+	for actor_id: String in _context.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, destination, spell.range_min + spell.range_max > 0):
+		var selection := _selection.spell_target_selection(state, content, actor_id)
+		if selection != null:
+			result.append(selection)
+	return result
+
+
 func ray_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power: int) -> Array[String]:
 	var result: Array[String] = []
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
@@ -43,7 +57,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 		if area_target:
 			if not selected_ids.has(character.id):
 				continue
-		elif not _selection.group_target_matches(spell.target_type, character.classic_traitor, caster.classic_traitor):
+		elif not _selection.group_target_matches(spell.target_type, character.classic_traitor, 0):
 			continue
 		character_targets.append(character)
 	for monster: MonsterState in state.combat.roster.monsters():
@@ -52,7 +66,7 @@ func group_targets(state: GameState, content: RealmzContent, caster: CharacterSt
 		if area_target:
 			if not selected_ids.has(monster.id):
 				continue
-		elif not _selection.group_target_matches(spell.target_type, monster.classic_traitor, caster.classic_traitor):
+		elif not _selection.group_target_matches(spell.target_type, monster.classic_traitor, 0):
 			continue
 		var definition := content.combat.monster_by_id(monster.definition_id)
 		if definition == null:
@@ -128,6 +142,9 @@ func commit(state: GameState, content: RealmzContent, caster: CharacterState, sp
 	if count_spell_cast:
 		combat.turns.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
+	if spell.target_type <= 8:
+		# Castle launch resets blankround (cast.c:23) for every spell outside the group types.
+		combat.classic_blank_rounds = 0
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	# Castle combatinfo-combatchoice.c:458 spends only two half-attacks on an animated shot.
 	if not animated:
@@ -171,6 +188,8 @@ func _append_resolution(state: GameState, content: RealmzContent, caster: Charac
 		caster.lifetime_record.add_spell_damage(resolution.damage, missile_spell and not resolution.resisted, missile_spell and resolution.resisted, resolution.target_defeated)
 	if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
 		state.combat.actor_statuses.mark_attacked(resolved_target_id)
+	if resolution.clears_character_target:
+		state.combat.turns.set_character_target(resolved_target_id, "")
 	CombatSpellEventBuilder.append_projectile(events, caster.id, resolved_target_id, spell, event_source)
 	if resolution.special_result == &"turned":
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-destroy-turn-undead"}))

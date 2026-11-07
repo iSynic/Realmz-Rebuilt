@@ -57,14 +57,15 @@ Invoke-GodotGate "Native map-icon projection" @("--headless", "--path", $repoRoo
 Remove-Item -LiteralPath $iconInput, $iconResult
 
 if ([string]::IsNullOrWhiteSpace($UpdateSaveOriginals)) {
-    Write-Host "Update Save probes not run: pass -UpdateSaveOriginals <retained-archive-root> to exercise Half Truth media, marker, Trouble payment and Trouble terrain updates."
+    Write-Host "Save-update probes not run: pass -UpdateSaveOriginals <retained-archive-root> to exercise Half Truth media, marker, Trouble payment, terrain and XAP 1794 updates."
 } else {
     $originals = (Resolve-Path -LiteralPath $UpdateSaveOriginals).Path
     $updateScratch = Join-Path ([IO.Path]::GetTempPath()) ("realmz-update-save-" + [Guid]::NewGuid().ToString("N"))
     Invoke-GodotGate "Half Truth media Update Save probe" @("--headless", "--path", $repoRoot, "--script", "res://tools/half_truth_media_probe.gd", "--", "--package-path=$(Join-Path $originals 'half-truth\scenario-half-truth.realmz2')", "--package-hash=a96fbff24e4204ce49bb60556c27cab6091d0f8f8a26d6b6b0c4c543ecc06562")
     Invoke-GodotGate "Pre-marker stock Update Save probe" @("--headless", "--path", $repoRoot, "--script", "res://tools/marker_save_update_probe.gd", "--", (Join-Path $originals "marker"), (Join-Path $updateScratch "marker"))
     Invoke-GodotGate "Trouble XAP 330 Update Save probe" @("--headless", "--path", $repoRoot, "--script", "res://tools/marker_save_update_probe.gd", "--", (Join-Path $originals "payment"), (Join-Path $updateScratch "payment"), "payment")
-    Invoke-GodotGate "Trouble terrain Update Save probe" @("--headless", "--path", $repoRoot, "--script", "res://tools/terrain_save_update_probe.gd", "--", (Join-Path $originals "terrain"), (Join-Path $updateScratch "terrain"))
+    Invoke-GodotGate "Trouble terrain Update Save probe" @("--headless", "--path", $repoRoot, "--script", "res://tools/owner_correction_save_update_probe.gd", "--", (Join-Path $originals "terrain"), (Join-Path $updateScratch "terrain"), "terrain")
+    Invoke-GodotGate "Trouble XAP 1794 Update Save probe" @("--headless", "--path", $repoRoot, "--script", "res://tools/owner_correction_save_update_probe.gd", "--", (Join-Path $originals "program"), (Join-Path $updateScratch "program"), "program")
     Remove-Item -LiteralPath $updateScratch -Recurse -Force
 }
 

@@ -13,7 +13,7 @@
     "version": "0.1.0"
   },
   "schemaSha256": "b6af98b0541dd1bb34e06ca6644c6eb4e898d6da93ceffd4b182ef65339c6750",
-  "catalogSha256": "195ddca73a66406d226d302188e4659a12c88297f1c9d7243a6427278f68003f",
+  "catalogSha256": "c6e8c8089b32300eb37f4ddd6397b30484a747634be39c3f48023ba96b7bc226",
   "baselineCatalog": {
     "file": "complete-records-baseline.provenance.json",
     "sha256": "048c0af6a1ce9b9af0e170a68d1d3a2dc1bb2d0cf49b58b524ebe21ef67bf411"
@@ -33,7 +33,7 @@
     "wrath-of-the-mind-lords.corrections.json": "c5a3f55a4e1b08ba04056c9d664b9795b2bf1c0f896bdbbb6f6118f456b7ef40"
   },
   "historyRecipes": {
-    "manifestSha256": "c64c09018aeafa6af54e9c8073de31557d186c2a065bf5a2e52fa96eb0ec753e"
+    "manifestSha256": "40e41d389c258cd6c4a7d4a213abac28bf2c39a3238eb0c00e41e403243e77e3"
   },
   "historyStateSha256": "1fff7d4385ad4163e243b82dc7aae3c8346493571ece4f7f95e52c5ff3468961",
   "nativeCorrections": {
@@ -196,7 +196,7 @@
       },
       {
         "campaignId": "scenario-trouble-in-the-sword-lands",
-        "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
+        "packageHash": "f1fb9584ecdb3c96b0ff6f05dad2a759071cc5326e221f8c7ec9009587d199ac",
         "family": "programs",
         "nativePath": "Data ED3",
         "recordId": 330,
@@ -213,7 +213,7 @@
       },
       {
         "campaignId": "scenario-trouble-in-the-sword-lands",
-        "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
+        "packageHash": "f1fb9584ecdb3c96b0ff6f05dad2a759071cc5326e221f8c7ec9009587d199ac",
         "family": "programs",
         "nativePath": "Data ED3",
         "recordId": 330,
@@ -427,7 +427,7 @@
       "sha256": "21f3e2631fd7586f6efda3547e4d2fb4a10cee9f5472ab41ae918c8a94fb44c4"
     },
     "sourceCatalog": {
-      "file": "src/storage/packages/bundled_campaigns/trouble-in-the-sword-lands.source.json",
+      "file": "tools/fixtures/trouble-terrain-correction/trouble-in-the-sword-lands.source.json",
       "sha256": "d8dc7f1d781cb5a912d446fcf206167d0678a5cb7915c615ed459fccc58c04e4"
     },
     "previousPackageRecipe": {
@@ -441,6 +441,32 @@
     "sourceBundle": {
       "file": "tools/providence-converter-terrain-corrections.bundle",
       "sha256": "6d518f44157c84544b1a80b8ac201e769c57633cc549ecc04e924692144a2a2d"
+    }
+  },
+  "programCorrection": {
+    "campaignId": "scenario-trouble-in-the-sword-lands",
+    "compiler": {
+      "commit": "84b531c5374903921fd578060656559927db208f",
+      "name": "Providence",
+      "projectOrigin": "imported",
+      "projectSchemaVersion": 36,
+      "version": "0.1.0"
+    },
+    "receipt": {
+      "file": "src/storage/packages/bundled_campaigns/trouble-program-correction.json",
+      "sha256": "bb6d7f70cd0fd887f37882ba032751266f484f1ff653ce601c3e9a3d3a07f201"
+    },
+    "sourceCatalog": {
+      "file": "src/storage/packages/bundled_campaigns/trouble-in-the-sword-lands.source.json",
+      "sha256": "5c64cb14ba828f3b9daa21aaba9f022a37c8deabfbb1046c1208e8d22b434260"
+    },
+    "previousPackageRecipe": {
+      "file": "tools/fixtures/trouble-program-correction/scenario-trouble-in-the-sword-lands.realmz2.recipe.json.zlib",
+      "sha256": "2407d2460fda473e1fd65c71e81c79bfdd009d8c3bb39a914a971fd8c0499a7a"
+    },
+    "projectionReceipt": {
+      "file": "tools/fixtures/trouble-program-correction/program-projection-receipt.json",
+      "sha256": "2dad72cc7017cb293a85189ee6967ec1de0340890c74bce017f662fadb425447"
     }
   },
   "campaigns": [
@@ -1907,10 +1933,10 @@
     {
       "campaignId": "scenario-trouble-in-the-sword-lands",
       "file": "scenario-trouble-in-the-sword-lands.realmz2",
-      "packageHash": "725e01bdd3beae7148027167ccccd08360824f47b445ec0bc0b1596dac4d9f93",
-      "archiveSha256": "73f5b2166485355f022de306666facd5908ee80e977b17c63a746b5a6448d2f3",
-      "bytes": 8753153,
-      "classicRecordsSha256": "c2608115905d46632d2e6de4481c65f2f7bce30579e13350f5f49ec2773082a9",
+      "packageHash": "f1fb9584ecdb3c96b0ff6f05dad2a759071cc5326e221f8c7ec9009587d199ac",
+      "archiveSha256": "330d030daec3f5489daf91b001967c3adf1f6f8c9cf2ee3db5b6cdb83ffd6272",
+      "bytes": 8753194,
+      "classicRecordsSha256": "88d50e04ef64b0268cfebce06fb8c3e38607f1b6616c994ae3a7b79b4ac79bd5",
       "sources": [
         {
           "nativePath": "Custom 1 Music",
@@ -1980,12 +2006,12 @@
         {
           "nativePath": "Data ED3",
           "byteLength": 93360,
-          "sha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5"
+          "sha256": "cd123907400d60892db9e26decd00a9dc9361314b4707b043dcc92f5b756c391"
         },
         {
           "nativePath": "Data EDCD",
-          "byteLength": 160200,
-          "sha256": "fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b"
+          "byteLength": 160210,
+          "sha256": "1eb80eeed5f5c0b317d0c299e4efe03137149abbb987aa3f2072c9f6047d16ce"
         },
         {
           "nativePath": "Data LD",

@@ -155,6 +155,32 @@ func save_new_copy(campaign_id: String, slot_id: String, envelope: SaveEnvelope)
 	return true
 
 
+## Publishes a verified update in its own slot. The original becomes the slot's
+## backup; an older backup is first kept beside it as `<slot>-earlier-<hash>`.
+func publish_update(campaign_id: String, slot_id: String, envelope: SaveEnvelope) -> bool:
+	last_error = ""
+	if envelope == null or envelope.campaign_id != campaign_id or not _safe_component(campaign_id) or not _safe_component(slot_id):
+		return _fail("The updated save has an invalid campaign or slot identity.")
+	var path := "%s/%s/%s.r2save" % [_root_path, campaign_id, slot_id]
+	if not FileAccess.file_exists(path):
+		return _fail("The save to update is missing.")
+	var backup := path + ".bak"
+	if FileAccess.file_exists(backup):
+		var backup_hash := FileAccess.get_sha256(backup)
+		var kept := "%s/%s/%s-earlier-%s.r2save" % [_root_path, campaign_id, slot_id.left(110), backup_hash.left(8)]
+		if not FileAccess.file_exists(kept) and DirAccess.copy_absolute(ProjectSettings.globalize_path(backup), ProjectSettings.globalize_path(kept)) != OK:
+			_delete_file(kept)
+			return _fail("Could not keep the earlier backup; the save was not updated.")
+		if FileAccess.get_sha256(kept) != backup_hash:
+			return _fail("A different earlier backup already uses that name; the save was not updated.")
+	if not save(campaign_id, slot_id, envelope, envelope.map_preview_jpeg):
+		return false
+	var verified := self.load(campaign_id, slot_id, envelope.package_hash)
+	if verified == null or verified.to_data() != envelope.to_data():
+		return _fail("The updated save failed readback; the original remains its backup.")
+	return true
+
+
 func campaign_ids() -> Array[String]:
 	var result: Array[String] = []
 	for campaign_id: String in DirAccess.get_directories_at(_root_path):

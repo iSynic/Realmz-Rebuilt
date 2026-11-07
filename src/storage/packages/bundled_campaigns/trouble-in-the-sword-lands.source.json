@@ -3,7 +3,7 @@
   "campaignId": "scenario-trouble-in-the-sword-lands",
   "authority": "project-owner-designated",
   "designationDate": "2026-11-06",
-  "upstreamStatus": "castle-source-with-owner-terrain-correction",
+  "upstreamStatus": "castle-source-with-owner-terrain-and-program-corrections",
   "baseSource": {
     "repository": "Realmz Castle",
     "nativeFile": "Data LD",
@@ -616,11 +616,72 @@
       }
     ]
   },
+  "programCorrection": {
+    "designationDate": "2026-11-07",
+    "issue": "https://github.com/iSynic/Realmz-Rebuilt/issues/39",
+    "authoredWith": "Providence MCP 0.6.0-beta.5 (3836bbd01b54dcaac466d831e2f9ce48bbd31f56)",
+    "summary": "XAP 1794 slot 7 Keep Codes becomes opcode 23 so the Land 14 rect 15 rumble plays once and then sets that rect's chance to 0.",
+    "nativeFiles": [
+      {
+        "file": "Data ED3",
+        "before": {
+          "bytes": 93360,
+          "sha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5"
+        },
+        "after": {
+          "bytes": 93360,
+          "sha256": "cd123907400d60892db9e26decd00a9dc9361314b4707b043dcc92f5b756c391"
+        }
+      },
+      {
+        "file": "Data EDCD",
+        "before": {
+          "bytes": 160200,
+          "sha256": "fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b"
+        },
+        "after": {
+          "bytes": 160210,
+          "sha256": "1eb80eeed5f5c0b317d0c299e4efe03137149abbb987aa3f2072c9f6047d16ce"
+        }
+      }
+    ],
+    "encoding": "Data ED3 records are 40 bytes (int32 doorid, 4 chars, int16 code[8], int16 id[8]); Data EDCD rows are five big-endian int16 values.",
+    "changes": [
+      {
+        "nativeFile": "Data ED3",
+        "record": 1794,
+        "slot": 7,
+        "field": "code",
+        "before": 24,
+        "after": 23
+      },
+      {
+        "nativeFile": "Data ED3",
+        "record": 1794,
+        "slot": 7,
+        "field": "id",
+        "before": 0,
+        "after": 16020
+      },
+      {
+        "nativeFile": "Data EDCD",
+        "row": 16020,
+        "before": null,
+        "after": [
+          14,
+          15,
+          0,
+          -1,
+          -1
+        ]
+      }
+    ]
+  },
   "snapshot": {
     "algorithm": "sha256-utf8-file-null-bytes-null-sha256-lines-v1",
     "fileCount": 38,
-    "bytes": 4347851,
-    "sha256": "967ff3b15de0baf281c0db236d2a90bfe074c01484c86afee7eaf522e7e429c2"
+    "bytes": 4347861,
+    "sha256": "f339157f0c9b8c608eaa5e2149a0dfe9a2b2fb75dbe4dcc25a057522a98e7ae4"
   },
   "files": [
     {
@@ -691,12 +752,12 @@
     {
       "file": "Data ED3",
       "bytes": 93360,
-      "sha256": "9a10703a149d804258fc0950ceb50e036dd2f4aeb7919cfb39b4e5c3ab1ca5e5"
+      "sha256": "cd123907400d60892db9e26decd00a9dc9361314b4707b043dcc92f5b756c391"
     },
     {
       "file": "Data EDCD",
-      "bytes": 160200,
-      "sha256": "fd172f4897092d922440fac45713b97eecf3a61775b12d612a7a36307f23893b"
+      "bytes": 160210,
+      "sha256": "1eb80eeed5f5c0b317d0c299e4efe03137149abbb987aa3f2072c9f6047d16ce"
     },
     {
       "file": "Data LD",

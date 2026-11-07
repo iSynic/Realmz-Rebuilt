@@ -42,7 +42,7 @@ Build the accepted converter source from `tools/scenario-importer-inputs.json`, 
 
 The readable `program-restoration.json` remains the maintainer source. `tools/compress_program_receipt.py` generates its complete runtime `.json.zlib` copy using its recorded generator build; `--check` validates the existing output portably, and `--check --reproduce` proves exact regeneration on the pinned build. Runtime verifies the compressed hash, decoded length and original JSON hash before parsing. Exports include the compressed copy and exclude the plain receipt and audit-only reports; release verification checks those facts in the actual PCK.
 
-Explicit Update Save also accepts the thirteen pinned compression pairs. Historical supported updates first validate the compression reversal and then their original declared correction. The host restores unchanged state against the successor and publishes a separately named copy. Old packages, original saves, backups, pending requests, RNG, recorded faults and Quick Save targets remain intact. Unlisted revisions gain no eligibility.
+Automatic save updates also accept the thirteen pinned compression pairs. Historical supported updates first validate the compression reversal and then their original declared correction. The host restores unchanged state against the successor and republishes the save in its own slot, keeping the original as its backup. Old packages, original saves, backups, pending requests, RNG, recorded faults and Quick Save targets remain intact. Unlisted revisions gain no eligibility.
 
 ## Reproduction and verification
 
@@ -59,7 +59,7 @@ Corruption probes must reject removed required programs, altered encounter owner
 
 ## Existing saves and reported source faults
 
-Packages and saves remain immutable. Update Save accepts only individually pinned predecessor/current pairs after exact archive and installation-receipt checks, reversal of the complete declared package delta, unchanged-state detached restoration and separate-copy readback. It preserves originals, backups, pending continuations, RNG, artwork, the active adventure and the Quick Save target. Existing supported marker and Trouble payment chains reverse the program delta before their own checks. Unlisted revisions retain their original package.
+Packages remain immutable. A save updates only through an individually pinned predecessor/current pair after exact archive and installation-receipt checks, reversal of the complete declared package delta, unchanged-state detached restoration and readback. It keeps the original as the slot's backup and preserves pending continuations, RNG, artwork, the active adventure and the Quick Save target. Existing supported marker and Trouble payment chains reverse the program delta before their own checks. Unlisted revisions retain their original package.
 
 Trouble's XAP 923 uses random region 3 on land 10. It subsequently calls XAP 925, whose native opcode-23 instruction instead requests rectangle 24 on land 3. That later source reference is outside the native twenty-slot array; the preservation pass retains and diagnoses it. Under `FD-SCENARIO-014`, runtime skips that out-of-range mutation quietly and continues, preserving saving instead of converting Castle's unchecked write into a terminal session fault. The shared Extra Code row is also used by an opcode-7 instruction elsewhere, suggesting an authoring error, but that does not authorize changing opcode 23 to opcode 7.
 

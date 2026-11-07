@@ -196,7 +196,7 @@ func start_battle_definition(battle: BattleDefinition, request_id: String, sourc
 		return _run_combat_death_macro(continuation_kind, caller, result.death_macro, events, request_id).with_combat_entry()
 	if result.completed:
 		return _finish_battle_with_allies(continuation_kind, caller, request_id, events).with_combat_entry()
-	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioCombatContinuations.battle(continuation_kind, battle.id, caller), events).with_combat_entry()
+	return _wait_for_active_battle(continuation_kind, caller, request_id, events).with_combat_entry()
 
 
 func _resume_battle(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -327,7 +327,14 @@ func _wait_for_active_battle(source_kind: StringName, caller: ScenarioBattleCall
 	if pending != null and pending.awaits_friendly_collision_choice():
 		var collision := ScenarioCombatContinuations.friendly_collision(source_kind, combat.battle_id, caller, pending.mover_id, pending.destination)
 		return ScenarioRuntimeOperationResult.waiting(CombatInteractionRequestBuilder.friendly_collision(request_id), collision, events)
-	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioCombatContinuations.battle(source_kind, combat.battle_id, caller), events)
+	var active_id := combat.turns.active_actor_id()
+	var battle := ScenarioCombatContinuations.battle(source_kind, combat.battle_id, caller)
+	if CombatActivationConditions.awaits_flee_question(combat, active_id):
+		# Castle forcemove canflee asks before an animated character's next step (FD-COMBAT-024).
+		var question := _wait_for_battle_retreat(battle, active_id, &"edge", combat.battlefield.actors.actor_position(active_id), request_id)
+		question.events = events
+		return question
+	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), battle, events)
 
 
 func _resume_friendly_collision(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -381,9 +388,13 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 	var probe: Variant = _rules.combat_flow.reactions.probe_character_retreat(_game_state.combat, _game_state.party.characters(), combat_continuation.actor_id) if mode == &"explicit" else _rules.combat_flow.reactions.probe_edge_retreat(_game_state.combat, combat_continuation.actor_id, destination) if mode == &"edge" else null
 	if probe == null or not probe.allowed or probe.forced:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The saved Escape confirmation no longer represents a promptable Classic action.")
+	var previous_round := _game_state.combat.turns.round_number
+	if not body.accepted and CombatActivationConditions.awaits_flee_question(_game_state.combat, combat_continuation.actor_id):
+		var stay := _rules.combat_flow.submit_action(_game_state, _content, combat_continuation.actor_id, &"stay_and_fight", "", _rng)
+		var stay_command := InteractionResponse.CombatBody.new(&"stay_and_fight", combat_continuation.actor_id)
+		return _continue_after_combat_result(stay, stay_command, ScenarioCombatContinuations.battle(source_kind, combat_continuation.battle_id, caller), caller, previous_round, request_id)
 	if not body.accepted:
 		return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioCombatContinuations.battle(source_kind, combat_continuation.battle_id, caller), [DomainEvent.new(&"combat_retreat_declined", {"actorId": combat_continuation.actor_id, "mode": String(mode), "source": "classic"})])
-	var previous_round := _game_state.combat.turns.round_number
 	var result := _rules.combat_flow.retreat_character(_game_state, _content, combat_continuation.actor_id, mode, destination, _rng)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
@@ -397,7 +408,7 @@ func _resume_battle_retreat(continuation: ScenarioRuntimeContinuation, response:
 		return _finish_battle_with_allies(source_kind, caller, request_id, completed_events)
 	if _game_state.combat.round_cursor != null and _game_state.combat.round_cursor.phase == &"battle-macro":
 		return _run_battle_macro(source_kind, caller, result.events, request_id)
-	return ScenarioRuntimeOperationResult.waiting(_request_builder.build(request_id), ScenarioCombatContinuations.battle(source_kind, combat_continuation.battle_id, caller), result.events)
+	return _wait_for_active_battle(source_kind, caller, request_id, result.events)
 
 
 func _finish_battle_with_allies(source_kind: StringName, caller: ScenarioBattleCaller, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:

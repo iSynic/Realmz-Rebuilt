@@ -55,6 +55,7 @@ func _resolve_character_phase(state: GameState, content: RealmzContent, caster: 
 	if count_spell_cast:
 		combat.turns.active_turn.spell_cast_count += 1
 		caster.lifetime_record.record_spell_cast()
+	if spell.target_type <= 8: combat.classic_blank_rounds = 0
 	caster.attacks_remaining = _context.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	combat.turns.invalidate_undo()

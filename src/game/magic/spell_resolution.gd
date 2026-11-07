@@ -21,6 +21,8 @@ var spell_point_delta: int = 0
 var allegiance_changed: bool = false
 var target_traitor_before: bool = false
 var target_traitor_after: bool = false
+## A charm spell turned this character to a new hostile side, which clears its Castle c[].target.
+var clears_character_target: bool = false
 var detected_magic_item_count: int = 0
 var unequipped_item_ids: Array[String] = []
 var transformed_definition_before: String = ""

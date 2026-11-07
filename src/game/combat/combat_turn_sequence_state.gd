@@ -66,8 +66,11 @@ func delay_active_actor() -> bool:
 
 
 ## Castle `c[].target`: keeps an animated character's target across its activations for the battle.
+## An empty target forgets the remembered one, as Castle's c[].target = -1 does.
 func set_character_target(actor_id: String, target_id: String) -> void:
-	if not actor_id.is_empty() and not target_id.is_empty() and actor_id != target_id:
+	if target_id.is_empty():
+		_character_targets.erase(actor_id)
+	elif not actor_id.is_empty() and actor_id != target_id:
 		_character_targets[actor_id] = target_id
 
 
