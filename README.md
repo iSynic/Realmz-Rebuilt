@@ -2,7 +2,7 @@
 
 Rebuilt is a new way to play the Classic scenarios on modern computers while keeping their maps, encounters, rules, art, and quirks recognizable. A greenfield, cross-platform Realmz runtime built with Godot 4.7.1.
 
-The old scenarios are more than maps and dialogue. They depend on a whole game's worth of behavior. Rewriting each one for a different engine would be a huge job, and it would be easy to lose things along the way. With Rebuilt, we're building that shared foundation once and checking differences against the Realmz Castle codebase as we go.
+The old scenarios are more than maps and dialogue. They depend on a whole game's worth of behavior. Rewriting each one for a different engine would be a huge job, and it would be easy to lose things along the way. With Rebuilt, we're building that shared foundation once and checking differences against classic Realmz as we go.
 
 ## Play the beta
 
@@ -14,7 +14,7 @@ You can assemble a party and head into overland maps, 2D and first-person dungeo
 
 If those starters are missing or no longer compatible, open Character Files and choose Restore starter characters. Rebuilt backs up the existing vault and adds compatible starter copies while preserving your other characters.
 
-The beta includes the thirteen scenarios that ship with the Realmz Castle codebase:
+The beta includes the thirteen scenarios that ship with classic Realmz:
 
 Assault on Giant Mountain · Castle in the Clouds · City of Bywater · Destroy the Necronomicon · Grilochs Revenge · Half Truth · Mithril Vault · Prelude to Pestilence · Trouble in the Sword Lands · Twin Sands of Time · War in the Sword Lands · White Dragon · Wrath of the Mind Lords
 

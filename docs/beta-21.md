@@ -44,6 +44,6 @@ The bundled scenario packages, save format, and Character Files format are uncha
 
 An intermittent combat spellbook-input problem remains unresolved: Power Level, Choose Targets, and Abort have sometimes stopped responding while Back to battle still works. Returning to battle and reopening Spells may restore them. The problem later cleared during testing, but it is not claimed fixed in this release. If it recurs, include the build, scenario, caster, spell, and the actions immediately before it happened in a bug report.
 
-Combat changes were checked against the Realmz Castle codebase and exercised in isolated Rebuilt fixtures, including native Windows Mobile/Vulkan and OpenGL rendering. That is not a claim of complete campaign certification or an identical controlled Castle runtime comparison. The beta still needs ordinary play across its scenarios.
+Combat changes were checked against classic Realmz and exercised in isolated Rebuilt fixtures, including native Windows Mobile/Vulkan and OpenGL rendering. That is not a claim of complete campaign certification or an identical controlled Castle runtime comparison. The beta still needs ordinary play across its scenarios.
 
 Fresh Windows x86_64, Linux x86_64, and universal macOS archives are supplied with `SHA256SUMS` for download verification.

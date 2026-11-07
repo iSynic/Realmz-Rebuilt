@@ -1,6 +1,6 @@
 # Scenario compiler and practical-readiness batch
 
-This report closes the 2026-09-22 compiler/readiness batch. It distinguishes source preservation, package admission, runtime containment, route proof, and full campaign certification. `loadable` means the pinned source imported, compiled, finalized, validated through Rebuilt, and started a session. It is not a claim that every route matches the Realmz Castle codebase.
+This report closes the 2026-09-22 compiler/readiness batch. It distinguishes source preservation, package admission, runtime containment, route proof, and full campaign certification. `loadable` means the pinned source imported, compiled, finalized, validated through Rebuilt, and started a session. It is not a claim that every route matches classic Realmz.
 
 ## Accepted toolchain
 

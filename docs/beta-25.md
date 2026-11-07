@@ -7,7 +7,7 @@ You can now see poison and disease damage as it happens in combat. Allies you ke
 ## Combat and adventure fixes
 
 - **Poison and disease feedback:** combat now shows the condition name and damage at the affected character or monster, with the appropriate sound. Lethal damage appears before the defeat result. Reduced Motion and Skip retain the result in the combat account. This makes the existing damage visible; it does not change damage, condition durations, or random rolls. Addresses [#20](https://github.com/iSynic/Realmz-Rebuilt/issues/20).
-- **Retained allies' weapons:** fixed the missing post-battle weapon recovery for surviving allies you choose to keep. Recovery follows the rules in the Realmz Castle codebase and preserves their carried loot. Addresses [#21](https://github.com/iSynic/Realmz-Rebuilt/issues/21).
+- **Retained allies' weapons:** fixed the missing post-battle weapon recovery for surviving allies you choose to keep. Recovery follows the rules in classic Realmz and preserves their carried loot. Addresses [#21](https://github.com/iSynic/Realmz-Rebuilt/issues/21).
 - **Resting in Trouble in the Sword Lands:** fixed an item check in its daily script that could stop the adventure when resting past midnight. Load a save made before the fault to continue; no campaign update is needed. Addresses [#23](https://github.com/iSynic/Realmz-Rebuilt/issues/23).
 
 ## Startup cleanup

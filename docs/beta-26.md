@@ -6,7 +6,7 @@ You can now reach Adventure Rules from one button in party setup, without the ru
 
 ## Adventure and interface changes
 
-- **Scenario continuation:** shared Classic instruction handlers now follow the Realmz Castle codebase when authored modes fall outside a switch. They preserve earlier effects, the correct continuation, and random draws. This extends the Beta 25 fix for resting in Trouble in the Sword Lands to the same class of script behavior elsewhere; it does not alter the scenario records.
+- **Scenario continuation:** shared Classic instruction handlers now follow classic Realmz when authored modes fall outside a switch. They preserve earlier effects, the correct continuation, and random draws. This extends the Beta 25 fix for resting in Trouble in the Sword Lands to the same class of script behavior elsewhere; it does not alter the scenario records.
 - **Additional script corrections:** Choice results, encounter returns, darkness values, monster removal, and target-independent spell effects now follow their source-backed order and state changes in the affected cases. Genuine missing content and invalid runtime state still report a failure. These focused corrections do not establish full campaign parity.
 - **Party setup:** the compact Adventure Rules button opens that Settings page. Free targeting cancellation remains optional and off by default, and its rules are unchanged.
 - **UI authoring:** Party Setup, Inventory and Trade, Fixed HUD, Modular HUD, and the other major screens expose their complete default arrangements in production scenes. Shared theme roles now supply consistent defaults through embedded controls while preserving the current look. This helps contributors edit the game UI; player theme selection is not included yet.

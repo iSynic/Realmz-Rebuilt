@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-Turn on **Classic keyboard shortcuts** under Settings → Controls to use the context-sensitive letters from the Realmz Castle codebase. It is off by default because A, S, D, and W conflict with WASD movement. With Classic shortcuts on, move with the arrow keys or numeric keypad instead. Mouse and controller controls remain available.
+Turn on **Classic keyboard shortcuts** under Settings → Controls to use the context-sensitive letters from classic Realmz. It is off by default because A, S, D, and W conflict with WASD movement. With Classic shortcuts on, move with the arrow keys or numeric keypad instead. Mouse and controller controls remain available.
 
 | Context | Keys |
 | --- | --- |

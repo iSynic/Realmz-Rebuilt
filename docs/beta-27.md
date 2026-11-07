@@ -7,7 +7,7 @@ You can continue through the affected death and revival scripts without a comple
 ## Adventure changes
 
 - **Death-macro continuation:** fixes the repeated dispatch exposed by the centipede encounter in Trouble in the Sword Lands and Jhalor Fireblade's immediate revival macro. Completed effects remain in the event history without scheduling the same macro again.
-- **Field targeting:** learned spells and scrolls with variable character counts now follow the Realmz Castle codebase. With six party members, power ×6 selects the whole party without a picker; ×7 includes all retained allies as well, regardless of how many allies are present. Combat targeting is unchanged.
+- **Field targeting:** learned spells and scrolls with variable character counts now follow classic Realmz. With six party members, power ×6 selects the whole party without a picker; ×7 includes all retained allies as well, regardless of how many allies are present. Combat targeting is unchanged.
 - **Field spell feedback:** condition spells identify each recipient in the narration well, with the corresponding sound and party portrait effect, then append a compact party/ally count. Retained allies receive their own named feedback and sound.
 
 ## Saves and updating

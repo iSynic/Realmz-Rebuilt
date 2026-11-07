@@ -8,7 +8,7 @@ This is an opt-in prerelease. **Beta 27 remains the Latest release and the fallb
 
 ## Adventure changes
 
-- **One scenario runner:** branches, encounters, battle and death macros, timers, and application scripts now share explicit execution and return state, following the Realmz Castle codebase. This replaces the overlapping execution paths behind the recurring continuation bugs.
+- **One scenario runner:** branches, encounters, battle and death macros, timers, and application scripts now share explicit execution and return state, following classic Realmz. This replaces the overlapping execution paths behind the recurring continuation bugs.
 - **Save and restore:** suspended scripts retain their exact pending interaction and next execution phase. Restoring does not replay completed effects or reroll decisions.
 - **Combat responsiveness:** combat-account display updates are combined within a frame, and hidden account text is rendered when shown. This reduces handoff work without changing combat decisions, event order, or random rolls.
 - Beta 27's death-macro continuation and field-spell targeting and feedback repairs are retained.
