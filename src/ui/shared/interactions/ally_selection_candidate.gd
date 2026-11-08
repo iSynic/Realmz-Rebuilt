@@ -14,5 +14,4 @@ func bind_candidate(entry: InteractionRequestValue.SelectionCandidate, selected:
 	set_meta(&"character_id", entry.id)
 	set_meta(&"required", required)
 	button_pressed = selected
-	disabled = required
 	icon = icon_texture

@@ -97,7 +97,7 @@ func _focusable_controls(parent: Node) -> Array[Control]:
 	for child: Node in parent.get_children():
 		if child is Control:
 			var control := child as Control
-			if control.is_inside_tree() and control.is_visible_in_tree() and control.focus_mode != Control.FOCUS_NONE:
+			if control.is_inside_tree() and control.is_visible_in_tree() and control.focus_mode == Control.FOCUS_ALL:
 				result.append(control)
 		result.append_array(_focusable_controls(child))
 	return result

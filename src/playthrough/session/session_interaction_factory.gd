@@ -31,7 +31,7 @@ static func pooled_wealth_departure_distribution(state: GameState, request_id: S
 		var transfers: Array[Dictionary] = []
 		for denomination: String in ["gold", "gems", "jewelry"]:
 			var kind := money_kind(denomination)
-			var amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
+			var amount := EconomyRules.transfer_step(kind as WealthState.Kind, state.adventure_rules)
 			var to_pool := economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, false)
 			var to_character := economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, true)
 			transfers.append({"denomination": denomination, "amount": amount, "toPool": _economy_action_payload(to_pool), "toCharacter": _economy_action_payload(to_character)})

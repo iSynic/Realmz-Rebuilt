@@ -23,7 +23,8 @@ func move(root: Node, direction: Vector2i) -> Control:
 	if _adjust_value(current, direction):
 		return current
 	var side := _side_for(direction)
-	var neighbor := current.find_valid_focus_neighbor(side) if side >= 0 else null
+	# Only authored neighbors override geometry; Godot's own search can leap across unrelated panes.
+	var neighbor := current.find_valid_focus_neighbor(side) if side >= 0 and not current.get_focus_neighbor(side).is_empty() else null
 	if neighbor == null or neighbor == current or not root.is_ancestor_of(neighbor) or not _is_focusable(neighbor):
 		neighbor = _geometric_neighbor(root, current, direction)
 	if neighbor != null:
@@ -102,7 +103,11 @@ func activate_focused(root: Node) -> bool:
 		option.get_popup().set_focused_item(_popup_index)
 		return true
 	if focused is MenuButton and not (focused as MenuButton).disabled:
-		(focused as MenuButton).show_popup()
+		var menu_button := focused as MenuButton
+		menu_button.show_popup()
+		_popup_owner = weakref(menu_button)
+		_popup_index = -1
+		_step_popup(menu_button.get_popup(), 1)
 		return true
 	if focused is CheckButton and not (focused as CheckButton).disabled:
 		var check := focused as CheckButton
@@ -156,23 +161,23 @@ func release_held() -> void:
 
 func cancel_active_popup(root: Node = null) -> bool:
 	has_active_popup(root)
-	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
-	if option == null or not option.get_popup().visible:
-		_popup_owner = null
-		return false
-	option.get_popup().hide()
+	var popup := _active_popup()
 	_popup_owner = null
+	if popup == null:
+		return false
+	popup.hide()
 	return true
 
 
+## Option and menu popups keep controller ownership until confirmed or cancelled.
 func has_active_popup(root: Node = null) -> bool:
-	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
-	if (option == null or not option.get_popup().visible) and root != null:
-		option = root.get_viewport().gui_get_focus_owner() as OptionButton
-		if option != null and root.is_ancestor_of(option) and option.get_popup().visible:
-			_popup_owner = weakref(option)
-			_popup_index = maxi(0, option.selected)
-	return option != null and option.get_popup().visible
+	if _active_popup() == null and root != null:
+		var focused := root.get_viewport().gui_get_focus_owner()
+		var popup := _popup_of(focused)
+		if popup != null and root.is_ancestor_of(focused) and popup.visible:
+			_popup_owner = weakref(focused)
+			_popup_index = maxi(0, (focused as OptionButton).selected) if focused is OptionButton else maxi(0, popup.get_focused_item())
+	return _active_popup() != null
 
 
 func inspection_text(root: Node) -> String:
@@ -205,22 +210,33 @@ func scroll_active(root: Node, direction: Vector2i, step: int = 48) -> bool:
 
 func _geometric_neighbor(root: Node, current: Control, direction: Vector2i, perpendicular_weight: float = 2.0) -> Control:
 	var focus_group := String(current.get_meta("focus_group", ""))
-	var current_center := current.get_global_rect().get_center()
+	var current_rect := current.get_global_rect()
+	var current_center := current_rect.get_center()
 	var best: Control
 	var best_score := INF
 	for candidate: Control in _focusable_controls(root, focus_group):
 		if candidate == current:
 			continue
-		var offset := candidate.get_global_rect().get_center() - current_center
+		var candidate_rect := candidate.get_global_rect()
+		var offset := candidate_rect.get_center() - current_center
 		var primary := offset.dot(Vector2(direction))
 		if primary <= 0.5:
 			continue
 		var perpendicular := absf(offset.cross(Vector2(direction)))
+		# A move stays within about 63 degrees of its direction unless the target shares the same row or column.
+		if perpendicular > primary * 2.0 and not _shares_lane(current_rect, candidate_rect, direction):
+			continue
 		var score := primary + perpendicular * perpendicular_weight
 		if score < best_score:
 			best = candidate
 			best_score = score
 	return best
+
+
+static func _shares_lane(from: Rect2, to: Rect2, direction: Vector2i) -> bool:
+	if direction.x != 0:
+		return from.position.y < to.end.y and to.position.y < from.end.y
+	return from.position.x < to.end.x and to.position.x < from.end.x
 
 
 func _focusable_controls(root: Node, focus_group: String) -> Array[Control]:
@@ -269,31 +285,52 @@ func _adjust_composite(control: Control, direction: Vector2i) -> bool:
 
 
 func _move_popup(direction: Vector2i) -> bool:
-	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
-	if option == null or not option.get_popup().visible:
+	var popup := _active_popup()
+	if popup == null:
 		_popup_owner = null
 		return false
-	if direction.y != 0 and option.item_count > 0:
-		for attempt: int in option.item_count:
-			_popup_index = wrapi(_popup_index + direction.y, 0, option.item_count)
-			if not option.is_item_disabled(_popup_index) and not option.get_popup().is_item_separator(_popup_index):
-				option.get_popup().set_focused_item(_popup_index)
-				break
+	if direction.y != 0:
+		_step_popup(popup, direction.y)
 	return true
+
+
+func _step_popup(popup: PopupMenu, step: int) -> void:
+	for attempt: int in popup.item_count:
+		_popup_index = wrapi(_popup_index + step, 0, popup.item_count)
+		if not popup.is_item_disabled(_popup_index) and not popup.is_item_separator(_popup_index):
+			popup.set_focused_item(_popup_index)
+			return
 
 
 func _confirm_popup() -> bool:
-	var option: OptionButton = _popup_owner.get_ref() as OptionButton if _popup_owner != null else null
-	if option == null or not option.get_popup().visible:
+	var popup := _active_popup()
+	if popup == null:
 		_popup_owner = null
 		return false
-	if _popup_index < 0 or _popup_index >= option.item_count or option.is_item_disabled(_popup_index) or option.get_popup().is_item_separator(_popup_index): return true
-	option.select(_popup_index)
-	option.item_selected.emit(_popup_index)
-	option.get_popup().hide()
+	if _popup_index < 0 or _popup_index >= popup.item_count or popup.is_item_disabled(_popup_index) or popup.is_item_separator(_popup_index): return true
+	var owner := _popup_owner.get_ref() as Control
 	_popup_owner = null
-	option.grab_focus()
+	popup.hide()
+	if owner is OptionButton:
+		(owner as OptionButton).select(_popup_index)
+		(owner as OptionButton).item_selected.emit(_popup_index)
+	else:
+		popup.id_pressed.emit(popup.get_item_id(_popup_index))
+		popup.index_pressed.emit(_popup_index)
+	if is_instance_valid(owner) and owner.is_inside_tree():
+		owner.grab_focus()
 	return true
+
+
+func _active_popup() -> PopupMenu:
+	var popup := _popup_of(_popup_owner.get_ref() if _popup_owner != null else null)
+	return popup if popup != null and popup.visible else null
+
+
+static func _popup_of(control: Object) -> PopupMenu:
+	if control is OptionButton:
+		return (control as OptionButton).get_popup()
+	return (control as MenuButton).get_popup() if control is MenuButton else null
 
 
 func _reveal_in_scroll(control: Control) -> void:

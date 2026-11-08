@@ -339,16 +339,16 @@ func _shop_money_action(shop: ShopDefinition, continuation: ScenarioRuntimeConti
 			var kind := ClassicMoneyTransferSupport.wealth_kind(body.denomination)
 			if character == null or kind < 0:
 				return ScenarioRuntimeOperationResult.rejected(&"unknown_money_target", "The selected Shop transfer is unavailable.")
-			if body.amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
-				return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+			if body.amount != EconomyRules.transfer_step(kind as WealthState.Kind, _game_state.adventure_rules):
+				return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "A Swap step moves the adventure's Money Transfer Speed multiple of five gold or one gem or jewelry.")
 			var to_character := body.action == &"to-character"
 			var probe := _rules.economy.transfer_probe(_game_state.party, character, kind as WealthState.Kind, body.amount, to_character)
 			if not probe.allowed:
 				return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 			var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, body.amount) if to_character else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, body.amount)
-			if not transferred:
+			if transferred < 1:
 				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", "The selected Shop transfer is no longer available.")
-			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-shop", "characterId": character.id, "direction": String(body.action), "kind": body.denomination, "amount": body.amount}))
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-shop", "characterId": character.id, "direction": String(body.action), "kind": body.denomination, "amount": transferred}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-shop-swap"}))
 		MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
 			var rate := MoneyChangingRules.rate(body.action)

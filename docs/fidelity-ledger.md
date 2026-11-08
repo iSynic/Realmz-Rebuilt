@@ -209,6 +209,15 @@ Import Party from Save offers party-level reuse of player characters in a fresh 
 - Tests: `test_money_workflow.gd` covers the batch limit, affordable stop and exact rate. `test_classic_ui_system.gd` covers the acceleration steps. The Shop path shares `MoneyChangingRules` and keeps its `test_scenario_vm.gd` coverage.
 - Legacy quirk: none. Castle has no fixed cadence to preserve.
 
+## FD-ECONOMY-005 — Classic-speed held transfers and optional Money Transfer Speed
+
+- Affected rule: holding a Swap transfer between an adventurer and the party or Treasure pool in Party Wealth, Shop Money, Bank, pooled-wealth departure and Treasure Money.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/swap.c`, `swap`, lines 130–165. One dialog serves every money screen; while the button is held, each loop moves five gold, one gem or one jewelry with no timer, stops a step that the source cannot pay or the load cannot carry, and keeps the selected adventurer. This is `source-control-flow` evidence, not a Castle-runtime measurement.
+- Player-facing problem: Rebuilt repeated transfers every 90 milliseconds in two screens and one step per click in Bank, departure and Treasure Money, and some screens reset the selected adventurer (GitHub #40).
+- Chosen 2.0 behavior: every money screen presses once, pauses 350 milliseconds so a tap stays exact, then repeats once per frame while held, keeping the selected adventurer across transfers, Pool and Share. The per-adventure Money Transfer Speed rule (default 1x, whole steps to 5x) multiplies the per-step amount; a step moves the largest whole number of Classic increments that the source holds and the load allows. At 1x every amount is Castle's.
+- Tests: `test_money_workflow.gd`, `test_scenario_vm.gd` and `test_classic_ui_system.gd` keep the Classic increments; `test_realmz_rules.gd` covers the rule's optional serialization.
+- Legacy quirk: none. Castle has no fixed cadence to preserve.
+
 ## FD-INVENTORY-001 — Safe equipped-item trade
 
 - Affected rule: moving an equipped carried item between party members in the ordinary two-character Trade workspace.

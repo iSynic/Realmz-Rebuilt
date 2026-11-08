@@ -268,7 +268,7 @@ func _grab_initial_focus() -> void:
 			target = _browse_button
 	elif not _selection_cancel_button.disabled:
 		target = _selection_cancel_button
-	if target.is_inside_tree() and target.visible and target.focus_mode != Control.FOCUS_NONE and not target.disabled:
+	if target.is_inside_tree() and target.visible and target.focus_mode == Control.FOCUS_ALL and not target.disabled:
 		target.grab_focus()
 
 

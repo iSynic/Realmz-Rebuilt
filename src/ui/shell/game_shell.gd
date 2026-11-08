@@ -414,6 +414,9 @@ func set_package_media(media: ClassicMediaCatalog) -> void:
 	_party_roster.set_media_catalog(media)
 	_navigator.set_media_catalog(media)
 	_party_effects.present(_current_view)
+	# The Allies command composes its art from package battle icons.
+	if is_node_ready():
+		_rebuild_command_deck()
 
 
 func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog) -> void:

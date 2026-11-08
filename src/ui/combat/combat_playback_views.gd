@@ -15,9 +15,11 @@ static func base_for(previous: GameView, final: GameView, events: Array[DomainEv
 			opening.party_summary = shell.party_summary
 			opening.campaign_summary = shell.campaign_summary
 			return opening
-	if previous != null and previous.combat_view != null and previous.combat_view.battlefield != null:
+	# A concluded battle's view lingers through Treasure and ally selection; those steps
+	# (for example a Treasure swap sound) are not battlefield playback.
+	if previous != null and previous.combat_view != null and previous.combat_view.battlefield != null and previous.combat_view.outcome == &"active":
 		return previous
-	if final != null and final.combat_view != null and final.combat_view.battlefield != null:
+	if final != null and final.combat_view != null and final.combat_view.battlefield != null and final.combat_view.outcome == &"active":
 		return final
 	return null
 

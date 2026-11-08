@@ -306,13 +306,16 @@ func _bind_adventure_rules_view(view: GameView) -> void:
 	_refresh_adventure_rules()
 
 
-func _stage_adventure_rules(rule: StringName, enabled: bool) -> void:
+func _stage_adventure_rules(rule: StringName, value: Variant) -> void:
 	if not _rules_available or _rules_submission != null or not _rules_initialized:
 		return
 	_rules_values = _rules_baseline.copy() if not _rules_dirty() else _rules_values.copy()
 	match rule:
-		&"free_targeting_cancellation": _rules_values.free_targeting_cancellation = enabled
-		&"bard_daggers": _rules_values.bard_daggers = enabled
+		&"free_targeting_cancellation": _rules_values.free_targeting_cancellation = value == true
+		&"bard_daggers": _rules_values.bard_daggers = value == true
+		&"money_transfer_speed":
+			var speed: int = value if value is int else 1
+			_rules_values.money_transfer_speed = clampi(speed, 1, AdventureRules.MAXIMUM_MONEY_TRANSFER_SPEED)
 	_rules_error = ""
 	_refresh_adventure_rules()
 

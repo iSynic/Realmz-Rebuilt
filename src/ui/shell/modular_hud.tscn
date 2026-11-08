@@ -476,6 +476,19 @@ visible = false
 text = "Maps"
 
 
+[node name="AlliesCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+custom_minimum_size = Vector2(40, 40)
+metadata/shell_command_id = &"allies"
+command_id = &"allies"
+
+[node name="CaptionBand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/AlliesCommand/CommandMargin/CommandContent" index="1"]
+visible = false
+
+[node name="Caption" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/AlliesCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Allies"
+
+
 [node name="TorchCommand" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("15_torch")]
 layout_mode = 2
 custom_minimum_size = Vector2(40, 40)

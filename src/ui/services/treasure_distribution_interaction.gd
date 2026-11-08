@@ -8,6 +8,8 @@ extends InteractionComponent
 
 signal recipient_selected(character_id: String)
 signal money_workspace_visibility_changed(open: bool)
+## The open Money workspace absorbed refreshed requests; the presenter rebuilds Treasure from the latest one.
+signal stale_request_rebuild_requested
 
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
@@ -44,6 +46,9 @@ var _transfer_item: InteractionRequestValue.RewardItem
 var _transfer_origin := Vector2.ZERO
 var _detail_popover: CanvasLayer
 var _restore_money_workspace := false
+var _money: TreasureMoneyBinder
+## Set when closing a stale Money workspace so the rebuilt Treasure focuses its Money button.
+var _focus_money_on_return := false
 
 
 func configure(media: ClassicMediaCatalog, game_view: GameView, compact: bool, selected_recipient_id: String = "", loot_slot_order: Array[String] = [], restore_money_workspace: bool = false) -> void:
@@ -86,10 +91,11 @@ func capture_browser_state() -> Dictionary:
 	var scroll := get_node_or_null("%TreasureItemScroll") as ScrollContainer
 	if scroll == null:
 		return {}
-	return {"slotOrder": _loot_slot_order.duplicate(), "lootScroll": scroll.scroll_vertical}
+	return {"slotOrder": _loot_slot_order.duplicate(), "lootScroll": scroll.scroll_vertical, "focusMoney": _focus_money_on_return}
 
 
 func restore_browser_state(state: Dictionary) -> void:
+	_focus_money_on_return = state.get("focusMoney", false) == true
 	var scroll := get_node_or_null("%TreasureItemScroll") as ScrollContainer
 	if scroll == null or not state.get("slotOrder") is Array or state.slotOrder != _loot_slot_order:
 		return
@@ -133,6 +139,9 @@ func build(request: InteractionRequest) -> void:
 
 
 func preferred_initial_focus() -> Control:
+	if _focus_money_on_return and has_node("%TreasureMoney"):
+		_focus_money_on_return = false
+		return %TreasureMoney as Control
 	var recipient := _recipient_buttons.get(_selected_recipient_id) as Control
 	if recipient != null and recipient.visible and not (recipient is BaseButton and (recipient as BaseButton).disabled):
 		return recipient
@@ -205,23 +214,23 @@ func _update_loot_columns(scroll: ScrollContainer, grid: GridContainer) -> void:
 
 func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardItem) -> void:
 	var cell := loot_cell_scene.instantiate() as Button
-	cell.name = "TreasureItem_%s" % _node_fragment(item.instance_id)
+	cell.name = "TreasureItem_%s" % node_fragment(item.instance_id)
 	cell.tooltip_text = item.name
 	cell.set_meta("reward_item", item)
 	parent.add_child(cell)
 	var magic_glow := cell.get_node("%MagicGlow") as TextureRect
 	if item.magical:
-		magic_glow.name = "TreasureMagicGlow_%s" % _node_fragment(item.instance_id)
+		magic_glow.name = "TreasureMagicGlow_%s" % node_fragment(item.instance_id)
 		magic_glow.texture = ClassicUiAssetCatalog.texture(&"loot.item.glow")
 		magic_glow.visible = true
 	else:
 		magic_glow.get_parent().remove_child(magic_glow)
 		magic_glow.free()
 	var item_icon := cell.get_node("%ItemIcon") as TextureRect
-	item_icon.name = "TreasureLootIcon_%s" % _node_fragment(item.instance_id)
+	item_icon.name = "TreasureLootIcon_%s" % node_fragment(item.instance_id)
 	item_icon.texture = _item_texture(item)
 	var ring := cell.get_node("%SelectionRing") as TextureRect
-	ring.name = "TreasureHoverCircle_%s" % _node_fragment(item.instance_id)
+	ring.name = "TreasureHoverCircle_%s" % node_fragment(item.instance_id)
 	ring.texture = ClassicUiAssetCatalog.texture(&"loot.selection")
 	_item_buttons[item.instance_id] = cell
 	_selection_rings[item.instance_id] = ring
@@ -235,7 +244,7 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 
 func _add_vacant_loot_slot(parent: GridContainer, instance_id: String) -> void:
 	var slot := vacant_slot_scene.instantiate() as Control
-	slot.name = "TreasureVacantSlot_%s" % _node_fragment(instance_id)
+	slot.name = "TreasureVacantSlot_%s" % node_fragment(instance_id)
 	parent.add_child(slot)
 
 
@@ -250,7 +259,7 @@ func _build_party_side(body: TreasureRequestBody) -> void:
 
 func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValue.RewardCharacter) -> void:
 	var row := recipient_row_scene.instantiate() as BoxContainer
-	row.name = "TreasureRecipientRow_%s" % _node_fragment(character.id)
+	row.name = "TreasureRecipientRow_%s" % node_fragment(character.id)
 	parent.add_child(row)
 	var button := row.get_node("TreasureRecipientSelect") as Button
 	button.name = "TreasureRecipient_%s" % character.id
@@ -262,7 +271,7 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	button.pressed.connect(_select_recipient.bind(character.id))
 	_recipient_buttons[character.id] = button
 	var drop := row.get_node("TreasureRecipientDrop") as MenuButton
-	drop.name = "TreasureDrop_%s" % _node_fragment(character.id)
+	drop.name = "TreasureDrop_%s" % node_fragment(character.id)
 	drop.disabled = character.drop_items.is_empty()
 	drop.tooltip_text = "No carried items to drop." if drop.disabled else "Drop an item carried by %s." % character.name
 	var menu := drop.get_popup()
@@ -446,7 +455,7 @@ func _portrait(character_id: String) -> Texture2D:
 	return null
 
 
-static func _node_fragment(value: String) -> String: return value.replace(".", "_").replace(":", "_").replace("/", "_").replace("@", "_").replace('"', "_")
+static func node_fragment(value: String) -> String: return value.replace(".", "_").replace(":", "_").replace("/", "_").replace("@", "_").replace('"', "_")
 
 
 func _build_recovery_workspace(body: TreasureRequestBody) -> void:
@@ -514,53 +523,26 @@ func _bind_recovery_item(workspace: VBoxContainer, item: InteractionRequestValue
 
 
 func _open_money_workspace(body: TreasureRequestBody) -> void:
-	var rows: Array[InteractionRequestValue.RewardCharacter] = []
-	for character: InteractionRequestValue.RewardCharacter in body.characters:
-		if character.wealth != null and not character.id.is_empty():
-			rows.append(character)
-	if rows.is_empty():
+	if not body.characters.any(func(character: InteractionRequestValue.RewardCharacter) -> bool: return character.wealth != null and not character.id.is_empty()):
 		return
 	var workspace := money_workspace_scene.instantiate() as ServicesWorkspace
 	workspace.name = "TreasureMoneyWorkspace"
 	workspace.prepare(_compact)
-	workspace.changing_pane().hide()
-	var pool := workspace.pool_summary()
-	(pool.get_node("Identity/Heading") as Label).text = "Treasure Pool"
-	(pool.get_node("Identity/Banked") as Label).hide()
-	for kind: StringName in [&"gold", &"gems", &"jewelry"]:
-		(pool.get_node("MoneyPoolValues/%s" % String(kind).capitalize()) as WealthChip).bind(kind, _treasure_wealth_amount(body.wealth, kind), _media)
-	var pool_button := pool.get_node("MoneyPoolActions/Pool") as Button
-	var share_button := pool.get_node("MoneyPoolActions/Share") as Button
-	var has_carried_wealth := rows.any(func(character: InteractionRequestValue.RewardCharacter) -> bool:
-		return character.wealth.gold > 0 or character.wealth.gems > 0 or character.wealth.jewelry > 0
-	)
-	pool_button.disabled = not has_carried_wealth
-	pool_button.tooltip_text = "No adventurer carries wealth to pool." if pool_button.disabled else "Pool all carried wealth."
-	pool_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"pool")))
-	share_button.disabled = not (body.has_share_capacity and body.wealth != null and (body.wealth.gold > 0 or body.wealth.gems > 0 or body.wealth.jewelry > 0))
-	share_button.tooltip_text = "The pool is empty or no adventurer can carry another unit." if share_button.disabled else "Share the Treasure pool."
-	share_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"share")))
-	var done := workspace.done_button()
-	done.text = "Back to Treasure"
-	done.tooltip_text = "Return to the same Treasure screen."
-	done.pressed.connect(_close_money_workspace)
-	var group := ButtonGroup.new()
-	var picker := workspace.character_picker()
-	for character: InteractionRequestValue.RewardCharacter in rows:
-		var row := workspace.money_character_row_scene.instantiate() as MoneyCharacterRow
-		row.name = "MoneyCharacter_%s" % _node_fragment(character.id)
-		row.button_group = group
-		(row.get_node("Content/Portrait") as TextureRect).texture = _portrait(character.id)
-		(row.get_node("Content/Facts/Name") as Label).text = character.name
-		(row.get_node("Content/Facts/Wealth") as Label).text = "%d gold  ·  %d gems  ·  %d jewelry" % [character.wealth.gold, character.wealth.gems, character.wealth.jewelry]
-		workspace.character_rows().add_child(row)
-		row.pressed.connect(_select_treasure_money_character.bind(workspace, body, character.id))
-		picker.add_item("%s  •  Load %d/%d" % [character.name, character.carried_load, character.maximum_load])
-	picker.item_selected.connect(func(index: int) -> void: _select_treasure_money_character(workspace, body, rows[index].id))
-	var initial_id := _selected_recipient_id if rows.any(func(character: InteractionRequestValue.RewardCharacter) -> bool: return character.id == _selected_recipient_id) else rows[0].id
-	_select_treasure_money_character(workspace, body, initial_id)
+	_money = TreasureMoneyBinder.new(workspace, body, _media, _game_view, _portrait, _selected_recipient_id)
+	_money.response_body_submitted.connect(response_body_submitted.emit)
+	_money.close_requested.connect(_close_money_workspace)
 	money_workspace_visibility_changed.emit(true)
 	application_workspace_requested.emit(workspace)
+	_money.focus_selected.call_deferred()
+
+
+## Rebinds the open Money workspace from a refreshed request; Treasure beneath rebuilds when Money closes.
+func refresh_money_workspace(request: InteractionRequest, game_view: GameView) -> bool:
+	var body := request.body as TreasureRequestBody if request != null else null
+	if _money == null or not is_instance_valid(_money.workspace) or not _money.workspace.is_inside_tree() or body == null or body.mode != &"ordinary":
+		return false
+	_game_view = game_view if game_view != null else _game_view
+	return _money.refresh(body, game_view)
 
 
 func _add_caster_control(parent: VBoxContainer, label: String, action: StringName, method: InteractionRequestValue.RewardMethod) -> void:
@@ -592,66 +574,17 @@ func _build_completion_confirmation(body: TreasureRequestBody) -> void:
 
 
 func _close_money_workspace() -> void:
+	var stale := _money != null and _money.stale
+	if _money != null:
+		_money.stop()
+		_money.stale = false
 	money_workspace_visibility_changed.emit(false)
 	application_workspace_closed.emit()
-
-
-func _select_treasure_money_character(workspace: ServicesWorkspace, body: TreasureRequestBody, character_id: String) -> void:
-	var selected: InteractionRequestValue.RewardCharacter
-	var index := 0
-	for character: InteractionRequestValue.RewardCharacter in body.characters:
-		if character.wealth == null or character.id.is_empty():
-			continue
-		if character.id == character_id:
-			selected = character
-			break
-		index += 1
-	if selected == null:
-		return
-	for child: Node in workspace.character_rows().get_children():
-		(child as Button).set_pressed_no_signal(child.name == "MoneyCharacter_%s" % _node_fragment(character_id))
-	workspace.character_picker().select(index)
-	var exchange := workspace.swap_pane().get_node("Content/MoneyExchangeScroll/MoneyExchangeBody")
-	(exchange.get_node("Header/Heading") as Label).text = "Give or take wealth"
-	(exchange.get_node("Header/SelectedName") as Label).text = selected.name
-	(exchange.get_node("Header/SelectedPortrait") as TextureRect).texture = _portrait(character_id)
-	var summary := workspace.selected_summary()
-	for kind: StringName in [&"gold", &"gems", &"jewelry"]:
-		(summary.get_node(String(kind).capitalize()) as WealthChip).bind(kind, _treasure_wealth_amount(selected.wealth, kind), _media)
-	(summary.get_node("Load") as Label).text = "Carried load\n%d / %d" % [selected.carried_load, selected.maximum_load]
-	var transfer_rows := workspace.transfer_rows()
-	for child: Node in transfer_rows.get_children():
-		transfer_rows.remove_child(child)
-		child.queue_free()
-	for kind: StringName in [&"gold", &"gems", &"jewelry"]:
-		var amount := 5 if kind == &"gold" else 1
-		var transfer := MoneyTransferView.new(kind, amount, null, null)
-		var row := workspace.money_transfer_row_scene.instantiate() as MoneyTransferRow
-		transfer_rows.add_child(row)
-		row.bind(transfer, _treasure_wealth_amount(body.wealth, kind), _treasure_wealth_amount(selected.wealth, kind), _media)
-		var to_pool := row.to_pool_button()
-		to_pool.disabled = _treasure_wealth_amount(selected.wealth, kind) < amount
-		to_pool.tooltip_text = "This adventurer does not carry enough %s." % String(kind) if to_pool.disabled else "Return wealth to the Treasure pool."
-		to_pool.pressed.connect(_submit_treasure_money_transfer.bind(character_id, &"to-pool", kind, amount))
-		var to_character := row.to_character_button()
-		var can_take := selected.can_take_gold if kind == &"gold" else selected.can_take_gems if kind == &"gems" else selected.can_take_jewelry
-		to_character.disabled = not can_take
-		to_character.tooltip_text = (selected.gold_reason if kind == &"gold" else selected.gems_reason if kind == &"gems" else selected.jewelry_reason) if not can_take else "Take wealth from the Treasure pool."
-		to_character.pressed.connect(_submit_treasure_money_transfer.bind(character_id, &"to-character", kind, amount))
-
-
-func _submit_treasure_money_transfer(character_id: String, direction: StringName, kind: StringName, amount: int) -> void:
-	response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"transfer", "", character_id, direction, kind, amount))
-
-
-func _treasure_wealth_amount(wealth: InteractionRequestValue.Wealth, kind: StringName) -> int:
-	if wealth == null:
-		return 0
-	match kind:
-		&"gold": return wealth.gold
-		&"gems": return wealth.gems
-		&"jewelry": return wealth.jewelry
-	return 0
+	if stale:
+		_focus_money_on_return = true
+		stale_request_rebuild_requested.emit()
+	elif has_node("%TreasureMoney"):
+		(%TreasureMoney as Control).grab_focus.call_deferred()
 
 
 func _add_colored_label(parent: Container, text: String, color: Color, label_name: String) -> Label:

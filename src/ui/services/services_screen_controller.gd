@@ -13,6 +13,8 @@ const MUTED := Color("9aa0a8")
 const WORKSPACE_SCENE_PATH := "res://src/ui/services/services_workspace.tscn"
 const MONEY_REPEAT_DELAY := 0.35
 const MONEY_REPEAT_INTERVAL := 0.09
+## Transfers repeat once per frame like Castle swap.c's unthrottled hold loop; conversion keeps its paced speed-up.
+const MONEY_TRANSFER_INTERVAL := 1.0 / 60.0
 const MONEY_CHANGE_TEN_TIMES_PULSE := 33
 const MONEY_CHANGE_HUNDRED_TIMES_PULSE := 88
 
@@ -322,9 +324,12 @@ func _repeat_step() -> void:
 		_stop_repeat()
 		return
 	_held_pulses += 1
-	intent_submitted.emit(_held_pulse_intent())
+	var intent := _held_pulse_intent()
+	intent_submitted.emit(intent)
+	var money := intent.payload as EconomyIntentPayloads.Money
+	var transfer := money != null and money.action in [&"to-pool", &"to-character"]
 	if is_instance_valid(_held_button) and not _held_button.disabled and _workspace.repeat_timer().is_inside_tree():
-		_workspace.repeat_timer().start(MONEY_REPEAT_INTERVAL)
+		_workspace.repeat_timer().start(MONEY_TRANSFER_INTERVAL if transfer else MONEY_REPEAT_INTERVAL)
 
 
 ## Castle's hold loop runs as fast as the machine allows, so a long hold reaches large sums while a short one stays exact.

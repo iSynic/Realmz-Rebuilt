@@ -208,18 +208,18 @@ func _transfer_departure_wealth(body: InteractionResponse.BankBody, action: Stri
 	var amount := body.amount
 	if character == null or kind < 0:
 		return SessionCoordinatorResult.rejected(&"unknown_money_target", "The selected pooled-wealth transfer is unavailable.")
-	if amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
-		return SessionCoordinatorResult.rejected(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+	if amount != EconomyRules.transfer_step(kind as WealthState.Kind, _context.state.adventure_rules):
+		return SessionCoordinatorResult.rejected(&"invalid_money_increment", "A Swap step moves the adventure's Money Transfer Speed multiple of five gold or one gem or jewelry.")
 	var to_character := action == "to-character"
 	var probe := _context.rules.economy.transfer_probe(_context.state.party, character, kind as WealthState.Kind, amount, to_character)
 	if not probe.allowed:
 		return SessionCoordinatorResult.rejected(&"money_action_unavailable", probe.reason)
 	var transferred := _context.rules.economy.transfer_pool_to_character(_context.state.party, character, kind as WealthState.Kind, amount) if to_character else _context.rules.economy.transfer_character_to_pool(_context.state.party, character, kind as WealthState.Kind, amount)
-	if not transferred:
+	if transferred < 1:
 		return SessionCoordinatorResult.failed(&"money_action_unavailable", "The selected pooled-wealth transfer is no longer available.")
 	_context.recalculate_party_movement()
 	return _continue_pooled_wealth_distribution(body.character_id, [
-		DomainEvent.new(&"wealth_transferred", {"source": "classic-pooled-wealth-departure", "characterId": character.id, "direction": action, "kind": body.denomination, "amount": amount}),
+		DomainEvent.new(&"wealth_transferred", {"source": "classic-pooled-wealth-departure", "characterId": character.id, "direction": action, "kind": body.denomination, "amount": transferred}),
 		DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-swap"}),
 	])
 

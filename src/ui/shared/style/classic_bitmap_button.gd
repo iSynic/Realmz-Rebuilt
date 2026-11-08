@@ -61,7 +61,11 @@ func configure(definition: Dictionary, art_scale: int = 1) -> void:
 	visual_asset_id = asset_id
 	var pressed_asset_id := StringName(definition.get("pressed_asset_id", &""))
 	var direct_path := String(definition.get("asset_path", ""))
+	# A runtime-composed texture (the Allies command) takes precedence over catalog art.
 	var source_texture := load(direct_path) as Texture2D if not direct_path.is_empty() else ClassicUiAssetCatalog.texture(asset_id)
+	var supplied: Variant = definition.get("art_texture")
+	if supplied is Texture2D:
+		source_texture = supplied
 	var source_pressed_texture := ClassicUiAssetCatalog.texture(pressed_asset_id)
 	var art_region: Array = definition.get("art_region", [])
 	var art_clear_regions: Array = definition.get("art_clear_regions", [])

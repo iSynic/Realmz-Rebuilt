@@ -299,7 +299,7 @@ func _bind_footer() -> void:
 		share_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ShopBody.new(&"share")))
 	_browser_layout.configure_route_button(%ShopKeeperRestore, "Shop Keeper", &"command.shop_original", _route_size, func() -> void: _select_category(_selected_category), {"asset_path": "res://src/ui/shared/assets/ui/commands/shop.png"})
 	_browser_layout.configure_route_button(%ShopItems, "Items", &"command.inventory", _route_size, _show_workspace.bind(&"items"), {"art_region": [5, 2, 36, 34], "art_clear_regions": [[0, 4, 4, 8]]})
-	_browser_layout.configure_route_button(%ShopMoney, "Money", &"command.money", _route_size, _show_workspace.bind(&"money"), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
+	_browser_layout.configure_route_button(%ShopMoney, "Money", &"command.money", _route_size, func() -> void: _show_workspace(&"money", _selected_character_id), {"art_region": [5, 5, 35, 31], "art_clear_regions": [[0, 0, 8, 8]]})
 	_browser_layout.apply_sizes(self, _compact, _route_size, _left_load, _right_load, _buy_button, _sell_button, _identify_button)
 
 

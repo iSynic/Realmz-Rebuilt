@@ -175,7 +175,7 @@ static func _collect_controller_controls(node: Node, output: Array[Control]) -> 
 	for child: Node in node.get_children():
 		var control := child as Control
 		var disabled := child is BaseButton and (child as BaseButton).disabled
-		if control != null and control.is_visible_in_tree() and control.focus_mode != Control.FOCUS_NONE and not disabled:
+		if control != null and control.is_visible_in_tree() and control.focus_mode == Control.FOCUS_ALL and not disabled:
 			output.append(control)
 		_collect_controller_controls(child, output)
 

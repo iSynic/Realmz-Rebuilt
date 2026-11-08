@@ -213,7 +213,7 @@ func _apply_footer_alignment(profile: UiLayoutProfile, command_width: float) -> 
 	if not (_shell_ref.get_ref() as GameShell).hud.active:
 		_world_command_grid.columns = 4
 		_world_command_lower_grid.columns = 3
-		_command_grid.columns = 2 if _world_command_panel.visible else 3 if profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
+		_command_grid.columns = 3 if _world_command_panel.visible or profile.id == UiLayoutProfile.COMPACT else maxi(2, floori(command_width / (108.0 if profile.bitmap_scale == 2 else 58.0)))
 	var icon_size := GameShellLayoutPolicy.party_effect_icon_size(profile.bitmap_scale)
 	var slot_size := GameShellLayoutPolicy.party_effect_slot_size(profile.bitmap_scale)
 	for icon: TextureRect in _effect_slots:

@@ -114,12 +114,14 @@ layout_mode = 2
 [node name="ImportIcons" type="MenuButton" parent="ArtWindow/Content/ArtBody/LibraryPanel/LibraryColumns/ImagePane/ImportButtons"]
 unique_name_in_owner = true
 layout_mode = 2
+focus_mode = 2
 text = "Import Icons"
 size_flags_horizontal = 3
 
 [node name="ImportPortraits" type="MenuButton" parent="ArtWindow/Content/ArtBody/LibraryPanel/LibraryColumns/ImagePane/ImportButtons"]
 unique_name_in_owner = true
 layout_mode = 2
+focus_mode = 2
 text = "Import Portraits"
 size_flags_horizontal = 3
 

@@ -34,6 +34,35 @@ size_flags_horizontal = 3
 text = "Bards can equip and use daggers, including Fang, wherever the item's other limits allow. Applies to the standard Bard, not a scenario's own Bard class. A dagger already in hand stays equipped if you turn this off."
 autowrap_mode = 2
 
+[node name="MoneyTransferSpeedRow" type="BoxContainer" parent="." groups=["system_setting_rows"]]
+layout_mode = 2
+
+[node name="MoneyTransferSpeedCaption" type="Label" parent="MoneyTransferSpeedRow"]
+layout_mode = 2
+text = "Money transfer speed"
+
+[node name="MoneyTransferSpeedSlider" type="HSlider" parent="MoneyTransferSpeedRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+min_value = 1.0
+max_value = 5.0
+value = 1.0
+tick_count = 5
+ticks_on_borders = true
+
+[node name="MoneyTransferSpeedValue" type="Label" parent="MoneyTransferSpeedRow"]
+custom_minimum_size = Vector2(32, 0)
+layout_mode = 2
+text = "1x"
+horizontal_alignment = 2
+
+[node name="MoneyTransferSpeedHelp" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Each step of a money transfer moves this many times classic Realmz's five gold, one gem or one jewelry. A step still stops at what's on hand and what a character can carry. 1x is classic."
+autowrap_mode = 2
+
 [node name="RulesUnavailableReason" type="Label" parent="."]
 visible = false
 layout_mode = 2

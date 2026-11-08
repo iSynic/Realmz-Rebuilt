@@ -392,7 +392,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
-columns = 2
+columns = 3
 theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 
@@ -557,6 +557,15 @@ command_id = &"maps"
 
 [node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/MapsCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
 text = "Maps"
+
+
+[node name="AlliesCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid" instance=ExtResource("13_command")]
+layout_mode = 2
+metadata/shell_command_id = &"allies"
+command_id = &"allies"
+
+[node name="Caption" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter/CommandDeckFrame/CommandGrid/AlliesCommand/CommandMargin/CommandContent/CaptionBand" index="1"]
+text = "Allies"
 
 
 [node name="TorchCommand" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/TorchDock" instance=ExtResource("15_torch")]

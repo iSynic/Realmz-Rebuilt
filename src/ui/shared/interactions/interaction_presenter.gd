@@ -66,6 +66,8 @@ var _autojournal_enabled: bool = false
 var _treasure_recipient_id: String = ""
 var _treasure_slot_order: Array[String] = []
 var _treasure_money_workspace_open := false
+## Text context, view and media of the latest present call, for rebuilding Treasure after Money closes.
+var _last_present_arguments: Array = []
 var _overlays: InteractionOverlayHost
 var _combat: CombatInteractionController
 var _flash: InteractionFlashController
@@ -156,7 +158,8 @@ func _exit_tree() -> void:
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
 	_party_effect_masked = false
-	if _component is ShopInteraction and (_component as ShopInteraction).refresh_workspace(request, game_view):
+	_last_present_arguments = [classic_text_context, game_view, media]
+	if InteractionRefreshPolicy.refresh_in_place(_component, request, game_view, _treasure_money_workspace_open):
 		_request = request
 		_playback_masked = false
 		visible = true
@@ -232,7 +235,7 @@ func _begin_request(request: InteractionRequest) -> bool:
 		_treasure_slot_order.clear()
 		_treasure_money_workspace_open = false
 	else:
-		_update_treasure_slot_order(request)
+		InteractionRefreshPolicy.update_treasure_slot_order(_treasure_slot_order, request)
 		var treasure_body := request.body as TreasureRequestBody
 		if treasure_body == null or treasure_body.mode != &"ordinary":
 			_treasure_money_workspace_open = false
@@ -289,6 +292,7 @@ func _build_request_component(request: InteractionRequest, game_view: GameView, 
 		var treasure := _component as TreasureDistributionInteraction
 		treasure.recipient_selected.connect(func(character_id: String) -> void: _treasure_recipient_id = character_id)
 		treasure.money_workspace_visibility_changed.connect(func(open: bool) -> void: _treasure_money_workspace_open = open)
+		treasure.stale_request_rebuild_requested.connect(func() -> void: call_deferred("_rebuild_current_request"))
 	_options.add_child(_component)
 	_options.visible = true
 	if build_content: _component.build(request)
@@ -479,7 +483,7 @@ func _create_component(request: InteractionRequest, game_view: GameView, media: 
 func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null or combat_mount_pending:
 		return
-	var retain_shop_workspace := _component is ShopInteraction and body is InteractionResponse.ShopBody and (bool((_component as ShopInteraction).capture_browser_state().get("moneyOpen", false)) or bool((_component as ShopInteraction).capture_browser_state().get("itemsOpen", false)))
+	var retain_shop_workspace := InteractionRefreshPolicy.retains_workspace(_component, body, _treasure_money_workspace_open)
 	if not retain_shop_workspace:
 		_overlays.close_side_workspace()
 		_overlays.close_encounter_dock()
@@ -495,6 +499,12 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	if not preserve_treasure_workspace and not retain_shop_workspace:
 		visible = false
 	response_submitted.emit(response)
+
+
+## Rebuilds Treasure from the latest request after its Money workspace absorbed in-place refreshes.
+func _rebuild_current_request() -> void:
+	if is_inside_tree() and _request != null and _component is TreasureDistributionInteraction:
+		present.callv([_request] + _last_present_arguments)
 
 
 func _uses_global_classic_acknowledgement() -> bool:
@@ -548,18 +558,6 @@ func begin_treasure_transfer(reduced_motion: bool) -> bool:
 		presentation_sound_requested.emit(6002)
 	)
 	return true
-
-
-func _update_treasure_slot_order(request: InteractionRequest) -> void:
-	var body := request.body as TreasureRequestBody
-	if body == null or body.mode != &"ordinary":
-		return
-	var continues_current_layout := body.items.is_empty() or body.items.any(func(item: InteractionRequestValue.RewardItem) -> bool: return _treasure_slot_order.has(item.instance_id))
-	if not _treasure_slot_order.is_empty() and not continues_current_layout:
-		_treasure_slot_order.clear()
-	for item: InteractionRequestValue.RewardItem in body.items:
-		if not _treasure_slot_order.has(item.instance_id):
-			_treasure_slot_order.append(item.instance_id)
 
 
 func _clear_options() -> void:

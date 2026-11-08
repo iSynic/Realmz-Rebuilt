@@ -185,7 +185,7 @@ func focus_first(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		if child is Control:
 			var control := child as Control
-			if control.is_inside_tree() and control.visible and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and (control as BaseButton).disabled):
+			if control.is_inside_tree() and control.visible and control.focus_mode == Control.FOCUS_ALL and not (control is BaseButton and (control as BaseButton).disabled):
 				control.grab_focus()
 				return
 		focus_first(child)

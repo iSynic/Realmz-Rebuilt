@@ -30,17 +30,16 @@ static func perform(context: SessionWorkflowContext, payload: EconomyIntentPaylo
 				return SessionWorkflowResult.failed(&"unknown_character", "The selected money-transfer character is unavailable.")
 			if kind < 0:
 				return SessionWorkflowResult.failed(&"unknown_wealth_kind", "The selected denomination is unavailable.")
-			var expected_amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
-			if payload.amount != expected_amount:
-				return SessionWorkflowResult.failed(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+			if payload.amount != EconomyRules.transfer_step(kind as WealthState.Kind, context.state.adventure_rules):
+				return SessionWorkflowResult.failed(&"invalid_money_increment", "A Swap step moves the adventure's Money Transfer Speed multiple of five gold or one gem or jewelry.")
 			var to_character := payload.action == &"to-character"
 			var probe := context.rules.economy.transfer_probe(context.state.party, character, kind as WealthState.Kind, payload.amount, to_character)
 			if not probe.allowed:
 				return SessionWorkflowResult.failed(&"money_action_unavailable", probe.reason)
 			var transferred := context.rules.economy.transfer_pool_to_character(context.state.party, character, kind as WealthState.Kind, payload.amount) if to_character else context.rules.economy.transfer_character_to_pool(context.state.party, character, kind as WealthState.Kind, payload.amount)
-			if not transferred:
+			if transferred < 1:
 				return SessionWorkflowResult.failed(&"money_action_unavailable", "The selected wealth transfer is no longer available.")
-			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-money", "characterId": character.id, "direction": String(payload.action), "kind": payload.denomination, "amount": payload.amount}))
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-money", "characterId": character.id, "direction": String(payload.action), "kind": payload.denomination, "amount": transferred}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-money-swap"}))
 		MoneyChangingRules.JEWELRY_TO_GEMS, MoneyChangingRules.GEMS_TO_GOLD, MoneyChangingRules.GOLD_TO_GEMS:
 			var rate := MoneyChangingRules.rate(payload.action)

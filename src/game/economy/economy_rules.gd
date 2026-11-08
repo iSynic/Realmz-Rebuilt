@@ -77,39 +77,57 @@ func share_probe(party: PartyState) -> EconomyActionProbe:
 	return EconomyActionProbe.new(false, "No adventurer can carry another pooled denomination.")
 
 
+## A step may request several whole Classic increments; the probe allows it when at least one increment can move.
 func transfer_probe(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int, to_character: bool) -> EconomyActionProbe:
 	if party == null or character == null:
 		return EconomyActionProbe.new(false, "The selected adventurer is unavailable.")
-	if amount != classic_transfer_increment(kind):
+	var increment := classic_transfer_increment(kind)
+	if amount < increment or amount % increment != 0:
 		return EconomyActionProbe.new(false, "The transfer does not use the Classic denomination increment.")
 	if to_character:
-		if party.pooled_wealth.amount(kind) < amount:
+		if party.pooled_wealth.amount(kind) < increment:
 			return EconomyActionProbe.new(false, "The party pool does not contain that amount.")
-		if character.carried_load + wealth_weight(kind) * amount > character.maximum_load:
+		if character.carried_load + wealth_weight(kind) * increment > character.maximum_load:
 			return EconomyActionProbe.new(false, "%s cannot carry that denomination." % character.name)
 		return EconomyActionProbe.new(true)
-	if character.money.amount(kind) < amount:
+	if character.money.amount(kind) < increment:
 		return EconomyActionProbe.new(false, "%s does not carry that amount." % character.name)
 	return EconomyActionProbe.new(true)
 
 
-func transfer_pool_to_character(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> bool:
-	if not transfer_probe(party, character, kind, amount, true).allowed:
-		return false
-	var added_load := wealth_weight(kind) * amount
-	party.pooled_wealth.add(kind, -amount)
-	character.money.add(kind, amount)
-	character.carried_load += added_load
-	return true
+## The largest whole number of Classic increments, up to amount, that the source holds and the recipient's load allows.
+func transferable_amount(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int, to_character: bool) -> int:
+	if not transfer_probe(party, character, kind, amount, to_character).allowed:
+		return 0
+	var increment := classic_transfer_increment(kind)
+	var available := party.pooled_wealth.amount(kind) if to_character else character.money.amount(kind)
+	var result := mini(amount, available - available % increment)
+	if to_character:
+		var room := (character.maximum_load - character.carried_load) / wealth_weight(kind)
+		result = mini(result, room - room % increment)
+	return maxi(0, result)
 
 
-func transfer_character_to_pool(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> bool:
-	if not transfer_probe(party, character, kind, amount, false).allowed:
-		return false
-	character.money.add(kind, -amount)
-	character.carried_load = maxi(0, character.carried_load - wealth_weight(kind) * amount)
-	party.pooled_wealth.add(kind, amount)
-	return true
+## Returns the amount moved, zero when no increment can move.
+func transfer_pool_to_character(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> int:
+	var moved := transferable_amount(party, character, kind, amount, true)
+	if moved < 1:
+		return 0
+	party.pooled_wealth.add(kind, -moved)
+	character.money.add(kind, moved)
+	character.carried_load += wealth_weight(kind) * moved
+	return moved
+
+
+## Returns the amount moved, zero when no increment can move.
+func transfer_character_to_pool(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> int:
+	var moved := transferable_amount(party, character, kind, amount, false)
+	if moved < 1:
+		return 0
+	character.money.add(kind, -moved)
+	character.carried_load = maxi(0, character.carried_load - wealth_weight(kind) * moved)
+	party.pooled_wealth.add(kind, moved)
+	return moved
 
 
 func bank_to_pool(party: PartyState) -> void:
@@ -134,6 +152,11 @@ static func wealth_weight(kind: WealthState.Kind) -> int:
 
 static func classic_transfer_increment(kind: WealthState.Kind) -> int:
 	return 5 if kind == WealthState.Kind.GOLD else 1
+
+
+## The amount one Swap step requests under the adventure's Money Transfer Speed (FD-ECONOMY-005).
+static func transfer_step(kind: WealthState.Kind, rules: AdventureRules) -> int:
+	return classic_transfer_increment(kind) * (rules.money_transfer_speed if rules != null else 1)
 
 
 func take(party: PartyState, amount: int, kind: WealthState.Kind) -> bool:

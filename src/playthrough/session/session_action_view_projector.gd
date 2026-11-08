@@ -56,7 +56,7 @@ static func populate_money_screen(context: SessionWorkflowContext, result: GameV
 		var character_view := MoneyCharacterView.new(character)
 		for denomination: StringName in [&"gold", &"gems", &"jewelry"]:
 			var kind := ProjectionPolicy.money_kind(denomination)
-			var amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
+			var amount := EconomyRules.transfer_step(kind as WealthState.Kind, state.adventure_rules)
 			var to_pool := context.rules.economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, false)
 			var to_character := context.rules.economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, true)
 			character_view.transfers.append(MoneyTransferView.new(denomination, amount, ActionAvailabilityView.new(&"money_action", to_pool.allowed, to_pool.reason), ActionAvailabilityView.new(&"money_action", to_character.allowed, to_character.reason)))

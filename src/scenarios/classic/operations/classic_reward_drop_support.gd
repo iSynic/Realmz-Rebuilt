@@ -21,13 +21,13 @@ func project(character: CharacterState) -> Array[Dictionary]:
 		if definition == null:
 			continue
 		var shown := InventoryRules.presentation_definition(item, definition, _content.items)
-		var probe := _rules.equipment.classic_unequip_probe(character, item, definition, _content.items.definitions()) if item.equipped else InventoryActionProbe.permit()
+		# showcondition.c lists every carried item in the Treasure Drop popup; dropitem.c refuses after selection.
 		rows.append({
 			"instanceId": item.id,
 			"name": shown.name if item.identified else shown.unidentified_name,
 			"equipped": item.equipped,
-			"enabled": probe.allowed,
-			"reason": probe.reason,
+			"enabled": true,
+			"reason": "",
 		})
 	return rows
 
@@ -52,10 +52,18 @@ func drop(body: InteractionResponse.TreasureBody, events: Array[DomainEvent]) ->
 	if item.equipped:
 		var unequipped := _rules.equipment.unequip_classic(character, item, definition, _content.items.definitions(), race, _game_state.party.conditions)
 		if not unequipped.allowed:
-			return {"code": "reward_drop_unavailable", "message": unequipped.reason}
+			# dropitem.c plays the drop cue first; removeitem(play = FALSE) warns only for a curse and keeps the item.
+			events.append(_drop_sound())
+			if not definition.cursed_item_id.is_empty():
+				events.append(DomainEvent.new(&"classic_notification_requested", {"text": "This item appears to be cursed!", "soundId": 6000, "source": "classic-warning-7"}))
+			return {}
 	if _rules.inventory.remove_item(character, item.id, definition) == null:
 		return {"code": "reward_drop_failed", "message": "The selected item could not be dropped."}
 	_rules.characters.recalculate_movement(character, race, caste.movement_bonus)
 	events.append(DomainEvent.new(&"item_dropped", {"characterId": character.id, "instanceId": item.id, "itemId": definition.id}))
-	events.append(DomainEvent.new(&"sound_requested", {"soundId": 655, "waitForCompletion": false, "source": "classic-treasure-drop"}))
+	events.append(_drop_sound())
 	return {}
+
+
+static func _drop_sound() -> DomainEvent:
+	return DomainEvent.new(&"sound_requested", {"soundId": 655, "waitForCompletion": false, "source": "classic-treasure-drop"})

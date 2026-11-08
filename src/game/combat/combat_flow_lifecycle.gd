@@ -319,12 +319,17 @@ func apply_ally_selection(state: GameState, content: RealmzContent, selected_val
 	var candidate_ids: Array[String] = []
 	for candidate: Dictionary in payload["candidates"]:
 		candidate_ids.append(candidate["id"])
-	for required_id: String in payload["requiredIds"]:
-		if not selected_ids.has(required_id):
-			return CombatFlowResult.rejected(&"required_ally_missing", "A scenario-mandatory ally cannot be left behind.")
+	# Castle bodycount.c:136-152 lets the player un-tick a mandatory ally after
+	# its "Leave behind at your own risk." warning, so requiredIds only preselect.
 	for selected_id: String in selected_ids:
 		if not candidate_ids.has(selected_id):
 			return CombatFlowResult.rejected(&"invalid_ally_selection", "The ally selection contains an unavailable combatant.")
+	# bodycount.c:17-19 clears every mandatory survivor's hostility whether or not
+	# it is kept, so a left-behind one never counts as a hostile survivor.
+	for monster: MonsterState in state.combat.roster.monsters():
+		var definition := content.combat.monster_by_id(monster.definition_id)
+		if definition != null and definition.can_summon < 0:
+			monster.traitor = false
 	var retained: Array[MonsterState] = []
 	for selected_id: String in selected_ids:
 		var monster := state.combat.roster.monster_by_id(selected_id)

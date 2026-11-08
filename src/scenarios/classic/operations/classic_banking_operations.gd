@@ -47,7 +47,7 @@ func _interaction_request(request_id: String, selected_character_id: String = ""
 		var transfers: Array[Dictionary] = []
 		for denomination: String in ["gold", "gems", "jewelry"]:
 			var kind := ClassicMoneyTransferSupport.wealth_kind(denomination)
-			var amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
+			var amount := EconomyRules.transfer_step(kind as WealthState.Kind, _game_state.adventure_rules)
 			var to_pool := _rules.economy.transfer_probe(_game_state.party, character, kind as WealthState.Kind, amount, false)
 			var to_character := _rules.economy.transfer_probe(_game_state.party, character, kind as WealthState.Kind, amount, true)
 			transfers.append({
@@ -127,16 +127,16 @@ func _transfer(body: InteractionResponse.BankBody, events: Array[DomainEvent]) -
 		return ScenarioRuntimeOperationResult.rejected(&"unknown_character", "The selected bank character is unavailable.")
 	if kind < 0:
 		return ScenarioRuntimeOperationResult.rejected(&"unknown_wealth_kind", "The selected bank denomination is unavailable.")
-	if body.amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
-		return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+	if body.amount != EconomyRules.transfer_step(kind as WealthState.Kind, _game_state.adventure_rules):
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_money_increment", "A Swap step moves the adventure's Money Transfer Speed multiple of five gold or one gem or jewelry.")
 	var to_character := body.action == &"to-character"
 	var probe := _rules.economy.transfer_probe(_game_state.party, character, kind as WealthState.Kind, body.amount, to_character)
 	if not probe.allowed:
 		return ScenarioRuntimeOperationResult.rejected(&"money_action_unavailable", probe.reason)
 	var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, body.amount) if to_character else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, body.amount)
-	if not transferred:
+	if transferred < 1:
 		return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", "The selected bank transfer is no longer available.")
 	_money.recalculate_party_movement()
-	events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-bank", "characterId": character.id, "direction": String(body.action), "kind": body.denomination, "amount": body.amount}))
+	events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-bank", "characterId": character.id, "direction": String(body.action), "kind": body.denomination, "amount": transferred}))
 	events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-bank-swap"}))
 	return null

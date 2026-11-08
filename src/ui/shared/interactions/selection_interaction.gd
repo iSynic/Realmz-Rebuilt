@@ -96,7 +96,7 @@ func _build_ally_selection(request: InteractionRequest) -> void:
 		var required := body.required_ids.has(entry.id)
 		var check := ally_candidate_scene.instantiate() as CheckButton
 		check.call("bind_candidate", entry, required or body.selected_ids.has(entry.id), required, _ally_icon(entry.id))
-		check.toggled.connect(_refresh_ally_selection.unbind(1))
+		check.toggled.connect(_ally_toggled.bind(check))
 		grid.add_child(check)
 		_checks.append(check)
 	_refresh_ally_selection()
@@ -110,14 +110,26 @@ func _submit_allies() -> void:
 	response_body_submitted.emit(InteractionResponse.AllySelectionBody.new(ids))
 
 
+func _ally_toggled(pressed: bool, check: CheckButton) -> void:
+	# Castle bodycount.c plays 141 for each toggle and 6000 with the warning when
+	# a mandatory ally is un-ticked; the un-tick itself is allowed.
+	presentation_sound_requested.emit(141)
+	if not pressed and check.get_meta(&"required", false) == true:
+		presentation_sound_requested.emit(6000)
+	_refresh_ally_selection()
+
+
 func _refresh_ally_selection() -> void:
 	if _ally_summary == null:
 		return
 	var selected := _selected_ids()
 	_ally_summary.text = "%d of %d selected" % [selected.size(), _ally_maximum]
+	var leaving_required := false
 	for check: CheckButton in _checks:
-		var required := bool(check.get_meta(&"required", false))
-		check.disabled = required or not check.button_pressed and selected.size() >= _ally_maximum
+		leaving_required = leaving_required or check.get_meta(&"required", false) == true and not check.button_pressed
+		check.disabled = not check.button_pressed and selected.size() >= _ally_maximum
+		check.tooltip_text = "You have already chosen %d allies." % _ally_maximum if check.disabled else ""
+	(%AllyLeaveWarning as Label).visible = leaving_required
 
 
 func _selected_ids() -> Array[String]:

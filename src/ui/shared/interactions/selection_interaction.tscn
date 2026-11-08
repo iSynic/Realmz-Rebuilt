@@ -182,6 +182,15 @@ theme_override_colors/font_color = Color(0.561, 0.812, 0.82, 1)
 theme_override_font_sizes/font_size = 15
 text = "0 of 1 selected"
 
+[node name="AllyLeaveWarning" type="Label" parent="AllySelectionMode/AllySelectionColumns/AllyDecision/DecisionContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.878, 0.737, 0.325, 1)
+theme_override_font_sizes/font_size = 15
+text = "This creature may be important to the scenario.  Leave behind at your own risk."
+autowrap_mode = 3
+
 [node name="Spacer" type="Control" parent="AllySelectionMode/AllySelectionColumns/AllyDecision/DecisionContent"]
 layout_mode = 2
 size_flags_vertical = 3

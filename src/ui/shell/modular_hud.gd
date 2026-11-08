@@ -249,10 +249,10 @@ func _arrange_commands(profile: UiLayoutProfile, area: Rect2) -> Array[Rect2]:
 	while art_scale > 1 and (7 * (icon_size.y * art_scale + 2 * padding) + 8 > available_height or 7 * (icon_size.x * art_scale + 2 * padding) > area.size.x):
 		art_scale -= 1
 	var cell := icon_size * art_scale + Vector2.ONE * 2 * padding
-	var columns := 1 if 12 * cell.y + 8 <= available_height else 2
+	var columns := 1 if 13 * cell.y + 8 <= available_height else 2
 	for index: int in 2:
 		var grid := world if index == 0 else party
-		grid.columns = _strip_columns(7 if index == 0 else 5, cell, area.size, _settings.strip_orientations[index], columns)
+		grid.columns = _strip_columns(7 if index == 0 else 6, cell, area.size, _settings.strip_orientations[index], columns)
 		grid.add_theme_constant_override("h_separation", 0)
 		grid.add_theme_constant_override("v_separation", 0)
 		for child: Node in grid.get_children():
@@ -264,7 +264,7 @@ func _arrange_commands(profile: UiLayoutProfile, area: Rect2) -> Array[Rect2]:
 	# Reflow after command refresh briefly restores the larger Fixed artwork metrics.
 	(_contents[3].get_node("PartyEffectsRow") as BoxContainer).queue_sort()
 	var world_size := Vector2(world.columns, ceili(7.0 / world.columns)) * cell
-	var party_size := Vector2(party.columns, ceili(5.0 / party.columns)) * cell
+	var party_size := Vector2(party.columns, ceili(6.0 / party.columns)) * cell
 	var party_position := Vector2(0, world_size.y + 8)
 	if _settings.strip_orientations[0] == "horizontal" and _settings.strip_orientations[1] == "horizontal" and world_size.x + party_size.x + 8 <= area.size.x:
 		party_position = Vector2(world_size.x + 8, 0)

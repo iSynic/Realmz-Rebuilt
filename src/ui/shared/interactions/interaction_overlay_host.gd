@@ -217,7 +217,7 @@ static func modal_shield_target_index(shield_index: int, presenter_index: int) -
 
 static func _first_focusable(parent: Node) -> Control:
 	for child: Node in parent.get_children():
-		if child is Control and (child as Control).visible and (child as Control).focus_mode != Control.FOCUS_NONE and not (child is BaseButton and (child as BaseButton).disabled):
+		if child is Control and (child as Control).visible and (child as Control).focus_mode == Control.FOCUS_ALL and not (child is BaseButton and (child as BaseButton).disabled):
 			return child as Control
 		var nested := _first_focusable(child)
 		if nested != null:

@@ -409,12 +409,12 @@ func _transfer_reward_wealth(body: InteractionResponse.TreasureBody) -> Dictiona
 	var character := _game_state.party.character_by_id(body.character_id)
 	var kind := _wealth_kind(String(body.wealth_kind))
 	var amount := body.amount
-	if character == null or kind < 0 or amount != (5 if kind == WealthState.Kind.GOLD else 1):
+	if character == null or kind < 0 or amount != EconomyRules.transfer_step(kind as WealthState.Kind, _game_state.adventure_rules):
 		return {"code": "invalid_interaction_response", "message": "The requested Classic wealth increment is invalid."}
-	var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, amount) if body.direction == &"to-character" else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, amount) if body.direction == &"to-pool" else false
-	if transferred:
+	var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, amount) if body.direction == &"to-character" else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, amount) if body.direction == &"to-pool" else 0
+	if transferred > 0:
 		_recalculate_party_movement()
-	return {} if transferred else {"code": "reward_transfer_unavailable", "message": "The selected wealth transfer is no longer available."}
+	return {} if transferred > 0 else {"code": "reward_transfer_unavailable", "message": "The selected wealth transfer is no longer available."}
 
 
 func _apply_reward_detection(reward: ClassicRewardState, action: String, body: InteractionResponse.TreasureBody) -> Dictionary:

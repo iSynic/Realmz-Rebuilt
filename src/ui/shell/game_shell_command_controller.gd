@@ -12,6 +12,7 @@ var _fixed_buttons: Dictionary = {}
 var _modular_buttons: Dictionary = {}
 var _bound_modular := false
 var _configured_definitions: Dictionary = {}
+var _allies_art := AlliesCommandArt.new()
 var _held_command: StringName = &""
 var _held_command_source: StringName = &""
 var _held_command_keycode: int = KEY_NONE
@@ -118,6 +119,8 @@ func update_availability() -> void:
 			reason = "Resolve the current interaction first."
 		elif String(command_id).begins_with("encounter_"):
 			reason = "Choose from the active encounter response controls."
+		elif command_id == &"allies":
+			reason = GameShellAvailability.allies_reason(owner.current_view)
 		elif not availability_id.is_empty():
 			reason = GameShellAvailability.action_reason(owner.current_view, availability_id)
 		if bool(button.get_meta("search_animation", false)):
@@ -222,7 +225,7 @@ func _is_visually_pressed(command_id: StringName) -> bool:
 
 
 static func command_route(command_id: StringName) -> StringName:
-	return {&"money": &"services", &"inventory": &"inventory", &"spells": &"spells", &"maps": &"journal", &"settings": &"system"}.get(command_id, &"")
+	return {&"money": &"services", &"inventory": &"inventory", &"spells": &"spells", &"maps": &"journal", &"allies": &"allies", &"settings": &"system"}.get(command_id, &"")
 
 
 func activate(command_id: StringName, held_repeat: bool = false) -> void:
@@ -249,6 +252,7 @@ func activate(command_id: StringName, held_repeat: bool = false) -> void:
 		&"inventory": owner.navigator.open_screen(&"inventory")
 		&"spells": owner.navigator.open_screen(&"spells")
 		&"maps": owner.navigator.open_screen(&"journal")
+		&"allies": owner.navigator.open_screen(&"allies")
 		&"settings": owner.open_system_workspace()
 		&"save": owner.save_requested.emit("quick")
 
@@ -260,6 +264,9 @@ func presentation_definition(definition: Dictionary) -> Dictionary:
 	if command_id == &"search_mode" and owner.current_view != null and owner.current_view.party_summary != null and owner.current_view.party_summary.searching:
 		result["label"] = "Stop Search"
 		result["tooltip"] = "Stop continuous secret searching"
+		return result
+	if command_id == &"allies":
+		result["art_texture"] = _allies_art.texture(owner.media, owner.current_view)
 		return result
 	if command_id != &"contextual":
 		return result

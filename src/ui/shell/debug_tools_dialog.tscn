@@ -231,6 +231,7 @@ text = "Win current battle"
 [node name="RecentAutoActions" type="MenuButton" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
 layout_mode = 2
+focus_mode = 2
 
 [node name="OpenConsole" type="Button" parent="Frame/Scroll/Content"]
 unique_name_in_owner = true
