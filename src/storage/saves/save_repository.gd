@@ -6,6 +6,8 @@ extends RefCounted
 
 var _root_path: String
 var last_error: String = ""
+## Decoded browse facts by path, reused while the file's modification time and size are unchanged.
+var _preview_cache: Dictionary = {}
 
 const CLASSIC_SLOTS := SaveSlotPreview.SCENARIO_SLOTS
 const MAX_PARTY_SOURCE_BYTES: int = 512 * 1024 * 1024
@@ -56,6 +58,7 @@ func set_active_slot(campaign_id: String, slot_id: String) -> bool:
 
 func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot, preview_jpeg: PackedByteArray = PackedByteArray()) -> bool:
 	last_error = ""
+	_forget_previews(campaign_id, slot_id)
 	if snapshot == null or snapshot.campaign_id != campaign_id:
 		return _fail("Save envelope does not match the requested campaign.")
 	if not preview_jpeg.is_empty() and not SaveEnvelope.valid_map_preview(preview_jpeg):
@@ -179,6 +182,28 @@ func publish_update(campaign_id: String, slot_id: String, envelope: SaveEnvelope
 	if verified == null or verified.to_data() != envelope.to_data():
 		return _fail("The updated save failed readback; the original remains its backup.")
 	return true
+
+
+## The package hash recorded in one structurally valid save, or "" when it cannot be read.
+func recorded_package_hash(campaign_id: String, slot_id: String, backup: bool) -> String:
+	if not _safe_component(campaign_id) or not _safe_component(slot_id):
+		return ""
+	var path := "%s/%s/%s%s" % [_root_path, campaign_id, slot_id, ".r2save.bak" if backup else ".r2save"]
+	var preview := _base_preview(path, slot_id, SaveSlotPreview.BACKUP if backup else SaveSlotPreview.PRIMARY)
+	return preview.package_hash if preview.status == SaveSlotPreview.VALID and preview.campaign_id == campaign_id else ""
+
+
+## Modification time and size of one save file, or "" when it is missing.
+func file_identity(campaign_id: String, slot_id: String, backup: bool) -> String:
+	if not _safe_component(campaign_id) or not _safe_component(slot_id):
+		return ""
+	return _file_stamp("%s/%s/%s%s" % [_root_path, campaign_id, slot_id, ".r2save.bak" if backup else ".r2save"])
+
+
+## A copy that `publish_update` keeps of an older backup, rather than a save of its own.
+static func is_kept_backup(slot_id: String) -> bool:
+	var marker := slot_id.rfind("-earlier-")
+	return marker > 0 and slot_id.length() == marker + 17 and slot_id.right(8).is_valid_hex_number()
 
 
 func campaign_ids() -> Array[String]:
@@ -313,39 +338,82 @@ func _load_path(campaign_id: String, slot_id: String, expected_package_hash: Str
 
 
 func _preview_for_path(path: String, slot_id: String, source: StringName, expected_campaign_id: String, expected_package_hash: String) -> RefCounted:
+	var base := _base_preview(path, slot_id, source)
+	var preview := SaveSlotPreview.new(slot_id, source, base.status)
+	preview.modified_unix = base.modified_unix
+	preview.error_message = base.error_message
+	if base.status != SaveSlotPreview.VALID:
+		return preview
+	if base.campaign_id != expected_campaign_id:
+		preview.status = SaveSlotPreview.CAMPAIGN_MISMATCH
+		preview.error_message = "This save belongs to campaign '%s'." % base.campaign_id
+	elif not expected_package_hash.is_empty() and base.package_hash != expected_package_hash:
+		preview.status = SaveSlotPreview.PACKAGE_MISMATCH
+		preview.error_message = "This save was created for a different immutable package revision."
+	preview.campaign_id = base.campaign_id
+	preview.package_hash = base.package_hash
+	preview.rules_version = base.rules_version
+	preview.view_revision = base.view_revision
+	preview.realmz_day = base.realmz_day
+	preview.realmz_hour = base.realmz_hour
+	preview.realmz_minute = base.realmz_minute
+	preview.map_id = base.map_id
+	preview.coordinate = base.coordinate
+	preview.character_names = base.character_names.duplicate()
+	preview.can_load = preview.status == SaveSlotPreview.VALID
+	if preview.can_load:
+		preview.map_preview_jpeg = base.map_preview_jpeg.duplicate()
+	return preview
+
+
+## Decodes a save's browse facts once per file revision; callers receive copies.
+func _base_preview(path: String, slot_id: String, source: StringName) -> SaveSlotPreview:
+	var stamp := _file_stamp(path)
+	var cached: Dictionary = _preview_cache.get(path, {})
+	if not stamp.is_empty() and cached.get("stamp", "") == stamp:
+		return cached.preview
 	var envelope := _read_envelope(path)
+	var preview: SaveSlotPreview
 	if envelope == null:
 		var incompatibility := _incompatible_schema_message(path)
-		var corrupt := SaveSlotPreview.new(slot_id, source, SaveSlotPreview.INCOMPATIBLE if not incompatibility.is_empty() else SaveSlotPreview.CORRUPT)
-		corrupt.modified_unix = int(FileAccess.get_modified_time(path))
-		corrupt.error_message = incompatibility if not incompatibility.is_empty() else "This save is corrupt."
-		return corrupt
-	var status: StringName = SaveSlotPreview.VALID
-	var error_message := ""
-	if envelope.campaign_id != expected_campaign_id:
-		status = SaveSlotPreview.CAMPAIGN_MISMATCH
-		error_message = "This save belongs to campaign '%s'." % envelope.campaign_id
-	elif not expected_package_hash.is_empty() and envelope.package_hash != expected_package_hash:
-		status = SaveSlotPreview.PACKAGE_MISMATCH
-		error_message = "This save was created for a different immutable package revision."
-	var preview := SaveSlotPreview.new(slot_id, source, status)
-	preview.campaign_id = envelope.campaign_id
-	preview.package_hash = envelope.package_hash
-	preview.rules_version = envelope.rules_version
-	preview.view_revision = envelope.view_revision
-	preview.modified_unix = int(FileAccess.get_modified_time(path))
-	preview.realmz_day = envelope.game_state.clock.day()
-	preview.realmz_hour = envelope.game_state.clock.hour()
-	preview.realmz_minute = envelope.game_state.clock.minute()
-	preview.map_id = envelope.game_state.party.map_id
-	preview.coordinate = envelope.game_state.party.coordinate
-	for character: CharacterState in envelope.game_state.party.characters():
-		preview.character_names.append(character.name)
-	preview.error_message = error_message
-	preview.can_load = status == SaveSlotPreview.VALID
-	if preview.can_load:
+		preview = SaveSlotPreview.new(slot_id, source, SaveSlotPreview.INCOMPATIBLE if not incompatibility.is_empty() else SaveSlotPreview.CORRUPT)
+		preview.error_message = incompatibility if not incompatibility.is_empty() else "This save is corrupt."
+	else:
+		preview = SaveSlotPreview.new(slot_id, source, SaveSlotPreview.VALID)
+		preview.campaign_id = envelope.campaign_id
+		preview.package_hash = envelope.package_hash
+		preview.rules_version = envelope.rules_version
+		preview.view_revision = envelope.view_revision
+		preview.realmz_day = envelope.game_state.clock.day()
+		preview.realmz_hour = envelope.game_state.clock.hour()
+		preview.realmz_minute = envelope.game_state.clock.minute()
+		preview.map_id = envelope.game_state.party.map_id
+		preview.coordinate = envelope.game_state.party.coordinate
+		for character: CharacterState in envelope.game_state.party.characters():
+			preview.character_names.append(character.name)
 		preview.map_preview_jpeg = envelope.map_preview_jpeg.duplicate()
+	preview.modified_unix = int(FileAccess.get_modified_time(path))
+	if not stamp.is_empty():
+		_preview_cache[path] = {"stamp": stamp, "preview": preview}
 	return preview
+
+
+## Writes replace a slot's primary and backup, possibly within one second at the same size.
+func _forget_previews(campaign_id: String, slot_id: String) -> void:
+	var path := "%s/%s/%s.r2save" % [_root_path, campaign_id, slot_id]
+	_preview_cache.erase(path)
+	_preview_cache.erase(path + ".bak")
+
+
+func _file_stamp(path: String) -> String:
+	if not FileAccess.file_exists(path):
+		return ""
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var size := file.get_length()
+	file.close()
+	return "%d:%d" % [FileAccess.get_modified_time(path), size]
 
 
 func _read_envelope(path: String) -> SaveEnvelope:

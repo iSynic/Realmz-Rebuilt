@@ -27,6 +27,10 @@ var _revisions: Array[PackageDiscoveryResult] = []
 var _campaigns: Array[CampaignPackageView] = []
 var _error := ""
 var _discard_completion := false
+## Primary saves still waiting for their pinned update, applied one per frame.
+var _update_queue: Array[String] = []
+var _update_total := 0
+var _updated_count := 0
 var active := false
 
 
@@ -112,8 +116,7 @@ func accept_package(prepared: PreparedPackage, source_path: String = "") -> void
 	elif _waiting:
 		_finish_load()
 	else:
-		var notice := _apply_updates()
-		_navigator.startup.browser.set_progress(notice if not notice.is_empty() else "Ready to load.")
+		_start_updates()
 
 
 func progress(operation: PackageOperationView) -> void:
@@ -253,9 +256,13 @@ func _finish_load() -> void:
 	if preview == null or (_candidate.content.package_hash != preview.package_hash and not preview.can_update) or _candidate.content.campaign_id != preview.campaign_id:
 		_fail("The prepared scenario does not match the selected save. Select the save again to retry.")
 		return
-	var step := _storage.load(_candidate.content, preview.slot_id, preview.source == SaveSlotPreview.BACKUP, _replacement_slot)
+	var backup := preview.source == SaveSlotPreview.BACKUP
+	var step := _storage.load(_candidate.content, preview.slot_id, backup, _replacement_slot)
 	if step == null or step.state == SessionStep.State.FAILED:
-		_fail(step.error_message if step != null else "The adventure is still busy.")
+		var message := step.error_message if step != null else "The adventure is still busy."
+		if preview.can_update and _saves.update_failed(preview.campaign_id, preview.slot_id, backup, preview.package_hash) and _load_original_revision(preview):
+			return
+		_fail(message)
 		return
 	_publish.call(_candidate)
 	active = false
@@ -265,14 +272,65 @@ func _finish_load() -> void:
 
 
 ## Once the current revision is prepared for a selected save that has a pinned update,
-## applies every such update to this campaign's saves and returns a brief notice.
-func _apply_updates() -> String:
+## queues every such update to this campaign's saves; `poll` applies one per frame so
+## the browser keeps drawing and shows progress.
+func _start_updates() -> void:
+	_stop_updates()
 	var preview := _selected_preview()
-	if preview == null or not preview.can_update or _candidate.content.package_hash != _current_hash(): return ""
-	var updated := _saves.apply_updates(_candidate.content)
-	if updated.is_empty(): return ""
+	if preview != null and preview.can_update and _candidate.content.package_hash == _current_hash():
+		_update_queue = _saves.pending_updates(_candidate.content)
+		_update_total = _update_queue.size()
+	if _update_queue.is_empty():
+		_saves.finish_updates()
+		_navigator.startup.browser.set_progress("Ready to load.")
+		return
+	_navigator.startup.browser.set_progress(_update_progress())
+
+
+func poll() -> void:
+	if _update_queue.is_empty(): return
+	if not active or _mode != &"load" or _candidate == null or not _navigator.startup.browser.visible:
+		_stop_updates()
+		return
+	var slot: String = _update_queue.pop_front()
+	if _saves.apply_update(_candidate.content, slot): _updated_count += 1
+	if not _update_queue.is_empty():
+		_navigator.startup.browser.set_progress(_update_progress())
+		return
+	var updated := _updated_count
+	_stop_updates()
 	_refresh_previews()
-	return "Updated %s for the current campaign revision. Originals are kept as backups." % ("1 save" if updated.size() == 1 else "%d saves" % updated.size())
+	if _candidate != null and not _waiting:
+		_navigator.startup.browser.set_progress("Updated %s for the current campaign revision. Originals are kept as backups." % ("1 save" if updated == 1 else "%d saves" % updated) if updated > 0 else "Ready to load.")
+
+
+func _update_progress() -> String:
+	return "Updating saved adventures for the current campaign revision (%d of %d)…" % [_update_total - _update_queue.size() + 1, _update_total]
+
+
+func _stop_updates() -> void:
+	_update_queue.clear()
+	_update_total = 0
+	_updated_count = 0
+	_saves.finish_updates()
+
+
+## A save whose pinned update failed keeps its original package; load it through that exact revision.
+func _load_original_revision(failed: SaveSlotPreview) -> bool:
+	var key := _key(failed)
+	_refresh_previews()
+	_selected_key = key
+	var preview := _selected_preview()
+	if preview == null or not preview.can_load or preview.can_update:
+		return false
+	_navigator.startup.browser.set_previews(_previews, _selected_key)
+	select_save(preview.slot_id, preview.source == SaveSlotPreview.BACKUP)
+	_waiting = true
+	if _candidate != null:
+		_finish_load()
+	else:
+		_navigator.startup.show_loading(_campaign_title(), "saved adventures")
+	return true
 
 
 func cancel_wait() -> void:
@@ -281,6 +339,7 @@ func cancel_wait() -> void:
 
 
 func _browser_closed() -> void:
+	_stop_updates()
 	_waiting = false
 	_discard_completion = true
 	_packages.cancel()

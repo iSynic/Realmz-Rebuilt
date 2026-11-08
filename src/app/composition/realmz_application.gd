@@ -340,6 +340,8 @@ func _process(_delta: float) -> void:
 		elif held_movement.active_source() == &"mouse" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 			held_movement.stop(&"mouse")
 	_poll_package_operation()
+	if _campaign_preparation != null:
+		_campaign_preparation.poll()
 
 
 func _poll_package_operation() -> void:

@@ -15,6 +15,12 @@ var _owner_update: OwnerCorrectionSaveUpdate
 var _last_error := ""
 ## The separate slot the last verified update would be copied to.
 var _copy_slot := ""
+## Updates that failed for an exact save file revision. Such a save keeps its original
+## package and loads through that revision, so browsing never retries it.
+var _failed_updates: Dictionary = {}
+## Archive verifications reused only within one update batch.
+var _batch_checks: Dictionary = {}
+var _batching := false
 
 
 func _init(repository: SaveRepository = null, half_truth_update: HalfTruthMediaSaveUpdate = null, shop_update: ShopSaveUpdate = null, marker_update: MarkerSaveUpdate = null, payment_update: PaymentSaveUpdate = null, program_update: ProgramSaveUpdate = null, compression_update: CompressionSaveUpdate = null, record_update: CompleteRecordSaveUpdate = null, owner_update: OwnerCorrectionSaveUpdate = null) -> void:
@@ -61,11 +67,16 @@ func load(content: RealmzContent, slot_id: String, backup: bool = false) -> Sess
 	_last_error = ""
 	if content == null:
 		return null
-	if _updatable(content, slot_id, backup):
+	var old_hash := _repository.recorded_package_hash(content.campaign_id, slot_id, backup)
+	if old_hash != content.package_hash and _can_update_file(content.campaign_id, slot_id, backup, old_hash, content.package_hash):
 		if backup:
 			# A backup is updated for this load only; its file stays as it is.
-			return _updated_envelope(content, slot_id, true)
-		if not _publish_update(content, slot_id):
+			var updated := _updated_envelope(content, slot_id, true, old_hash)
+			if updated == null:
+				_remember_failure(content.campaign_id, slot_id, true, old_hash)
+			return updated
+		if not _publish_update(content, slot_id, old_hash):
+			_remember_failure(content.campaign_id, slot_id, false, old_hash)
 			return null
 	if backup:
 		return _repository.load_backup(content.campaign_id, slot_id, content.package_hash)
@@ -76,7 +87,7 @@ func campaign_previews(campaign_id: String, current_package_hash: String = "") -
 	var result: Array[SaveSlotPreview] = []
 	result.assign(_repository.list_previews(campaign_id, ""))
 	for preview: SaveSlotPreview in result:
-		preview.can_update = preview.can_load and _can_update(campaign_id, preview.package_hash, current_package_hash)
+		preview.can_update = preview.can_load and _can_update_file(campaign_id, preview.slot_id, preview.source == SaveSlotPreview.BACKUP, preview.package_hash, current_package_hash)
 	return result
 
 
@@ -94,7 +105,7 @@ func previews(content: RealmzContent) -> Array[SaveSlotPreview]:
 	var result: Array[SaveSlotPreview] = []
 	result.assign(_repository.list_previews(content.campaign_id, content.package_hash))
 	for preview: SaveSlotPreview in result:
-		preview.can_update = preview.status == SaveSlotPreview.PACKAGE_MISMATCH and _can_update(preview.campaign_id, preview.package_hash, content.package_hash)
+		preview.can_update = preview.status == SaveSlotPreview.PACKAGE_MISMATCH and _can_update_file(preview.campaign_id, preview.slot_id, preview.source == SaveSlotPreview.BACKUP, preview.package_hash, content.package_hash)
 		# Loading applies the verified update, so the save loads like any other.
 		preview.can_load = preview.can_load or preview.can_update
 	return result
@@ -105,31 +116,83 @@ func previews(content: RealmzContent) -> Array[SaveSlotPreview]:
 ## the original becomes that slot's backup and the Quick Save target follows it.
 ## Returns the updated slots; a failed update leaves its save as it was.
 func apply_updates(content: RealmzContent) -> Array[String]:
-	_last_error = ""
 	var updated: Array[String] = []
-	if content == null:
-		return updated
 	var failure := ""
-	for preview: SaveSlotPreview in _repository.list_previews(content.campaign_id, content.package_hash):
-		if preview.source != SaveSlotPreview.PRIMARY or preview.status != SaveSlotPreview.PACKAGE_MISMATCH or not _can_update(content.campaign_id, preview.package_hash, content.package_hash):
-			continue
-		if _publish_update(content, preview.slot_id):
-			updated.append(preview.slot_id)
+	for slot_id: String in pending_updates(content):
+		if apply_update(content, slot_id):
+			updated.append(slot_id)
 		elif failure.is_empty():
 			failure = _last_error
+	finish_updates()
 	_last_error = failure
 	return updated
 
 
-func _updatable(content: RealmzContent, slot_id: String, backup: bool) -> bool:
-	for preview: SaveSlotPreview in _repository.list_previews(content.campaign_id, content.package_hash):
-		if preview.slot_id == slot_id and (preview.source == SaveSlotPreview.BACKUP) == backup:
-			return preview.status == SaveSlotPreview.PACKAGE_MISMATCH and _can_update(content.campaign_id, preview.package_hash, content.package_hash)
+## Starts an update batch and returns the primary saves a pinned update can still reach.
+## Kept earlier backups and saves whose update already failed are left as they are.
+func pending_updates(content: RealmzContent) -> Array[String]:
+	_last_error = ""
+	_batching = true
+	_batch_checks.clear()
+	var pending: Array[String] = []
+	if content == null:
+		return pending
+	for preview: SaveSlotPreview in _repository.list_previews(content.campaign_id, ""):
+		if preview.source == SaveSlotPreview.PRIMARY and preview.status == SaveSlotPreview.VALID and preview.package_hash != content.package_hash and not SaveRepository.is_kept_backup(preview.slot_id) and _can_update_file(content.campaign_id, preview.slot_id, false, preview.package_hash, content.package_hash):
+			pending.append(preview.slot_id)
+	return pending
+
+
+## Applies one batch entry; a failure is remembered so the save keeps loading on its original revision.
+func apply_update(content: RealmzContent, slot_id: String) -> bool:
+	_last_error = ""
+	if content == null:
+		return false
+	var old_hash := _repository.recorded_package_hash(content.campaign_id, slot_id, false)
+	if old_hash.is_empty() or old_hash == content.package_hash or not _can_update_file(content.campaign_id, slot_id, false, old_hash, content.package_hash):
+		return false
+	if _publish_update(content, slot_id, old_hash):
+		# Decode the slot's new files now, so the batch's final listing stays quick.
+		_repository.list_previews(content.campaign_id, "")
+		return true
+	_remember_failure(content.campaign_id, slot_id, false, old_hash)
 	return false
 
 
-func _publish_update(content: RealmzContent, slot_id: String) -> bool:
-	var updated := _updated_envelope(content, slot_id, false)
+func finish_updates() -> void:
+	_batching = false
+	_batch_checks.clear()
+
+
+## Whether the last attempt to update this exact save file failed.
+func update_failed(campaign_id: String, slot_id: String, backup: bool, old_hash: String) -> bool:
+	return _failed_updates.has(_failure_key(campaign_id, slot_id, backup, old_hash))
+
+
+func _can_update_file(campaign_id: String, slot_id: String, backup: bool, old_hash: String, current_hash: String) -> bool:
+	return _can_update(campaign_id, old_hash, current_hash) and not update_failed(campaign_id, slot_id, backup, old_hash)
+
+
+func _remember_failure(campaign_id: String, slot_id: String, backup: bool, old_hash: String) -> void:
+	_failed_updates[_failure_key(campaign_id, slot_id, backup, old_hash)] = _last_error
+
+
+func _failure_key(campaign_id: String, slot_id: String, backup: bool, old_hash: String) -> String:
+	return "%s|%s|%s|%s|%s" % [campaign_id, slot_id, backup, old_hash, _repository.file_identity(campaign_id, slot_id, backup)]
+
+
+## Runs an archive verification once per batch; outside a batch every call verifies again.
+func _batch_check(key: String, check: Callable) -> Variant:
+	if _batching and _batch_checks.has(key):
+		return _batch_checks[key]
+	var result: Variant = check.call()
+	if _batching and result:
+		_batch_checks[key] = result
+	return result
+
+
+func _publish_update(content: RealmzContent, slot_id: String, old_hash: String) -> bool:
+	var updated := _updated_envelope(content, slot_id, false, old_hash)
 	if updated == null:
 		return false
 	if not _repository.publish_update(content.campaign_id, slot_id, updated):
@@ -152,7 +215,7 @@ func assign_legacy_slot(content: RealmzContent, envelope: SessionSnapshot, repla
 
 ## Maintainer acceptance route: writes the verified update to a separate copy and leaves the source untouched.
 func update_save(content: RealmzContent, slot_id: String, backup: bool = false) -> String:
-	var updated := _updated_envelope(content, slot_id, backup)
+	var updated := _updated_envelope(content, slot_id, backup, _repository.recorded_package_hash(content.campaign_id, slot_id, backup) if content != null else "")
 	if updated == null:
 		return ""
 	var target_slot := _copy_slot
@@ -167,23 +230,21 @@ func update_save(content: RealmzContent, slot_id: String, backup: bool = false) 
 
 
 ## The verified save `slot_id` becomes under `content`, without writing anything.
-func _updated_envelope(content: RealmzContent, slot_id: String, backup: bool) -> SaveEnvelope:
+func _updated_envelope(content: RealmzContent, slot_id: String, backup: bool, old_hash: String) -> SaveEnvelope:
 	_last_error = ""
 	_copy_slot = ""
 	if content == null:
 		return null
-	for preview: SaveSlotPreview in _repository.list_previews(content.campaign_id, ""):
-		if preview.slot_id != slot_id or (preview.source == SaveSlotPreview.BACKUP) != backup:
-			continue
-		if _owner_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
-			return _update_owner_corrected_save(content, slot_id, backup, preview.package_hash)
-		if _record_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
-			return _update_complete_record_save(content, slot_id, backup, preview.package_hash)
-		if _compression_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
-			return _update_compressed_save(content, slot_id, backup, preview.package_hash)
-		if _program_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
-			return _update_program_save(content, slot_id, backup, preview.package_hash)
-		if _payment_update.eligible(content.campaign_id, preview.package_hash, content.package_hash):
+	if not old_hash.is_empty():
+		if _owner_update.eligible(content.campaign_id, old_hash, content.package_hash):
+			return _update_owner_corrected_save(content, slot_id, backup, old_hash)
+		if _record_update.eligible(content.campaign_id, old_hash, content.package_hash):
+			return _update_complete_record_save(content, slot_id, backup, old_hash)
+		if _compression_update.eligible(content.campaign_id, old_hash, content.package_hash):
+			return _update_compressed_save(content, slot_id, backup, old_hash)
+		if _program_update.eligible(content.campaign_id, old_hash, content.package_hash):
+			return _update_program_save(content, slot_id, backup, old_hash)
+		if _payment_update.eligible(content.campaign_id, old_hash, content.package_hash):
 			return _update_payment_save(content, slot_id, backup)
 	var shop_transition := _shop_update.transition(content.campaign_id, content.package_hash)
 	var marker_transition := _marker_update.transition(content.campaign_id, content.package_hash)
@@ -191,8 +252,8 @@ func _updated_envelope(content: RealmzContent, slot_id: String, backup: bool) ->
 	if shop_transition.is_empty() and marker_transition.is_empty() and not media_update:
 		_last_error = "This campaign revision has no verified save update."
 		return null
-	var old_hash: String = marker_transition.previousPackage.packageHash if not marker_transition.is_empty() else (HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH if media_update else shop_transition.oldPackageHash)
-	var original := _repository.read_for_explicit_update(content.campaign_id, slot_id, old_hash, backup)
+	var transition_hash: String = marker_transition.previousPackage.packageHash if not marker_transition.is_empty() else (HalfTruthMediaSaveUpdate.OLD_PACKAGE_HASH if media_update else shop_transition.oldPackageHash)
+	var original := _repository.read_for_explicit_update(content.campaign_id, slot_id, transition_hash, backup)
 	if original == null:
 		_last_error = _repository.last_error
 		return null
@@ -209,7 +270,7 @@ func _update_compressed_save(content: RealmzContent, slot_id: String, backup: bo
 	if original == null:
 		_last_error = _repository.last_error
 		return null
-	if not _compression_update.validate_archives(content):
+	if not _batch_check("compression|%s|%s" % [old_hash, content.package_hash], _compression_update.validate_archives.bind(content)):
 		_last_error = _compression_update.last_error
 		return null
 	return _verified_update(content, original, _compression_update.updated_slot_id(slot_id, backup, content.package_hash))
@@ -228,7 +289,7 @@ func _update_payment_save(content: RealmzContent, slot_id: String, backup: bool)
 
 func _update_owner_corrected_save(content: RealmzContent, slot_id: String, backup: bool, old_hash: String) -> SaveEnvelope:
 	# Verify the exact package chain before reading the save body.
-	if not _owner_update.validate_archives(content, old_hash):
+	if not _batch_check("owner|%s|%s" % [old_hash, content.package_hash], _owner_update.validate_archives.bind(content, old_hash)):
 		_last_error = _owner_update.last_error
 		return null
 	var original := _repository.read_for_explicit_update(content.campaign_id, slot_id, old_hash, backup)
@@ -243,7 +304,7 @@ func _update_program_save(content: RealmzContent, slot_id: String, backup: bool,
 	if original == null:
 		_last_error = _repository.last_error
 		return null
-	if not _program_update.validate_archives(content):
+	if not _batch_check("program|%s|%s" % [old_hash, content.package_hash], _program_update.validate_archives.bind(content)):
 		_last_error = _program_update.last_error
 		return null
 	return _verified_update(content, original, _program_update.updated_slot_id(slot_id, backup, content.package_hash))
@@ -251,7 +312,7 @@ func _update_program_save(content: RealmzContent, slot_id: String, backup: bool,
 
 func _update_complete_record_save(content: RealmzContent, slot_id: String, backup: bool, old_hash: String) -> SaveEnvelope:
 	# Verify the exact package pair before reading or translating the save body.
-	var pair := _record_update.validate_archives(content, old_hash)
+	var pair: Dictionary = _batch_check("record|%s|%s" % [old_hash, content.package_hash], _record_update.validate_archives.bind(content, old_hash))
 	if pair.is_empty():
 		_last_error = _record_update.last_error
 		return null
