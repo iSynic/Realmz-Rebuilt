@@ -127,6 +127,7 @@ func _keyboard_key(params: Dictionary) -> Dictionary:
 
 
 func _push_controller_event(event: InputEvent, input_description: String, mode: String = "controller-input") -> Dictionary:
+	if event is InputEventJoypadButton or event is InputEventJoypadMotion: event.set_meta(ControllerInputOwner.SYNTHETIC_INPUT_META, true)
 	var before_revision := _observer.revision
 	var browser := _visible_file_dialog()
 	var viewport := browser as Viewport if browser != null else _root.get_viewport()

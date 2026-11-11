@@ -22,6 +22,10 @@ var _prepared_visible_coordinates: Dictionary = {}
 var _visibility_membership_cache: Dictionary = {}
 var _map_projection_size: Vector2i = DEFAULT_MAP_VIEW_SIZE
 var _equipment_by_character_id: Dictionary = {}
+## Each member's view, reused while its encoded character state is unchanged.
+var _member_data: Dictionary[String, Dictionary] = {}
+var _member_views: Dictionary[String, CharacterView] = {}
+var _member_equipment: Dictionary[String, CharacterCombatEquipment] = {}
 var _map_window_cache: Dictionary = {}
 var _map_cell_cache: Dictionary = {}
 var _map_previews := MapPreviewCache.new()
@@ -56,8 +60,21 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	_populate_complete_party(context, result)
 	_populate_complete_collections(context, result)
 	_populate_complete_actions(context, result)
-	result.domain_revisions = ViewDomainRevisions.new(revision)
+	var revisions := ViewDomainRevisions.new(revision)
+	if _exploration_unchanged(result):
+		revisions.exploration = (_cached_view.domain_revisions as ViewDomainRevisions).exploration
+	result.domain_revisions = revisions
 	return result
+
+
+## Map and dungeon presentation read only the map view, session start, and the
+## party's boat/camp marker, so an identical map view keeps its revision.
+func _exploration_unchanged(result: GameView) -> bool:
+	if _cached_view == null or _cached_view.map_view != result.map_view or _cached_view.session_started != result.session_started:
+		return false
+	var before := _cached_view.party_summary
+	var after := result.party_summary
+	return before != null and after != null and before.in_boat == after.in_boat and before.camping == after.camping
 
 
 func project_party_preparation(context: SessionWorkflowContext, pending: InteractionRequest, revision: int) -> GameView:
@@ -79,12 +96,24 @@ func project_party_preparation(context: SessionWorkflowContext, pending: Interac
 func _complete_party_members(context: SessionWorkflowContext) -> Array[CharacterView]:
 	var members: Array[CharacterView] = []
 	var item_definitions := context.content.items.definitions()
+	var data_by_id: Dictionary[String, Dictionary] = {}
+	var views_by_id: Dictionary[String, CharacterView] = {}
+	var equipment_by_id: Dictionary[String, CharacterCombatEquipment] = {}
 	for character: CharacterState in context.state.party.characters():
-		var member_view := CharacterView.new(character, context.content)
-		var equipment := context.rules.equipment.combat_equipment(character, item_definitions)
+		var data := CharacterStateCodec.encode(character)
+		var reusable := _member_data.has(character.id) and _member_data[character.id] == data
+		var member_view: CharacterView = _member_views[character.id] if reusable else CharacterView.new(character, context.content)
+		var equipment: CharacterCombatEquipment = _member_equipment[character.id] if reusable else context.rules.equipment.combat_equipment(character, item_definitions)
+		if not reusable:
+			member_view.apply_equipment(equipment)
 		_equipment_by_character_id[character.id] = equipment
-		member_view.apply_equipment(equipment)
+		data_by_id[character.id] = data
+		views_by_id[character.id] = member_view
+		equipment_by_id[character.id] = equipment
 		members.append(member_view)
+	_member_data = data_by_id
+	_member_views = views_by_id
+	_member_equipment = equipment_by_id
 	return members
 
 
@@ -223,6 +252,9 @@ func clear() -> void:
 	_cached_seen_membership.clear()
 	_cached_visible_membership.clear()
 	_cached_view = null
+	_member_data.clear()
+	_member_views.clear()
+	_member_equipment.clear()
 	_prepared_visibility_map_id = ""
 	_prepared_visibility_coordinate = Vector2i(-1, -1)
 	_prepared_visible_coordinates.clear()

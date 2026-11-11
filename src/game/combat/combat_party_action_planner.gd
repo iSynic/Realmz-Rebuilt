@@ -79,7 +79,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 		elif _context.automation().is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
 		elif ClassicSpellSpecialEffectRules.is_combat_spell_point_restore_spell(spell):
-			best = _prefer(best, _best_spell_point_restore(state, content, actor, spell, option.power))
+			best = _prefer(best, _best_spell_point_restore(state, content, actor, spell, option.power, item_instance_id.is_empty()))
 		elif ClassicSpellSpecialEffectRules.is_combat_spell_point_drain_spell(spell):
 			best = _prefer(best, _best_spell_point_drain(state, content, actor, spell, option.power, ray_actor_cache))
 		elif spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12]:
@@ -287,10 +287,10 @@ func _probe_source_targets(state: GameState, content: RealmzContent, actor_id: S
 	return _context.magic_flow().selection().probe_character_spell_cast(state, content, actor_id, target_id, spell_id, power, coordinate, rotation, target_ids)
 
 
-func _best_spell_point_restore(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+func _best_spell_point_restore(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, pays_spell_points: bool) -> Dictionary:
 	var best: Dictionary = {}
 	for target_id: String in _friendly_actor_ids(state, actor):
-		if spell.target_type == 5 and target_id != actor.id or _target_missing_spell_points(state, target_id) <= 0 or target_id != actor.id and _target_reflects(state, target_id):
+		if spell.target_type == 5 and target_id != actor.id or _target_missing_spell_points(state, target_id) <= 0 or target_id != actor.id and _target_reflects(state, target_id) or pays_spell_points and target_id == actor.id and _self_restore_is_net_loss(spell, power):
 			continue
 		if not _context.magic_flow().selection().spell_actor_target_is_valid(state, content, actor.id, target_id, spell, power):
 			continue

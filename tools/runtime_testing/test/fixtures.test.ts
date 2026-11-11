@@ -44,7 +44,7 @@ test("fixture launch uses the canonical rendered native arguments and separate l
     const manager = new FixtureManager(setup.environment, (request) => { launchRequest = request; return { pid: 2 }; });
     await assert.rejects(() => manager.create({ engine: "rebuilt", packagePath: setup.packagePath, source: { kind: "classic-starters", seed: 1, location: { mapId: "map", x: 0, y: 32767 } } }, 10), (error: unknown) => error instanceof FixtureError && error.code === "fixture_timeout");
     assert.ok(launchRequest);
-    assert.deepEqual(launchRequest.args, ["--path", setup.environment.rebuiltRoot, "--resolution", "1280x720", "--rendering-method", "mobile", "res://tools/runtime_testing_host.tscn", "--", launchRequest.configPath]);
+    assert.deepEqual(launchRequest.args, ["--path", setup.environment.rebuiltRoot, "--resolution", "1280x720", "--rendering-method", "mobile", "--audio-driver", "Dummy", "res://tools/runtime_testing_host.tscn", "--", launchRequest.configPath]);
     assert.equal(launchRequest.args.includes("--headless"), false);
     assert.notEqual(launchRequest.logPath, launchRequest.stdoutLogPath);
     assert.equal((await fs.stat(launchRequest.logPath)).isFile(), true);

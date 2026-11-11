@@ -196,6 +196,13 @@ static func populate_spell_actions(context: SessionWorkflowContext, result: Game
 
 
 static func _populate_learned_spell_actions(context: SessionWorkflowContext, member_view: CharacterView, character: CharacterState, blocked_reason: String, battle_active: bool) -> void:
+	# Character-level checks do not depend on the spell or power, so each
+	# field gate runs once per character in the same Classic check order.
+	var gates: Array[InventoryActionProbe] = []
+	var known_spells: Array = []
+	if blocked_reason.is_empty() and not battle_active:
+		gates = [_field_spell_gate(context, character, false), _make_scroll_gate(context, character), InventoryActionProbe.block("The character does not know that spell.")]
+		known_spells = character.known_spells()
 	for spell_view: SpellView in member_view.spells:
 		var spell := context.content.magic.spell_by_id(spell_view.id)
 		spell_view.power_levels.clear()
@@ -210,7 +217,8 @@ static func _populate_learned_spell_actions(context: SessionWorkflowContext, mem
 		if battle_active:
 			_populate_combat_learned_spell_action(context, spell_view, character, spell)
 			continue
-		_populate_field_learned_spell_action(context, spell_view, character, spell)
+		var known := spell != null and known_spells.has(spell.id)
+		_populate_field_learned_spell_action(spell_view, character, spell, gates[0] if known else gates[2], gates[1] if known else gates[2])
 
 
 static func _populate_combat_learned_spell_action(context: SessionWorkflowContext, spell_view: SpellView, character: CharacterState, spell: SpellDefinition) -> void:
@@ -229,11 +237,11 @@ static func _populate_combat_learned_spell_action(context: SessionWorkflowContex
 	spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", false, "Scroll scribing is unavailable during battle.")
 
 
-static func _populate_field_learned_spell_action(context: SessionWorkflowContext, spell_view: SpellView, character: CharacterState, spell: SpellDefinition) -> void:
+static func _populate_field_learned_spell_action(spell_view: SpellView, character: CharacterState, spell: SpellDefinition, cast_gate: InventoryActionProbe, scroll_gate: InventoryActionProbe) -> void:
 	spell_view.combat_cast = ActionAvailabilityView.new(&"cast_spell", false, "Combat casting requires an active battle.")
 	var first_reason := ""
 	for power: int in range(1, 8):
-		var probe := _field_spell_probe(context, character, spell, power, false)
+		var probe := _field_spell_power_probe(cast_gate, character, spell, power, false)
 		if probe.allowed:
 			spell_view.structural_power_levels.append(power)
 			if character.spell_points >= absi(spell.cost * power): spell_view.power_levels.append(power)
@@ -245,7 +253,7 @@ static func _populate_field_learned_spell_action(context: SessionWorkflowContext
 	spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", not spell_view.power_levels.is_empty(), first_reason)
 	var make_reason := ""
 	for power: int in range(1, 8):
-		var make_probe := _make_scroll_probe(context, character, spell, power, false)
+		var make_probe := _make_scroll_power_probe(scroll_gate, character, spell, power, false)
 		if make_probe.allowed:
 			spell_view.structural_scroll_power_levels.append(power)
 			if character.spell_points >= absi(spell.cost * power * 2): spell_view.scroll_power_levels.append(power)
@@ -501,6 +509,10 @@ static func _character_spell_candidates(context: SessionWorkflowContext, charact
 static func _make_scroll_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int, check_affordability: bool = true) -> InventoryActionProbe:
 	if character == null or spell == null or not character.known_spells().has(spell.id):
 		return InventoryActionProbe.block("The character does not know that spell.")
+	return _make_scroll_power_probe(_make_scroll_gate(context, character), character, spell, power, check_affordability)
+
+
+static func _make_scroll_gate(context: SessionWorkflowContext, character: CharacterState) -> InventoryActionProbe:
 	if not context.state.party_camping:
 		return InventoryActionProbe.block("Enter camp before making a scroll.")
 	if character.current_health < 1 or character.spellcaster_type < 1:
@@ -511,6 +523,12 @@ static func _make_scroll_probe(context: SessionWorkflowContext, character: Chara
 		return InventoryActionProbe.block("The scroll case already contains five spells.")
 	if _parchment_instance(context, character) == null:
 		return InventoryActionProbe.block("The character has no parchment.")
+	return InventoryActionProbe.permit()
+
+
+static func _make_scroll_power_probe(gate: InventoryActionProbe, character: CharacterState, spell: SpellDefinition, power: int, check_affordability: bool) -> InventoryActionProbe:
+	if not gate.allowed:
+		return gate
 	if power < 1 or power > 7 or spell.cost < 0 and power != 1:
 		return InventoryActionProbe.block("This spell does not support the selected scroll power.")
 	if check_affordability and character.spell_points < absi(spell.cost * power * 2):
@@ -553,6 +571,10 @@ static func _scroll_discard_probe(context: SessionWorkflowContext, character: Ch
 static func _field_spell_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int, check_affordability: bool = true) -> InventoryActionProbe:
 	if character == null or spell == null or not character.known_spells().has(spell.id):
 		return InventoryActionProbe.block("The character does not know that spell.")
+	return _field_spell_power_probe(_field_spell_gate(context, character, check_affordability), character, spell, power, check_affordability)
+
+
+static func _field_spell_gate(context: SessionWorkflowContext, character: CharacterState, check_affordability: bool) -> InventoryActionProbe:
 	if context.state.character_spellcasting_blocked:
 		return InventoryActionProbe.block("Classic scenario state currently blocks character spellcasting.")
 	if character.current_health < 1 or check_affordability and character.spell_points < 1:
@@ -560,6 +582,12 @@ static func _field_spell_probe(context: SessionWorkflowContext, character: Chara
 	for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
 		if character.conditions.is_active(condition):
 			return InventoryActionProbe.block("The character's current Classic condition prevents spellcasting.")
+	return InventoryActionProbe.permit()
+
+
+static func _field_spell_power_probe(gate: InventoryActionProbe, character: CharacterState, spell: SpellDefinition, power: int, check_affordability: bool) -> InventoryActionProbe:
+	if not gate.allowed:
+		return gate
 	if not spell.in_camp:
 		return InventoryActionProbe.block("This spell cannot be cast outside battle.")
 	if power < 1 or power > 7 or spell.cost < 0 and power != 1:

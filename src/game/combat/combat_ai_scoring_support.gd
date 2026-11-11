@@ -165,6 +165,12 @@ static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
 	return CombatAiTargetFacts.expected_spell_effect(spell, power)
 
 
+# Rebuilt AI improvement: a caster never pays more spell points than it expects
+# to restore to itself. Classic still permits the cast; Auto and monsters skip it.
+static func _self_restore_is_net_loss(spell: SpellDefinition, power: int) -> bool:
+	return expected_spell_effect(spell, power) <= absi(spell.cost * power)
+
+
 static func _actor_is_friendly(state: GameState, actor: CharacterState, target_id: String) -> bool:
 	return CombatAiTargetFacts.character_is_friendly(state, actor, target_id)
 

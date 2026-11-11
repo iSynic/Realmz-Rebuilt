@@ -7,6 +7,8 @@ extends RefCounted
 var _character_positions: Dictionary
 var _monster_positions: Dictionary
 var _monster_sizes: Dictionary
+# Castle keeps monpos[] for dead and fled monsters; opcode 124 still reads it.
+var _retired_monster_positions: Dictionary
 var _revision: int = 0
 
 
@@ -14,10 +16,11 @@ func revision() -> int:
 	return _revision
 
 
-func _init(character_positions: Dictionary = {}, monster_positions: Dictionary = {}, monster_sizes: Dictionary = {}) -> void:
+func _init(character_positions: Dictionary = {}, monster_positions: Dictionary = {}, monster_sizes: Dictionary = {}, retired_monster_positions: Dictionary = {}) -> void:
 	_character_positions = character_positions.duplicate()
 	_monster_positions = monster_positions.duplicate()
 	_monster_sizes = monster_sizes.duplicate()
+	_retired_monster_positions = retired_monster_positions.duplicate()
 
 
 func character_position(actor_id: String) -> Vector2i:
@@ -91,11 +94,16 @@ func place_monster(actor_id: String, coordinate: Vector2i, size: int) -> bool:
 			return false
 	_monster_positions[actor_id] = coordinate
 	_monster_sizes[actor_id] = size
+	_retired_monster_positions.erase(actor_id)
 	_revision += 1
 	return true
 
 
-func remove_monster(actor_id: String) -> void:
+## Removes a monster from the field. Unless the placement is being rolled back,
+## its last anchor is retained the way Castle's monpos[] outlives the monster.
+func remove_monster(actor_id: String, retain_last_position: bool = true) -> void:
+	if retain_last_position and _monster_positions.has(actor_id):
+		_retired_monster_positions[actor_id] = _monster_positions[actor_id]
 	if _monster_positions.erase(actor_id): _revision += 1
 	_monster_sizes.erase(actor_id)
 
@@ -142,8 +150,9 @@ func character_positions() -> Dictionary:
 	return _character_positions.duplicate()
 
 
-func monster_positions() -> Dictionary:
-	return _monster_positions.duplicate()
+## With `retired`, returns the last anchors of monsters removed from the field.
+func monster_positions(retired: bool = false) -> Dictionary:
+	return (_retired_monster_positions if retired else _monster_positions).duplicate()
 
 
 func monster_sizes() -> Dictionary:

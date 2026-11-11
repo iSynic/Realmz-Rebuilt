@@ -301,7 +301,8 @@ export class FixtureManager {
     const stdoutLogPath = path.join(root, "stdout.log");
     await fs.writeFile(logPath, "", { encoding: "utf8", mode: 0o600 });
     await fs.writeFile(stdoutLogPath, "", { encoding: "utf8", mode: 0o600 });
-    const args = ["--path", this.env.rebuiltRoot, "--resolution", "1280x720", "--rendering-method", "mobile", "res://tools/runtime_testing_host.tscn", "--", configPath];
+    // Fixtures run silent so test builds never play music or sound over the owner's session.
+    const args = ["--path", this.env.rebuiltRoot, "--resolution", "1280x720", "--rendering-method", "mobile", "--audio-driver", "Dummy", "res://tools/runtime_testing_host.tscn", "--", configPath];
     let process: FixtureProcessHandle;
     try {
       process = await this.launcher({ godotPath: this.env.godotPath, rebuiltRoot: this.env.rebuiltRoot, args, fixtureRoot: root, configPath, logPath, stdoutLogPath });

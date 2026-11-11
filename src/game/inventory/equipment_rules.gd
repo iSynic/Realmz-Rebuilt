@@ -5,6 +5,9 @@ extends RefCounted
 
 var _inventory: InventoryRules
 var _characters: CharacterRules
+var _lookup_source: Array[ItemDefinition] = []
+var _lookup_source_size: int = -1
+var _lookup: Dictionary = {}
 
 
 class CombatEquipmentSummary extends CharacterCombatEquipment:
@@ -21,6 +24,17 @@ class CombatEquipmentSummary extends CharacterCombatEquipment:
 func _init(inventory_rules: InventoryRules, character_rules: CharacterRules) -> void:
 	_inventory = inventory_rules
 	_characters = character_rules
+
+
+## Callers pass one immutable catalog array across a whole projection, so the
+## read-only ID lookup is rebuilt only when a different array arrives.
+func _definition_lookup(definitions: Array[ItemDefinition]) -> Dictionary:
+	if not is_same(definitions, _lookup_source) or definitions.size() != _lookup_source_size:
+		_lookup_source = definitions
+		_lookup_source_size = definitions.size()
+		_lookup = _definitions_by_id(definitions)
+		_lookup.make_read_only()
+	return _lookup
 
 
 func has_equipped_scroll_case(character: CharacterState, content: RealmzContent) -> bool:
@@ -69,7 +83,7 @@ func classic_unequip_probe(character: CharacterState, instance: ItemInstance, it
 	if not item.cursed_item_id.is_empty():
 		return InventoryActionProbe.block("This cursed item cannot be removed.")
 	if absi(item.item_type) == 10:
-		var by_id := _definitions_by_id(definitions)
+		var by_id := _definition_lookup(definitions)
 		for carried: ItemInstance in character.inventory():
 			var definition: ItemDefinition = by_id.get(carried.definition_id)
 			if carried.equipped and definition != null and absi(definition.item_type) == 15:
@@ -122,7 +136,7 @@ func combat_equipment(character: CharacterState, definitions: Array[ItemDefiniti
 		var invalid := CharacterCombatEquipment.new()
 		invalid.reject(&"invalid_character", "Combat equipment requires a character.")
 		return invalid
-	var definitions_by_id := _definitions_by_id(definitions)
+	var definitions_by_id := _definition_lookup(definitions)
 	var summary := _summarize_equipment(character, definitions_by_id)
 	if not summary.valid:
 		return summary
@@ -224,14 +238,14 @@ func _recalculate_movement(character: CharacterState, race: RaceDefinition, defi
 		character.movement = mini(character.movement, character.maximum_movement)
 		return
 	var movement_bonus := 0
-	var by_id := _definitions_by_id(definitions)
+	var by_id := _definition_lookup(definitions)
 	for definition: ItemDefinition in _ordered_equipped_definitions(character, by_id):
 		movement_bonus += definition.movement_bonus
 	_characters.recalculate_movement(character, race, movement_bonus)
 
 
 func _equipment_slot_probe(character: CharacterState, item: ItemDefinition, definitions: Array[ItemDefinition]) -> InventoryActionProbe:
-	var definitions_by_id := _definitions_by_id(definitions)
+	var definitions_by_id := _definition_lookup(definitions)
 	var occupied_types: Dictionary = {}
 	var used_hands := 0
 	var equipped_ring_ids: Array[int] = []

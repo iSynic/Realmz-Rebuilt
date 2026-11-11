@@ -172,7 +172,10 @@ func resume(response: InteractionResponse, runtime: RealmzRuntimeApi) -> Scenari
 	var owner: ScenarioExecutionRecord = _state.records.back()
 	var call := owner.operation
 	_restore_diagnostic(call)
-	var retry := snapshot() if call.continuation.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
+	# Reward resumes roll back their own game state and never touch execution
+	# state, so restoring the request counter and rebinding the saved header,
+	# as a full restore would, keeps a failed reward retryable without a copy.
+	var retry := call.continuation.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD
 	var counter := _state.request_counter
 	var continuation := call.continuation.copy()
 	if call.return_kind == ScenarioOperationExecutionRecord.ReturnKind.CLASSIC: runtime.bind_execution(_state.classic, _state.records[-2].classic)
@@ -181,7 +184,10 @@ func resume(response: InteractionResponse, runtime: RealmzRuntimeApi) -> Scenari
 		_state.request_counter = counter
 		return ScenarioVmResult.rejected(operation.error_code, operation.error_message)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
-		if retry != null and restore(retry): return ScenarioVmResult.failed(operation.error_code, operation.error_message)
+		if retry:
+			_state.request_counter = counter
+			_bind_saved_header = true
+			return ScenarioVmResult.failed(operation.error_code, operation.error_message)
 		return _fail(operation.error_code, operation.error_message, operation.events)
 	_state.append_trace({"event": "resume", "requestId": _state.pending_request.request_id})
 	_state.pending_request = null

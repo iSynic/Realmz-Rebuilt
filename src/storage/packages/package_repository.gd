@@ -10,6 +10,7 @@ const SCHEMA_V6_HASH: String = "5f7cbc80444bca4630f2989cfef4339a7c5ea6fe4c3af687
 const SCHEMA_V7_HASH: String = "b6af98b0541dd1bb34e06ca6644c6eb4e898d6da93ceffd4b182ef65339c6750"
 const SCHEMA_HASHES: Dictionary = {3: EXPECTED_SCHEMA_HASH, 4: SCHEMA_V4_HASH, 5: SCHEMA_V5_HASH, 6: SCHEMA_V6_HASH, 7: SCHEMA_V7_HASH}
 const DECODER_VERSION: int = 15
+const BUNDLED_CAMPAIGN_ROOT: String = "res://src/storage/packages/bundled_campaigns"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -114,6 +115,8 @@ func load_bundled_package(path: String, expected_campaign_id: String, expected_p
 
 
 func install_package(source_path: String, install_root: String = "user://packages", progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageInstallResult:
+	if _is_bundled_campaign_path(source_path):
+		return _install_bundled_campaign(source_path, install_root, progress_callback, cancel_callback)
 	var installed_source := _load_installed_package(source_path, install_root, progress_callback, cancel_callback)
 	if installed_source != null:
 		if installed_source.is_ok():
@@ -156,6 +159,16 @@ func _load_staged_copy(source_path: String, staged_path: String, progress_callba
 	if source_bytes.is_empty():
 		return PackageLoadResult.failed("package_install_read_failed", "Could not read the source package for installation.")
 	var archive_sha256 := _archive_reader.sha256(source_bytes)
+	var copy_failure := _write_verified_copy(source_bytes, archive_sha256, staged_path)
+	if copy_failure != null:
+		return copy_failure
+	var result := load_package(staged_path, progress_callback, cancel_callback)
+	if result.is_ok():
+		result.archive_sha256 = archive_sha256
+	return result
+
+
+func _write_verified_copy(source_bytes: PackedByteArray, archive_sha256: String, staged_path: String) -> PackageLoadResult:
 	var staged := FileAccess.open(staged_path, FileAccess.WRITE)
 	if staged == null:
 		return PackageLoadResult.failed("package_install_write_failed", "Could not open the temporary package installation file.")
@@ -165,10 +178,82 @@ func _load_staged_copy(source_path: String, staged_path: String, progress_callba
 	var staged_bytes := FileAccess.get_file_as_bytes(staged_path)
 	if staged_bytes.size() != source_bytes.size() or _archive_reader.sha256(staged_bytes) != archive_sha256:
 		return PackageLoadResult.failed("package_install_readback_failed", "Temporary package installation failed byte-for-byte readback validation.")
-	var result := load_package(staged_path, progress_callback, cancel_callback)
-	if result.is_ok():
-		result.archive_sha256 = archive_sha256
-	return result
+	return null
+
+
+func _is_bundled_campaign_path(path: String) -> bool:
+	var normalized := path.simplify_path()
+	return normalized.get_base_dir() == BUNDLED_CAMPAIGN_ROOT and normalized.get_extension() == "realmz2"
+
+
+## Bundled campaigns ship inside the application, which already vouches for
+## their bytes, so selecting one loads it on the trusted path instead of
+## repeating external-package integrity checks. Saves still bind to an
+## immutable user-owned copy that outlives this application version.
+func _install_bundled_campaign(source_path: String, install_root: String, progress_callback: Callable, cancel_callback: Callable) -> PackageInstallResult:
+	_report_progress(progress_callback, &"opening", 0, 1)
+	var archive := ZIPReader.new()
+	if archive.open(source_path) != OK:
+		return PackageInstallResult.failed(&"package_open_failed", "Could not open bundled package '%s'." % source_path)
+	var manifest_value: Variant = _archive_reader.read_document(archive, "manifest.json")
+	archive.close()
+	if not manifest_value is Dictionary:
+		return PackageInstallResult.failed(&"package_open_failed", "Bundled package '%s' has no readable manifest." % source_path)
+	var manifest: Dictionary = manifest_value
+	var campaign_id := str(manifest.get("campaignId", ""))
+	var package_hash := str(manifest.get("packageHash", ""))
+	if not _safe_path_component(campaign_id) or not _is_sha256(package_hash):
+		return PackageInstallResult.failed(&"bundled_package_identity_invalid", "The bundled package identity is invalid.")
+	var target_path := install_root.trim_suffix("/").path_join(campaign_id).path_join("%s.realmz2" % package_hash)
+	var installed := _load_installed_package(target_path, install_root, progress_callback, cancel_callback)
+	if installed != null and (installed.is_ok() or installed.error_code == &"package_cancelled"):
+		if installed.is_ok():
+			return PackageInstallResult.succeeded(target_path, installed)
+		return PackageInstallResult.failed(installed.error_code, installed.error_message)
+	if _cancel_requested(cancel_callback):
+		return PackageInstallResult.failed(&"package_cancelled", "Package operation cancelled.")
+	_report_progress(progress_callback, &"constructing-content", 0, 1)
+	var loaded := load_bundled_package(source_path, campaign_id, package_hash)
+	if not loaded.is_ok():
+		return PackageInstallResult.failed(loaded.error_code, loaded.error_message)
+	if _cancel_requested(cancel_callback):
+		return PackageInstallResult.failed(&"package_cancelled", "Package operation cancelled.")
+	_report_progress(progress_callback, &"copying-package", 0, 1)
+	var preserved := _preserve_bundled_copy(source_path, target_path, install_root, loaded)
+	if preserved.is_ok():
+		_report_progress(progress_callback, &"complete", 1, 1)
+	return preserved
+
+
+## Saves bind to exact package bytes, so a bundled revision keeps an immutable
+## receipted copy that later application versions can still open.
+func _preserve_bundled_copy(source_path: String, target_path: String, install_root: String, loaded: PackageLoadResult) -> PackageInstallResult:
+	var source_bytes := FileAccess.get_file_as_bytes(source_path)
+	if source_bytes.is_empty():
+		return PackageInstallResult.failed("package_install_read_failed", "Could not read the source package for installation.")
+	loaded.archive_sha256 = _archive_reader.sha256(source_bytes)
+	var create_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(target_path.get_base_dir()))
+	if create_error != OK:
+		return PackageInstallResult.failed("package_install_directory_failed", "Could not create the package installation directory (error %d)." % create_error)
+	if FileAccess.file_exists(target_path):
+		if _archive_reader.sha256_file(target_path) != loaded.archive_sha256:
+			return PackageInstallResult.failed("package_install_collision", "An invalid package already occupies the immutable installation path.")
+	else:
+		var staged_path := _staging_path(install_root, "bundled")
+		var copy_failure := _write_verified_copy(source_bytes, loaded.archive_sha256, staged_path)
+		var rename_error := OK if copy_failure != null else DirAccess.rename_absolute(ProjectSettings.globalize_path(staged_path), ProjectSettings.globalize_path(target_path))
+		_delete_file(staged_path)
+		if copy_failure != null:
+			return PackageInstallResult.failed(copy_failure.error_code, copy_failure.error_message)
+		if rename_error != OK:
+			return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the bundled package (error %d)." % rename_error)
+	if not _receipt_store.write(target_path, loaded.content, loaded.archive_sha256, loaded.schema_hash):
+		return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the bundled package installation receipt.")
+	var located := _located_at(loaded, target_path)
+	var receipt := _receipt_store.read(target_path)
+	if not receipt.is_empty():
+		_package_cache.retain_candidate(_receipt_store.cache_key(target_path, receipt), located)
+	return PackageInstallResult.succeeded(target_path, located)
 
 
 func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryResult]:

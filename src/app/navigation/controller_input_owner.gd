@@ -37,6 +37,8 @@ const DIRECTION_ACTIONS: Array[StringName] = [
 	&"realmz_controller_left",
 	&"realmz_controller_right",
 ]
+## Runtime-testing fixtures mark the pad input they synthesize, which stands in for a player at a focused window.
+const SYNTHETIC_INPUT_META := &"realmz_synthetic_controller_input"
 const LEFT_AXES: Array[int] = [JOY_AXIS_LEFT_X, JOY_AXIS_LEFT_Y]
 const RIGHT_AXES: Array[int] = [JOY_AXIS_RIGHT_X, JOY_AXIS_RIGHT_Y]
 
@@ -47,6 +49,7 @@ var _held_descriptors: Dictionary = {}
 var _repeat_remaining_ms: Dictionary = {}
 var _axis_values: Dictionary = {}
 var _suspended: bool = false
+var _application_focused: bool = true
 var _awaiting_neutral: bool = false
 var _capture_action: StringName = &""
 var _direction_change_pending: bool = false
@@ -55,9 +58,19 @@ var _direction_settle_frames: int = 0
 
 func _ready() -> void:
 	set_process(true)
+	_application_focused = DisplayServer.get_name() == "headless" or DisplayServer.window_is_focused()
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	get_tree().node_added.connect(_bind_popup_input)
 	_bind_existing_popups(get_parent())
+
+
+## Pads stay connected while another application is in front, so their input belongs to that application.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_application_focused = false
+		clear_held_input(false)
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_application_focused = true
 
 
 func _bind_existing_popups(node: Node) -> void:
@@ -125,11 +138,9 @@ func handle_input(event: InputEvent) -> bool:
 	if not event is InputEventJoypadButton and not event is InputEventJoypadMotion:
 		if not _suspended or not ControllerInputRecovery.is_deliberate_external_input(event):
 			return false
-		ControllerInputRecovery.refresh_connected_axes(_active_device, _axis_values)
-		if _awaiting_neutral and _all_axes_neutral():
-			_suspended = false
-			_awaiting_neutral = false
-			input_resumed.emit()
+		_resume_if_neutral()
+		return true
+	if not _application_focused and not event.has_meta(SYNTHETIC_INPUT_META):
 		return true
 	if _is_deliberate_takeover(event):
 		input_observed.emit(_input_summary(event))
@@ -148,11 +159,7 @@ func handle_input(event: InputEvent) -> bool:
 		_axis_values[(event as InputEventJoypadMotion).axis] = (event as InputEventJoypadMotion).axis_value
 	if _suspended:
 		if _awaiting_neutral and event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed:
-			ControllerInputRecovery.refresh_connected_axes(_active_device, _axis_values)
-			if _all_axes_neutral():
-				_suspended = false
-				_awaiting_neutral = false
-				input_resumed.emit()
+			_resume_if_neutral()
 		return true
 	var consumed := false
 	for descriptor: Dictionary in _preferences.bindings:
@@ -181,6 +188,14 @@ func handle_input(event: InputEvent) -> bool:
 			if action_id in DIRECTION_ACTIONS:
 				_queue_direction_change(event is InputEventJoypadMotion)
 	return consumed
+
+
+func _resume_if_neutral() -> void:
+	ControllerInputRecovery.refresh_connected_axes(_active_device, _axis_values)
+	if _awaiting_neutral and _all_axes_neutral():
+		_suspended = false
+		_awaiting_neutral = false
+		input_resumed.emit()
 
 
 func suspend(reason: String) -> void:

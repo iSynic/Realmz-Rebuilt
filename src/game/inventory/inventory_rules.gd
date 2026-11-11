@@ -122,11 +122,12 @@ func classic_trade_probe(source: CharacterState, destination: CharacterState, in
 		return InventoryActionProbe.block("Choose another party member.")
 	if instance.equipped and not item.cursed_item_id.is_empty():
 		return InventoryActionProbe.block("This cursed equipped item cannot be traded away.")
-	if destination.inventory().size() >= MAX_ITEMS:
+	var destination_items := destination.inventory()
+	if destination_items.size() >= MAX_ITEMS:
 		return InventoryActionProbe.block("%s already carries 30 items." % destination.name)
 	if destination.carried_load + item.instance_weight(instance.charges) > destination.maximum_load:
 		return InventoryActionProbe.block("%s cannot carry this item's weight." % destination.name)
-	for carried: ItemInstance in destination.inventory():
+	for carried: ItemInstance in destination_items:
 		if carried.id == instance.id:
 			return InventoryActionProbe.block("The destination already has this item instance.")
 	return InventoryActionProbe.permit()

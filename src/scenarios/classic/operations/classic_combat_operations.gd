@@ -329,7 +329,7 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 		if coordinate.x < 0 or not battlefield.actors.place_monster(monster.id, coordinate, definition.size):
 			continue
 		if not _game_state.combat.roster.add_monster(monster):
-			battlefield.actors.remove_monster(monster.id)
+			battlefield.actors.remove_monster(monster.id, false)
 			continue
 		_game_state.combat.append_turn_actor(monster.id)
 		spawned.append(monster.id)
@@ -337,7 +337,7 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 	var events: Array[DomainEvent] = []
 	if action.extra_code[3] != 0 and not spawned.is_empty():
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(action.extra_code[3]), "waitForCompletion": action.extra_code[3] < 0, "source": "classic"}))
-	events.append(DomainEvent.new(&"combat_monsters_spawned", {"monsterId": definition.id, "instanceIds": spawned, "coordinates": coordinates, "requestedCount": maxi(0, count), "soundId": action.extra_code[3], "source": "classic"}))
+	events.append(DomainEvent.new(&"combat_monsters_spawned", {"monsterId": definition.id, "instanceIds": spawned, "coordinates": coordinates, "requestedCount": maxi(0, count), "soundId": action.extra_code[3], "size": definition.size, "source": "classic"}))
 	return ScenarioRuntimeOperationResult.completed(spawned, events)
 
 
@@ -357,9 +357,12 @@ func _classic_spawn_source_coordinate(context: ScenarioExecutionContext) -> Vect
 		var captured := native_invocation.queued_source
 		return captured.position if captured.available and captured.has_position else Vector2i(-1,-1)
 	var source := _macro_monster(context)
-	if source != null and battlefield.actors.has_actor(source.id):
-		return battlefield.actors.actor_position(source.id)
-	return Vector2i(-1, -1)
+	if source == null:
+		return Vector2i(-1, -1)
+	# newland.c reads monpos[macromonster] without checking that the monster is
+	# still alive, so a fallen source spawns from its last anchor.
+	var retired: Variant = battlefield.actors.monster_positions(true).get(source.id)
+	return battlefield.actors.actor_position(source.id) if battlefield.actors.has_actor(source.id) else retired if retired is Vector2i else Vector2i(-1, -1)
 
 
 func _classic_spawn_traitor_override(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> int:

@@ -33,10 +33,12 @@ var _game_view: GameView
 var _loot_slot_order: Array[String] = []
 var _selected_recipient_id: String
 var _selected_item: InteractionRequestValue.RewardItem
-var _item_buttons: Dictionary = {}
-var _recipient_buttons: Dictionary = {}
-var _drop_buttons: Dictionary = {}
-var _selection_rings: Dictionary = {}
+var _item_buttons: Dictionary[String, Button] = {}
+## The item each retained loot cell currently presents, keyed by instance ID.
+var _loot_items: Dictionary[String, InteractionRequestValue.RewardItem] = {}
+var _recipient_buttons: Dictionary[String, Button] = {}
+var _drop_buttons: Dictionary[String, MenuButton] = {}
+var _selection_rings: Dictionary[String, TextureRect] = {}
 var _selected_item_name: Label
 var _selected_item_state: Label
 var _selected_item_description: Label
@@ -47,6 +49,8 @@ var _transfer_origin := Vector2.ZERO
 var _detail_popover: CanvasLayer
 var _restore_money_workspace := false
 var _money: TreasureMoneyBinder
+var _body: TreasureRequestBody
+var _drop_items: Dictionary[String, Array] = {}
 ## Set when closing a stale Money workspace so the rebuilt Treasure focuses its Money button.
 var _focus_money_on_return := false
 
@@ -123,6 +127,8 @@ func build(request: InteractionRequest) -> void:
 		&"fumbled-item-recovery":
 			_build_recovery_workspace(body)
 		&"ordinary":
+			_body = body
+			_connect_ordinary_commands()
 			_select_initial_recipient(body)
 			%TreasureWorkspaceTitle.text = "Victory Spoils" if body.origin == &"battle" else "Treasure"
 			%TreasureWorkspaceSummary.text = TreasureDisplayText.summary(body)
@@ -138,11 +144,46 @@ func build(request: InteractionRequest) -> void:
 			add_hint("The treasure request is malformed.")
 
 
+## Rebinds a retained ordinary workspace for the next request from the same Treasure, so taking,
+## dropping, pooling, Detect Magic and Identify redraw only what changed instead of every loot cell.
+## The nested leave-behind confirmation is its own component without ordinary loot, so it never qualifies.
+func refresh_ordinary(request: InteractionRequest, game_view: GameView) -> bool:
+	var body := request.body as TreasureRequestBody if request != null else null
+	if body == null or _body == null or body.mode != &"ordinary" or body.source_id != _body.source_id or not has_node("OrdinaryTreasure"):
+		return false
+	var ids := func(source: TreasureRequestBody) -> Array: return source.characters.map(func(character: InteractionRequestValue.RewardCharacter) -> String: return character.id)
+	if ids.call(body) != ids.call(_body) or body.items.any(func(item: InteractionRequestValue.RewardItem) -> bool: return not _loot_slot_order.has(item.instance_id)):
+		return false
+	var focus_owner := get_viewport().gui_get_focus_owner()
+	_body = body
+	_game_view = game_view if game_view != null else _game_view
+	_transferring = false
+	_transfer_item = null
+	_select_initial_recipient(body)
+	%TreasureWorkspaceSummary.text = TreasureDisplayText.summary(body)
+	_build_loot_side(body)
+	_build_party_side(body)
+	_build_item_inspector(body)
+	_refresh_item_availability()
+	if focus_owner == null or not is_instance_valid(focus_owner) or focus_owner.is_queued_for_deletion() or not focus_owner.is_inside_tree():
+		var target := preferred_initial_focus()
+		if target != null: target.grab_focus()
+	return true
+
+
+func _connect_ordinary_commands() -> void:
+	%TreasureDone.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"done")))
+	%TreasureMoney.pressed.connect(func() -> void: _open_money_workspace(_body))
+	%TreasurePool.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"pool")))
+	%TreasureShare.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"share")))
+	(%TreasureItemScroll as ScrollContainer).resized.connect(_update_loot_columns.bind(%TreasureItemScroll, %TreasureItemGrid))
+
+
 func preferred_initial_focus() -> Control:
 	if _focus_money_on_return and has_node("%TreasureMoney"):
 		_focus_money_on_return = false
 		return %TreasureMoney as Control
-	var recipient := _recipient_buttons.get(_selected_recipient_id) as Control
+	var recipient: Control = _recipient_buttons[_selected_recipient_id] if _recipient_buttons.has(_selected_recipient_id) else null
 	if recipient != null and recipient.visible and not (recipient is BaseButton and (recipient as BaseButton).disabled):
 		return recipient
 	for drop: Variant in _drop_buttons.values():
@@ -166,8 +207,8 @@ func _input(event: InputEvent) -> void:
 func _build_loot_side(body: TreasureRequestBody) -> void:
 	var scroll := %TreasureItemScroll as ScrollContainer
 	var grid := %TreasureItemGrid as GridContainer
-	grid.columns = 6 if _compact else 16
-	scroll.resized.connect(_update_loot_columns.bind(scroll, grid))
+	if grid.get_child_count() == 0:
+		grid.columns = 6 if _compact else 16
 	call_deferred("_update_loot_columns", scroll, grid)
 	var items_by_id: Dictionary = {}
 	for item: InteractionRequestValue.RewardItem in body.items:
@@ -178,12 +219,27 @@ func _build_loot_side(body: TreasureRequestBody) -> void:
 	grid.visible = not _loot_slot_order.is_empty()
 	if not _loot_slot_order.is_empty():
 		_selected_item = body.items[0] if not body.items.is_empty() else null
-		for slot_id: String in _loot_slot_order:
-			var item := items_by_id.get(slot_id) as InteractionRequestValue.RewardItem
-			if item != null:
-				_add_loot_item(grid, item)
-			else:
-				_add_vacant_loot_slot(grid, slot_id)
+	# Slots only ever append, so child N always presents slot N; unchanged cells are kept.
+	for index: int in _loot_slot_order.size():
+		var slot_id := _loot_slot_order[index]
+		var item := items_by_id.get(slot_id) as InteractionRequestValue.RewardItem
+		var current: Node = grid.get_child(index) if index < grid.get_child_count() else null
+		var cell: Button = _item_buttons[slot_id] if _item_buttons.has(slot_id) else null
+		if current != null and current == cell and item != null and TreasureDisplayText.same_loot_cell(_loot_items[slot_id], item):
+			_loot_items[slot_id] = item
+			continue
+		if current != null and cell == null and item == null:
+			continue
+		if current != null:
+			_item_buttons.erase(slot_id)
+			_loot_items.erase(slot_id)
+			_selection_rings.erase(slot_id)
+			grid.remove_child(current)
+			current.queue_free()
+		if item != null:
+			_add_loot_item(grid, item, index)
+		else:
+			_add_vacant_loot_slot(grid, slot_id, index)
 
 
 func _build_item_inspector(body: TreasureRequestBody) -> void:
@@ -196,7 +252,6 @@ func _build_item_inspector(body: TreasureRequestBody) -> void:
 	_selected_item_facts.columns = 2 if _compact else 4
 	var commands := %TreasureDynamicCommands as VBoxContainer
 	_build_compact_commands(commands, body)
-	%TreasureDone.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"done")))
 	_refresh_item_record(record_icon)
 
 
@@ -212,12 +267,13 @@ func _update_loot_columns(scroll: ScrollContainer, grid: GridContainer) -> void:
 	grid.columns = maxi(1, floori((loot_width + gap) / (cell_width + gap)))
 
 
-func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardItem) -> void:
+func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardItem, index: int = -1) -> void:
 	var cell := loot_cell_scene.instantiate() as Button
 	cell.name = "TreasureItem_%s" % node_fragment(item.instance_id)
 	cell.tooltip_text = item.name
-	cell.set_meta("reward_item", item)
+	_loot_items[item.instance_id] = item
 	parent.add_child(cell)
+	if index >= 0: parent.move_child(cell, index)
 	var magic_glow := cell.get_node("%MagicGlow") as TextureRect
 	if item.magical:
 		magic_glow.name = "TreasureMagicGlow_%s" % node_fragment(item.instance_id)
@@ -242,10 +298,11 @@ func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardI
 	_detail_popover.bind_hover(cell, TreasureDisplayText.item_detail(item))
 
 
-func _add_vacant_loot_slot(parent: GridContainer, instance_id: String) -> void:
+func _add_vacant_loot_slot(parent: GridContainer, instance_id: String, index: int = -1) -> void:
 	var slot := vacant_slot_scene.instantiate() as Control
 	slot.name = "TreasureVacantSlot_%s" % node_fragment(instance_id)
 	parent.add_child(slot)
+	if index >= 0: parent.move_child(slot, index)
 
 
 func _build_party_side(body: TreasureRequestBody) -> void:
@@ -258,35 +315,42 @@ func _build_party_side(body: TreasureRequestBody) -> void:
 
 
 func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValue.RewardCharacter) -> void:
-	var row := recipient_row_scene.instantiate() as BoxContainer
-	row.name = "TreasureRecipientRow_%s" % node_fragment(character.id)
-	parent.add_child(row)
-	var button := row.get_node("TreasureRecipientSelect") as Button
-	button.name = "TreasureRecipient_%s" % character.id
-	button.button_pressed = character.id == _selected_recipient_id
+	_drop_items[character.id] = character.drop_items
+	var button: Button = _recipient_buttons[character.id] if _recipient_buttons.has(character.id) else null
+	var drop: MenuButton = _drop_buttons[character.id] if _drop_buttons.has(character.id) else null
+	if button == null:
+		var row := recipient_row_scene.instantiate() as BoxContainer
+		row.name = "TreasureRecipientRow_%s" % node_fragment(character.id)
+		parent.add_child(row)
+		button = row.get_node("TreasureRecipientSelect") as Button
+		button.name = "TreasureRecipient_%s" % character.id
+		button.pressed.connect(_select_recipient.bind(character.id))
+		drop = row.get_node("TreasureRecipientDrop") as MenuButton
+		drop.name = "TreasureDrop_%s" % node_fragment(character.id)
+		drop.get_popup().exclusive = false
+		drop.get_popup().close_requested.connect(drop.get_popup().hide)
+		drop.get_popup().id_pressed.connect(_drop_recipient_item.bind(character.id))
+	button.set_pressed_no_signal(character.id == _selected_recipient_id)
 	button.text = TreasureDisplayText.recipient(character)
 	button.icon = _portrait(character.id)
 	button.disabled = not character.enabled
 	button.tooltip_text = character.name if character.reason.is_empty() else "%s: %s" % [character.name, character.reason]
-	button.pressed.connect(_select_recipient.bind(character.id))
 	_recipient_buttons[character.id] = button
-	var drop := row.get_node("TreasureRecipientDrop") as MenuButton
-	drop.name = "TreasureDrop_%s" % node_fragment(character.id)
 	drop.disabled = character.drop_items.is_empty()
 	drop.tooltip_text = "No carried items to drop." if drop.disabled else "Drop an item carried by %s." % character.name
 	var menu := drop.get_popup()
-	menu.exclusive = false
-	menu.close_requested.connect(menu.hide)
+	menu.clear()
 	for index: int in character.drop_items.size():
 		var item := character.drop_items[index]
 		menu.add_item("%s%s" % [item.name, " (equipped)" if item.equipped else ""], index)
 		menu.set_item_disabled(index, not item.enabled)
 		menu.set_item_tooltip(index, item.reason)
-	menu.id_pressed.connect(_drop_recipient_item.bind(character.id, character.drop_items))
 	_drop_buttons[character.id] = drop
 
 
-func _drop_recipient_item(index: int, character_id: String, items: Array[InteractionRequestValue.RewardDropItem]) -> void:
+func _drop_recipient_item(index: int, character_id: String) -> void:
+	var items: Array[InteractionRequestValue.RewardDropItem] = []
+	if _drop_items.has(character_id): items.assign(_drop_items[character_id])
 	if index < 0 or index >= items.size() or not items[index].enabled:
 		return
 	response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"drop", items[index].instance_id, character_id))
@@ -299,17 +363,17 @@ func _build_compact_commands(parent: VBoxContainer, body: TreasureRequestBody) -
 	)
 	%TreasureMoney.disabled = money_rows.is_empty()
 	%TreasureMoney.tooltip_text = "No adventurer wealth is available." if money_rows.is_empty() else "Open the Party Wealth screen."
-	%TreasureMoney.pressed.connect(_open_money_workspace.bind(body))
 	var has_carried_wealth := body.characters.any(func(character: InteractionRequestValue.RewardCharacter) -> bool:
 		return character.wealth != null and (character.wealth.gold > 0 or character.wealth.gems > 0 or character.wealth.jewelry > 0)
 	)
 	%TreasurePool.disabled = not has_carried_wealth
 	%TreasurePool.tooltip_text = "" if has_carried_wealth else "No adventurer carries wealth to pool."
-	%TreasurePool.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"pool")))
 	var has_pool := body.wealth != null and (body.wealth.gold > 0 or body.wealth.gems > 0 or body.wealth.jewelry > 0)
 	%TreasureShare.disabled = not (has_pool and body.has_share_capacity)
 	%TreasureShare.tooltip_text = "" if has_pool and body.has_share_capacity else "The pool is empty or no adventurer can carry another unit."
-	%TreasureShare.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"share")))
+	for child: Node in parent.get_children():
+		parent.remove_child(child)
+		child.queue_free()
 	if body.detect != null and body.detect.visible:
 		_add_caster_control(parent, "Detect Magic", &"detect", body.detect)
 	if body.identify != null and body.identify.visible:
@@ -331,14 +395,14 @@ func _select_recipient(character_id: String) -> void:
 		return
 	_selected_recipient_id = character_id
 	recipient_selected.emit(character_id)
-	for id: Variant in _recipient_buttons:
-		(_recipient_buttons[id] as Button).set_pressed_no_signal(String(id) == character_id)
+	for id: String in _recipient_buttons:
+		_recipient_buttons[id].set_pressed_no_signal(id == character_id)
 	_refresh_item_availability()
 
 
 func _focus_loot_item(item: InteractionRequestValue.RewardItem, _button: Button) -> void:
 	_selected_item = item
-	var ring := _selection_rings.get(item.instance_id) as TextureRect
+	var ring: TextureRect = _selection_rings[item.instance_id] if _selection_rings.has(item.instance_id) else null
 	if ring != null:
 		ring.visible = true
 	var record_icon := find_child("TreasureRecordIcon", true, false) as TextureRect
@@ -347,8 +411,8 @@ func _focus_loot_item(item: InteractionRequestValue.RewardItem, _button: Button)
 
 
 func _hide_loot_ring(instance_id: String) -> void:
-	var ring := _selection_rings.get(instance_id) as TextureRect
-	var button := _item_buttons.get(instance_id) as Button
+	var ring: TextureRect = _selection_rings[instance_id] if _selection_rings.has(instance_id) else null
+	var button: Button = _item_buttons[instance_id] if _item_buttons.has(instance_id) else null
 	if ring != null and (button == null or not button.has_focus()):
 		ring.visible = false
 
@@ -386,9 +450,9 @@ func _refresh_item_record(icon: TextureRect) -> void:
 
 
 func _refresh_item_availability() -> void:
-	for item_id: Variant in _item_buttons:
-		var button := _item_buttons[item_id] as Button
-		var item := _item_by_id(String(item_id))
+	for item_id: String in _item_buttons:
+		var button := _item_buttons[item_id]
+		var item := _loot_items[item_id]
 		var assignment := _assignment_for(item, _selected_recipient_id)
 		button.disabled = _transferring or assignment == null or not assignment.enabled
 		button.tooltip_text = item.name if assignment != null and assignment.enabled else "%s — %s" % [item.name, assignment.reason if assignment != null else "Choose an eligible recipient."]
@@ -396,7 +460,7 @@ func _refresh_item_availability() -> void:
 
 func _begin_item_transfer(item: InteractionRequestValue.RewardItem, source: Button) -> void:
 	var assignment := _assignment_for(item, _selected_recipient_id)
-	var target := _recipient_buttons.get(_selected_recipient_id) as Button
+	var target: Button = _recipient_buttons[_selected_recipient_id] if _recipient_buttons.has(_selected_recipient_id) else null
 	if _transferring or assignment == null or not assignment.enabled or target == null:
 		return
 	_transferring = true
@@ -426,17 +490,6 @@ func _assignment_for(item: InteractionRequestValue.RewardItem, character_id: Str
 	for assignment: InteractionRequestValue.RewardAssignment in item.assignments:
 		if assignment.character_id == character_id:
 			return assignment
-	return null
-
-
-func _item_by_id(instance_id: String) -> InteractionRequestValue.RewardItem:
-	if _selected_item != null and _selected_item.instance_id == instance_id:
-		return _selected_item
-	for child_item_id: Variant in _item_buttons:
-		if String(child_item_id) == instance_id:
-			var button := _item_buttons[child_item_id] as Button
-			var item: Variant = button.get_meta("reward_item") if button.has_meta("reward_item") else null
-			return item if item is InteractionRequestValue.RewardItem else null
 	return null
 
 

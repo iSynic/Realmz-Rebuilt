@@ -4,7 +4,7 @@ Begin with `PackageRepository` when following installation or discovery, and wit
 
 `ApplicationLibraryIdentity` names the one committed Providence-built stock library used by the application and ordinary developer probes. Its package and compact acceptance lock live in `application/`; change the path, campaign ID, package hash, and lock together when accepting a newly compiled application library.
 
-The thirteen release campaigns and their provenance records live in `bundled_campaigns/`. They are immutable package inputs discovered through the same validation and installation path as an external campaign; this directory does not grant them a runtime trust bypass.
+The thirteen release campaigns and their provenance records live in `bundled_campaigns/`. They ship inside the application, so selecting one loads it on the trusted bundled path without rehashing every file, then keeps an immutable copy under `user://packages` so saves still open after later updates. Imported and external campaigns always receive complete validation.
 
 Folder import runs the bundled Providence service through `ClassicScenarioImportTask`, using a disposable capture and the application's stock library. Its versioned JSON events report preflight, progress, diagnostics, startup-file ambiguity, completion, and failure. Conversion does not authorize installation: the ordinary package validator and atomic installer must succeed before the imported library updates. Reports retain unknown native instructions even when conversion later fails.
 

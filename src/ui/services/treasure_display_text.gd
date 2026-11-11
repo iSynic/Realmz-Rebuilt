@@ -44,3 +44,8 @@ static func item_detail(item: InteractionRequestValue.RewardItem) -> Dictionary:
 	if item.charges != 0:
 		facts.append({"label": "Charges", "value": "Unlimited" if item.charges < 0 else str(item.charges)})
 	return {"title": item.name, "subtitle": item_state(item), "description": item.description, "facts": facts, "iconResourceType": item.icon_resource_type, "iconId": item.icon_id}
+
+
+## Whether a retained loot cell still shows this item exactly, so a refresh can keep the cell.
+static func same_loot_cell(shown: InteractionRequestValue.RewardItem, item: InteractionRequestValue.RewardItem) -> bool:
+	return shown.name == item.name and shown.magical == item.magical and shown.icon_id == item.icon_id and shown.icon_resource_type == item.icon_resource_type and item_detail(shown) == item_detail(item)

@@ -73,3 +73,11 @@ static func combatant_position(view: GameView, combatant_id: String) -> Vector2i
 	if view == null or view.combat_view == null:
 		return Vector2i(-1, -1)
 	return BattlefieldPresentationGeometry.actor_position(view.combat_view, view.party_members, combatant_id)
+
+
+static func monster_view(view: GameView, monster_id: String) -> MonsterView:
+	if view != null and view.combat_view != null:
+		for monster: MonsterView in view.combat_view.monsters:
+			if monster.id == monster_id:
+				return monster
+	return null

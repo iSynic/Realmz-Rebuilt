@@ -47,6 +47,7 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"combat_persistent_field_expired",
 	&"combat_monster_action_unavailable",
 	&"combat_summoned",
+	&"combat_monsters_spawned",
 	&"sound_requested",
 ]
 
@@ -292,7 +293,7 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 		&"condition_damaged": _append_condition_damage(event, positions, hidden)
 		&"combat_attack_blocked": _append_simple_result(event, positions, hidden, &"blocked", "Blocked")
 		&"combatant_retreated": _append_retreat(event, positions, hidden)
-		&"combat_summoned": _append_summon(event, positions, hidden)
+		&"combat_summoned", &"combat_monsters_spawned": _append_arrivals(event, positions, hidden)
 		&"combat_persistent_field_created", &"combat_persistent_field_expired": _append_field_change(event, positions, hidden)
 		&"combat_monster_action_unavailable":
 			var frame := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
@@ -345,27 +346,28 @@ func _append_battle_cue(event: DomainEvent, positions: Dictionary, hidden: Array
 	_frames.append(cue)
 
 
-func _append_summon(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
-	var monster_id := String(event.payload.get("monsterId", ""))
-	if monster_id.is_empty():
-		return
-	var coordinate := CombatPlaybackViews.payload_coordinate(event.payload.get("coordinate"))
-	if coordinate.x < 0:
-		return
-	positions[monster_id] = coordinate
-	if final_view != null and final_view.combat_view != null:
-		for monster: MonsterView in final_view.combat_view.monsters:
-			if monster.id == monster_id:
-				_summoned_monsters[monster_id] = monster
-				_visible_health[monster_id] = monster.maximum_health
-				break
-	_summoned_sizes[monster_id] = int(event.payload.get("size", 0))
-	var frame := _new_frame(&"summon", SPELL_EFFECT_SECONDS, positions, hidden)
-	frame.actor_id = String(event.payload.get("actorId", ""))
-	frame.target_id = monster_id
-	frame.to_coordinate = coordinate
-	frame.display_text = "Summoned"
-	_frames.append(frame)
+# Spell summons and scenario opcode-124 spawns join playback at their own event,
+# so Auto turns later in the same transaction never act with an undrawn monster.
+func _append_arrivals(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var spawned := event.kind == &"combat_monsters_spawned"
+	var ids: Array = event.payload.get("instanceIds", []) if spawned else [event.payload.get("monsterId", "")]
+	var coordinates: Array = event.payload.get("coordinates", []) if spawned else [event.payload.get("coordinate")]
+	for index: int in mini(ids.size(), coordinates.size()):
+		var monster_id := str(ids[index])
+		var coordinate := CombatPlaybackViews.payload_coordinate(coordinates[index])
+		if monster_id.is_empty() or coordinate.x < 0: continue
+		positions[monster_id] = coordinate
+		var monster := CombatPlaybackViews.monster_view(final_view, monster_id)
+		if monster != null:
+			_summoned_monsters[monster_id] = monster
+			_visible_health[monster_id] = monster.maximum_health
+		_summoned_sizes[monster_id] = int(event.payload.get("size", 0))
+		var frame := _new_frame(&"summon", SPELL_EFFECT_SECONDS, positions, hidden)
+		frame.actor_id = str(event.payload.get("actorId", ""))
+		frame.target_id = monster_id
+		frame.to_coordinate = coordinate
+		frame.display_text = "Appeared" if spawned else "Summoned"
+		_frames.append(frame)
 
 
 func _append_retreat(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:

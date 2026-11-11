@@ -1,7 +1,8 @@
 ## Decides when the interaction presenter rebinds a mounted component instead of rebuilding it.
 ##
 ## Shop, Bank and an open Treasure Money workspace keep their nodes across responses so held
-## money transfers repeat and selections survive each step.
+## money transfers repeat and selections survive each step. Ordinary Treasure keeps its loot
+## cells and recipient rows across requests for the same Treasure and redraws only what changed.
 class_name InteractionRefreshPolicy
 extends RefCounted
 
@@ -14,6 +15,8 @@ static func refresh_in_place(component: InteractionComponent, request: Interacti
 		return (component as BankInteraction).refresh(request, game_view)
 	if component is TreasureDistributionInteraction and treasure_money_open and request != null and request.kind == InteractionRequest.TREASURE_DISTRIBUTION:
 		return (component as TreasureDistributionInteraction).refresh_money_workspace(request, game_view)
+	if component is TreasureDistributionInteraction and not treasure_money_open and request != null and request.kind == InteractionRequest.TREASURE_DISTRIBUTION:
+		return (component as TreasureDistributionInteraction).refresh_ordinary(request, game_view)
 	return false
 
 

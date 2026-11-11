@@ -8,7 +8,7 @@ const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 
 
 static func to_data(state: BattlefieldState) -> Dictionary:
-	return {
+	var result := {
 		"mapId": state.map_id,
 		"sourceOrigin": _vector_data(state.source_origin),
 		"mapShift": _vector_data(state.map_shift),
@@ -20,6 +20,11 @@ static func to_data(state: BattlefieldState) -> Dictionary:
 		"monsterPositions": _positions_data(state.actors.monster_positions()),
 		"monsterSizes": _sorted_dictionary(state.actors.monster_sizes()),
 	}
+	# Optional so battles without a fallen monster keep their existing wire.
+	var retired := state.actors.monster_positions(true)
+	if not retired.is_empty():
+		result["retiredMonsterPositions"] = _positions_data(retired)
+	return result
 
 
 static func from_data(data: Variant) -> BattlefieldState:
@@ -36,14 +41,17 @@ static func from_data(data: Variant) -> BattlefieldState:
 	var characters: Variant = _parse_positions(data["characterPositions"])
 	var monsters: Variant = _parse_positions(data["monsterPositions"])
 	var sizes: Variant = _parse_monster_sizes(data["monsterSizes"], monsters)
-	if tiles.is_empty() or characters == null or monsters == null or sizes == null or not _placements_are_valid(characters, monsters, sizes):
+	var envelope: Dictionary = data
+	var retired: Variant = _parse_retired_positions(envelope.get("retiredMonsterPositions", {}), monsters)
+	if tiles.is_empty() or characters == null or monsters == null or sizes == null or retired == null or not _placements_are_valid(characters, monsters, sizes):
 		return null
 	var result := BattlefieldState.new(data["mapId"], tiles, origin, shift)
 	if anchor != result.party_anchor:
 		return null
 	result.direction_degrees = direction
 	result.rolled_distance = distance
-	result.actors = BattlefieldActorState.new(characters, monsters, sizes)
+	var retired_positions: Dictionary = retired
+	result.actors = BattlefieldActorState.new(characters, monsters, sizes, retired_positions)
 	return result
 
 
@@ -111,6 +119,19 @@ static func _parse_positions(value: Variant) -> Variant:
 		if not actor_id is String or actor_id.is_empty() or coordinate == INVALID_COORDINATE or result.has(actor_id):
 			return null
 		result[actor_id] = coordinate
+	return result
+
+
+static func _parse_retired_positions(value: Variant, monster_positions: Variant) -> Variant:
+	var parsed: Variant = _parse_positions(value)
+	if not parsed is Dictionary or not monster_positions is Dictionary:
+		return null
+	var result: Dictionary = parsed
+	var placed: Dictionary = monster_positions
+	for actor_id: Variant in result:
+		var coordinate: Vector2i = result[actor_id]
+		if placed.has(actor_id) or not BattlefieldGrid.contains(coordinate):
+			return null
 	return result
 
 

@@ -8,6 +8,8 @@ extends ClassicRewardOperationsSupport
 const PLAYER_INPUT_ERROR_CODES: Array[String] = ["invalid_interaction_response", "reward_assignment_unavailable", "reward_drop_unavailable", "invalid_money_context", "money_action_unavailable", "reward_spell_unavailable"]
 const REWARD_DROP_SUPPORT := preload("res://src/scenarios/classic/operations/classic_reward_drop_support.gd")
 
+var _treasure_requests := ClassicTreasureRequestCache.new()
+
 class RewardItemSelection:
 	extends RefCounted
 
@@ -196,14 +198,13 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 	var detect_rows := _reward_caster_rows(63, 5)
 	var identify_rows := _reward_caster_rows(48, 25)
 	var has_pending_items := not pending_items.is_empty()
-	return InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {
+	return _treasure_requests.request(request_id, item_payloads, {
 		"mode": "ordinary",
 		"origin": String(reward.origin),
 		"sourceId": reward.source_id,
 		"experiencePool": reward.experience_pool,
 		"experienceShare": reward.experience_share,
 		"wealth": _game_state.party.pooled_wealth.to_data(),
-		"items": item_payloads,
 		"remaining": pending_items.size(),
 		"characters": characters,
 		"hasShareCapacity": has_share_capacity,
