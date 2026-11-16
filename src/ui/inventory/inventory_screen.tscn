@@ -22,5 +22,5 @@ text = "Inventory"
 visible = false
 text = ""
 
-[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
+[node name="RouteBackAction" parent="WorkspaceColumn/RouteFooter" index="0"]
 visible = false

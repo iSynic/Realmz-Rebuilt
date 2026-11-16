@@ -200,12 +200,22 @@ func scroll_active(root: Node, direction: Vector2i, step: int = 48) -> bool:
 				scroll = candidate as ScrollContainer
 				break
 	if scroll == null:
-		return false
+		return _scroll_text(root, direction)
 	if direction.y != 0:
 		scroll.scroll_vertical += direction.y * step
 	else:
 		scroll.scroll_horizontal += direction.x * step
 	return true
+
+
+## A read-only detail field (for example a dialog's report) scrolls when the scope has no ScrollContainer.
+func _scroll_text(root: Node, direction: Vector2i) -> bool:
+	for candidate: Node in root.find_children("*", "TextEdit", true, false):
+		var text := candidate as TextEdit
+		if text.is_visible_in_tree() and direction.y != 0:
+			text.scroll_vertical += direction.y * 3
+			return true
+	return false
 
 
 func _geometric_neighbor(root: Node, current: Control, direction: Vector2i, perpendicular_weight: float = 2.0) -> Control:

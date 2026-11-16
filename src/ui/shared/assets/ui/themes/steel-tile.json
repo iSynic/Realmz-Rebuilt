@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "label": "steel interface-theme background tile",
+  "provider": "SpriteCook (project owner's account)",
+  "license": "Project-Owner-Supplied",
+  "generation_id": "not recorded; supply from SpriteCook",
+  "source_note": "SpriteCook's native output is 200 by 200 pixels at every export setting; this is the full-size generation.",
+  "derivation": "Broad left-to-right brightness band removed: each column's mean brightness minus its 49-column wrapped moving average is kept, so grain is unchanged and the tile repeats without stripes. The unmodified generation is identified by source_sha256 and is not kept in the repository.",
+  "presentation_contract": "Repeated in both axes without stretching behind menu-style screens for this interface theme, under a 20% wash of the backdrop colour and an edge vignette. Also laid faintly, at the player's panel-texture strength (10% by default), over framed panels and the play screen's own surfaces in both HUD layouts.",
+  "file": {
+    "path": "res://src/ui/shared/assets/ui/themes/steel-tile.png",
+    "width": 200,
+    "height": 200,
+    "bytes": 58417,
+    "sha256": "66bcc9f033b1f24f952189f1e88991bb966f033a659942775a6782640a04d3c4"
+  },
+  "source_sha256": "047e59f4917873c9aa363c4dcaf499731e29c6c17c7ed5b422a5a000534c6738"
+}

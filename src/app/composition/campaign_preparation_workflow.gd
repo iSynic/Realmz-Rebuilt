@@ -27,6 +27,8 @@ var _revisions: Array[PackageDiscoveryResult] = []
 var _campaigns: Array[CampaignPackageView] = []
 var _error := ""
 var _discard_completion := false
+## A preparation requested before the stock library finished loading.
+var _deferred := false
 ## Primary saves still waiting for their pinned update, applied one per frame.
 var _update_queue: Array[String] = []
 var _update_total := 0
@@ -75,7 +77,20 @@ func _prepare(path: String) -> bool:
 		return true
 	_path = path
 	_candidate = null
-	if not _packages.start_install(path):
+	# Scenario assembly falls back to the stock application library for races,
+	# castes, items and spells, so it waits until that background load finishes.
+	_deferred = not _files.library_ready()
+	if _deferred:
+		_navigator.startup.browser.set_progress("Finishing the built-in Classic definitions…")
+		return true
+	return _start_install()
+
+
+func _start_install() -> bool:
+	if _files.library_content() == null:
+		_fail("The built-in Classic definitions could not load. Restart the game and try again.")
+		return false
+	if not _packages.start_install(_path):
 		_fail("Scenario preparation could not start. Try again.")
 		return false
 	return true
@@ -206,7 +221,7 @@ func _refresh_previews() -> void:
 		if preview.can_load and _revision_path(preview).is_empty():
 			preview.can_load = false
 			preview.status = SaveSlotPreview.PACKAGE_MISMATCH
-			preview.error_message = "This save needs scenario revision %s, which is not installed. Restore that exact package to load it." % preview.package_hash.left(12)
+			preview.error_message = "This save was made with a different version of this scenario, and that version is not installed. Install it to load this save."
 	if _selected_preview() == null:
 		var remembered := _saves.remembered_slot(_browser_campaign)
 		var selected: SaveSlotPreview
@@ -221,6 +236,34 @@ func _refresh_previews() -> void:
 	else: _navigator.startup.browser.set_progress("Choose a saved adventure." if not _previews.is_empty() else "No saved adventures for this scenario.")
 
 
+## The prepared package for the selected primary save when it can open in the save editor:
+## loaded through its own exact revision, with no pinned update still to apply. Otherwise null.
+func edit_candidate() -> PreparedPackage:
+	var preview := _selected_preview()
+	if _mode != &"load" or _candidate == null or preview == null or preview.source != SaveSlotPreview.PRIMARY or not preview.can_load:
+		return null
+	return _candidate if _candidate.content.package_hash == preview.package_hash and _candidate.content.campaign_id == preview.campaign_id else null
+
+
+## Why the selected primary save has no edit candidate yet, or "" when it has one or nothing is selected.
+func edit_blocker() -> String:
+	var preview := _selected_preview()
+	if preview == null or edit_candidate() != null:
+		return ""
+	if not preview.can_load:
+		return preview.error_message if not preview.error_message.is_empty() else "This save can't be loaded, so it can't be edited."
+	if _mode != &"load":
+		return "Select this save again to edit it."
+	if _candidate != null and _mode == &"load" and _candidate.content.package_hash != preview.package_hash:
+		return "This save is waiting for its scenario update. Load it and save once, then edit it."
+	return "Waiting for the scenario…"
+
+
+## "slot:source" of the selected save and the campaign shown, for the save editor's checks.
+func browser_selection() -> PackedStringArray:
+	return PackedStringArray([_browser_campaign, _selected_key])
+
+
 func select_save(slot: String, backup: bool) -> void:
 	_selected_key = "%s:%s" % [slot, "backup" if backup else "primary"]
 	_waiting = false
@@ -229,6 +272,7 @@ func select_save(slot: String, backup: bool) -> void:
 	var preview := _selected_preview()
 	if preview == null or not preview.can_load:
 		_packages.cancel()
+		_deferred = false
 		_candidate = null
 		_discard_completion = true
 		active = true
@@ -288,6 +332,9 @@ func _start_updates() -> void:
 
 
 func poll() -> void:
+	if _deferred and _files.library_ready():
+		_deferred = false
+		if active and not _discard_completion: _start_install()
 	if _update_queue.is_empty(): return
 	if not active or _mode != &"load" or _candidate == null or not _navigator.startup.browser.visible:
 		_stop_updates()
@@ -301,11 +348,11 @@ func poll() -> void:
 	_stop_updates()
 	_refresh_previews()
 	if _candidate != null and not _waiting:
-		_navigator.startup.browser.set_progress("Updated %s for the current campaign revision. Originals are kept as backups." % ("1 save" if updated == 1 else "%d saves" % updated) if updated > 0 else "Ready to load.")
+		_navigator.startup.browser.set_progress("Updated %s for the current version of the scenario. Originals are kept as backups." % ("1 save" if updated == 1 else "%d saves" % updated) if updated > 0 else "Ready to load.")
 
 
 func _update_progress() -> String:
-	return "Updating saved adventures for the current campaign revision (%d of %d)…" % [_update_total - _update_queue.size() + 1, _update_total]
+	return "Updating saved adventures for the current version of the scenario (%d of %d)…" % [_update_total - _update_queue.size() + 1, _update_total]
 
 
 func _stop_updates() -> void:
@@ -342,6 +389,7 @@ func _browser_closed() -> void:
 	_stop_updates()
 	_waiting = false
 	_discard_completion = true
+	_deferred = false
 	_packages.cancel()
 
 

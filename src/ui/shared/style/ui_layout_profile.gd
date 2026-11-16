@@ -42,6 +42,17 @@ func _init(profile_id: StringName, scale: float, party: float, bottom: float, co
 	bitmap_scale = art_scale
 
 
+## This profile with every metric multiplied by `factor`, for one element drawn at its own
+## scale. Bitmap art keeps a whole-number scale so pixels stay square.
+func scaled(factor: float) -> UiLayoutProfile:
+	var result := UiLayoutProfile.new(id, ui_scale * factor, party_width, bottom_height, command_width, clampi(roundi(bitmap_scale * factor), 1, 3))
+	result.requested_scale = requested_scale
+	result.font_scale = font_scale * factor
+	result.narrative_font_scale = narrative_font_scale * factor
+	result.application_rect = application_rect
+	return result
+
+
 static func for_viewport(size: Vector2, scale_mode: String, display_mode: String = PresentationSettings.DISPLAY_INTEGER_CANVAS, text_scale: float = 1.0, narrative_text_scale: float = 1.0) -> UiLayoutProfile:
 	var canvas_rect := UiLayoutProfile.application_rect_for(size, display_mode)
 	var canvas_size := canvas_rect.size

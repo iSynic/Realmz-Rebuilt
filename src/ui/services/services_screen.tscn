@@ -12,7 +12,7 @@ text = "Party Wealth"
 [node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
 text = "Pool, share, and exchange carried wealth."
 
-[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
+[node name="RouteBackAction" parent="WorkspaceColumn/RouteFooter" index="0"]
 visible = false
 
 [node name="ServicesWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]

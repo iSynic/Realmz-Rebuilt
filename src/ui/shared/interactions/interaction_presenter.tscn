@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shared/interactions/interaction_presenter.gd" id="1_presenter"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png" id="2_stone"]
@@ -11,8 +11,10 @@
 [ext_resource type="PackedScene" path="res://src/ui/shared/interactions/interaction_hint.tscn" id="9_hint"]
 [ext_resource type="PackedScene" path="res://src/ui/combat/fast_spell_dock.tscn" id="10_fast_spell"]
 [ext_resource type="PackedScene" path="res://src/ui/combat/combat_activity_strip.tscn" id="11_activity"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/style/ui_theme_backdrop.tscn" id="12_backdrop"]
+[ext_resource type="Script" path="res://src/ui/combat/combat_playback_result_cue.gd" id="13_result_cue"]
 
-[node name="InteractionPanel" type="PanelContainer"]
+[node name="InteractionPanel" type="PanelContainer" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 visible = false
 z_index = 80
@@ -40,6 +42,7 @@ mouse_filter = 2
 color = Color(0.105882, 0.109804, 0.105882, 1)
 
 [node name="StageBacking" type="TextureRect" parent="."]
+clip_contents = true
 visible = false
 layout_mode = 1
 anchors_preset = 15
@@ -52,6 +55,9 @@ texture_repeat = 2
 texture = ExtResource("2_stone")
 expand_mode = 1
 stretch_mode = 1
+
+[node name="UiThemeBackdrop" parent="StageBacking" instance=ExtResource("12_backdrop")]
+layout_mode = 1
 
 [node name="InteractionScroll" type="ScrollContainer" parent="."]
 layout_mode = 2
@@ -100,7 +106,7 @@ theme_override_constants/separation = 8
 [node name="CombatActivityStrip" parent="." instance=ExtResource("11_activity")]
 unique_name_in_owner = true
 
-[node name="PlaybackResultCue" type="PanelContainer" parent="."]
+[node name="PlaybackResultCue" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 visible = false
 z_index = 2
@@ -118,6 +124,7 @@ grow_horizontal = 0
 grow_vertical = 0
 mouse_filter = 2
 theme_type_variation = &"BattleSummaryInset"
+script = ExtResource("13_result_cue")
 
 [node name="Content" type="HBoxContainer" parent="PlaybackResultCue"]
 layout_mode = 2

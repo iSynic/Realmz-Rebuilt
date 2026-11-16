@@ -7,10 +7,6 @@ extends VBoxContainer
 @export var effect_preview_scene: PackedScene
 
 
-func _ready() -> void:
-	(%StartingSpellLevelHeading as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
-
-
 func show_unavailable(message: String) -> Label:
 	return _show_alternate(%StartingSpellUnavailable as Control, %StartingSpellUnavailableText as Label, message)
 

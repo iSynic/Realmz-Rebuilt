@@ -3,11 +3,6 @@
 class_name PlayerMapCartographicStage
 extends MarginContainer
 
-const SLATE_TEXTURE_PATH := "res://src/ui/shared/assets/ui/classic-charcoal-slate-tile.png"
-const MAP_EDGE := Color("59666a")
-
-var _slate_texture: Texture2D
-
 
 func _init() -> void:
 	name = "PlayerMapCartographicStage"
@@ -19,14 +14,16 @@ func _init() -> void:
 	UiSizing.constant(self, &"margin_right", 6)
 	UiSizing.constant(self, &"margin_bottom", 6)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_slate_texture = load(SLATE_TEXTURE_PATH) as Texture2D
 	resized.connect(queue_redraw)
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_THEME_CHANGED: queue_redraw()
+
+
+## The stage is a recessed well in the current interface theme, not a slate tile.
 func _draw() -> void:
+	var colors := UiThemeService.current().colors
 	var outer := Rect2(Vector2.ZERO, size)
-	if _slate_texture != null:
-		draw_texture_rect(_slate_texture, outer, true)
-	else:
-		draw_rect(outer, Color("151a1c"), true)
-	draw_rect(outer.grow(-1.0), MAP_EDGE, false, 2.0)
+	draw_rect(outer, colors[&"surface"], true)
+	draw_rect(outer.grow(-1.0), Color(colors[&"border"], 0.7), false, 1.0)

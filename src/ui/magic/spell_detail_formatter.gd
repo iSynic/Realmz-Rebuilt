@@ -98,3 +98,21 @@ static func target_label(spell: SpellView) -> String:
 		11: "Classic target type 11",
 		12: "Everybody",
 	}.get(spell.target_type, "Classic target type %d" % spell.target_type)
+
+
+## The scripted range at a power, in the game's own words for the two special cases.
+static func range_label(spell: SpellView, power: int) -> String:
+	var reach := absi(spell.range_min + spell.range_max * power)
+	return "—" if reach == 0 else "Touch" if reach == 1 else str(reach)
+
+
+## What the Classic description says beyond the facts the record already lists: the spell's
+## name and its target, range, damage and duration lines are left out.
+static func notes(spell: SpellView) -> String:
+	var kept: Array[String] = []
+	for line: String in spell.description.replace("\r", "\n").split("\n", false):
+		var note := line.strip_edges().trim_prefix(spell.name).trim_prefix(":").strip_edges()
+		var key := note.get_slice(":", 0).strip_edges().to_lower()
+		if not note.is_empty() and not key in ["damage", "range", "target", "duration"]:
+			kept.append(note)
+	return "\n".join(kept)

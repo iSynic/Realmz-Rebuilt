@@ -60,7 +60,7 @@ func _ready() -> void:
 	search.bind_pages(tabs())
 	search.result_selected.connect(_focus_search_result)
 	for category: StringName in PREFERENCE_SECTIONS:
-		var button := get_node("SystemWorkspaceBody/SystemCategoryRail/%s" % category) as Button
+		var button := get_node("SystemWorkspaceBody/RailPanel/SystemCategoryRail/%s" % category) as Button
 		button.set_meta("setting_id", category)
 		button.pressed.connect(show_category.bind(category))
 	var compact_picker := get_node("CompactCategory") as OptionButton
@@ -132,55 +132,42 @@ func _update_screen_heading(save_mode: bool) -> void:
 		ancestor = ancestor.get_parent()
 
 
-func set_save_record_order(record: VBoxContainer, compact: bool) -> void:
-	var location := record.get_node("Location")
-	var party := record.get_node("Party")
-	var map_preview := record.get_node("MapPreview")
-	var map_status := record.get_node("MapPreviewStatus")
-	var error := record.get_node("Error")
-	record.move_child(map_preview, 2)
-	record.move_child(map_status, 3)
-	record.move_child(error, 4)
-	record.move_child(location, 5)
-	record.move_child(party, 6)
-	if compact:
-		record.move_child(location, 2)
-		record.move_child(party, 3)
-		record.move_child(map_preview, 4)
-		record.move_child(map_status, 5)
+func set_save_record_order(record: VBoxContainer, _compact: bool) -> void:
+	# What the save is comes first; the map preview has the room left below it.
+	var order := ["Title", "Saved", "Status", "Error", "Party", "Location", "MapPreview", "MapPreviewStatus"]
+	for index: int in order.size():
+		record.move_child(record.get_node(order[index]), index)
 
 
 static func slot_label(slot_id: String) -> String:
-	if slot_id.length() == 1 and SaveSlotPreview.SCENARIO_SLOTS.contains(slot_id):
-		return "Slot %s" % slot_id
-	match slot_id:
-		"quick": return "Quick Save 1"
-		"quick-2": return "Quick Save 2"
-		_: return slot_id
+	return SaveSlotPreview.title_for(slot_id)
 
 
 func _sync_category_rail(index: int) -> void:
-	var rail := get_node("SystemWorkspaceBody/SystemCategoryRail") as VBoxContainer
-	rail.visible = not _save_mode and not _compact
+	var rail := get_node("SystemWorkspaceBody/RailPanel/SystemCategoryRail") as VBoxContainer
+	(rail.get_parent() as Control).visible = not _save_mode and not _compact
 	get_node("CompactCategory").visible = not _save_mode and _compact
 	get_node("PreferencesSearch").visible = not _save_mode
 	var rules_mode := not _save_mode and _current_category() == &"Adventure Rules"
-	get_node("SystemWorkspaceBody/ContextHelp").visible = not _save_mode and not _compact and not rules_mode
+	get_node("SystemWorkspaceBody/HelpPanel").visible = not _save_mode and not _compact and not rules_mode
 	for category_index: int in PREFERENCE_SECTIONS.size():
-		var button := get_node("SystemWorkspaceBody/SystemCategoryRail/%s" % PREFERENCE_SECTIONS[category_index]) as Button
+		var button := get_node("SystemWorkspaceBody/RailPanel/SystemCategoryRail/%s" % PREFERENCE_SECTIONS[category_index]) as Button
 		button.button_pressed = not _save_mode and String(tabs().get_child(index).name) == String(PREFERENCE_SECTIONS[category_index])
 	get_node("PreferencesFooter").visible = not _save_mode and not rules_mode
 
 
 func _show_context_help(control: Control) -> void:
+	# Controls on other pages can report focus or hover while hidden; only the visible page explains itself.
+	if not control.is_visible_in_tree():
+		return
 	var heading := "Settings"
 	var row := control.get_parent()
 	if row.is_in_group(&"system_setting_rows") and row.get_child(0) is Label:
 		heading = (row.get_child(0) as Label).text
 	elif control is BaseButton:
 		heading = (control as BaseButton).text
-	(get_node("SystemWorkspaceBody/ContextHelp/Heading") as Label).text = heading
-	(get_node("SystemWorkspaceBody/ContextHelp/Detail") as Label).text = control.tooltip_text if not control.tooltip_text.is_empty() else "Changes stay in this draft until Apply. Cancel keeps your current settings."
+	(get_node("SystemWorkspaceBody/HelpPanel/ContextHelp/Heading") as Label).text = heading
+	(get_node("SystemWorkspaceBody/HelpPanel/ContextHelp/Detail") as Label).text = control.tooltip_text if not control.tooltip_text.is_empty() else "Changes stay in this draft until Apply. Cancel keeps your current settings."
 
 
 func _focus_search_result(category: StringName, target: Control) -> void:
@@ -220,26 +207,22 @@ func _apply_preference_row_density(_compact: bool) -> void:
 		if caption != null:
 			UiSizing.minimum_size(caption, Vector2(setting_caption_width, 0.0))
 			caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			# The caption takes the spare width so every field lines up on the card's right edge.
+			caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for child: Node in row.get_children():
 			if child is OptionButton or child is HSlider or child is Button:
-				(child as Control).size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+				(child as Control).size_flags_horizontal = Control.SIZE_SHRINK_END
 				UiSizing.minimum_size(child as Control, Vector2(setting_field_width, 0.0))
 
 	for toggle: Node in find_children("*", "CheckButton", true, false):
-		_fit_toggle(toggle as CheckButton, (setting_caption_width + setting_field_width + 8.0) * scale)
+		_fit_toggle(toggle as CheckButton)
 
 
-func _fit_toggle(toggle: CheckButton, maximum_width: float) -> void:
-	var font := toggle.get_theme_font(&"font")
-	var text_width := font.get_string_size(toggle.text, HORIZONTAL_ALIGNMENT_LEFT, -1, toggle.get_theme_font_size(&"font_size")).x
-	var icon_width := maxf(toggle.get_theme_icon(&"checked").get_width(), toggle.get_theme_icon(&"unchecked").get_width())
-	var margins := toggle.get_theme_stylebox(&"normal").get_minimum_size().x
-	var available := tabs().size.x if tabs().size.x > 32.0 else maximum_width
-	var profile := UiSizing.profile_for(self)
-	var scale := profile.ui_scale if profile != null else 1.0
-	toggle.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	var width := minf(minf(maximum_width, available), text_width + icon_width + toggle.get_theme_constant(&"h_separation") + margins)
-	UiSizing.minimum_size(toggle, Vector2(width / scale, 0.0))
+## A toggle spans its card: the label on the left, the switch on the card's right edge
+## in line with the fields above it.
+func _fit_toggle(toggle: CheckButton) -> void:
+	toggle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	UiSizing.minimum_size(toggle, Vector2.ZERO)
 
 
 func bind_indoor_icon(index: int, media: ClassicMediaCatalog) -> void:
@@ -272,6 +255,7 @@ func bind_command_titles(settings: PresentationSettings) -> void:
 	var titles := world.get_node("HudButtonTitles") as CheckButton
 	var fit := world.get_node("FitHiddenCommandArt") as CheckButton
 	SystemSignalBinding.clear_toggled(titles)
+	titles.set_meta(PreferencesDraftSummary.SETTING_META, &"show_hud_button_titles")
 	titles.button_pressed = settings.show_hud_button_titles
 	titles.toggled.connect(func(value: bool) -> void:
 		fit.disabled = value
@@ -289,6 +273,7 @@ func bind_pacing(settings: PresentationSettings) -> void:
 	var combat_caption := root.get_node("CombatSpeedRow/CombatPlaybackSpeedCaption") as Label
 	bind_label(combat_caption, "Combat & animation speed  •  %d%%" % settings.combat_playback_speed_percent, Color("e0e2e5"), 15)
 	_clear_value_changed_connections(combat)
+	combat.set_meta(PreferencesDraftSummary.SETTING_META, &"combat_playback_speed_percent")
 	combat.value = settings.combat_playback_speed_percent
 	combat.tooltip_text = "%d%%  •  affects movement, attacks, projectiles, spells, and result holds" % settings.combat_playback_speed_percent
 	combat.value_changed.connect(func(value: float) -> void:
@@ -301,6 +286,7 @@ func bind_pacing(settings: PresentationSettings) -> void:
 	var movement_caption := root.get_node("MovementSpeedRow/ExplorationSpeedCaption") as Label
 	bind_label(movement_caption, "Exploration travel speed  •  %d%%" % settings.exploration_speed_percent, Color("e0e2e5"), 15)
 	_clear_value_changed_connections(movement)
+	movement.set_meta(PreferencesDraftSummary.SETTING_META, &"exploration_speed_percent")
 	movement.value = settings.exploration_speed_percent
 	movement.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementController.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
 	movement.value_changed.connect(func(value: float) -> void:
@@ -313,6 +299,7 @@ func bind_pacing(settings: PresentationSettings) -> void:
 func bind_accessibility(settings: PresentationSettings, _fonts: FontResolver) -> void:
 	var root := get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Accessibility/AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content")
 	_bind_toggle(root.get_node("ReducedMotion") as CheckButton, settings.reduced_motion, &"reduced_motion")
+	_bind_toggle(root.get_node("HarmEdgeFlash") as CheckButton, settings.harm_edge_flash, &"harm_edge_flash")
 	_bind_toggle(root.get_node("ReducedSound") as CheckButton, settings.reduced_sound, &"reduced_sound")
 
 
@@ -346,6 +333,7 @@ func bind_interface(settings: PresentationSettings, fonts: FontResolver) -> void
 			percentage.text = "%d%%" % roundi(value * 100.0)
 			slider.tooltip_text = "%s text size: %d%%" % [role, roundi(value * 100.0)]
 		_clear_value_changed_connections(slider)
+		slider.set_meta(PreferencesDraftSummary.SETTING_META, StringName(role.to_lower() + "_text_scale"))
 		slider.value = scale
 		update_caption.call(scale)
 		slider.value_changed.connect(func(value: float) -> void:
@@ -372,6 +360,7 @@ func _bind_volume_row(row: BoxContainer, title: String, value: float, setting_id
 
 
 func _bind_option(picker: OptionButton, entries: Array[Dictionary], selected_id: String, setting_id: StringName, selection_changed: Callable = Callable()) -> void:
+	picker.set_meta(PreferencesDraftSummary.SETTING_META, setting_id)
 	_clear_item_selected_connections(picker)
 	picker.clear()
 	for entry: Dictionary in entries:
@@ -386,12 +375,14 @@ func _bind_option(picker: OptionButton, entries: Array[Dictionary], selected_id:
 
 
 func _bind_slider(slider: Range, value: float, setting_id: StringName) -> void:
+	slider.set_meta(PreferencesDraftSummary.SETTING_META, setting_id)
 	_clear_value_changed_connections(slider)
 	slider.value = value
 	slider.value_changed.connect(func(changed_value: float) -> void: setting_changed.emit(setting_id, changed_value))
 
 
 func _bind_toggle(toggle: CheckButton, enabled: bool, setting_id: StringName) -> void:
+	toggle.set_meta(PreferencesDraftSummary.SETTING_META, setting_id)
 	_clear_toggled_connections(toggle)
 	toggle.button_pressed = enabled
 	toggle.toggled.connect(func(value: bool) -> void: setting_changed.emit(setting_id, value))

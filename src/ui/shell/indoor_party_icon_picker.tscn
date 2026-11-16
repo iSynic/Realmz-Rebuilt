@@ -42,9 +42,9 @@ vertical_alignment = 1
 
 [node name="Change" type="Button" parent="Summary"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(120, 40)
+custom_minimum_size = Vector2(110, 36)
 layout_mode = 2
-theme_type_variation = &"MenuAction"
+theme_type_variation = &"FieldAction"
 text = "Change…"
 
 [node name="MediaUnavailable" type="Label" parent="."]

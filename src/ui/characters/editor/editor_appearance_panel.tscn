@@ -1,0 +1,70 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_appearance_panel.gd" id="1_editor_appea"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_art_choice.tscn" id="2_editor_art_c"]
+
+[node name="EditorAppearancePanel" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+script = ExtResource("1_editor_appea")
+choice_scene = ExtResource("2_editor_art_c")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="PortraitHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/PortraitHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Portrait"
+
+[node name="Spacer" type="Control" parent="Content/PortraitHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/PortraitHeader"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Shown at native size"
+
+[node name="PortraitGrid" type="HFlowContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="IconHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/IconHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Combat icon"
+
+[node name="Spacer" type="Control" parent="Content/IconHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/IconHeader"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Shown at native size"
+
+[node name="IconGrid" type="HFlowContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6

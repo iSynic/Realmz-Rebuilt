@@ -6,7 +6,7 @@
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_idle.tres" id="3_idle"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_selected.tres" id="4_selected"]
 
-[sub_resource type="StyleBoxEmpty" id="OpenSurface"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_panel.tres" id="5_panel"]
 
 [node name="PauseMenuView" type="Control"]
 unique_name_in_owner = true
@@ -35,11 +35,11 @@ grow_vertical = 2
 mouse_filter = 0
 color = Color(0, 0, 0, 0)
 
-[node name="Surface" type="PanelContainer" parent="Layer"]
+[node name="Surface" type="PanelContainer" parent="Layer" groups=["ui_theme_frame"]]
 unique_name_in_owner = true
 layout_mode = 0
 mouse_filter = 0
-theme_override_styles/panel = SubResource("OpenSurface")
+theme_override_styles/panel = ExtResource("5_panel")
 
 [node name="Margin" type="MarginContainer" parent="Layer/Surface"]
 layout_mode = 2

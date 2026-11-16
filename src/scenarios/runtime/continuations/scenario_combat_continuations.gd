@@ -10,6 +10,18 @@ static func battle(kind: StringName, battle_id: String, caller: ScenarioBattleCa
 	return ScenarioRuntimeContinuation.new(kind, body)
 
 
+static func battle_prelude(stage: StringName, message_id: int, opcode: int, gosub: bool, extra_code: Array[int], battle_number: int, context: ScenarioExecutionContext) -> ScenarioRuntimeContinuation:
+	var body := ScenarioBattlePreludeBody.new()
+	body.stage = stage
+	body.message_id = message_id
+	body.opcode = opcode
+	body.gosub = gosub
+	body.extra_code.assign(extra_code)
+	body.battle_number = battle_number
+	body.context = ScenarioExecutionContext.empty() if context == null else context.copy()
+	return ScenarioRuntimeContinuation.new(ScenarioRuntimeContinuation.CLASSIC_BATTLE_PRELUDE, body)
+
+
 static func retreat(kind: StringName, source_kind: StringName, battle_id: String, caller: ScenarioBattleCaller, actor_id: String, mode: StringName, destination: Vector2i) -> ScenarioRuntimeContinuation:
 	assert(kind in [ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT])
 	var body := _body(source_kind, battle_id, caller)

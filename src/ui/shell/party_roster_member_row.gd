@@ -14,7 +14,8 @@ var _modular_style := false
 
 func _ready() -> void:
 	$Character/Details/Record.minimum_size_changed.connect(_update_height)
-	resized.connect(_apply_layout)
+	# The anchored Details box settles after the row, so its own resize decides the columns.
+	($Character/Details as Control).resized.connect(_apply_layout)
 	_apply_layout()
 
 
@@ -63,12 +64,15 @@ func bind_character(character: CharacterView, current_health: int, state_text: S
 	]
 	$Character/Details/Record/IdentityCell/Identity/CharacterName.text = character.name
 	$Character/Details/Record/IdentityCell/Identity/ArmorCell/Armor/Value.text = str(character.armor)
-	$Character/Details/Record/CharacterRoleCell/CharacterRoleLine/CharacterRole.text = "%s / %s" % [character.race_name, character.caste_name]
-	$Character/Details/Record/Vitals/HealthCell/Health/Value.text = "%d/%d" % [current_health, character.maximum_health]
-	$Character/Details/Record/Vitals/HealthCell/Health/Value.modulate = Color("e66e6d") if current_health * 2 < character.maximum_health else Color.WHITE
-	$Character/Details/Record/Vitals/SpellPointsCell/SpellPoints/Value.text = spell_points
-	$Character/Details/Record/Actions/AttacksCell/Attacks/Value.text = character.attacks_per_round
-	$Character/Details/Record/Actions/MovementCell/Movement/Value.text = "%d/%d" % [character.movement, character.maximum_movement]
+	$Character/Details/Record/IdentityCell/Identity/CharacterRole.text = "%s / %s" % [character.race_name, character.caste_name]
+	$Character/Details/Record/Stats/HealthCell/Health/Value.text = "%d/%d" % [current_health, character.maximum_health]
+	$Character/Details/Record/Stats/HealthCell/Health/Value.modulate = RosterVitalColors.stamina_text(float(current_health) / maxf(1.0, character.maximum_health))
+	$Character/Details/Record/Stats/SpellPointsCell/SpellPoints/Value.text = spell_points
+	$Character/Details/Record/Stats/SpellPointsCell/SpellPoints/Value.modulate = RosterVitalColors.spell_text(float(character.spell_points) / character.maximum_spell_points) if character.maximum_spell_points > 0 else Color.WHITE
+	$Character/Details/Record/Stats/AttacksCell/Attacks/Value.text = character.attacks_per_round
+	$Character/Details/Record/Stats/MovementCell/Movement/Value.text = "%d/%d" % [character.movement, character.maximum_movement]
+	if is_node_ready():
+		_apply_layout()
 
 
 func set_condition_icons(resource_ids: Array[int], textures: Array[Texture2D], labels: Array[String]) -> void:
@@ -81,7 +85,7 @@ func set_condition_icons(resource_ids: Array[int], textures: Array[Texture2D], l
 
 
 func _render_condition_icons() -> void:
-	var strip := $Character/Details/Record/CharacterRoleCell/CharacterRoleLine/ConditionIcons as HBoxContainer
+	var strip := $Character/Details/Record/IdentityCell/Identity/ConditionIcons as HBoxContainer
 	for child: Node in strip.get_children():
 		strip.remove_child(child)
 		child.free()
@@ -117,20 +121,26 @@ func _render_condition_icons() -> void:
 
 func _apply_layout() -> void:
 	$Character/Details/Record/IdentityCell/Identity.vertical = _compact_layout
-	var profile := UiSizing.profile_for(self)
-	var available := size.x - 50.0 * (profile.bitmap_scale if profile != null else 1) - 12.0 * (profile.ui_scale if profile != null else 1.0)
-	for grid: GridContainer in [$Character/Details/Record/Vitals, $Character/Details/Record/Actions]:
-		grid.columns = 1 if _compact_layout or _natural_grid_width(grid) > available else 2
+	var stats := $Character/Details/Record/Stats as GridContainer
+	var widest := _natural_cell_width(stats)
+	var available := ($Character/Details as Control).size.x
+	stats.columns = 1 if _compact_layout or widest * 2.0 > available else 2
+	# Equal minimums plus equal expansion give exact halves, so HP sits over ATK and SP over MV
+	# without the cells ever feeding the row's own width back into this measurement.
+	for cell: Control in stats.get_children():
+		cell.custom_minimum_size.x = widest if stats.columns == 2 else 0.0
 	_render_condition_icons()
 	_update_height()
 
 
-func _natural_grid_width(grid: GridContainer) -> float:
+## The widest caption-and-value cell, so two columns are used only when every cell fits its half.
+func _natural_cell_width(stats: GridContainer) -> float:
 	var width := 0.0
-	for cell: PanelContainer in grid.get_children():
+	for cell: PanelContainer in stats.get_children():
 		var fields := cell.get_child(0) as HBoxContainer
 		var value := fields.get_node("Value") as Label
-		width += value.get_theme_font("font").get_string_size(value.text, HORIZONTAL_ALIGNMENT_LEFT, -1, value.get_theme_font_size("font_size")).x + (fields.get_node("Caption") as Label).get_combined_minimum_size().x + fields.get_theme_constant("separation") + cell.get_theme_stylebox("panel").get_minimum_size().x
+		var value_width := value.get_theme_font("font").get_string_size(value.text, HORIZONTAL_ALIGNMENT_LEFT, -1, value.get_theme_font_size("font_size")).x
+		width = maxf(width, value_width + (fields.get_node("Caption") as Label).get_combined_minimum_size().x + fields.get_theme_constant("separation") + cell.get_theme_stylebox("panel").get_minimum_size().x)
 	return width
 
 

@@ -15,10 +15,10 @@ const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("9aa0a8")
 const WARNING := Color("dca9a9")
-const LEDGER_INK := Color("151512")
-const LEDGER_MUTED := Color("50575b")
-const LEDGER_BLUE := Color("2457bd")
-const LEDGER_RED := Color("ad2721")
+const LEDGER_INK := Color("e2e2da")
+const LEDGER_MUTED := Color("8fa3ae")
+const LEDGER_BLUE := Color("8fc1e8")
+const LEDGER_RED := Color("ef7770")
 const WORKSPACE_SCENE_PATH := "res://src/ui/inventory/inventory_workspace.tscn"
 
 var _scene_binding := InventorySceneBinding.new()
@@ -199,7 +199,7 @@ func _bind_character_selector(selector: InventoryCharacterSelector, view: GameVi
 		var button := selector.character_button_scene.instantiate() as Button
 		button.name = "InventoryCharacter_%s" % character.id
 		button.set_meta("character_id", character.id)
-		button.text = character.name if characters.size() == 1 else ""
+		button.text = character.name
 		button.icon = _scene_binding.appearance_texture(character.portrait_id, media)
 		button.button_pressed = character.id == selected.id
 		button.tooltip_text = "%s • %s / %s • Load %d/%d" % [character.name, character.race_name, character.caste_name, character.carried_load, character.maximum_load]
@@ -262,7 +262,7 @@ func _bind_item_browser(content: InventoryItemBrowser, character: CharacterView,
 	for item: ItemView in items:
 		var row_panel := content.item_row_scene.instantiate() as PanelContainer
 		row_panel.name = "InventoryItemRow_%s" % item.instance_id
-		row_panel.theme_type_variation = &"ClassicItemLedgerSelectedRow" if selected != null and selected.instance_id == item.instance_id else &"ClassicItemLedgerRow"
+		row_panel.theme_type_variation = &"ClassicItemLedgerSelectedRow" if selected != null and selected.instance_id == item.instance_id else &"ClassicItemLedgerEquippedRow" if item.equipped else &"ClassicItemLedgerRow"
 		var icon := row_panel.get_node("Row/ContentIcon") as ClassicContentIcon
 		icon.configure(item.icon_resource_type, item.icon_id, media, 38.0, item.name)
 		var button := row_panel.get_node("Row/ItemText/SelectItem") as Button
@@ -308,6 +308,8 @@ func _bind_character_command_rail(content: InventoryCommandRail, view: GameView,
 func _render_character_record(parent: VBoxContainer, character: CharacterView, media: ClassicMediaCatalog) -> void:
 	var facts := parent.get_node("InventoryCharacterFacts") as GridContainer
 	facts.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 3
+	for heading: Node in facts.find_children("*Heading", "Label", false, false) + facts.find_children("Blank*", "Control", false, false):
+		(heading as Control).visible = facts.columns == 3
 	(parent.get_node("InventoryCharacterIdentity/Portrait") as TextureRect).texture = _scene_binding.appearance_texture(character.portrait_id, media)
 	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Name") as Label, character.name, GOLD, 20)
 	_scene_binding.bind_label(parent.get_node("InventoryCharacterIdentity/IdentityText/Role") as Label, "%s / %s • Level %d" % [character.race_name, character.caste_name, character.level], TEXT, 13)
@@ -377,7 +379,7 @@ func _bind_trade_item_record(record: InventorySelectedItemRecord, character: Cha
 func _render_item_detail(record: InventorySelectedItemRecord, item: ItemView, character: CharacterView, media: ClassicMediaCatalog) -> void:
 	record.item_icon().configure(item.icon_resource_type, item.icon_id, media, 58.0, item.name)
 	_scene_binding.bind_label(record.get_node("Narrative/TitleRow/TitleText/Name") as Label, item.name, GOLD, 20)
-	_scene_binding.bind_label(record.get_node("Narrative/TitleRow/TitleText/Summary") as Label, "%s · Weight %d · Charges %d" % ["Equipped" if item.equipped else "Carried", item.weight, item.charges], MUTED, 13)
+	_scene_binding.bind_label(record.get_node("Narrative/TitleRow/TitleText/Summary") as Label, InventoryItemText.summary_line(item), MUTED, 13)
 	_scene_binding.bind_label(record.get_node("Narrative/Description") as Label, item.description, TEXT, 15)
 	_scene_binding.bind_label(record.get_node("Narrative/CharacterLoad") as Label, "%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load], MUTED, 12)
 
@@ -407,7 +409,7 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 		choose.command_requested.connect(func(_command_id: StringName) -> void: _submit_encounter_item(character.id, item.instance_id))
 		return
 	if not _browse_only_reason.is_empty():
-		panel.show_actions(false)
+		panel.show_actions(false, _layout_profile == UiLayoutProfile.COMPACT)
 		var browse_actions: Array[Array] = [[panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip" if item.equipped else "Equip"], [panel.action_button("UseAction"), &"inventory.action.use", "Use"], [panel.action_button("IdentifyAction"), &"inventory.action.identify", "Identify All"], [panel.action_button("JoinAction"), &"inventory.action.join", "Join"], [panel.action_button("SplitAction"), &"inventory.action.split", "Split"], [panel.action_button("DropAction"), &"inventory.action.drop", "Drop"]]
 		for spec: Array in browse_actions:
 			var browse_button := spec[0] as ClassicBitmapButton
@@ -424,7 +426,7 @@ func _render_item_actions(panel: InventoryActionPanel, view: GameView, item: Ite
 	if not _pending_item_action.is_empty():
 		_render_operation_stage(panel, item, character)
 		return
-	panel.show_actions(false)
+	panel.show_actions(false, _layout_profile == UiLayoutProfile.COMPACT)
 	if item.equipped:
 		_bind_item_intent_action(panel.action_button("EquippedAction"), &"inventory.action.equipped", "Unequip", item.actions.unequip, InventoryIntents.unequip(item.instance_id, character.id), item, character)
 	else:
@@ -506,13 +508,14 @@ func _bind_trade_ledger(ledger: InventoryTradeLedger, view: GameView, character:
 	_scene_binding.bind_label(ledger.load_label(), "Load %d/%d" % [character.carried_load, character.maximum_load], LEDGER_MUTED, 12)
 	ledger.clear_rows()
 	var rows := ledger.rows()
-	for item: ItemView in character.items:
+	for item: ItemView in InventoryViewQueries.eligible_items(character, false, {}):
 		var row := ledger.item_row_scene.instantiate() as HBoxContainer
 		var icon := row.get_node("ContentIcon") as ClassicContentIcon
 		icon.configure(item.icon_resource_type, item.icon_id, media, 34.0, item.name)
 		var button := row.get_node("SelectItem") as ClassicExchangeItemButton
 		button.name = "InventoryTradeItem_%s" % item.instance_id
 		button.text = "%s\n%s" % [item.name, InventoryItemText.trade_line(item)]
+		if item.equipped: button.theme_type_variation = &"ClassicItemLedgerEquippedButton"
 		button.pressed.connect(_select_trade_item.bind(view, character.id, item.instance_id, other_id))
 		button.configure_drag({"kind": &"inventory-trade-item", "sourceId": character.id, "instanceId": item.instance_id})
 		detail_popover.bind_hover(icon, InventoryItemText.detail(item))

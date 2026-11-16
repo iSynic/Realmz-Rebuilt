@@ -9,9 +9,11 @@ size_flags_vertical = 3
 
 [node name="OverviewTab" type="VBoxContainer" parent="."]
 layout_mode = 2
+size_flags_vertical = 3
 [node name="OverviewRegions" type="BoxContainer" parent="OverviewTab"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
 theme_override_constants/separation = 10
 
 [node name="OverviewAttributes" type="PanelContainer" parent="OverviewTab/OverviewRegions"]
@@ -246,8 +248,10 @@ layout_mode = 2
 [node name="ConditionsTab" type="VBoxContainer" parent="."]
 visible = false
 layout_mode = 2
+size_flags_vertical = 3
 [node name="ConditionSaveRegions" type="BoxContainer" parent="ConditionsTab"]
 layout_mode = 2
+size_flags_vertical = 3
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 [node name="ConditionsRegion" type="PanelContainer" parent="ConditionsTab/ConditionSaveRegions"]
@@ -338,8 +342,10 @@ text = "—"
 [node name="AbilitiesTab" type="VBoxContainer" parent="."]
 visible = false
 layout_mode = 2
+size_flags_vertical = 3
 [node name="AbilityRegions" type="BoxContainer" parent="AbilitiesTab"]
 layout_mode = 2
+size_flags_vertical = 3
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
 [node name="SpecialModifiersRegion" type="PanelContainer" parent="AbilitiesTab/AbilityRegions"]
@@ -374,9 +380,11 @@ columns = 1
 [node name="RecordTab" type="VBoxContainer" parent="."]
 visible = false
 layout_mode = 2
+size_flags_vertical = 3
 [node name="LifetimeRecord" type="PanelContainer" parent="RecordTab"]
 custom_minimum_size = Vector2(0, 180)
 layout_mode = 2
+size_flags_vertical = 3
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
 [node name="Content" type="VBoxContainer" parent="RecordTab/LifetimeRecord"]
@@ -404,7 +412,8 @@ text = "Damage given"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageGiven/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageGiven/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="DamageTaken" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -413,7 +422,8 @@ text = "Damage taken"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageTaken/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/DamageTaken/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="HitsGiven" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -422,7 +432,8 @@ text = "Hits given"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsGiven/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsGiven/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="HitsTaken" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -431,7 +442,8 @@ text = "Hits taken"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsTaken/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/HitsTaken/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="EnemyMisses" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -440,7 +452,8 @@ text = "Enemy misses"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/EnemyMisses/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/EnemyMisses/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="AttacksMissed" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -449,7 +462,8 @@ text = "Attacks missed"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/AttacksMissed/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/AttacksMissed/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="Kills" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -458,7 +472,8 @@ text = "Kills"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Kills/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Kills/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="Deaths" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -467,7 +482,8 @@ text = "Deaths"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Deaths/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Deaths/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="Knockouts" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -476,7 +492,8 @@ text = "Knockouts"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Knockouts/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Knockouts/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="SpellsCast" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -485,7 +502,8 @@ text = "Spells cast"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/SpellsCast/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/SpellsCast/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="Destroyed" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -494,7 +512,8 @@ text = "Destroyed"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Destroyed/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Destroyed/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="Turned" parent="RecordTab/LifetimeRecord/Content/RecordCards" instance=ExtResource("2_record")]
 layout_mode = 2
@@ -503,7 +522,8 @@ text = "Turned"
 [node name="Subtitle" parent="RecordTab/LifetimeRecord/Content/RecordCards/Turned/Content" index="1"]
 text = "—"
 [node name="Detail" parent="RecordTab/LifetimeRecord/Content/RecordCards/Turned/Content" index="2"]
-text = "Lifetime Classic counter"
+visible = false
+text = ""
 
 [node name="PrestigePenalty" type="Label" parent="RecordTab/LifetimeRecord/Content"]
 layout_mode = 2

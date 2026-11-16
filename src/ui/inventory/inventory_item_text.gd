@@ -38,3 +38,12 @@ static func trade_line(item: ItemView) -> String:
 	if item.charges > 0:
 		parts.append("%d charges" % item.charges)
 	return " • ".join(parts)
+
+
+## The selected item's one-line state. An uncharged item names no charges, and an item with
+## unlimited uses says so, not "-1".
+static func summary_line(item: ItemView) -> String:
+	var parts: Array[String] = ["Equipped" if item.equipped else "Carried", "Weight %d" % item.weight]
+	if item.charges != 0:
+		parts.append("Unlimited charges" if item.charges < 0 else "%d charge%s" % [item.charges, "" if item.charges == 1 else "s"])
+	return " · ".join(parts)

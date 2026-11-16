@@ -1,0 +1,120 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_items_panel.gd" id="1_editor_items"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_item_row.tscn" id="2_editor_item_"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_catalog_row.tscn" id="3_editor_catal"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/field_tile.tres" id="4_field_tile"]
+
+[node name="EditorItemsPanel" type="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+script = ExtResource("1_editor_items")
+item_row_scene = ExtResource("2_editor_item_")
+catalog_row_scene = ExtResource("3_editor_catal")
+
+[node name="Carried" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_stretch_ratio = 1.35
+theme_override_constants/separation = 8
+
+[node name="Header" type="HBoxContainer" parent="Carried"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Carried/Header"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Carried"
+
+[node name="Count" type="Label" parent="Carried/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "0 / 30"
+
+[node name="Spacer" type="Control" parent="Carried/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ItemLoad" type="Label" parent="Carried/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Scroll" type="ScrollContainer" parent="Carried"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="CarriedList" type="VBoxContainer" parent="Carried/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="CarriedEmpty" type="Label" parent="Carried"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Nothing carried."
+
+[node name="Add" type="PanelContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("4_field_tile")
+
+[node name="Body" type="VBoxContainer" parent="Add"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Add/Body"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 16
+text = "Add from the Classic library"
+
+[node name="Search" type="LineEdit" parent="Add/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+placeholder_text = "Search items"
+clear_button_enabled = true
+
+[node name="Scroll" type="ScrollContainer" parent="Add/Body"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="CatalogList" type="VBoxContainer" parent="Add/Body/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="MoreMatches" type="Label" parent="Add/Body"]
+unique_name_in_owner = true
+visible = false
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 12
+text = "Showing the first 80 matches. Type more of a name to narrow the list."
+
+[node name="AddNote" type="Label" parent="Add/Body"]
+unique_name_in_owner = true
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Added items arrive identified and unequipped."

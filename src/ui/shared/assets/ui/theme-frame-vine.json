@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "label": "Interface-theme frame: twin twigs with a leaf knot at each corner",
+  "provider": "project",
+  "license": "Project-Authored",
+  "derivation": "Drawn procedurally in neutral greys by tools/theme_frame_gen2.py; no source artwork.",
+  "presentation_contract": "Nine-patch with corners 5/16 of the width, nearest filtering, tinted with the theme's accent colour over menu-screen panels in the ui_theme_frame group. Also worn in play by the modular HUD's panels.",
+  "file": {
+    "path": "res://src/ui/shared/assets/ui/theme-frame-vine.png",
+    "width": 64,
+    "height": 64,
+    "bytes": 6257,
+    "sha256": "44891be5ce1bf04354f724e555b9363623c87b220443edcfcb4a22701e5454f5"
+  }
+}

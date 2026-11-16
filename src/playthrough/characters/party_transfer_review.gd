@@ -11,3 +11,6 @@ var destination_package_hash: String
 var destination_revision: int
 var source_file_hash: String
 var available_slots: int
+## Whether same-named items take the destination version instead of staying behind.
+var adopt_changed: bool
+var changed_items: Array[String] = []

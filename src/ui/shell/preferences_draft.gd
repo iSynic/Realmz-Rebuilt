@@ -28,11 +28,15 @@ func validation_error() -> String:
 func set_value(setting_id: StringName, value: Variant) -> void:
 	match setting_id:
 		&"hud": values.hud = (value as HudPreferences).duplicate_value()
+		&"combat_hud": values.combat_hud = (value as HudPreferences).duplicate_value()
 		&"music_transition": values.music_transition = String(value)
 		&"ui_scale_mode": values.ui_scale_mode = String(value)
 		&"display_scaling_mode": values.display_scaling_mode = String(value)
 		&"pixel_art_smoothing": values.pixel_art_smoothing = String(value)
 		&"crt_shader": values.crt_shader = String(value)
+		&"interface_theme": values.interface_theme = String(value)
+		&"theme_surface_tile": values.theme_surface_tile = bool(value)
+		&"theme_surface_tile_opacity_percent": values.theme_surface_tile_opacity_percent = int(value)
 		&"crt_area": values.crt_area = String(value)
 		&"window_mode": values.window_mode = String(value)
 		&"interface_font": values.interface_font = String(value)
@@ -40,6 +44,7 @@ func set_value(setting_id: StringName, value: Variant) -> void:
 		&"music_enabled": values.music_enabled = bool(value)
 		&"topology_debug": values.topology_debug = bool(value)
 		&"reduced_motion": values.reduced_motion = bool(value)
+		&"harm_edge_flash": values.harm_edge_flash = bool(value)
 		&"reduced_sound": values.reduced_sound = bool(value)
 		&"auto_switch_to_melee": values.auto_switch_to_melee = bool(value)
 		&"dungeon_3d": values.dungeon_3d = bool(value)

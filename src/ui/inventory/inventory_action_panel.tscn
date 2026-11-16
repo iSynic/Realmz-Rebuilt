@@ -19,27 +19,35 @@ layout_mode = 2
 size_flags_horizontal = 8
 theme_override_constants/h_separation = 5
 theme_override_constants/v_separation = 5
-columns = 4
+columns = 7
 
 [node name="EquippedAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
+compact = true
+primary = true
 layout_mode = 2
 
 [node name="UseAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
+compact = true
 layout_mode = 2
 
 [node name="IdentifyAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
+compact = true
 layout_mode = 2
 
 [node name="TradeAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
+compact = true
 layout_mode = 2
 
 [node name="JoinAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
+compact = true
 layout_mode = 2
 
 [node name="SplitAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
+compact = true
 layout_mode = 2
 
 [node name="DropAction" parent="InventoryActionDock" instance=ExtResource("2_button")]
+compact = true
 layout_mode = 2
 
 [node name="EncounterActionDock" type="GridContainer" parent="."]

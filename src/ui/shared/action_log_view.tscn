@@ -1,22 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shared/action_log_view.gd" id="1_view"]
-
-[sub_resource type="StyleBoxFlat" id="LogPanel"]
-content_margin_left = 16.0
-content_margin_top = 12.0
-content_margin_right = 16.0
-content_margin_bottom = 12.0
-bg_color = Color(0.0627451, 0.0745098, 0.0901961, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.741176, 0.611765, 0.333333, 1)
-corner_radius_top_left = 4
-corner_radius_top_right = 4
-corner_radius_bottom_right = 4
-corner_radius_bottom_left = 4
 
 [node name="ActionLogView" type="Control"]
 visible = false
@@ -30,19 +14,30 @@ z_index = 510
 mouse_filter = 0
 script = ExtResource("1_view")
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="Veil" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.82)
+
+[node name="Panel" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -440.0
 offset_top = 24.0
-offset_right = -24.0
+offset_right = 440.0
 offset_bottom = -24.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
-theme_override_styles/panel = SubResource("LogPanel")
+theme_type_variation = &"MenuDialog"
 
 [node name="Content" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
@@ -50,18 +45,65 @@ theme_override_constants/separation = 8
 
 [node name="Heading" type="HBoxContainer" parent="Panel/Content"]
 layout_mode = 2
+theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="Panel/Content/Heading"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"MenuHeading"
 theme_override_font_sizes/font_size = 22
 text = "GAME-ACTION CONSOLE"
 
 [node name="Count" type="Label" parent="Panel/Content/Heading"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"MenuCaption"
 text = "0 lines"
+
+[node name="Filters" type="HBoxContainer" parent="Panel/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Actor" type="OptionButton" parent="Panel/Content/Filters"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+tooltip_text = "Show only what one combatant did or had done to them."
+
+[node name="Movement" type="CheckButton" parent="Panel/Content/Filters"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide movement lines."
+button_pressed = true
+text = "Movement"
+
+[node name="Spacer" type="Control" parent="Panel/Content/Filters"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TextSize" type="Label" parent="Panel/Content/Filters"]
+layout_mode = 2
+theme_type_variation = &"MenuCaption"
+text = "Text size"
+
+[node name="Smaller" type="Button" parent="Panel/Content/Filters"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+tooltip_text = "Smaller log text"
+theme_type_variation = &"MenuAction"
+theme_override_font_sizes/font_size = 16
+text = "A−"
+
+[node name="Larger" type="Button" parent="Panel/Content/Filters"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 0)
+layout_mode = 2
+tooltip_text = "Larger log text"
+theme_type_variation = &"MenuAction"
+theme_override_font_sizes/font_size = 16
+text = "A+"
 
 [node name="GameActionLog" type="RichTextLabel" parent="Panel/Content"]
 unique_name_in_owner = true
@@ -69,7 +111,8 @@ layout_mode = 2
 size_flags_vertical = 3
 focus_mode = 2
 theme_override_colors/default_color = Color(0.933333, 0.94902, 0.956863, 1)
-theme_override_font_sizes/normal_font_size = 15
+theme_override_font_sizes/normal_font_size = 18
+bbcode_enabled = true
 selection_enabled = true
 context_menu_enabled = true
 scroll_following = true
@@ -81,14 +124,20 @@ alignment = 2
 [node name="Clear" type="Button" parent="Panel/Content/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"MenuAction"
+theme_override_font_sizes/font_size = 16
 text = "Clear"
 
 [node name="CopyAll" type="Button" parent="Panel/Content/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"MenuAction"
+theme_override_font_sizes/font_size = 16
 text = "Copy all"
 
 [node name="Close" type="Button" parent="Panel/Content/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"MenuAction"
+theme_override_font_sizes/font_size = 16
 text = "Close"

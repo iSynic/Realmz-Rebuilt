@@ -43,6 +43,41 @@ layout_mode = 2
 text = "Hide"
 alignment = 0
 
+[node name="Move" type="Button" parent="Menu/Actions"]
+visible = false
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Move button"
+alignment = 0
+
+[node name="Earlier" type="Button" parent="Menu/Actions"]
+visible = false
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Move button earlier"
+alignment = 0
+
+[node name="Later" type="Button" parent="Menu/Actions"]
+visible = false
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+text = "Move button later"
+alignment = 0
+
+[node name="Larger" type="Button" parent="Menu/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+tooltip_text = "Draw this panel one step larger."
+text = "Larger"
+alignment = 0
+
+[node name="Smaller" type="Button" parent="Menu/Actions"]
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+tooltip_text = "Draw this panel one step smaller."
+text = "Smaller"
+alignment = 0
+
 [node name="Arrange" type="Button" parent="Menu/Actions"]
 custom_minimum_size = Vector2(0, 40)
 layout_mode = 2

@@ -8,6 +8,8 @@ const ACTION_LOG_VIEW_SCENE_PATH := "res://src/ui/shared/action_log_view.tscn"
 
 signal status_changed(message: String, failed: bool)
 signal topology_debug_changed(enabled: bool)
+## Debug-only and not saved: whether the footer position fact names the current map.
+signal map_id_visible_changed(enabled: bool)
 
 var _controller: GameSessionController
 var _content_provider: Callable
@@ -36,6 +38,7 @@ func bind(controller: GameSessionController, overlay: Control, content_provider:
 		_topology_debug = enabled
 		topology_debug_changed.emit(enabled)
 	)
+	_dialog.map_id_visible_changed.connect(func(enabled: bool) -> void: map_id_visible_changed.emit(enabled))
 	_dialog.console_requested.connect(_open_console)
 	_dialog.console_shortcut_changed.connect(_set_console_recording)
 	if not _developer_tools_enabled:

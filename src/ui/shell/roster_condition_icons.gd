@@ -3,6 +3,23 @@ class_name RosterConditionIcons
 extends RefCounted
 
 
+## The conditions that count as bad news for the HUD: the ones shown with a status icon.
+const HARMFUL: Array[int] = [
+	ConditionRules.RUNS_AWAY, ConditionRules.TANGLED, ConditionRules.SLOW, ConditionRules.HELPLESS,
+	ConditionRules.TURNED_TO_STONE, ConditionRules.BLIND, ConditionRules.POISONED, ConditionRules.DISEASED,
+	ConditionRules.HINDERED_ATTACKS, ConditionRules.HINDERED_DEFENSE, ConditionRules.CURSED,
+	ConditionRules.STUPID, ConditionRules.CONFUSED, ConditionRules.SILENCED,
+]
+
+
+## True when `after` has a harmful condition that `before` did not.
+static func harmful_condition_started(before: Array[int], after: Array[int]) -> bool:
+	for index: int in HARMFUL:
+		if index < after.size() and after[index] != 0 and (index >= before.size() or before[index] == 0):
+			return true
+	return false
+
+
 static func icon_ids(character: CharacterView) -> Array[int]:
 	var values := character.condition_values
 	var result: Array[int] = []

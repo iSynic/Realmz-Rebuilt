@@ -9,6 +9,9 @@
 [ext_resource type="PackedScene" path="res://src/ui/shared/style/classic_bitmap_button.tscn" id="13_command"]
 [ext_resource type="PackedScene" path="res://src/ui/exploration/classic_search_command_button.tscn" id="14_search"]
 [ext_resource type="PackedScene" path="res://src/ui/exploration/classic_torch_command_button.tscn" id="15_torch"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/modular_controls_theme.tres" id="16_modular_theme"]
+[ext_resource type="Script" path="res://src/ui/shell/party_dock.gd" id="17_party_dock"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/party_dock_entry.tscn" id="18_party_dock_entry"]
 
 [sub_resource type="StyleBoxFlat" id="CommandSurface"]
 bg_color = Color(0.082, 0.133, 0.18, 1)
@@ -34,6 +37,38 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.48, 0.88, 0.91, 1)
+
+[sub_resource type="StyleBoxFlat" id="StatusStripSurface"]
+content_margin_left = 12.0
+content_margin_top = 4.0
+content_margin_right = 12.0
+content_margin_bottom = 4.0
+bg_color = Color(0.082, 0.133, 0.18, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.867, 0.729, 0.416, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[sub_resource type="StyleBoxFlat" id="PartyDockSurface"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.082, 0.133, 0.18, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.867, 0.729, 0.416, 0.7)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
 
 [node name="ModularHud" type="Control"]
 layout_mode = 3
@@ -125,7 +160,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="WorldCommandDeckFrame" type="PanelContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter"]
+[node name="WorldCommandDeckFrame" type="PanelContainer" parent="World/Surface/Column/Body/Content/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ClassicFooterCommandWell"
@@ -159,7 +194,7 @@ columns = 2
 theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 
-[node name="NarrativeWell" type="PanelContainer" parent="Narration/Surface/Column/Body/Content"]
+[node name="NarrativeWell" type="PanelContainer" parent="Narration/Surface/Column/Body/Content" groups=["ui_theme_textured"]]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.45
@@ -183,7 +218,8 @@ scroll_following = true
 [node name="Facts" type="GridContainer" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 2
 columns = 5
 
 [node name="Status" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
@@ -195,12 +231,14 @@ text = "Ready"
 text_overrun_behavior = 3
 
 [node name="Coordinates" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+visible = false
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.49, 0.83, 0.9, 1)
 text = "Map —"
 
 [node name="FatigueGauge" type="HBoxContainer" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 5
 
@@ -223,17 +261,20 @@ value = 4.0
 show_percentage = false
 
 [node name="Light" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+visible = false
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.87, 0.32, 1)
 text = "Light —"
 
 [node name="Clock" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+visible = false
 unique_name_in_owner = true
 layout_mode = 2
 text = "Day —"
 
 [node name="Gold" type="Label" parent="Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts"]
+visible = false
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.98, 0.87, 0.32, 1)
@@ -265,7 +306,7 @@ layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 
-[node name="CommandDeckFrame" type="PanelContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter"]
+[node name="CommandDeckFrame" type="PanelContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ClassicFooterCommandWell"
@@ -279,7 +320,7 @@ columns = 2
 theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 
-[node name="EffectsPanel" type="PanelContainer" parent="Party/EffectsDock"]
+[node name="EffectsPanel" type="PanelContainer" parent="Party/EffectsDock" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
@@ -325,7 +366,7 @@ layout_mode = 2
 [node name="PartyEffectSlot8" parent="Party/EffectsDock/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
 layout_mode = 2
 
-[node name="TorchDock" type="PanelContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow"]
+[node name="TorchDock" type="PanelContainer" parent="Party/Surface/Column/Body/Content/CommandPanel/PartyEffectsRow" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -586,9 +627,149 @@ visible = false
 text = "Encounter Stop"
 
 
+[node name="Bucket3" parent="." instance=ExtResource("2")]
+visible = false
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 140.0
+offset_top = 8.0
+offset_right = 266.0
+offset_bottom = 176.0
+
+[node name="Surface" parent="Bucket3" index="0"]
+theme_override_styles/panel = SubResource("CommandSurface")
+
+[node name="Body" parent="Bucket3/Surface/Column" index="0"]
+vertical_scroll_mode = 0
+
+[node name="Grid" type="GridContainer" parent="Bucket3/Surface/Column/Body/Content"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+
+[node name="Bucket4" parent="." instance=ExtResource("2")]
+visible = false
+layout_mode = 0
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 272.0
+offset_top = 8.0
+offset_right = 398.0
+offset_bottom = 176.0
+
+[node name="Surface" parent="Bucket4" index="0"]
+theme_override_styles/panel = SubResource("CommandSurface")
+
+[node name="Body" parent="Bucket4/Surface/Column" index="0"]
+vertical_scroll_mode = 0
+
+[node name="Grid" type="GridContainer" parent="Bucket4/Surface/Column/Body/Content"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+theme_override_constants/h_separation = 0
+theme_override_constants/v_separation = 0
+
+[node name="PartyDock" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 1192.0
+offset_top = 48.0
+offset_right = 1276.0
+offset_bottom = 360.0
+mouse_filter = 0
+theme = ExtResource("16_modular_theme")
+theme_override_styles/panel = SubResource("PartyDockSurface")
+script = ExtResource("17_party_dock")
+entry_scene = ExtResource("18_party_dock_entry")
+
+[node name="Entries" type="BoxContainer" parent="PartyDock"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_constants/separation = 6
+vertical = true
+
+[node name="StatusStrip" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 480.0
+offset_top = 8.0
+offset_right = 800.0
+offset_bottom = 36.0
+mouse_filter = 1
+theme = ExtResource("16_modular_theme")
+theme_override_styles/panel = SubResource("StatusStripSurface")
+
+[node name="Items" type="BoxContainer" parent="StatusStrip"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_constants/separation = 18
+
+[node name="Clock" type="Label" parent="StatusStrip/Items"]
+layout_mode = 2
+mouse_filter = 1
+text = "Day —"
+
+[node name="Coordinates" type="Label" parent="StatusStrip/Items"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.49, 0.83, 0.9, 1)
+text = "Map —"
+
+[node name="Gold" type="Label" parent="StatusStrip/Items"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.98, 0.87, 0.32, 1)
+text = "Gold —"
+
+[node name="Light" type="Label" parent="StatusStrip/Items"]
+visible = false
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.98, 0.87, 0.32, 1)
+text = ""
+
+[node name="Fatigue" type="Label" parent="StatusStrip/Items"]
+layout_mode = 2
+mouse_filter = 1
+theme_override_colors/font_color = Color(0.49, 0.83, 0.9, 1)
+text = "Fatigue —"
+
+[node name="FatigueBar" type="ProgressBar" parent="StatusStrip/Items"]
+custom_minimum_size = Vector2(72, 10)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 1
+theme_override_styles/background = SubResource("FatigueTrackStyle")
+theme_override_styles/fill = SubResource("FatigueFillStyle")
+min_value = 4.0
+max_value = 135.0
+value = 4.0
+show_percentage = false
+
 [node name="PanelMenu" parent="." instance=ExtResource("3")]
 
 [editable path="Roster"]
 [editable path="Narration"]
 [editable path="World"]
 [editable path="Party"]
+[editable path="Bucket3"]
+[editable path="Bucket4"]
+
+[node name="CommandGhost" type="TextureRect" parent="."]
+unique_name_in_owner = true
+visible = false
+z_index = 200
+texture_filter = 1
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5

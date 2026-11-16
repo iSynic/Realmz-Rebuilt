@@ -31,6 +31,9 @@ var _latest_classic_text := ""
 var _narrative_history := ""
 var _choice_context_visible := false
 var _spell_recipient_text := ""
+## Debug-only: prefix the position fact with the map identity (F12 › Show map ID).
+var _show_map_id := false
+var _last_world_view: GameView
 
 
 func initialize(
@@ -97,6 +100,8 @@ func bind_hud_content(well: PanelContainer) -> void:
 	_field_time_playback.bind_label(_clock_label)
 
 
+## Status messages ("That way is blocked", errors in red) show in the facts strip's first cell until the
+## party next moves. The cell keeps its place when empty, so the other facts never shift.
 func set_status(text: String, is_error: bool = false) -> void:
 	_status_label.text = text
 	_status_label.modulate = ERROR if is_error else TEXT
@@ -164,7 +169,7 @@ func present_event(event: DomainEvent, current_view: GameView) -> void:
 		&"party_created":
 			set_status("Party created • the adventure begins")
 			append_narrative("The party enters the realm.")
-		&"party_moved": set_status("%s • %d,%d" % [current_view.party_map_id if current_view != null else "Map", int(event.payload.get("x", 0)), int(event.payload.get("y", 0))])
+		&"party_moved": set_status("")
 		&"movement_blocked": set_status("That way is blocked")
 		&"combat_movement_blocked": set_status("That combat move is blocked")
 		&"combat_friendly_collision_cancelled": set_status("Combat move cancelled")
@@ -231,18 +236,29 @@ func present_inactive() -> void:
 	_fatigue_label.text = "Fatigue —"
 	_fatigue_bar.value = 4.0
 	_fatigue_bar.tooltip_text = "No active party fatigue."
-	_light_label.text = "Light —"
+	_light_label.text = ""
 
 
 func present_world_facts(game_view: GameView, include_gold: bool = true) -> void:
 	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
 	if include_gold:
 		_gold_label.text = "Gold %d" % game_view.pooled_gold
-	_coordinates_label.text = location_fact_text(game_view)
+	_last_world_view = game_view
+	_coordinates_label.text = location_fact_text(game_view, _show_map_id)
+	_coordinates_label.tooltip_text = "Party position (X,Y)"
 	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
 	_fatigue_bar.value = game_view.party_fatigue
 	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
-	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
+	# Light (a lit torch or a light spell) appears only while it lasts; its cell stays put when dark.
+	var light := game_view.party_summary.light_remaining if game_view.party_summary != null else 0
+	_light_label.text = "Light %d" % light if light > 0 else ""
+	_light_label.tooltip_text = "Light remaining from a torch or light spell, in moves" if light > 0 else ""
+
+
+func set_map_id_visible(enabled: bool) -> void:
+	_show_map_id = enabled
+	if _last_world_view != null:
+		_coordinates_label.text = location_fact_text(_last_world_view, enabled)
 
 
 func set_campaign_title(title: String) -> void:
@@ -260,15 +276,22 @@ func latest_classic_text() -> String:
 func narrative_region(shell: Control) -> Rect2:
 	if _narrative_well == null or not _narrative_well.is_inside_tree():
 		return Rect2()
-	var local_origin := shell.get_global_transform().affine_inverse() * _narrative_well.global_position
-	return Rect2(local_origin, _narrative_well.size)
+	# In the modular HUD the whole message panel is the region, so a prompt standing in for
+	# it lines up with the panel's frame, not with the text inside it.
+	var region: Control = _narrative_well
+	var game_shell := shell as GameShell
+	if game_shell != null and game_shell.hud.active:
+		var surface := game_shell.hud.get_node("Narration/Surface") as Control
+		if surface.is_ancestor_of(_narrative_well): region = surface
+	var local_origin := shell.get_global_transform().affine_inverse() * region.global_position
+	return Rect2(local_origin, region.size)
 
 
-static func location_fact_text(game_view: GameView) -> String:
+static func location_fact_text(game_view: GameView, show_map_id: bool = false) -> String:
 	if game_view == null or not game_view.session_started:
 		return "Map —"
 	var coordinates := "?,?" if game_view.map_view != null and game_view.map_view.coordinates_hidden else "%d,%d" % [game_view.party_coordinate.x, game_view.party_coordinate.y]
 	var compass := ""
 	if game_view.map_view != null and game_view.map_view.level_type == &"dungeon" and game_view.map_view.compass_enabled:
 		compass = " • Compass %s" % ["N", "E", "S", "W"][clampi(game_view.map_view.dungeon_heading, 1, 4) - 1]
-	return "%s • %s%s" % [game_view.party_map_id, coordinates, compass]
+	return "%s • %s%s" % [game_view.party_map_id, coordinates, compass] if show_map_id else coordinates + compass

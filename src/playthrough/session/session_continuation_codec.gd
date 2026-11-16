@@ -306,7 +306,7 @@ static func _decode_post_clock(data: Dictionary) -> SessionContinuation:
 	if data.has("movementMarkerPending"):
 		fields.append("movementMarkerPending")
 		if not data["movementMarkerPending"] is bool: return null
-	if not _has_exact_fields(data, fields) or not _is_nonempty_string(data.get("mapId")) or not data.get("activeTimedProgramId") is String or not data.get("midnightRecoveryPending") is bool or not data.get("checkRandom") is bool or not data.get("randomRegionIds") is Array or not data.get("activeRandomProgramId") is String or not data.get("activeRandomRegionId") is String or data.get("randomBattleStage") not in ["", "surprise-choice"] or data.get("resumeKind") not in ["completed", "move", "post-move", "attempt-search-completed", "attempt-search-post-move", "area-search-second", "camp-entry-second", "rest-second", "camp-departure-second", "heal"]:
+	if not _has_exact_fields(data, fields) or not _is_nonempty_string(data.get("mapId")) or not data.get("activeTimedProgramId") is String or not data.get("midnightRecoveryPending") is bool or not data.get("checkRandom") is bool or not data.get("randomRegionIds") is Array or not data.get("activeRandomProgramId") is String or not data.get("activeRandomRegionId") is String or not _random_stage_is_known(data.get("randomBattleStage")) or data.get("resumeKind") not in ["completed", "move", "post-move", "attempt-search-completed", "attempt-search-post-move", "area-search-second", "camp-entry-second", "rest-second", "camp-departure-second", "heal"]:
 		return null
 	var body := ExplorationContinuationBody.new()
 	body.map_id = data["mapId"]
@@ -345,12 +345,22 @@ static func _valid_post_clock(body: ExplorationContinuationBody, data: Dictionar
 		return false
 	if body.resume_kind in [&"move", &"camp-departure-second"] and body.direction == Vector2i.ZERO:
 		return false
+	return _random_stage_is_valid(body)
+
+
+static func _random_stage_is_known(value: Variant) -> bool:
+	return value is String and (value in ["", "surprise-choice"] or RandomBattlePrelude.is_stage(StringName(String(value))))
+
+
+static func _random_stage_is_valid(body: ExplorationContinuationBody) -> bool:
+	if RandomBattlePrelude.is_stage(body.random_battle_stage):
+		return not RandomBattlePrelude.staged(body.random_battle_stage).is_empty() and not body.active_random_region_id.is_empty()
 	return body.random_battle_stage != &"surprise-choice" or not body.active_random_region_id.is_empty()
 
 
 static func _decode_post_move(data: Dictionary) -> SessionContinuation:
 	var fields: Array[String] = ["mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
-	if not _has_exact_fields(data, fields) or not _is_nonempty_string(data.get("mapId")) or not data.get("triggerIds") is Array or not data.get("activeTriggerId") is String or not data.get("randomRegionIds") is Array or not data.get("activeRandomProgramId") is String or not data.get("activeRandomRegionId") is String or data.get("randomBattleStage") not in ["", "surprise-choice"]:
+	if not _has_exact_fields(data, fields) or not _is_nonempty_string(data.get("mapId")) or not data.get("triggerIds") is Array or not data.get("activeTriggerId") is String or not data.get("randomRegionIds") is Array or not data.get("activeRandomProgramId") is String or not data.get("activeRandomRegionId") is String or not _random_stage_is_known(data.get("randomBattleStage")):
 		return null
 	var body := ExplorationContinuationBody.new()
 	body.map_id = data["mapId"]
@@ -367,7 +377,7 @@ static func _decode_post_move(data: Dictionary) -> SessionContinuation:
 	var region_ids: Array = data["randomRegionIds"]
 	body.random_battle_stage = StringName(random_battle_stage)
 	body.action_point_destination_depth = _integer(data["actionPointDestinationDepth"])
-	if body.coordinate.x < 0 or body.coordinate.y < 0 or body.trigger_ids.size() != trigger_ids.size() or body.trigger_index < 0 or body.random_region_ids.size() != region_ids.size() or body.random_region_index < -1 or body.random_region_index >= body.random_region_ids.size() or body.action_point_destination_depth < 0 or body.action_point_destination_depth > 1 or body.random_battle_stage == &"surprise-choice" and body.active_random_region_id.is_empty():
+	if body.coordinate.x < 0 or body.coordinate.y < 0 or body.trigger_ids.size() != trigger_ids.size() or body.trigger_index < 0 or body.random_region_ids.size() != region_ids.size() or body.random_region_index < -1 or body.random_region_index >= body.random_region_ids.size() or body.action_point_destination_depth < 0 or body.action_point_destination_depth > 1 or not _random_stage_is_valid(body):
 		return null
 	return ExplorationContinuations.post_move(body)
 

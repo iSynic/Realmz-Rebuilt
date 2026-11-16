@@ -13,6 +13,10 @@
 
 [ext_resource type="PackedScene" path="res://src/ui/shell/preferences_search.tscn" id="12_search"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/adventure_rules_settings_page.tscn" id="13_rules"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_card.tres" id="14_card"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_rail_idle.tres" id="15_rail_idle"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_rail_hover.tres" id="16_rail_hover"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_rail_selected.tres" id="17_rail_selected"]
 
 [node name="SystemWorkspace" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -37,6 +41,8 @@ max_lines_visible = 2
 
 [node name="PreferencesSearch" parent="." instance=ExtResource("12_search")]
 layout_mode = 2
+custom_minimum_size = Vector2(340, 0)
+size_flags_horizontal = 8
 
 [node name="CompactCategory" type="OptionButton" parent="."]
 visible = false
@@ -65,58 +71,126 @@ popup/item_7/id = 7
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 8
+theme_override_constants/separation = 14
 
-[node name="SystemCategoryRail" type="VBoxContainer" parent="SystemWorkspaceBody"]
+[node name="RailPanel" type="PanelContainer" parent="SystemWorkspaceBody" groups=["ui_theme_frame"]]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("14_card")
+
+[node name="SystemCategoryRail" type="VBoxContainer" parent="SystemWorkspaceBody/RailPanel"]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="Display" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Display" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Display"
 
-[node name="Interface" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Interface" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Interface"
 
-[node name="Controls" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Controls" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Controls"
 
-[node name="Audio" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Audio" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Sound & Music"
 
-[node name="Pacing" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Pacing" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Pacing"
 
-[node name="Adventure Rules" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Adventure Rules" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Adventure Rules"
 
-[node name="Accessibility" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Accessibility" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Accessibility"
 
-[node name="Diagnostics" type="Button" parent="SystemWorkspaceBody/SystemCategoryRail"]
+[node name="Diagnostics" type="Button" parent="SystemWorkspaceBody/RailPanel/SystemCategoryRail"]
 layout_mode = 2
-custom_minimum_size = Vector2(142, 40)
+custom_minimum_size = Vector2(176, 38)
+theme_override_colors/font_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_colors/font_hover_color = Color(0.886, 0.886, 0.855, 1)
+theme_override_styles/normal = ExtResource("15_rail_idle")
+theme_override_styles/hover = ExtResource("16_rail_hover")
+theme_override_styles/pressed = ExtResource("17_rail_selected")
+theme_override_styles/hover_pressed = ExtResource("17_rail_selected")
 toggle_mode = true
+alignment = 0
 text = "Diagnostics"
 
 [node name="SystemWorkspaceTabs" type="TabContainer" parent="SystemWorkspaceBody"]
@@ -149,12 +223,21 @@ theme_override_constants/separation = 5
 [node name="Heading" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
-text = "Scenario Slots · A–J"
-[node name="ActiveSlotLabel" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
+text = "Saved games"
+[node name="SlotTools" type="HBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
 layout_mode = 2
+
+[node name="ActiveSlotLabel" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SlotTools"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.56, 0.81, 0.82, 1)
-text = "Slot A active · Quick Save overwrites A"
+text = "Quick Save uses Slot A"
 autowrap_mode = 2
+[node name="BackupsToggle" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SlotTools"]
+layout_mode = 2
+toggle_mode = true
+text = "Show backups"
+
 [node name="SaveSlotScroll" type="ScrollContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -257,7 +340,7 @@ autowrap_mode = 2
 text = "Valid"
 [node name="MapPreview" type="TextureRect" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 layout_mode = 2
-custom_minimum_size = Vector2(240, 240)
+custom_minimum_size = Vector2(320, 320)
 size_flags_horizontal = 0
 texture_filter = 1
 expand_mode = 1
@@ -266,7 +349,7 @@ stretch_mode = 5
 layout_mode = 2
 autowrap_mode = 2
 theme_override_colors/font_color = Color(0.62, 0.67, 0.68, 1)
-text = "No saved overworld preview"
+text = "Map preview unavailable."
 [node name="Error" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Record"]
 visible = false
 layout_mode = 2
@@ -300,7 +383,7 @@ size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotDetail/Content/SaveSlotDetailBody/Empty"]
 layout_mode = 2
-text = "No selected record\nSave slots appear at left."
+text = "No slot selected\nChoose a slot from the list."
 autowrap_mode = 2
 [node name="SaveWorkspaceFooter" type="VBoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load"]
 layout_mode = 2
@@ -342,9 +425,6 @@ text = "Quick Save 2"
 [node name="SaveSelectedSlot" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Save Selected"
-[node name="LoadSelectedSave" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
-layout_mode = 2
-text = "Load Selected"
 [node name="RefreshSaves" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Refresh"
@@ -354,6 +434,11 @@ size_flags_horizontal = 3
 [node name="MainMenu" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
 layout_mode = 2
 text = "Main Menu"
+[node name="LoadSelectedSave" type="Button" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 38)
+theme_type_variation = &"ClassicPrimaryButton"
+text = "Load"
 [node name="NewSaveSlotRow" type="BoxContainer" parent="SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter"]
 layout_mode = 2
 theme_override_constants/separation = 5
@@ -386,18 +471,22 @@ layout_mode = 2
 
 [node name="Diagnostics" parent="SystemWorkspaceBody/SystemWorkspaceTabs" instance=ExtResource("9_diagnostics")]
 
-[node name="ContextHelp" type="VBoxContainer" parent="SystemWorkspaceBody"]
+[node name="HelpPanel" type="PanelContainer" parent="SystemWorkspaceBody" groups=["ui_theme_frame"]]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("14_card")
+
+[node name="ContextHelp" type="VBoxContainer" parent="SystemWorkspaceBody/HelpPanel"]
 layout_mode = 2
 custom_minimum_size = Vector2(230, 0)
 theme_override_constants/separation = 12
 
-[node name="Heading" type="Label" parent="SystemWorkspaceBody/ContextHelp"]
+[node name="Heading" type="Label" parent="SystemWorkspaceBody/HelpPanel/ContextHelp"]
 layout_mode = 2
 text = "Settings"
 theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
 autowrap_mode = 2
 
-[node name="Detail" type="Label" parent="SystemWorkspaceBody/ContextHelp"]
+[node name="Detail" type="Label" parent="SystemWorkspaceBody/HelpPanel/ContextHelp"]
 layout_mode = 2
 text = "Select a setting to see its explanation. Changes apply together."
 autowrap_mode = 2
@@ -412,12 +501,31 @@ size_flags_horizontal = 3
 text = "No unsaved changes"
 autowrap_mode = 2
 
+[node name="Defaults" type="Button" parent="PreferencesFooter"]
+layout_mode = 2
+custom_minimum_size = Vector2(150, 38)
+tooltip_text = "Resets the settings on these pages to their defaults. Controller bindings, HUD layout, fonts, combat text and the indoor party icon keep their values. Nothing is saved until Apply."
+theme_type_variation = &"FieldAction"
+text = "Restore defaults"
+
 [node name="Cancel" type="Button" parent="PreferencesFooter"]
 layout_mode = 2
-text = "Cancel"
-theme_type_variation = &"MenuAction"
+text = "Discard"
+theme_type_variation = &"FieldAction"
+custom_minimum_size = Vector2(110, 38)
 
 [node name="Apply" type="Button" parent="PreferencesFooter"]
 layout_mode = 2
 text = "Apply changes"
-theme_type_variation = &"MenuAction"
+theme_type_variation = &"PrimaryAction"
+custom_minimum_size = Vector2(150, 38)
+
+[node name="EdgeRoom" type="Control" parent="PreferencesFooter"]
+layout_mode = 2
+custom_minimum_size = Vector2(4, 0)
+mouse_filter = 2
+
+[node name="FocusRingRoom" type="Control" parent="."]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 2)
+mouse_filter = 2

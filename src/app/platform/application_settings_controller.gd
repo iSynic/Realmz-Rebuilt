@@ -120,6 +120,7 @@ func bind() -> void:
 	_shell.autojournal_changed.connect(_on_autojournal_changed)
 	_shell.controller_preferences_changed.connect(_on_controller_preferences_changed)
 	_debug_tools.topology_debug_changed.connect(_on_topology_debug_changed)
+	_debug_tools.map_id_visible_changed.connect(func(enabled: bool) -> void: _shell.status.set_map_id_visible(enabled))
 
 
 func commit_preferences(baseline: PresentationSettings, draft: PresentationSettings) -> String:
@@ -147,6 +148,11 @@ func commit_preferences(baseline: PresentationSettings, draft: PresentationSetti
 
 
 func apply_initial_settings() -> void:
+	UiThemeService.apply(_application.get_tree(), _settings.interface_theme)
+	UiThemeService.set_surface_tile(_application.get_tree(), _settings.theme_surface_tile, _settings.theme_surface_tile_opacity_percent)
+	# The stone behind the classic screens sits outside the themed screens' reach.
+	var stone := _application.get_node_or_null("StoneTexture") as Control
+	if stone != null: UiThemeService.decorate(stone)
 	_apply_scaling()
 	_shell.apply_settings(_settings)
 	_presentation.set_reduced_motion(_settings.reduced_motion)
@@ -172,6 +178,8 @@ func apply_initial_settings() -> void:
 	_apply_window_mode(_settings.window_mode)
 	_audio.set_master_volume(_settings.master_volume)
 	_audio.set_sound_volume(_settings.sound_volume)
+	UiSoundService.attach(_application.get_tree())
+	UiSoundService.set_volume(_settings.master_volume * _settings.sound_volume)
 	_audio.set_reduced_sound(_settings.reduced_sound)
 	_audio.set_music_volume(_settings.music_volume)
 	_apply_topology_debug(_settings.topology_debug)
@@ -206,12 +214,14 @@ func _on_dungeon_3d_changed(enabled: bool) -> void:
 func _on_master_volume_changed(value: float) -> void:
 	_audio.set_master_volume(value)
 	_settings.master_volume = value
+	UiSoundService.set_volume(_settings.master_volume * _settings.sound_volume)
 	_save()
 
 
 func _on_sound_volume_changed(value: float) -> void:
 	_audio.set_sound_volume(value)
 	_settings.sound_volume = clampf(value, 0.0, 1.0)
+	UiSoundService.set_volume(_settings.master_volume * _settings.sound_volume)
 	_shell.apply_settings(_settings)
 	_save()
 
@@ -326,6 +336,7 @@ func _apply_application_theme() -> void:
 	var base_theme := load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme
 	var profile := UiSizing.profile_for(_application)
 	_application.theme = ClassicTypography.themed_copy(base_theme, _settings, profile.ui_scale if profile != null else 1.0, _fonts.resolver)
+	ClassicTypography.apply_menu_fonts(_settings, _fonts.resolver)
 
 
 func apply_interface_profile(profile: UiLayoutProfile) -> void:

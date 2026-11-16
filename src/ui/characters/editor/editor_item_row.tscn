@@ -1,0 +1,59 @@
+[gd_scene format=3]
+
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/field_tile.tres" id="1_field_tile"]
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_item_row.gd" id="2_editor_item_"]
+
+[node name="EditorItemRow" type="PanelContainer"]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("1_field_tile")
+script = ExtResource("2_editor_item_")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Text" type="VBoxContainer" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="ItemName" type="Label" parent="Row/Text"]
+unique_name_in_owner = true
+clip_text = true
+text_overrun_behavior = 3
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 14
+text = "Item"
+
+[node name="Facts" type="Label" parent="Row/Text"]
+unique_name_in_owner = true
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="Equip" type="Button" parent="Row"]
+unique_name_in_owner = true
+size_flags_vertical = 4
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 13
+text = "Equip"
+
+[node name="Identify" type="Button" parent="Row"]
+unique_name_in_owner = true
+size_flags_vertical = 4
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 13
+text = "Identify"
+
+[node name="Remove" type="Button" parent="Row"]
+unique_name_in_owner = true
+size_flags_vertical = 4
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 13
+text = "Remove"

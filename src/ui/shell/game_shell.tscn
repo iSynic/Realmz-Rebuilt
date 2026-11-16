@@ -1,5 +1,6 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=23 format=3]
 
+[ext_resource type="PackedScene" path="res://src/ui/shell/screen_edge_flash.tscn" id="21_edge_flash"]
 [ext_resource type="Script" path="res://src/ui/shell/game_shell.gd" id="1_shell"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/screen_navigator.tscn" id="2_navigator"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/ui/classic-raised-frame.png" id="4_frame"]
@@ -48,6 +49,10 @@ mouse_filter = 2
 z_index = 10
 script = ExtResource("1_shell")
 party_effect_slot_scene = ExtResource("8_effect_slot")
+
+[node name="ScreenEdgeFlash" parent="." instance=ExtResource("21_edge_flash")]
+unique_name_in_owner = true
+layout_mode = 1
 
 [node name="ControllerRadialOverlay" parent="." instance=ExtResource("10_controller_radial")]
 unique_name_in_owner = true
@@ -208,7 +213,7 @@ offset_right = 1280.0
 offset_bottom = 530.0
 z_index = 14
 
-[node name="BottomRegion" type="PanelContainer" parent="."]
+[node name="BottomRegion" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 0
 offset_top = 530.0
@@ -239,7 +244,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="WorldCommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter"]
+[node name="WorldCommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn/WorldCommandDeckCenter" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ClassicFooterCommandWell"
@@ -272,7 +277,7 @@ columns = 3
 theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 
-[node name="NarrativeWell" type="PanelContainer" parent="BottomRegion/BottomRow"]
+[node name="NarrativeWell" type="PanelContainer" parent="BottomRegion/BottomRow" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -298,7 +303,8 @@ scroll_following = true
 [node name="Facts" type="GridContainer" parent="BottomRegion/BottomRow/NarrativeWell/NarrativeColumn"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 2
 columns = 6
 
 [node name="Status" type="Label" parent="BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts"]
@@ -382,7 +388,7 @@ layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
 
-[node name="CommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter"]
+[node name="CommandDeckFrame" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/PartyCommandColumn/CommandDeckCenter" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 theme_type_variation = &"ClassicFooterCommandWell"
@@ -396,7 +402,7 @@ columns = 3
 theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 
-[node name="EffectsPanel" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow"]
+[node name="EffectsPanel" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
@@ -442,7 +448,7 @@ layout_mode = 2
 [node name="PartyEffectSlot8" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow/EffectsPanel/EffectsColumn/EffectsGrid" instance=ExtResource("8_effect_slot")]
 layout_mode = 2
 
-[node name="TorchDock" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow"]
+[node name="TorchDock" type="PanelContainer" parent="BottomRegion/BottomRow/CommandPanel/PartyEffectsRow" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4

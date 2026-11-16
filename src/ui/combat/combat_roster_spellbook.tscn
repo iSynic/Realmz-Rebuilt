@@ -252,12 +252,10 @@ autowrap_mode = 2
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="PowerLabel" type="TextureRect" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices"]
-custom_minimum_size = Vector2(60, 22)
+[node name="PowerLabel" type="Label" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices"]
 layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 5
+theme_type_variation = &"MenuHeading"
+text = "Power"
 
 [node name="PowerButtons" type="HBoxContainer" parent="CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices"]
 layout_mode = 2
@@ -296,5 +294,4 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"BattleCommandButton"
 tooltip_text = "Return to the battle commands."
-expand_icon = false
-theme_override_constants/icon_max_width = 92
+text = "Abort"

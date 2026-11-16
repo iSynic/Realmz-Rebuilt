@@ -55,6 +55,7 @@ func present(page: StringName, context: String, reasons: Dictionary, slot: Strin
 	_selected = int(_page_selection.get(page, 0))
 	show()
 	_layout()
+	_follow_theme()
 	_select(clampi(_selected, 0, _actions.size() - (0 if %Back.visible else 1)))
 	if changed_page and _is_detail(): %EntriesScroll.set_deferred("scroll_vertical", 0)
 
@@ -62,6 +63,16 @@ func apply_ui_sizing(profile: UiLayoutProfile) -> void:
 	_profile = profile
 	%Surface.theme = get_parent_control().theme
 	_layout()
+	_follow_theme()
+
+
+## The menu sits on its own layer, out of the theme walk's reach, so it asks for its panel,
+## frame and heading colours itself.
+func _follow_theme() -> void:
+	UiThemeService.decorate(%Surface)
+	var colors := UiThemeService.current().colors
+	%Heading.add_theme_color_override("font_color", colors[&"accent"])
+	%PackageStatus.add_theme_color_override("font_color", colors[&"muted"])
 
 func reset_selection() -> void:
 	_selected = 0

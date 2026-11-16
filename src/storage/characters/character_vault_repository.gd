@@ -4,10 +4,15 @@ class_name CharacterVaultRepository
 extends RefCounted
 
 const RECORD_EXTENSION := ".r2char"
+## Root marker recording that starter characters were offered; enumeration ignores files.
+const SEED_MARKER := "starters-offered.json"
 const CHARACTER_VAULT_DIAGNOSTICS := preload("res://src/storage/characters/character_vault_diagnostics.gd")
 
 var _root_path: String
 var last_error: String = ""
+## Revision files are immutable and named by their hash; decoded records are reused
+## while the file keeps its modification time, so browsing never re-parses unchanged files.
+var _decoded: Dictionary = {}
 
 
 func _init(root_path: String = "user://characters") -> void:
@@ -175,7 +180,7 @@ func load_revision(character_id: String, revision_hash: String) -> CharacterVaul
 		_fail("Character and revision IDs must be portable path components.")
 		return null
 	var path := "%s/%s/%s%s" % [_root_path, character_id, revision_hash, RECORD_EXTENSION]
-	var record := _read_record(path)
+	var record := _cached_record(path)
 	if record == null or record.character_id != character_id or record.revision_hash != revision_hash:
 		return null
 	return record
@@ -238,12 +243,19 @@ func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
 		return _fail("Starter-character seeding requires at least one record.")
 	var root_directory := DirAccess.open(_root_path)
 	if root_directory != null:
+		# Startup also finishes any deletion whose cleanup was interrupted.
+		CharacterVaultDeletion.sweep(_root_path)
 		root_directory.list_dir_begin()
 		var existing_entry := root_directory.get_next()
 		root_directory.list_dir_end()
 		if not existing_entry.is_empty():
+			# A used vault records that starters were offered once, so deleting every
+			# character later never reseeds them; Restore starter characters stays explicit.
+			_write_seed_marker(_root_path)
 			return true
 		root_directory = null
+	if FileAccess.file_exists("%s/%s" % [_root_path, SEED_MARKER]):
+		return true
 	var stage_path := _root_path + ".starter-seed"
 	if not _remove_tree(stage_path):
 		return _fail("Could not clear an interrupted starter-character staging directory.")
@@ -253,6 +265,9 @@ func seed_if_empty(records: Array[CharacterVaultRecord]) -> bool:
 		if staged_record == null or not stage_repository.publish_revision(staged_record) or staged_record.revision_hash != source_record.revision_hash:
 			_remove_tree(stage_path)
 			return _fail("Starter-character staging failed: %s" % stage_repository.last_error)
+	if not _write_seed_marker(stage_path):
+		_remove_tree(stage_path)
+		return _fail("Could not record the starter-character installation.")
 	var staged_records := stage_repository.list_current_records()
 	if staged_records.size() != records.size():
 		_remove_tree(stage_path)
@@ -304,6 +319,28 @@ func archive_character(character_id: String) -> bool:
 	return true
 
 
+## Permanently removes an archived character and every revision; `CharacterVaultDeletion`
+## checks the folder, retires the identity and removes it.
+func delete_archived_character(character_id: String) -> bool:
+	last_error = ""
+	if not _safe_component(character_id):
+		return _fail("Character ID is not a portable path component.")
+	var reason := CharacterVaultDeletion.delete(_root_path, character_id, list_revisions(character_id))
+	_decoded.clear()
+	return true if reason.is_empty() else _fail(reason)
+
+
+## Every live or deleted identity; empty with last_error set when the deleted list is unreadable.
+func reserved_character_ids() -> Array[String]:
+	var ledger_error := CharacterVaultDeletion.ledger_error(_root_path)
+	if not ledger_error.is_empty():
+		last_error = ledger_error
+		return [] as Array[String]
+	var result := list_character_ids()
+	result.append_array(CharacterVaultDeletion.retired_ids(_root_path))
+	return result
+
+
 func restore_revision(character_id: String, revision_hash: String) -> bool:
 	last_error = ""
 	if not _safe_component(character_id) or not _safe_component(revision_hash):
@@ -325,50 +362,61 @@ func restore_revision(character_id: String, revision_hash: String) -> bool:
 		if moved:
 			DirAccess.rename_absolute(ProjectSettings.globalize_path(active_path), ProjectSettings.globalize_path(archive_path))
 		return _fail("The restored character revision could not be validated and indexed.")
+	_return_archived_revisions(character_id)
 	return true
+
+
+## archive/ holds only the revision a character was archived from, which Character Files
+## offers as its Last active revision; the rest return to the ordinary revision history.
+func _return_archived_revisions(character_id: String) -> void:
+	var archive_path := "%s/%s/archive" % [_root_path, character_id]
+	for file_name: String in DirAccess.get_files_at(archive_path):
+		var active_path := "%s/%s/%s" % [_root_path, character_id, file_name]
+		if file_name.ends_with(RECORD_EXTENSION) and not FileAccess.file_exists(active_path):
+			DirAccess.rename_absolute(ProjectSettings.globalize_path("%s/%s" % [archive_path, file_name]), ProjectSettings.globalize_path(active_path))
 
 
 func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) -> CharacterVaultEligibility:
 	var result := CharacterVaultEligibility.new()
 	if record == null or record.state == null or content == null:
-		result.reasons.append("Character or campaign content is unavailable.")
+		result.reasons.append("This character or scenario could not be read.")
 		return result
 	var race := content.characters.race_by_id(record.state.race_id)
 	var caste := content.characters.caste_by_id(record.state.caste_id)
 	if race == null:
-		result.reasons.append("Race '%s' is not defined by this campaign." % record.state.race_id)
+		result.reasons.append("Its race (%s) isn't available in this scenario." % record.state.race_id)
 	if caste == null:
-		result.reasons.append("Class '%s' is not defined by this campaign." % record.state.caste_id)
+		result.reasons.append("Its class (%s) isn't available in this scenario." % record.state.caste_id)
 	var restrictions := content.campaign.restrictions
 	if restrictions.banned_races.has(record.state.race_id):
-		result.reasons.append("This campaign does not allow race '%s'." % record.state.race_id)
+		result.reasons.append("This scenario doesn't allow %s characters." % (race.name if race != null else record.state.race_id))
 	if restrictions.banned_castes.has(record.state.caste_id):
-		result.reasons.append("This campaign does not allow class '%s'." % record.state.caste_id)
+		result.reasons.append("This scenario doesn't allow %s characters." % (caste.name if caste != null else record.state.caste_id))
 	if restrictions.maximum_level > 0 and record.state.level > restrictions.maximum_level:
-		result.reasons.append("Character level %d exceeds this campaign's maximum level %d." % [record.state.level, restrictions.maximum_level])
+		result.reasons.append("Level %d is above this scenario's maximum level of %d." % [record.state.level, restrictions.maximum_level])
 	for item: ItemInstance in record.state.inventory():
 		if content.items.item_by_id(item.definition_id) == null:
-			result.reasons.append("Item '%s' is not defined by this campaign." % item.definition_id)
+			result.reasons.append("Carries an item from another scenario (%s) that isn't available here." % item.definition_id)
 	for spell_id: String in record.state.known_spells():
 		if content.magic.spell_by_id(spell_id) == null:
-			result.reasons.append("Spell '%s' is not defined by this campaign." % spell_id)
+			result.reasons.append("Knows a spell from another scenario (%s) that isn't available here." % spell_id)
 	for binding: FastSpellBindingState in record.state.fast_spells():
 		if binding.is_empty():
 			continue
 		var bound_spell := content.magic.spell_by_id(binding.spell_id)
 		if bound_spell == null:
-			result.reasons.append("Fast Spell '%s' is not defined by this campaign." % binding.spell_id)
+			result.reasons.append("A Fast Spell (%s) isn't available in this scenario." % binding.spell_id)
 		elif not record.state.known_spells().has(binding.spell_id):
-			result.reasons.append("Fast Spell '%s' is no longer known by this character." % binding.spell_id)
+			result.reasons.append("A Fast Spell (%s) is no longer known by this character." % binding.spell_id)
 		elif binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
-			result.reasons.append("Fast Spell '%s' uses an invalid power." % binding.spell_id)
+			result.reasons.append("A Fast Spell (%s) uses an invalid power." % binding.spell_id)
 	if content.characters.has_complete_appearance_catalog():
 		if not record.state.portrait_id.is_empty() and not content.characters.appearance_is_available(record.state.portrait_id, CharacterAppearanceDefinition.PORTRAIT):
-			result.reasons.append("Portrait '%s' is not defined by this campaign package." % record.state.portrait_id)
+			result.reasons.append("Its portrait (%s) isn't available in this scenario." % record.state.portrait_id)
 		if not record.state.combat_icon_id.is_empty() and not content.characters.appearance_is_available(record.state.combat_icon_id, CharacterAppearanceDefinition.COMBAT_ICON):
-			result.reasons.append("Combat icon '%s' is not defined by this campaign package." % record.state.combat_icon_id)
+			result.reasons.append("Its combat icon (%s) isn't available in this scenario." % record.state.combat_icon_id)
 	if record.state.level < 1:
-		result.reasons.append("Character level is below the Classic minimum.")
+		result.reasons.append("Its level is below the Classic minimum of 1.")
 	result.eligible = result.reasons.is_empty()
 	return result
 
@@ -407,6 +455,18 @@ func _read_record(path: String) -> CharacterVaultRecord:
 	return _validated_record(_read_record_data(path))
 
 
+func _cached_record(path: String) -> CharacterVaultRecord:
+	var modified := FileAccess.get_modified_time(path) if FileAccess.file_exists(path) else -1
+	var cached: Array = _decoded.get(path, [])
+	if not cached.is_empty() and int(cached[0]) == modified and modified >= 0:
+		return cached[1] as CharacterVaultRecord
+	_decoded.erase(path)
+	var record := _read_record(path)
+	if record != null:
+		_decoded[path] = [modified, record]
+	return record
+
+
 func _validated_record(value: Variant) -> CharacterVaultRecord:
 	var record := CharacterVaultRecord.from_data(value)
 	if record == null or record.revision_hash != _revision_hash(value):
@@ -433,7 +493,7 @@ func _append_revision_records(directory_path: String, character_id: String, reco
 	var entry := directory.get_next()
 	while not entry.is_empty():
 		if not directory.current_is_dir() and entry.ends_with(RECORD_EXTENSION):
-			var record := _read_record("%s/%s" % [directory_path, entry])
+			var record := _cached_record("%s/%s" % [directory_path, entry])
 			var expected_hash := entry.trim_suffix(RECORD_EXTENSION)
 			if record != null and record.character_id == character_id and record.revision_hash == expected_hash:
 				records.append(record)
@@ -457,23 +517,19 @@ func _delete_file(path: String) -> bool:
 
 
 func _remove_tree(path: String) -> bool:
-	var directory := DirAccess.open(path)
-	if directory == null:
+	return CharacterVaultDeletion.remove_tree(path)
+
+
+func _write_seed_marker(directory_path: String) -> bool:
+	var path := "%s/%s" % [directory_path, SEED_MARKER]
+	if FileAccess.file_exists(path):
 		return true
-	directory.list_dir_begin()
-	var entry := directory.get_next()
-	while not entry.is_empty():
-		var child := "%s/%s" % [path, entry]
-		if directory.current_is_dir():
-			if not _remove_tree(child):
-				directory.list_dir_end()
-				return false
-		elif DirAccess.remove_absolute(ProjectSettings.globalize_path(child)) != OK:
-			directory.list_dir_end()
-			return false
-		entry = directory.get_next()
-	directory.list_dir_end()
-	return DirAccess.remove_absolute(ProjectSettings.globalize_path(path)) == OK
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string("{\"startersOffered\":true}")
+	file.close()
+	return true
 
 
 func _safe_component(value: String) -> bool:

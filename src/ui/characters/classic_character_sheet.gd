@@ -114,15 +114,18 @@ func _rebuild() -> void:
 			_build_record(character)
 		_:
 			_build_overview(character)
+	# A tab group with nothing showing would still take its share of the height.
+	for group: Node in get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent").get_children():
+		(group as Control).visible = group.get_children().any(func(tab: Node) -> bool: return tab is Control and (tab as Control).visible)
 
 
 func _hide_authored_tabs() -> void:
 	for tab_name: String in ["OverviewTab", "ConditionsTab", "AbilitiesTab", "RecordTab"]:
-		(get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetStatTabs/%s" % tab_name) as Control).visible = false
+		(get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetStatTabs/%s" % tab_name) as Control).visible = false
 	for tab_name: String in ["EquipmentTab", "SpellsTab"]:
-		(get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetInventoryMagicTabs/%s" % tab_name) as Control).visible = false
+		(get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetInventoryMagicTabs/%s" % tab_name) as Control).visible = false
 	for tab_name: String in ["AppearanceTab", "BackgroundTab"]:
-		(get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetIdentityTabs/%s" % tab_name) as Control).visible = false
+		(get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetIdentityTabs/%s" % tab_name) as Control).visible = false
 
 
 func _build_character_picker() -> void:
@@ -163,7 +166,7 @@ func _build_tabs() -> void:
 
 
 func _build_overview(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetStatTabs/OverviewTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetStatTabs/OverviewTab") as VBoxContainer
 	tab.visible = true
 	var regions := tab.get_node("OverviewRegions") as BoxContainer
 	regions.vertical = _layout_profile == UiLayoutProfile.COMPACT
@@ -201,7 +204,7 @@ func _build_overview(character: CharacterView) -> void:
 
 
 func _build_conditions(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetStatTabs/ConditionsTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetStatTabs/ConditionsTab") as VBoxContainer
 	tab.visible = true
 	var regions := tab.get_node("ConditionSaveRegions") as BoxContainer
 	regions.vertical = _layout_profile == UiLayoutProfile.COMPACT
@@ -210,7 +213,7 @@ func _build_conditions(character: CharacterView) -> void:
 
 
 func _build_equipment(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetInventoryMagicTabs/EquipmentTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetInventoryMagicTabs/EquipmentTab") as VBoxContainer
 	tab.visible = true
 	_scene_binding.bind_label(tab.get_node("Header/Detail") as Label, "%d of 30 inventory slots • Load %d/%d" % [character.items.size(), character.carried_load, character.maximum_load], MUTED, 13)
 	var empty := tab.get_node("EquipmentEmpty") as Label
@@ -228,7 +231,7 @@ func _build_equipment(character: CharacterView) -> void:
 
 
 func _build_abilities(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetStatTabs/AbilitiesTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetStatTabs/AbilitiesTab") as VBoxContainer
 	tab.visible = true
 	var regions := tab.get_node("AbilityRegions") as BoxContainer
 	regions.vertical = _layout_profile == UiLayoutProfile.COMPACT
@@ -237,7 +240,7 @@ func _build_abilities(character: CharacterView) -> void:
 
 
 func _build_spells(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetInventoryMagicTabs/SpellsTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetInventoryMagicTabs/SpellsTab") as VBoxContainer
 	tab.visible = true
 	var regions := tab.get_node("CharacterSpellRegions") as BoxContainer
 	regions.vertical = _layout_profile == UiLayoutProfile.COMPACT
@@ -246,6 +249,7 @@ func _build_spells(character: CharacterView) -> void:
 	var spell_grid := known.get_node("SpellCards") as GridContainer
 	_scene_binding.clear_children(spell_grid)
 	if character.spells.is_empty():
+		spell_grid.columns = 1
 		_scene_binding.add_record_card(spell_grid, "This character knows no spells.", "", "")
 	else:
 		spell_grid.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 2
@@ -263,7 +267,7 @@ func _build_spells(character: CharacterView) -> void:
 
 
 func _build_appearance(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetIdentityTabs/AppearanceTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetIdentityTabs/AppearanceTab") as VBoxContainer
 	var art_button := tab.get_node("ImportCharacterArt") as Button
 	art_button.visible = character_art_dialog != null and _appearance_availability.enabled
 	if not art_button.pressed.is_connected(_open_character_art):
@@ -294,7 +298,7 @@ func _bind_appearance_region(frame: PanelContainer, character: CharacterView, ki
 	var selected_index := -1
 	for option: CharacterAppearanceOptionView in ordered:
 		var recommended := option.is_recommended_for(character.race_id)
-		var item_label := "%s%s" % ["Recommended • " if recommended else "", option.label]
+		var item_label := "%s%s" % ["Recommended • " if recommended else "", option.label.replace("cicn ", "#")]
 		var texture := _textures.get(option.id) as Texture2D
 		if texture != null:
 			picker.add_icon_item(texture, item_label)
@@ -366,7 +370,7 @@ func _sync_appearance_draft() -> void:
 
 
 func _build_background(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetIdentityTabs/BackgroundTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetIdentityTabs/BackgroundTab") as VBoxContainer
 	tab.visible = true
 	var identities := tab.get_node("RaceClassRegions") as BoxContainer
 	identities.vertical = _layout_profile == UiLayoutProfile.COMPACT
@@ -383,7 +387,7 @@ func _build_background(character: CharacterView) -> void:
 		for change: CharacterMetricView in band.changes:
 			if change.value != 0:
 				changes.append("%s %+d" % [change.name, change.value])
-		_scene_binding.bind_record_card(bands.get_node("AgeBand%d" % band.group) as PanelContainer, "%s%s" % ["Current • " if band.active else "", band.name], "Ages %d–%d" % [band.minimum_age, band.maximum_age], "No changes" if changes.is_empty() else " • ".join(changes))
+		_scene_binding.bind_record_card(bands.get_node("AgeBand%d" % band.group) as PanelContainer, "%s%s" % ["Current • " if band.active else "", band.name], "Ages %d–%d" % [band.minimum_age, band.maximum_age], "No changes" if changes.is_empty() else "\n".join(changes))
 
 
 func _bind_background_region(frame: PanelContainer, kind: String, title: String, description: String, metrics: Array[CharacterMetricView]) -> void:
@@ -396,10 +400,10 @@ func _bind_background_region(frame: PanelContainer, kind: String, title: String,
 
 
 func _build_record(character: CharacterView) -> void:
-	var tab := get_node("CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetStatTabs/RecordTab") as VBoxContainer
+	var tab := get_node("CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetStatTabs/RecordTab") as VBoxContainer
 	tab.visible = true
 	var panel := tab.get_node("LifetimeRecord") as PanelContainer
-	_scene_binding.bind_existing_label(self, "CharacterSheetWorkspace/CharacterSheetContent/CharacterSheetStatTabs/RecordTab/LifetimeRecord/Content/Header/Prestige", "Prestige %d" % character.prestige, MUTED, 13)
+	_scene_binding.bind_existing_label(self, "CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent/CharacterSheetStatTabs/RecordTab/LifetimeRecord/Content/Header/Prestige", "Prestige %d" % character.prestige, MUTED, 13)
 	var grid := panel.get_node("Content/RecordCards") as GridContainer
 	grid.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 4
 	var record := character.lifetime_record
@@ -417,6 +421,8 @@ func _build_record(character: CharacterView) -> void:
 	_scene_binding.bind_record_value(grid, "Turned", record.turns)
 	var penalty := panel.get_node("Content/PrestigePenalty") as Label
 	_scene_binding.bind_label(penalty, "Prestige penalty %d" % character.prestige_penalty, BAD if character.prestige_penalty > 0 else MUTED, 13)
+	# The header already shows prestige; the penalty line is worth a row only when it explains a gap.
+	penalty.visible = character.prestige_penalty > 0 and character.prestige != -character.prestige_penalty
 
 
 func _select_character(character_id: String) -> void:

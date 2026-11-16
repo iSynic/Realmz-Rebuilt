@@ -10,12 +10,15 @@ var _item_stats: Label
 var _buy_button: Button
 var _sell_button: Button
 var _identify_button: Button
+var _equip_button: Button
 var _game_view: GameView
 var _selected_item: InteractionRequestValue.InventoryItem
 var _selected_item_owner_id: String
 
 
-func bind_controls(summary: Label, transaction_facts: Label, item_stats: Label, buy_button: Button, sell_button: Button, identify_button: Button) -> void:
+func bind_controls(summary: Label, transaction_facts: Label, item_stats: Label, buy_button: Button, sell_button: Button, identify_button: Button, equip_button: Button) -> void:
+	_equip_button = equip_button
+	_equip_button.pressed.connect(submit_equipment)
 	_summary = summary
 	_transaction_facts = transaction_facts
 	_item_stats = item_stats
@@ -49,6 +52,11 @@ func render(game_view: GameView, stock: InteractionRequestValue.ShopStock, item:
 		_buy_button.tooltip_text = "Select shop stock." if stock == null else "No shopper is available." if shopper_id.is_empty() else stock.buy_reason if not stock.can_buy else ""
 		_sell_button.tooltip_text = "Select a carried item." if item == null else item.sell_reason if not item.can_sell else ""
 		_identify_button.tooltip_text = "Select a carried item." if item == null else item.identify_reason if not item.can_identify else ""
+	# Equipment can change at the counter: wear a purchase at once, or take an item off to sell it.
+	var wearing := _equipment_action()
+	_equip_button.text = "Unequip" if item != null and item.equipped else "Equip"
+	_equip_button.disabled = pair_trade or wearing == null or not wearing.enabled
+	_equip_button.tooltip_text = "Return to Shop Keeper to change equipment." if pair_trade else "Select a carried item." if wearing == null else wearing.reason if not wearing.enabled else "Take this item off so it can be sold or traded." if item.equipped else "Put this item on now."
 	if stock != null:
 		_summary.text = stock.description if not stock.description.is_empty() else stock.name
 		_summary.tooltip_text = stock.buy_reason
@@ -68,6 +76,23 @@ func render(game_view: GameView, stock: InteractionRequestValue.ShopStock, item:
 		_item_stats.text = ""
 
 
+## Asks the session to put the selected carried item on, or take it off.
+func submit_equipment() -> void:
+	var wearing := _equipment_action()
+	if wearing != null and wearing.enabled:
+		trade_requested.emit(InteractionResponse.ShopBody.new(&"unequip" if _selected_item.equipped else &"equip", _selected_item_owner_id, _selected_item.instance_id))
+
+
+## The session's verdict on putting the selected item on or taking it off, or null with no item.
+func _equipment_action() -> ActionAvailabilityView:
+	if _game_view == null or _selected_item == null or _selected_item_owner_id.is_empty():
+		return null
+	var item := InventoryViewQueries.item_by_id(InventoryViewQueries.character_by_id(_game_view, _selected_item_owner_id), _selected_item.instance_id)
+	if item == null or item.actions == null:
+		return null
+	return item.actions.unequip if _selected_item.equipped else item.actions.equip
+
+
 func submit_trade(destination_id: String) -> void:
 	var target := trade_target(destination_id)
 	if target == null or not target.enabled:
@@ -85,12 +110,16 @@ func trade_target(destination_id: String) -> ItemTransferTargetView:
 	return InventoryViewQueries.trade_target(item, destination_id)
 
 
+## A four-column table: muted label, value, twice across. The details readout renders it.
 func _facts_text(facts: Array[InteractionRequestValue.ItemDetailFact], extra_label: String, extra_value: String) -> String:
-	var lines: Array[String] = []
+	var cells := ""
 	for fact: InteractionRequestValue.ItemDetailFact in facts:
-		lines.append("%s  %s" % [fact.label, fact.value])
-	lines.append("%s  %s" % [extra_label, extra_value])
-	return "  •  ".join(lines)
+		cells += _fact_cells(fact.label, fact.value)
+	return "[table=4]%s[/table]" % (cells + _fact_cells(extra_label, extra_value))
+
+
+static func _fact_cells(label: String, value: String) -> String:
+	return "[cell padding=0,0,10,2][color=#9aa0a8]%s[/color][/cell][cell padding=0,0,28,2]%s[/cell]" % [label, value]
 
 
 static func detail_facts(facts: Array[InteractionRequestValue.ItemDetailFact], suffix: Array[Dictionary]) -> Array[Dictionary]:

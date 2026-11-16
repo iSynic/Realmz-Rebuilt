@@ -45,7 +45,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.035, 0.043, 0.055, 1)
 
-[node name="StoneTexture" type="TextureRect" parent="."]
+[node name="StoneTexture" type="TextureRect" parent="." groups=["ui_theme_backdrop"]]
 modulate = Color(0.78, 0.8, 0.8, 0.72)
 layout_mode = 1
 anchors_preset = 15
@@ -91,14 +91,6 @@ theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 13
 text = "Space  ·  3D view"
 
-[node name="GameShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
-
-[node name="InteractionPanel" parent="." instance=ExtResource("3_uarpi")]
-
-[node name="ClassicAudio" type="Node" parent="." unique_id=321473188]
-unique_name_in_owner = true
-script = ExtResource("5_lvslj")
-
 [node name="BattlefieldMap" type="Control" parent="." unique_id=1843424003]
 unique_name_in_owner = true
 z_index = 5
@@ -109,6 +101,14 @@ mouse_filter = 2
 script = ExtResource("8_p3gde")
 
 [node name="MovementPreview" parent="BattlefieldMap" instance=ExtResource("10_movement")]
+
+[node name="GameShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
+
+[node name="InteractionPanel" parent="." instance=ExtResource("3_uarpi")]
+
+[node name="ClassicAudio" type="Node" parent="." unique_id=321473188]
+unique_name_in_owner = true
+script = ExtResource("5_lvslj")
 
 [node name="StartupRouteBridge" type="Node" parent="."]
 script = ExtResource("9_startup")

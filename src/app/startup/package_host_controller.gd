@@ -115,7 +115,7 @@ func start_install(package_path: String) -> bool:
 		_prepared_candidate = null
 		_prepared_candidate_source_path = ""
 		_prepared_candidate_campaign_id = ""
-		_foreground_operation = PackageOperationView.new(PackageOperationView.SUCCEEDED, &"complete", 1, 1, "Campaign ready.", &"", package_path, &"install_scenario")
+		_foreground_operation = PackageOperationView.new(PackageOperationView.SUCCEEDED, &"complete", 1, 1, "Scenario ready.", &"", package_path, &"install_scenario")
 		return true
 	if _task.snapshot().is_running():
 		if _task_source_path == package_path and _queued_foreground_path.is_empty() and not _task.cancellation_requested():

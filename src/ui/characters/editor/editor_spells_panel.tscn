@@ -1,0 +1,97 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_spells_panel.gd" id="1_editor_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_heading.tscn" id="2_classic_spel"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_button.tscn" id="3_classic_spel"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_spell_choice.tscn" id="4_spell_choice"]
+
+[sub_resource type="ButtonGroup" id="LevelGroup"]
+
+[node name="EditorSpellsPanel" type="VBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+script = ExtResource("1_editor_spell")
+choice_scene = ExtResource("4_spell_choice")
+
+[node name="LevelRail" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SpellLevelHeading" parent="LevelRail" instance=ExtResource("2_classic_spel")]
+layout_mode = 2
+
+[node name="SpellLevel1" parent="LevelRail" instance=ExtResource("3_classic_spel")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("LevelGroup")
+text = "Level 1"
+
+[node name="SpellLevel2" parent="LevelRail" instance=ExtResource("3_classic_spel")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("LevelGroup")
+text = "Level 2"
+
+[node name="SpellLevel3" parent="LevelRail" instance=ExtResource("3_classic_spel")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("LevelGroup")
+text = "Level 3"
+
+[node name="SpellLevel4" parent="LevelRail" instance=ExtResource("3_classic_spel")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("LevelGroup")
+text = "Level 4"
+
+[node name="SpellLevel5" parent="LevelRail" instance=ExtResource("3_classic_spel")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("LevelGroup")
+text = "Level 5"
+
+[node name="SpellLevel6" parent="LevelRail" instance=ExtResource("3_classic_spel")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("LevelGroup")
+text = "Level 6"
+
+[node name="SpellLevel7" parent="LevelRail" instance=ExtResource("3_classic_spel")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("LevelGroup")
+text = "Level 7"
+
+[node name="Summary" type="Label" parent="."]
+unique_name_in_owner = true
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Scroll" type="ScrollContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="SpellList" type="GridContainer" parent="Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+
+[node name="SpellDetail" type="Label" parent="."]
+unique_name_in_owner = true
+autowrap_mode = 3
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = ""

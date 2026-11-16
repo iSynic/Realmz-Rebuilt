@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://src/ui/combat/fast_spell_dock.gd" id="1_dock"]
 
-[node name="FastSpellDock" type="PanelContainer"]
+[node name="FastSpellDock" type="PanelContainer" groups=["ui_theme_textured"]]
 visible = false
 mouse_filter = 0
 theme_type_variation = &"ClassicInset"

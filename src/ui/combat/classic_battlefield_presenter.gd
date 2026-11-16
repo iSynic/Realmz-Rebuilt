@@ -7,6 +7,7 @@ extends Control
 const NATIVE_CELL_SIZE: float = BattlefieldPresentationGeometry.NATIVE_CELL_SIZE
 const TARGET_EDGE_DWELL_SECONDS := 0.35
 const TARGET_EDGE_STEP_SECONDS := 0.12
+const LEGAL_TARGET_COLOR := Color(1.0, 0.88, 0.32, 0.98)
 
 var result_text := CombatResultTextPlayback.new()
 var result_text_paused: Callable
@@ -377,6 +378,7 @@ func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells
 	var targeting := interaction.targeting
 	if targeting == null:
 		return
+	_draw_legal_target_cells(targeting, camera, visible_cells, draw_origin)
 	if targeting.mode == &"area":
 		var center := targeting.selected_coordinate if targeting.selected_coordinate.x >= 0 else targeting.hovered_coordinate
 		if center.x < 0:
@@ -411,7 +413,8 @@ func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells
 	for candidate_id: String in targeting.candidate_ids:
 		var rect := _combatant_rect(combat, candidate_id, camera, visible_cells, draw_origin)
 		if rect.has_area():
-			draw_rect(rect.grow(2.0), Color(0.86, 0.80, 0.62, 0.78), false, 2.0)
+			draw_rect(rect.grow(2.0), Color(0.0, 0.0, 0.0, 0.85), false, 4.0)
+			draw_rect(rect.grow(2.0), LEGAL_TARGET_COLOR, false, 2.0)
 	for index: int in targeting.selected_ids.size():
 		var selected_id := targeting.selected_ids[index]
 		var rect := _combatant_rect(combat, selected_id, camera, visible_cells, draw_origin)
@@ -420,6 +423,15 @@ func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells
 		draw_rect(rect.grow(4.0), Color(1.0, 0.86, 0.28, 0.98), false, 4.0)
 		if targeting.mode == &"sequence":
 			draw_string(get_theme_font(&"font", &"Label"), rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
+
+
+## Touch has no hover preview, so every request-supplied legal center or summon anchor
+## is shaded; presentation still claims no legality beyond the request's own list.
+func _draw_legal_target_cells(targeting: CombatTargetingState, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
+	if targeting.mode not in [&"area", &"coordinate_sequence"] or targeting.validation_deferred: return
+	for coordinate: Vector2i in targeting.legal_coordinates:
+		if BattlefieldPresentationGeometry.coordinate_is_visible(coordinate, camera, visible_cells):
+			draw_rect(BattlefieldPresentationGeometry.cell_rect(coordinate, camera, draw_origin), Color(LEGAL_TARGET_COLOR, 0.2), true)
 
 
 func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:

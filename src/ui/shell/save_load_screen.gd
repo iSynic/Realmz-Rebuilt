@@ -6,6 +6,15 @@ extends SystemScreen
 @export var window_fraction := Vector2(0.9, 0.9)
 
 
+## Back joins the save actions at the bottom right instead of taking a row of its own.
+func _enter_tree() -> void:
+	var back := get_node_or_null("WorkspaceColumn/RouteFooter/RouteBackAction") as Button
+	if back == null: return
+	back.owner = null
+	back.reparent(workspace().get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions"))
+	back.owner = self
+
+
 func set_workspace_rect(workspace_rect: Rect2) -> void:
 	var profile := UiSizing.profile_for(self)
 	var interface_scale := profile.ui_scale if profile != null else 1.0

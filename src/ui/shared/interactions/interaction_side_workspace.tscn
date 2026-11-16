@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[node name="InteractionSideWorkspace" type="PanelContainer"]
+[node name="InteractionSideWorkspace" type="PanelContainer" groups=["ui_theme_textured"]]
 mouse_filter = 0
 theme_type_variation = &"ClassicInset"
 

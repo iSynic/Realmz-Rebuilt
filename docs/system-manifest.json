@@ -43,7 +43,8 @@
         "world",
         "combat",
         "scenario",
-        "session"
+        "session",
+        "editing"
       ]
     },
     {
@@ -91,7 +92,8 @@
         "src/game/characters/caste_definition.gd",
         "src/game/characters/party_state.gd",
         "src/game/characters/requests",
-        "src/playthrough/characters"
+        "src/playthrough/characters",
+        "src/playthrough/editing"
       ],
       "publicInterfaces": [
         "CharacterCatalog",

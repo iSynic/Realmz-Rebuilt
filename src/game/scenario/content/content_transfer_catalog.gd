@@ -6,6 +6,8 @@ var _fingerprints: Dictionary = {}
 var _scenario_owned: Dictionary = {}
 var _application_fingerprints: Dictionary = {}
 var _projection_fingerprints: Dictionary = {}
+## Identity-free definition digests let byte-identical records match across differing IDs.
+var _content_fingerprints: Dictionary = {}
 
 
 func record(kind: StringName, id: String, fingerprint: String, scenario_owned: bool) -> void:
@@ -20,6 +22,26 @@ func inherit_application(application: ContentTransferCatalog) -> void:
 		_fingerprints = application._fingerprints.duplicate()
 		_application_fingerprints = application._fingerprints.duplicate()
 		_projection_fingerprints = application._projection_fingerprints.duplicate()
+		_content_fingerprints = application._content_fingerprints.duplicate()
+
+
+func record_content(kind: StringName, id: String, digest: String) -> void:
+	_content_fingerprints["%s:%s" % [kind, id]] = digest
+
+
+func content_fingerprint(kind: StringName, id: String) -> String:
+	return _content_fingerprints.get("%s:%s" % [kind, id], "")
+
+
+## Sorted IDs whose identity-free definition equals the digest.
+func ids_with_content(kind: StringName, digest: String) -> Array[String]:
+	var result: Array[String] = []
+	var prefix := "%s:" % kind
+	for key: String in _content_fingerprints:
+		if key.begins_with(prefix) and _content_fingerprints[key] == digest and _fingerprints.has(key):
+			result.append(key.trim_prefix(prefix))
+	result.sort()
+	return result
 
 
 func record_projection(kind: StringName, id: String, digest: String) -> void:
@@ -31,6 +53,7 @@ func exclude_definition(kind: StringName, id: String) -> void:
 	_fingerprints.erase(key)
 	_scenario_owned.erase(key)
 	_projection_fingerprints.erase(key)
+	_content_fingerprints.erase(key)
 
 
 func projection_fingerprint(kind: StringName, id: String) -> String:

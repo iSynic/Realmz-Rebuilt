@@ -32,6 +32,8 @@ func resume_battle(continuation: ScenarioRuntimeContinuation, response: Interact
 	match continuation.kind:
 		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.SAFE_COMBAT:
 			return _resume_battle(continuation, response, request_id)
+		ScenarioRuntimeContinuation.CLASSIC_BATTLE_PRELUDE:
+			return _resume_battle_prelude(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.SAFE_COMBAT_RETREAT:
 			return _resume_battle_retreat(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.SAFE_COMBAT_FRIENDLY_COLLISION:
@@ -57,8 +59,21 @@ func complete_debug_victory(continuation: ScenarioRuntimeContinuation, request_i
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed debug battle does not match its issuing continuation.")
 	return _finish_battle_with_allies(continuation.kind, combat_continuation.caller, request_id, events)
 
+func _resume_battle_prelude(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	var body := continuation.body as ScenarioBattlePreludeBody
+	var acknowledgement := response.body as InteractionResponse.AcknowledgeBody
+	if acknowledgement == null or response.kind != InteractionRequest.ACKNOWLEDGE:
+		return ScenarioRuntimeOperationResult.rejected(&"invalid_interaction_response", "The message before a battle requires an acknowledgement.")
+	if body == null or _game_state.combat != null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The message before a battle cannot resume.")
+	var events: Array[DomainEvent] = []
+	if not ClassicBattlePrelude.take_note(_game_state, acknowledgement, body.message_id, events):
+		return ScenarioRuntimeOperationResult.rejected(&"journal_message_unrepresentable", "This message cannot be recorded in the journal.")
+	var action := ClassicActionDefinition.new(0, body.opcode, body.opcode, 0, body.gosub, body.extra_code)
+	return _enter_classic_battle(action, request_id, body.context, events, body.battle_number if body.stage == ScenarioBattlePreludeBody.BATTLE else null)
+
+
 func _start_classic_battle(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
-	var battle_id := ClassicBattleSelection.select(action, _content.package_schema_version, _rng)
 	var prelude: Array[DomainEvent] = []
 	if not action.extra_code.is_empty():
 		var sound_id := action.extra_code[3] if action.opcode == 56 else action.extra_code[2]
@@ -72,8 +87,19 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String, 
 			var message := _content.scenario_records.message_by_id(absi(message_id))
 			if message == null and action.opcode != 2 and not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(message_id)):
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable battle message %d." % [action.opcode, message_id])
+			# textbox-time.c waits for a click on a positive message before the battle is chosen.
+			if message != null and message_id > 0:
+				return ClassicBattlePrelude.wait(ScenarioBattlePreludeBody.INSTRUCTION, message, action, 0, context, request_id, _game_state, prelude)
 			if message != null:
 				prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
+	return _enter_classic_battle(action, request_id, context, prelude)
+
+
+## Chooses the battle and starts it. `chosen` is the battle whose before-message the
+## player has already acknowledged; without it the battle is selected here and its
+## before-message may suspend the instruction once more.
+func _enter_classic_battle(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext, prelude: Array[DomainEvent], chosen: Variant = null) -> ScenarioRuntimeOperationResult:
+	var battle_id: int = chosen if chosen != null else ClassicBattleSelection.select(action, _content.package_schema_version, _rng)
 	var caller_mode := action.extra_code[4] if action.opcode in [2, 48] and action.extra_code.size() > 4 else 0
 	# Opcode-2 mode 10 uses the same authored Extra Code word for its prelude
 	# sound and for the XAP to run after a total-party loss. Retain that target
@@ -94,7 +120,10 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String, 
 		participants = _game_state.scenario_progress.selected_character_ids()
 		if participants.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"no_selected_characters", "Classic opcode 48 requires at least one selected party member.")
-	var operation := start_battle_definition(battle, request_id, "classic", caller, participants, -1 if _content.package_schema_version >= 7 and battle_id < 0 else 0)
+	var before := ClassicBattlePrelude.before_message(_content, battle) if chosen == null else null
+	if before != null:
+		return ClassicBattlePrelude.wait(ScenarioBattlePreludeBody.BATTLE, before, action, battle_id, context, request_id, _game_state, prelude)
+	var operation := start_battle_definition(battle, request_id, "classic", caller, participants, -1 if _content.package_schema_version >= 7 and battle_id < 0 else 0, chosen != null)
 	if operation.state != ScenarioRuntimeOperationResult.State.FAILED:
 		operation.events = prelude + operation.events
 	return operation
@@ -177,12 +206,12 @@ func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioR
 	return ScenarioRuntimeOperationResult.completed(battle_id, events, directive).with_battle_return(BattleReturnResult.new(battle_id,&"retreated"))
 
 
-func start_battle_definition(battle: BattleDefinition, request_id: String, source: String, caller: ScenarioBattleCaller, participant_character_ids: Array[String] = [], surprise: int = 0) -> ScenarioRuntimeOperationResult:
+func start_battle_definition(battle: BattleDefinition, request_id: String, source: String, caller: ScenarioBattleCaller, participant_character_ids: Array[String] = [], surprise: int = 0, before_shown: bool = false) -> ScenarioRuntimeOperationResult:
 	var result := _rules.combat_flow.start_battle(_game_state, _content, battle, _rng, surprise, participant_character_ids)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message, result.events)
 	var events: Array[DomainEvent] = []
-	if battle.message_before_id != 0:
+	if battle.message_before_id != 0 and not before_shown:
 		var before := _content.scenario_records.message_by_id(absi(battle.message_before_id))
 		if before == null and not ClassicCompatibility.source_unavailable(_content, "Data SD2", absi(battle.message_before_id)):
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Battle '%s' references unavailable before-message %d." % [battle.id, battle.message_before_id])

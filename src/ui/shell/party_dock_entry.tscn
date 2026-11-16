@@ -1,0 +1,10 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/party_dock_entry.gd" id="1_entry"]
+
+[node name="PartyDockEntry" type="Control"]
+texture_filter = 1
+custom_minimum_size = Vector2(72, 44)
+layout_mode = 2
+mouse_filter = 1
+script = ExtResource("1_entry")

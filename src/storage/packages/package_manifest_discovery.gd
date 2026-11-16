@@ -10,6 +10,8 @@ var _schema_hashes: Dictionary
 var _supported_capabilities: Array[String]
 var _deferred_capabilities: Array[String]
 var _archive_reader: PackageArchiveReader
+## Manifest inspection results by path, reused while the archive keeps its modification time.
+var _inspected: Dictionary = {}
 
 
 func _init(schema_hashes: Dictionary, supported_capabilities: Array[String], deferred_capabilities: Array[String], archive_reader: PackageArchiveReader) -> void:
@@ -26,7 +28,11 @@ func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryRes
 	paths.sort()
 	var discovered: Array[PackageDiscoveryResult] = []
 	for path: String in paths:
-		discovered.append(inspect(path))
+		var modified := FileAccess.get_modified_time(path)
+		var cached: Array = _inspected.get(path, [])
+		var result: PackageDiscoveryResult = cached[1] if not cached.is_empty() and int(cached[0]) == modified else inspect(path)
+		_inspected[path] = [modified, result]
+		discovered.append(result)
 	return discovered
 
 

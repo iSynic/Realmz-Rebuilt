@@ -23,6 +23,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/presentation/test_music_system.gd"),
 	preload("res://tests/presentation/test_music_playback.gd"),
 	preload("res://tests/presentation/test_controller_support.gd"),
+	preload("res://tests/presentation/test_ui_themes.gd"),
 	preload("res://tests/presentation/test_classic_ui_shell.gd"),
 	preload("res://tests/presentation/test_classic_ui_system.gd"),
 	preload("res://tests/presentation/test_treasure_workspace.gd"),
@@ -33,6 +34,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/scenario/test_reward_workflow.gd"),
 	preload("res://tests/scenario/test_scenario_vm.gd"),
 	preload("res://tests/scenario/test_swordlands_battle_prelude.gd"),
+	preload("res://tests/scenario/test_battle_prelude.gd"),
 	preload("res://tests/integration/test_exploration_session.gd"),
 	preload("res://tests/integration/test_session_persistence.gd"),
 	preload("res://tests/integration/test_inventory_session.gd"),
@@ -40,6 +42,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/integration/test_scroll_camp_workflow.gd"),
 	preload("res://tests/integration/test_money_workflow.gd"),
 	preload("res://tests/integration/test_party_order_workflow.gd"),
+	preload("res://tests/integration/test_save_editing.gd"),
 	preload("res://tests/integration/test_character_appearance_workflow.gd"),
 ]
 const USAGE: String = "Usage: godot --headless --path <project> --script res://tests/test_runner.gd [-- --suite <path-fragment> ...] [--case <test-name-fragment> ...]"
@@ -113,6 +116,9 @@ func _run() -> void:
 	for suite_script: Script in selected_suites:
 		var suite_started: int = Time.get_ticks_msec()
 		print("RUN SUITE: %s" % suite_script.resource_path)
+		# A suite that built the application leaves its interface theme applied; every suite
+		# starts from the authored look, whichever suites ran before it.
+		UiThemeService.apply(self, UiThemeCatalog.DEFAULT_ID)
 		var suite: RealmzTestCase = suite_script.new()
 		if requested_cases.is_empty():
 			await suite.run()

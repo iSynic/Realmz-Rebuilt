@@ -35,11 +35,7 @@ var combat: CombatInteractionController:
 @onready var _stage_opaque_backing: ColorRect = $StageOpaqueBacking
 @onready var _stage_backing: TextureRect = $StageBacking
 @onready var _combat_activity: CombatActivityStrip = %CombatActivityStrip
-@onready var _playback_result_cue: PanelContainer = %PlaybackResultCue
-@onready var _playback_target_icon: TextureRect = %TargetIcon
-@onready var _playback_target_name: Label = %TargetName
-@onready var _playback_result: Label = %Result
-@onready var _playback_target_vitals: Label = %Vitals
+@onready var _playback_result_cue: CombatPlaybackResultCue = %PlaybackResultCue
 
 var pause_background_active := false:
 	set(active):
@@ -247,6 +243,7 @@ func _begin_request(request: InteractionRequest) -> bool:
 	_scroll.visible = true
 	_set_classic_acknowledgement_cursor(_uses_global_classic_acknowledgement())
 	_passive_text = false
+	set_text_scale(0.0)
 	_playback_masked = false
 	_scroll.scroll_horizontal = 0
 	_scroll.scroll_vertical = 0
@@ -354,7 +351,7 @@ func present_combat_playback_mask(frame: CombatPlaybackFrame = null, base_view: 
 	_combat_activity.set_compact(_combat_rect.size.x < 1000.0)
 	_combat_activity.set_status("Auto combat • Esc cancels Party Auto • Space skips visual playback" if frame != null and frame.automatic else "Combat playback • Space skips visual playback")
 	_combat_activity.show_frame(frame)
-	_update_playback_result_cue(frame)
+	_playback_result_cue.present(frame, _playback_combatant_facts, _combat_activity.visible)
 	visible = true
 	_claim_modal_layer()
 	_apply_classic_region()
@@ -364,33 +361,8 @@ func update_combat_playback_frame(frame: CombatPlaybackFrame) -> void:
 	if _playback_masked:
 		_combat_activity.set_status("Auto combat • Esc cancels Party Auto • Space skips visual playback" if frame != null and frame.automatic else "Combat playback • Space skips visual playback")
 		_combat_activity.show_frame(frame)
-		_update_playback_result_cue(frame)
+		_playback_result_cue.present(frame, _playback_combatant_facts, _combat_activity.visible)
 
-
-func _update_playback_result_cue(frame: CombatPlaybackFrame) -> void:
-	_playback_result_cue.visible = false
-	_playback_target_icon.texture = null
-	_playback_target_name.text = ""
-	_playback_result.text = ""
-	_playback_target_vitals.text = ""
-	_playback_target_vitals.visible = false
-	if _combat_activity.visible or frame == null or frame.kind != &"result" or frame.target_id.is_empty() or frame.display_text.is_empty():
-		return
-	var facts: Dictionary = _playback_combatant_facts.get(frame.target_id, {})
-	if facts.is_empty():
-		return
-	_playback_target_name.text = String(facts.get("name", ""))
-	if _playback_target_name.text.is_empty():
-		return
-	var icon: Variant = facts.get("icon")
-	if icon is Texture2D:
-		_playback_target_icon.texture = icon
-	_playback_result.text = frame.display_text
-	var maximum_health := int(facts.get("maximumHealth", 0))
-	if maximum_health > 0 and frame.combatant_health.has(frame.target_id):
-		_playback_target_vitals.text = "ST %d/%d" % [int(frame.combatant_health[frame.target_id]), maximum_health]
-		_playback_target_vitals.visible = true
-	_playback_result_cue.visible = true
 
 
 func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> void:
@@ -437,6 +409,7 @@ func present_passive_classic_text(text: String) -> void:
 	_prompt.text = text
 	_prompt.visible = not text.is_empty()
 	_passive_text = not text.is_empty()
+	set_text_scale(0.0)
 	visible = not text.is_empty()
 	if visible:
 		_claim_modal_layer()
@@ -465,9 +438,12 @@ func submit_character_selection(character_ids: Array[String]) -> bool:
 	return true
 
 
+## Also re-chooses the prompt face: Classic scenario text keeps the narrative font it is later recorded in.
 func set_text_scale(_value: float) -> void:
 	UiSizing.font_size(_heading, &"font_size", 18)
-	UiSizing.font_size(_prompt, &"font_size", 18)
+	var classic_text := _passive_text or _uses_global_classic_acknowledgement()
+	_prompt.theme_type_variation = &"ClassicNarrativeText" if classic_text else &""
+	UiSizing.font_size(_prompt, &"font_size", 17 if classic_text else 18)
 
 
 func set_autojournal_enabled(enabled: bool) -> void:
@@ -610,6 +586,8 @@ func _apply_classic_region() -> void:
 		var region := LayoutPolicy.interaction_region(_request, _textbox_rect, _combat_rect)
 		if _combat.is_spellbook_open() and _request != null and _request.kind == InteractionRequest.COMBAT:
 			region.size.x = minf(region.size.x, maxf(0.0, _side_workspace_rect.position.x - region.position.x))
+		# The modular combat deck floats over the battlefield; its emptied console waits below the window.
+		if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).deck_layout.parked(): region.position.y = _application_rect.end.y + region.size.y
 		position = region.position
 		size = region.size
 	elif LayoutPolicy.uses_full_stage_region(_request):
@@ -619,20 +597,14 @@ func _apply_classic_region() -> void:
 		size = region.size
 	else:
 		theme_type_variation = &"MenuDialog" if _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE else &"ClassicInset"
-		var modal_region := _application_rect if LayoutPolicy.uses_application_modal_region(_request) else _stage_rect
 		var profile := UiSizing.profile_for(self)
-		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
-			var minimum := _content.get_combined_minimum_size() + get_theme_stylebox("panel").get_minimum_size()
-			if minimum.x > modal_region.size.x or minimum.y > modal_region.size.y:
-				modal_region = _application_rect
-		var desired := LayoutPolicy.preferred_modal_size(_request, modal_region.size, profile.ui_scale if profile != null else 1.0)
-		if _request != null and _request.kind == InteractionRequest.THIEF_ENCOUNTER:
-			desired.y = minf(maxf(280.0 * (profile.ui_scale if profile != null else 1.0), _content.get_combined_minimum_size().y + get_theme_stylebox("panel").get_minimum_size().y), modal_region.size.y - 4.0)
-		size = desired
-		position = modal_region.position + (modal_region.size - size) * 0.5
+		var region := LayoutPolicy.centred_modal_rect(_request, _application_rect, _stage_rect, _content.get_combined_minimum_size() + get_theme_stylebox("panel").get_minimum_size(), profile.ui_scale if profile != null else 1.0)
+		size = region.size
+		position = region.get_center() - size * 0.5
 	var encounter_surface := _request != null and _request.kind in [InteractionRequest.WORD_AND_ACTION, InteractionRequest.THIEF_ENCOUNTER]
 	var modal_surface := encounter_surface or LayoutPolicy.uses_floating_choice_modal(_request) or not LayoutPolicy.uses_textbox_region(_request)
 	_overlays.update_modal_shield(not _playback_masked and _request != null and modal_surface and not LayoutPolicy.uses_full_stage_region(_request), not pause_background_active and not encounter_surface and not LayoutPolicy.uses_floating_choice_modal(_request))
+	UiThemeService.dress(self, get_meta(&"hud_surface") as StyleBox if has_meta(&"hud_surface") and theme_type_variation != &"MenuDialog" else null, theme_type_variation == &"MenuDialog" or has_meta(&"hud_surface"))
 	_apply_content_layout()
 	_overlays.apply_layout()
 

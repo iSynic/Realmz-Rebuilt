@@ -10,6 +10,7 @@ const FIXTURE_REQUEST_SCRIPT := preload("res://src/app/platform/runtime_testing_
 const DISPLAY_COMPOSITOR_SCENE := preload("res://src/ui/shared/display_compositor.tscn")
 const SCENE_PREVIEW_REGISTRY_PATH := "res://addons/realmz_builder/scene_previews.json"
 const ScalingAudit := preload("res://tools/ui_scaling_audit.gd")
+const PartyImportViews := preload("res://tools/gallery_party_import_views.gd")
 const SIZING_MATRIX_SIZES: Array[Vector2i] = [Vector2i(1280, 720), Vector2i(800, 600), Vector2i(1920, 1080), Vector2i(2560, 1392), Vector2i(2560, 1440), Vector2i(3440, 1440), Vector2i(3840, 2160)]
 const SIZING_MATRIX_SURFACES: Array[String] = ["application-shell", "character-sheet", "character-files", "allies", "bestiary", "inventory", "spells", "services", "maps-journal", "system", "campaign-selection", "party-assembly", "party-import-from-save", "character-creation", "shop", "temple", "bank", "treasure", "encounter", "level-up", "pick-lock", "lifecycle-prompts", "scrolling-text", "combat-command-deck", "roster-spellbook"]
 var _application: RealmzApplication
@@ -30,13 +31,36 @@ var _audit_filter := ""
 var _audit_states: Dictionary = {}
 var _audit_failures := 0
 var _audit_metadata: FileAccess
+## Wall-clock bounds so a stuck await or script error can never hang the gallery.
+const DEFAULT_TIME_BUDGET_SECONDS := 600
+const MAX_TIME_BUDGET_SECONDS := 3600
+const STALL_SECONDS := 120
+var _time_budget_seconds := DEFAULT_TIME_BUDGET_SECONDS
+var _last_capture_label := "(none)"
+var _last_progress_msec := 0
 
 
 func _initialize() -> void:
 	if not _read_launch_arguments():
 		quit(2)
 		return
+	_last_progress_msec = Time.get_ticks_msec()
+	create_timer(_time_budget_seconds, true, false, true).timeout.connect(_stop_for_budget.bind("time budget of %d seconds exceeded" % _time_budget_seconds))
+	_watch_for_stall()
 	call_deferred("_capture_gallery")
+
+
+func _watch_for_stall() -> void:
+	create_timer(5.0, true, false, true).timeout.connect(func() -> void:
+		if Time.get_ticks_msec() - _last_progress_msec > STALL_SECONDS * 1000:
+			_stop_for_budget("no capture for %d seconds" % STALL_SECONDS)
+		else:
+			_watch_for_stall())
+
+
+func _stop_for_budget(reason: String) -> void:
+	printerr("GALLERY_TIMEOUT: %s; last capture %s." % [reason, _last_capture_label])
+	quit(3)
 
 
 func _read_launch_arguments() -> bool:
@@ -52,6 +76,12 @@ func _read_launch_arguments() -> bool:
 				if index + 1 >= arguments.size(): return false
 				index += 1
 				_audit_filter = arguments[index]
+			"--time-budget":
+				if index + 1 >= arguments.size() or not arguments[index + 1].is_valid_int() or int(arguments[index + 1]) < 1 or int(arguments[index + 1]) > MAX_TIME_BUDGET_SECONDS:
+					printerr("FIXTURE_REQUEST_REJECTED: --time-budget needs whole seconds from 1 through %d." % MAX_TIME_BUDGET_SECONDS)
+					return false
+				index += 1
+				_time_budget_seconds = int(arguments[index])
 			"--fixture-config":
 				if not fixture_config_path.is_empty() or index + 1 >= arguments.size():
 					printerr("FIXTURE_REQUEST_REJECTED: Supply one absolute --fixture-config path.")
@@ -163,15 +193,16 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("canonical-package-install-progress-1280x720")
 	_router.setup_controller.campaign_library.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
-	_router.setup_controller.show_party_import({"phase": "selection", "sources": [], "message": "Choose a saved adventure. Its world state stays behind."})
+	_router.setup_controller.show_party_import({"phase": "selection", "sources": []})
 	await _settle()
 	await _capture("canonical-party-import-from-save-1280x720")
 	_router.setup_controller.close_party_import()
 	var package_step := _application.start_package(FIXTURE_PATH, 1); assert(package_step.state != SessionStep.State.FAILED, "Unable to start the UI gallery fixture: %s" % package_step.error_message)
 	await _settle()
 	await _capture_compact_canonical("compact-party-setup-800x600", "canonical-party-setup-1280x720")
-	await _resize(Vector2i(800, 600))
 	var setup_view := _application.session_controller.view()
+	await _capture_party_import(setup_view)
+	await _resize(Vector2i(800, 600))
 	var setup := _router.setup_controller
 	var inspection_state := CharacterState.new("gallery.setup.inspect", "Ari", 18, 18)
 	inspection_state.race_id = setup_view.race_options[0].id
@@ -180,7 +211,7 @@ func _capture_gallery() -> void:
 	inspection_state.combat_icon_id = setup_view.combat_icon_options[0].id if not setup_view.combat_icon_options.is_empty() else ""
 	setup_view.party_members = [CharacterView.new(inspection_state, _application.get("_active_content") as RealmzContent)]
 	_shell.present(setup_view)
-	var setup_inspect := _button_named(setup.party_list, "View")
+	var setup_inspect := setup.party_list.find_child("InspectPartyCharacter", true, false) as Button
 	if setup_inspect != null:
 		setup_inspect.pressed.emit(); await _settle(); await _capture_compact_canonical("compact-party-setup-inspection-800x600", "canonical-party-setup-inspection-1280x720")
 		var setup_back := _button_named(setup.setup_inspection_overlay, "Back to party setup")
@@ -487,10 +518,18 @@ func _capture_gallery() -> void:
 		_router.open_screen(&"vault")
 		await _settle()
 		await _capture("canonical-character-files-1280x720")
-		var vault_inspect := _button_named(_router, "Inspect")
+		var vault_inspect := _button_named(_router, "Full character sheet")
 		if vault_inspect != null:
 			vault_inspect.pressed.emit(); await _settle(); await _capture_canonical_compact("canonical-character-file-inspection-1280x720", "classic-character-file-inspection-800x600")
-		var vault_back := _button_named(_router, "Back to character vault"); if vault_back != null: vault_back.pressed.emit(); await _settle()
+		var vault_back := _button_named(_router, "‹  Back to Character Files"); if vault_back != null: vault_back.pressed.emit(); await _settle()
+		# Archived characters left the party, so they carry their own identities and can be deleted.
+		for archived_revision: CharacterVaultRevisionView in vault_revisions.slice(4): archived_revision.character_id = "gallery.archived.%s" % archived_revision.revision_hash.left(8); archived_revision.archived = true; archived_revision.is_current = false; archived_revision.last_current = true
+		vault_revisions[1].eligible = false; vault_revisions[1].eligibility_reasons.assign(["Level %d is above this scenario's maximum level of 2." % vault_revisions[1].level])
+		_router.set_vault_revisions(vault_revisions, "1 Character File uses an older format and was kept unchanged."); _router.present(gallery_view); await _settle(); await _capture("canonical-character-files-notice-1280x720")
+		var archived_tab := _router.find_child("ArchivedTab", true, false) as Button; if archived_tab != null: archived_tab.pressed.emit(); await _settle(); await _capture_canonical_compact("canonical-character-files-archived-1280x720", "classic-character-files-archived-800x600")
+		var delete_button := _router.find_child("DeletePermanently", true, false) as Button; if delete_button != null and delete_button.is_visible_in_tree(): await _resize(Vector2i(800, 600)); delete_button.pressed.emit(); await _settle(); await _capture("classic-character-files-delete-confirm-800x600"); (_router.find_child("ArchiveConfirmation", true, false) as Window).hide(); await _resize(Vector2i(1280, 720))
+		_router.set_vault_revisions([]); _router.present(gallery_view); await _settle(); await _capture("canonical-character-files-empty-1280x720")
+		_router.set_vault_revisions(vault_revisions); (_router.find_child("ActiveTab", true, false) as Button).pressed.emit(); _router.present(gallery_view); await _settle()
 	await _resize(Vector2i(800, 600)); await _capture("classic-character-files-800x600")
 	_router.open_screen(&"exploration")
 	await _settle()
@@ -575,12 +614,12 @@ func _capture_gallery() -> void:
 	var current_save := SAVE_SLOT_PREVIEW_SCRIPT.new("C", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.VALID); current_save.rules_version = gallery_view.rules_version; current_save.package_hash = "1".repeat(64); current_save.realmz_day = 5; current_save.realmz_hour = 15; current_save.realmz_minute = 55; current_save.map_id = "land:0"; current_save.coordinate = Vector2i(49, 15); current_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; current_save.can_load = true; current_save.map_preview_jpeg = _application._map_presenter.save_map_preview_jpeg(); assert(not current_save.map_preview_jpeg.is_empty(), "Save gallery needs a rendered overworld JPEG.")
 	var backup_save := SAVE_SLOT_PREVIEW_SCRIPT.new("C", SAVE_SLOT_PREVIEW_SCRIPT.BACKUP, SAVE_SLOT_PREVIEW_SCRIPT.VALID); backup_save.rules_version = gallery_view.rules_version; backup_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; backup_save.can_load = true
 	var corrupt_save := SAVE_SLOT_PREVIEW_SCRIPT.new("broken", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.CORRUPT); corrupt_save.error_message = "This save is corrupt or uses an unsupported schema. The active session is unchanged."
-	_router.content_presenter.set_save_previews([current_save, backup_save, corrupt_save], "C", "C")
+	_router.content_presenter.system_preferences.saves.set_save_previews([current_save, backup_save, corrupt_save], "C", "C")
 	_router.open_screen(&"save_load")
 	await _settle()
 	await _capture_canonical_compact("canonical-save-modal-1280x720", "compact-save-modal-800x600")
 	var corrupt_row := _router.find_child("SavePreview_broken_primary", true, false) as Button
-	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720"); _router.content_presenter.set_save_previews([current_save, backup_save], "C", "C"); _router.open_screen(&"system")
+	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720"); _router.content_presenter.system_preferences.saves.set_save_previews([current_save, backup_save], "C", "C"); _router.open_screen(&"system")
 	var system_tabs := _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
 	for index: int in range(1, 6):
 		(system_tabs.get_parent().get_parent() as SystemPreferencesLayout).show_category(SystemPreferencesLayout.PREFERENCE_SECTIONS[index - 1]); await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "accessibility", "controls", "diagnostics"][index - 1])
@@ -597,7 +636,7 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(1280, 720)); _router.open_screen(&"exploration")
 	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture_canonical_compact("canonical-end-adventure-1280x720", "classic-end-adventure-800x600")
 	await _resize(Vector2i(1280, 720)); _interaction.present(APPLICATION_LIFECYCLE_SCRIPT.quit_application_request(true, false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-quit-800x600")
-	_interaction.present(null); _router.content_presenter.set_save_and_quit_mode(true); await _resize(Vector2i(1280, 720)); _router.open_screen(&"system"); await _settle(); await _capture("canonical-save-and-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-save-and-quit-800x600"); _router.content_presenter.set_save_and_quit_mode(false); _router.open_screen(&"exploration"); _shell.present(gallery_view); await _resize(Vector2i(1920, 1080)); await _capture("fit-explore-1920x1080"); await _resize(Vector2i(3440, 1440)); await _capture("fit-explore-ultrawide-3440x1440"); await _resize(Vector2i(3840, 2160)); await _capture("fit-explore-4k-3840x2160")
+	_interaction.present(null); _router.content_presenter.system_preferences.saves.set_save_and_quit_mode(true); await _resize(Vector2i(1280, 720)); _router.open_screen(&"system"); await _settle(); await _capture("canonical-save-and-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-save-and-quit-800x600"); _router.content_presenter.system_preferences.saves.set_save_and_quit_mode(false); _router.open_screen(&"exploration"); _shell.present(gallery_view); await _resize(Vector2i(1920, 1080)); await _capture("fit-explore-1920x1080"); await _resize(Vector2i(3440, 1440)); await _capture("fit-explore-ultrawide-3440x1440"); await _resize(Vector2i(3840, 2160)); await _capture("fit-explore-4k-3840x2160")
 	_application.queue_free()
 	await process_frame
 	if _sizing_matrix:
@@ -719,6 +758,17 @@ func _resolve_raw_anchor_nodes(raw_root: Control, anchor: String) -> Array[Node]
 	return matches
 
 
+func _capture_party_import(view: GameView) -> void:
+	var portraits: Array[String] = []
+	var icons: Array[String] = []
+	for option: Variant in view.portrait_options.slice(0, 4): portraits.append(String(option.id))
+	for option: Variant in view.combat_icon_options.slice(0, 4): icons.append(String(option.id))
+	for state: Array in [["selection", PartyImportViews.selection()], ["error", PartyImportViews.error()], ["review", PartyImportViews.review(portraits, icons)]]:
+		_router.setup_controller.show_party_import(state[1]); await _settle()
+		await _capture_canonical_compact("canonical-party-import-%s-1280x720" % state[0], "compact-party-import-%s-800x600" % state[0])
+	_router.setup_controller.close_party_import()
+
+
 func _capture_compact_canonical(compact_label: String, canonical_label: String) -> void:
 	await _resize(Vector2i(800, 600)); await _capture(compact_label); await _resize(Vector2i(1280, 720)); await _capture(canonical_label)
 
@@ -793,6 +843,8 @@ func _capture_scaling_audit(state: String) -> void:
 		_audit_metadata.flush()
 		if not failures.is_empty(): _audit_failures += 1
 		print("SCALING %s: %s (%d bounds failures)" % ["PASS" if failures.is_empty() else "FAIL", label, failures.size()])
+		_last_capture_label = label
+		_last_progress_msec = Time.get_ticks_msec()
 	await _apply_sizing_settings(PresentationSettings.UI_SCALE_AUTO, PresentationSettings.DISPLAY_RESPONSIVE, "classic", 1.0)
 	await _resize(original_size)
 	await _restore_capture_visibility(visibility)
@@ -945,6 +997,8 @@ func _save_capture(label: String, surface_id: String) -> void:
 		print("CAPTURED: %s • %s • %s" % [path, surface_id, actual_window])
 	else:
 		print("CAPTURED: %s" % path)
+	_last_capture_label = label
+	_last_progress_msec = Time.get_ticks_msec()
 
 
 func _button_named(parent: Node, text: String) -> Button:

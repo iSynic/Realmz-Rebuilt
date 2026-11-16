@@ -47,9 +47,12 @@ func set_workspace_rect(workspace_rect: Rect2) -> void:
 func _update_back_visibility() -> void:
 	var action := _back_action
 	if action == null:
-		action = get_node_or_null("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
+		action = get_node_or_null("WorkspaceColumn/RouteFooter/RouteBackAction") as Button
 	if action != null:
 		action.visible = _compact_route_exit or route_id not in [&"exploration", &"combat", &"vault", &"inventory", &"services"]
+		# Back sits at the bottom right on every route; an unused footer row gives its height back.
+		var footer := get_node_or_null("WorkspaceColumn/RouteFooter") as Control
+		if footer != null: footer.visible = action.visible and action.get_parent() == footer
 		if not action.pressed.is_connected(_emit_back_requested):
 			action.pressed.connect(_emit_back_requested)
 
@@ -57,7 +60,7 @@ func _update_back_visibility() -> void:
 func _configure_navigation() -> void:
 	var action := find_child("SpellsBackAction", true, false) as Button if route_id == &"spells" else _back_action
 	if action == null:
-		action = get_node_or_null("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
+		action = get_node_or_null("WorkspaceColumn/RouteFooter/RouteBackAction") as Button
 	if action == null:
 		return
 	_back_action = action

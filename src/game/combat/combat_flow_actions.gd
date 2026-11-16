@@ -460,6 +460,7 @@ static func mark_character_bleeding(state: GameState, character: CharacterState,
 	# killbody.c clears doauto as soon as a party combatant is removed from the
 	# battle, even when the body remains recoverable above -10 health.
 	state.set_combat_auto(character.id, false)
+	ConditionRules.clear_on_death(character)
 	if character.current_health > -10:
 		character.lifetime_record.record_knockout()
 		state.combat.actor_statuses.set_character_bleeding(character.id, true)
@@ -497,7 +498,7 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "queue-full", "source": "classic"})])
 	if not equipment.melee_weapon.cursed_item_id.is_empty():
 		return CombatFlowResult.from_combat(state.combat, [DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "cursed-weapon", "source": "classic"})]).with_fumble(CombatFlowResult.Fumble.CURSED_WEAPON)
-	if not _events.commit_character_fumble(state, content, character, equipment, events):
+	if not _events.commit_character_fumble(state, content, character, equipment, events, false):
 		return CombatFlowResult.failed(&"invalid_fumble_state", "The active character's melee weapon could not enter the recovery queue.")
 	return CombatFlowResult.from_combat(state.combat, events).with_fumble(CombatFlowResult.Fumble.COMMITTED)
 

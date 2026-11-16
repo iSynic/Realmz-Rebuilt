@@ -14,18 +14,18 @@ mouse_filter = 2
 
 [node name="InventoryShopMoney" type="Button" parent="."]
 visible = false
-custom_minimum_size = Vector2(56, 56)
+custom_minimum_size = Vector2(62, 38)
 layout_mode = 2
 text = "Money"
 
 [node name="InventoryShopDone" type="Button" parent="."]
 visible = false
-custom_minimum_size = Vector2(56, 56)
+custom_minimum_size = Vector2(62, 38)
 layout_mode = 2
 text = "Done"
 
 [node name="InventoryDone" type="Button" parent="."]
-custom_minimum_size = Vector2(56, 56)
+custom_minimum_size = Vector2(62, 38)
 layout_mode = 2
 tooltip_text = "Return to the previous screen."
 text = "Done"

@@ -376,15 +376,11 @@ func _ensure_controls() -> void:
 	if _controls_ready:
 		return
 	_controls_ready = true
-	($CombatSpellbookSelector/CombatSpellLevels/LevelHeading as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
-	($CombatSpellbookSelector/CombatSpellRecords/CombatSpellPowerChoices/PowerLabel as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.power")
 	var cast := $SpellbookFooter/CombatSpellbookActions/CombatSpellAim as Button
 	cast.text = "Choose Targets"
 	cast.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	cast.pressed.connect(_emit_cast)
 	var back := $SpellbookFooter/CombatSpellbookActions/CombatSpellbookBack as Button
-	back.icon = ClassicUiAssetCatalog.texture(&"spells.action.abort")
-	back.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	back.pressed.connect(func() -> void: back_requested.emit())
 
 

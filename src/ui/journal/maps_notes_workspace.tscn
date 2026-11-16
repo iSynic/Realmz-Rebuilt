@@ -97,7 +97,9 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/SavedLocationNotes/Content/Empty"]
 layout_mode = 2
-text = "No saved places\nWrite a note at the current location to create the first record."
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "No saved places\nWrite a note where the party stands to save the first one."
 autowrap_mode = 2
 
 [node name="CurrentLocationNotePane" type="PanelContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace"]
@@ -136,7 +138,9 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview/Empty"]
 layout_mode = 2
-text = "No selected place\nChoose a saved note to recenter its detached map view."
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "No place selected\nChoose a saved place to see it on the map."
 autowrap_mode = 2
 [node name="HistoricalLocationMap" type="Control" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNotePreview"]
 visible = false
@@ -169,7 +173,7 @@ size_flags_vertical = 3
 placeholder_text = "Write a location note…"
 [node name="LocationNoteByteCount" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
 layout_mode = 2
-text = "0 / 255 encoded bytes"
+text = "Length 0 / 255"
 autowrap_mode = 2
 [node name="Actions" type="HBoxContainer" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Editor"]
 layout_mode = 2
@@ -187,7 +191,9 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Places/LocationNotesWorkspace/CurrentLocationNotePane/Content/LocationNoteEditor/Unavailable"]
 layout_mode = 2
-text = "No mapped location\nA note can be edited only while the party occupies a validated map cell."
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "No map here\nNotes can be written only while the party stands on a map."
 autowrap_mode = 2
 
 [node name="Maps" type="VBoxContainer" parent="MapsNotesTabs"]
@@ -229,6 +235,8 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapBrowser/Content/Empty"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
 text = "No maps acquired\nMaps you acquire during the adventure appear here."
 autowrap_mode = 2
 [node name="PlayerMapDisplay" type="VBoxContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace"]
@@ -242,7 +250,9 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay/Empty"]
 layout_mode = 2
-text = "No selected map\nThere is no authored map record to display."
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "No map selected\nChoose a map from the list to view it."
 autowrap_mode = 2
 [node name="PlayerMapCartographicStage" type="MarginContainer" parent="MapsNotesTabs/Maps/AcquiredMapsWorkspace/PlayerMapDisplay"]
 visible = false
@@ -368,7 +378,9 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryBrowser/Content/Empty"]
 layout_mode = 2
-text = "The journal is empty\nNo journal records were supplied by the current session."
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "The journal is empty\nEntries are added as the adventure unfolds."
 autowrap_mode = 2
 [node name="JournalEntryDetail" type="PanelContainer" parent="MapsNotesTabs/Journal/JournalWorkspace"]
 layout_mode = 2
@@ -419,5 +431,7 @@ layout_mode = 2
 theme_type_variation = &"ClassicInset"
 [node name="Text" type="Label" parent="MapsNotesTabs/Journal/JournalWorkspace/JournalEntryDetail/Content/JournalEntryDetailScroll/JournalEntryDetailBody/Empty"]
 layout_mode = 2
-text = "No selected entry\nAuthored journal text will appear here."
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
+theme_override_font_sizes/font_size = 13
+text = "No entry selected\nChoose an entry to read it."
 autowrap_mode = 2

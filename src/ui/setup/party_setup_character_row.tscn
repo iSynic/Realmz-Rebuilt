@@ -1,23 +1,18 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/party_setup_character_row.gd" id="1_row"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_row"]
-bg_color = Color(0.101961, 0.117647, 0.133333, 1)
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/character_card.tres" id="st_card"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/status_dot.tres" id="st_dot"]
 
 [node name="PartySetupCharacterRow" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 44)
-theme_override_styles/panel = SubResource("StyleBox_row")
+custom_minimum_size = Vector2(0, 48)
+theme_override_styles/panel = ExtResource("st_card")
 script = ExtResource("1_row")
 
 [node name="Row" type="HBoxContainer" parent="."]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
 
 [node name="Portrait" type="TextureRect" parent="Row"]
 unique_name_in_owner = true
@@ -26,24 +21,71 @@ layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
 texture_filter = 1
-expand_mode = 1
-stretch_mode = 5
+stretch_mode = 3
 
-[node name="Summary" type="Label" parent="Row"]
+[node name="TacticalIcon" type="TextureRect" parent="Row"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture_filter = 1
+stretch_mode = 3
+
+[node name="Text" type="VBoxContainer" parent="Row"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 mouse_filter = 2
-theme_override_font_sizes/font_size = 14
-autowrap_mode = 2
-max_lines_visible = -1
-vertical_alignment = 1
-text_overrun_behavior = 0
+theme_override_constants/separation = 0
+
+[node name="Name" type="Label" parent="Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 15
+text_overrun_behavior = 3
+text = "Name"
+
+[node name="Summary" type="Label" parent="Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text_overrun_behavior = 3
+text = "Level 1"
+
+[node name="InParty" type="HBoxContainer" parent="Row"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 6
+
+[node name="Dot" type="Panel" parent="Row/InParty"]
+self_modulate = Color(0.867, 0.729, 0.416, 1)
+custom_minimum_size = Vector2(7, 7)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = ExtResource("st_dot")
+
+[node name="Label" type="Label" parent="Row/InParty"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 13
+text = "In party"
 
 [node name="AddCharacter" type="Button" parent="Row"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(58, 0)
+custom_minimum_size = Vector2(52, 26)
 layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
 text = "Add"
 
 [connection signal="pressed" from="Row/AddCharacter" to="." method="_request_import"]

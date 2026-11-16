@@ -1,0 +1,19 @@
+[gd_resource type="Theme" format=3]
+
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_alegreya_regular.res" id="1_ui"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_alegreya_bold.res" id="2_ui_bold"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_black_chancery.res" id="3_button"]
+[ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_theldrow.res" id="4_theldrow"]
+
+[sub_resource type="FontVariation" id="OrnamentFont"]
+fallbacks = Array[Font]([ExtResource("2_ui_bold")])
+base_font = ExtResource("3_button")
+
+[sub_resource type="FontVariation" id="BodyFont"]
+fallbacks = Array[Font]([ExtResource("1_ui")])
+base_font = ExtResource("4_theldrow")
+
+[resource]
+default_font = SubResource("BodyFont")
+Button/fonts/font = SubResource("OrnamentFont")
+Label/fonts/font = SubResource("BodyFont")

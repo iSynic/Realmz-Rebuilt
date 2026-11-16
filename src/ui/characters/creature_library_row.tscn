@@ -1,4 +1,12 @@
-[gd_scene format=3]
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="Gradient" id="Gradient_clear"]
+colors = PackedColorArray(0, 0, 0, 0, 0, 0, 0, 0)
+
+[sub_resource type="GradientTexture2D" id="Texture_spacer"]
+gradient = SubResource("Gradient_clear")
+width = 48
+height = 40
 
 [node name="CreatureLibraryRow" type="Button"]
 custom_minimum_size = Vector2(0, 54)
@@ -7,5 +15,15 @@ toggle_mode = true
 action_mode = 0
 alignment = 0
 icon_alignment = 0
-expand_icon = true
-theme_override_constants/icon_max_width = 48
+icon = SubResource("Texture_spacer")
+
+[node name="Art" type="TextureRect" parent="."]
+layout_mode = 0
+offset_left = 6.0
+offset_top = 3.0
+offset_right = 54.0
+offset_bottom = 51.0
+mouse_filter = 2
+texture_filter = 1
+expand_mode = 1
+stretch_mode = 5

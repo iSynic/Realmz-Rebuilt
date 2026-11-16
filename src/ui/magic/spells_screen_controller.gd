@@ -260,7 +260,6 @@ func _bind_level_rail(workspace: SpellsWorkspace, available_levels: Array[int], 
 	UiSizing.minimum_size(panel, Vector2(78.0 if _compact else 92.0, 0.0))
 	var rail := workspace.level_rail()
 	UiSizing.constant(rail, &"separation", 2 if _compact else 3)
-	(rail.get_node("SpellLevelHeading") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
 	for level: int in range(1, 8):
 		var button := rail.get_node("LevelButtons/SpellLevel%d" % level) as Button
 		button.set_meta(&"focus_key", "spells:level:%d" % level)
@@ -351,14 +350,17 @@ func _bind_spell_detail(workspace: SpellsWorkspace, character: CharacterView, sp
 	_bind_label(column.get_node("Name") as Label, spell.name, Color("e7d078"), 16)
 	_bind_label(column.get_node("Resource") as Label, "Level %d  •  SP %d/%d" % [DetailFormatter.level(spell), character.spell_points, character.maximum_spell_points], MUTED, 12)
 	var description := column.get_node("Description") as Label
-	_bind_label(description, spell.description, TEXT, 12)
-	description.tooltip_text = spell.description
+	# The fact grid below already gives target, range, damage and duration at the chosen power.
+	# A spell that cannot be cast here says why, instead of only greying its powers and Cast.
+	var blocked := spell.field_cast.reason if not _encounter_mode and spell.field_cast != null and not spell.field_cast.enabled else ""
+	_bind_label(description, "\n".join(PackedStringArray([DetailFormatter.notes(spell), blocked])).strip_edges(), TEXT, 12)
+	description.visible = not description.text.is_empty()
 	var target_badge := column.get_node("TargetAndFacts/ClassicSpellTargetBadge") as ClassicSpellTargetBadge
 	var target_label := DetailFormatter.target_label(spell)
 	target_badge.visible = not _compact and target_badge.present(spell.target_type, spell.target_size, target_label, Vector2(48.0, 48.0))
 	var values := {
 		"TargetValue": target_label,
-		"RangeValue": str(absi(spell.range_min + spell.range_max * _selected_power)),
+		"RangeValue": DetailFormatter.range_label(spell, _selected_power),
 		"DamageValue": DetailFormatter.scaled_pair(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, _selected_power),
 		"DurationValue": DetailFormatter.scaled_pair(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, _selected_power, true),
 		"MagicResistValue": DetailFormatter.magic_resistance_label(spell, _selected_power),
@@ -374,12 +376,8 @@ func _bind_spell_detail(workspace: SpellsWorkspace, character: CharacterView, sp
 
 
 func _bind_power_rail(column: VBoxContainer, spell: SpellView) -> void:
-	(column.get_node("PowerLabel") as TextureRect).texture = ClassicUiAssetCatalog.texture(&"spells.label.power")
-	var cast_cost := DetailFormatter.cast_cost(spell, _selected_power)
-	var scroll_cost := DetailFormatter.scroll_cost(spell, _selected_power)
-	var cost_label := column.get_node("Cost") as Label
-	_bind_label(cost_label, "Cast %d SP\nScroll %d SP" % [cast_cost, scroll_cost], GOLD, 12)
-	cost_label.tooltip_text = "Cast: %d SP. Scribe: %d SP." % [cast_cost, scroll_cost]
+	# The costs sit on the Cast and Make Scroll buttons, where the choice is made.
+	(column.get_node("Cost") as Label).visible = false
 	var available_powers := DetailFormatter.available_powers(spell)
 	for power: int in range(1, 8):
 		var button := column.get_node("PowerButtons/SpellPower%d" % power) as Button
@@ -398,19 +396,19 @@ func _bind_spell_action_dock(row: HBoxContainer, character: CharacterView, spell
 	var cast := row.get_node("SpellCastAction") as ClassicBitmapButton
 	if _encounter_mode:
 		cast.name = "EncounterSpellChoose"
-		_bind_bitmap_action(cast, &"spells.action.cast", "Use %s in this encounter" % spell.name, ActionAvailabilityView.new(&"encounter_spell", true, ""), func() -> void: encounter_spell_selected.emit(character.id, spell.classic_id))
+		_bind_bitmap_action(cast, "Choose", "Use %s in this encounter" % spell.name, ActionAvailabilityView.new(&"encounter_spell", true, ""), func() -> void: encounter_spell_selected.emit(character.id, spell.classic_id))
 		row.get_node("MakeScrollAction").visible = false
 		return
 	var cast_available := DetailFormatter.cast_power_available(spell, _selected_power)
 	var cast_reason := "Unavailable" if spell.field_cast == null else spell.field_cast.reason if not spell.field_cast.enabled else "This power is unavailable for casting."
 	var cast_availability := ActionAvailabilityView.new(&"cast_spell", cast_available, cast_reason)
 	var cast_tooltip := "Cast %s at power %d for %d SP" % [spell.name, _selected_power, DetailFormatter.cast_cost(spell, _selected_power)]
-	_bind_bitmap_action(cast, &"spells.action.cast", cast_tooltip, cast_availability, func() -> void:
+	_bind_bitmap_action(cast, "Cast · %d SP" % DetailFormatter.cast_cost(spell, _selected_power), cast_tooltip, cast_availability, func() -> void:
 		intent_submitted.emit(MagicIntents.cast(spell.id, character.id, "", _selected_power))
 	)
 	var make_scroll := row.get_node("MakeScrollAction") as Button
-	make_scroll.text = "Scroll" if _compact else "Make Scroll"
-	UiSizing.minimum_size(make_scroll, Vector2(60.0 if _compact else 74.0, 0.0))
+	make_scroll.text = ("Scroll · %d SP" if _compact else "Make Scroll · %d SP") % DetailFormatter.scroll_cost(spell, _selected_power)
+	UiSizing.minimum_size(make_scroll, Vector2(60.0 if _compact else 74.0, 38.0))
 	var scroll_available := DetailFormatter.scroll_power_available(spell, _selected_power)
 	make_scroll.disabled = not scroll_available
 	make_scroll.tooltip_text = "Scribe at power %d for %d SP" % [_selected_power, DetailFormatter.scroll_cost(spell, _selected_power)] if scroll_available else "Unavailable" if spell.make_scroll == null else spell.make_scroll.reason if not spell.make_scroll.enabled else "This power is unavailable for scribing."
@@ -614,12 +612,12 @@ func _bind_button(button: Button, label: String, availability: ActionAvailabilit
 		button.pressed.connect(callback)
 
 
-func _bind_bitmap_action(button: ClassicBitmapButton, asset_id: StringName, tooltip: String, availability: ActionAvailabilityView, callback: Callable) -> void:
+func _bind_bitmap_action(button: ClassicBitmapButton, label: String, tooltip: String, availability: ActionAvailabilityView, callback: Callable) -> void:
 	var previous: Callable = button.get_meta(&"spell_action_callback", Callable())
 	if not previous.is_null() and button.pressed.is_connected(previous):
 		button.pressed.disconnect(previous)
 	button.remove_meta(&"spell_action_callback")
-	button.configure({"id": asset_id, "asset_id": asset_id, "tooltip": tooltip, "accelerator": ""}, 1)
+	button.configure({"id": &"spells.action.cast", "asset_id": &"", "label": label, "tooltip": tooltip, "accelerator": ""}, 1)
 	button.disabled = availability == null or not availability.enabled
 	button.tooltip_text = "Unavailable" if availability == null else availability.reason if button.disabled else tooltip
 	if not button.disabled:

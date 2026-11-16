@@ -54,6 +54,81 @@ item_count = 2
 popup/item_0/text = "Fixed"
 popup/item_1/text = "Modular"
 
+[node name="CombatLayoutRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/CombatLayoutRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Combat HUD layout"
+tooltip_text = "Combat keeps its own choice and its own arrangement, separate from the overworld."
+
+[node name="CombatLayoutChoice" type="OptionButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/CombatLayoutRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+tooltip_text = "Fixed is the default. The modular combat layout is still being built; this choice is remembered for it."
+item_count = 2
+popup/item_0/text = "Fixed"
+popup/item_1/text = "Modular"
+
+[node name="CombatScaleRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/CombatScaleRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Combat panel size"
+tooltip_text = "Sets the combatant card, turn order and command groups to one size; they start at 125% and 150%. Right-click a panel in battle to size it on its own."
+
+[node name="CombatScaleSlider" type="HSlider" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/CombatScaleRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 75.0
+max_value = 200.0
+step = 25.0
+value = 150.0
+tick_count = 6
+ticks_on_borders = true
+tooltip_text = "Set the combat panels' size from 75 to 200 percent."
+
+[node name="CombatScaleValue" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/CombatScaleRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+text = "150%"
+horizontal_alignment = 2
+
+[node name="BarCountRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/BarCountRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Command bars"
+tooltip_text = "How many command bars the modular HUD has. Move buttons between them with Alt and drag."
+
+[node name="BarCount" type="OptionButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/BarCountRow"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+tooltip_text = "Buttons in a bar you remove go to the last bar that is left."
+item_count = 3
+popup/item_0/text = "2"
+popup/item_1/text = "3"
+popup/item_2/text = "4"
+
 [node name="AllVisibilityRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -76,12 +151,76 @@ popup/item_0/text = "Mixed / individual"
 popup/item_0/disabled = true
 popup/item_1/text = "Always visible"
 popup/item_2/text = "Auto-hide all panels"
-tooltip_text = "Set visibility for every panel, or adjust each panel below. Effects follow Party commands."
+tooltip_text = "Set visibility for every panel, or adjust each panel below."
 
 [node name="CompactCommands" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content"]
 layout_mode = 2
 text = "Compact command icons"
 tooltip_text = "Fit the modular command strip to its icons with minimal padding. Names remain available on hover and controller focus."
+
+[node name="StatusStrip" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content"]
+layout_mode = 2
+text = "Show status strip"
+tooltip_text = "Shows day and time, map position, gold, light and fatigue in their own strip at the top of the screen."
+
+[node name="StatusOpacityRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusOpacityRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Status strip background"
+tooltip_text = "Adjust only the strip's background; its text stays opaque."
+
+[node name="StatusOpacitySlider" type="HSlider" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusOpacityRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+step = 5.0
+tick_count = 11
+ticks_on_borders = true
+tooltip_text = "Set the status strip background from fully clear to solid."
+
+[node name="StatusOpacityValue" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusOpacityRow"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+text = "85%"
+horizontal_alignment = 2
+
+[node name="EffectsBar" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content"]
+layout_mode = 2
+text = "Keep effects bar visible"
+tooltip_text = "Active party effects always show. Turn this off to hide the bar while no effect is active."
+
+[node name="EffectsOpacityRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsOpacityRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Effects bar background"
+tooltip_text = "Adjust only the bar's background; its icons stay opaque."
+
+[node name="EffectsOpacitySlider" type="HSlider" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsOpacityRow"]
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 100.0
+step = 5.0
+tick_count = 11
+ticks_on_borders = true
+tooltip_text = "Set the effects bar background from fully clear to solid."
+
+[node name="EffectsOpacityValue" type="Label" parent="SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsOpacityRow"]
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+text = "85%"
+horizontal_alignment = 2
 
 [node name="PanelGroup" type="PanelContainer" parent="SettingsScroll/SettingsPanel/Content"]
 layout_mode = 2
@@ -108,12 +247,14 @@ custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 fit_to_longest_item = false
-tooltip_text = "Select roster, narration, world commands, or party commands."
-item_count = 4
+tooltip_text = "Select the roster, narration, or one of the command bars."
+item_count = 6
 popup/item_0/text = "Roster"
 popup/item_1/text = "Narration"
-popup/item_2/text = "World commands"
-popup/item_3/text = "Party commands"
+popup/item_2/text = "Commands 1"
+popup/item_3/text = "Commands 2"
+popup/item_4/text = "Commands 3"
+popup/item_5/text = "Commands 4"
 
 [node name="VisibilityRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
@@ -164,6 +305,37 @@ layout_mode = 2
 text = "100%"
 horizontal_alignment = 2
 
+[node name="ScaleRow" type="BoxContainer" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/ScaleRow"]
+custom_minimum_size = Vector2(210, 0)
+layout_mode = 2
+text = "Panel size"
+tooltip_text = "Draw this panel larger or smaller than the rest of the interface."
+
+[node name="ScaleSlider" type="HSlider" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/ScaleRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(140, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 75.0
+max_value = 200.0
+step = 25.0
+value = 100.0
+tick_count = 6
+ticks_on_borders = true
+tooltip_text = "Set this panel's size from 75 to 200 percent."
+
+[node name="ScaleValue" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content/ScaleRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(48, 0)
+layout_mode = 2
+text = "100%"
+horizontal_alignment = 2
+
 [node name="HoverReveal" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content"]
 layout_mode = 2
 text = "Reveal on hover"
@@ -172,13 +344,13 @@ autowrap_mode = 2
 
 [node name="ChangeReveal" type="CheckButton" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content"]
 layout_mode = 2
-text = "Reveal after meaningful changes"
+text = "Reveal for bad news or new text"
 tooltip_text = "Roster and narration may reveal after substantive updates. World and party commands never auto-reveal from changed values or availability."
 autowrap_mode = 2
 
 [node name="RevealHelp" type="Label" parent="SettingsScroll/SettingsPanel/Content/PanelGroup/Content"]
 layout_mode = 2
-text = "Commands never reveal from updates. Effects share Party commands visibility."
+text = "Commands never reveal from updates."
 autowrap_mode = 2
 
 [node name="ArrangeGroup" type="PanelContainer" parent="SettingsScroll/SettingsPanel/Content"]

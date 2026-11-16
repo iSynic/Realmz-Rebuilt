@@ -1,6 +1,23 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/saved_adventure_browser.gd" id="1_script"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="2_menu_theme"]
+[ext_resource type="Theme" path="res://src/ui/characters/vault_theme.tres" id="3_vault_theme"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/editor/editor_styles/card_panel.tres" id="4_card"]
+
+[sub_resource type="StyleBoxFlat" id="Backdrop"]
+bg_color = Color(0.039, 0.059, 0.078, 1)
+
+[sub_resource type="StyleBoxEmpty" id="WorkspaceFrame"]
+
+[sub_resource type="StyleBoxFlat" id="HoldPanel"]
+bg_color = Color(0.2, 0.16, 0.07, 0.55)
+border_width_left = 3
+border_color = Color(0.94, 0.81, 0.48, 1)
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
 
 [node name="SavedAdventureBrowser" type="Control"]
 layout_mode = 3
@@ -9,186 +26,224 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("2_menu_theme")
 script = ExtResource("1_script")
+
+[node name="Backdrop" type="Panel" parent="." groups=["ui_theme_backdrop"]]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("Backdrop")
 
 [node name="Workspace" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
-anchor_left = 0.015
-anchor_top = 0.015
-anchor_right = 0.985
-anchor_bottom = 0.985
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_type_variation = &"ClassicInset"
+theme = ExtResource("3_vault_theme")
+theme_override_styles/panel = SubResource("WorkspaceFrame")
 
 [node name="WorkspaceContent" type="VBoxContainer" parent="Workspace"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 16
+theme_override_constants/separation = 14
 
 [node name="Heading" type="HBoxContainer" parent="Workspace/WorkspaceContent"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 20
+theme_override_constants/separation = 14
+
+[node name="BackButton" type="Button" parent="Workspace/WorkspaceContent/Heading"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "‹  Back"
+size_flags_vertical = 4
+tooltip_text = "Return to where you came from"
 
 [node name="PageTitle" type="Label" parent="Workspace/WorkspaceContent/Heading"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 30
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 26
 text = "Saved Adventures"
 
-[node name="BackButton" type="Button" parent="Workspace/WorkspaceContent/Heading"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(110, 42)
-layout_mode = 2
-text = "Back"
-theme_type_variation = &"ClassicTheldrowButton"
-
-[node name="CampaignLabel" type="Label" parent="Workspace/WorkspaceContent"]
+[node name="CampaignLabel" type="Label" parent="Workspace/WorkspaceContent/Heading"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
 text = "Campaign"
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+size_flags_vertical = 4
 
-[node name="CampaignPicker" type="OptionButton" parent="Workspace/WorkspaceContent"]
+
+[node name="CampaignPicker" type="OptionButton" parent="Workspace/WorkspaceContent/Heading"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(320, 38)
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 15
 text = "Choose a campaign"
-theme_type_variation = &"ClassicTheldrowButton"
 
 [node name="MainColumns" type="HBoxContainer" parent="Workspace/WorkspaceContent"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 28
+theme_override_constants/separation = 14
 
-[node name="SaveList" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns"]
+[node name="SaveCard" type="PanelContainer" parent="Workspace/WorkspaceContent/MainColumns" groups=["ui_theme_frame"]]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("4_card")
+
+[node name="SaveList" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveCard"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(350, 0)
 layout_mode = 2
-size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="SaveHeading" type="Label" parent="Workspace/WorkspaceContent/MainColumns/SaveList"]
+[node name="SaveListHeader" type="HBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveCard/SaveList"]
 layout_mode = 2
-text = "Saved games"
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 20
 
-[node name="BackupsToggle" type="Button" parent="Workspace/WorkspaceContent/MainColumns/SaveList"]
+[node name="SaveHeading" type="Label" parent="Workspace/WorkspaceContent/MainColumns/SaveCard/SaveList/SaveListHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Saved games"
+
+[node name="BackupsToggle" type="Button" parent="Workspace/WorkspaceContent/MainColumns/SaveCard/SaveList/SaveListHeader"]
 unique_name_in_owner = true
 layout_mode = 2
-toggle_mode = true
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
 text = "Show backups"
-theme_type_variation = &"ClassicTheldrowButton"
+toggle_mode = true
 
-[node name="SaveScroll" type="ScrollContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveList"]
+[node name="SaveScroll" type="ScrollContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveCard/SaveList"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 follow_focus = true
 
-[node name="SaveRows" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveList/SaveScroll"]
+[node name="SaveRows" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/SaveCard/SaveList/SaveScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="SaveRowTemplate" type="Button" parent="Workspace/WorkspaceContent/MainColumns/SaveList/SaveScroll/SaveRows"]
+[node name="SaveRowTemplate" type="Button" parent="Workspace/WorkspaceContent/MainColumns/SaveCard/SaveList/SaveScroll/SaveRows"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"CampaignCard"
+theme_override_font_sizes/font_size = 15
 toggle_mode = true
 text = "Slot 1"
+alignment = 0
 autowrap_mode = 2
-theme_type_variation = &"ClassicTheldrowButton"
 
-[node name="DetailsScroll" type="ScrollContainer" parent="Workspace/WorkspaceContent/MainColumns"]
+[node name="DetailsCard" type="PanelContainer" parent="Workspace/WorkspaceContent/MainColumns" groups=["ui_theme_frame"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("4_card")
+
+[node name="DetailsScroll" type="ScrollContainer" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 follow_focus = true
 
-[node name="Details" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll"]
+[node name="Details" type="VBoxContainer" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="SelectedSaveTitle" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="SelectedSaveTitle" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 26
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 22
 text = "Select a saved adventure"
 autowrap_mode = 2
 
-[node name="SavedTime" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="SavedTime" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 2
+
+[node name="SavedParty" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
-
-[node name="SavedParty" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
-unique_name_in_owner = true
-layout_mode = 2
-theme_override_font_sizes/font_size = 19
 autowrap_mode = 2
 
-[node name="SavedLocation" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="SavedLocation" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
 autowrap_mode = 2
 
-[node name="IdentityStatus" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="IdentityStatus" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.91, 0.65, 0.36, 1)
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 15
 autowrap_mode = 2
 
-[node name="LoadingProgress" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="LoadingProgress" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.8, 0.95, 1)
+theme_override_colors/font_color = Color(0.62, 0.78, 0.95, 1)
+theme_override_font_sizes/font_size = 15
 autowrap_mode = 2
 
-[node name="LoadNote" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="LoadNote" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
 autowrap_mode = 2
 
-[node name="SaveError" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="SaveError" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0.95, 0.48, 0.42, 1)
+theme_type_variation = &"VaultStatusBad"
+theme_override_font_sizes/font_size = 14
 autowrap_mode = 2
 
-[node name="MapPreview" type="TextureRect" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="MapPreview" type="TextureRect" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 160)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
 
-[node name="MapPreviewNote" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsScroll/Details"]
+[node name="MapPreviewNote" type="Label" parent="Workspace/WorkspaceContent/MainColumns/DetailsCard/DetailsScroll/Details"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
 text = "Choose a save to see its map preview."
 autowrap_mode = 2
 
@@ -199,19 +254,117 @@ theme_override_constants/separation = 10
 
 [node name="RefreshButton" type="Button" parent="Workspace/WorkspaceContent/Actions"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Refresh"
+tooltip_text = "Look for saves again"
+
+[node name="ActionSpacer" type="Control" parent="Workspace/WorkspaceContent/Actions"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Refresh"
-theme_type_variation = &"ClassicTheldrowButton"
+size_flags_stretch_ratio = 0.4
+
+[node name="EditNote" type="Label" parent="Workspace/WorkspaceContent/Actions"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 2
+autowrap_mode = 2
+
+[node name="EditButton" type="Button" parent="Workspace/WorkspaceContent/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Edit save…"
+
 
 [node name="LoadButton" type="Button" parent="Workspace/WorkspaceContent/Actions"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
-size_flags_horizontal = 3
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
 text = "Load"
-theme_type_variation = &"ClassicTheldrowButton"
+
+
+[node name="HoldNotice" type="PanelContainer" parent="Workspace/WorkspaceContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("HoldPanel")
+
+[node name="HoldBody" type="VBoxContainer" parent="Workspace/WorkspaceContent/HoldNotice"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="HoldText" type="Label" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 2
+
+[node name="HoldActions" type="HBoxContainer" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HoldRetry" type="Button" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody/HoldActions"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
+text = "Retry"
+
+
+[node name="HoldHide" type="Button" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody/HoldActions"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Hide"
+tooltip_text = "Hide this notice until you next open Saved Adventures."
+
+[node name="HoldLetGo" type="Button" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody/HoldActions"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Let go…"
+
+
+[node name="HoldConfirm" type="HBoxContainer" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="HoldConfirmText" type="Label" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody/HoldConfirm"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 14
+size_flags_horizontal = 3
+autowrap_mode = 2
+
+[node name="HoldKeep" type="Button" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody/HoldConfirm"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Keep"
+
+
+[node name="HoldConfirmLetGo" type="Button" parent="Workspace/WorkspaceContent/HoldNotice/HoldBody/HoldConfirm"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DangerAction"
+theme_override_font_sizes/font_size = 14
+text = "Let go"
+
 
 [node name="ReplaceConfirmation" type="VBoxContainer" parent="Workspace/WorkspaceContent"]
 unique_name_in_owner = true
@@ -221,6 +374,8 @@ theme_override_constants/separation = 8
 
 [node name="Explanation" type="Label" parent="Workspace/WorkspaceContent/ReplaceConfirmation"]
 layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 14
 text = "All ten slots are occupied. Choose a slot to replace. Its current save becomes the backup; the earlier quick save is kept."
 autowrap_mode = 2
 
@@ -230,20 +385,22 @@ theme_override_constants/separation = 8
 
 [node name="ReplaceSlot" type="OptionButton" parent="Workspace/WorkspaceContent/ReplaceConfirmation/Choices"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 42)
 
 [node name="ReplaceCancel" type="Button" parent="Workspace/WorkspaceContent/ReplaceConfirmation/Choices"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 42)
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
 text = "Cancel"
+
 
 [node name="ReplaceLoad" type="Button" parent="Workspace/WorkspaceContent/ReplaceConfirmation/Choices"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-custom_minimum_size = Vector2(0, 42)
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
 text = "Replace and load"
+

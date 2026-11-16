@@ -6,7 +6,7 @@ extends RefCounted
 
 const GOLD := Color("d5b45d")
 const MUTED := Color("9aa0a8")
-const GOOD := Color("75c889")
+const SIGNED_WORDS: Array[String] = ["Bonus", "Two-Hand", "Hand-to-Hand", "Missile", "Dodge"]
 const BAD := Color("ef7770")
 
 var text_scale: float = 1.0
@@ -109,7 +109,7 @@ func _bind_metric_row(row: HBoxContainer, value: CharacterMetricView, display_te
 	var name_label := row.get_node("MetricName") as Label
 	var value_label := row.get_node("MetricValue") as Label
 	bind_label(name_label, value.name, MUTED, 14)
-	bind_label(value_label, display_text if not display_text.is_empty() else _metric_value_text(value), GOOD if value.value > 0 else BAD if value.value < 0 else Color("e0e2e5"), 14)
+	bind_label(value_label, display_text if not display_text.is_empty() else _metric_value_text(value), BAD if value.value < 0 else Color("e0e2e5"), 14)
 	name_label.tooltip_text = value.detail
 	value_label.tooltip_text = value.detail
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if not value.detail.is_empty() and layout_profile == UiLayoutProfile.COMPACT else HORIZONTAL_ALIGNMENT_RIGHT
@@ -133,10 +133,18 @@ func bind_item_region(frame: PanelContainer, items: Array[ItemView], empty_text:
 
 func character_spell_card(spell: SpellView) -> PanelContainer:
 	var panel := spell_card_scene.instantiate() as PanelContainer
-	_bind_media_frame(panel.get_node("Content/Media") as PanelContainer, spell.icon_resource_type, spell.icon_id, "✦")
+	# Classic spells carry no art of their own (the queue icon marks a lasting field), so the card is text only.
 	bind_label(panel.get_node("Content/Text/Name") as Label, spell.name, GOLD, 15)
-	bind_label(panel.get_node("Content/Text/Facts") as Label, "Level %d • %d SP • Range %d–%d" % [ClassicSpellLevel.from_classic_id(spell.classic_id), absi(spell.cost), spell.range_min, spell.range_max], Color("e0e2e5"), 12)
-	bind_label(panel.get_node("Content/Text/Description") as Label, spell.description, MUTED, 12)
+	# The description states the range in the game's own words (Touch, NA), so the facts line leaves it out.
+	bind_label(panel.get_node("Content/Text/Facts") as Label, "Level %d • %d SP" % [ClassicSpellLevel.from_classic_id(spell.classic_id), absi(spell.cost)], Color("e0e2e5"), 12)
+	# Classic descriptions open by repeating the spell's name, which the card already shows.
+	# The facts follow on old Mac line breaks, so they are gathered onto one flowing line.
+	var facts: Array[String] = []
+	for line: String in spell.description.replace("\r", "\n").split("\n", false):
+		var fact := line.strip_edges().trim_prefix(spell.name).trim_prefix(":").strip_edges()
+		if not fact.is_empty(): facts.append(fact)
+	bind_label(panel.get_node("Content/Text/Description") as Label, " · ".join(facts), MUTED, 12)
+	panel.tooltip_text = "\n".join(facts)
 	return panel
 
 
@@ -193,7 +201,7 @@ func _equipment_item_card(item: ItemView) -> PanelContainer:
 	_bind_media_frame(panel.get_node("Content/Media") as PanelContainer, item.icon_resource_type, item.icon_id, "◈")
 	var facts: Array[String] = ["Identified" if item.identified else "Unidentified"]
 	if item.charges != 0:
-		facts.append("%d charges" % item.charges)
+		facts.append("Unlimited charges" if item.charges < 0 else "%d charge%s" % [item.charges, "" if item.charges == 1 else "s"])
 	bind_label(panel.get_node("Content/Text/Name") as Label, item.name, GOLD, 15)
 	bind_label(panel.get_node("Content/Text/Facts") as Label, " • ".join(facts), Color("e0e2e5"), 13)
 	bind_label(panel.get_node("Content/Text/Meta") as Label, "%d weight • value %d" % [item.weight, item.value], MUTED, 12)
@@ -207,7 +215,9 @@ func _metric_value_text(metric_value: CharacterMetricView) -> String:
 		return metric_value.detail
 	if metric_value.detail == "Permanent":
 		return "Permanent"
-	return "%+d" % metric_value.value if metric_value.value > 0 else str(metric_value.value)
+	# Only a bonus carries a plus sign; an age, a count or an attribute is a plain number.
+	var bonus := SIGNED_WORDS.any(func(word: String) -> bool: return metric_value.name.contains(word))
+	return "%+d" % metric_value.value if metric_value.value > 0 and bonus else str(metric_value.value)
 
 
 func _bind_media_frame(frame: PanelContainer, resource_type: String, resource_id: int, fallback_text: String) -> void:

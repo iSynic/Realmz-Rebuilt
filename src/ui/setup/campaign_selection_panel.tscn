@@ -1,15 +1,19 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/campaign_selection_panel.gd" id="1_panel"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/campaign_library_row.tscn" id="2_campaign_row"]
 [ext_resource type="Script" path="res://src/ui/setup/campaign_removal_dialog.gd" id="3_remove"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/column.tres" id="st_column"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/setup_card.tres" id="st_card"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/progress_fill.tres" id="st_fill"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/progress_track.tres" id="st_track"]
 
-[node name="ScenarioColumn" type="PanelContainer"]
+[node name="ScenarioColumn" type="PanelContainer" groups=["ui_theme_frame"]]
 custom_minimum_size = Vector2(210, 0)
 size_flags_horizontal = 3
 size_flags_vertical = 3
 size_flags_stretch_ratio = 0.9
-theme_type_variation = &"ClassicInset"
+theme_override_styles/panel = ExtResource("st_column")
 script = ExtResource("1_panel")
 campaign_row_scene = ExtResource("2_campaign_row")
 
@@ -17,15 +21,17 @@ campaign_row_scene = ExtResource("2_campaign_row")
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
 
 [node name="ScenarioHeading" type="Label" parent="ScenarioPaneContent"]
 layout_mode = 2
-theme_type_variation = &"ClassicScenarioHeading"
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 22
 text = "Scenarios"
 
 [node name="LibraryFilters" type="HBoxContainer" parent="ScenarioPaneContent"]
 layout_mode = 2
+theme_override_constants/separation = 6
 
 [node name="MainFilter" type="Button" parent="ScenarioPaneContent/LibraryFilters"]
 unique_name_in_owner = true
@@ -33,25 +39,27 @@ layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
 button_pressed = true
+custom_minimum_size = Vector2(0, 26)
 text = "Main"
-autowrap_mode = 2
-theme_type_variation = &"ClassicTheldrowButton"
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
 
 [node name="ImportedFilter" type="Button" parent="ScenarioPaneContent/LibraryFilters"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
+custom_minimum_size = Vector2(0, 26)
 text = "Imported"
-autowrap_mode = 2
-theme_type_variation = &"ClassicTheldrowButton"
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
 
 [node name="CampaignSearch" type="LineEdit" parent="ScenarioPaneContent"]
 unique_name_in_owner = true
 layout_mode = 2
-placeholder_text = "Search scenarios..."
+custom_minimum_size = Vector2(0, 28)
+placeholder_text = "Search scenarios…"
 clear_button_enabled = true
-theme_type_variation = &"ClassicTheldrowLineEdit"
 
 [node name="CampaignScroll" type="ScrollContainer" parent="ScenarioPaneContent"]
 unique_name_in_owner = true
@@ -70,8 +78,9 @@ theme_override_constants/separation = 4
 [node name="MainScenarioHeading" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ClassicScenarioListHeading"
-text = "Main Scenarios"
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "MAIN SCENARIOS"
 
 [node name="MainCampaignRows" type="VBoxContainer" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
@@ -82,8 +91,9 @@ theme_override_constants/separation = 4
 [node name="ImportedScenarioHeading" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ClassicScenarioListHeading"
-text = "Imported Scenarios"
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "IMPORTED SCENARIOS"
 
 [node name="ImportedCampaignRows" type="VBoxContainer" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
@@ -94,7 +104,7 @@ theme_override_constants/separation = 4
 [node name="NoCampaignsState" type="Label" parent="ScenarioPaneContent/CampaignScroll/CampaignList"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ClassicSecondaryText"
+theme_type_variation = &"VaultStatusMuted"
 text = "Installed scenarios appear here"
 horizontal_alignment = 1
 autowrap_mode = 2
@@ -102,22 +112,25 @@ autowrap_mode = 2
 [node name="SelectedCampaignDock" type="PanelContainer" parent="ScenarioPaneContent"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ClassicInset"
+theme_override_styles/panel = ExtResource("st_card")
 
 [node name="Body" type="VBoxContainer" parent="ScenarioPaneContent/SelectedCampaignDock"]
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 3
 
 [node name="CampaignDockTitle" type="Label" parent="ScenarioPaneContent/SelectedCampaignDock/Body"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Choose a scenario"
 autowrap_mode = 2
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 15
 
 [node name="CampaignDockStatus" type="Label" parent="ScenarioPaneContent/SelectedCampaignDock/Body"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
 text = "Select a scenario to add characters."
 autowrap_mode = 2
 max_lines_visible = 2
@@ -129,30 +142,38 @@ visible = false
 layout_mode = 2
 fit_to_longest_item = false
 text_overrun_behavior = 3
-theme_type_variation = &"ClassicTheldrowOptionButton"
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
 
 [node name="Actions" type="HBoxContainer" parent="ScenarioPaneContent/SelectedCampaignDock/Body"]
 layout_mode = 2
+theme_override_constants/separation = 6
 
 [node name="ShowScenarioDetails" type="Button" parent="ScenarioPaneContent/SelectedCampaignDock/Body/Actions"]
 unique_name_in_owner = true
 layout_mode = 2
+custom_minimum_size = Vector2(0, 26)
 size_flags_horizontal = 3
-text = "Details..."
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
+text = "Details…"
 disabled = true
 
 [node name="RemoveCampaign" type="Button" parent="ScenarioPaneContent/SelectedCampaignDock/Body/Actions"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
+custom_minimum_size = Vector2(0, 26)
 size_flags_horizontal = 3
-text = "Remove..."
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
+text = "Remove…"
 
 [node name="PackageOperationHost" type="PanelContainer" parent="ScenarioPaneContent"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-theme_type_variation = &"ClassicInset"
+theme_override_styles/panel = ExtResource("st_card")
 
 [node name="PackageOperationRow" type="VBoxContainer" parent="ScenarioPaneContent/PackageOperationHost"]
 layout_mode = 2
@@ -166,7 +187,7 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 12
+theme_override_font_sizes/font_size = 14
 text = "Installing"
 
 [node name="PackageOperationPercentage" type="Label" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationHeader"]
@@ -181,14 +202,19 @@ layout_mode = 2
 
 [node name="PackageOperationProgress" type="ProgressBar" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationControls"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(72, 22)
+custom_minimum_size = Vector2(72, 6)
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 show_percentage = false
+theme_override_styles/background = ExtResource("st_track")
+theme_override_styles/fill = ExtResource("st_fill")
 
 [node name="CancelPackageOperation" type="Button" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow/PackageOperationControls"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
 text = "Cancel"
 
 [node name="PackageOperationStatus" type="Label" parent="ScenarioPaneContent/PackageOperationHost/PackageOperationRow"]
@@ -266,36 +292,37 @@ text = "Choose Another"
 [node name="PackageInstallRow" type="BoxContainer" parent="ScenarioPaneContent"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_override_constants/separation = 6
 alignment = 1
 
 [node name="InstallPackage" type="Button" parent="ScenarioPaneContent/PackageInstallRow"]
 unique_name_in_owner = true
 layout_mode = 2
+custom_minimum_size = Vector2(0, 26)
 size_flags_horizontal = 3
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
 text = "Install .realmz2"
 tooltip_text = "Install an existing Providence .realmz2 package."
 
 [node name="ImportScenario" type="Button" parent="ScenarioPaneContent/PackageInstallRow"]
 unique_name_in_owner = true
 layout_mode = 2
+custom_minimum_size = Vector2(0, 26)
 size_flags_horizontal = 3
-text = "Import..."
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
+text = "Import folder…"
 tooltip_text = "Import a scenario from a selected folder."
 
-[node name="LibraryActions" type="HBoxContainer" parent="ScenarioPaneContent"]
-layout_mode = 2
-
-[node name="ScenarioBack" type="Button" parent="ScenarioPaneContent/LibraryActions"]
+[node name="RefreshScenarios" type="Button" parent="ScenarioPaneContent/PackageInstallRow"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
-text = "Back"
-
-[node name="RefreshScenarios" type="Button" parent="ScenarioPaneContent/LibraryActions"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
+custom_minimum_size = Vector2(0, 26)
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
 text = "Refresh"
+tooltip_text = "Look for scenarios installed or imported since the list was shown."
 
 [node name="InstallScenarioDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true

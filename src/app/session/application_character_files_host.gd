@@ -13,6 +13,8 @@ var _library_content: RealmzContent
 var _library_media: MediaSource
 var _library_load_complete := false
 var _art_host: ApplicationCharacterArtHost
+## Reads the application's current campaign content; an editor draft can outlive a scenario change.
+var _active_content_source: Callable
 
 
 func _init(
@@ -22,7 +24,8 @@ func _init(
 	presentation_media: PresentationMediaController,
 	shell: GameShell,
 	vault: CharacterVaultController = null,
-	art_host: ApplicationCharacterArtHost = null
+	art_host: ApplicationCharacterArtHost = null,
+	active_content_source: Callable = Callable()
 ) -> void:
 	_package_host = package_host
 	_session = session
@@ -31,6 +34,7 @@ func _init(
 	_shell = shell
 	_vault = vault if vault != null else CharacterVaultController.new()
 	_art_host = art_host
+	_active_content_source = active_content_source
 
 
 func begin_library_load() -> void:
@@ -98,7 +102,11 @@ func begin_creation(active_content: RealmzContent) -> void:
 	if _library_content == null:
 		_shell.status.set_status("Character Files creation is unavailable because the built-in Classic definitions did not load.", true)
 		return
-	var step := _creator.start(_library_content, _vault.next_character_file_identity())
+	var identity := _vault.next_character_file_identity()
+	if identity == null:
+		_shell.status.set_status("Character Files creation failed • %s" % _vault.last_error(), true)
+		return
+	var step := _creator.start(_library_content, identity)
 	if step.state == SessionStep.State.FAILED:
 		_shell.status.set_status("Character Files creation failed • %s" % step.error_message, true)
 		return
@@ -117,13 +125,20 @@ func publish_campaign_character(active_content: RealmzContent, character_id: Str
 	if (_session.is_busy() or _session.resolution_failed):
 		_shell.status.set_status("Combat resolution failed. Load a saved adventure or return to the main menu." if _session.resolution_failed else "Wait for combat resolution before publishing a character.", true)
 		return false
-	var character_name := _vault.publish_from_snapshot(_session.session().snapshot(), active_content, character_id)
+	var snapshot := _session.session().snapshot()
+	var source_character := snapshot.game_state.party.character_by_id(character_id) if snapshot != null and not character_id.is_empty() else null
+	var character_name := _vault.publish_party_character(source_character, active_content, "character-creation")
 	if character_name.is_empty():
 		_shell.status.set_status("Vault publication failed • %s" % _vault.last_error(), true)
 		return false
 	refresh_vault_views(active_content)
 	_shell.status.set_status("Published %s to the character vault" % character_name)
 	return true
+
+
+## The Character Files controller, shared with the save editor.
+func vault() -> CharacterVaultController:
+	return _vault
 
 
 func vault_import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
@@ -149,12 +164,55 @@ func refresh_vault_views(active_content: RealmzContent) -> void:
 	_shell.navigator.set_vault_revisions(revisions, _vault.unavailable_notice())
 
 
-func archive_character(active_content: RealmzContent, character_id: String) -> void:
-	if not _vault.archive(character_id):
-		_shell.status.set_status("Vault archive failed • %s" % _vault.last_error(), true)
+## Applies one player-confirmed Character Files change: archive, restore or delete.
+func change_character(active_content: RealmzContent, operation: StringName, character_id: String, revision_hash: String) -> void:
+	if operation == &"edit":
+		_begin_edit(active_content, character_id, revision_hash)
 		return
+	if operation not in [&"archive", &"restore", &"delete"]:
+		return
+	if operation in [&"archive", &"delete"] and _in_party(character_id):
+		_report_change("Character Files couldn't be changed • This character is in the party.", true)
+		return
+	var changed := _vault.change_character(operation, character_id, revision_hash)
 	refresh_vault_views(active_content)
-	_shell.status.set_status("Character archived • immutable revisions remain recoverable")
+	if not changed:
+		_report_change("Character Files couldn't be changed • %s" % _vault.last_error(), true)
+		return
+	var messages := {&"archive": "Character archived. Find it under Archived; every revision can be restored.", &"restore": "Character restored and active again.", &"delete": "Character deleted permanently."}
+	_report_change(messages[operation], false)
+
+
+## Opens the editor on the current revision against the stock library rules.
+func _begin_edit(active_content: RealmzContent, character_id: String, revision_hash: String) -> void:
+	if not library_ready():
+		_report_change("The character editor opens once the stock character library has loaded.", true)
+		return
+	var edit := _vault.begin_edit(character_id, revision_hash, _library_content)
+	if edit == null:
+		_report_change("This character can't be edited • %s" % _vault.last_error(), true)
+		return
+	var editor := CharacterEditorSession.new(edit, _library_content)
+	editor.closed.connect(func(message: String, is_error: bool) -> void:
+		refresh_vault_views(_active_content_source.call() as RealmzContent if _active_content_source.is_valid() else active_content)
+		_shell.navigator.content_presenter.characters.close_editor()
+		if not message.is_empty():
+			_report_change(message, is_error)
+	)
+	_shell.navigator.content_presenter.characters.present_editor(editor)
+
+
+func _in_party(character_id: String) -> bool:
+	for member: CharacterView in _session.view().party_members:
+		if member.id == character_id:
+			return true
+	return false
+
+
+func _report_change(text: String, is_error: bool) -> void:
+	_shell.status.set_status(text, is_error)
+	# The full-stage Character Files route hides the shell status line, so it shows its own notice.
+	_shell.navigator.content_presenter.present_vault_status(text, is_error)
 
 
 func request_maintenance(operation: StringName) -> void:
@@ -178,14 +236,6 @@ func poll_repair(active_content: RealmzContent) -> void:
 
 func shutdown() -> void:
 	_vault.shutdown_repair()
-
-
-func restore_character(active_content: RealmzContent, character_id: String, revision_hash: String) -> void:
-	if not _vault.restore(character_id, revision_hash):
-		_shell.status.set_status("Vault restore failed • %s" % _vault.last_error(), true)
-		return
-	refresh_vault_views(active_content)
-	_shell.status.set_status("Character revision restored as current")
 
 
 func _present_creator_step(step: SessionStep) -> void:

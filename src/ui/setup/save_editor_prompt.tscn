@@ -1,0 +1,17 @@
+[gd_scene format=3]
+
+[node name="SaveEditorPrompt" type="HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Glyph" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"VaultPromptGlyph"
+theme_override_font_sizes/font_size = 11
+text = "A"
+
+[node name="Caption" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Select"

@@ -151,7 +151,7 @@ func apply_updates(content: RealmzContent) -> void:
 	var updated := _repository_host.apply_updates(content)
 	if updated.is_empty():
 		return
-	_shell.status.set_status("Updated %s for the current campaign revision • originals kept as backups" % ("1 save" if updated.size() == 1 else "%d saves" % updated.size()))
+	_shell.status.set_status("Updated %s for the current version of the scenario • originals kept as backups" % ("1 save" if updated.size() == 1 else "%d saves" % updated.size()))
 	_shell.status.show_activity_indicator(&"save")
 
 

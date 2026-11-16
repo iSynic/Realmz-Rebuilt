@@ -42,41 +42,55 @@ text_overrun_behavior = 3
 
 [node name="InventoryCharacterFacts" type="GridContainer" parent="."]
 layout_mode = 2
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 0
 columns = 3
+
+[node name="VitalsHeading" type="Label" parent="InventoryCharacterFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_font_sizes/font_size = 12
+text = "Vitals"
+
+[node name="AttributesHeading" type="Label" parent="InventoryCharacterFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_font_sizes/font_size = 12
+text = "Attributes"
+
+[node name="CombatHeading" type="Label" parent="InventoryCharacterFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.867, 0.729, 0.416, 1)
+theme_override_font_sizes/font_size = 12
+text = "Combat"
 
 [node name="Health" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
 [node name="Value" type="Label" parent="InventoryCharacterFacts/Health"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "HP 10/10"
 
-[node name="SpellPoints" type="PanelContainer" parent="InventoryCharacterFacts"]
+[node name="Brawn" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/SpellPoints"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.56, 0.78, 0.92, 1)
-theme_override_font_sizes/font_size = 13
-text = "SP 0/0"
-
-[node name="Experience" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Experience"]
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Brawn"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
-text = "XP 0"
+text = "Brawn 0"
 
 [node name="Armor" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
 [node name="Value" type="Label" parent="InventoryCharacterFacts/Armor"]
 layout_mode = 2
@@ -84,140 +98,176 @@ theme_override_colors/font_color = Color(0.96, 0.8, 0.38, 1)
 theme_override_font_sizes/font_size = 13
 text = "AR 0"
 
-[node name="Attacks" type="PanelContainer" parent="InventoryCharacterFacts"]
+[node name="SpellPoints" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Attacks"]
+[node name="Value" type="Label" parent="InventoryCharacterFacts/SpellPoints"]
 layout_mode = 2
+theme_override_colors/font_color = Color(0.56, 0.78, 0.92, 1)
 theme_override_font_sizes/font_size = 13
-text = "ATK 1/1"
-
-[node name="Movement" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Movement"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "MOVE 0/0"
-
-[node name="Load" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Load"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "LOAD 0/0"
-
-[node name="Brawn" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Brawn"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "Brawn 0"
+text = "SP 0/0"
 
 [node name="Knowledge" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
 [node name="Value" type="Label" parent="InventoryCharacterFacts/Knowledge"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "Knowledge 0"
 
+[node name="Attacks" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Attacks"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "ATK 1/1"
+
+[node name="Experience" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Experience"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "XP 0"
+
 [node name="Judgment" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
 [node name="Value" type="Label" parent="InventoryCharacterFacts/Judgment"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "Judgment 0"
 
-[node name="Agility" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Agility"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "Agility 0"
-
-[node name="Vitality" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Vitality"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "Vitality 0"
-
-[node name="Luck" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Luck"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "Luck 0"
-
 [node name="AttackBonus" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
 [node name="Value" type="Label" parent="InventoryCharacterFacts/AttackBonus"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "ATK +0"
 
+[node name="Load" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Load"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "LOAD 0/0"
+
+[node name="Agility" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Agility"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Agility 0"
+
+[node name="HitChance" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/HitChance"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Hit 50%"
+
+[node name="Movement" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Movement"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "MOVE 0/0"
+
+[node name="Vitality" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Vitality"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "Vitality 0"
+
 [node name="DefenseBonus" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
 [node name="Value" type="Label" parent="InventoryCharacterFacts/DefenseBonus"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "DEF +0"
 
-[node name="Damage" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/Damage"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "DMG +0"
-
-[node name="MagicResistance" type="PanelContainer" parent="InventoryCharacterFacts"]
-custom_minimum_size = Vector2(125, 25)
-layout_mode = 2
-theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/MagicResistance"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 13
-text = "MR 0"
-
 [node name="Gender" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
 [node name="Value" type="Label" parent="InventoryCharacterFacts/Gender"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "Gender"
 
-[node name="HitChance" type="PanelContainer" parent="InventoryCharacterFacts"]
+[node name="Luck" type="PanelContainer" parent="InventoryCharacterFacts"]
 custom_minimum_size = Vector2(125, 25)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_type_variation = &"ClassicInventoryFactCell"
-[node name="Value" type="Label" parent="InventoryCharacterFacts/HitChance"]
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Luck"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
-text = "Hit 50%"
+text = "Luck 0"
+
+[node name="Damage" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/Damage"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "DMG +0"
+
+[node name="Blank1" type="Control" parent="InventoryCharacterFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Blank2" type="Control" parent="InventoryCharacterFacts"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="MagicResistance" type="PanelContainer" parent="InventoryCharacterFacts"]
+custom_minimum_size = Vector2(125, 25)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"ClassicInventoryFactCell"
+[node name="Value" type="Label" parent="InventoryCharacterFacts/MagicResistance"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "MR 0"
 
 [node name="Conditions" type="Label" parent="."]
 layout_mode = 2

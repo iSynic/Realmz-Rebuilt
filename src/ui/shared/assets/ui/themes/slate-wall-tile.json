@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "label": "Slate interface-theme background tile: squared block wall",
+  "provider": "SpriteCook (project owner's account)",
+  "license": "Project-Owner-Supplied",
+  "generation_id": "not recorded; supply from SpriteCook",
+  "source_note": "SpriteCook's native output is 200 by 200 pixels at every export setting; this is the full-size generation.",
+  "derivation": "lossless PNG re-encode during transfer",
+  "presentation_contract": "Repeated in both axes without stretching behind menu-style screens for the four Slate interface themes, under a 45% wash of the backdrop colour and an edge vignette. Also laid faintly, at the player's panel-texture strength (10% by default), over framed panels and the play screen's own surfaces in both HUD layouts.",
+  "file": {
+    "path": "res://src/ui/shared/assets/ui/themes/slate-wall-tile.png",
+    "width": 200,
+    "height": 200,
+    "bytes": 49201,
+    "sha256": "ded8793fd0fec57fcb6bf081fdc7983defed6fa826c7feef20def1e922414639"
+  }
+}

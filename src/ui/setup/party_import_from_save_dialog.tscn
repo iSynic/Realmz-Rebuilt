@@ -1,12 +1,20 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/party_import_from_save_dialog.gd" id="1_script"]
-
 [ext_resource type="PackedScene" path="res://src/ui/setup/party_import_source_row.tscn" id="2_source"]
-
-[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_candidate_row.tscn" id="3_candidate"]
-
-[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_detail_label.tscn" id="4_detail"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_candidate_card.tscn" id="3_candidate"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="4_menu"]
+[ext_resource type="Theme" path="res://src/ui/characters/vault_theme.tres" id="5_vault"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/dialog_surface.tres" id="st_dialog"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/list_panel.tres" id="st_list"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/rule_line.tres" id="st_rule"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/error_banner.tres" id="st_error"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/capacity_chip.tres" id="st_capacity"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/field_tile.tres" id="st_tile"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/check_plain.tres" id="st_check"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/section_heading.tres" id="st_heading"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/progress_fill.tres" id="st_fill"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/progress_track.tres" id="st_track"]
 
 [node name="PartyImportFromSaveDialog" type="Control"]
 layout_mode = 3
@@ -18,10 +26,10 @@ grow_vertical = 2
 mouse_filter = 0
 z_index = 94
 z_as_relative = false
+theme = ExtResource("4_menu")
 script = ExtResource("1_script")
 source_row_scene = ExtResource("2_source")
-candidate_row_scene = ExtResource("3_candidate")
-detail_label_scene = ExtResource("4_detail")
+candidate_card_scene = ExtResource("3_candidate")
 
 [node name="Backdrop" type="ColorRect" parent="."]
 layout_mode = 1
@@ -44,163 +52,324 @@ mouse_filter = 1
 
 [node name="Dialog" type="PanelContainer" parent="Center"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 0)
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_type_variation = &"ClassicInset"
+theme = ExtResource("5_vault")
+theme_override_styles/panel = ExtResource("st_dialog")
 
 [node name="Content" type="VBoxContainer" parent="Center/Dialog"]
 layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Center/Dialog/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Titles" type="VBoxContainer" parent="Center/Dialog/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="PhaseLabel" type="Label" parent="Center/Dialog/Content/Header/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 26
+text = "Import party from save"
+
+[node name="Subtitle" type="Label" parent="Center/Dialog/Content/Header/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 15
+autowrap_mode = 3
+text = "Choose a saved adventure. Its characters and their possessions come with them; the world stays behind."
+
+[node name="SourceActions" type="HBoxContainer" parent="Center/Dialog/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
 theme_override_constants/separation = 10
 
-[node name="PhaseLabel" type="Label" parent="Center/Dialog/Content"]
+[node name="BrowseExternalSave" type="Button" parent="Center/Dialog/Content/Header/SourceActions"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-text = "Import party from save"
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 24
-horizontal_alignment = 1
+theme_type_variation = &"FieldAction"
+text = "Browse save file…"
 
-[node name="MessagePanel" type="PanelContainer" parent="Center/Dialog/Content"]
-layout_mode = 2
-theme_type_variation = &"ClassicInset"
-
-[node name="MessageLabel" type="Label" parent="Center/Dialog/Content/MessagePanel"]
+[node name="RefreshSources" type="Button" parent="Center/Dialog/Content/Header/SourceActions"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 30)
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-autowrap_mode = 2
-text = "Choose a saved adventure or browse for a save file."
+theme_type_variation = &"FieldAction"
+text = "Refresh"
 
-[node name="SourcesHeading" type="Label" parent="Center/Dialog/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Available saved adventures"
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
-theme_override_font_sizes/font_size = 16
-
-[node name="SourcesScroll" type="ScrollContainer" parent="Center/Dialog/Content"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-horizontal_scroll_mode = 0
-follow_focus = true
-
-[node name="SourcesList" type="VBoxContainer" parent="Center/Dialog/Content/SourcesScroll"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_constants/separation = 8
-
-[node name="EmptySources" parent="Center/Dialog/Content" instance=ExtResource("4_detail")]
-unique_name_in_owner = true
-text = "No saved adventures are available."
-
-[node name="LoadingSource" parent="Center/Dialog/Content" instance=ExtResource("4_detail")]
+[node name="ImportCapacity" type="PanelContainer" parent="Center/Dialog/Content/Header"]
 unique_name_in_owner = true
 visible = false
-text = "Reading the selected save…"
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = ExtResource("st_capacity")
 
-[node name="CandidateHeading" type="Label" parent="Center/Dialog/Content"]
+[node name="Line" type="HBoxContainer" parent="Center/Dialog/Content/Header/ImportCapacity"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="CapacityCount" type="Label" parent="Center/Dialog/Content/Header/ImportCapacity/Line"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Select characters to add"
-theme_override_colors/font_color = Color(0.835, 0.706, 0.365, 1)
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 15
+text = "0 of 6"
+
+[node name="CapacityText" type="Label" parent="Center/Dialog/Content/Header/ImportCapacity/Line"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+text = "open party slots selected"
+
+[node name="ErrorBanner" type="PanelContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = ExtResource("st_error")
+
+[node name="ErrorText" type="VBoxContainer" parent="Center/Dialog/Content/ErrorBanner"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ErrorTitle" type="Label" parent="Center/Dialog/Content/ErrorBanner/ErrorText"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusBad"
 theme_override_font_sizes/font_size = 16
+autowrap_mode = 3
 
-[node name="CandidateScroll" type="ScrollContainer" parent="Center/Dialog/Content"]
+[node name="MessageLabel" type="Label" parent="Center/Dialog/Content/ErrorBanner/ErrorText"]
 unique_name_in_owner = true
 layout_mode = 2
-size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="Body" type="PanelContainer" parent="Center/Dialog/Content"]
+layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("st_list")
+
+[node name="SourcesScroll" type="ScrollContainer" parent="Center/Dialog/Content/Body"]
+unique_name_in_owner = true
+layout_mode = 2
 horizontal_scroll_mode = 0
 follow_focus = true
 
-[node name="CandidateList" type="VBoxContainer" parent="Center/Dialog/Content/CandidateScroll"]
+[node name="SourcesMargin" type="MarginContainer" parent="Center/Dialog/Content/Body/SourcesScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_right = 10
+
+[node name="SourcesList" type="VBoxContainer" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
+theme_override_constants/separation = 4
 
-[node name="ImportCapacity" type="Label" parent="Center/Dialog/Content"]
-unique_name_in_owner = true
-modulate = Color(0.603922, 0.627451, 0.658824, 1)
-layout_mode = 2
-text = "0 of 6 party slots selected"
-
-[node name="LeftBehindPanel" type="PanelContainer" parent="Center/Dialog/Content"]
+[node name="ReadyHeading" type="Label" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_type_variation = &"ClassicInset"
+theme_type_variation = &"MenuCaption"
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = ExtResource("st_heading")
+uppercase = true
+text = "Ready to import · 0"
 
-[node name="LeftBehindContent" type="VBoxContainer" parent="Center/Dialog/Content/LeftBehindPanel"]
+[node name="ReadyList" type="VBoxContainer" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="UnusableRule" type="Panel" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 1)
+layout_mode = 2
+theme_override_styles/panel = ExtResource("st_rule")
+
+[node name="UnusableHeading" type="Label" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MenuCaption"
+theme_override_font_sizes/font_size = 12
+theme_override_styles/normal = ExtResource("st_heading")
+uppercase = true
+text = "Can't be imported · 0"
+
+[node name="UnusableList" type="VBoxContainer" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="EmptySources" type="VBoxContainer" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList"]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="LeftBehindHeading" type="Label" parent="Center/Dialog/Content/LeftBehindPanel/LeftBehindContent"]
+[node name="EmptyTitle" type="Label" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList/EmptySources"]
 layout_mode = 2
-text = "Left behind"
-theme_override_colors/font_color = Color(0.835, 0.541, 0.471, 1)
-theme_override_font_sizes/font_size = 15
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 17
+text = "No saved adventures yet"
 
-[node name="LeftBehindScroll" type="ScrollContainer" parent="Center/Dialog/Content/LeftBehindPanel/LeftBehindContent"]
-custom_minimum_size = Vector2(0, 80)
+[node name="EmptyDetail" type="Label" parent="Center/Dialog/Content/Body/SourcesScroll/SourcesMargin/SourcesList/EmptySources"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Save an adventure in any scenario, then import its party here. You can also browse for a save file."
+
+[node name="LoadingState" type="CenterContainer" parent="Center/Dialog/Content/Body"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="LoadingContent" type="VBoxContainer" parent="Center/Dialog/Content/Body/LoadingState"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="LoadingBar" type="ProgressBar" parent="Center/Dialog/Content/Body/LoadingState/LoadingContent"]
+custom_minimum_size = Vector2(240, 4)
+layout_mode = 2
+size_flags_horizontal = 4
+show_percentage = false
+indeterminate = true
+theme_override_styles/background = ExtResource("st_track")
+theme_override_styles/fill = ExtResource("st_fill")
+
+[node name="ReadingLabel" type="Label" parent="Center/Dialog/Content/Body/LoadingState/LoadingContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 17
+text = "Reading the save…"
+horizontal_alignment = 1
+
+[node name="LoadingSource" type="Label" parent="Center/Dialog/Content/Body/LoadingState/LoadingContent"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+text = "Checking the scenario version it needs and the saved party. Saves are never changed."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="CandidateScroll" type="ScrollContainer" parent="Center/Dialog/Content/Body"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="CandidateMargin" type="MarginContainer" parent="Center/Dialog/Content/Body/CandidateScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
-horizontal_scroll_mode = 0
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 2
 
-[node name="LeftBehindList" type="VBoxContainer" parent="Center/Dialog/Content/LeftBehindPanel/LeftBehindContent/LeftBehindScroll"]
+[node name="CandidateList" type="VBoxContainer" parent="Center/Dialog/Content/Body/CandidateScroll/CandidateMargin"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="AdoptPanel" type="PanelContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = ExtResource("st_tile")
+
+[node name="AdoptContent" type="VBoxContainer" parent="Center/Dialog/Content/AdoptPanel"]
+layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="SelectionActions" type="HBoxContainer" parent="Center/Dialog/Content"]
+[node name="AdoptChangedItems" type="CheckBox" parent="Center/Dialog/Content/AdoptPanel/AdoptContent"]
 unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_styles/normal = ExtResource("st_check")
+theme_override_styles/pressed = ExtResource("st_check")
+theme_override_styles/hover = ExtResource("st_check")
+theme_override_styles/hover_pressed = ExtResource("st_check")
+theme_override_styles/disabled = ExtResource("st_check")
+theme_override_colors/font_color = Color(0.925, 0.925, 0.89, 1)
+theme_override_colors/font_pressed_color = Color(0.925, 0.925, 0.89, 1)
+theme_override_colors/font_hover_color = Color(0.925, 0.925, 0.89, 1)
+theme_override_colors/font_hover_pressed_color = Color(0.925, 0.925, 0.89, 1)
+theme_override_colors/font_focus_color = Color(0.925, 0.925, 0.89, 1)
+text = "Bring this adventure's versions of changed items"
+
+[node name="AdoptDetail" type="Label" parent="Center/Dialog/Content/AdoptPanel/AdoptContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="LeftBehindPanel" type="HBoxContainer" parent="Center/Dialog/Content"]
+unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="RefreshSources" type="Button" parent="Center/Dialog/Content/SelectionActions"]
+[node name="LeftBehindHeading" type="Label" parent="Center/Dialog/Content/LeftBehindPanel"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+text = "Stays with the save:"
+
+[node name="LeftBehindList" type="Label" parent="Center/Dialog/Content/LeftBehindPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowButton"
-text = "Refresh saves"
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
 
-[node name="BrowseExternalSave" type="Button" parent="Center/Dialog/Content/SelectionActions"]
+[node name="Footer" type="HBoxContainer" parent="Center/Dialog/Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="BackToSaves" type="Button" parent="Center/Dialog/Content/Footer"]
 unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+text = "Choose another save"
+
+[node name="FooterSpacer" type="Control" parent="Center/Dialog/Content/Footer"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowButton"
-text = "Browse save file..."
 
-[node name="ReviewActions" type="HBoxContainer" parent="Center/Dialog/Content"]
+[node name="CancelImport" type="Button" parent="Center/Dialog/Content/Footer"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-theme_override_constants/separation = 8
-
-[node name="CancelImport" type="Button" parent="Center/Dialog/Content/ReviewActions"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowButton"
+theme_type_variation = &"FieldAction"
 text = "Cancel"
 
-[node name="ImportSelected" type="Button" parent="Center/Dialog/Content/ReviewActions"]
+[node name="ImportSelected" type="Button" parent="Center/Dialog/Content/Footer"]
 unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowButton"
+theme_type_variation = &"PrimaryAction"
 text = "Import selected"
-
-[node name="CancelSelection" type="Button" parent="Center/Dialog/Content/SelectionActions"]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-theme_type_variation = &"ClassicTheldrowButton"
-text = "Cancel"
 
 [node name="ExternalSaveDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true

@@ -1,0 +1,54 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/revision_surface.tres" id="st_revision_surface"]
+[node name="VaultRevisionRow" type="PanelContainer"]
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("st_revision_surface")
+
+[node name="RevisionContent" type="HFlowContainer" parent="."]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 6
+
+[node name="Summary" type="VBoxContainer" parent="RevisionContent"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="RevisionContent/Summary"]
+theme_type_variation = &"VaultText"
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="Detail" type="Label" parent="RevisionContent/Summary"]
+theme_type_variation = &"VaultStatusMuted"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="CurrentTag" type="Label" parent="RevisionContent"]
+theme_type_variation = &"VaultStatusGold"
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 13
+text = "Current"
+
+[node name="Inspect" type="Button" parent="RevisionContent"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"QuietAction"
+theme_override_font_sizes/font_size = 13
+text = "Inspect"
+
+[node name="Restore" type="Button" parent="RevisionContent"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 13
+tooltip_text = "Make this revision current again."
+text = "Restore"

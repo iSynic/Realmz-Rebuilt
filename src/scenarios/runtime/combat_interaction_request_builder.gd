@@ -10,6 +10,9 @@ var _game_state: GameState
 var _rules: RealmzRules
 var _rng: RealmzRng
 var _summon_previews: Dictionary = {}
+var _summon_anchor_payloads: Dictionary = {}
+## The committed learned cast whose area centers the pending targeting request needs.
+var targeting_selection: CombatCastSelection
 
 
 func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules, rng: RealmzRng) -> void:
@@ -31,6 +34,7 @@ func build(request_id: String) -> InteractionRequest:
 	if CombatCastResources.pending(_game_state) != null:
 		return _pending_request(request_id)
 	_summon_previews.clear()
+	_summon_anchor_payloads.clear()
 	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)
 	var actions := _base_actions(combat_view)
 	var spell_casts := _spell_cast_payloads(combat_view.active_actor_id)
@@ -52,10 +56,12 @@ func build(request_id: String) -> InteractionRequest:
 func _pending_request(request_id: String) -> InteractionRequest:
 	var preview := CombatCastResources.preview(_game_state)
 	if preview == null: return null
-	var request := CombatInteractionRequestBuilder.new(_content, preview, _rules, _rng).build(request_id)
+	var commitment := CombatCastResources.pending(_game_state)
+	var builder := CombatInteractionRequestBuilder.new(_content, preview, _rules, _rng)
+	builder.targeting_selection = commitment.selection
+	var request := builder.build(request_id)
 	if request == null: return null
 	var body := request.body as CombatRequestBody
-	var commitment := CombatCastResources.pending(_game_state)
 	body.pending_cast = CombatCastSelection.from_data(commitment.selection.to_data())
 	for actor: InteractionRequestValue.Combatant in body.combatants:
 		if actor.id != commitment.selection.actor_id: continue
@@ -187,7 +193,9 @@ static func _movement_payloads(combat_view: CombatView) -> Array[Dictionary]:
 
 func _spell_cast_payloads(actor_id: String) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for option: CombatSpellOptionView in _rules.combat_flow.magic.selection().character_spell_options(_game_state, _content, actor_id):
+	var selection := _rules.combat_flow.magic.selection()
+	for option: CombatSpellOptionView in selection.character_spell_options(_game_state, _content, actor_id):
+		_attach_learned_area_centers(selection, actor_id, option)
 		var payload := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
 		_append_spell_target_payload(payload, option)
 		if option.target_mode == &"combatant" and not option.target_candidates.is_empty():
@@ -198,6 +206,19 @@ func _spell_cast_payloads(actor_id: String) -> Array[Dictionary]:
 			continue
 		result.append(payload)
 	return result
+
+
+## Learned area options are admitted without centers. Once a cast is committed, its
+## pending request carries the same range, line-of-sight and whole-mask checks the
+## cast revalidates, so targeting refuses illegal centers locally. Only that one
+## option pays for the sweep, which keeps ordinary turn requests cheap on the web.
+func _attach_learned_area_centers(selection: CombatSpellSelection, actor_id: String, option: CombatSpellOptionView) -> void:
+	var committed := targeting_selection
+	if committed == null or committed.action != &"cast_spell" or committed.spell_id != option.spell_id or committed.power != option.power: return
+	if option.target_mode != &"area" or not option.legal_target_coordinates.is_empty(): return
+	var spell := _content.magic.spell_by_id(option.spell_id)
+	if spell == null or spell.target_type not in [3, 4] or ClassicSpellSpecialEffectRules.is_combat_phase_spell(spell): return
+	option.legal_target_coordinates = selection.legal_area_spell_target_coordinates(_game_state, _content, actor_id, spell, option.power, option.area_shape)
 
 
 func _item_cast_payloads(actor_id: String) -> Array[Dictionary]:
@@ -229,16 +250,7 @@ func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
 		var spell_id: String = option.spell_id
 		var spell := _content.magic.spell_by_id(spell_id)
 		if spell != null:
-			if not _summon_previews.has(spell.id):
-				_summon_previews[spell.id] = _rules.combat_flow.summoning.preview_definition(_game_state, _content, spell, _rng)
-			var definition: MonsterDefinition = _summon_previews[spell.id]
-			if definition != null:
-				var offsets := BattlefieldGrid.footprint_cells(Vector2i.ZERO, definition.size)
-				var power: int = option.power
-				var anchors := _rules.combat_flow.summoning.legal_anchor_coordinates(_game_state, _content, _game_state.combat.turns.active_actor_id(), spell, power, definition.size)
-				payload["areaOffsets"] = offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
-				payload["legalTargetCoordinates"] = anchors.map(func(anchor: Vector2i) -> Array[int]: return [anchor.x, anchor.y])
-				payload["defaultTargetCoordinate"] = [anchors[0].x, anchors[0].y] if not anchors.is_empty() else [-1, -1]
+			_append_summon_anchor_payload(payload, spell, option.power)
 	if option.target_mode == &"sequence":
 		var candidates: Array[Dictionary] = []
 		for candidate: CombatSpellTargetView in option.target_candidates:
@@ -253,6 +265,30 @@ func _append_spell_target_payload(payload: Dictionary, option: Variant) -> void:
 		payload["areaOffsets"] = area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
 		payload["areaRotationOffsets"] = area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
 		payload["legalTargetCoordinates"] = legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
+
+
+## Anchors depend on power only through range_max, so most summons share one projection
+## across every offered power. The default is the legal anchor nearest the caster, keeping
+## the keyboard/controller preview on screen instead of at the range's far corner.
+func _append_summon_anchor_payload(payload: Dictionary, spell: SpellDefinition, power: int) -> void:
+	if not _summon_previews.has(spell.id):
+		_summon_previews[spell.id] = _rules.combat_flow.summoning.preview_definition(_game_state, _content, spell, _rng)
+	var definition: MonsterDefinition = _summon_previews[spell.id]
+	if definition == null:
+		return
+	var key := "%s|%d" % [spell.id, power if spell.range_max != 0 else 0]
+	if not _summon_anchor_payloads.has(key):
+		var actor_id := _game_state.combat.turns.active_actor_id()
+		var origin := _game_state.combat.battlefield.actors.actor_position(actor_id)
+		var anchors := _rules.combat_flow.summoning.legal_anchor_coordinates(_game_state, _content, actor_id, spell, power, definition.size)
+		var nearest := Vector2i(-1, -1)
+		for anchor: Vector2i in anchors:
+			if nearest.x < 0 or (anchor - origin).length_squared() < (nearest - origin).length_squared(): nearest = anchor
+		_summon_anchor_payloads[key] = [anchors.map(func(anchor: Vector2i) -> Array[int]: return [anchor.x, anchor.y]), [nearest.x, nearest.y]]
+	var projected: Array = _summon_anchor_payloads[key]
+	payload["areaOffsets"] = BattlefieldGrid.footprint_cells(Vector2i.ZERO, definition.size).map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+	payload["legalTargetCoordinates"] = projected[0]
+	payload["defaultTargetCoordinate"] = projected[1]
 
 
 func _fast_spell_payloads(actor_id: String, spell_casts: Array[Dictionary]) -> Array[Dictionary]:

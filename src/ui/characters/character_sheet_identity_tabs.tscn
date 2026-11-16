@@ -9,6 +9,7 @@ size_flags_vertical = 3
 
 [node name="AppearanceTab" type="VBoxContainer" parent="."]
 layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/separation = 8
 [node name="Header" type="HBoxContainer" parent="AppearanceTab"]
 layout_mode = 2
@@ -23,6 +24,7 @@ theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 text = "Portrait and tactical icon change independently"
 [node name="AppearanceRegions" type="BoxContainer" parent="AppearanceTab"]
 layout_mode = 2
+size_flags_vertical = 3
 size_flags_horizontal = 3
 theme_override_constants/separation = 14
 
@@ -100,6 +102,7 @@ expand_mode = 1
 stretch_mode = 5
 [node name="Fallback" type="Label" parent="AppearanceTab/AppearanceRegions/CombatIconAppearanceRegion/Content/PreviewCenter/PreviewMedia"]
 layout_mode = 2
+theme_type_variation = &"SymbolGlyph"
 theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 text = "⚔"
 horizontal_alignment = 1
@@ -121,16 +124,19 @@ theme_override_colors/font_color = Color(0.937, 0.467, 0.439, 1)
 autowrap_mode = 2
 [node name="DiscardAppearanceChanges" type="Button" parent="AppearanceTab"]
 layout_mode = 2
+size_flags_horizontal = 0
 text = "Discard Appearance Changes"
 
 [node name="ImportCharacterArt" type="Button" parent="AppearanceTab"]
 visible = false
 layout_mode = 2
+size_flags_horizontal = 0
 text = "Import / Browse Character Art…"
 
 [node name="BackgroundTab" type="VBoxContainer" parent="."]
 visible = false
 layout_mode = 2
+size_flags_vertical = 3
 theme_override_constants/separation = 10
 [node name="RaceClassRegions" type="BoxContainer" parent="BackgroundTab"]
 layout_mode = 2

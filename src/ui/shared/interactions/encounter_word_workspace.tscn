@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[node name="EncounterContextDeck" type="PanelContainer"]
+[node name="EncounterContextDeck" type="PanelContainer" groups=["ui_theme_textured"]]
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_type_variation = &"ClassicInset"

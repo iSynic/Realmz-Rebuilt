@@ -539,9 +539,10 @@ func _begin_boat_choice(result: ExplorationMovementWorkflow.MovementTransitionRe
 	return SessionCoordinatorResult.waiting(_context.session_interaction, events)
 
 
-func start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionCoordinatorResult:
+## `chosen` is the already drawn battle whose before-message the player has acknowledged.
+func start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent], chosen: Variant = null) -> SessionCoordinatorResult:
 	var effective := _context.state.world.triggers.random_region(region)
-	var battle_id := _context.rng.draw_between_classic(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
+	var battle_id: int = chosen if chosen != null else _context.rng.draw_between_classic(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
 	var battle := _context.content.combat.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		if ClassicCompatibility.source_unavailable(_context.content, "Data BD", absi(battle_id)):
@@ -551,6 +552,9 @@ func start_random_battle(region: RandomEncounterRegion, surprise: int, events: A
 		return SessionCoordinatorResult.failed(&"unknown_random_battle", "Random rectangle '%s' selected unavailable battle %d." % [region.id, battle_id], events)
 	if _context.content.classic_records != null and ClassicCompatibility.unsafe_battle(_context.content, _context.state, battle, null) != null:
 		return _cancel_random_battle(events, absi(battle_id))
+	var before := ClassicBattlePrelude.before_message(_context.content, battle) if chosen == null else null
+	if before != null and _context.session_continuation.exploration() != null:
+		return RandomBattlePrelude.wait(_context, _context.session_continuation.exploration(), region, battle_id, surprise, before, events)
 	var effective_surprise := -1 if battle_id < 0 else surprise
 	events.append(DomainEvent.new(&"random_encounter_triggered", {"regionId": region.id, "battleId": battle.id, "classicId": battle_id, "textId": region.text_id, "soundId": region.sound_id, "surprise": effective_surprise}))
 	var battle_result := _context.rules.combat_flow.start_battle(_context.state, _context.content, battle, _context.rng, effective_surprise)

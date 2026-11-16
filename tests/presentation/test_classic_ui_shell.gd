@@ -11,6 +11,7 @@ func run() -> void:
 	await _test_authored_hud_switch()
 	_test_startup_party_setup_composition()
 	_test_package_operation_presentation(); _test_interaction_layout_policy(); _test_classic_click_modal()
+	await _test_action_log()
 	await _test_primary_workspace_lifecycle()
 
 
@@ -110,6 +111,10 @@ func _test_authored_hud_switch() -> void:
 	authored_roster.offset_left -= 12.0
 	host.add_child(shell)
 	await tree.process_frame
+	# This fixture starts from the Fixed HUD; a new profile's default is the modular arrangement.
+	shell.settings.hud = HudPreferences.new()
+	shell.settings.combat_hud.modular = false
+	shell.refresh_layout()
 	assert_true(is_equal_approx(shell.roster.size.x, authored_width + 12.0), "the running Wide roster uses its edited scene width")
 	var view := GameView.new(1, true, null)
 	view.campaign_id = "hud-switch-fixture"
@@ -147,11 +152,19 @@ func _test_authored_hud_switch() -> void:
 	assert_equal((shell.roster.get_node("RosterColumn/PartyScroll/PartyList") as Control).get_child_count(), 6, "Modular retains six authored party positions")
 	shell.settings.hud.panels[2].background_opacity = 0.4
 	shell.settings.hud.panels[3].background_opacity = 0.4
+	shell.settings.hud.effects_bar_opacity = 0.4
 	shell.refresh_layout()
 	var world_surface := shell.hud.get_node("World/Surface") as PanelContainer
 	var effect_surface := shell.hud.get_node("Party/EffectsDock") as PanelContainer
 	var command_text := shell.hud.world_grid.get_node("SearchModeCommand") as Control
 	assert_true(is_equal_approx(world_surface.self_modulate.a, 0.4) and is_equal_approx(effect_surface.self_modulate.a, 0.4) and is_equal_approx(command_text.self_modulate.a, 1.0), "Modular opacity changes panel and dock backgrounds while retaining opaque command content")
+	var world_panel := shell.hud.get_node("World") as HudPanel
+	var ordinary_world := world_panel.visual_rect().size
+	shell.settings.hud.panels[2].scale = 1.5
+	shell.refresh_layout()
+	assert_true(is_equal_approx(world_panel.scale.x, 1.5) and absf(world_panel.visual_rect().size.x - ordinary_world.x * 1.5) <= 1.0 and shell.hud.placement_area().grow(1.0).encloses(world_panel.visual_rect()) and is_equal_approx((shell.hud.get_node("Roster") as HudPanel).scale.x, 1.0), "a modular panel given its own scale is drawn that much larger inside the window, alone")
+	shell.settings.hud.panels[2].scale = 1.0
+	shell.refresh_layout()
 	var modular_search := shell.hud.world_grid.get_node("SearchModeCommand") as ClassicSearchCommandButton
 	modular_search.command_requested.emit(&"search_mode")
 	assert_equal(intents[0], 1, "Modular command delivers one intent")
@@ -173,8 +186,56 @@ func _test_authored_hud_switch() -> void:
 	fixed_search.command_requested.emit(&"search_mode")
 	assert_equal(intents[0], 2, "Fixed command delivers one intent after switching back")
 	assert_equal(shell.selected_character_id, view.party_members[2].id, "Fixed retains the selected character")
+	var workspaces: Array[Rect2] = [Rect2()]
+	shell.layout_changed.connect(func(workspace: Rect2, _profile: UiLayoutProfile) -> void: workspaces[0] = workspace)
+	view.combat_view = CombatView.new(CombatState.new("classic.battle.hud-switch"))
+	view.combat_view.outcome = &"active"
+	shell.present(view)
+	shell.refresh_layout()
+	var fixed_workspace := workspaces[0]
+	assert_true(fixed_workspace.size.x < shell.size.x and fixed_workspace.end.y < shell.size.y and not BattleDeckLayout.area.has_area() and fixed_roster.visible, "Fixed combat keeps the battlefield between the roster and the command console")
+	shell.settings.combat_hud.modular = true
+	shell.refresh_layout()
+	assert_true(workspaces[0].size == shell.size and BattleDeckLayout.area.size == shell.size and BattleDeckLayout.preferences == shell.settings.combat_hud and not fixed_roster.visible and shell.hud.active and shell.hud.combat_mode and shell.roster == shell.hud.content(0) and (shell.hud.get_node("Roster") as Control).visible and not (shell.hud.get_node("Narration") as Control).visible and not (shell.hud.get_node("World") as Control).visible and not (shell.get_node("%BottomRegion") as Control).visible, "Modular combat gives the battlefield the whole window and hands the combat HUD preferences to the floating deck")
+	shell.settings.combat_hud.modular = false
+	shell.refresh_layout()
+	assert_true(workspaces[0] == fixed_workspace and not BattleDeckLayout.area.has_area() and fixed_roster.visible and not shell.hud.active and shell.roster == fixed_roster, "switching the combat HUD back to Fixed restores the roster and the battlefield's fixed bounds")
+	view.combat_view = null
+	shell.present(view)
+	shell.refresh_layout()
+	assert_true((shell.get_node("%BottomRegion") as Control).visible and fixed_roster.visible, "the footer and roster return when the battle is over")
+	BattleCommandScaleController.modular = false
+	BattleDeckLayout.preferences = null
 	host.free()
 	await tree.process_frame
+
+
+func _test_action_log() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var lines: Array[String] = ["Round 1 · Nyx", "Nyx acts", "Nyx attacks Ogre", "Ogre · 3", "Ogre acts", "Ogre moved", "Ogre moved", "Ogre moved", "Ogre attacks Sylva", "Sylva · 7", "Durin acts", "Durin · Cast Magic Aura [P1]"]
+	assert_equal(ActionLogFormat.actors(lines), ["Nyx", "Ogre", "Sylva", "Durin"] as Array[String], "the log names everyone who acts or is acted on, in first-seen order")
+	assert_equal(ActionLogFormat.filtered(lines, true, "").size(), lines.size() - 3, "hiding movement drops only the movement lines")
+	assert_equal(ActionLogFormat.filtered(lines, false, "Sylva"), ["Round 1 · Nyx", "Ogre attacks Sylva", "Sylva · 7"] as Array[String], "filtering to one combatant keeps the round heading and the lines they make or receive")
+	assert_true(ActionLogFormat.folded(lines).has("Ogre moved ×3") and ActionLogFormat.folded(lines).size() == lines.size() - 2, "repeated lines fold into one line with a count")
+	var markup := ActionLogFormat.markup(lines, Color.WHITE, Color.GRAY, 21)
+	assert_true(markup.contains("[font_size=21]") and markup.contains("[lb]P1]") and not markup.contains("Nyx acts") and markup.contains("    Nyx attacks Ogre") and markup.contains("        Ogre · 3"), "the layout sets round headings apart, leads each turn with its actor, indents results under their action and keeps bracketed text literal")
+	var host := Control.new()
+	host.size = Vector2(1280, 720)
+	tree.root.add_child(host)
+	var view := load("res://src/ui/shared/action_log_view.tscn").instantiate() as ActionLogView
+	host.add_child(view)
+	view.present(lines, "Combat Log", false)
+	await tree.process_frame
+	var log := view.get_node("%GameActionLog") as RichTextLabel
+	var count := view.get_node("%Count") as Label
+	var before := log.get_theme_font_size(&"normal_font_size")
+	assert_true(before >= 18 and count.text == "12 lines" and log.get_parsed_text().contains("Ogre moved ×3") and (view.get_node("%Actor") as OptionButton).item_count == 5 and (view.get_node("Panel") as Control).size.x <= 900.0, "the Combat Log opens as a readable column with larger text, folded repeats and a filter per combatant")
+	(view.get_node("%Movement") as CheckButton).button_pressed = false
+	(view.get_node("%Larger") as Button).pressed.emit()
+	assert_true(count.text == "9 of 12 lines" and not log.get_parsed_text().contains("moved") and log.get_theme_font_size(&"normal_font_size") > before, "the movement switch and the text-size buttons take effect at once")
+	ActionLogView.show_movement = true
+	ActionLogView.text_size = 18
+	host.free()
 
 
 func _test_interaction_layout_policy() -> void:
@@ -245,7 +306,7 @@ func _test_startup_party_setup_composition() -> void:
 	var initial_party_slot_ids: Array[int] = []; for slot: Node in party_slots.get_children(): initial_party_slot_ids.append(slot.get_instance_id())
 	router.set_layout_profile(UiLayoutProfile.for_viewport(Vector2(800, 600), PresentationSettings.UI_SCALE_AUTO), Vector2(800, 600)); assert_true(not (router.find_child("PackageInstallRow", true, false) as BoxContainer).vertical and router.find_child("ExperienceRatio", true, false) != null, "compact setup keeps paired installation controls and a dedicated source-calculated experience fact")
 	var setup_view := GameView.new(1, true, null); setup_view.party_setup_available = true; setup_view.party_setup = PartySetupView.new(); setup_view.campaign_summary = CampaignSummaryView.new(); setup_view.party_members = [CharacterView.new(CharacterState.new("setup.inspect", "Ari", 12, 12))]; router.present(setup_view); router.show_campaign_selection(); var updated_party_slot_ids: Array[int] = []; for slot: Node in party_slots.get_children(): updated_party_slot_ids.append(slot.get_instance_id())
-	assert_equal(updated_party_slot_ids, initial_party_slot_ids, "party insertion updates one retained six-slot control set instead of rebuilding the pane"); var inspect := _buttons_in(router.find_child("PartySlots", true, false)).filter(func(button: Button) -> bool: return button.text in ["View", "Inspect"])[0] as Button; inspect.pressed.emit(); assert_true((router.find_child("PartySetupCharacterInspection", true, false) as Control).visible and router.find_child("BackToPartySetup", true, false) != null and router.find_child("CharacterInspectionScroll", true, false) != null and router.find_child("PartySetupCharacterSheet", true, false) != null, "setup inspection owns one opaque clipped full-stage record with one return action"); router.free()
+	assert_equal(updated_party_slot_ids, initial_party_slot_ids, "party insertion updates one retained six-slot control set instead of rebuilding the pane"); var inspect := _buttons_in(router.find_child("PartySlots", true, false)).filter(func(button: Button) -> bool: return button.name == "InspectPartyCharacter")[0] as Button; inspect.pressed.emit(); assert_true((router.find_child("PartySetupCharacterInspection", true, false) as Control).visible and router.find_child("BackToPartySetup", true, false) != null and router.find_child("CharacterInspectionScroll", true, false) != null and router.find_child("PartySetupCharacterSheet", true, false) != null, "setup inspection owns one opaque clipped full-stage record with one return action"); router.free()
 
 
 func _test_package_operation_presentation() -> void:
@@ -311,15 +372,15 @@ func _test_primary_workspace_lifecycle() -> void:
 		if route_id == &"system":
 			_assert_route_regions_survive_refresh(router, view, ["SystemSummary", "SystemWorkspaceTabs", "Save & Load", "Display", "Audio", "Pacing", "Accessibility", "Controls", "Diagnostics"], "Preferences and Game rerenders records inside stable scene-authored tab regions")
 		if route_id == &"vault":
-			_assert_route_regions_survive_refresh(router, view, ["VaultHeaderArea", "VaultListArea", "VaultHistoryArea", "VaultInspectionArea"], "Character Files rerenders records inside stable scene-authored regions")
+			_assert_route_regions_survive_refresh(router, view, ["VaultLibrary", "CharacterFileList", "DetailPanel", "VaultInspectionArea"], "Character Files rerenders records inside stable scene-authored regions")
 	assert_equal(entered, [&"character", &"allies", &"bestiary", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"save_load", &"exploration", &"save_load", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace"); router.open_screen(&"save_load"); var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()); router.set_media_catalog(media); var retained_system_tabs := router.find_child("SystemWorkspaceTabs", true, false); router.set_media_catalog(media); assert_true(retained_system_tabs != null and router.find_child("SystemWorkspaceTabs", true, false) == retained_system_tabs, "reusing one effective media catalog preserves the mounted route content instead of rebuilding it during ordinary movement events"); (router.find_child("RouteBackAction", true, false) as Button).pressed.emit(); assert_equal([router.current_screen(), (router.get_node("SaveModalShield") as Control).visible], [&"combat", false], "Back returns to combat and releases the save modal shield")
 	var setup_view := GameView.new(2, true, null); setup_view.campaign_summary = CampaignSummaryView.new(); setup_view.campaign_summary.campaign_id = "workspace-fixture"; setup_view.campaign_summary.title = "Workspace Scenario"; setup_view.campaign_summary.version = "6.0.0"; setup_view.campaign_summary.author = "Fantasoft"; setup_view.campaign_summary.restriction_description = "Up to six adventurers."; setup_view.campaign_summary.recommended_party_levels = 18; setup_view.campaign_summary.guidance_authored = true
 	setup_view.party_setup_available = true
 	setup_view.party_members = [CharacterView.new(CharacterState.new("closing.hero", "Closing Hero", 10, 10))]
 	router.present(setup_view)
 	router.show_campaign_selection()
-	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "• 1 / 6", "party setup presents the active assembly count"); assert_true(router.find_child("SelectedScenarioSummary", true, false) != null and _labels_in(router).has("Workspace Scenario") and _labels_in(router).any(func(text: String) -> bool: return text.contains("recommended party total 18")), "the selected scenario exposes its detached identity, restrictions, and level guidance inside the narrow scenario pane")
+	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "1 of 6", "party setup presents the active assembly count"); assert_true(router.find_child("SelectedScenarioSummary", true, false) != null and _labels_in(router).has("Workspace Scenario") and _labels_in(router).any(func(text: String) -> bool: return text.contains("recommended party total 18")), "the selected scenario exposes its detached identity, restrictions, and level guidance inside the narrow scenario pane")
 	router.present(GameView.new(3, false, null))
 	router.show_campaign_selection()
-	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "• 0 / 6", "ending an adventure clears the setup controller's stale party count")
+	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "0 of 6", "ending an adventure clears the setup controller's stale party count")
 	router.free()

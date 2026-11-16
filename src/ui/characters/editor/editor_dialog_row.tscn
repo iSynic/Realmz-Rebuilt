@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_dialog_row.gd" id="1_editor_dialo"]
+[ext_resource type="Script" path="res://src/ui/shared/style/arrow_label.gd" id="2_arrow"]
+
+[node name="EditorDialogRow" type="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+script = ExtResource("1_editor_dialo")
+
+[node name="Stat" type="Label" parent="."]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = "Stat"
+
+[node name="Change" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2_arrow")
+
+[node name="Delta" type="Label" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 0)
+horizontal_alignment = 2
+layout_mode = 2
+theme_type_variation = &"VaultStatusGood"
+theme_override_font_sizes/font_size = 13
+text = ""

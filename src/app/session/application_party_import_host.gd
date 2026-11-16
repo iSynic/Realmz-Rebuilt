@@ -12,9 +12,12 @@ var _package_records: Array[PackageDiscoveryResult] = []
 var _source: SavePartySource
 var _source_content: RealmzContent
 var _review: PartyTransferReview
+var _source_state: GameState
+var _adopt_changed := false
 var _task := PackageReadTask.new()
 var _open := false
 var _art_host: ApplicationCharacterArtHost
+var _rows: Array[Dictionary] = []
 
 
 func _init(saves: SaveHostController, packages: PackageHostController, session: GameSessionController, shell: GameShell, destination: Callable, art_host: ApplicationCharacterArtHost = null) -> void:
@@ -38,6 +41,9 @@ func _init(saves: SaveHostController, packages: PackageHostController, session: 
 	_setup.party_import_cancel_requested.connect(func() -> void:
 		var host := owner.get_ref() as ApplicationPartyImportHost
 		if host != null: host.cancel())
+	_setup.party_import_adopt_changed_requested.connect(func(adopt: bool) -> void:
+		var host := owner.get_ref() as ApplicationPartyImportHost
+		if host != null: host.set_adopt_changed(adopt))
 	_setup.party_import_refresh_requested.connect(func() -> void:
 		var host := owner.get_ref() as ApplicationPartyImportHost
 		if host != null: host.refresh())
@@ -58,20 +64,14 @@ func refresh() -> void:
 	_task.shutdown()
 	_source_content = null
 	_review = null
+	_source_state = null
 	_sources = _saves.party_sources()
 	_package_records = _packages.saved_party_catalog.discover()
-	var rows: Array[Dictionary] = []
+	PartyImportViewBuilder.sort_sources(_sources, _package_records)
+	_rows.clear()
 	for source: SavePartySource in _sources:
-		var record := _package_for(source)
-		var title := record.display_name if record != null and not record.display_name.is_empty() else source.campaign_id
-		if title.is_empty(): title = "External save"
-		var detail := source.error
-		if detail.is_empty() and record == null:
-			detail = _missing_package_message(source)
-		if detail.is_empty(): detail = "Required package available. " + ", ".join(source.party_names)
-		var date := Time.get_datetime_string_from_unix_time(source.modified_unix).replace("T", " ")
-		rows.append({"label": "%s · %s%s · %s" % [title, source.slot_id, " (backup)" if source.source_kind == &"backup" else "", date], "detail": detail, "valid": source.is_valid() and record != null})
-	_setup.show_party_import({"phase": "selection", "sources": rows, "message": "Choose a saved adventure. Its world state stays behind."})
+		_rows.append(PartyImportViewBuilder.source_row(source, _package_records))
+	_setup.show_party_import({"phase": "selection", "sources": _rows})
 
 
 func select_source(index: int) -> void:
@@ -89,17 +89,19 @@ func _prepare(source: SavePartySource) -> void:
 	_review = null
 	_source_content = null
 	_source = source
+	_source_state = null
+	_adopt_changed = false
 	if not source.is_valid():
-		_show_error(source.error)
+		_show_error(PartyImportViewBuilder.error_reason(source.error))
 		return
-	var record := _package_for(source)
+	var record := PartyImportViewBuilder.package_for(source, _package_records)
 	if record == null:
-		_show_error(_missing_package_message(source))
+		_show_error(PartyImportViewBuilder.missing_package_reason(source, _package_records))
 		return
 	if not _task.start(record.path):
-		_show_error("The source package could not start loading. Choose the save again.")
+		_show_error("The scenario this save needs could not start loading. Choose the save again.")
 		return
-	_setup.show_party_import({"phase": "loading", "message": "Validating the exact source package and saved adventure…"})
+	_setup.show_party_import({"phase": "loading", "sources": _rows, "reading": "Reading %s · %s…" % [PartyImportViewBuilder.title_for(source.campaign_id, _package_records), PartyImportViewBuilder.slot_label(source)]})
 
 
 func poll() -> void:
@@ -116,7 +118,16 @@ func poll() -> void:
 		_show_error(restored.error_message)
 		return
 	_source_content = loaded.content
-	_review_current_setup(restored.candidate.state)
+	_source_state = restored.candidate.state
+	_review_current_setup(_source_state)
+
+
+## Re-reviews the loaded source with or without the destination's changed item versions.
+func set_adopt_changed(adopt: bool) -> void:
+	if not _open or _source_state == null or _source_content == null or adopt == _adopt_changed:
+		return
+	_adopt_changed = adopt
+	_review_current_setup(_source_state)
 
 
 func _review_current_setup(source_state: GameState) -> void:
@@ -129,18 +140,21 @@ func _review_current_setup(source_state: GameState) -> void:
 		_show_error("Return to new-adventure party setup before importing.")
 		return
 	var destination := SessionWorkflowContext.new(content, snapshot.game_state, RealmzRules.new(), null, null, null)
-	_review = PartyTransferRules.prepare(source_state, _source_content, destination, _session.view().revision, _source.source_file_hash)
-	var rows: Array[Dictionary] = []
+	_review = PartyTransferRules.prepare(source_state, _source_content, destination, _session.view().revision, _source.source_file_hash, _adopt_changed)
+	_show_review("")
+
+
+## Each character becomes one card; eligible characters fill the open slots in source order.
+func _show_review(error: String) -> void:
+	var cards: Array[Dictionary] = []
 	var remaining := _review.available_slots
+	var art := _source.envelope.character_art if _source.envelope != null else null
 	for candidate: PartyTransferCandidate in _review.candidates:
-		var character := candidate.character
-		var detail := "\n".join(candidate.reasons)
-		if character != null:
-			detail += "\nLevel %d · HP %d/%d · SP %d/%d\nPersonal money: %d gold, %d gems, %d jewelry\nKept: %s\nRemoved: %s" % [character.level, character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.money.gold, character.money.gems, character.money.jewelry, ", ".join(candidate.retained) if not candidate.retained.is_empty() else "No portable possessions", "\n".join(candidate.removed) if not candidate.removed.is_empty() else "None"]
 		var selected := candidate.eligible() and remaining > 0
 		if selected: remaining -= 1
-		rows.append({"name": character.name if character != null else "Invalid character", "eligible": candidate.eligible(), "selected": selected, "detail": detail.strip_edges()})
-	_setup.show_party_import({"phase": "review", "candidates": rows, "available_slots": _review.available_slots, "left_behind": _review.left_behind, "message": "Review the heroes and possessions that can join this adventure."})
+		cards.append(PartyImportViewBuilder.candidate_card(candidate, _source_content, selected, art))
+	var destination := _destination.call() as RealmzContent
+	_setup.show_party_import({"phase": "review", "candidates": cards, "available_slots": _review.available_slots, "left_behind": _review.left_behind, "changed_items": _review.changed_items, "adopt_changed": _adopt_changed, "source_line": PartyImportViewBuilder.source_line(_source, _package_records), "destination": "Joining %s" % destination.campaign.title if destination != null and destination.campaign != null else "", "error": error})
 
 
 func import_selected(indices: Array[int]) -> void:
@@ -165,11 +179,11 @@ func import_selected(indices: Array[int]) -> void:
 	seen.sort()
 	for index: int in seen: members.append(_review.candidates[index].character)
 	if _art_host != null and not _art_host.install_save_art(current.envelope):
-		_setup.show_party_import({"phase": "error", "message": _art_host.last_error})
+		_show_review(_art_host.last_error)
 		return
 	var step := _session.submit_intent(PartyIntents.import_saved_party(members, _review))
 	if step.state == SessionStep.State.FAILED:
-		_show_error(step.error_message)
+		_show_review(step.error_message)
 		return
 	cancel()
 
@@ -178,6 +192,7 @@ func cancel() -> void:
 	_open = false
 	_task.shutdown()
 	_sources.clear()
+	_rows.clear()
 	_package_records.clear()
 	_source = null
 	_source_content = null
@@ -185,16 +200,7 @@ func cancel() -> void:
 	_setup.close_party_import()
 
 
-func _package_for(source: SavePartySource) -> PackageDiscoveryResult:
-	for record: PackageDiscoveryResult in _package_records:
-		if record.ready and record.campaign_id == source.campaign_id and record.package_hash == source.package_hash:
-			return record
-	return null
-
-
-static func _missing_package_message(source: SavePartySource) -> String:
-	return "Install the exact %s package revision %s through Choose Scenario, then Refresh. Other revisions cannot open this save." % [source.campaign_id, source.package_hash]
-
-
+## A failure keeps the source list so the player can choose again.
 func _show_error(message: String) -> void:
-	_setup.show_party_import({"phase": "error", "message": message})
+	var title := "Couldn't read %s · %s" % [PartyImportViewBuilder.title_for(_source.campaign_id, _package_records), PartyImportViewBuilder.slot_label(_source)] if _source != null else "Couldn't read that save"
+	_setup.show_party_import({"phase": "error", "sources": _rows, "error_title": title, "message": message})

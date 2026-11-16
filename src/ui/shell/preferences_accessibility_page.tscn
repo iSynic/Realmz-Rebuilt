@@ -1,5 +1,7 @@
 [gd_scene load_steps=1 format=3]
 
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_card.tres" id="90_card"]
+
 
 
 [node name="Accessibility" type="VBoxContainer"]
@@ -11,6 +13,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 [node name="AccessibilitySettingsPanel" type="PanelContainer" parent="AccessibilitySettingsScroll"]
+theme_override_styles/panel = ExtResource("90_card")
 layout_mode = 2
 size_flags_horizontal = 3
 [node name="Content" type="VBoxContainer" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel"]
@@ -24,6 +27,11 @@ autowrap_mode = 2
 [node name="ReducedMotionExplanation" type="Label" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2
 text = "Reduced motion settles combat feedback in one presentation frame without skipping committed events."
+autowrap_mode = 2
+[node name="HarmEdgeFlash" type="CheckButton" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
+layout_mode = 2
+tooltip_text = "Glows the window edge red when a party member loses stamina, green for poison and ochre for disease. Under reduced motion the glow is fainter and ends without fading."
+text = "Edge glow when the party is harmed"
 autowrap_mode = 2
 [node name="ReducedSound" type="CheckButton" parent="AccessibilitySettingsScroll/AccessibilitySettingsPanel/Content"]
 layout_mode = 2

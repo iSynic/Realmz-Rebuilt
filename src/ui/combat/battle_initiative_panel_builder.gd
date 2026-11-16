@@ -16,7 +16,7 @@ static func build(round_number: int, combatants: Array[InteractionRequestValue.C
 	var panel := _panel_scene.instantiate() as PanelContainer
 	var heading := panel.get_node("%Heading") as Label
 	heading.text = "Round %d • Turn order" % round_number
-	var turns := panel.get_node("%BattleInitiativeOrder") as HBoxContainer
+	var turns := panel.get_node("%BattleInitiativeOrder") as BoxContainer
 	var ordered := _ordered_from_active(combatants, active_actor_id)
 	for index: int in mini(ordered.size(), maximum_visible_turns):
 		var combatant := ordered[index]

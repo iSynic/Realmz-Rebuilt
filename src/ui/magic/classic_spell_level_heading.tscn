@@ -1,11 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Texture2D" path="res://src/ui/shared/assets/classic-controls/spells/level-label.png" id="1_label"]
-
-[node name="SpellLevelHeading" type="TextureRect"]
-custom_minimum_size = Vector2(73, 18)
+[node name="SpellLevelHeading" type="Label"]
 layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 5
-texture = ExtResource("1_label")
+theme_type_variation = &"MenuHeading"
+text = "Level"
+horizontal_alignment = 1

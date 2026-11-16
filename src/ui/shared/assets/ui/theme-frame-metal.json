@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "label": "Interface-theme frame: bevelled metal bar with riveted corner plates",
+  "provider": "project",
+  "license": "Project-Authored",
+  "derivation": "Drawn procedurally in neutral greys by tools/theme_frame_gen.py; no source artwork.",
+  "presentation_contract": "Nine-patch with 20-pixel corners, nearest filtering, tinted with the theme's accent colour and drawn over menu-screen panels in the ui_theme_frame group when a theme names this frame style. Also worn in play by the modular HUD's panels.",
+  "file": {
+    "path": "res://src/ui/shared/assets/ui/theme-frame-metal.png",
+    "width": 64,
+    "height": 64,
+    "bytes": 6299,
+    "sha256": "2facc85e3a757c5c1f0b84c8bf940762d7dae3cc3d52f6045ddc84b3c5079484"
+  }
+}

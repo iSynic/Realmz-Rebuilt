@@ -14,6 +14,8 @@ var description_readout: RichTextLabel
 var stats_readout: RichTextLabel
 var _detail_strip: HBoxContainer
 var _compact_detail_rows: VBoxContainer
+var _transaction: Control
+var _left_controls: BoxContainer
 
 
 func activate(owner: Control, compact: bool, party_gold: int, inflation_percent: int) -> Control:
@@ -28,6 +30,8 @@ func activate(owner: Control, compact: bool, party_gold: int, inflation_percent:
 		stats_label = stats_pane.find_child("ShopItemStats", true, false) as Label
 		description_readout = description_pane.find_child("ShopItemDescriptionReadout", true, false) as RichTextLabel
 		stats_readout = stats_pane.find_child("ShopItemStatsReadout", true, false) as RichTextLabel
+		_transaction = owner.find_child("ShopTransactionContainer", true, false) as Control
+		_left_controls = owner.find_child("ShopLeftControls", true, false) as BoxContainer
 	var columns := owner.find_child("ShopColumns", true, false) as HBoxContainer
 	if compact:
 		compact_browser.visible = true
@@ -57,6 +61,7 @@ func activate(owner: Control, compact: bool, party_gold: int, inflation_percent:
 			columns.remove_child(compact_browser)
 		active_browser = wide_browser
 	_set_detail_profile(compact)
+	_arrange_action_bar(owner, compact)
 	UiSizing.bind_added(active_browser.get_instance_id())
 	return active_browser
 
@@ -67,10 +72,16 @@ func capture_state(owner: Control, compact: bool) -> Dictionary:
 	var inventory_scroll := active_browser.find_child("InventoryScroll", true, false) as ScrollContainer
 	var stock_scroll := active_browser.find_child("ShopStockScroll", true, false) as ScrollContainer
 	var focus := owner.get_viewport().gui_get_focus_owner() if owner.get_viewport() != null else null
+	var focus_name := String(focus.name) if focus != null and active_browser.is_ancestor_of(focus) else ""
+	# A transaction button (Equip, Identify) holds the focus when it rebuilds the Shop; return
+	# to the carried item it acted on, so the next action applies to the same item.
+	if focus_name.is_empty():
+		for row: Node in active_browser.find_children("Inventory_*", "BaseButton", true, false):
+			if (row as BaseButton).button_pressed: focus_name = row.name
 	return {"tab": (active_browser.get_node("ShopBrowserTabs") as TabContainer).current_tab if compact else 0,
 		"inventoryScroll": inventory_scroll.scroll_vertical if inventory_scroll != null else 0,
 		"stockScroll": stock_scroll.scroll_vertical if stock_scroll != null else 0,
-		"focusName": focus.name if focus != null and active_browser.is_ancestor_of(focus) else ""}
+		"focusName": focus_name}
 
 
 func restore_state(browser: Control, compact: bool, state: Dictionary) -> void:
@@ -92,7 +103,7 @@ func apply_sizes(owner: Control, compact: bool, route_size: Vector2, left_load: 
 	var profile := UiSizing.profile_for(owner)
 	var text_growth := profile.font_scale / profile.ui_scale if profile != null and profile.ui_scale > 0.0 else 1.0
 	var transaction := owner.find_child("ShopTransactionPanel", true, false) as Control
-	(transaction.get_node("Actions") as GridContainer).columns = 2 if compact and text_growth > 1.0 else 3
+	(transaction.get_node("Actions") as GridContainer).columns = 2 if compact and text_growth > 1.0 else 4
 	(owner.find_child("ShopTransactionFacts", true, false) as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact else TextServer.AUTOWRAP_OFF
 	if compact and profile != null:
 		for spec: Array in [["InventoryScroll", 120.0], ["ShopStockScroll", 140.0]]:
@@ -106,27 +117,26 @@ func apply_sizes(owner: Control, compact: bool, route_size: Vector2, left_load: 
 	var route_row_height := maxf(done_size.y, route_size.y)
 	var compact_control_height := route_row_height * 2.0 + 14.0
 	UiSizing.minimum_size(owner.find_child("ShopControlStrip", true, false) as Control, Vector2(0.0, maxf(68.0, compact_control_height if compact else done_size.y + 12.0)))
-	for spec: Array in [["ShopLeftLoadPanel", 66.0, 86.0], ["ShopSelectedShopperPanel", 64.0, 84.0], ["ShopSelectedShopper", 56.0, 76.0], ["ShopTransactionContainer", 150.0, 174.0], ["ShopTransactionPanel", 142.0, 166.0], ["ShopRightLoadPanel", 58.0, 86.0]]:
+	for spec: Array in [["ShopLeftLoadPanel", 66.0, 86.0], ["ShopSelectedShopperPanel", 64.0, 84.0], ["ShopSelectedShopper", 56.0, 76.0], ["ShopTransactionContainer", 150.0, 270.0], ["ShopTransactionPanel", 142.0, 262.0], ["ShopRightLoadPanel", 58.0, 86.0]]:
 		UiSizing.minimum_size(owner.find_child(spec[0], true, false) as Control, Vector2(spec[1] if compact else spec[2], 0.0))
 	UiSizing.minimum_size(route_controls, Vector2((done_size.x * 2.0 + 14.0) if compact else 257.0, 0.0))
-	UiSizing.minimum_size(owner.get_node("ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopperPortraitSelector") as Control, Vector2(76.0 if compact else 96.0, 0.0))
+	UiSizing.minimum_size(owner.get_node("ShopLowerWorkspace/ShopControlStrip/ShopControls/ShopperPortraitSelector") as Control, Vector2(76.0 if compact else 170.0, 0.0))
 	UiSizing.minimum_size(left_load, Vector2(62.0 if compact else 78.0, 0.0))
 	UiSizing.minimum_size(right_load, Vector2(54.0 if compact else 78.0, 0.0))
 	for button: Button in [buy, sell, identify]:
-		UiSizing.minimum_size(button, Vector2(44.0, 22.0) if compact else Vector2(52.0, 24.0))
+		UiSizing.minimum_size(button, Vector2(44.0, 22.0) if compact else Vector2(82.0, 30.0))
 	UiSizing.minimum_size(owner.find_child("ShopDone", true, false) as Control, done_size)
-	UiSizing.minimum_size(_detail_strip, Vector2(0.0, 82.0) if not compact else Vector2.ZERO)
+	UiSizing.minimum_size(_detail_strip, Vector2(0.0, 96.0) if not compact else Vector2.ZERO)
 	for pane: PanelContainer in [description_pane, stats_pane]:
 		UiSizing.minimum_size(pane, Vector2(0.0, 64.0) if not compact else Vector2.ZERO)
 	for pane: PanelContainer in [description_pane, stats_pane]:
 		pane.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if compact else Control.SIZE_EXPAND_FILL
-	if not compact:
-		var filters := wide_browser.find_child("ShopCategoryFilters", true, false) as GridContainer
-		filters.columns = 2 if profile != null and (profile.font_scale > profile.ui_scale or profile.bitmap_scale > profile.ui_scale) else 1
 
 
 func configure_route_button(button: ClassicBitmapButton, caption: String, asset_id: StringName, route_size: Vector2, callback: Callable, art_options: Dictionary = {}) -> void:
-	var definition := {"id": StringName(button.name), "asset_id": asset_id, "tooltip": caption, "label": ""}
+	# The wide profile has room to name each route under its art; compact keeps the bare square.
+	var named := route_size.y > route_size.x
+	var definition := {"id": StringName(button.name), "asset_id": asset_id, "tooltip": caption, "label": caption if named else "", "group": &"shop" if named else &""}
 	definition.merge(art_options, true)
 	button.configure(definition, 1)
 	UiSizing.minimum_size(button, route_size)
@@ -151,4 +161,29 @@ func _set_detail_profile(compact: bool) -> void:
 		destination.add_child(pane)
 		if destination.owner != null:
 			pane.owner = destination.owner
+	# The price and its Buy, Sell and Identify actions belong with the selected item in the wide
+	# profile; compact keeps them in the control strip, where they have always been.
+	var home: BoxContainer = _left_controls if compact else _detail_strip
+	if _transaction.get_parent() != home:
+		# Moving a node drops the scene owner of everything inside it, and with it their unique
+		# names, so each owner is put back once the node is in its new place.
+		var scene := _transaction.owner
+		var owned := _transaction.find_children("*", "", true, true)
+		_transaction.owner = null
+		_transaction.get_parent().remove_child(_transaction)
+		home.add_child(_transaction)
+		_transaction.owner = scene
+		for node: Node in owned: node.owner = scene
+	_transaction.size_flags_horizontal = Control.SIZE_FILL
 	_detail_strip.visible = not compact
+
+
+## Wide: who is shopping on the left, wealth and routes on the right, Done last.
+func _arrange_action_bar(owner: Control, compact: bool) -> void:
+	var right := owner.find_child("ShopRightControls", true, false) as BoxContainer
+	_left_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_FILL
+	right.alignment = BoxContainer.ALIGNMENT_BEGIN if compact else BoxContainer.ALIGNMENT_END
+	var keeper := owner.find_child("ShopRightLoadPanel", true, false) as Control
+	right.move_child(keeper, right.get_child_count() - 1 if compact else 0)
+	for wide_only: String in ["ShopWealthActions", "ShopBuyerCaption", "ShopSellerCaption"]:
+		(owner.find_child(wide_only, true, false) as Control).visible = not compact

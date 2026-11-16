@@ -5,7 +5,7 @@
 [node name="TextChoiceInteraction" type="VBoxContainer"]
 script = ExtResource("1_interaction")
 
-[node name="ChoicePane" type="PanelContainer" parent="."]
+[node name="ChoicePane" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2

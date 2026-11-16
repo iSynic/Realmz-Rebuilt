@@ -1,0 +1,45 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_catalog_row.gd" id="1_editor_catal"]
+
+[node name="EditorCatalogRow" type="VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 2
+script = ExtResource("1_editor_catal")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ItemName" type="Label" parent="Row"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+clip_text = true
+text_overrun_behavior = 3
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = "Item"
+
+[node name="Weight" type="Label" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="Add" type="Button" parent="Row"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 13
+text = "Add"
+
+[node name="Reason" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = ""

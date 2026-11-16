@@ -101,7 +101,7 @@ var party_list: VBoxContainer:
 var stored_character_list: VBoxContainer:
 	get: return _state.stored_character_list
 	set(value): _state.stored_character_list = value
-var party_setup_options: VBoxContainer:
+var party_setup_options: PanelContainer:
 	get: return _state.party_setup_options
 	set(value): _state.party_setup_options = value
 var difficulty_option: OptionButton:

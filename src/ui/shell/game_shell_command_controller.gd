@@ -72,6 +72,7 @@ func rebuild() -> void:
 	var context: StringName = owner.navigator.current_screen()
 	if owner.hud.active: context = &"exploration"
 	var world_command_count := 0
+	var rank := 0.0
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = presentation_definition(definition)
 		var command_id := StringName(definition["id"])
@@ -91,8 +92,15 @@ func rebuild() -> void:
 			button.call("set_modular_icon_layout", 0, 0)
 		var group := StringName(definition.get("group", &"party"))
 		var target_grid: Control = owner.command_grid
-		if command_id == &"torch":
-			target_grid = owner.command_grid if owner.hud.active else owner.torch_dock
+		if owner.hud.active:
+			# The player may have moved this command to the other bar.
+			var home := 0 if group == &"world" and command_id != &"torch" and owner.world_command_panel.visible else 1
+			var grids := owner.hud.bucket_grids
+			target_grid = grids[mini(int(owner.settings.hud.command_buckets.get(String(command_id), home)), grids.size() - 1)]
+			rank += 1.0
+			button.set_meta(HudCommandDrag.RANK, float(owner.settings.hud.command_order.get(String(command_id), rank if command_id != &"torch" else 1000.0)))
+		elif command_id == &"torch":
+			target_grid = owner.torch_dock
 		elif group == &"world" and owner.world_command_panel.visible:
 			target_grid = owner.world_command_grid if owner.hud.active or world_command_count < 4 else owner.world_command_lower_grid
 			world_command_count += 1
@@ -100,7 +108,7 @@ func rebuild() -> void:
 			button.reparent(target_grid, false)
 		target_grid.move_child(button, target_grid.get_child_count() - 1)
 	if owner.hud.active:
-		owner.command_grid.move_child(_buttons[&"torch"], owner.command_grid.get_child_count() - 1)
+		HudCommandDrag.order(owner.hud.bucket_grids)
 	update_availability()
 
 

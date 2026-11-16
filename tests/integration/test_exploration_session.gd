@@ -209,6 +209,10 @@ func run() -> void:
 	var restored_surprise := GameSession.new()
 	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(save_data(surprise_snapshot))).state, SessionStep.State.COMPLETED, "random surprise save restores transactionally")
 	var accepted := restored_surprise.respond(InteractionResponse.from_data(surprise_wait.interaction.request_id, &"yes_no", {"accepted": true}))
+	assert_true(accepted.state == SessionStep.State.WAITING_FOR_INTERACTION and accepted.interaction.kind == InteractionRequest.ACKNOWLEDGE and restored_surprise.view().combat_view == null and String(continuation_data(restored_surprise.snapshot())["randomBattleStage"]).begins_with("before-message:1:1"), "the drawn battle's before-message waits for a click before the battlefield exists, as Castle's combat() does")
+	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(save_data(restored_surprise.snapshot()))).state, SessionStep.State.COMPLETED, "a save taken on the before-message restores")
+	accepted = _past_random_before_message(restored_surprise, accepted)
+	assert_equal(continuation_data(restored_surprise.snapshot()).get("randomBattleStage", ""), "", "acknowledging the message clears the random battle stage")
 	assert_true(_has_event(accepted, &"random_encounter_triggered") and _event(accepted, &"random_encounter_triggered").payload["classicId"] == 1, "accepting the surprise choice starts battle one through Castle's inverted-range selection")
 	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative"); assert_true(_sound_ids(accepted).has(10049), "battle entry requests Castle sound 10049 before tactical actions"); surprise_region.battle_maximum = 1
 	var direct_combat_request := restored_surprise.view().combat_action_request
@@ -527,10 +531,21 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 			assert_true(_has_event(moved, expected_event) and (dungeon_case["id"] != "matching-secret" or session.view().map_view.cell_at(Vector2i(1, 0)).has_feature(&"secret") and session.view().map_view.cell_at(Vector2i(1, 0)).edge_kind(&"east") == &"archway" and session.view().map_view.cell_at(Vector2i(1, 0)).edge_is_passable(&"east")), "%s publishes its topology-owned discovery event and only then exposes a traversable secret archway" % dungeon_case["id"])
 
 
+## Clicks through a random battle's before-message and returns the step that follows.
+func _past_random_before_message(session: GameSession, step: SessionStep) -> SessionStep:
+	var pending := session.view().pending_interaction
+	if step.state != SessionStep.State.WAITING_FOR_INTERACTION or pending == null or pending.kind != InteractionRequest.ACKNOWLEDGE:
+		return step
+	var events := step.events
+	step = session.respond(InteractionResponse.acknowledge(pending))
+	step.events = events + step.events
+	return step
+
+
 func _test_negative_random_battle_surprise(content: RealmzContent) -> void:
 	var region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:1"); var original_minimum := region.battle_minimum; var original_maximum := region.battle_maximum; var original_option := region.option; region.battle_minimum = -1; region.battle_maximum = -1; region.option = 100
 	var session := GameSession.new(); session.start(content, 1); _begin_standard_fixture_adventure(session, content, 6); session.submit_intent(ExplorationIntents.move(Vector2i.RIGHT)); var choice := session.submit_intent(ExplorationIntents.move(Vector2i.UP)); assert_equal(choice.state, SessionStep.State.WAITING_FOR_INTERACTION, "negative random battle offers the ordinary good-surprise choice before battle selection")
-	var battle_step := session.respond(InteractionResponse.from_data(choice.interaction.request_id, &"yes_no", {"accepted": true})); assert_equal([_event(battle_step, &"random_encounter_triggered").payload["classicId"], _event(battle_step, &"random_encounter_triggered").payload["surprise"], _event(battle_step, &"battle_started").payload["surprise"]], [-1, -1, -1], "a signed negative random-battle ID selects its absolute battle and overrides accepted party initiative"); assert_equal(_event(battle_step, &"random_encounter_triggered").payload["battleId"], session.view().combat_view.battle_id, "the signed Classic selection resolves the corresponding positive Battle record")
+	var battle_step := session.respond(InteractionResponse.from_data(choice.interaction.request_id, &"yes_no", {"accepted": true})); battle_step = _past_random_before_message(session, battle_step); assert_equal([_event(battle_step, &"random_encounter_triggered").payload["classicId"], _event(battle_step, &"random_encounter_triggered").payload["surprise"], _event(battle_step, &"battle_started").payload["surprise"]], [-1, -1, -1], "a signed negative random-battle ID selects its absolute battle and overrides accepted party initiative"); assert_equal(_event(battle_step, &"random_encounter_triggered").payload["battleId"], session.view().combat_view.battle_id, "the signed Classic selection resolves the corresponding positive Battle record")
 	region.battle_minimum = original_minimum; region.battle_maximum = original_maximum; region.option = original_option
 
 

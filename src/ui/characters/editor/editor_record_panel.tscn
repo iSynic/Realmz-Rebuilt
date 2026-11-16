@@ -1,0 +1,284 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_record_panel.gd" id="1_editor_recor"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_stat_stepper.tscn" id="2_editor_stat_"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/field_tile.tres" id="3_field_tile"]
+
+[sub_resource type="ButtonGroup" id="GenderGroup"]
+
+[node name="EditorRecordPanel" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 1
+follow_focus = true
+script = ExtResource("1_editor_recor")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="LifeHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/LifeHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Life and record"
+
+[node name="Spacer" type="Control" parent="Content/LifeHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/LifeHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Age changes apply Classic aging effects"
+
+[node name="Life" type="GridContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Age" parent="Content/Life" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"age"
+
+[node name="Gender" type="PanelContainer" parent="Content/Life"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("3_field_tile")
+
+[node name="Body" type="VBoxContainer" parent="Content/Life/Gender"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Caption" type="Label" parent="Content/Life/Gender/Body"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "GENDER"
+
+[node name="Choices" type="HBoxContainer" parent="Content/Life/Gender/Body"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="Male" type="Button" parent="Content/Life/Gender/Body/Choices"]
+unique_name_in_owner = true
+toggle_mode = true
+button_group = SubResource("GenderGroup")
+size_flags_horizontal = 3
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Male"
+
+[node name="Female" type="Button" parent="Content/Life/Gender/Body/Choices"]
+unique_name_in_owner = true
+toggle_mode = true
+button_group = SubResource("GenderGroup")
+size_flags_horizontal = 3
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Female"
+
+[node name="GenderHint" type="Label" parent="Content/Life/Gender/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "No equipped item limits gender"
+clip_text = true
+
+[node name="Experience" parent="Content/Life" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"experience"
+
+[node name="Prestige" parent="Content/Life" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"prestige_penalty"
+
+[node name="SavesHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/SavesHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Saving throws"
+
+[node name="Spacer" type="Control" parent="Content/SavesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/SavesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "−99 to 120 each"
+
+[node name="Saves" type="GridContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 8
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="Charm" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 0
+
+[node name="Heat" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 1
+
+[node name="Cold" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 2
+
+[node name="Electrical" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 3
+
+[node name="Chemical" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 4
+
+[node name="Mental" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 5
+
+[node name="Magic" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 6
+
+[node name="Special" parent="Content/Saves" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"save"
+metadata/index = 7
+
+[node name="SkillsHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/SkillsHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Skills"
+
+[node name="Spacer" type="Control" parent="Content/SkillsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/SkillsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "0 to 100 each"
+
+[node name="Skills" type="GridContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 8
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="Skill1" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 0
+
+[node name="Skill2" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 1
+
+[node name="Skill3" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 2
+
+[node name="Skill4" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 3
+
+[node name="Skill5" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 4
+
+[node name="Skill6" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 5
+
+[node name="Skill7" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 6
+
+[node name="Skill8" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 7
+
+[node name="Skill9" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 8
+
+[node name="Skill10" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 9
+
+[node name="Skill11" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 10
+
+[node name="Skill12" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 11
+
+[node name="Skill13" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 12
+
+[node name="Skill14" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 13
+
+[node name="Skill15" parent="Content/Skills" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/kind = &"skill"
+metadata/index = 14

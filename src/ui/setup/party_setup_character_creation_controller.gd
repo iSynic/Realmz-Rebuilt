@@ -78,7 +78,7 @@ func refresh_setup_options() -> void:
 	_assembly.refresh_party_setup_options()
 	var setup_count := view.party_members.size()
 	_apply_availability(begin_button, &"begin_adventure")
-	begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _assembly.maximum_party_size()]
+	(setup_overlay as PartySetupWorkspace).show_begin_reason(begin_button.tooltip_text if begin_button.disabled else "")
 	render_creator_step()
 
 func render_creator_step() -> void:

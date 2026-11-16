@@ -14,12 +14,19 @@ const SURFACE_DARK := Color("080a0c")
 const EDGE_LIGHT := Color("686b68")
 
 @export var command_id: StringName
+## A text-only button in a row of actions: shorter than the picture buttons.
+@export var compact := false
+## The row's main action: drawn with an accent wash and edge.
+@export var primary := false
+## Set by CommandIconLayout for the fixed footer, where art commands keep their caption band.
+var _fixed_footer_caption := false
 var visual_asset_id: StringName
 var _native_size := Vector2i(50, 50)
 var _art_scale: int = 1
 var _art_texture: Texture2D
 var _pressed_art_texture: Texture2D
 var _label: String = ""
+var _action_style: StyleBoxFlat
 var _caption_lines: Array[String] = []
 var _icon_caption_layout: bool = false
 var _physical_pressed: bool = false
@@ -127,14 +134,25 @@ func set_command_title_visible(visible: bool, fit_art_to_button: bool = false) -
 		caption.modulate.a = 1.0 if visible else 0.0
 	if divider != null:
 		divider.modulate.a = 1.0 if visible else 0.0
+	refresh_caption_band()
 	queue_redraw()
+
+
+## A hidden title gives its band's height back, so a multi-line caption cannot make the row taller.
+## `in_fixed_footer` (from CommandIconLayout) keeps the band for art commands whose title is shown there.
+func refresh_caption_band(in_fixed_footer: int = -1) -> void:
+	if in_fixed_footer >= 0:
+		_fixed_footer_caption = in_fixed_footer == 1
+	var band := get_node_or_null("CommandMargin/CommandContent/CaptionBand") as Control
+	if band != null:
+		band.visible = _art_texture == null or ((_icon_caption_layout or _fixed_footer_caption) and _show_command_title)
 
 
 func set_art_scale(value: int) -> void:
 	_art_scale = clampi(value, 1, 3)
 	var profile := UiSizing.profile_for(self)
 	_interface_size = profile.ui_scale if profile != null else 1.0
-	custom_minimum_size = Vector2(62.0, 70.0) * _interface_size if _icon_caption_layout else Vector2(maxi(_native_size.x * _art_scale + 6, 62), _native_size.y * _art_scale + 6) if _art_texture != null else Vector2(62.0, 56.0) * _interface_size
+	custom_minimum_size = Vector2(62.0, 70.0) * _interface_size if _icon_caption_layout else Vector2(maxi(_native_size.x * _art_scale + 6, 62), _native_size.y * _art_scale + 6) if _art_texture != null else Vector2(62.0, 38.0 if compact else 56.0) * _interface_size
 	var stage := get_node_or_null("CommandMargin/CommandContent/IconStage") as Control
 	if stage != null:
 		stage.custom_minimum_size = Vector2(_native_size * _art_scale)
@@ -146,7 +164,7 @@ func _bind_caption() -> void:
 	var caption := get_node("CommandMargin/CommandContent/CaptionBand/Caption") as Label
 	caption.text = "\n".join(_caption_lines)
 	UiSizing.font_size(caption, &"font_size", 17 if _caption_lines.size() > 1 or _art_texture == null else 15)
-	get_node("CommandMargin/CommandContent/CaptionBand").visible = _icon_caption_layout or _art_texture == null
+	refresh_caption_band()
 	get_node("CommandMargin/CommandContent/IconStage").visible = _art_texture != null
 	(get_node("CommandMargin/CommandContent") as VBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER if _art_texture == null else BoxContainer.ALIGNMENT_BEGIN
 	get_node("CommandMargin/CommandContent/CaptionBand/Divider").visible = _art_texture != null
@@ -172,7 +190,10 @@ func is_visually_pressed() -> bool:
 func _draw() -> void:
 	var rect := Rect2(Vector2(1.0, 1.0), size - Vector2(2.0, 2.0))
 	var pressed := is_visually_pressed()
-	var surface_name := &"disabled" if disabled else &"pressed" if pressed else &"hover" if is_hovered() else &"normal"
+	if compact:
+		_draw_action(rect, pressed)
+		return
+	var surface_name := &"disabled" if disabled else &"pressed" if pressed else &"hover" if _pointed() else &"normal"
 	var surface := get_theme_stylebox(surface_name, &"Button")
 	if surface != null:
 		draw_style_box(surface, rect)
@@ -199,8 +220,36 @@ func _draw() -> void:
 		draw_rect(rect.grow(-1.0), Color(0.95, 0.76, 0.24, 0.14), true)
 	if has_focus():
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
-	elif is_hovered() and not disabled:
+	elif _pointed() and not disabled:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
+
+
+## A text action in the menu chrome: a themed fill inside the theme's double hairline, the
+## main action filled with the accent, an unavailable one faded.
+func _draw_action(rect: Rect2, pressed: bool) -> void:
+	var colors := UiThemeService.current().colors
+	var lit := (_pointed() or pressed or has_focus()) and not disabled
+	var fill: Color = colors[&"surface"] if disabled else colors[&"accent"] if primary else colors[&"selected"] if pressed else colors[&"field"] if lit else colors[&"raised"]
+	if primary and lit: fill = fill.lightened(0.14)
+	var edge := Color(colors[&"border"], 0.7) if disabled else colors[&"accent"] if lit or primary else Color(colors[&"accent"], 0.55)
+	if _action_style == null:
+		_action_style = StyleBoxFlat.new()
+		_action_style.set_corner_radius_all(3)
+	_action_style.bg_color = fill
+	_action_style.border_color = edge
+	_action_style.set_border_width_all(2 if has_focus() else 1)
+	draw_style_box(_action_style, rect)
+	draw_rect(rect.grow(-3.0), Color(colors[&"accent_text"] if primary and not disabled else edge, 0.3), false, 1.0)
+	var caption := get_node("CommandMargin/CommandContent/CaptionBand/Caption") as Label
+	var ink: Color = colors[&"muted"] if disabled else colors[&"accent_text"] if primary else colors[&"text"]
+	if caption.get_theme_color(&"font_color") != ink: caption.add_theme_color_override(&"font_color", ink)
+	caption.modulate.a = 0.55 if disabled else 1.0
+
+
+## Hovered by the pointer, but not while something is being dragged over it: a button that is
+## not a drop target should not light up as one.
+func _pointed() -> bool:
+	return is_hovered() and not get_viewport().gui_is_dragging()
 
 
 func _fitted_art_scale() -> int:

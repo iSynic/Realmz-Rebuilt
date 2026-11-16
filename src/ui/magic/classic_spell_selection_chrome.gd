@@ -5,22 +5,12 @@ extends RefCounted
 
 const SPELL_BUTTON_SCENE_PATH := "res://src/ui/magic/classic_spell_selection_button.tscn"
 
-const LEVEL_COLORS: Array[Color] = [
-	Color("f4df58"), Color("efcf45"), Color("eabb3e"), Color("e59d39"),
-	Color("df7c36"), Color("d95e36"), Color("d34439"),
-]
-
-
 static func bind_level_button(button: Button, level: int, selected: bool, enabled: bool, action: Callable, unavailable_text: String) -> void:
 	button.name = "SpellLevel%d" % level
 	button.text = "Level %d" % level
 	button.button_pressed = selected
 	button.disabled = not enabled
 	button.tooltip_text = unavailable_text if button.disabled else "Show level %d spells" % level
-	var color := LEVEL_COLORS[clampi(level, 1, 7) - 1]
-	for color_name: StringName in [&"font_color", &"font_hover_color", &"font_pressed_color", &"font_focus_color"]:
-		button.add_theme_color_override(color_name, color)
-	button.add_theme_color_override(&"font_disabled_color", color.darkened(0.52))
 	_clear_pressed_connections(button)
 	button.pressed.connect(action)
 

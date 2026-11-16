@@ -6,6 +6,8 @@
 theme_override_constants/separation = 5
 
 [node name="SpellCastAction" parent="." instance=ExtResource("1_button")]
+compact = true
+primary = true
 layout_mode = 2
 size_flags_horizontal = 3
 

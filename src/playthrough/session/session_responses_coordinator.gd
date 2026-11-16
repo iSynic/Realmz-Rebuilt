@@ -51,6 +51,9 @@ func respond_session_interaction(response: InteractionResponse) -> SessionCoordi
 			return _respond_session_retreat(response)
 		&"combat-friendly-collision":
 			return _respond_session_friendly_collision(response)
+	var exploration := _context.session_continuation.exploration()
+	if exploration != null and RandomBattlePrelude.is_stage(exploration.random_battle_stage):
+		return RandomBattlePrelude.respond(_context, response)
 	return _respond_random_surprise_choice(response)
 
 

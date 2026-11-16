@@ -1,17 +1,90 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=7 format=3]
 
-[ext_resource type="PackedScene" path="res://src/ui/setup/party_import_detail_label.tscn" id="1_detail"]
+[ext_resource type="Script" path="res://src/ui/setup/party_import_source_row.gd" id="1_row"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/row_normal.tres" id="st_normal"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/row_hover.tres" id="st_hover"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/row_selected.tres" id="st_selected"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/row_focus.tres" id="st_focus"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/chip.tres" id="st_chip"]
 
-[node name="PartyImportSourceRow" type="VBoxContainer"]
+[node name="PartyImportSourceRow" type="Button"]
+custom_minimum_size = Vector2(0, 64)
+size_flags_horizontal = 3
+script = ExtResource("1_row")
+theme_override_styles/normal = ExtResource("st_normal")
+theme_override_styles/hover = ExtResource("st_hover")
+theme_override_styles/pressed = ExtResource("st_selected")
+theme_override_styles/disabled = ExtResource("st_normal")
+theme_override_styles/focus = ExtResource("st_focus")
+
+[node name="RowContent" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 8.0
+offset_right = -14.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Summary" type="VBoxContainer" parent="RowContent"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 4
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 2
 
-[node name="Source" type="Button" parent="."]
+[node name="TitleLine" type="HBoxContainer" parent="RowContent/Summary"]
 layout_mode = 2
-text = "Saved adventure"
-alignment = 0
-custom_minimum_size = Vector2(0, 44)
+mouse_filter = 2
+theme_override_constants/separation = 8
 
-[node name="Detail" parent="." instance=ExtResource("1_detail")]
-text = "Record details"
+[node name="Title" type="Label" parent="RowContent/Summary/TitleLine"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 17
+text = "Scenario"
+
+[node name="Slot" type="Label" parent="RowContent/Summary/TitleLine"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 15
+text = "Slot A"
+
+[node name="BackupTag" type="PanelContainer" parent="RowContent/Summary/TitleLine"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = ExtResource("st_chip")
+
+[node name="Label" type="Label" parent="RowContent/Summary/TitleLine/BackupTag"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 12
+text = "Backup"
+
+[node name="Party" type="Label" parent="RowContent/Summary"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Party"
+
+[node name="When" type="Label" parent="RowContent"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 14
+text = "Today, 12:00"
+
+[node name="Chevron" type="Label" parent="RowContent"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 16
+text = "›"

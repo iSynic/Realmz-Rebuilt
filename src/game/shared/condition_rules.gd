@@ -47,6 +47,16 @@ const PARTY_WIZARDS_EYE := 4
 const PARTY_SEARCHING := 5
 
 
+## killbody.c zeroes Animated and every positive (timed) condition, such as poison
+## and disease, when a party member falls in combat, so a revived character
+## returns without them. Negative (permanent) values stay. FD-CHARACTER-006
+## deliberately applies the same clearing to a party member who falls outside
+## combat, where Castle keeps the conditions.
+static func clear_on_death(character: CharacterState) -> void:
+	character.conditions.set_value(ANIMATED, 0)
+	character.conditions.clear_positive()
+
+
 func tick_character(character: CharacterState, in_combat: bool = false, arithmetic: RealmzArithmetic = null) -> Array[DomainEvent]:
 	var events: Array[DomainEvent] = []
 	if character.conditions.is_active(REGENERATING) and (character.current_health > 0 if in_combat else character.current_health > -10) and character.current_health < character.maximum_health and not character.conditions.is_active(ANIMATED):
@@ -57,6 +67,7 @@ func tick_character(character: CharacterState, in_combat: bool = false, arithmet
 		var payload := {"characterId": character.id, "condition": REGENERATING, "amount": absi(character.conditions.value(REGENERATING)) if in_combat else healed}
 		if in_combat: payload.merge({"health": character.current_health, "combat": true})
 		events.append(DomainEvent.new(&"condition_healed", payload))
+	var alive_before_damage := character.current_health > 0
 	for index: int in [DISEASED, POISONED]:
 		if character.conditions.is_active(index) and character.current_health > 0 and character.conditions.value(ANIMATED) > -1:
 			var damage := absi(character.conditions.value(index))
@@ -64,6 +75,10 @@ func tick_character(character: CharacterState, in_combat: bool = false, arithmet
 			var payload := {"characterId": character.id, "condition": index, "amount": damage}
 			if in_combat: payload.merge({"health": character.current_health, "combat": true})
 			events.append(DomainEvent.new(&"condition_damaged", payload))
+	# FD-CHARACTER-006: falling to poison or disease outside combat clears timed
+	# conditions here, before later ticks of the same rest can regenerate them back.
+	if not in_combat and alive_before_damage and character.current_health <= 0:
+		clear_on_death(character)
 	if character.conditions.is_active(ENERGY_DRAIN) and character.current_health > 0:
 		var drained := character.spell_points - absi(character.conditions.value(ENERGY_DRAIN))
 		character.spell_points = maxi(0, arithmetic.signed_16(drained) if arithmetic != null else drained)

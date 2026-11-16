@@ -253,7 +253,8 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		if OS.has_feature("android"):
 			install_button.text = "Install unavailable (Android preview)"
 		else:
-			install_button.text = "Install..." if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
+			install_button.text = "Install…" if profile.id == UiLayoutProfile.COMPACT else "Install .realmz2"
+		(package_install_row.get_node("ImportScenario") as Button).text = "Folder…" if profile.id == UiLayoutProfile.COMPACT else "Import folder…"
 	apply_modal_layouts()
 
 

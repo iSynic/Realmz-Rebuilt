@@ -16,6 +16,11 @@ const COMPACT_COMMAND_COLUMN_SEPARATION := 1.0
 const COMPACT_COMMAND_ROW_SEPARATION := 3.0
 const COMPACT_COMMAND_HEIGHT := 26.0
 
+## The combat HUD preference: in the modular layout each command group is a bucket whose
+## heading folds it away. Which groups are folded is remembered for the session.
+static var modular := false
+static var folded: Dictionary = {0: true, 2: true}
+
 var _scale := 1.0
 var _compact := false
 var _shelf: HBoxContainer
@@ -46,7 +51,12 @@ func configure(shelf: HBoxContainer, panels: Array[Control], columns: Array[VBox
 	_rows.assign(rows)
 	_headings.clear()
 	for column: VBoxContainer in _columns:
-		_headings.append(column.get_child(0) as Label)
+		var heading := column.get_child(0) as Label
+		_headings.append(heading)
+		if not heading.has_meta(&"bucket_title"):
+			heading.set_meta(&"bucket_title", heading.text)
+			heading.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			heading.gui_input.connect(_on_heading_input.bind(_headings.size() - 1))
 	apply()
 
 
@@ -66,9 +76,11 @@ func register_button(button: Button, base_size: Vector2) -> void:
 func apply() -> void:
 	if _shelf != null and is_instance_valid(_shelf):
 		UiSizing.constant(_shelf, &"separation", roundi(COMPACT_COMMAND_GROUP_SEPARATION if _compact else COMMAND_GROUP_SEPARATION))
-	for panel: Control in _panels:
-		if is_instance_valid(panel):
-			UiSizing.minimum_size(panel, Vector2(0, COMPACT_COMMAND_GROUP_HEIGHT if _compact else COMMAND_GROUP_HEIGHT))
+	for index: int in _panels.size():
+		if is_instance_valid(_panels[index]):
+			# A folded group is only as tall as its tab.
+			var height := 0.0 if modular and bool(folded.get(index, false)) else COMPACT_COMMAND_GROUP_HEIGHT if _compact else COMMAND_GROUP_HEIGHT
+			UiSizing.minimum_size(_panels[index], Vector2(0, height))
 	for column: VBoxContainer in _columns:
 		if is_instance_valid(column):
 			UiSizing.constant(column, &"separation", roundi(COMPACT_COMMAND_COLUMN_SEPARATION if _compact else COMMAND_COLUMN_SEPARATION))
@@ -81,7 +93,8 @@ func apply() -> void:
 			UiSizing.constant(row, &"separation", roundi(COMPACT_COMMAND_ROW_SEPARATION if _compact else COMMAND_ROW_SEPARATION))
 	for button: Button in _buttons:
 		_apply_button(button)
-	if _panels.size() == 3 and is_instance_valid(_panels[0]) and is_instance_valid(_panels[2]):
+	_apply_buckets()
+	if not modular and _panels.size() == 3 and is_instance_valid(_panels[0]) and is_instance_valid(_panels[2]):
 		var view_panel := _panels[0]
 		var tactics_panel := _panels[2]
 		view_panel.custom_minimum_size.x = 0.0
@@ -89,6 +102,29 @@ func apply() -> void:
 		var side_width := maxf(view_panel.get_combined_minimum_size().x, tactics_panel.get_combined_minimum_size().x)
 		UiSizing.minimum_size(view_panel, Vector2(side_width / _scale, view_panel.custom_minimum_size.y / _scale))
 		UiSizing.minimum_size(tactics_panel, Vector2(side_width / _scale, tactics_panel.custom_minimum_size.y / _scale))
+
+
+## Modular combat: a folded bucket shows only its heading as a tab; fixed combat shows every group.
+func _apply_buckets() -> void:
+	for index: int in _columns.size():
+		var column := _columns[index]
+		if not is_instance_valid(column) or index >= _headings.size(): continue
+		var hidden := modular and bool(folded.get(index, false))
+		for child_index: int in range(1, column.get_child_count()):
+			(column.get_child(child_index) as Control).visible = not hidden and (child_index != 1 or not _compact)
+		var heading := _headings[index]
+		var title := String(heading.get_meta(&"bucket_title", heading.text))
+		heading.text = title if not modular else title + ("  ▸" if hidden else "  ▾")
+		heading.mouse_filter = Control.MOUSE_FILTER_STOP if modular else Control.MOUSE_FILTER_IGNORE
+		heading.tooltip_text = ("Show %s commands" if hidden else "Fold %s commands away") % title.capitalize() if modular else ""
+		if modular and index < _panels.size() and is_instance_valid(_panels[index]): _panels[index].custom_minimum_size.x = 0.0
+
+
+func _on_heading_input(event: InputEvent, index: int) -> void:
+	var click := event as InputEventMouseButton
+	if modular and click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		folded[index] = not bool(folded.get(index, false))
+		apply()
 
 
 func _apply_button(button: Button) -> void:

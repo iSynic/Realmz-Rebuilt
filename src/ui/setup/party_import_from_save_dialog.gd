@@ -1,4 +1,4 @@
-## Presents detached save-party sources and candidate reviews supplied by the host.
+## Presents detached save-party sources and per-character review cards supplied by the host.
 class_name PartyImportFromSaveDialog
 extends Control
 
@@ -7,52 +7,61 @@ signal external_source_requested(path: String)
 signal import_selected_requested(indices: Array[int])
 signal cancel_requested
 signal refresh_requested
+signal adopt_changed_requested(adopt: bool)
 
 @export var source_row_scene: PackedScene
-@export var candidate_row_scene: PackedScene
-@export var detail_label_scene: PackedScene
+@export var candidate_card_scene: PackedScene
 
-const ERROR_COLOR := Color("ef7770")
-const MUTED_COLOR := Color("9aa0a8")
 const ANDROID_PREVIEW_SAVE_REASON := "External save browsing is unavailable in the Android preview. Use saves in this installation."
+const SUBTITLE := "Choose a saved adventure. Its characters and their possessions come with them; the world stays behind."
 
-@onready var _empty_sources: Label = %EmptySources
-@onready var _loading_source: Label = %LoadingSource
-@onready var _capacity: Label = %ImportCapacity
-@onready var _phase_label: Label = %PhaseLabel
 @onready var _dialog_panel: PanelContainer = %Dialog
-@onready var _message_label: Label = %MessageLabel
-@onready var _sources_heading: Label = %SourcesHeading
-@onready var _sources_scroll: ScrollContainer = %SourcesScroll
-@onready var _sources_list: VBoxContainer = %SourcesList
-@onready var _candidate_heading: Label = %CandidateHeading
-@onready var _candidate_scroll: ScrollContainer = %CandidateScroll
-@onready var _candidate_list: VBoxContainer = %CandidateList
-@onready var _left_behind_panel: PanelContainer = %LeftBehindPanel
-@onready var _left_behind_list: VBoxContainer = %LeftBehindList
-@onready var _selection_actions: HBoxContainer = %SelectionActions
-@onready var _review_actions: HBoxContainer = %ReviewActions
+@onready var _phase_label: Label = %PhaseLabel
+@onready var _subtitle: Label = %Subtitle
+@onready var _source_actions: Control = %SourceActions
 @onready var _browse_button: Button = %BrowseExternalSave
 @onready var _refresh_button: Button = %RefreshSources
-@onready var _import_button: Button = %ImportSelected
+@onready var _capacity: Control = %ImportCapacity
+@onready var _capacity_count: Label = %CapacityCount
+@onready var _error_banner: Control = %ErrorBanner
+@onready var _error_title: Label = %ErrorTitle
+@onready var _message_label: Label = %MessageLabel
+@onready var _sources_scroll: ScrollContainer = %SourcesScroll
+@onready var _ready_heading: Label = %ReadyHeading
+@onready var _ready_list: VBoxContainer = %ReadyList
+@onready var _unusable_rule: Control = %UnusableRule
+@onready var _unusable_heading: Label = %UnusableHeading
+@onready var _unusable_list: VBoxContainer = %UnusableList
+@onready var _empty_sources: Control = %EmptySources
+@onready var _loading_state: Control = %LoadingState
+@onready var _reading_label: Label = %ReadingLabel
+@onready var _candidate_scroll: ScrollContainer = %CandidateScroll
+@onready var _candidate_list: VBoxContainer = %CandidateList
+@onready var _adopt_panel: Control = %AdoptPanel
+@onready var _adopt_changed: CheckBox = %AdoptChangedItems
+@onready var _adopt_detail: Label = %AdoptDetail
+@onready var _left_behind_panel: Control = %LeftBehindPanel
+@onready var _left_behind_list: Label = %LeftBehindList
+@onready var _back_button: Button = %BackToSaves
 @onready var _cancel_button: Button = %CancelImport
-@onready var _selection_cancel_button: Button = %CancelSelection
+@onready var _import_button: Button = %ImportSelected
 @onready var _external_dialog: FileDialog = %ExternalSaveDialog
 
 var _view: Dictionary = {}
+var _phase := "selection"
 var _selected_indices: Array[int] = []
-var _candidate_checks: Array[CheckBox] = []
-var _candidate_details: Array[String] = []
+var _cards: Array[PartyImportCandidateCard] = []
+var _source_rows: Array[PartyImportSourceRow] = []
 var _available_slots: int = 0
-var _selection_limit_message: String = ""
 
 
 func _ready() -> void:
-	_cancel_button.pressed.connect(_cancel)
-	_selection_cancel_button.pressed.connect(_cancel)
+	_cancel_button.pressed.connect(func() -> void: cancel_requested.emit())
+	_back_button.pressed.connect(func() -> void: refresh_requested.emit())
 	_browse_button.pressed.connect(_open_external_save_picker)
 	_refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
 	_import_button.pressed.connect(_submit_selected)
+	_adopt_changed.toggled.connect(func(pressed: bool) -> void: adopt_changed_requested.emit(pressed))
 	_external_dialog.file_selected.connect(func(path: String) -> void: external_source_requested.emit(path))
 	get_viewport().size_changed.connect(_refresh_visible_geometry)
 	visible = false
@@ -60,18 +69,28 @@ func _ready() -> void:
 
 func show_party_import(view: Dictionary) -> void:
 	_view = view.duplicate(true)
+	_phase = String(_view.get("phase", "selection"))
 	_available_slots = maxi(0, int(_view.get("available_slots", 0)))
-	_selection_limit_message = ""
+	var keep_adopt_focus := _adopt_changed.has_focus()
 	_update_dialog_size()
 	_render()
 	visible = true
-	_grab_initial_focus()
+	if keep_adopt_focus and _adopt_panel.visible: _adopt_changed.grab_focus()
+	else: _grab_initial_focus()
 
 
 func close_party_import() -> void:
 	visible = false
 	if _external_dialog.visible:
 		_external_dialog.hide()
+
+
+func focus_root() -> Node:
+	return _external_dialog if _external_dialog.visible else self
+
+
+func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
+	_update_dialog_size()
 
 
 func _open_external_save_picker() -> void:
@@ -81,8 +100,7 @@ func _open_external_save_picker() -> void:
 
 
 func _fit_scaled_size(preferred: Vector2) -> Vector2i:
-	var profile := UiSizing.profile_for(self)
-	var scale := profile.ui_scale if profile != null else 1.0
+	var scale := _ui_scale()
 	var viewport_size := get_viewport_rect().size
 	var margin := 48.0 * scale
 	var available := Vector2(maxf(1.0, viewport_size.x - margin), maxf(1.0, viewport_size.y - margin))
@@ -90,8 +108,9 @@ func _fit_scaled_size(preferred: Vector2) -> Vector2i:
 	return Vector2i(maxi(1, roundi(target.x)), maxi(1, roundi(target.y)))
 
 
-func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
-	_update_dialog_size()
+func _ui_scale() -> float:
+	var profile := UiSizing.profile_for(self)
+	return profile.ui_scale if profile != null else 1.0
 
 
 func _update_dialog_size() -> void:
@@ -104,136 +123,174 @@ func _refresh_visible_geometry() -> void:
 		_update_dialog_size()
 
 
-func focus_root() -> Node:
-	return _external_dialog if _external_dialog.visible else self
-
-
 func _render() -> void:
-	_clear(_sources_list)
-	_clear(_candidate_list)
-	_clear(_left_behind_list)
-	_candidate_checks.clear()
-	_candidate_details.clear()
-	_selected_indices.clear()
-	var phase := String(_view.get("phase", "selection"))
-	_phase_label.text = _phase_title(phase)
-	var message := _selection_limit_message if not _selection_limit_message.is_empty() else String(_view.get("message", ""))
-	if OS.has_feature("android") and phase == "selection":
-		message = ANDROID_PREVIEW_SAVE_REASON if message.is_empty() else message + "\n" + ANDROID_PREVIEW_SAVE_REASON
+	var review := _phase == "review"
+	_phase_label.text = "Choose who joins" if review else "Import party from save"
+	var context: Array[String] = []
+	for key: String in ["source_line", "destination"]:
+		if not String(_view.get(key, "")).is_empty(): context.append(String(_view.get(key)))
+	_subtitle.text = "   ·   ".join(context) if review else SUBTITLE
+	_source_actions.visible = not review
+	_capacity.visible = review
+	_render_error()
+	_render_sources()
+	_loading_state.visible = _phase == "loading"
+	_reading_label.text = String(_view.get("reading", "Reading the save…"))
+	_candidate_scroll.visible = review
+	_render_candidates()
+	_render_review_extras(review)
+	_back_button.visible = review or _phase == "loading"
+	_back_button.text = "Choose another save" if review else "Back to saves"
+	_import_button.visible = review
+	_refresh_button.disabled = _phase == "loading"
+	_browse_button.disabled = _phase == "loading" or OS.has_feature("android")
+	_browse_button.tooltip_text = ANDROID_PREVIEW_SAVE_REASON if OS.has_feature("android") else "Import from a save file outside this installation."
+	_update_selection_state()
+	_link_focus()
+
+
+func _render_error() -> void:
+	var message := String(_view.get("message", "")) if _phase == "error" else String(_view.get("error", ""))
+	_error_banner.visible = not message.is_empty()
+	_error_title.text = String(_view.get("error_title", "Couldn't import those characters"))
 	_message_label.text = message
-	_message_label.modulate = ERROR_COLOR if phase == "error" or not _selection_limit_message.is_empty() else MUTED_COLOR
-	_sources_heading.visible = phase == "selection" or phase == "loading" or phase == "error"
-	_sources_scroll.visible = _sources_heading.visible
-	_candidate_heading.visible = phase == "review"
-	_candidate_scroll.visible = phase == "review"
-	_left_behind_panel.visible = phase == "review" and not _strings(_view.get("left_behind", [])).is_empty()
-	_selection_actions.visible = phase == "selection" or phase == "loading" or phase == "error"
-	_review_actions.visible = phase == "review"
-	_refresh_button.disabled = phase == "loading"
-	_browse_button.disabled = phase == "loading" or OS.has_feature("android")
-	if OS.has_feature("android"):
-		_browse_button.text = "External saves unavailable (Android preview)"
-		_browse_button.tooltip_text = ANDROID_PREVIEW_SAVE_REASON
-	var sources: Array = _view.get("sources", [])
-	_empty_sources.visible = sources.is_empty() and phase == "selection"
-	_loading_source.visible = phase == "loading"
-	_capacity.visible = phase == "review"
+
+
+func _render_sources() -> void:
+	_clear(_ready_list)
+	_clear(_unusable_list)
+	_source_rows.clear()
+	var listing := _phase in ["selection", "error"]
+	_sources_scroll.visible = listing
+	var sources: Array = _view.get("sources", []) if listing else []
+	var ready_count := 0
 	for index: int in sources.size():
 		var source: Dictionary = sources[index] if sources[index] is Dictionary else {}
-		var row := source_row_scene.instantiate()
-		var button := row.get_node("Source") as Button
-		button.name = "SaveSource%d" % index
-		button.text = String(source.get("label", "Save %d" % (index + 1)))
-		button.tooltip_text = String(source.get("detail", ""))
-		button.disabled = not bool(source.get("valid", false)) or phase == "loading"
-		_bind_detail(row.get_node("Detail"), String(source.get("detail", "")), button.disabled)
-		_sources_list.add_child(row)
-		button.pressed.connect(_request_source.bind(index))
-	if phase == "review":
-		_render_candidates(_view.get("candidates", []))
-		for warning: String in _strings(_view.get("left_behind", [])):
-			_left_behind_list.add_child(_detail_label(warning, false))
-	_update_import_button()
-	_link_vertical_focus()
+		var row := source_row_scene.instantiate() as PartyImportSourceRow
+		row.name = "SaveSource%d" % index
+		var usable := bool(source.get("valid", false))
+		(_ready_list if usable else _unusable_list).add_child(row)
+		row.bind(source, false)
+		row.pressed.connect(func() -> void: source_requested.emit(index))
+		_source_rows.append(row)
+		if usable: ready_count += 1
+	var unusable_count := sources.size() - ready_count
+	_ready_heading.text = "Ready to import · %d" % ready_count
+	_ready_heading.visible = ready_count > 0
+	_unusable_heading.text = "Can't be imported · %d" % unusable_count
+	_unusable_heading.visible = unusable_count > 0
+	_unusable_rule.visible = ready_count > 0 and unusable_count > 0
+	_empty_sources.visible = listing and sources.is_empty()
 
 
-func _link_vertical_focus() -> void:
-	var controls: Array[Control] = []
-	if String(_view.get("phase", "")) == "review":
-		for check: CheckBox in _candidate_checks:
-			if not check.disabled: controls.append(check)
-		controls.append_array([_cancel_button, _import_button])
-	else:
-		for row: Node in _sources_list.get_children():
-			var button := row.get_child(0) as Button if row.get_child_count() > 0 else null
-			if button != null and not button.disabled: controls.append(button)
-		controls.append_array([_browse_button, _refresh_button, _selection_cancel_button])
-	for index: int in controls.size():
-		var control := controls[index]
-		control.focus_neighbor_top = control.get_path_to(controls[wrapi(index - 1, 0, controls.size())])
-		control.focus_neighbor_bottom = control.get_path_to(controls[wrapi(index + 1, 0, controls.size())])
-		control.focus_previous = control.focus_neighbor_top
-		control.focus_next = control.focus_neighbor_bottom
-
-
-func _render_candidates(raw_candidates: Variant) -> void:
-	var candidates: Array = raw_candidates if raw_candidates is Array else []
-	var incoming_selected := false
-	for candidate: Variant in candidates:
-		if candidate is Dictionary and bool(candidate.get("selected", false)) and bool(candidate.get("eligible", false)):
-			incoming_selected = true
-			break
+func _render_candidates() -> void:
+	_clear(_candidate_list)
+	_cards.clear()
+	_selected_indices.clear()
+	if _phase != "review":
+		return
+	var candidates: Array = _view.get("candidates", [])
 	for index: int in candidates.size():
 		var candidate: Dictionary = candidates[index] if candidates[index] is Dictionary else {}
-		var eligible := bool(candidate.get("eligible", false))
-		var selected := bool(candidate.get("selected", false)) and eligible
-		if not incoming_selected and eligible and _selected_indices.size() < _available_slots:
-			selected = true
-		if selected and _selected_indices.size() >= _available_slots:
-			selected = false
-		if selected:
+		if bool(candidate.get("selected", false)) and bool(candidate.get("eligible", false)) and _selected_indices.size() < _available_slots:
 			_selected_indices.append(index)
-		var row := candidate_row_scene.instantiate()
-		var check := row.get_node("Candidate") as CheckBox
-		check.name = "Candidate%d" % index
-		check.text = String(candidate.get("name", "Character %d" % (index + 1)))
-		check.button_pressed = selected
-		check.disabled = not eligible or _available_slots == 0
-		check.toggled.connect(_candidate_toggled.bind(index))
-		var detail_text := String(candidate.get("detail", ""))
-		if not eligible and detail_text.is_empty():
-			detail_text = "This character cannot join the selected party."
-		_bind_detail(row.get_node("Detail"), detail_text, not eligible)
-		_candidate_list.add_child(row)
-		_candidate_checks.append(check)
-		_candidate_details.append(detail_text)
-	_update_capacity()
+		var card := candidate_card_scene.instantiate() as PartyImportCandidateCard
+		_candidate_list.add_child(card)
+		card.bind(candidate, index)
+		card.toggled.connect(_card_toggled.bind(index))
+		_cards.append(card)
 
 
-func _candidate_toggled(pressed: bool, index: int) -> void:
-	if pressed and not _selected_indices.has(index) and _selected_indices.size() >= _available_slots:
-		_candidate_checks[index].set_pressed_no_signal(false)
-		_selection_limit_message = "Choose up to %d characters for the available party slots." % _available_slots
-		_message_label.text = _selection_limit_message
-		_message_label.modulate = ERROR_COLOR
-		_update_import_button()
-		return
-	if pressed:
-		if not _selected_indices.has(index):
-			_selected_indices.append(index)
-	else:
+func _render_review_extras(review: bool) -> void:
+	var changed := _strings(_view.get("changed_items", []))
+	_adopt_panel.visible = review and not changed.is_empty()
+	_adopt_changed.set_pressed_no_signal(bool(_view.get("adopt_changed", false)))
+	_adopt_changed.text = "Bring this adventure's version of the changed item" if changed.size() == 1 else "Bring this adventure's versions of %d changed items" % changed.size()
+	_adopt_detail.text = "This adventure redefines %s. Off leaves them behind; on brings this adventure's version, unequipped." % _and_list(changed)
+	_adopt_changed.tooltip_text = _adopt_detail.text
+	# The compact dialog keeps the character list tall; the explanation stays in the tooltip.
+	_adopt_detail.visible = _dialog_panel.custom_minimum_size.x >= 900.0 * _ui_scale()
+	var left_behind := _strings(_view.get("left_behind", []))
+	_left_behind_panel.visible = review and not left_behind.is_empty()
+	_left_behind_list.text = "  ".join(left_behind)
+
+
+func _card_toggled(pressed: bool, index: int) -> void:
+	if pressed and not _selected_indices.has(index) and _selected_indices.size() < _available_slots:
+		_selected_indices.append(index)
+	elif not pressed:
 		_selected_indices.erase(index)
 	_selected_indices.sort()
-	_selection_limit_message = ""
-	_message_label.text = String(_view.get("message", ""))
-	_message_label.modulate = MUTED_COLOR
-	_update_capacity()
-	_update_import_button()
+	_update_selection_state()
 
 
-func _update_import_button() -> void:
-	_import_button.disabled = _selected_indices.is_empty() or _selected_indices.size() > _available_slots
-	_import_button.text = "Import %d selected" % _selected_indices.size() if not _selected_indices.is_empty() else "Import selected"
+## Applies the slot cap: at the cap, unchecked cards explain why they can't be added.
+func _update_selection_state() -> void:
+	var at_cap := _selected_indices.size() >= _available_slots
+	var eligible := 0
+	var candidates: Array = _view.get("candidates", [])
+	for card: PartyImportCandidateCard in _cards:
+		var candidate: Dictionary = candidates[card.index]
+		var selected := _selected_indices.has(card.index)
+		var reason := ""
+		if not bool(candidate.get("eligible", false)):
+			var reasons: Array = candidate.get("reasons", [])
+			reason = String(reasons[0]) if not reasons.is_empty() else "This character can't join this party."
+		else:
+			eligible += 1
+			if _available_slots == 0: reason = "The party is full."
+			elif at_cap and not selected: reason = "All %d open slots are chosen." % _available_slots
+		card.set_choice(selected, reason)
+	_capacity_count.text = "%d of %d" % [_selected_indices.size(), _available_slots]
+	var count := _selected_indices.size()
+	_import_button.disabled = count == 0
+	_import_button.text = "Import %d %s" % [count, "character" if count == 1 else "characters"] if count > 0 else "Import characters"
+	if _available_slots == 0: _import_button.tooltip_text = "The party is full. Remove a character in party setup first."
+	elif eligible == 0: _import_button.tooltip_text = "Nobody in this save can join. Choose another save."
+	else: _import_button.tooltip_text = "Choose at least one character." if count == 0 else "Add the chosen characters to the party."
+
+
+## One vertical chain per phase; the footer buttons sit side by side beneath it.
+func _link_focus() -> void:
+	var chain: Array[Control] = []
+	match _phase:
+		"review":
+			chain.append_array(_cards)
+			if _adopt_panel.visible: chain.append(_adopt_changed)
+		"loading":
+			pass
+		_:
+			chain.append_array([_browse_button, _refresh_button] if not _browse_button.disabled else [_refresh_button])
+			chain.append_array(_source_rows)
+	chain.append(_import_button if _phase == "review" and not _import_button.disabled else _back_button if _back_button.visible else _cancel_button)
+	for index: int in chain.size():
+		var control := chain[index]
+		control.focus_neighbor_top = control.get_path_to(chain[wrapi(index - 1, 0, chain.size())])
+		control.focus_neighbor_bottom = control.get_path_to(chain[wrapi(index + 1, 0, chain.size())])
+		control.focus_previous = control.focus_neighbor_top
+		control.focus_next = control.focus_neighbor_bottom
+	var above := chain[maxi(0, chain.size() - 2)]
+	for button: Button in [_back_button, _cancel_button, _import_button]:
+		if not chain.has(button):
+			button.focus_neighbor_top = button.get_path_to(above)
+
+
+func _grab_initial_focus() -> void:
+	var target: Control = _cancel_button
+	match _phase:
+		"review":
+			target = _cards[0] if not _cards.is_empty() else _back_button
+		"loading":
+			target = _back_button
+		_:
+			if not _source_rows.is_empty():
+				target = _source_rows[0]
+			elif not _browse_button.disabled:
+				target = _browse_button
+			else:
+				target = _refresh_button
+	if target.is_inside_tree() and target.visible:
+		target.grab_focus()
 
 
 func _submit_selected() -> void:
@@ -243,63 +300,21 @@ func _submit_selected() -> void:
 	import_selected_requested.emit(indices)
 
 
-func _request_source(index: int) -> void:
-	source_requested.emit(index)
-
-
-func _cancel() -> void:
-	cancel_requested.emit()
-
-
-func _grab_initial_focus() -> void:
-	var phase := String(_view.get("phase", "selection"))
-	var target: Control = _selection_cancel_button
-	if phase == "review":
-		target = _candidate_checks[0] if not _candidate_checks.is_empty() and not _candidate_checks[0].disabled else _cancel_button
-	elif phase != "loading":
-		for row: Node in _sources_list.get_children():
-			if row.get_child_count() == 0:
-				continue
-			var source_button := row.get_child(0) as Button
-			if source_button != null and not source_button.disabled:
-				target = source_button
-				break
-		if target == _selection_cancel_button and not _browse_button.disabled:
-			target = _browse_button
-	elif not _selection_cancel_button.disabled:
-		target = _selection_cancel_button
-	if target.is_inside_tree() and target.visible and target.focus_mode == Control.FOCUS_ALL and not target.disabled:
-		target.grab_focus()
-
-
+## Escape steps back one level: review and reading return to the save list, which cancels.
 func _unhandled_key_input(event: InputEvent) -> void:
-	if visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
-		_cancel()
-		get_viewport().set_input_as_handled()
+	if not (visible and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE):
+		return
+	if _phase in ["review", "loading"]:
+		refresh_requested.emit()
+	else:
+		cancel_requested.emit()
+	get_viewport().set_input_as_handled()
 
 
-func _phase_title(phase: String) -> String:
-	match phase:
-		"loading": return "Reading saved party"
-		"review": return "Review characters to import"
-		"error": return "Could not read saved party"
-		_: return "Import party from save"
-
-
-func _detail_label(text: String, is_error: bool) -> Label:
-	var label := detail_label_scene.instantiate() as Label
-	_bind_detail(label, text, is_error)
-	return label
-
-
-func _bind_detail(label: Label, text: String, is_error: bool) -> void:
-	label.text = text
-	label.visible = not text.is_empty()
-	label.modulate = ERROR_COLOR if is_error else MUTED_COLOR
-
-
-func _update_capacity() -> void:
-	_capacity.text = "%d of %d party slots selected" % [_selected_indices.size(), _available_slots]
+static func _and_list(values: Array[String]) -> String:
+	if values.size() <= 1:
+		return "".join(values)
+	return "%s and %s" % [", ".join(values.slice(0, values.size() - 1)), values[-1]]
 
 
 func _strings(value: Variant) -> Array[String]:

@@ -1,0 +1,9 @@
+[gd_scene format=3]
+
+[node name="EditorArtChoice" type="Button"]
+custom_minimum_size = Vector2(56, 56)
+layout_mode = 2
+toggle_mode = true
+theme_type_variation = &"FieldAction"
+icon_alignment = 1
+expand_icon = false

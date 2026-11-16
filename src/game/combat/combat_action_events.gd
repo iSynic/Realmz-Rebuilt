@@ -62,7 +62,8 @@ static func append_helpless_condition_state(payload: Dictionary, condition_index
 	payload["helplessAfter"] = condition_after != 0
 
 
-func commit_character_fumble(state: GameState, content: RealmzContent, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent]) -> bool:
+## Castle attack.c follows an attack fumble with warn(114); newland.c code 122 drops silently.
+func commit_character_fumble(state: GameState, content: RealmzContent, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent], classic_warning: bool = true) -> bool:
 	if state.combat == null or equipment == null or equipment.melee_weapon == null or equipment.melee_weapon_instance_id.is_empty() or not state.combat.dropped_items.can_queue():
 		return false
 	var instance: ItemInstance = null
@@ -87,6 +88,7 @@ func commit_character_fumble(state: GameState, content: RealmzContent, character
 	# Castle's short-only queue reconstructs the item from its definition at booty.
 	removed.identified = true
 	append_fumble_feedback(events, character.id, removed, true)
+	if classic_warning: events.append(DomainEvent.new(&"classic_notification_requested", {"text": "Oops! Your character has fumbled their weapon. It will appear in treasure collection.", "soundId": 6000, "source": "classic-warning-114"}))
 	return true
 
 

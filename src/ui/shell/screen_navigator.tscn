@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/ui/shell/screen_navigator.gd" id="1_navigator"]
 [ext_resource type="PackedScene" path="res://src/ui/shell/preferences_draft_dialog.tscn" id="2_draft"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/saved_adventure_browser.tscn" id="3_browser"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/loading_adventure_view.tscn" id="4_loading"]
 [ext_resource type="Script" path="res://src/ui/shell/startup_workspace_controller.gd" id="5_startup"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/save_editor_workspace.tscn" id="6_save_editor"]
 
 [node name="ScreenNavigator" type="Control"]
 layout_mode = 3
@@ -64,3 +65,7 @@ z_index = 31
 [node name="LoadingAdventure" parent="StartupWorkspaces" instance=ExtResource("4_loading")]
 visible = false
 z_index = 32
+
+[node name="SaveEditorWorkspace" parent="StartupWorkspaces" instance=ExtResource("6_save_editor")]
+visible = false
+z_index = 31

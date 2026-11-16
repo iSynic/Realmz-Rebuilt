@@ -38,6 +38,10 @@ func execute() -> bool:
 	var root := _repository.directory_path()
 	if FileAccess.file_exists(root):
 		return _fail("The Character Files folder location is occupied by a file. No characters were changed.")
+	# Fresh copies skip deleted starters' identities, so an unreadable deleted list stops here.
+	var ledger_error := CharacterVaultDeletion.ledger_error(root)
+	if not ledger_error.is_empty():
+		return _fail(ledger_error + " No characters were changed.")
 	if DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(root)):
 		var original := backup.snapshot(root)
 		if not backup.last_error.is_empty() or not backup.create(root, original):
@@ -69,7 +73,8 @@ func _fresh_copy(template: CharacterVaultRecord) -> CharacterVaultRecord:
 	var root := _repository.directory_path()
 	var identity := template.character_id
 	var suffix := 1
-	while DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(root.path_join(identity))) or FileAccess.file_exists(root.path_join(identity)):
+	var retired := CharacterVaultDeletion.retired_ids(root)
+	while identity in retired or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(root.path_join(identity))) or FileAccess.file_exists(root.path_join(identity)):
 		identity = "%s.restored.%d" % [template.character_id, suffix]
 		suffix += 1
 	var state := CharacterStateCodec.copy_with_identity(template.state, identity)
@@ -84,6 +89,9 @@ func _fresh_copy(template: CharacterVaultRecord) -> CharacterVaultRecord:
 
 func _matches_starter(record: CharacterVaultRecord, template: CharacterVaultRecord) -> bool:
 	if record.character_id != template.character_id and record.publication_metadata.get("starterId", "") != template.character_id:
+		return false
+	# A revision changed in the Character Files editor is no longer the pristine starter.
+	if record.publication_metadata.has("edit"):
 		return false
 	return record.source_revision == template.source_revision and record.publication_metadata.get("source", "") == template.publication_metadata.get("source", "") and record.rules_version == template.rules_version and record.source_rules != null and record.source_rules.to_data() == template.source_rules.to_data()
 

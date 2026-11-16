@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "label": "Menu interface sounds",
+  "provider": "ElevenLabs sound effects (project owner's account)",
+  "license": "Project-Owner-Supplied",
+  "generation_id": "not recorded; supply from ElevenLabs",
+  "derivation": "Each MP3 decoded to 48 kHz mono, trimmed to the sound with 2 ms lead-in and a 20 ms fade-out, peak-normalised to the listed level, written as 16-bit WAV.",
+  "presentation_contract": "Played by UiSoundService on menu-style screens only, at the product of the master and sound-effect volumes. Never played on Classic in-game screens.",
+  "files": [
+    {
+      "path": "res://src/ui/shared/assets/ui/sounds/ui-navigate.wav",
+      "role": "navigate",
+      "seconds": 0.102,
+      "peak": 0.25,
+      "bytes": 15570,
+      "sha256": "570de28c90cba4727619d9acff11659f93d3fa443a9682108544e61ec8c35c75",
+      "source_name": "Navigate.mp3",
+      "source_sha256": "cf700d966cbd39bc3e6a55fbdd39b1bb24572953621f3b6119b3f8e3b64e7d5f"
+    },
+    {
+      "path": "res://src/ui/shared/assets/ui/sounds/ui-confirm.wav",
+      "role": "confirm",
+      "seconds": 0.084,
+      "peak": 0.5,
+      "bytes": 13918,
+      "sha256": "f015e05569eddcab1ade46738f3fbc5c479604d5823f7464da975a77b5ade460",
+      "source_name": "Confirm.mp3",
+      "source_sha256": "15df9dd66b20675cb3bc5d762686ca74d37e9503ea8ceb2c26eff16b8b278e14"
+    },
+    {
+      "path": "res://src/ui/shared/assets/ui/sounds/ui-cancel.wav",
+      "role": "cancel",
+      "seconds": 0.47,
+      "peak": 0.45,
+      "bytes": 50926,
+      "sha256": "34103375b771468781b82c1d0e29586ac87ea0c9cf30e74cfdb08e455ecb90b7",
+      "source_name": "Cancel-Back.mp3",
+      "source_sha256": "7ecd776170041a26646b7a4393e8d8fa84c19d25563c78c55d9e7714dbb81d6e"
+    },
+    {
+      "path": "res://src/ui/shared/assets/ui/sounds/ui-toggle.wav",
+      "role": "toggle",
+      "seconds": 0.083,
+      "peak": 0.35,
+      "bytes": 13768,
+      "sha256": "a39a1b3530dbba27e8261193ce0d5b6dac5d07e2443390eecb34dcd7045da6a5",
+      "source_name": "toggle.mp3",
+      "source_sha256": "37ea8b25745db8729ab700d3663abe9b3fe3bbac571a9bd924d5414bb11b357c"
+    },
+    {
+      "path": "res://src/ui/shared/assets/ui/sounds/ui-apply.wav",
+      "role": "apply",
+      "seconds": 0.769,
+      "peak": 0.6,
+      "bytes": 79600,
+      "sha256": "50709040c98903b7d2c1b5113cb46a1acda1bba9bf1b75707605e52b5840749b",
+      "source_name": "Apply-Save.mp3",
+      "source_sha256": "0706fd82ed870beb39754b038c15a634975196f3ea4c2486c2f894166720050a"
+    },
+    {
+      "path": "res://src/ui/shared/assets/ui/sounds/ui-error.wav",
+      "role": "error",
+      "seconds": 0.231,
+      "peak": 0.55,
+      "bytes": 28002,
+      "sha256": "24711cc636583d6834436589c11b7038e0c9a96dbb1c362ac36d7bde245ab0b1",
+      "source_name": "Error_-_Not_Allowed.mp3",
+      "source_sha256": "4caaf17ba883401468075cf46fab0786e7fdfc693f27fe379ddf8fcf8d2d0732"
+    }
+  ]
+}

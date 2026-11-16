@@ -107,6 +107,22 @@ func test_package_repository() -> PackageRepository:
 	return repository
 
 
+## Runs a Classic battle instruction and clicks through any text Castle shows before the
+## fight, so a fixture that only cares about the battle receives the battle.
+func enter_classic_battle(api: RealmzRuntimeApi, action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
+	return past_battle_prelude(api, api.execute_classic(action, request_id, context))
+
+
+## Acknowledges pending battle-prelude text until `operation` is something else.
+func past_battle_prelude(api: RealmzRuntimeApi, operation: ScenarioRuntimeOperationResult) -> ScenarioRuntimeOperationResult:
+	while operation != null and operation.continuation != null and operation.continuation.kind == ScenarioRuntimeContinuation.CLASSIC_BATTLE_PRELUDE:
+		var shown: Array[DomainEvent] = operation.events
+		var request_id := operation.interaction.request_id
+		operation = api.resume_classic(operation.continuation, InteractionResponse.acknowledge(operation.interaction), request_id)
+		operation.events = shown + operation.events
+	return operation
+
+
 func load_test_package(path: String) -> PackageLoadResult:
 	var repository := test_package_repository()
 	var loaded := repository.load_package(path); assert_true(loaded.is_ok(), "shared test package loads through the application-plus-scenario catalog boundary: %s" % loaded.error_message); return loaded

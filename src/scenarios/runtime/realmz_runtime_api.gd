@@ -313,7 +313,7 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.exploration.has_map(player_map_id):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic player-map continuation references unavailable acquired content.")
 			return ScenarioRuntimeOperationResult.completed(true)
-		ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
+		ScenarioRuntimeContinuation.CLASSIC_BATTLE_PRELUDE, ScenarioRuntimeContinuation.CLASSIC_COMBAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FRIENDLY_COLLISION, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, ScenarioRuntimeContinuation.CLASSIC_COMBAT_ALLY, ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE, ScenarioRuntimeContinuation.CLASSIC_REWARD:
 			return _battle_reward_operations.resume(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_CHARACTER_SELECTION:
 			return _resume_character_selection(continuation, response)

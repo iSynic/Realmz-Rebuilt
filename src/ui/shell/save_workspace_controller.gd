@@ -23,6 +23,7 @@ var _save_view_has_active_adventure: bool = false
 var _save_and_quit_mode: bool = false
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _workspace: SystemWorkspace
+var _show_backups: bool = false
 
 func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
@@ -74,7 +75,19 @@ func _bind_save_workspace(view: GameView) -> void:
 	var rows := _workspace.save_slot_rows()
 	var empty := _workspace.save_browser_empty()
 	empty.visible = false
-	(_workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/ActiveSlotLabel") as Label).text = ("Slot %s active · Quick Save: %s" if _layout_profile == UiLayoutProfile.COMPACT else "Slot %s active · Quick Save overwrites %s") % [_active_slot_id, _active_slot_id]
+	var tools := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceColumns/SaveSlotBrowser/Content/SlotTools")
+	(tools.get_node("ActiveSlotLabel") as Label).text = "★ Quick Save uses Slot %s" % _active_slot_id
+	var toggle := tools.get_node("BackupsToggle") as Button
+	if _selected_save_key.ends_with(":backup"): _show_backups = true
+	toggle.visible = _save_previews.any(func(preview: SaveSlotPreview) -> bool: return preview.source == SaveSlotPreview.BACKUP)
+	toggle.text = "Hide backups" if _show_backups else "Show backups"
+	toggle.set_pressed_no_signal(_show_backups)
+	SystemSignalBinding.clear_pressed(toggle)
+	toggle.pressed.connect(func() -> void:
+		_show_backups = not _show_backups
+		toggle.text = "Hide backups" if _show_backups else "Show backups"
+		for row: Node in rows.get_children():
+			if String(row.name).ends_with("_backup"): (row as Control).visible = _show_backups)
 	if view.party_setup_available and _selected_preview() == null:
 		for existing: SaveSlotPreview in _save_previews:
 			if existing.can_load and existing.source == SaveSlotPreview.PRIMARY:
@@ -85,19 +98,19 @@ func _bind_save_workspace(view: GameView) -> void:
 		var slot_id := SaveSlotPreview.SCENARIO_SLOTS.substr(slot_index, 1)
 		var primary := _preview_for_slot(slot_id, SaveSlotPreview.PRIMARY)
 		var button := rows.get_node("SavePreview_%s_primary" % slot_id) as Button
-		button.text = "Slot %s%s  ·  %s" % [slot_id, "  ★" if slot_id == _active_slot_id else "", primary.status_label() if primary != null else "Empty"]
+		button.text = "Slot %s%s  ·  %s" % [slot_id, "  ★" if slot_id == _active_slot_id else "", _row_status(primary)]
 		button.button_group = group
 		button.button_pressed = _selected_save_key == slot_id + ":primary"
 		SystemSignalBinding.clear_pressed(button)
 		button.pressed.connect(_select_save_key.bind(slot_id + ":primary"))
 		var backup := _preview_for_slot(slot_id, SaveSlotPreview.BACKUP)
 		if backup != null:
-			var backup_row := _add_save_preview_row(rows, group, backup, "   ↳ Backup · %s" % backup.status_label())
+			var backup_row := _add_save_preview_row(rows, group, backup, "   ↳ Backup  ·  %s" % _row_status(backup))
 			rows.move_child(backup_row, button.get_index() + 1)
 	for preview: SaveSlotPreview in _save_previews:
 		if preview.slot_id.length() == 1 and SaveSlotPreview.SCENARIO_SLOTS.contains(preview.slot_id):
 			continue
-		_add_save_preview_row(rows, group, preview, "Earlier save · %s · %s" % [SystemPreferencesLayout.slot_label(preview.slot_id), preview.source_label()])
+		_add_save_preview_row(rows, group, preview, "%s%s  ·  %s" % [SystemPreferencesLayout.slot_label(preview.slot_id), "  ·  Backup" if preview.source == SaveSlotPreview.BACKUP else "", _row_status(preview)])
 	_bind_save_footer(view)
 	_refresh_save_detail()
 
@@ -109,8 +122,16 @@ func _add_save_preview_row(rows: VBoxContainer, group: ButtonGroup, preview: Sav
 	button.button_group = group
 	button.button_pressed = _key(preview) == _selected_save_key
 	button.pressed.connect(_select_save_key.bind(_key(preview)))
+	# Backups stay out of the list until asked for, as on the Saved Adventures screen.
+	button.visible = preview.source != SaveSlotPreview.BACKUP or _show_backups
 	rows.add_child(button)
 	return button
+
+
+## Day and time for a save that can be read, its problem otherwise, or "Empty".
+static func _row_status(preview: SaveSlotPreview) -> String:
+	if preview == null: return "Empty"
+	return "Day\u00a0%d\u00a0\u00a0%02d:%02d" % [preview.realmz_day, preview.realmz_hour, preview.realmz_minute] if preview.status == SaveSlotPreview.VALID else preview.status_label()
 
 
 func _preview_for_slot(slot_id: String, source: StringName) -> SaveSlotPreview:
@@ -185,46 +206,48 @@ func _refresh_save_detail() -> void:
 	save_selected.text = "Save to %s" % slot_id if primary_slot else "Save to Slot"
 	var load_selected := _workspace.get_node("SystemWorkspaceBody/SystemWorkspaceTabs/Save & Load/SaveWorkspaceFooter/SaveWorkspaceActions/LoadSelectedSave") as Button
 	load_selected.disabled = preview == null or not preview.can_load
-	load_selected.tooltip_text = "Select a validated save record." if preview == null else preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
-	load_selected.text = "Load %s" % slot_id if preview != null and preview.can_load else "Load Slot"
+	load_selected.tooltip_text = "Select a save to load." if preview == null else preview.error_message if not preview.can_load else "Load this %s." % preview.source_label().to_lower()
+	load_selected.text = "Load"
 	_update_save_confirmation()
 	var record := _workspace.save_detail_record()
 	var empty := _workspace.save_detail_empty()
 	record.visible = preview != null
 	empty.visible = preview == null
 	if preview == null:
-		(empty.get_node("Text") as Label).text = "Slot %s is empty. Choose Save to %s to create it." % [slot_id, slot_id]
+		(empty.get_node("Text") as Label).text = "Slot %s is empty\nChoose Save to %s to save the adventure here." % [slot_id, slot_id]
 		return
-	SystemPreferencesLayout.bind_label(record.get_node("Title") as Label, "%s  •  %s" % [SystemPreferencesLayout.slot_label(preview.slot_id), preview.source_label()], GOLD, 18)
-	SystemPreferencesLayout.bind_label(record.get_node("Status") as Label, preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14)
+	SystemPreferencesLayout.bind_label(record.get_node("Title") as Label, "%s  ·  %s" % [SystemPreferencesLayout.slot_label(preview.slot_id), preview.source_label()], GOLD, 20)
+	var status := record.get_node("Status") as Label
+	SystemPreferencesLayout.bind_label(status, preview.status_label(), CYAN if preview.can_load else Color("d48a78"), 14)
+	# A save that is fine needs no status line; only a problem is worth stating.
+	status.visible = preview.status != SaveSlotPreview.VALID
 	var map_image := record.get_node("MapPreview") as TextureRect
 	var map_status := record.get_node("MapPreviewStatus") as Label
-	map_image.custom_minimum_size = Vector2.ONE * (190.0 if _layout_profile == UiLayoutProfile.COMPACT else 240.0)
+	UiSizing.minimum_size(map_image, Vector2.ONE * (190.0 if _layout_profile == UiLayoutProfile.COMPACT else 320.0))
 	map_image.texture = null
-	if preview.can_load and not preview.map_preview_jpeg.is_empty():
-		var image := Image.new()
-		if image.load_jpg_from_buffer(preview.map_preview_jpeg) == OK:
-			map_image.texture = ImageTexture.create_from_image(image)
+	if preview.can_load:
+		map_image.texture = MapPreviewImage.texture(preview.map_preview_jpeg)
 	map_image.visible = map_image.texture != null
 	map_status.visible = preview.can_load and map_image.texture == null
 	var error := record.get_node("Error") as Label
 	error.visible = preview.status != SaveSlotPreview.VALID
-	SystemPreferencesLayout.bind_label(error, "This save updates to the current campaign revision when it loads. The original is kept as its backup." if preview.can_update else preview.error_message, MUTED, 14)
+	SystemPreferencesLayout.bind_label(error, "This save is updated for the current version of the scenario when it loads. The original is kept as its backup." if preview.can_update else preview.error_message, MUTED, 14)
 	var valid := preview.status == SaveSlotPreview.VALID
-	for path: String in ["Location", "Party", "Divider", "Package", "Rules", "Saved"]:
+	for path: String in ["Location", "Party", "Saved"]:
 		record.get_node(path).visible = valid
+	# Package and rules identifiers are for diagnostics, not for choosing a save.
+	for path: String in ["Divider", "Package", "Rules"]:
+		record.get_node(path).visible = false
 	_workspace.set_save_record_order(record, _layout_profile == UiLayoutProfile.COMPACT)
 	if not valid:
 		return
 	var party := ", ".join(preview.character_names) if not preview.character_names.is_empty() else "No party members"
-	SystemPreferencesLayout.bind_label(record.get_node("Location") as Label, "Day %d  •  %02d:%02d  •  %s %d,%d" % [preview.realmz_day, preview.realmz_hour, preview.realmz_minute, preview.map_id, preview.coordinate.x, preview.coordinate.y], CYAN, 15)
+	SystemPreferencesLayout.bind_label(record.get_node("Location") as Label, "Day %d  ·  %02d:%02d  ·  at %d, %d" % [preview.realmz_day, preview.realmz_hour, preview.realmz_minute, preview.coordinate.x, preview.coordinate.y], CYAN, 15)
 	SystemPreferencesLayout.bind_label(record.get_node("Party") as Label, party, Color("e0e2e5"), 15)
-	SystemPreferencesLayout.bind_label(record.get_node("Package") as Label, "Package %s" % preview.package_hash.left(12), MUTED, 13)
-	SystemPreferencesLayout.bind_label(record.get_node("Rules") as Label, "Rules %s" % preview.rules_version, MUTED, 13)
 	var saved := record.get_node("Saved") as Label
 	saved.visible = preview.modified_unix > 0
 	if saved.visible:
-		SystemPreferencesLayout.bind_label(saved, "Saved %s" % Time.get_datetime_string_from_unix_time(preview.modified_unix), MUTED, 13)
+		SystemPreferencesLayout.bind_label(saved, "Saved %s" % SavedAdventureBrowser.saved_when(preview.modified_unix), MUTED, 13)
 
 
 func _load_selected_preview() -> void:

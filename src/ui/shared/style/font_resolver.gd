@@ -22,6 +22,15 @@ const BUNDLED: Dictionary = {
 	"alegreya": ["Alegreya", "res://src/ui/shared/assets/fonts/Alegreya-Variable.ttf"],
 }
 
+## Some installed families (such as Windows' Sans Serif Collection, whose lines are 2.7 times the
+## font size) declare line metrics far taller than their Latin glyphs. A chosen font whose ascent or
+## descent exceeds these multiples of its size is capped to them at every size it can be drawn at,
+## so labels, rows and buttons keep ordinary line height. Ordinary fonts are left untouched.
+const MAX_ASCENT_RATIO := 1.15
+const MAX_DESCENT_RATIO := 0.32
+const METRIC_PROBE_SIZE := 16
+const METRIC_SIZES := Vector2i(6, 160)
+
 var _imported: Array[Choice] = []
 var _import_path: Callable
 var _fonts: Dictionary = {}
@@ -75,6 +84,21 @@ func resolve(identity: String, fallback: Font) -> Font:
 	return variation
 
 
+## Whether a font's line metrics exceed the ordinary ascent/descent multiples.
+static func has_tall_metrics(font: Font) -> bool:
+	var size := METRIC_PROBE_SIZE
+	return font.get_ascent(size) > ceilf(MAX_ASCENT_RATIO * size) or font.get_descent(size) > ceilf(MAX_DESCENT_RATIO * size)
+
+
+## Caps a dynamic font's per-size ascent and descent at the ordinary multiples. Godot keeps one
+## metric cache per drawn size, so every size in METRIC_SIZES receives its own capped values.
+static func cap_line_metrics(font: FontFile) -> FontFile:
+	for size: int in range(METRIC_SIZES.x, METRIC_SIZES.y + 1):
+		font.set_cache_ascent(0, size, minf(font.get_ascent(size), ceilf(MAX_ASCENT_RATIO * size)))
+		font.set_cache_descent(0, size, minf(font.get_descent(size), ceilf(MAX_DESCENT_RATIO * size)))
+	return font
+
+
 func unavailable_message(identity: String) -> String:
 	return "%s is unavailable. Using the bundled readable font." % label(identity) if not identity.is_empty() and _source(identity) == null else ""
 
@@ -94,7 +118,7 @@ func _source(identity: String) -> Font:
 		if not path.is_empty():
 			var candidate := FontFile.new()
 			if candidate.load_dynamic_font(path) == OK:
-				font = candidate
+				font = cap_line_metrics(candidate) if has_tall_metrics(candidate) else candidate
 	_fonts[identity] = font
 	return font
 
@@ -111,5 +135,19 @@ func _system_source(family: String) -> Font:
 		return null
 	var font := SystemFont.new()
 	font.font_names = PackedStringArray([family])
-	font.allow_system_fallback = false
-	return font
+	# Glyphs missing from the family and its readable fallback chain (such as UI symbols) come from
+	# the platform per glyph; that fallback never changes the height of lines that don't use it.
+	font.allow_system_fallback = true
+	if not has_tall_metrics(font):
+		return font
+	# Capping needs the family's own file; a collection file holds several faces.
+	probe.antialiasing = font.antialiasing
+	probe.hinting = font.hinting
+	probe.subpixel_positioning = font.subpixel_positioning
+	probe.allow_system_fallback = true
+	for face: int in probe.get_face_count():
+		probe.set_face_index(0, face)
+		if probe.get_font_name().nocasecmp_to(family) == 0:
+			return cap_line_metrics(probe)
+	probe.set_face_index(0, 0)
+	return cap_line_metrics(probe)

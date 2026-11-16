@@ -7,6 +7,8 @@ var reasons: Array[String] = []
 var removed: Array[String] = []
 var retained: Array[String] = []
 var omissions: Array[PartyTransferOmission] = []
+## Scenario items whose destination defines a different same-named version.
+var changed_items: Array[String] = []
 
 
 func omit(kind: StringName, identity: String, label: String, reason: String) -> void:

@@ -1,0 +1,391 @@
+[gd_scene format=3]
+
+[ext_resource type="Theme" path="res://src/ui/characters/vault_theme.tres" id="1_vault_theme"]
+[ext_resource type="Script" path="res://src/ui/characters/editor/character_editor.gd" id="2_character_ed"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_change_row.tscn" id="3_editor_chang"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/editor/editor_styles/card_panel.tres" id="4_card_panel"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/tab_track.tres" id="5_tab_track"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_basics_panel.tscn" id="6_editor_basic"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_record_panel.tscn" id="7_editor_recor"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_items_panel.tscn" id="8_editor_items"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_spells_panel.tscn" id="9_editor_spell"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_conditions_panel.tscn" id="10_editor_condi"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_appearance_panel.tscn" id="11_editor_appea"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_dialog.tscn" id="12_editor_dialo"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_number_pad.tscn" id="13_editor_numbe"]
+
+[sub_resource type="ButtonGroup" id="TabGroup"]
+
+[node name="CharacterEditor" type="Control"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 520)
+theme = ExtResource("1_vault_theme")
+script = ExtResource("2_character_ed")
+change_row_scene = ExtResource("3_editor_chang")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Cancel" type="Button" parent="Layout/Header"]
+unique_name_in_owner = true
+size_flags_vertical = 4
+tooltip_text = "Leave the editor"
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 15
+text = "‹  Cancel"
+
+[node name="Titles" type="VBoxContainer" parent="Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="Layout/Header/Titles"]
+unique_name_in_owner = true
+clip_text = true
+text_overrun_behavior = 3
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 26
+text = "Edit"
+
+[node name="Subtitle" type="Label" parent="Layout/Header/Titles"]
+unique_name_in_owner = true
+clip_text = true
+text_overrun_behavior = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Discard" type="Button" parent="Layout/Header"]
+unique_name_in_owner = true
+size_flags_vertical = 4
+tooltip_text = "Undo every change in this draft"
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Discard changes"
+
+[node name="Save" type="Button" parent="Layout/Header"]
+unique_name_in_owner = true
+size_flags_vertical = 4
+layout_mode = 2
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
+text = "Save revision"
+
+[node name="Body" type="BoxContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="LeftColumn" type="VBoxContainer" parent="Layout/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(300, 0)
+theme_override_constants/separation = 10
+
+[node name="IdentityCard" type="PanelContainer" parent="Layout/Body/LeftColumn"]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("4_card_panel")
+
+[node name="Identity" type="BoxContainer" parent="Layout/Body/LeftColumn/IdentityCard"]
+layout_mode = 2
+vertical = true
+theme_override_constants/separation = 6
+
+[node name="ArtRow" type="HBoxContainer" parent="Layout/Body/LeftColumn/IdentityCard/Identity"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Portrait" type="TextureRect" parent="Layout/Body/LeftColumn/IdentityCard/Identity/ArtRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(44, 44)
+size_flags_vertical = 4
+texture_filter = 1
+stretch_mode = 3
+
+[node name="Icon" type="TextureRect" parent="Layout/Body/LeftColumn/IdentityCard/Identity/ArtRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(32, 32)
+size_flags_vertical = 4
+texture_filter = 1
+stretch_mode = 3
+
+[node name="Facts" type="VBoxContainer" parent="Layout/Body/LeftColumn/IdentityCard/Identity/ArtRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Identity" type="Label" parent="Layout/Body/LeftColumn/IdentityCard/Identity/ArtRow/Facts"]
+unique_name_in_owner = true
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="Experience" type="Label" parent="Layout/Body/LeftColumn/IdentityCard/Identity/ArtRow/Facts"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="NameCaption" type="Label" parent="Layout/Body/LeftColumn/IdentityCard/Identity"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "NAME"
+
+[node name="NameEdit" type="LineEdit" parent="Layout/Body/LeftColumn/IdentityCard/Identity"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+max_length = 20
+placeholder_text = "Character name"
+
+[node name="NameError" type="Label" parent="Layout/Body/LeftColumn/IdentityCard/Identity"]
+unique_name_in_owner = true
+visible = false
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusBad"
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="LevelHelp" type="Label" parent="Layout/Body/LeftColumn/IdentityCard/Identity"]
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Level Up runs the Classic level-up: dice for stamina, spell points, magic resistance and skills, then a spell choice for casters. Experience resets to what the next level needs."
+
+[node name="LevelRow" type="HBoxContainer" parent="Layout/Body/LeftColumn/IdentityCard/Identity"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Level" type="Label" parent="Layout/Body/LeftColumn/IdentityCard/Identity/LevelRow"]
+unique_name_in_owner = true
+size_flags_horizontal = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 18
+text = "Level 1"
+
+[node name="LevelUp" type="Button" parent="Layout/Body/LeftColumn/IdentityCard/Identity/LevelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Level Up…"
+
+[node name="LevelReason" type="Label" parent="Layout/Body/LeftColumn/IdentityCard/Identity"]
+unique_name_in_owner = true
+visible = false
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="ChangesCard" type="PanelContainer" parent="Layout/Body/LeftColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("4_card_panel")
+
+[node name="Changes" type="VBoxContainer" parent="Layout/Body/LeftColumn/ChangesCard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Layout/Body/LeftColumn/ChangesCard/Changes"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Layout/Body/LeftColumn/ChangesCard/Changes/Header"]
+size_flags_horizontal = 3
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Changes"
+
+[node name="ChangeCount" type="Label" parent="Layout/Body/LeftColumn/ChangesCard/Changes/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Scroll" type="ScrollContainer" parent="Layout/Body/LeftColumn/ChangesCard/Changes"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="ChangeList" type="VBoxContainer" parent="Layout/Body/LeftColumn/ChangesCard/Changes/Scroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="ChangesEmpty" type="Label" parent="Layout/Body/LeftColumn/ChangesCard/Changes"]
+unique_name_in_owner = true
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "No changes yet. Edited values are listed here, each with its own Undo."
+
+[node name="SaveNote" type="Label" parent="Layout/Body/LeftColumn/ChangesCard/Changes"]
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Saving adds a new revision to Character Files. Parties and saved adventures keep their own copies."
+
+[node name="RightColumn" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
+
+[node name="TabsRow" type="HBoxContainer" parent="Layout/Body/RightColumn"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="TabTrack" type="PanelContainer" parent="Layout/Body/RightColumn/TabsRow"]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("5_tab_track")
+
+[node name="Tabs" type="HBoxContainer" parent="Layout/Body/RightColumn/TabsRow/TabTrack"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="BasicsTab" type="Button" parent="Layout/Body/RightColumn/TabsRow/TabTrack/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_group = SubResource("TabGroup")
+text = "Basics"
+
+[node name="RecordTab" type="Button" parent="Layout/Body/RightColumn/TabsRow/TabTrack/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_group = SubResource("TabGroup")
+text = "Record"
+
+[node name="ItemsTab" type="Button" parent="Layout/Body/RightColumn/TabsRow/TabTrack/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_group = SubResource("TabGroup")
+text = "Items"
+
+[node name="SpellsTab" type="Button" parent="Layout/Body/RightColumn/TabsRow/TabTrack/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_group = SubResource("TabGroup")
+text = "Spells"
+
+[node name="ConditionsTab" type="Button" parent="Layout/Body/RightColumn/TabsRow/TabTrack/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_group = SubResource("TabGroup")
+text = "Conditions"
+
+[node name="AppearanceTab" type="Button" parent="Layout/Body/RightColumn/TabsRow/TabTrack/Tabs"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_group = SubResource("TabGroup")
+text = "Appearance"
+
+[node name="Spacer" type="Control" parent="Layout/Body/RightColumn/TabsRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Hint" type="Label" parent="Layout/Body/RightColumn/TabsRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+clip_text = true
+text_overrun_behavior = 3
+horizontal_alignment = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Click a value to type it · hold − or + to step faster"
+
+[node name="PanelCard" type="PanelContainer" parent="Layout/Body/RightColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("4_card_panel")
+
+[node name="BasicsPanel" parent="Layout/Body/RightColumn/PanelCard" instance=ExtResource("6_editor_basic")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RecordPanel" parent="Layout/Body/RightColumn/PanelCard" instance=ExtResource("7_editor_recor")]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="ItemsPanel" parent="Layout/Body/RightColumn/PanelCard" instance=ExtResource("8_editor_items")]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="SpellsPanel" parent="Layout/Body/RightColumn/PanelCard" instance=ExtResource("9_editor_spell")]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="ConditionsPanel" parent="Layout/Body/RightColumn/PanelCard" instance=ExtResource("10_editor_condi")]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="AppearancePanel" parent="Layout/Body/RightColumn/PanelCard" instance=ExtResource("11_editor_appea")]
+unique_name_in_owner = true
+layout_mode = 2
+visible = false
+
+[node name="Notice" type="Label" parent="Layout/Body/RightColumn"]
+unique_name_in_owner = true
+visible = false
+autowrap_mode = 3
+layout_mode = 2
+theme_type_variation = &"VaultStatusBad"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Dialog" parent="." instance=ExtResource("12_editor_dialo")]
+unique_name_in_owner = true
+
+[node name="NumberPad" parent="." instance=ExtResource("13_editor_numbe")]
+unique_name_in_owner = true
