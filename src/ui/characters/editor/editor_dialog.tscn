@@ -1,0 +1,359 @@
+[gd_scene format=3]
+
+[ext_resource type="Theme" path="res://src/ui/characters/vault_theme.tres" id="1_vault_theme"]
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_dialog.gd" id="2_editor_dialo"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_dialog_row.tscn" id="3_editor_dialo"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/editor/editor_styles/dialog_panel.tres" id="4_dialog_panel"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_heading.tscn" id="5_level_heading"]
+[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_button.tscn" id="6_level_button"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_spell_choice.tscn" id="7_spell_choice"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/editor/editor_styles/card_panel.tres" id="8_card_panel"]
+
+[sub_resource type="ButtonGroup" id="ChoiceLevelGroup"]
+
+[node name="EditorDialog" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("1_vault_theme")
+script = ExtResource("2_editor_dialo")
+row_scene = ExtResource("3_editor_dialo")
+choice_scene = ExtResource("7_spell_choice")
+metadata/controller_focus_scope = true
+
+[node name="Scrim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.02, 0.035, 0.047, 0.82)
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Panel" type="PanelContainer" parent="Center" groups=["ui_theme_frame"]]
+layout_mode = 2
+custom_minimum_size = Vector2(500, 0)
+theme_override_styles/panel = ExtResource("4_dialog_panel")
+
+[node name="Body" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 22
+text = "Title"
+
+[node name="Message" type="Label" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+autowrap_mode = 3
+custom_minimum_size = Vector2(456, 0)
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="Rows" type="GridContainer" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 2
+
+[node name="SpellArea" type="VBoxContainer" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(736, 0)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChoiceRail" type="HFlowContainer" parent="Center/Panel/Body/SpellArea"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 4
+
+[node name="SpellLevelHeading" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("5_level_heading")]
+layout_mode = 2
+
+[node name="SpellLevel1" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("6_level_button")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("ChoiceLevelGroup")
+text = "Level 1"
+
+[node name="SpellLevel2" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("6_level_button")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("ChoiceLevelGroup")
+text = "Level 2"
+
+[node name="SpellLevel3" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("6_level_button")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("ChoiceLevelGroup")
+text = "Level 3"
+
+[node name="SpellLevel4" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("6_level_button")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("ChoiceLevelGroup")
+text = "Level 4"
+
+[node name="SpellLevel5" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("6_level_button")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("ChoiceLevelGroup")
+text = "Level 5"
+
+[node name="SpellLevel6" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("6_level_button")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("ChoiceLevelGroup")
+text = "Level 6"
+
+[node name="SpellLevel7" parent="Center/Panel/Body/SpellArea/ChoiceRail" instance=ExtResource("6_level_button")]
+layout_mode = 2
+theme_type_variation = &"CampaignCard"
+button_group = SubResource("ChoiceLevelGroup")
+text = "Level 7"
+
+[node name="Columns" type="HBoxContainer" parent="Center/Panel/Body/SpellArea"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="SpellListColumn" type="VBoxContainer" parent="Center/Panel/Body/SpellArea/Columns"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="SpellCount" type="Label" parent="Center/Panel/Body/SpellArea/Columns/SpellListColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="SpellListScroll" type="ScrollContainer" parent="Center/Panel/Body/SpellArea/Columns/SpellListColumn"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 340)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+follow_focus = true
+
+[node name="SpellChoices" type="GridContainer" parent="Center/Panel/Body/SpellArea/Columns/SpellListColumn/SpellListScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+columns = 2
+theme_override_constants/h_separation = 6
+theme_override_constants/v_separation = 6
+
+[node name="Preview" type="PanelContainer" parent="Center/Panel/Body/SpellArea/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("8_card_panel")
+
+[node name="Content" type="VBoxContainer" parent="Center/Panel/Body/SpellArea/Columns/Preview"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PreviewName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = ""
+text_overrun_behavior = 3
+
+[node name="PreviewMeta" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="PreviewScroll" type="ScrollContainer" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="PreviewBody" type="VBoxContainer" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="PreviewText" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+autowrap_mode = 3
+
+[node name="Facts" type="GridContainer" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 3
+
+[node name="CostName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Cost"
+
+[node name="CostValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="TargetName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Target"
+
+[node name="TargetValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="RangeName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Range"
+
+[node name="RangeValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="DamageName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Damage"
+
+[node name="DamageValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="DurationName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Duration"
+
+[node name="DurationValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="ResistName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Magic resistance"
+
+[node name="ResistValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="SaveName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Saving throw"
+
+[node name="SaveValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="CastInName" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Cast in"
+
+[node name="CastInValue" type="Label" parent="Center/Panel/Body/SpellArea/Columns/Preview/Content/PreviewScroll/PreviewBody/Facts"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="Warning" type="Label" parent="Center/Panel/Body"]
+unique_name_in_owner = true
+visible = false
+autowrap_mode = 3
+custom_minimum_size = Vector2(456, 0)
+layout_mode = 2
+theme_type_variation = &"VaultStatusBad"
+theme_override_font_sizes/font_size = 13
+text = ""
+
+[node name="Buttons" type="HBoxContainer" parent="Center/Panel/Body"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 2
+
+[node name="Secondary" type="Button" parent="Center/Panel/Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Cancel"
+
+[node name="Tertiary" type="Button" parent="Center/Panel/Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DangerAction"
+theme_override_font_sizes/font_size = 14
+text = "Discard"
+
+[node name="Primary" type="Button" parent="Center/Panel/Body/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
+text = "OK"

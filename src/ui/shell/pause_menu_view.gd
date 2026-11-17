@@ -49,12 +49,13 @@ func present(page: StringName, context: String, reasons: Dictionary, slot: Strin
 			for child: Node in container.get_children():
 				if child is PauseMenuAction: _actions.append(child)
 	for action: PauseMenuAction in _actions:
-		action.set_availability(String(reasons.get(action.action_id, "")))
+		action.set_availability(str(reasons.get(action.action_id, "")))
 		if action.action_id == &"quick_save": action.button.text = "Quicksave %s" % slot
 		if action.action_id == &"quick_load": action.button.text = "Quickload %s" % slot
-	_selected = int(_page_selection.get(page, 0))
+	_selected = RowFields.number(_page_selection, page)
 	show()
 	_layout()
+	_follow_theme()
 	_select(clampi(_selected, 0, _actions.size() - (0 if %Back.visible else 1)))
 	if changed_page and _is_detail(): %EntriesScroll.set_deferred("scroll_vertical", 0)
 
@@ -62,6 +63,16 @@ func apply_ui_sizing(profile: UiLayoutProfile) -> void:
 	_profile = profile
 	%Surface.theme = get_parent_control().theme
 	_layout()
+	_follow_theme()
+
+
+## The menu sits on its own layer, out of the theme walk's reach, so it asks for its panel,
+## frame and heading colours itself.
+func _follow_theme() -> void:
+	UiThemeService.decorate(%Surface as Control)
+	var colors := UiThemeService.current().colors
+	%Heading.add_theme_color_override("font_color", colors[&"accent"])
+	%PackageStatus.add_theme_color_override("font_color", colors[&"muted"])
 
 func reset_selection() -> void:
 	_selected = 0

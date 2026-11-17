@@ -189,6 +189,8 @@ func _test_modular_authoring_roundtrip() -> void:
 	view.party_summary = PartySummaryView.new()
 	view.party_members.append(CharacterView.new(CharacterState.new("modular.hero", "Hero", 20, 20)))
 	shell.present(view)
+	# The authored scene positions apply to the plain arrangement, not a new profile's default layout.
+	shell.settings.hud = HudPreferences.new()
 	shell.settings.hud.modular = true
 	shell.refresh_layout()
 	var running_style := (shell.hud.get_node("World/Surface") as PanelContainer).get_theme_stylebox("panel") as StyleBoxFlat
@@ -207,24 +209,24 @@ func _test_theme_inheritance_through_authored_scene() -> void:
 	var row := workspace.find_child("Scenario_*", true, false) as PanelContainer
 	var action := row.find_child("LaunchCampaign", true, false) as Button
 	var classic_color := heading.get_theme_color(&"font_color")
-	var contrast := (load("res://src/ui/shared/style/classic_ui_theme.tres") as Theme).duplicate() as Theme
+	var contrast := (load("res://src/ui/characters/vault_theme.tres") as Theme).duplicate() as Theme
 	var heading_color := Color(0.1, 0.9, 0.6)
 	var secondary_color := Color(0.7, 0.3, 0.9)
 	var action_color := Color(0.3, 0.8, 0.9)
-	contrast.set_color(&"font_color", &"ClassicScenarioHeading", heading_color)
-	contrast.set_color(&"font_color", &"ClassicSecondaryText", secondary_color)
-	contrast.set_color(&"font_color", &"ClassicTheldrowButton", action_color)
+	contrast.set_color(&"font_color", &"VaultStatusGold", heading_color)
+	contrast.set_color(&"font_color", &"VaultStatusMuted", secondary_color)
+	contrast.set_color(&"font_color", &"CampaignCard", action_color)
 	var selected_font := load("res://src/ui/shared/assets/fonts/AlegreyaSans-Regular.ttf") as Font
 	contrast.set_font(&"font", &"Label", selected_font)
 	var scaled := ClassicTypography.themed_copy(contrast, PresentationSettings.new(), 1.25)
-	assert_true(scaled.get_font(&"font", &"Label") == selected_font and scaled.get_color(&"font_color", &"ClassicScenarioHeading") == heading_color, "runtime typography scales a selected theme without restoring hardcoded Classic role values")
-	workspace.theme = contrast
+	assert_true(scaled.get_font(&"font", &"Label") == selected_font and scaled.get_color(&"font_color", &"VaultStatusGold") == heading_color, "runtime typography scales a selected theme without restoring hardcoded Classic role values")
+	(workspace.get_node("%ScenarioPartyWorkspace") as Control).theme = contrast
 	assert_true(heading.get_theme_color(&"font_color") == heading_color and secondary.get_theme_color(&"font_color") == secondary_color and action.get_theme_color(&"font_color") == action_color, "one temporary theme reaches an embedded scene, its grandchild, and a dynamic production row")
 	heading.add_theme_color_override(&"font_color", Color.RED)
 	assert_equal(heading.get_theme_color(&"font_color"), Color.RED, "a local visual exception wins over inherited role styling")
 	heading.remove_theme_color_override(&"font_color")
 	assert_equal(heading.get_theme_color(&"font_color"), heading_color, "removing the exception restores inherited role styling")
-	workspace.theme = null
+	(workspace.get_node("%ScenarioPartyWorkspace") as Control).theme = load("res://src/ui/characters/vault_theme.tres") as Theme
 	assert_equal(heading.get_theme_color(&"font_color"), classic_color, "clearing the temporary theme restores the project default without mutating its resource")
 	workspace.free()
 
@@ -352,7 +354,7 @@ func _test_representative_collections_and_modes() -> void:
 	assert_true(spells.find_children("KnownSpell_*", "Button", true, false).size() > 0, "Spells preview binds production spell records")
 	assert_equal((services.find_child("MoneyCharacterRows", true, false) as VBoxContainer).get_child_count(), 2, "Services preview binds production money rows")
 	assert_true((roster as ClassicPartyRoster).combat_spellbook_active(), "Roster preview opens the production combat spellbook")
-	assert_equal(vault.find_children("CharacterFile_*", "PanelContainer", true, false).size(), 2, "Character Files preview binds production vault cards")
+	assert_equal(vault.find_children("CharacterFile_*", "Button", true, false).size(), 2, "Character Files preview binds production vault rows")
 	assert_equal(allies.find_children("AllyRow_*", "Button", true, false).size(), 3, "Allies preview binds production ally records")
 	assert_equal(bestiary.find_children("BestiaryRow_*", "Button", true, false).size(), 3, "Bestiary preview binds production catalog records")
 	assert_equal((journal.find_child("JournalEntryRows", true, false) as VBoxContainer).get_child_count(), 3, "Maps and Journal preview binds production journal records")

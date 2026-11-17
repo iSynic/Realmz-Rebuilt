@@ -3,7 +3,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 28
+const SCHEMA_VERSION: int = 30
 const INDOOR_PARTY_ICON_COUNT: int = 120
 const DEFAULT_INDOOR_PARTY_ICON: int = 72
 const MUSIC_SLOT_COUNT: int = 20
@@ -15,6 +15,11 @@ const MUSIC_RESTART_PLAYLIST: String = "restart-playlist"
 const MUSIC_RESUME: String = "resume"
 const MUSIC_TRANSITIONS: Array[String] = [MUSIC_RESTART_SONG, MUSIC_RESTART_PLAYLIST, MUSIC_RESUME]
 
+## The interface theme menu-style screens are authored in; other ids are named by the theme catalog.
+## The look every screen is authored in; the theme service leaves it untouched.
+const AUTHORED_INTERFACE_THEME: String = "midnight-gold"
+## The theme a new or reset profile starts with.
+const DEFAULT_INTERFACE_THEME: String = "slate-bone"
 const UI_SCALE_AUTO: String = "auto"
 const UI_SCALE_100: String = "100"
 const UI_SCALE_125: String = "125"
@@ -96,10 +101,19 @@ var interface_font: String = ""
 var narrative_font: String = ""
 var menu_visibility: String = MENU_VISIBLE
 var show_hud_button_titles: bool = false
+## The chosen interface theme id. An id no longer offered falls back to the default when applied.
+var interface_theme: String = DEFAULT_INTERFACE_THEME
+## Lays the interface theme's background tile faintly over framed panels, at this strength.
+var theme_surface_tile: bool = true
+var theme_surface_tile_opacity_percent: int = 25
+## Glows the window edge when the party loses stamina or is poisoned or diseased.
+var harm_edge_flash: bool = true
 var integer_fit_hidden_commands: bool = false
 var last_campaign_id: String = ""
 var controller := ControllerPreferences.new()
-var hud := HudPreferences.new()
+var hud := HudPreferences.overworld_default()
+## Combat keeps its own fixed-or-modular choice and its own arrangement, apart from the overworld's.
+var combat_hud := HudPreferences.combat_default()
 
 
 func copy_from(other: PresentationSettings) -> void:
@@ -148,10 +162,15 @@ func copy_from(other: PresentationSettings) -> void:
 	narrative_font = other.narrative_font
 	menu_visibility = other.menu_visibility
 	show_hud_button_titles = other.show_hud_button_titles
+	interface_theme = other.interface_theme
+	theme_surface_tile = other.theme_surface_tile
+	theme_surface_tile_opacity_percent = other.theme_surface_tile_opacity_percent
+	harm_edge_flash = other.harm_edge_flash
 	integer_fit_hidden_commands = other.integer_fit_hidden_commands
 	last_campaign_id = other.last_campaign_id
 	controller = other.controller.duplicate_value()
 	hud = other.hud.duplicate_value()
+	combat_hud = other.combat_hud.duplicate_value()
 
 
 func to_data() -> Dictionary:
@@ -204,19 +223,25 @@ func to_data() -> Dictionary:
 		"menuVisibility": menu_visibility,
 		"showOverworldCommandTitles": show_hud_button_titles,
 		"integerFitHiddenCommands": integer_fit_hidden_commands,
+		"interfaceTheme": interface_theme,
+		"themeSurfaceTile": theme_surface_tile,
+		"themeSurfaceTileOpacityPercent": theme_surface_tile_opacity_percent,
+		"harmEdgeFlash": harm_edge_flash,
 		"lastCampaignId": last_campaign_id,
 		"controller": controller.to_data(),
 		"hud": hud.to_data(),
+		"combatHud": combat_hud.to_data(),
 	}
 
 
 static func from_data(data: Variant) -> PresentationSettings:
 	if not data is Dictionary:
 		return null
-	var schema_version := _schema_version_from_data(data)
-	if schema_version == 0 or not _base_fields_are_valid(data, schema_version) or not _versioned_fields_are_valid(data, schema_version):
+	var fields: Dictionary = data
+	var schema_version := _schema_version_from_data(fields)
+	if schema_version == 0 or not _base_fields_are_valid(fields, schema_version) or not _versioned_fields_are_valid(fields, schema_version):
 		return null
-	return _settings_from_valid_data(data)
+	return _settings_from_valid_data(fields)
 
 
 static func _schema_version_from_data(data: Dictionary) -> int:
@@ -297,6 +322,10 @@ static func _versioned_fields_are_valid(data: Dictionary, schema_version: int) -
 		return false
 	if schema_version >= 27 and HudPreferences.from_data(data.get("hud")) == null:
 		return false
+	if schema_version >= 30 and HudPreferences.from_data(data.get("combatHud")) == null:
+		return false
+	if not _optional_fields_are_valid(data) or schema_version >= 29 and (not data.get("interfaceTheme") is String or data["interfaceTheme"].is_empty() or data["interfaceTheme"].length() > 64):
+		return false
 	return schema_version < 14 or ControllerPreferences.from_data(data.get("controller")) != null
 
 
@@ -354,6 +383,13 @@ static func _music_fields_are_valid(data: Dictionary) -> bool:
 		if (not mode is int and not mode is float) or float(int(mode)) != float(mode) or int(mode) not in [MUSIC_OFF, MUSIC_PLAY, MUSIC_CONTINUE]:
 			return false
 	return true
+
+
+## The optional panel-texture keys: absent in settings saved before the preference existed.
+static func _optional_fields_are_valid(data: Dictionary) -> bool:
+	if data.has("themeSurfaceTile") and not data["themeSurfaceTile"] is bool or data.has("harmEdgeFlash") and not data["harmEdgeFlash"] is bool:
+		return false
+	return not data.has("themeSurfaceTileOpacityPercent") or _stepped_number_is_valid(data["themeSurfaceTileOpacityPercent"], 0, 100, 5)
 
 
 static func _stepped_number_is_valid(value: Variant, minimum: int, maximum: int, step: int = 25) -> bool:
@@ -421,6 +457,30 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 	if int(data["schemaVersion"]) >= 20:
 		settings.indoor_party_icon = int(data["indoorPartyIcon"])
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", false))
+	_read_interface_look(settings, data)
+	settings.show_hud_button_titles = true  # Schemas before 24 always showed captions; only fresh settings default them off.
+	if int(data["schemaVersion"]) >= 24:
+		settings.show_hud_button_titles = data["showOverworldCommandTitles"]
+		settings.integer_fit_hidden_commands = data["integerFitHiddenCommands"]
+	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
+	# Settings saved before a HUD choice existed keep the fixed HUD they were using, not the
+	# arrangement a new profile starts with.
+	settings.hud = HudPreferences.from_data(data["hud"]) if int(data["schemaVersion"]) >= 27 else HudPreferences.new()
+	if int(data["schemaVersion"]) < 30:
+		settings.combat_hud = HudPreferences.new()
+		settings.combat_hud.panels[HudPreferences.PanelId.ROSTER].auto_hide = true
+		settings.combat_hud.adopt_combat_scales()
+	else:
+		settings.combat_hud = HudPreferences.from_data(data["combatHud"])
+		if not (data["combatHud"]["panels"][1] as Dictionary).has("scale"): settings.combat_hud.adopt_combat_scales()
+	settings.controller = ControllerPreferences.from_data(data["controller"]) if data.has("controller") else ControllerPreferences.new()
+	if int(data.get("schemaVersion", 1)) == 14:
+		settings.controller.add_top_menu_default_if_available()
+	return settings
+
+
+## Font choices (schema 23), the retired readable preset's fonts, and the interface theme (29).
+static func _read_interface_look(settings: PresentationSettings, data: Dictionary) -> void:
 	if int(data["schemaVersion"]) >= 23:
 		settings.interface_font = data["interfaceFont"]
 		settings.narrative_font = data["narrativeFont"]
@@ -430,17 +490,11 @@ static func _settings_from_valid_data(data: Dictionary) -> PresentationSettings:
 			settings.interface_font = "bundled:alegreya-sans"
 		if settings.narrative_font.is_empty():
 			settings.narrative_font = "bundled:alegreya"
-	settings.show_hud_button_titles = true  # Schemas before 24 always showed captions; only fresh settings default them off.
-	if int(data["schemaVersion"]) >= 24:
-		settings.show_hud_button_titles = data["showOverworldCommandTitles"]
-		settings.integer_fit_hidden_commands = data["integerFitHiddenCommands"]
-	settings.last_campaign_id = String(data.get("lastCampaignId", "")).strip_edges()
-	if int(data["schemaVersion"]) >= 27:
-		settings.hud = HudPreferences.from_data(data["hud"])
-	settings.controller = ControllerPreferences.from_data(data["controller"]) if data.has("controller") else ControllerPreferences.new()
-	if int(data.get("schemaVersion", 1)) == 14:
-		settings.controller.add_top_menu_default_if_available()
-	return settings
+	# Settings saved before themes existed keep the authored look they were using.
+	settings.interface_theme = data["interfaceTheme"] if int(data["schemaVersion"]) >= 29 else AUTHORED_INTERFACE_THEME
+	settings.theme_surface_tile = data.get("themeSurfaceTile", true)
+	settings.theme_surface_tile_opacity_percent = int(data.get("themeSurfaceTileOpacityPercent", 25))
+	settings.harm_edge_flash = data.get("harmEdgeFlash", true)
 
 
 static func _read_combat_text_settings(settings: PresentationSettings, data: Dictionary) -> void:
@@ -504,9 +558,12 @@ static func _default_music_modes() -> Array[int]:
 
 
 static func _music_modes_from_data(value: Variant) -> Array[int]:
-	if not value is Array or (value as Array).size() != MUSIC_SLOT_COUNT:
+	if not value is Array:
+		return _default_music_modes()
+	var modes: Array = value
+	if modes.size() != MUSIC_SLOT_COUNT:
 		return _default_music_modes()
 	var result: Array[int] = []
-	for mode: Variant in value as Array:
+	for mode: Variant in modes:
 		result.append(int(mode))
 	return result

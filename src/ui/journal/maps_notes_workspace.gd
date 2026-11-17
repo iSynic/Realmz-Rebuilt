@@ -72,19 +72,6 @@ func _sync_section_rail(index: int) -> void:
 		var button := get_node("MapsNotesSectionRail/" + label) as Button
 		var selected := section_index == index
 		button.button_pressed = selected
-		if selected:
-			var fill := StyleBoxFlat.new()
-			fill.bg_color = Color("4c4932")
-			fill.border_color = Color("d5b45d")
-			fill.set_border_width_all(1)
-			button.add_theme_stylebox_override("normal", fill)
-			button.add_theme_stylebox_override("hover", fill)
-			button.add_theme_stylebox_override("pressed", fill)
-			button.add_theme_color_override("font_color", Color("e0d39b"))
-		else:
-			for state: StringName in [&"normal", &"hover", &"pressed"]:
-				button.remove_theme_stylebox_override(state)
-			button.remove_theme_color_override("font_color")
 
 
 func summary_label() -> Label:

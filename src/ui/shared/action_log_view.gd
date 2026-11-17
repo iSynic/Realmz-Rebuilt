@@ -12,6 +12,14 @@ var _count: Label
 var _title: Label
 var _clear: Button
 var _actions: Array[Button] = []
+var _lines: Array[String] = []
+var _actor: OptionButton
+var _movement: CheckButton
+
+## Reading choices kept for the session: the log's text size before interface scaling,
+## and whether movement lines are shown.
+static var text_size := 18
+static var show_movement := true
 
 
 func _ready() -> void:
@@ -32,6 +40,22 @@ func _ready() -> void:
 	(%Close as Button).pressed.connect(func() -> void: close_requested.emit())
 	_log = %GameActionLog
 	_log.add_theme_font_override("normal_font", readable_font)
+	_actor = %Actor
+	_actor.item_selected.connect(func(_index: int) -> void: _render())
+	_movement = %Movement
+	_movement.button_pressed = show_movement
+	_movement.toggled.connect(func(shown: bool) -> void:
+		show_movement = shown
+		_render()
+	)
+	for step: int in [-2, 2]:
+		((%Smaller if step < 0 else %Larger) as Button).pressed.connect(func() -> void:
+			text_size = clampi(text_size + step, 12, 32)
+			_render()
+		)
+	for control: Control in [_actor, _movement, %Smaller, %Larger]:
+		control.add_theme_font_override("font", readable_font)
+	_actions.append_array([_movement, %Smaller as Button, %Larger as Button])
 
 
 func present(lines: Array[String], title: String = "Game-action console", allow_clear: bool = true) -> void:
@@ -40,16 +64,40 @@ func present(lines: Array[String], title: String = "Game-action console", allow_
 		parent.move_child(self, parent.get_child_count() - 1)
 	_title.text = title
 	_clear.visible = allow_clear
+	# A readable column in the middle of the window, as wide as the interface scale allows.
+	var profile := UiSizing.profile_for(self)
+	var half := minf(440.0 * (profile.ui_scale if profile != null else 1.0), size.x * 0.5 - 24.0)
+	($Panel as Control).offset_left = -half
+	($Panel as Control).offset_right = half
 	set_lines(lines)
+	# The log wears the menu dialog's surface and the interface theme's frame.
+	UiThemeService.frame_for($Panel as Control, true)
 	show()
 	_focus_first_action()
 
 
 func set_lines(lines: Array[String]) -> void:
-	_log.text = "\n".join(lines) if not lines.is_empty() else "No committed game actions recorded yet."
-	_count.text = "%d lines" % lines.size()
-	if not lines.is_empty():
-		_log.scroll_to_line(lines.size() - 1)
+	_lines = lines.duplicate()
+	var chosen := _actor.get_item_text(_actor.selected) if _actor.selected > 0 else ""
+	_actor.clear()
+	_actor.add_item("Everyone")
+	for name: String in ActionLogFormat.actors(_lines):
+		_actor.add_item(name)
+		if name == chosen: _actor.select(_actor.item_count - 1)
+	_actor.visible = _actor.item_count > 2
+	_movement.visible = _lines.any(func(line: String) -> bool: return line.ends_with(ActionLogFormat.MOVE_SUFFIX))
+	_render()
+
+
+## Lays the filtered lines out at the chosen text size and follows the newest line.
+func _render() -> void:
+	var shown := ActionLogFormat.filtered(_lines, not show_movement, _actor.get_item_text(_actor.selected) if _actor.selected > 0 else "")
+	var palette := UiThemeService.current()
+	UiSizing.font_size(_log, &"normal_font_size", text_size)
+	_log.text = ActionLogFormat.markup(shown, palette.colors[&"accent"], palette.colors[&"muted"], _log.get_theme_font_size(&"normal_font_size") + 3) if not shown.is_empty() else "No committed game actions recorded yet." if _lines.is_empty() else "Nothing matches this filter."
+	_count.text = "%d lines" % _lines.size() if shown.size() == _lines.size() else "%d of %d lines" % [shown.size(), _lines.size()]
+	if not shown.is_empty():
+		_log.scroll_to_line.call_deferred(maxi(0, _log.get_line_count() - 1))
 
 
 func close_console() -> void:
@@ -92,7 +140,8 @@ func handle_controller(action_id: StringName, direction: Vector2i) -> bool:
 	if action_id == &"realmz_controller_confirm":
 		var focused := get_viewport().gui_get_focus_owner()
 		if focused is Button and not (focused as Button).disabled:
-			(focused as Button).pressed.emit()
+			if (focused as Button).toggle_mode: (focused as Button).button_pressed = not (focused as Button).button_pressed
+			else: (focused as Button).pressed.emit()
 		return true
 	if direction.x != 0:
 		_move_action_focus(direction.x)
@@ -124,4 +173,4 @@ func _move_action_focus(delta: int) -> void:
 
 
 func _copy_all() -> void:
-	DisplayServer.clipboard_set(_log.text)
+	DisplayServer.clipboard_set(_log.get_parsed_text())

@@ -11,31 +11,62 @@ const CLASSIC_UTILITY_PATH := "res://src/ui/shared/assets/fonts/InterVariable-Ca
 const READABLE_UI_PATH := "res://src/ui/shared/assets/fonts/AlegreyaSans-Regular.ttf"
 const READABLE_BOLD_PATH := "res://src/ui/shared/assets/fonts/AlegreyaSans-Bold.ttf"
 const READABLE_NARRATIVE_PATH := "res://src/ui/shared/assets/fonts/Alegreya-Variable.ttf"
+## UI symbols (check marks, arrows, command glyphs) are absent from every bundled face. Godot sizes a
+## line by the tallest font in its fallback chain, so no font chain carries a platform symbol font:
+## symbol-only labels use the SymbolGlyph role, and other text relies on Godot's per-glyph system
+## fallback, which enlarges only the lines that actually draw a symbol.
+## Menu workspaces root on this theme; it authors a readable sans that follows only an explicit
+## interface font choice. The main menu pins its own typography and never follows either.
+## The interface font identity that keeps the original Realmz faces.
+const CLASSIC_FACES := "classic"
+const MENU_THEME_PATH := "res://src/ui/shared/style/menu_controls_theme.tres"
 
 
 static func themed_copy(base_theme: Theme, settings: PresentationSettings, interface_size: float = 1.0, fonts: FontResolver = null) -> Theme:
 	var result := base_theme.duplicate() as Theme
+	ClassicChrome.modernize(result)
 	var font_scale := interface_size * settings.interface_text_scale
 	var authored_runtime_size := base_theme.get_constant(&"default_font_size", &"ClassicRuntimeMetrics") if base_theme.has_constant(&"default_font_size", &"ClassicRuntimeMetrics") else base_theme.default_font_size
 	result.default_font_size = maxi(1, roundi(authored_runtime_size * font_scale))
 	_scale_theme(result, interface_size, font_scale, interface_size * settings.narrative_text_scale)
 	_apply_font_choices(result, settings, fonts)
+	UiThemeService.restyle_menu_types(result)
 	return result
+
+
+## Points the shared menu theme at the player's chosen interface font, or back to its authored sans.
+## Call only where the applied application theme changes, never for draft previews.
+static func apply_menu_fonts(settings: PresentationSettings, fonts: FontResolver = null) -> void:
+	var theme := load(MENU_THEME_PATH) as Theme
+	if not theme.has_meta(&"authored_font"):
+		theme.set_meta(&"authored_font", theme.default_font)
+	# Resolving returns a fresh variation each call; skip unchanged choices so menus don't re-theme.
+	if theme.has_meta(&"applied_identity") and String(theme.get_meta(&"applied_identity")) == settings.interface_font:
+		return
+	theme.set_meta(&"applied_identity", settings.interface_font)
+	var authored: Font = theme.get_meta(&"authored_font")
+	var selected := authored
+	if not settings.interface_font.is_empty():
+		selected = (fonts if fonts != null else FontResolver.new()).resolve(settings.interface_font, authored)
+	for type_name: StringName in theme.get_font_type_list():
+		for key: StringName in theme.get_font_list(type_name):
+			theme.set_font(key, type_name, selected)
+	theme.default_font = selected
 
 
 static func _apply_font_choices(theme: Theme, settings: PresentationSettings, fonts: FontResolver) -> void:
 	theme.set_constant(&"custom_font_selected", &"ClassicNarrative", 0 if settings.narrative_font.is_empty() else 1)
 	theme.set_font(&"font", &"ClassicNarrativeText", theme.get_font(&"normal_font", &"ClassicNarrative"))
 	theme.set_font_size(&"font_size", &"ClassicNarrativeText", theme.get_font_size(&"normal_font_size", &"ClassicNarrative"))
-	if settings.interface_font.is_empty() and settings.narrative_font.is_empty():
-		return
 	if fonts == null:
 		fonts = FontResolver.new()
-	if not settings.interface_font.is_empty():
-		var selected := fonts.resolve(settings.interface_font, load(READABLE_UI_PATH) as Font)
+	# Interface text is the readable sans unless the player picks a face; the original
+	# Realmz faces remain available under the CLASSIC_FACES identity.
+	if settings.interface_font != CLASSIC_FACES:
+		var selected := load(READABLE_UI_PATH) as Font if settings.interface_font.is_empty() else fonts.resolve(settings.interface_font, load(READABLE_UI_PATH) as Font)
 		theme.default_font = selected
 		for type_name: StringName in theme.get_type_list():
-			if type_name in [&"ClassicNarrative", &"ClassicNarrativeText"]:
+			if type_name in [&"ClassicNarrative", &"ClassicNarrativeText", &"SymbolGlyph"]:
 				continue
 			for key: StringName in theme.get_font_list(type_name):
 				theme.set_font(key, type_name, selected)

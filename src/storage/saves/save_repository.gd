@@ -240,7 +240,7 @@ func list_previews(campaign_id: String, expected_package_hash: String) -> Array:
 		if not _safe_component(slot_id):
 			continue
 		previews.append(_preview_for_path(campaign_path.path_join(file_name), slot_id, source, campaign_id, expected_package_hash))
-	previews.sort_custom(func(left: RefCounted, right: RefCounted) -> bool:
+	previews.sort_custom(func(left: SaveSlotPreview, right: SaveSlotPreview) -> bool:
 		if left.slot_id != right.slot_id:
 			return left.slot_id.naturalnocasecmp_to(right.slot_id) < 0
 		return left.source == SaveSlotPreview.PRIMARY and right.source == SaveSlotPreview.BACKUP
@@ -272,7 +272,7 @@ func list_party_sources() -> Array[SavePartySource]:
 			if not _safe_component(slot_id):
 				continue
 			var selector := INTERNAL_SOURCE_PREFIX + campaign_id + "/" + file_name
-			sources.append(_read_party_source_path(campaign_path.path_join(file_name), selector, slot_id, source_kind, campaign_id))
+			sources.append(_listed_party_source(campaign_path.path_join(file_name), selector, slot_id, source_kind, campaign_id))
 	sources.sort_custom(func(left: SavePartySource, right: SavePartySource) -> bool:
 		if left.campaign_id != right.campaign_id:
 			return left.campaign_id.naturalnocasecmp_to(right.campaign_id) < 0
@@ -403,6 +403,8 @@ func _forget_previews(campaign_id: String, slot_id: String) -> void:
 	var path := "%s/%s/%s.r2save" % [_root_path, campaign_id, slot_id]
 	_preview_cache.erase(path)
 	_preview_cache.erase(path + ".bak")
+	_preview_cache.erase("party:" + path)
+	_preview_cache.erase("party:" + path + ".bak")
 
 
 func _file_stamp(path: String) -> String:
@@ -419,6 +421,52 @@ func _file_stamp(path: String) -> String:
 func _read_envelope(path: String) -> SaveEnvelope:
 	var data: Variant = _read_document(path)
 	return SaveEnvelope.from_data(data) if data != null else null
+
+
+## Listing reads only each save's identity header and party names, once per file
+## revision. Selecting a source re-reads and fully validates it through
+## `read_party_source` before anything is reviewed or admitted.
+func _listed_party_source(path: String, selector: String, slot_id: String, source_kind: StringName, campaign_id: String) -> SavePartySource:
+	var stamp := _file_stamp(path)
+	var cached: Dictionary = _preview_cache.get("party:" + path, {})
+	if not stamp.is_empty() and cached.get("stamp", "") == stamp:
+		return cached.source
+	var source := _party_source_header(path, selector, slot_id, source_kind, campaign_id)
+	if not stamp.is_empty():
+		_preview_cache["party:" + path] = {"stamp": stamp, "source": source}
+	return source
+
+
+func _party_source_header(path: String, selector: String, slot_id: String, source_kind: StringName, campaign_id: String) -> SavePartySource:
+	var source := SavePartySource.new(selector)
+	source.slot_id = slot_id
+	source.source_kind = source_kind
+	source.campaign_id = campaign_id
+	source.modified_unix = int(FileAccess.get_modified_time(path))
+	var bytes := FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else PackedByteArray()
+	if bytes.is_empty() or bytes.size() > MAX_PARTY_SOURCE_BYTES:
+		source.error = "This save file is missing, empty, or exceeds the 512 MiB read limit."
+		return source
+	var hashing := HashingContext.new()
+	if hashing.start(HashingContext.HASH_SHA256) == OK and hashing.update(bytes) == OK:
+		source.source_file_hash = hashing.finish().hex_encode()
+	var parser := JSON.new()
+	var data: Variant = parser.data if parser.parse(bytes.get_string_from_utf8()) == OK else null
+	source.error = _incompatible_schema_message_for_data(data)
+	if not source.error.is_empty():
+		return source
+	var party: Variant = data.get("gameState", {}).get("party", {}).get("characters") if data is Dictionary and data.get("format") == SaveEnvelope.FORMAT and data.get("gameState") is Dictionary and data["gameState"].get("party") is Dictionary else null
+	if not party is Array or not data.get("campaignId") is String or not data.get("packageHash") is String or not data.get("rulesVersion") is String:
+		source.error = "This save is corrupt or uses an unsupported format."
+		return source
+	source.campaign_id = data["campaignId"]
+	source.package_hash = data["packageHash"]
+	source.rules_version = data["rulesVersion"]
+	source.header_only = true
+	for character: Variant in party:
+		if character is Dictionary and character.get("name") is String:
+			source.party_names.append(character["name"])
+	return source
 
 
 func _read_party_source_path(path: String, selector: String, slot_id: String, source_kind: StringName, fallback_campaign_id: String = "") -> SavePartySource:

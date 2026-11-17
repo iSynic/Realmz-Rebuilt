@@ -21,7 +21,7 @@ text = ""
 [node name="HeaderRule" parent="WorkspaceColumn" index="1"]
 visible = false
 
-[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
+[node name="RouteBackAction" parent="WorkspaceColumn/RouteFooter" index="0"]
 visible = false
 
 [node name="SpellsWorkspace" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("3_workspace")]

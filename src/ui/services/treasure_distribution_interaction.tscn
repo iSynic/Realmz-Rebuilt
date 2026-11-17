@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=11 format=3]
 
 [ext_resource type="Script" path="res://src/ui/services/treasure_distribution_interaction.gd" id="1_interaction"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_loot_cell.tscn" id="2_loot_cell"]
@@ -12,13 +12,6 @@
 [ext_resource type="PackedScene" path="res://src/ui/services/services_workspace.tscn" id="10_money"]
 [ext_resource type="PackedScene" path="res://src/ui/services/treasure_recipient_row.tscn" id="11_recipient_row"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_loot"]
-bg_color = Color(0.969, 0.965, 0.941, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.443, 0.467, 0.482, 1)
 
 [node name="TreasureDistributionInteraction" type="VBoxContainer"]
 size_flags_horizontal = 3
@@ -76,7 +69,7 @@ theme_override_constants/separation = 6
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBox_loot")
+theme_type_variation = &"ClassicInset"
 [node name="Margin" type="MarginContainer" parent="OrdinaryTreasure/ClassicTreasureWorkspace/TreasureLootColumn/TreasureLootField"]
 layout_mode = 2
 theme_override_constants/margin_left = 10
@@ -95,7 +88,7 @@ visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 0
-theme_override_colors/font_color = Color(0.067, 0.075, 0.082, 1)
+theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 text = "No items remain."
 autowrap_mode = 2
 
@@ -186,6 +179,7 @@ theme_override_constants/separation = 10
 unique_name_in_owner = true
 custom_minimum_size = Vector2(76, 76)
 layout_mode = 2
+size_flags_vertical = 0
 texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
@@ -270,7 +264,9 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 2
 [node name="TreasureDone" type="Button" parent="OrdinaryTreasure/TreasureItemRecord/TreasureCommandPanel/TreasureCommands"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
+theme_type_variation = &"ClassicPrimaryButton"
 text = "Done"
 
 [node name="ClassicItemDetailPopover" parent="." instance=ExtResource("7_popover")]

@@ -1,24 +1,29 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/party_setup_party_slot.gd" id="1_slot"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBox_slot"]
-bg_color = Color(0.101961, 0.117647, 0.133333, 1)
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/character_card.tres" id="st_card"]
+[ext_resource type="StyleBox" path="res://src/ui/setup/setup_styles/art_tile.tres" id="st_tile"]
 
 [node name="PartySetupPartySlot" type="PanelContainer"]
-custom_minimum_size = Vector2(0, 44)
+custom_minimum_size = Vector2(0, 48)
 size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("StyleBox_slot")
+theme_override_styles/panel = ExtResource("st_card")
 script = ExtResource("1_slot")
 
 [node name="Row" type="HBoxContainer" parent="."]
 layout_mode = 2
 mouse_filter = 2
-theme_override_constants/separation = 6
+theme_override_constants/separation = 8
+
+[node name="Number" type="Label" parent="Row"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(14, 0)
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "1"
+horizontal_alignment = 1
 
 [node name="Portrait" type="TextureRect" parent="Row"]
 unique_name_in_owner = true
@@ -27,32 +32,62 @@ layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
 texture_filter = 1
-expand_mode = 1
-stretch_mode = 5
+stretch_mode = 3
 
-[node name="Summary" type="Label" parent="Row"]
+[node name="TacticalIcon" type="TextureRect" parent="Row"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture_filter = 1
+stretch_mode = 3
+
+[node name="Text" type="VBoxContainer" parent="Row"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 mouse_filter = 2
-theme_override_font_sizes/font_size = 14
-autowrap_mode = 2
-max_lines_visible = -1
-vertical_alignment = 1
-text_overrun_behavior = 0
+theme_override_constants/separation = 0
+
+[node name="Name" type="Label" parent="Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 15
+text_overrun_behavior = 3
+text = "Name"
+
+[node name="Summary" type="Label" parent="Row/Text"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text_overrun_behavior = 3
+text = "Open position"
 
 [node name="Actions" type="BoxContainer" parent="Row"]
 layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 6
 
 [node name="InspectPartyCharacter" type="Button" parent="Row/Actions"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
-size_flags_vertical = 3
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
+text = "Inspect"
 
 [node name="RemovePartyCharacter" type="Button" parent="Row/Actions"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(26, 26)
 layout_mode = 2
-size_flags_vertical = 3
+theme_type_variation = &"CompactAction"
+theme_override_font_sizes/font_size = 14
+text = "×"
 
 [connection signal="pressed" from="Row/Actions/InspectPartyCharacter" to="." method="_request_inspection"]
 [connection signal="pressed" from="Row/Actions/RemovePartyCharacter" to="." method="_request_removal"]

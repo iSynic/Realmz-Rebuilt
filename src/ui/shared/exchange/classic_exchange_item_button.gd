@@ -20,7 +20,18 @@ func _get_drag_data(_position: Vector2) -> Variant:
 func create_drag_data(_position: Vector2) -> Variant:
 	if disabled or drag_payload.is_empty():
 		return null
+	# The dragged item is a half-transparent copy of its whole row, held where it was grabbed.
 	var preview := (load(DRAG_PREVIEW_SCENE_PATH) as PackedScene).instantiate() as Label
-	preview.text = text.get_slice("\n", 0)
+	var row := get_parent() as Control
+	if row == null:
+		preview.text = text.get_slice("\n", 0)
+	else:
+		var card := row.duplicate(0) as Control
+		card.size = row.size
+		card.position = -(position + _position)
+		card.modulate.a = 0.5
+		preview.add_child(card)
+	# Above the service panels, which sit on a raised layer and would otherwise cover it.
+	preview.z_index = 4000
 	set_drag_preview(preview)
 	return drag_payload.duplicate(true)

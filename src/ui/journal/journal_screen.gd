@@ -8,7 +8,7 @@ const BODY_PATH := "WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"
 
 
 func _enter_tree() -> void:
-	var back := get_node("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
+	var back := get_node("WorkspaceColumn/RouteFooter/RouteBackAction") as Button
 	back.owner = null
 	back.reparent(get_node("WorkspaceColumn/JournalFooter/BackHost"))
 	back.owner = self

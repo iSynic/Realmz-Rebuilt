@@ -19,7 +19,12 @@ func load_settings() -> PresentationSettings:
 	var parsed: Variant = JSON.parse_string(text)
 	var settings := PresentationSettings.from_data(parsed)
 	if settings == null:
-		last_error = "Presentation settings are malformed; defaults were restored."
+		# Keep the rejected file: the next save replaces settings.json, and without a copy
+		# the player's choices and the reason they were rejected would both be gone.
+		var kept := "%s.rejected-%s" % [settings_path, Time.get_datetime_string_from_system().replace(":", "")]
+		var copied := DirAccess.copy_absolute(ProjectSettings.globalize_path(settings_path), ProjectSettings.globalize_path(kept)) == OK
+		last_error = "Presentation settings are malformed; defaults were restored.%s" % (" The rejected file was kept as %s." % kept.get_file() if copied else "")
+		push_warning(last_error)
 		return PresentationSettings.new()
 	return settings
 

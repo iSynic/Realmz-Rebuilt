@@ -1,0 +1,587 @@
+[gd_scene format=3]
+
+[ext_resource type="Theme" path="res://src/ui/characters/vault_theme.tres" id="1_vault_theme"]
+[ext_resource type="Script" path="res://src/ui/setup/save_editor_workspace.gd" id="2_script"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/editor/editor_styles/card_panel.tres" id="3_card"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/tab_track.tres" id="4_track"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/save_editor_member_row.tscn" id="5_row"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/character_editor.tscn" id="6_editor"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_dialog.tscn" id="7_dialog"]
+[ext_resource type="PackedScene" path="res://src/ui/setup/save_editor_picker.tscn" id="8_picker"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="10_menu_theme"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/prompt_glyph.tres" id="11_glyph"]
+
+[sub_resource type="ButtonGroup" id="PageGroup"]
+
+[sub_resource type="ButtonGroup" id="DifficultyGroup"]
+
+[sub_resource type="ButtonGroup" id="MonsterGroup"]
+
+[sub_resource type="StyleBoxFlat" id="Backdrop"]
+bg_color = Color(0.039, 0.059, 0.078, 1)
+
+[node name="SaveEditorWorkspace" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme = ExtResource("10_menu_theme")
+script = ExtResource("2_script")
+prompt_glyph_style = ExtResource("11_glyph")
+member_row_scene = ExtResource("5_row")
+page_group = SubResource("PageGroup")
+
+[node name="Backdrop" type="Panel" parent="." groups=["ui_theme_backdrop"]]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("Backdrop")
+
+[node name="Layout" type="VBoxContainer" parent="."]
+theme = ExtResource("1_vault_theme")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 1
+offset_left = 28.0
+offset_top = 20.0
+offset_right = -28.0
+offset_bottom = -16.0
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Layout"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Cancel" type="Button" parent="Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 15
+text = "‹  Cancel"
+tooltip_text = "Leave the save editor"
+
+[node name="Titles" type="VBoxContainer" parent="Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="Layout/Header/Titles"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 26
+text = "Edit saved adventure"
+
+[node name="Subtitle" type="Label" parent="Layout/Header/Titles"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = ""
+text_overrun_behavior = 3
+
+[node name="Discard" type="Button" parent="Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Discard changes"
+
+[node name="Save" type="Button" parent="Layout/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
+text = "Save changes…"
+
+[node name="Blocking" type="Label" parent="Layout"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"VaultStatusBad"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="Body" type="BoxContainer" parent="Layout"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="Roster" type="PanelContainer" parent="Layout/Body" groups=["ui_theme_frame"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+theme_override_styles/panel = ExtResource("3_card")
+
+[node name="RosterBody" type="BoxContainer" parent="Layout/Body/Roster"]
+unique_name_in_owner = true
+layout_mode = 2
+vertical = true
+theme_override_constants/separation = 6
+
+[node name="AdventureRow" parent="Layout/Body/Roster/RosterBody" instance=ExtResource("5_row")]
+unique_name_in_owner = true
+layout_mode = 2
+button_group = SubResource("PageGroup")
+
+[node name="PartyHeader" type="HBoxContainer" parent="Layout/Body/Roster/RosterBody"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="PartyTitle" type="Label" parent="Layout/Body/Roster/RosterBody/PartyHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Party"
+
+[node name="PartyCount" type="Label" parent="Layout/Body/Roster/RosterBody/PartyHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+
+[node name="MemberScroll" type="ScrollContainer" parent="Layout/Body/Roster/RosterBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Members" type="BoxContainer" parent="Layout/Body/Roster/RosterBody/MemberScroll"]
+vertical = true
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="AddFromFiles" type="Button" parent="Layout/Body/Roster/RosterBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "+  Add from Character Files…"
+
+[node name="StripDrop" type="Button" parent="Layout/Body/Roster/RosterBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"DangerAction"
+theme_override_font_sizes/font_size = 14
+text = "Drop…"
+
+[node name="StripChanges" type="Button" parent="Layout/Body/Roster/RosterBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Changes"
+
+[node name="AddReason" type="Label" parent="Layout/Body/Roster/RosterBody"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="Right" type="VBoxContainer" parent="Layout/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="AdventureScroll" type="ScrollContainer" parent="Layout/Body/Right"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="AdventurePage" type="VBoxContainer" parent="Layout/Body/Right/AdventureScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Settings" type="PanelContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage" groups=["ui_theme_frame"]]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("3_card")
+
+[node name="SettingsBody" type="VBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SettingsTitle" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Adventure settings"
+
+[node name="DifficultyHeader" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DifficultyCaption" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyHeader"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "DIFFICULTY"
+
+[node name="DifficultyWas" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+
+[node name="DifficultyTrack" type="PanelContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_styles/panel = ExtResource("4_track")
+
+[node name="Difficulty" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyTrack"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Novice" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyTrack/Difficulty"]
+button_group = SubResource("DifficultyGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Novice"
+
+[node name="Easy" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyTrack/Difficulty"]
+button_group = SubResource("DifficultyGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Easy"
+
+[node name="Normal" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyTrack/Difficulty"]
+button_group = SubResource("DifficultyGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Normal"
+
+[node name="Hard" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyTrack/Difficulty"]
+button_group = SubResource("DifficultyGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Hard"
+
+[node name="Veteran" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/DifficultyTrack/Difficulty"]
+button_group = SubResource("DifficultyGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Veteran"
+
+[node name="DifficultyNote" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = "Changes how tough new monsters are and the treasure and experience they give. Past battles keep their results."
+autowrap_mode = 3
+
+[node name="MonstersHeader" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="MonstersCaption" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/MonstersHeader"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "MONSTERS"
+
+[node name="MonstersWas" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/MonstersHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+
+[node name="MonstersTrack" type="PanelContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_styles/panel = ExtResource("4_track")
+
+[node name="Monsters" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/MonstersTrack"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="Normal" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/MonstersTrack/Monsters"]
+button_group = SubResource("MonsterGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Normal Monsters"
+
+[node name="Monster" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/MonstersTrack/Monsters"]
+button_group = SubResource("MonsterGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Monster Monsters"
+
+[node name="Mega" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/MonstersTrack/Monsters"]
+button_group = SubResource("MonsterGroup")
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+toggle_mode = true
+text = "Mega Monsters"
+
+[node name="MonstersNote" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 3
+
+[node name="RateRow" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody"]
+layout_mode = 2
+
+[node name="RateText" type="VBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/RateRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="RateCaption" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/RateRow/RateText"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "EXPERIENCE RATE"
+
+[node name="RateNote" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/RateRow/RateText"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 13
+text = "Recomputed from difficulty and the party's total levels, the same way party setup works it out."
+autowrap_mode = 3
+
+[node name="RateWas" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/RateRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 16
+
+[node name="RateArrow" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/RateRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 24
+text = "→"
+
+[node name="Rate" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Settings/SettingsBody/RateRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 22
+
+[node name="Lower" type="BoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="Allies" type="PanelContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower" groups=["ui_theme_frame"]]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("3_card")
+
+[node name="AlliesBody" type="VBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="AlliesHeader" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody"]
+layout_mode = 2
+
+[node name="AlliesTitle" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody/AlliesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Traveling allies"
+
+[node name="AlliesCount" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody/AlliesHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+
+[node name="AllyScroll" type="ScrollContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
+
+[node name="AllyList" type="VBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody/AllyScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="AllyFooter" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="AddAlly" type="Button" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody/AllyFooter"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "+  Add ally…"
+
+[node name="AllyNote" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Allies/AlliesBody/AllyFooter"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Rolled once when added; later difficulty changes don't reroll it."
+autowrap_mode = 3
+
+[node name="Changes" type="PanelContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower" groups=["ui_theme_frame"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+theme_override_styles/panel = ExtResource("3_card")
+
+[node name="ChangesBody" type="VBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Changes"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="ChangesHeader" type="HBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Changes/ChangesBody"]
+layout_mode = 2
+
+[node name="ChangesTitle" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Changes/ChangesBody/ChangesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Changes"
+
+[node name="ChangeCount" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Changes/ChangesBody/ChangesHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+
+[node name="ChangesEmpty" type="Label" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Changes/ChangesBody"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Nothing has changed yet."
+
+[node name="ChangeScroll" type="ScrollContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Changes/ChangesBody"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+vertical_scroll_mode = 0
+
+[node name="ChangeList" type="VBoxContainer" parent="Layout/Body/Right/AdventureScroll/AdventurePage/Lower/Changes/ChangesBody/ChangeScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="MemberPage" type="VBoxContainer" parent="Layout/Body/Right"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 10
+
+[node name="MemberHeader" type="HBoxContainer" parent="Layout/Body/Right/MemberPage"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="MemberTitle" type="Label" parent="Layout/Body/Right/MemberPage/MemberHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 20
+text_overrun_behavior = 3
+
+[node name="KeepInFiles" type="CheckButton" parent="Layout/Body/Right/MemberPage/MemberHeader"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Keep in Character Files"
+
+[node name="MemberSpacer" type="Control" parent="Layout/Body/Right/MemberPage/MemberHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MemberChanges" type="Button" parent="Layout/Body/Right/MemberPage/MemberHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Changes"
+tooltip_text = "Show every change in this save"
+
+[node name="DropMember" type="Button" parent="Layout/Body/Right/MemberPage/MemberHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"DangerAction"
+theme_override_font_sizes/font_size = 14
+text = "Drop from party…"
+
+[node name="MemberNotice" type="Label" parent="Layout/Body/Right/MemberPage"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"VaultStatusGold"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="MemberEditor" parent="Layout/Body/Right/MemberPage" instance=ExtResource("6_editor")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Notice" type="Label" parent="Layout"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_type_variation = &"VaultStatusBad"
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="Prompts" type="HFlowContainer" parent="Layout"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+alignment = 1
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 4
+
+[node name="Picker" parent="." instance=ExtResource("8_picker")]
+unique_name_in_owner = true
+layout_mode = 1
+
+[node name="Dialog" parent="." instance=ExtResource("7_dialog")]
+unique_name_in_owner = true
+layout_mode = 1

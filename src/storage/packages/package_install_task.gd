@@ -140,14 +140,14 @@ func _join_thread() -> void:
 
 static func _message_for(operation_phase: StringName, completed_units: int, total_units: int) -> String:
 	match operation_phase:
-		&"opening": return "Opening campaign package…"
-		&"checking-install": return "Opening installed campaign…"
-		&"restoring-runtime-image": return "Restoring verified campaign data…"
-		&"validating-source": return "Checking external package before installation…"
-		&"validating-integrity": return "Checking external package files %d of %d…" % [completed_units, total_units]
-		&"reading-documents": return "Reading compiled Realmz content %d of %d…" % [completed_units, total_units]
-		&"constructing-content": return "Loading compiled Realmz content…"
-		&"copying-package": return "Installing immutable package…"
-		&"validating-install": return "Checking installed copy…"
-		&"complete": return "Campaign ready."
-	return "Preparing campaign…"
+		&"opening": return "Opening the scenario…"
+		&"checking-install": return "Opening the installed scenario…"
+		&"restoring-runtime-image": return "Restoring the scenario's checked data…"
+		&"validating-source": return "Checking the scenario package before installing it…"
+		&"validating-integrity": return "Checking scenario files (%d of %d)…" % [completed_units, total_units]
+		&"reading-documents": return "Reading the scenario (%d of %d)…" % [completed_units, total_units]
+		&"constructing-content": return "Building the scenario…"
+		&"copying-package": return "Installing the scenario…"
+		&"validating-install": return "Checking the installed copy…"
+		&"complete": return "Scenario ready."
+	return "Preparing the scenario…"

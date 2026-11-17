@@ -532,7 +532,7 @@ static func _valid_post_move_continuation(content: RealmzContent, state: GameSta
 	if exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size():
 		return false
 	if session_interaction != null:
-		return vm_interaction == null and exploration.active_trigger_id.is_empty() and exploration.active_random_program_id.is_empty() and exploration.random_battle_stage == &"surprise-choice" and session_interaction.kind == InteractionRequest.YES_NO and exploration.random_region_index >= 0 and exploration.random_region_ids[exploration.random_region_index] == exploration.active_random_region_id and map.random_region_by_id(exploration.active_random_region_id) != null
+		return vm_interaction == null and exploration.active_trigger_id.is_empty() and exploration.active_random_program_id.is_empty() and (exploration.random_battle_stage == &"surprise-choice" and session_interaction.kind == InteractionRequest.YES_NO or RandomBattlePrelude.restores(content, state, exploration, session_interaction)) and exploration.random_region_index >= 0 and exploration.random_region_ids[exploration.random_region_index] == exploration.active_random_region_id and map.random_region_by_id(exploration.active_random_region_id) != null
 	if vm_interaction == null or not exploration.random_battle_stage.is_empty() or not exploration.active_random_region_id.is_empty():
 		return false
 	if not exploration.active_random_program_id.is_empty():
@@ -568,7 +568,7 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 	if exploration.resume_kind in [&"completed", &"post-move", &"attempt-search-completed", &"attempt-search-post-move", &"area-search-second", &"camp-entry-second", &"rest-second", &"heal"] and exploration.direction != Vector2i.ZERO or exploration.resume_kind in [&"move", &"camp-departure-second"] and exploration.direction == Vector2i.ZERO:
 		return false
 	if session_interaction != null:
-		return vm_interaction == null and exploration.active_random_program_id.is_empty() and exploration.random_battle_stage == &"surprise-choice" and session_interaction.kind == InteractionRequest.YES_NO and exploration.random_region_index >= 0 and exploration.random_region_ids[exploration.random_region_index] == exploration.active_random_region_id and map.random_region_by_id(exploration.active_random_region_id) != null
+		return vm_interaction == null and exploration.active_random_program_id.is_empty() and (exploration.random_battle_stage == &"surprise-choice" and session_interaction.kind == InteractionRequest.YES_NO or RandomBattlePrelude.restores(content, state, exploration, session_interaction)) and exploration.random_region_index >= 0 and exploration.random_region_ids[exploration.random_region_index] == exploration.active_random_region_id and map.random_region_by_id(exploration.active_random_region_id) != null
 	if vm_interaction != null:
 		if not exploration.active_timed_program_id.is_empty():
 			return exploration.active_random_program_id.is_empty() and content.scenario.program_by_id(exploration.active_timed_program_id) != null

@@ -39,10 +39,11 @@ func show_selection_hint() -> void:
 	trade_status().visible = false
 
 
-func show_actions(encounter: bool) -> void:
+func show_actions(encounter: bool, compact: bool = false) -> void:
 	selection_hint().visible = false
 	action_dock().visible = not encounter
-	action_dock().columns = 4
+	# One row of actions where there is room; the compact layout keeps its four-column deck.
+	action_dock().columns = 4 if compact else 7
 	encounter_dock().visible = encounter
 	operation_stage().visible = false
 	trade_status().visible = false

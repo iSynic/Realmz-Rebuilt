@@ -50,18 +50,24 @@ func _build_result(body: LevelUpRequestBody) -> void:
 	if body.character_id.is_empty() or body.gains == null:
 		add_hint("The level result is unavailable.")
 		return
-	_build_header("Level Gained", "%s reached level %d" % [body.character_name, body.level])
+	_build_header("Level gained", "")
 	%LevelResultColumns.visible = true
+	# The result is a short card, so it gives back the height the spell picker needs.
+	custom_minimum_size.y = 0.0
 	var portrait := %LevelPortrait as TextureRect
 	portrait.texture = _portrait(body.character_id)
-	portrait.custom_minimum_size.y = 80.0 if portrait.texture == null else 220.0
-	%PortraitUnavailable.visible = portrait.texture == null
+	%PortraitFrame.visible = portrait.texture != null
 	%CharacterName.text = body.character_name
-	%CharacterLevel.text = "Level %d" % body.level
-	%StaminaValue.text = "%+d" % body.gains.stamina
-	%SpellPointsValue.text = "%+d" % body.gains.spell_points
-	%ToHitValue.text = "%+d" % body.gains.to_hit
-	%MagicResistanceValue.text = "%+d" % body.gains.magic_resistance
+	%CharacterLevel.text = "Level %d → %d" % [maxi(body.level - 1, 1), body.level]
+	var character := _character(body.character_id)
+	%CharacterKind.text = "%s %s" % [character.race_name, character.caste_name] if character != null else ""
+	%CharacterKind.visible = not %CharacterKind.text.is_empty()
+	var gains := {"Stamina": body.gains.stamina, "SpellPoints": body.gains.spell_points, "ToHit": body.gains.to_hit, "MagicResistance": body.gains.magic_resistance}
+	for gain: String in gains:
+		var value := get_node("%" + gain + "Value") as Label
+		value.text = "%+d" % gains[gain]
+		# A stat that did not move this level steps back so the real gains stand out.
+		(value.get_parent().get_parent() as Control).modulate.a = 1.0 if gains[gain] != 0 else 0.45
 	var continue_button := %LevelContinue as Button
 	continue_button.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.LevelUpBody.new(&"continue", body.character_id)), CONNECT_ONE_SHOT)
 
@@ -218,7 +224,7 @@ func _refresh_spell_record(spell: InteractionRequestValue.SpellChoice) -> void:
 	if _spell_record_title == null:
 		return
 	_spell_record_title.text = spell.name
-	_spell_record_cost.text = "%d selection point%s" % [spell.cost, "" if spell.cost == 1 else "s"]
+	_spell_record_cost.text = "Costs %d point%s" % [spell.cost, "" if spell.cost == 1 else "s"]
 	_spell_record_state.text = "Selected" if _selected_spell_ids.has(spell.id) else "Available"
 	_spell_record_description.text = spell.description.strip_edges()
 	_spell_record_description.visible = not _spell_record_description.text.is_empty()

@@ -266,6 +266,26 @@ func advance_age_days(character: CharacterState, race: RaceDefinition, caste: Ca
 	return CharacterAgingResult.new(previous_days, character.age_days, previous_group, character.age_group)
 
 
+## Sets an exact age, applying every crossed age group's Classic change in order
+## (older applies each group, younger reverses them). Returns the group change.
+func set_age_days(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, age_days: int) -> int:
+	if character == null or race == null or caste == null:
+		return 0
+	var previous_group := ensure_age_group(character, race, caste)
+	var target_group := infer_age_group(_signed_32(age_days), race)
+	# An age outside every authored group is refused before anything changes.
+	if target_group == 0:
+		return 0
+	character.age_days = _signed_32(age_days)
+	while character.age_group < target_group:
+		character.age_group += 1
+		_apply_age_change(character, race, caste, character.age_group, 1)
+	while character.age_group > target_group:
+		_apply_age_change(character, race, caste, character.age_group, -1)
+		character.age_group -= 1
+	return character.age_group - previous_group
+
+
 func battle_experience(character: CharacterState, race: RaceDefinition, share: int) -> int:
 	if character == null or race == null:
 		return 0

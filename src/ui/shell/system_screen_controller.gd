@@ -176,7 +176,8 @@ func refresh_draft_footer() -> void:
 		return
 	var footer := _workspace.get_node("PreferencesFooter")
 	var error := _draft_error if not _draft_error.is_empty() else _draft.validation_error()
-	(footer.get_node("DraftStatus") as Label).text = error if not error.is_empty() else "Unsaved changes" if has_dirty_draft() else "No unsaved changes"
+	var summary := PreferencesDraftSummary.refresh(_workspace, _draft)
+	(footer.get_node("DraftStatus") as Label).text = error if not error.is_empty() else summary
 	(footer.get_node("Apply") as Button).disabled = not has_dirty_draft() or not _draft.validation_error().is_empty() or not controller.capture_action.is_empty()
 	_refresh_adventure_rules()
 
@@ -226,6 +227,13 @@ func present(target: Control, view: GameView, settings: PresentationSettings, me
 	SystemSignalBinding.clear_pressed(apply)
 	SystemSignalBinding.clear_pressed(cancel)
 	apply.pressed.connect(apply_draft)
+	var defaults := footer.get_node("Defaults") as Button
+	SystemSignalBinding.clear_pressed(defaults)
+	defaults.pressed.connect(func() -> void:
+		PreferencesDraftSummary.restore_defaults(_workspace, _draft)
+		_draft_error = ""
+		refresh_preferences()
+	)
 	cancel.pressed.connect(func() -> void:
 		discard_draft()
 		action_requested.emit(&"cancel_preferences", null)
@@ -371,6 +379,10 @@ func _bind_hud_settings(settings: PresentationSettings) -> void:
 	if not panel.arrange_requested.is_connected(_on_hud_arrange_requested):
 		panel.arrange_requested.connect(_on_hud_arrange_requested)
 	panel.bind_preferences(settings.hud, _has_active_session)
+	if not panel.has_meta(&"combat_bound"):
+		panel.set_meta(&"combat_bound", true)
+		panel.combat_preferences_changed.connect(func(value: HudPreferences) -> void: stage_setting(&"combat_hud", value))
+	panel.bind_combat(settings.combat_hud)
 
 
 func _on_hud_preferences_changed(value: HudPreferences) -> void:
@@ -399,6 +411,13 @@ func _bind_display(settings: PresentationSettings) -> void:
 	], str(settings.world_zoom), &"world_zoom")
 	zoom_picker.disabled = settings.display_scaling_mode != PresentationSettings.DISPLAY_INTEGER_CANVAS
 	zoom_picker.tooltip_text = "Auto chooses the largest 1×–4× scale that fits the Classic world view. Available only with Integer: world canvas."
+	_bind_option(effects_root.get_node("InterfaceThemeRow/InterfaceThemePicker") as OptionButton, UiThemeCatalog.options(), UiThemeCatalog.by_id(settings.interface_theme).id, &"interface_theme")
+	_bind_toggle(effects_root.get_node("ThemeSurfaceTile") as CheckButton, settings.theme_surface_tile, &"theme_surface_tile")
+	var tile_caption := effects_root.get_node("ThemeSurfaceTileRow/Caption") as Label
+	var tile_slider := effects_root.get_node("ThemeSurfaceTileRow/ThemeSurfaceTileSlider") as HSlider
+	_bind_slider(tile_slider, settings.theme_surface_tile_opacity_percent, &"theme_surface_tile_opacity_percent")
+	tile_caption.text = "Panel texture strength · %d%%" % settings.theme_surface_tile_opacity_percent
+	tile_slider.value_changed.connect(func(value: float) -> void: tile_caption.text = "Panel texture strength · %d%%" % int(value))
 	_bind_option(effects_root.get_node("PixelSmoothingRow/PixelSmoothingPicker") as OptionButton, [
 		{"label": "Off · crisp pixels", "id": PresentationSettings.SMOOTHING_OFF},
 		{"label": "World canvas only", "id": PresentationSettings.SMOOTHING_WORLD},
@@ -501,6 +520,7 @@ func refresh_controller_editor() -> void:
 
 
 func _bind_option(picker: OptionButton, entries: Array[Dictionary], selected_id: String, setting_id: StringName) -> void:
+	picker.set_meta(PreferencesDraftSummary.SETTING_META, setting_id)
 	SystemSignalBinding.clear_item_selected(picker)
 	picker.clear()
 	for entry: Dictionary in entries:
@@ -512,12 +532,14 @@ func _bind_option(picker: OptionButton, entries: Array[Dictionary], selected_id:
 
 
 func _bind_slider(slider: Range, value: float, setting_id: StringName) -> void:
+	slider.set_meta(PreferencesDraftSummary.SETTING_META, setting_id)
 	SystemSignalBinding.clear_value_changed(slider)
 	slider.value = value
 	slider.value_changed.connect(func(changed_value: float) -> void: stage_setting(setting_id, changed_value))
 
 
 func _bind_toggle(toggle: CheckButton, enabled: bool, setting_id: StringName) -> void:
+	toggle.set_meta(PreferencesDraftSummary.SETTING_META, setting_id)
 	SystemSignalBinding.clear_toggled(toggle)
 	toggle.button_pressed = enabled
 	toggle.toggled.connect(func(value: bool) -> void: stage_setting(setting_id, value))

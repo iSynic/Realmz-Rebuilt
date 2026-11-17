@@ -81,6 +81,7 @@ texture_filter = 1
 expand_mode = 1
 stretch_mode = 5
 [node name="TreasureItemIconUnavailable" type="Label" parent="TreasureRecoveryCenter/TreasureRecoveryCard/Content/RecoveryScroll/RecoveryBody/TreasureRecoveryItemRow/TreasureLootField/Stage"]
+theme_type_variation = &"SymbolGlyph"
 unique_name_in_owner = true
 visible = false
 offset_left = 0.0

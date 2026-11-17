@@ -12,6 +12,31 @@ script = ExtResource("1_script")
 targeting_controls_scene = ExtResource("2_targeting")
 initiative_entry_scene = ExtResource("3_initiative")
 
+[node name="DeckPieceMenu" type="PopupMenu" parent="."]
+unique_name_in_owner = true
+item_count = 9
+item_0/text = "Ctrl+drag moves this panel"
+item_0/id = 9
+item_0/disabled = true
+item_1/id = 8
+item_1/separator = true
+item_2/text = "Size · 150%"
+item_2/id = 7
+item_2/disabled = true
+item_3/text = "Larger"
+item_3/id = 2
+item_4/text = "Smaller"
+item_4/id = 3
+item_5/text = "Vertical turn order"
+item_5/checkable = 1
+item_5/id = 4
+item_6/id = 6
+item_6/separator = true
+item_7/text = "Reset this panel's position"
+item_7/id = 0
+item_8/text = "Reset all combat panels"
+item_8/id = 1
+
 [node name="BattleOverview" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
@@ -23,7 +48,7 @@ custom_minimum_size = Vector2(0, 62)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 4
-[node name="ActiveCombatant" type="PanelContainer" parent="BattleOverview/BattleTurnSummary"]
+[node name="ActiveCombatant" type="PanelContainer" parent="BattleOverview/BattleTurnSummary" groups=["ui_theme_textured"]]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -53,7 +78,7 @@ text_overrun_behavior = 3
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-[node name="InspectedCombatant" type="PanelContainer" parent="BattleOverview/BattleTurnSummary"]
+[node name="InspectedCombatant" type="PanelContainer" parent="BattleOverview/BattleTurnSummary" groups=["ui_theme_textured"]]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -88,7 +113,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 6
 
-[node name="BattleInspectionCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
+[node name="BattleInspectionCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf" groups=["ui_theme_textured"]]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -159,7 +184,7 @@ theme_type_variation = &"BattleCommandButton"
 text = "Combat Log"
 tooltip_text = "Review combat history."
 
-[node name="BattlePrimaryCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
+[node name="BattlePrimaryCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf" groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
@@ -229,7 +254,7 @@ text = "Items"
 layout_mode = 2
 text = "Use Weapon"
 
-[node name="BattleTurnCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf"]
+[node name="BattleTurnCommandsInset" type="PanelContainer" parent="BattleOverview/BattleCommandShelfCenter/BattleCommandShelf" groups=["ui_theme_textured"]]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3

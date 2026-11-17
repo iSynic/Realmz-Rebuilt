@@ -16,7 +16,7 @@ mouse_filter = 2
 theme_override_constants/separation = 6
 script = ExtResource("1_script")
 
-[node name="ActorPreview" type="PanelContainer" parent="."]
+[node name="ActorPreview" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2
@@ -48,7 +48,7 @@ theme_override_colors/font_color = Color(0.388, 0.847, 0.906, 1)
 theme_override_font_sizes/font_size = 12
 autowrap_mode = 3
 
-[node name="LogPanel" type="PanelContainer" parent="."]
+[node name="LogPanel" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.5
@@ -85,7 +85,7 @@ theme_override_font_sizes/font_size = 11
 text_overrun_behavior = 3
 size_flags_horizontal = 3
 
-[node name="TargetPreview" type="PanelContainer" parent="."]
+[node name="TargetPreview" type="PanelContainer" parent="." groups=["ui_theme_textured"]]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(240, 0)
 layout_mode = 2

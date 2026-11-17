@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "label": "Slate interface-theme background tile",
+  "provider": "project-owner",
+  "license": "Project-Owner-Supplied",
+  "source_name": "stone_pattern.png",
+  "source_width": 64,
+  "source_height": 64,
+  "source_bytes": 2645,
+  "source_sha256": "85520216aaac6a3cb082227b5bab8cf42b423786a0d1eaa612f3fd2040aa6720",
+  "derivation": "lossless PNG re-encode during transfer; pixels identical to the supplied 64-by-64 image",
+  "presentation_contract": "Repeated in both axes without stretching behind menu-style screens when a Slate interface theme is selected, under the theme's dimming colour and an edge vignette. Also laid faintly, at the player's panel-texture strength (10% by default), over framed panels and the play screen's own surfaces in both HUD layouts.",
+  "file": {
+    "path": "res://src/ui/shared/assets/ui/theme-slate-tile.png",
+    "width": 64,
+    "height": 64,
+    "bytes": 8415,
+    "sha256": "2ad8d209dcdd61c2ee2aca1e65c37465191d498d70458e2c4f6b775bd208c3d6"
+  }
+}

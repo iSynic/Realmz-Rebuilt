@@ -13,6 +13,8 @@ var modified_unix: int = 0
 var party_names: Array[String] = []
 var error: String = ""
 var envelope: SaveEnvelope = null
+## True for a listing entry read from the save header only; selection re-reads it fully.
+var header_only: bool = false
 
 ## Opaque repository selector. Callers retain this record and pass it back to storage.
 var _storage_selector: String = ""
@@ -25,4 +27,4 @@ func _init(selector: String = "") -> void:
 
 
 func is_valid() -> bool:
-	return envelope != null and error.is_empty()
+	return (envelope != null or header_only) and error.is_empty()

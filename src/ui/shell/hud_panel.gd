@@ -10,9 +10,13 @@ signal options_requested(location: Vector2)
 const HOVER_DWELL_MS := 350
 const INTERACTION_GRACE_MS := 450
 const TRANSITION_SECONDS := 0.12
-const TAB_IDLE_COLOR := Color(0.42, 0.47, 0.48, 0.72)
-const TAB_HOVER_COLOR := Color(0.76, 0.68, 0.48, 0.72)
-const TAB_PRESSED_COLOR := Color(0.94, 0.82, 0.52, 0.9)
+## The docked panel's marker: a thin line along its screen edge, in the theme's accent.
+const TAB_LENGTH := 64.0
+const TAB_REACH := 14.0
+const TAB_LINE := 3.0
+const TAB_ICON := 38.0
+const TAB_IDLE_ALPHA := 0.4
+const TAB_HOVER_ALPHA := 0.85
 
 @onready var _surface: PanelContainer = $Surface
 @onready var _content: MarginContainer = $Surface/Column/Body/Content
@@ -34,6 +38,9 @@ var _panel_title := "Party"
 var _transition: Tween
 var menu_hold := false
 var companion_surface: Control
+## When set, the docked marker is a small tab showing this picture (a command bar shows its
+## first command), not only a line.
+var dock_icon: Texture2D
 var _retain_content_focus := false
 
 
@@ -106,11 +113,46 @@ func set_required(required: bool) -> void:
 			Time.get_ticks_msec() + INTERACTION_GRACE_MS)
 
 
-## The coordinator owns this panel's rectangle; child layout remains scene-authored.
-func set_panel_rect(rect: Rect2) -> void:
+## The coordinator owns this panel's rectangle; child layout remains scene-authored. `rect`
+## is the space the panel takes on screen; drawn at `panel_scale`, its content lays out in
+## that space divided by the scale.
+func set_panel_rect(rect: Rect2, panel_scale: float = 1.0) -> void:
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	scale = Vector2.ONE * panel_scale
 	position = rect.position
-	size = Vector2(maxf(0.0, rect.size.x), maxf(0.0, rect.size.y))
+	size = Vector2(maxf(0.0, rect.size.x), maxf(0.0, rect.size.y)) / panel_scale
+
+
+## The space the panel takes on screen at its scale.
+func visual_rect() -> Rect2:
+	return Rect2(position, size * scale)
+
+
+## Places the docked marker at `anchor` (an on-screen offset from the panel's corner) on a
+## screen edge: &"left", &"right" or &"bottom". The line runs along that edge; the hover
+## target reaches a little inward.
+func set_dock_marker(edge: StringName, anchor: Vector2) -> void:
+	anchor /= scale
+	var along_x := edge in [&"bottom", &"top"]
+	var length := TAB_ICON if dock_icon != null else TAB_LENGTH
+	var reach := TAB_ICON if dock_icon != null else TAB_REACH
+	var extent := Vector2(length, reach) if along_x else Vector2(reach, length)
+	_handle.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_handle.custom_minimum_size = extent
+	_handle.size = extent
+	_handle.position = anchor - (Vector2(length * 0.5, reach if edge == &"bottom" else 0.0) if along_x else Vector2(reach if edge == &"right" else 0.0, length * 0.5))
+	var near := 0.0 if edge in [&"left", &"top"] else reach - TAB_LINE
+	var line := Rect2(Vector2(0.0, near), Vector2(length, TAB_LINE)) if along_x else Rect2(Vector2(near, 0.0), Vector2(TAB_LINE, length))
+	_tab_shape.polygon = PackedVector2Array([line.position, Vector2(line.end.x, line.position.y), line.end, Vector2(line.position.x, line.end.y)])
+	var backing := _handle.get_node("TabBacking") as ColorRect
+	backing.visible = dock_icon != null
+	backing.color = Color(UiThemeService.current().colors[&"surface"], 0.88)
+	(backing.get_node("TabIcon") as TextureRect).texture = dock_icon
+	_tint_tab(TAB_IDLE_ALPHA)
+
+
+func _tint_tab(alpha: float) -> void:
+	_tab_shape.color = Color(UiThemeService.current().colors[&"accent"], alpha)
 
 
 func content_host() -> Control:
@@ -263,7 +305,9 @@ func _set_open(open: bool, immediate: bool = false) -> void:
 			_apply_background_opacity()
 			return
 		_surface.self_modulate.a = 0.0
-		_transition = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		# The fade keeps running through a pause, or a prompt arriving with the text would
+		# leave the panel open with a clear background.
+		_transition = create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		_transition.tween_property(_surface, "self_modulate:a", _background_opacity, TRANSITION_SECONDS)
 		return
 
@@ -301,17 +345,17 @@ func _on_handle_pressed() -> void:
 
 func _on_handle_mouse_entered() -> void:
 	_handle_hover_started_ms = Time.get_ticks_msec()
-	_tab_shape.color = TAB_HOVER_COLOR
+	_tint_tab(TAB_HOVER_ALPHA)
 
 
 func _on_handle_mouse_exited() -> void:
 	_handle_hover_started_ms = -1
-	_tab_shape.color = TAB_IDLE_COLOR
+	_tint_tab(TAB_IDLE_ALPHA)
 
 
 func _on_handle_button_down() -> void:
-	_tab_shape.color = TAB_PRESSED_COLOR
+	_tint_tab(1.0)
 
 
 func _on_handle_button_up() -> void:
-	_tab_shape.color = TAB_HOVER_COLOR if _handle.is_hovered() else TAB_IDLE_COLOR
+	_tint_tab(TAB_HOVER_ALPHA if _handle.is_hovered() else TAB_IDLE_ALPHA)

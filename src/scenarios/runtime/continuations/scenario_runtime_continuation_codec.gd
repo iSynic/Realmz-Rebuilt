@@ -58,6 +58,8 @@ static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> S
 			var battle_id := _nonempty_string(data.get("battleId"))
 			var actor_id := _nonempty_string(data.get("actorId"))
 			return ScenarioInteractionContinuations.scripted_fumble(battle_id, actor_id, message_id, context) if data.size() == 4 and not battle_id.is_empty() and not actor_id.is_empty() and message_id > 0 and context != null else null
+		ScenarioRuntimeContinuation.CLASSIC_BATTLE_PRELUDE:
+			return _decode_battle_prelude(data)
 		ScenarioRuntimeContinuation.CLASSIC_SHOP:
 			return _decode_shop(data)
 		ScenarioRuntimeContinuation.CLASSIC_TEMPLE, ScenarioRuntimeContinuation.CLASSIC_TEMPLE_EXIT:
@@ -70,6 +72,22 @@ static func _decode_payload(kind: StringName, data: Dictionary, depth: int) -> S
 			var reward_state := ClassicRewardState.from_data(data.get("state"))
 			return ScenarioRewardContinuations.reward(reward_state) if data.size() == 1 and reward_state != null else null
 	return null
+
+
+static func _decode_battle_prelude(data: Dictionary) -> ScenarioRuntimeContinuation:
+	if data.size() != 7 or not data.get("stage") is String or not data.get("gosub") is bool:
+		return null
+	var stage: StringName = data["stage"]
+	var message_id := _integer(data.get("messageId"))
+	var opcode := _integer(data.get("opcode"))
+	var extra_code := _integers(data.get("extraCode"))
+	var battle_number := _signed_integer(data.get("battleNumber"))
+	var context := ScenarioExecutionContextCodec.decode(data.get("context"))
+	var staged := stage == ScenarioBattlePreludeBody.INSTRUCTION and battle_number == 0 or stage == ScenarioBattlePreludeBody.BATTLE and battle_number != -100000
+	if not staged or message_id <= 0 or opcode not in ScenarioBattlePreludeBody.OPCODES or extra_code.size() not in [4, 5] or context == null:
+		return null
+	var gosub: bool = data["gosub"]
+	return ScenarioCombatContinuations.battle_prelude(stage, message_id, opcode, gosub, extra_code, battle_number, context)
 
 
 static func _decode_clock(data: Dictionary, depth: int) -> ScenarioRuntimeContinuation:

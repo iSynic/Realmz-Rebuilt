@@ -380,6 +380,11 @@ static func populate_inventory_item_actions(context: SessionWorkflowContext, res
 			if result.pending_interaction != null and result.pending_interaction.kind == InteractionRequest.SHOP:
 				actions.block_all(context_reason)
 				_apply_inventory_trade_actions(actions, context, character, instance, definition, party, item_view.weight)
+				# Equipment can change at the counter: wear a purchase at once, or take an item off to sell it.
+				var counter_equip := rules.equipment.classic_equip_probe(character, instance, definition, race, caste, party, definitions, BardDaggersRule.category(state.adventure_rules, caste, context.content))
+				var counter_unequip := rules.equipment.classic_unequip_probe(character, instance, definition, definitions)
+				actions.equip = ActionAvailabilityView.new(&"equip_item", counter_equip.allowed, counter_equip.reason)
+				actions.unequip = ActionAvailabilityView.new(&"unequip_item", counter_unequip.allowed, counter_unequip.reason)
 				continue
 			if not context_reason.is_empty():
 				actions.block_all(context_reason)

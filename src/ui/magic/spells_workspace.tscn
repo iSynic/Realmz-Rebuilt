@@ -1,11 +1,10 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://src/ui/magic/spells_workspace.gd" id="1_workspace"]
 [ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_selection_button.tscn" id="2_spell_button"]
 [ext_resource type="PackedScene" path="res://src/ui/magic/spell_action_dock.tscn" id="3_actions"]
 [ext_resource type="PackedScene" path="res://src/ui/magic/fast_spell_row.tscn" id="4_fast"]
 [ext_resource type="PackedScene" path="res://src/ui/magic/spell_scroll_slot_row.tscn" id="5_scroll"]
-[ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_level_heading.tscn" id="6_level_heading"]
 [ext_resource type="PackedScene" path="res://src/ui/magic/classic_spell_target_badge.tscn" id="7_target"]
 
 [node name="SpellsWorkspace" type="VBoxContainer"]
@@ -134,8 +133,11 @@ theme_type_variation = &"ClassicInset"
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="SpellLevelHeading" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content" instance=ExtResource("6_level_heading")]
+[node name="SpellLevelHeading" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content"]
 layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "Level"
+horizontal_alignment = 1
 
 [node name="LevelButtons" type="GridContainer" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content"]
 layout_mode = 2
@@ -206,12 +208,11 @@ layout_mode = 2
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="PowerLabel" type="TextureRect" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
-custom_minimum_size = Vector2(68, 18)
+[node name="PowerLabel" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
 layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 5
+theme_type_variation = &"ClassicHeading"
+text = "Power"
+horizontal_alignment = 1
 
 [node name="Cost" type="Label" parent="ClassicSpellbookWorkspace/Content/LevelStructuredSpellbook/SpellLevelRail/Content/SpellPowerRail"]
 layout_mode = 2

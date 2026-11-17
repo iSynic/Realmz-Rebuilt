@@ -15,10 +15,12 @@ func prepare(compact: bool) -> void:
 	alternate_state().visible = false
 	money_main().vertical = compact
 	(money_main().get_node("MoneyPartyArea") as Control).size_flags_vertical = Control.SIZE_FILL if compact else Control.SIZE_EXPAND_FILL
-	pool_pane().size_flags_vertical = Control.SIZE_FILL if compact else Control.SIZE_EXPAND_FILL
-	pool_summary().vertical = true
-	(pool_summary().get_node("MoneyPoolValues") as BoxContainer).vertical = not compact
-	exchange_workspace().vertical = compact
+	# The pool is a band across the top at both sizes; the give-and-take ledger has the room below.
+	pool_pane().size_flags_vertical = Control.SIZE_FILL
+	pool_summary().vertical = compact
+	(pool_summary().get_node("MoneyPoolValues") as BoxContainer).vertical = false
+	(pool_summary().get_node("MoneyPoolActions") as Control).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	exchange_workspace().vertical = true
 	party_pane().visible = not compact
 	character_picker().visible = compact
 	selected_summary().vertical = false
@@ -93,11 +95,11 @@ func repeat_timer() -> Timer:
 
 
 func location_services_pane() -> PanelContainer:
-	return get_node("MoneyColumn/LocationServicePane") as PanelContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/LocationServicePane") as PanelContainer
 
 
 func location_service_rows() -> VBoxContainer:
-	return get_node("MoneyColumn/LocationServicePane/Content/LocationServiceRows") as VBoxContainer
+	return get_node("MoneyColumn/MoneyMain/MoneyActionArea/LocationServicePane/Content/LocationServiceRows") as VBoxContainer
 
 
 func alternate_state() -> PanelContainer:

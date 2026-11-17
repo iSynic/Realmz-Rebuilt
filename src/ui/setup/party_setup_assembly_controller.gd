@@ -3,10 +3,10 @@
 class_name PartySetupAssemblyController
 extends "res://src/ui/setup/party_setup_controller_component.gd"
 
-const STORED_ROW_GAP: float = 2.0
-const BROWSER_SECTION_GAP: float = 6.0
-const BROWSER_HEADER_HEIGHT: float = 52.0
-const BROWSER_PAGER_HEIGHT: float = 28.0
+const STORED_ROW_GAP: float = 6.0
+const BROWSER_SECTION_GAP: float = 8.0
+const BROWSER_HEADER_HEIGHT: float = 72.0
+const BROWSER_PAGER_HEIGHT: float = 30.0
 
 var _inspection: RefCounted
 var _stored_revision_signature: String = ""
@@ -35,14 +35,16 @@ func refresh_party_list() -> void:
 	party_list.configure_drop_target(import_available, import_reason)
 	var party_count := setup_overlay.find_child("PartyCount", true, false) as Label
 	if party_count != null:
-		party_count.text = "• %d / %d" % [view.party_members.size() if view != null else 0, maximum_party_size()]
+		party_count.text = "%d of %d" % [view.party_members.size() if view != null else 0, maximum_party_size()]
 	for slot_index: int in maximum_party_size():
 		var character: CharacterView = view.party_members[slot_index] if view != null and view.party_setup_available and slot_index < view.party_members.size() else null
-		var portrait: Texture2D = (_appearance_textures.get(character.portrait_id) as Texture2D) if character != null else null
+		var portrait: Texture2D = _appearance_textures.get(character.portrait_id) if character != null else null
 		var remove_availability := view.availability(&"remove_party_member") if view != null else ActionAvailabilityView.new(&"remove_party_member", false, "No active setup.")
 		if _campaign_library.blocks_party_editing():
 			remove_availability = ActionAvailabilityView.new(&"remove_party_member", false, "Wait for scenario preparation to finish.")
-		_party_slots[slot_index].call("configure", slot_index, character, portrait, layout_profile == UiLayoutProfile.COMPACT, remove_availability)
+		var icon: Texture2D = _appearance_textures.get(character.combat_icon_id) if character != null else null
+		var open_hint := "Open position · drag a character here" if import_available and _state.layout_profile != UiLayoutProfile.COMPACT else "Open position"
+		_party_slots[slot_index].call("configure", slot_index, character, portrait, layout_profile == UiLayoutProfile.COMPACT, remove_availability, icon, open_hint)
 
 
 func _ensure_party_slots() -> void:
@@ -87,7 +89,7 @@ func _configure_assembly_actions(campaign_setup: bool, party_full: bool) -> void
 	if import_party_button != null:
 		import_party_button.visible = not standalone_character_creation_active and setup_mode == &"assembly"
 		import_party_button.disabled = not campaign_setup or not standalone_character_creation_available
-		import_party_button.tooltip_text = "" if not import_party_button.disabled else "Wait for scenario and character-library preparation to finish."
+		import_party_button.tooltip_text = "Bring characters from a saved adventure into this party." if not import_party_button.disabled else "Wait for scenario and character-library preparation to finish."
 	create_character_button.disabled = _campaign_library.blocks_party_editing() or party_full or (not campaign_setup and not standalone_character_creation_available)
 	if party_full:
 		create_character_button.tooltip_text = "This party already has %d characters." % maximum_party_size()
@@ -119,7 +121,9 @@ func _rebuild_assembly_browser(current_revisions: Array[CharacterVaultRevisionVi
 	_assembly_browser = creator_page.get_node("PartyAssemblyBrowser") as Control
 	_assembly_browser.show()
 	stored_character_list = _assembly_browser.call("character_rows") as VBoxContainer
-	(_assembly_browser.get_node("CharacterFilesHeading/HeadingContent/CharacterFileCount") as Label).text = "• %d available" % current_revisions.size()
+	if not stored_character_list.resized.is_connected(refresh_stored_character_capacity):
+		stored_character_list.resized.connect(refresh_stored_character_capacity, CONNECT_DEFERRED)
+	(_assembly_browser.get_node("CharacterFilesHeading/HeadingContent/CharacterFileCount") as Label).text = _character_file_count_text(current_revisions)
 	(_assembly_browser.get_node("CharacterFilesEmpty") as Label).hide()
 	_stored_revision_signature = next_signature
 	if current_revisions.is_empty():
@@ -129,22 +133,11 @@ func _rebuild_assembly_browser(current_revisions: Array[CharacterVaultRevisionVi
 		return
 	var global_available: ActionAvailabilityView = view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
 	for revision: CharacterVaultRevisionView in _stored_character_page_items(current_revisions):
-		var reason := ""
-		if not campaign_setup:
-			reason = global_available.reason
-		elif not revision.eligible:
-			reason = "\n".join(revision.eligibility_reasons)
-		elif not global_available.enabled:
-			reason = global_available.reason
-		elif party_full:
-			reason = "This party already has %d characters." % maximum_party_size()
 		var row_scene := _assembly_browser.get("character_row_scene") as PackedScene
 		var row := row_scene.instantiate() as PartySetupCharacterRow
 		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
 		stored_character_list.add_child(row)
-		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
-		var portrait := _appearance_textures.get(portrait_id) as Texture2D
-		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, portrait)
+		_configure_stored_row(row, revision, campaign_setup, party_full, global_available)
 		row.import_requested.connect(import_stored_character)
 	_add_stored_character_pager(current_revisions.size())
 
@@ -152,41 +145,94 @@ func _rebuild_assembly_browser(current_revisions: Array[CharacterVaultRevisionVi
 func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevisionView], campaign_setup: bool, party_full: bool) -> void:
 	var count_label := creator_page.find_child("CharacterFileCount", true, false) as Label
 	if count_label != null:
-		count_label.text = "• %d available" % current_revisions.size()
+		count_label.text = _character_file_count_text(current_revisions)
 	var global_available: ActionAvailabilityView = view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
 	var visible_revisions := _stored_character_page_items(current_revisions)
 	for index: int in visible_revisions.size():
-		var revision := visible_revisions[index]
 		var row := stored_character_list.get_child(index) as PartySetupCharacterRow
-		if row == null:
-			continue
-		var reason := ""
-		if not campaign_setup:
-			reason = global_available.reason
-		elif not revision.eligible:
-			reason = "\n".join(revision.eligibility_reasons)
-		elif not global_available.enabled:
-			reason = global_available.reason
-		elif party_full:
-			reason = "This party already has %d characters." % maximum_party_size()
-		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
-		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, _appearance_textures.get(portrait_id) as Texture2D)
+		if row != null:
+			_configure_stored_row(row, visible_revisions[index], campaign_setup, party_full, global_available)
+
+
+## Party members show "In party"; only a blocking eligibility reason turns the identity line red.
+func _configure_stored_row(row: PartySetupCharacterRow, revision: CharacterVaultRevisionView, campaign_setup: bool, party_full: bool, global_available: ActionAvailabilityView) -> void:
+	var in_party := _in_party(revision.character_id)
+	var blocked := campaign_setup and not revision.eligible and not in_party
+	var reason := ""
+	if in_party:
+		reason = "%s is already in the party." % revision.name
+	elif not campaign_setup:
+		reason = global_available.reason
+	elif blocked:
+		reason = "\n".join(revision.eligibility_reasons)
+	elif not global_available.enabled:
+		reason = global_available.reason
+	elif party_full:
+		reason = "The party is full (%d of %d)." % [maximum_party_size(), maximum_party_size()]
+	var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
+	var icon := _appearance_textures.get(revision.character.combat_icon_id) as Texture2D if revision.character != null else null
+	row.configure(revision, reason.is_empty(), reason, _appearance_textures.get(portrait_id) as Texture2D, icon, in_party, blocked)
+
+
+func _in_party(character_id: String) -> bool:
+	if view == null:
+		return false
+	for member: CharacterView in view.party_members:
+		if member.id == character_id:
+			return true
+	return false
+
+
+## "N can join" counts eligible characters not already in the party.
+func _character_file_count_text(revisions: Array[CharacterVaultRevisionView]) -> String:
+	if view != null and view.party_setup_available and view.party_members.size() >= maximum_party_size():
+		return "Party full · %d of %d" % [view.party_members.size(), maximum_party_size()]
+	if view == null or not view.party_setup_available:
+		return "%d %s" % [revisions.size(), "character" if revisions.size() == 1 else "characters"]
+	var joinable := 0
+	for revision: CharacterVaultRevisionView in revisions:
+		if revision.eligible and not _in_party(revision.character_id): joinable += 1
+	return "%d can join" % joinable
 
 
 func _stored_character_page_size(item_count: int) -> int:
 	if creator_scroll == null or creator_scroll.size.y <= 0.0:
 		return 6 if layout_profile == UiLayoutProfile.COMPACT else 9
 	var profile := UiSizing.profile_for(creator_scroll)
-	return stored_character_page_size_for_height(creator_scroll.size.y / (profile.ui_scale if profile != null else 1.0), item_count)
+	var scale := profile.ui_scale if profile != null else 1.0
+	var measured := _measured_browser_metrics(scale)
+	return stored_character_page_size_for_height(creator_scroll.size.y / scale, item_count, measured.x, measured.y, measured.z)
 
 
-static func stored_character_page_size_for_height(available_height: float, item_count: int) -> int:
-	var row_stride := PartySetupCharacterRow.ROW_HEIGHT + STORED_ROW_GAP
-	var unpaged_chrome := BROWSER_HEADER_HEIGHT + BROWSER_SECTION_GAP - STORED_ROW_GAP
+## Heading/context, pager and row heights as laid out, so wrapped headings or enlarged text never
+## push rows or the pager past the column. Rows keep one-line identities, so their height is stable.
+func _measured_browser_metrics(scale: float) -> Vector3:
+	var metrics := Vector3(BROWSER_HEADER_HEIGHT, BROWSER_PAGER_HEIGHT, PartySetupCharacterRow.ROW_HEIGHT)
+	if _assembly_browser == null:
+		return metrics
+	var separation := float(_assembly_browser.get_theme_constant(&"separation"))
+	var chrome := 0.0
+	for chrome_name: String in ["CharacterFilesHeading", "AssemblyCampaignContext", "ContextRule"]:
+		var part := _assembly_browser.get_node_or_null(chrome_name) as Control
+		if part != null and part.visible:
+			chrome += part.get_combined_minimum_size().y + separation
+	metrics.x = maxf(metrics.x, chrome / scale)
+	var pager := _assembly_browser.get_node_or_null("CharacterFilePager") as Control
+	if pager != null:
+		metrics.y = maxf(metrics.y, pager.get_combined_minimum_size().y / scale)
+	var first_row := stored_character_list.get_child(0) as Control if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.get_child_count() > 0 else null
+	if first_row != null:
+		metrics.z = maxf(metrics.z, first_row.get_combined_minimum_size().y / scale)
+	return metrics
+
+
+static func stored_character_page_size_for_height(available_height: float, item_count: int, header_height: float = BROWSER_HEADER_HEIGHT, pager_height: float = BROWSER_PAGER_HEIGHT, row_height: float = PartySetupCharacterRow.ROW_HEIGHT) -> int:
+	var row_stride := row_height + STORED_ROW_GAP
+	var unpaged_chrome := header_height + BROWSER_SECTION_GAP - STORED_ROW_GAP
 	var unpaged_capacity := maxi(1, floori((available_height - unpaged_chrome) / row_stride))
 	if item_count <= unpaged_capacity:
 		return unpaged_capacity
-	var paged_chrome := BROWSER_HEADER_HEIGHT + BROWSER_PAGER_HEIGHT + BROWSER_SECTION_GAP * 2.0 - STORED_ROW_GAP
+	var paged_chrome := header_height + pager_height + BROWSER_SECTION_GAP * 2.0 - STORED_ROW_GAP
 	return maxi(1, floori((available_height - paged_chrome) / row_stride))
 
 
@@ -214,7 +260,7 @@ func _add_stored_character_pager(item_count: int) -> void:
 	previous.disabled = _stored_character_page == 0
 	var previous_page := _change_stored_character_page.bind(-1)
 	if not previous.pressed.is_connected(previous_page): previous.pressed.connect(previous_page)
-	(_assembly_browser.get_node("CharacterFilePager/CharacterFilePage") as Label).text = "Page %d of %d" % [_stored_character_page + 1, page_count]
+	(_assembly_browser.get_node("CharacterFilePager/CharacterFilePage") as Label).text = ("%d / %d" if layout_profile == UiLayoutProfile.COMPACT else "Page %d of %d") % [_stored_character_page + 1, page_count]
 	var next := _assembly_browser.get_node("CharacterFilePager/CharacterFileNext") as Button
 	next.disabled = _stored_character_page >= page_count - 1
 	var next_page := _change_stored_character_page.bind(1)
@@ -250,7 +296,7 @@ func refresh_party_setup_options() -> void:
 	if view == null or not view.party_setup_available or view.party_setup == null:
 		party_setup_options.visible = false
 		begin_button.disabled = true
-		begin_button.text = "Begin adventure (0/6)"
+		(setup_overlay as PartySetupWorkspace).show_begin_reason("")
 		return
 	party_setup_options.visible = setup_mode == &"assembly"
 	difficulty_option.disabled = _campaign_library.blocks_party_editing()
@@ -269,14 +315,7 @@ func refresh_party_setup_options() -> void:
 	_select_option_metadata(monster_set_option, view.party_setup.monster_set)
 	_select_option_metadata(difficulty_option, view.party_setup.difficulty)
 	var summary := view.campaign_summary
-	var maximum := "None" if summary == null or summary.maximum_party_levels <= 0 else str(summary.maximum_party_levels)
-	var recommended := "—" if summary == null or summary.recommended_party_levels <= 0 else str(summary.recommended_party_levels)
-	var gained := "—" if view.party_setup.experience_percent <= 0 else "%d%%" % view.party_setup.experience_percent
-	party_guidance_label.text = "Party total levels\nRecommended %s • Current %d" % [recommended, view.party_setup.current_party_levels]
-	if maximum != "None": party_guidance_label.text += " • Maximum %s" % maximum
-	var experience_ratio := party_setup_options.find_child("ExperienceRatio", true, false) as Label
-	if experience_ratio != null:
-		experience_ratio.text = "XP gained: %s" % gained if gained != "—" else "XP scales with party total and difficulty."
+	(setup_overlay as PartySetupWorkspace).show_party_levels(view.party_setup.current_party_levels, summary.recommended_party_levels if summary != null else 0, summary.maximum_party_levels if summary != null else 0, view.party_setup.experience_percent)
 
 func party_setup_option_changed(_index: int) -> void:
 	if view == null or view.party_setup == null:

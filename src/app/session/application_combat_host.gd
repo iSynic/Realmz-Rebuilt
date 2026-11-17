@@ -167,6 +167,7 @@ func _complete(job: CombatSessionJob) -> void:
 	_inflight_auto.clear()
 	_interaction.resolution_pending = false
 	_present_status.call(job.step)
+	if job.step.state == SessionStep.State.FAILED: _interaction.targeting_rejection = job.step.error_message
 	if job.step.state != SessionStep.State.FAILED and _session.view().journal_entries.size() > _journal_count:
 		_shell.status.show_activity_indicator(&"journal")
 	continuation.complete(job.id, job.step)

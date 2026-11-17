@@ -51,6 +51,9 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 		return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
 	combat.dropped_items.clear()
 	operation.events = rolled.events + operation.events
+	if not plan.recovered_fumbles.is_empty():
+		# Castle booty.c lists fumbled items first, then warn(115): STR# 3:115 with sound 6000.
+		operation.events.append(DomainEvent.new(&"classic_notification_requested", {"text": "Remember that some of these items are weapons you fumbled in combat.", "soundId": 6000, "source": "classic-warning-115"}))
 	return operation
 
 

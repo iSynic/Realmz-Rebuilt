@@ -9,9 +9,12 @@ var _catalogs: Dictionary = {}
 
 
 func configure(application: RealmzContent, packages: Array[PackageDiscoveryResult]) -> void:
+	# Catalogs are keyed by exact campaign and package hash, so they stay valid
+	# across refreshes until the application definitions themselves change.
+	if application != _application:
+		_catalogs.clear()
 	_application = application
 	_packages = packages.duplicate()
-	_catalogs.clear()
 
 
 func catalog(record: CharacterVaultRecord, destination: RealmzContent) -> ContentTransferCatalog:
@@ -26,10 +29,10 @@ func catalog(record: CharacterVaultRecord, destination: RealmzContent) -> Conten
 	if record.source_package_hash == _application.package_hash and record.source_campaign_id in ["", _application.campaign_id]:
 		return _application.transfer_catalog
 	var key := "%s:%s" % [record.source_campaign_id, record.source_package_hash]
-	if _catalogs.has(key):
-		return _catalogs[key] as ContentTransferCatalog
 	for package: PackageDiscoveryResult in _packages:
 		if package.ready and package.campaign_id == record.source_campaign_id and package.package_hash == record.source_package_hash:
+			if _catalogs.has(key):
+				return _catalogs[key] as ContentTransferCatalog
 			var result := _read(package)
 			if result != null:
 				_catalogs[key] = result

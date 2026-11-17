@@ -8,9 +8,8 @@
 theme_override_constants/separation = 6
 script = ExtResource("1_rail")
 
-[node name="InventoryCharacterRecord" parent="." instance=ExtResource("2_record")]
-layout_mode = 2
-
 [node name="InventoryCharacterSelector" parent="." instance=ExtResource("4_selector")]
 layout_mode = 2
-size_flags_vertical = 3
+
+[node name="InventoryCharacterRecord" parent="." instance=ExtResource("2_record")]
+layout_mode = 2

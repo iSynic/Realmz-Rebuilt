@@ -173,7 +173,7 @@ color = Color(0.9, 0.91, 0.86, 1)
 layout_mode = 1
 mouse_filter = 0
 focus_mode = 2
-accessibility_name = "Move World commands panel"
+accessibility_name = "Move Commands 1 panel"
 tooltip_text = "Select or drag the world commands panel to move it."
 theme_override_styles/panel = SubResource("WorldFrame")
 theme_override_styles/focus = SubResource("FrameFocus")
@@ -205,7 +205,7 @@ vertical_alignment = 1
 layout_mode = 1
 mouse_filter = 0
 focus_mode = 2
-accessibility_name = "Move Party commands panel"
+accessibility_name = "Move Commands 2 panel"
 tooltip_text = "Select or drag the party commands panel to move it."
 theme_override_styles/panel = SubResource("PartyFrame")
 theme_override_styles/focus = SubResource("FrameFocus")
@@ -265,7 +265,135 @@ tooltip_text = "Move in any direction"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Toolbar" type="PanelContainer" parent="."]
+[node name="StatusStrip" type="PanelContainer" parent="."]
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Status strip"
+tooltip_text = "Select or drag the status strip to move it."
+theme_override_styles/panel = SubResource("PartyFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="StatusStrip"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="StatusStrip/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Status strip"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="StatusStrip/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PartyDock" type="PanelContainer" parent="."]
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Party dock"
+tooltip_text = "Select or drag the party dock to move it."
+theme_override_styles/panel = SubResource("PartyFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="PartyDock"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="PartyDock/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Party dock"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="PartyDock/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Bucket3" type="PanelContainer" parent="."]
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Commands 3"
+tooltip_text = "Select or drag the third command bar to move it."
+theme_override_styles/panel = SubResource("PartyFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="Bucket3"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Bucket3/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Commands 3"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="Bucket3/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Bucket4" type="PanelContainer" parent="."]
+layout_mode = 1
+mouse_filter = 0
+focus_mode = 2
+accessibility_name = "Move Commands 4"
+tooltip_text = "Select or drag the fourth command bar to move it."
+theme_override_styles/panel = SubResource("PartyFrame")
+theme_override_styles/focus = SubResource("FrameFocus")
+
+[node name="Content" type="Control" parent="Bucket4"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Bucket4/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+text = "Commands 4"
+vertical_alignment = 1
+
+[node name="MoveGlyph" type="Label" parent="Bucket4/Content"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_font_sizes/font_size = 16
+text = "↕"
+tooltip_text = "Move in any direction"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Toolbar" type="PanelContainer" parent="." groups=["ui_theme_frame"]]
 custom_minimum_size = Vector2(520, 0)
 layout_mode = 1
 anchors_preset = 12
@@ -307,18 +435,26 @@ size_flags_horizontal = 4
 action_mode = 1
 accessibility_name = "Panel to arrange"
 tooltip_text = "Choose a panel to move, including panels covered by the Arrange controls."
-item_count = 5
+item_count = 9
 selected = 0
 popup/item_0/text = "Party roster"
 popup/item_0/id = 0
 popup/item_1/text = "Narration"
 popup/item_1/id = 1
-popup/item_2/text = "World commands"
+popup/item_2/text = "Commands 1"
 popup/item_2/id = 2
-popup/item_3/text = "Party commands"
+popup/item_3/text = "Commands 2"
 popup/item_3/id = 3
 popup/item_4/text = "Effects"
 popup/item_4/id = 4
+popup/item_5/text = "Status strip"
+popup/item_5/id = 5
+popup/item_6/text = "Party dock"
+popup/item_6/id = 6
+popup/item_7/text = "Commands 3"
+popup/item_7/id = 7
+popup/item_8/text = "Commands 4"
+popup/item_8/id = 8
 
 [node name="SizeControls" type="HBoxContainer" parent="Toolbar/Content"]
 unique_name_in_owner = true

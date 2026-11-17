@@ -48,6 +48,11 @@ static func native_operation_continuation_is_valid(content: RealmzContent, state
 		return request.to_data() == snapshot.pending_request.to_data()
 	var clock_body := runtime.body as ScenarioClockContinuationBody
 	var nested := runtime.nested_vm()
+	if runtime.body is ScenarioBattlePreludeBody:
+		var prelude := runtime.body as ScenarioBattlePreludeBody
+		var shown := content.scenario_records.message_by_id(prelude.message_id)
+		if state.combat != null or shown == null or snapshot.pending_request == null or prelude.stage == ScenarioBattlePreludeBody.BATTLE and content.combat.battle_by_classic_id(absi(prelude.battle_number)) == null: return false
+		if ClassicBattlePrelude.request(snapshot.pending_request.request_id, shown, state).to_data() != snapshot.pending_request.to_data(): return false
 	if runtime.body is ScenarioFumbleContinuationBody:
 		var fumble := runtime.body as ScenarioFumbleContinuationBody
 		var message := content.scenario_records.message_by_id(fumble.message_id)

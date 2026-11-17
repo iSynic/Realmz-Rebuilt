@@ -51,8 +51,10 @@ func apply(workspace_rect: Rect2, profile: UiLayoutProfile) -> void:
 	textbox_rect.position.x = canvas_rect.position.x
 	var combat_rect := classic_combat_rect(canvas_rect.size, profile.bottom_height)
 	combat_rect.position += canvas_rect.position
-	_interaction.set_classic_regions(content_rect, textbox_rect, combat_rect)
-	_sync_narrative_after_layout(content_rect, combat_rect)
+	# Modular combat has no footer: passing text shares the console strip over the battlefield.
+	var floating_combat := BattleDeckLayout.area.has_area()
+	_interaction.set_classic_regions(content_rect, combat_rect if floating_combat else textbox_rect, combat_rect)
+	if not floating_combat: _sync_narrative_after_layout(content_rect, combat_rect)
 
 
 func sync_display_world_region(display: DisplayCompositor, settings: PresentationSettings) -> void:

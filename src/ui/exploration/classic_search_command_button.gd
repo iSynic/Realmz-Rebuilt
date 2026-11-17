@@ -92,8 +92,17 @@ func set_command_title_visible(visible: bool, fit_art_to_button: bool = false) -
 		caption.clip_text = not visible and _atlas != null
 	if divider != null:
 		divider.modulate.a = 1.0 if visible or _atlas == null else 0.0
+	refresh_caption_band()
 	update_minimum_size()
 	queue_redraw()
+
+
+## A hidden title gives the two-line band's height back to the row.
+## `_in_fixed_footer` matches ClassicBitmapButton; this command always keeps its band in the footer.
+func refresh_caption_band(_in_fixed_footer: int = -1) -> void:
+	var band := get_node_or_null("CommandMargin/CommandContent/CaptionBand") as Control
+	if band != null:
+		band.visible = _show_command_title or _atlas == null
 
 
 func _process(delta: float) -> void:

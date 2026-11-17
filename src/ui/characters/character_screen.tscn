@@ -25,7 +25,7 @@ theme_override_constants/separation = 6
 
 [node name="PartyOrderSummary" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea"]
 layout_mode = 2
-theme_type_variation = &"ClassicInset"
+theme_type_variation = &"ClassicSharedStone"
 [node name="SummaryRow" type="BoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/PartyOrderArea/PartyOrderSummary"]
 layout_mode = 2
 theme_override_constants/separation = 8

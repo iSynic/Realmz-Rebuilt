@@ -7,6 +7,9 @@ const CLASSIC_STARTER_CATALOG_PATH := ClassicStarterCharacterCatalog.PATH
 
 var _repository: CharacterVaultRepository
 var _validated_records: Dictionary = {}
+## Detached display views of immutable revisions for the current display package.
+var _character_views: Dictionary = {}
+var _views_package := ""
 var _operation_error: String = ""
 var _rule_sources: CharacterVaultRuleSources
 var _active_content: RealmzContent
@@ -25,9 +28,19 @@ func _init(repository: CharacterVaultRepository = null) -> void:
 
 
 func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
+	var admitted := _admission(character_id, revision_hash)
+	if admitted == null:
+		return null
+	var record := admitted.record
+	var detached_state := CharacterStateCodec.copy(record.state)
+	return PartyIntents.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash, admitted.source_definitions) if detached_state != null else null
+
+
+## A Character File revision and its rule source when it may join the active scenario, or null (see last_error).
+func _admission(character_id: String, revision_hash: String) -> CharacterVaultAdmission:
 	_operation_error = ""
 	var cache_key := _cache_key(character_id, revision_hash)
-	var record := _validated_records.get(cache_key) as CharacterVaultRecord
+	var record: CharacterVaultRecord = _validated_records.get(cache_key)
 	if record == null:
 		record = _repository.load_revision(character_id, revision_hash)
 		if record != null:
@@ -43,8 +56,7 @@ func import_intent(character_id: String, revision_hash: String) -> PlayerIntent:
 		_operation_error = _rule_sources.last_error if source_definitions == null else PartyAdmissionRules.source_definition_error(source_definitions, _active_content, record.state, record.source_campaign_id)
 		if not _operation_error.is_empty():
 			return null
-	var detached_state := CharacterStateCodec.copy(record.state)
-	return PartyIntents.import_vault_character(record.character_id, record.revision_hash, detached_state, record.source_campaign_id, record.source_package_hash, source_definitions) if detached_state != null else null
+	return CharacterVaultAdmission.new(record, source_definitions)
 
 
 func configure_rule_sources(application: RealmzContent, packages: Array[PackageDiscoveryResult]) -> void:
@@ -140,7 +152,7 @@ func shutdown_repair() -> void:
 		_repair_thread = null
 
 
-func publish(character: CharacterState, rules_version: String, source_campaign_id: String, source_package_hash: String, publication_source: String, source_content: RealmzContent = null) -> bool:
+func publish(character: CharacterState, rules_version: String, source_campaign_id: String, source_package_hash: String, publication_source: String, source_content: RealmzContent = null, label: String = "") -> bool:
 	_operation_error = ""
 	if character == null:
 		return false
@@ -154,30 +166,51 @@ func publish(character: CharacterState, rules_version: String, source_campaign_i
 			_operation_error = "The character's source race and class could not be recorded."
 			return false
 	record.publication_metadata = {"name": character.name, "level": character.level, "source": publication_source}
+	if not label.is_empty():
+		record.publication_metadata["label"] = label
 	var published := _repository.publish_new_character(record)
 	if published:
 		_validated_records.clear()
 	return published
 
 
-func publish_from_snapshot(snapshot: SessionSnapshot, content: RealmzContent, character_id: String) -> String:
+## Opens the current revision of an active character for editing, or null (see last_error).
+func begin_edit(character_id: String, revision_hash: String, library: RealmzContent) -> CharacterVaultEdit:
 	_operation_error = ""
-	if content == null or character_id.is_empty():
-		_operation_error = "no active character or campaign"
-		return ""
-	if snapshot == null:
-		_operation_error = "the session is not at a committed boundary"
-		return ""
-	var source_character := snapshot.game_state.party.character_by_id(character_id)
-	if source_character == null:
+	var record := _repository.load_revision(character_id, revision_hash)
+	if record == null or library == null:
+		_operation_error = "This revision can't be read."
+		return null
+	if _repository.current_revision_hash(character_id) != revision_hash:
+		_operation_error = "Only the current revision of an active character can be edited."
+		return null
+	var custom_reason := ""
+	var source := _rule_sources.catalog(record, library) if _rule_sources != null else null
+	if source == null:
+		custom_reason = "%s's race and class rules couldn't be resolved, so Items, Spells, age and Level Up are view-only. Repair Character Files may restore them." % record.state.name
+	elif source.is_scenario_specific(&"races", record.state.race_id) or source.is_scenario_specific(&"castes", record.state.caste_id):
+		custom_reason = "%s uses its scenario's own race or class rules, so Items, Spells, age and Level Up are view-only here." % record.state.name
+	return CharacterVaultEdit.new(_repository, record, custom_reason)
+
+
+## Publishes a copy of a party member as a new Character File and returns its name, or "" (see last_error).
+## `identity` reserves the file's ID ahead of time (see SaveEditHolds); null takes the next unused one.
+func publish_party_character(source_character: CharacterState, content: RealmzContent, publication_source: String, label: String = "", identity: CharacterFileIdentity = null) -> String:
+	_operation_error = ""
+	if content == null or source_character == null:
 		_operation_error = "the character is unavailable"
 		return ""
 	# Campaign slot IDs belong to their playthrough, not to the reusable vault.
-	var character := CharacterStateCodec.copy_with_identity(source_character, next_character_file_identity().character_id)
+	if identity == null:
+		identity = next_character_file_identity()
+	if identity == null:
+		_operation_error = last_error()
+		return ""
+	var character := CharacterStateCodec.copy_with_identity(source_character, identity.character_id)
 	if character == null:
 		_operation_error = "the character state is invalid"
 		return ""
-	if not publish(character, content.rules_version, content.campaign_id, content.package_hash, "character-creation", content):
+	if not publish(character, content.rules_version, content.campaign_id, content.package_hash, publication_source, content, label):
 		_operation_error = last_error()
 		return ""
 	return character.name
@@ -209,13 +242,20 @@ func revisions(active_content: RealmzContent, fallback_content: RealmzContent = 
 	_validated_records.clear()
 	var result: Array[CharacterVaultRevisionView] = []
 	var display_content := active_content if active_content != null else fallback_content
+	var display_package := display_content.package_hash if display_content != null else ""
+	if display_package != _views_package:
+		_character_views.clear()
+		_views_package = display_package
 	for character_id: String in _repository.list_character_ids():
 		var current_hash := _repository.current_revision_hash(character_id)
 		var character_archived := current_hash.is_empty()
 		for record: CharacterVaultRecord in _repository.list_revisions(character_id):
 			_validated_records[_cache_key(record.character_id, record.revision_hash)] = record
 			var eligibility := _repository.campaign_eligibility(record, active_content) if active_content != null else null
-			var revision := CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, display_content)
+			if not _character_views.has(record.revision_hash):
+				_character_views[record.revision_hash] = CharacterView.new(record.state, display_content)
+			var revision := CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, display_content, _character_views[record.revision_hash] as CharacterView)
+			revision.last_current = character_archived and _repository.revision_is_archived(character_id, record.revision_hash)
 			if _rule_sources != null and display_content != null:
 				var source := _rule_sources.catalog(record, display_content)
 				if source != null:
@@ -237,9 +277,15 @@ func revisions(active_content: RealmzContent, fallback_content: RealmzContent = 
 	return result
 
 
+## The next unused identity, or null (see last_error) when deleted identities can't be read.
 func next_character_file_identity() -> CharacterFileIdentity:
 	var occupied: Dictionary = {}
-	for character_id: String in _repository.list_character_ids():
+	# Deleted characters' identities stay retired so an old save's party never matches a new character.
+	var ledger_error := CharacterVaultDeletion.ledger_error(_repository.directory_path())
+	if not ledger_error.is_empty():
+		_operation_error = ledger_error
+		return null
+	for character_id: String in _repository.reserved_character_ids():
 		occupied[character_id] = true
 	var sequence := 1
 	while occupied.has("realmz.character.%d" % sequence):
@@ -247,18 +293,16 @@ func next_character_file_identity() -> CharacterFileIdentity:
 	return CharacterFileIdentity.new("realmz.character.%d" % sequence, sequence * 7919 + 1)
 
 
-func archive(character_id: String) -> bool:
-	var archived := _repository.archive_character(character_id)
-	if archived:
-		_validated_records.clear()
-	return archived
-
-
-func restore(character_id: String, revision_hash: String) -> bool:
-	var restored := _repository.restore_revision(character_id, revision_hash)
-	if restored:
-		_validated_records.clear()
-	return restored
+## Archives, restores or permanently deletes (archived only) one stored character.
+func change_character(operation: StringName, character_id: String, revision_hash: String = "") -> bool:
+	var changed := false
+	match operation:
+		&"archive": changed = _repository.archive_character(character_id)
+		&"restore": changed = _repository.restore_revision(character_id, revision_hash)
+		&"delete": changed = _repository.delete_archived_character(character_id)
+	# Even a failed change may have moved files, so the next listing always rereads them.
+	_validated_records.clear()
+	return changed
 
 
 func cached_revision_count() -> int:

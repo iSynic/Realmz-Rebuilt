@@ -8,8 +8,7 @@ signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal controller_binding_capture_requested(action_id: StringName)
-signal vault_archive_requested(character_id: String)
-signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_character_requested(operation: StringName, character_id: String, revision_hash: String)
 signal vault_maintenance_requested(operation: StringName)
 signal route_requested(screen_id: StringName)
 signal refresh_requested
@@ -109,6 +108,8 @@ func navigate_section(screen_id: StringName, section_name: StringName = &"", del
 		return _system_controller.navigate_section(section_name, delta)
 	if screen_id == &"journal":
 		return _maps_journal_controller.cycle_section(delta)
+	if screen_id == &"vault":
+		return _character_controller.cycle_vault_tab(delta)
 	return false
 
 
@@ -131,15 +132,10 @@ func _bind_character_controller(owner_ref: WeakRef) -> void:
 		if owner != null:
 			owner.back_requested.emit()
 	)
-	_character_controller.vault_archive_requested.connect(func(character_id: String) -> void:
+	_character_controller.vault_character_requested.connect(func(operation: StringName, character_id: String, revision_hash: String) -> void:
 		var owner := owner_ref.get_ref() as ScreenContentPresenter
 		if owner != null:
-			owner.vault_archive_requested.emit(character_id)
-	)
-	_character_controller.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void:
-		var owner := owner_ref.get_ref() as ScreenContentPresenter
-		if owner != null:
-			owner.vault_restore_requested.emit(character_id, revision_hash)
+			owner.vault_character_requested.emit(operation, character_id, revision_hash)
 	)
 
 
@@ -244,6 +240,14 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 func set_presentation_settings(settings: PresentationSettings) -> void:
 	if settings != null:
 		_settings = settings
+
+
+func present_vault_status(text: String, is_error: bool) -> void:
+	_character_controller.present_vault_status(text, is_error)
+
+
+func set_vault_controller_prompts(family: String, preferences: ControllerPreferences) -> void:
+	_character_controller.set_vault_controller_prompts(family, preferences)
 
 
 func clear_vault_inspection() -> void:

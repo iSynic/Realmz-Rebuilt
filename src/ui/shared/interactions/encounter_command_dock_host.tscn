@@ -1,5 +1,5 @@
 [gd_scene format=3]
 
-[node name="EncounterCommandDock" type="PanelContainer"]
+[node name="EncounterCommandDock" type="PanelContainer" groups=["ui_theme_textured"]]
 mouse_filter = 0
 theme_type_variation = &"ClassicInset"

@@ -2,6 +2,7 @@
 
 
 [ext_resource type="PackedScene" path="res://src/ui/shell/preferences_keyboard_reference.tscn" id="1_reference"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_card.tres" id="90_card"]
 
 [node name="Controls" type="VBoxContainer"]
 layout_mode = 2
@@ -12,15 +13,23 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 [node name="ControlsSettingsPanel" type="PanelContainer" parent="ControlsSettingsScroll"]
+theme_override_styles/panel = ExtResource("90_card")
 layout_mode = 2
 size_flags_horizontal = 3
 [node name="Content" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="ControlsTabs" type="TabContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content"]
+[node name="ControlsTabs" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="KeyboardMouseTitle" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Keyboard & mouse"
 
 [node name="Keyboard & Mouse" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
 layout_mode = 2
@@ -41,6 +50,12 @@ autowrap_mode = 2
 [node name="KeyboardReference" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Keyboard & Mouse" instance=ExtResource("1_reference")]
 layout_mode = 2
 
+[node name="GameplayTitle" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Gameplay"
+
 [node name="Gameplay" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
 layout_mode = 2
 theme_override_constants/separation = 10
@@ -60,8 +75,15 @@ text = "Show exploration minimap"
 autowrap_mode = 2
 [node name="AutojournalEnabled" type="CheckButton" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Gameplay"]
 layout_mode = 2
-text = "Add eligible scenario text to Notes automatically"
+text = "Auto-add scenario text to Notes"
+tooltip_text = "Adds eligible scenario text to your Notes automatically as you find it."
 autowrap_mode = 2
+
+[node name="ControllerTitle" type="Label" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Controller"
 
 [node name="Controller" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs"]
 layout_mode = 2
@@ -197,7 +219,7 @@ layout_mode = 2
 alignment = 2
 [node name="RestoreControllerDefaults" type="Button" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content/BindingColumn/Content/Actions"]
 layout_mode = 2
-text = "Restore Defaults"
+text = "Restore default bindings"
 [node name="TuningColumn" type="VBoxContainer" parent="ControlsSettingsScroll/ControlsSettingsPanel/Content/ControlsTabs/Controller/ControllerSettings/Content"]
 layout_mode = 2
 size_flags_horizontal = 3

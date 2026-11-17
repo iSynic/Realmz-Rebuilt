@@ -15,6 +15,8 @@ var _response_coordinator: SessionResponsesCoordinator
 var _debug_coordinator: SessionDebugCoordinator
 var _intent_coordinator: SessionIntentCoordinator
 var _debug_operation_active: bool = false
+var _living_party_ids: Dictionary[String, bool] = {}
+var _battle_at_boundary: bool = false
 
 
 func _ensure_coordinators() -> void:
@@ -74,6 +76,8 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	_view_projector.clear()
 	_started = true
 	_record_current_visibility()
+	_living_party_ids.clear()
+	_settle_field_deaths()
 	return SessionStep.completed(_context.current_revision(), [DomainEvent.new("session_started", {"campaignId": content.campaign_id})])
 
 
@@ -113,6 +117,8 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 	_view_projector.clear()
 	_started = true
 	_record_current_visibility()
+	_living_party_ids.clear()
+	_settle_field_deaths()
 	return SessionStep.completed(_context.current_revision(), [DomainEvent.new("session_restored")])
 
 
@@ -201,7 +207,7 @@ func respond(response: InteractionResponse) -> SessionStep:
 	if not response.is_supported_kind():
 		return SessionStep.failed(_context.current_revision(), &"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	var shop_body := response.body as InteractionResponse.ShopBody
-	if pending.kind == InteractionRequest.SHOP and shop_body != null and shop_body.action == &"trade":
+	if pending.kind == InteractionRequest.SHOP and shop_body != null and shop_body.action in [&"trade", &"equip", &"unequip"]:
 		return _respond_shop_trade(response, shop_body)
 	var combat_body := response.body as InteractionResponse.CombatBody
 	if pending.kind == InteractionRequest.COMBAT and combat_body != null and SessionIntentCoordinator.is_inventory_combat_action(combat_body.action):
@@ -221,8 +227,9 @@ func respond(response: InteractionResponse) -> SessionStep:
 
 
 func _respond_shop_trade(response: InteractionResponse, body: InteractionResponse.ShopBody) -> SessionStep:
-	if body.character_id.is_empty() or body.instance_id.is_empty() or body.target_character_id.is_empty() or not body.stock_key.is_empty() or not body.denomination.is_empty() or body.amount != 0:
-		return SessionStep.failed(_context.current_revision(), &"invalid_interaction_response", "Shop Trade requires an item, its owner, and a destination character.")
+	# Trade names a destination; equipping and unequipping at the counter must not.
+	if body.character_id.is_empty() or body.instance_id.is_empty() or body.target_character_id.is_empty() == (body.action == &"trade") or not body.stock_key.is_empty() or not body.denomination.is_empty() or body.amount != 0:
+		return SessionStep.failed(_context.current_revision(), &"invalid_interaction_response", "A Shop item change requires an item and its owner, and Trade a destination character.")
 	# A Shop refresh preserves the service or VM continuation after custody changes.
 	var refresh := InteractionResponse.new(response.request_id, response.kind, InteractionResponse.ShopBody.new(&"refresh"))
 	if _context.session_interaction != null:
@@ -235,7 +242,8 @@ func _respond_shop_trade(response: InteractionResponse, body: InteractionRespons
 	# The custody change commits only together with a successful Shop refresh.
 	var state_checkpoint := _context.state.to_data()
 	var vm_checkpoint := _context.scenario_vm.snapshot() if _context.session_interaction == null else null
-	var trade := InventoryWorkflow.trade_item(_context.workflow_context(), InventoryIntentPayloads.Action.new(body.instance_id, body.character_id, 1, body.target_character_id))
+	var change := InventoryIntentPayloads.Action.new(body.instance_id, body.character_id, 1, body.target_character_id)
+	var trade := InventoryWorkflow.trade_item(_context.workflow_context(), change) if body.action == &"trade" else InventoryWorkflow.equip_item(_context.workflow_context(), change) if body.action == &"equip" else InventoryWorkflow.unequip_item(_context.workflow_context(), change)
 	if not trade.ok:
 		return SessionStep.failed(_context.current_revision(), trade.error_code, trade.error_message)
 	if _context.session_interaction != null:
@@ -320,12 +328,14 @@ func _start_application_hook(hook: StringName, resume_kind: StringName, service_
 
 
 func _finish_completed(events: Array[DomainEvent]) -> SessionStep:
+	_settle_field_deaths()
 	_record_current_visibility()
 	_context.set_revision(_context.next_revision())
 	return SessionStep.completed(_context.current_revision(), events)
 
 
 func _finish_waiting(request: InteractionRequest, events: Array[DomainEvent]) -> SessionStep:
+	_settle_field_deaths()
 	_record_current_visibility()
 	_context.set_revision(_context.next_revision())
 	return SessionStep.waiting(_context.current_revision(), request, events)
@@ -361,6 +371,27 @@ func _latch_deferred_reference_fault(code: StringName, message: String) -> Sessi
 	var opcode: int = failure.get("opcode", 0)
 	_context.runtime_fault = SessionRuntimeFault.new(_context.content.campaign_id, program_id, slot, opcode, operands, target_kind, target_id, code, message)
 	return _context.runtime_fault
+
+
+## FD-CHARACTER-006: a party member who falls outside combat loses Animated and
+## every timed condition, as killbody.c does only in combat. Comparing committed
+## boundaries catches every field damage source (traps, scenario damage, spells,
+## items, condition ticks) without serializing anything; battle deaths are left
+## to killbody's own clearing.
+func _settle_field_deaths() -> void:
+	if not _started or is_preparing_party() or _context.state == null:
+		_living_party_ids.clear()
+		return
+	var combat := _context.state.combat
+	var battle_now := combat != null and not combat.completed
+	var living: Dictionary[String, bool] = {}
+	for character: CharacterState in _context.state.party.characters():
+		if character.current_health > 0:
+			living[character.id] = true
+		elif not _battle_at_boundary and not battle_now and _living_party_ids.has(character.id):
+			ConditionRules.clear_on_death(character)
+	_living_party_ids = living
+	_battle_at_boundary = battle_now
 
 
 func _record_current_visibility() -> void:

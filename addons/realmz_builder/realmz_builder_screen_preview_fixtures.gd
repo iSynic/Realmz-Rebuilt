@@ -175,9 +175,9 @@ static func _bind_modular_hud(hud: ModularHud, view: GameView, profile: String) 
 	var narrative := hud.get_node("Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/NarrativeText") as RichTextLabel
 	narrative.text = "The company gathers at the city gates. A messenger brings news from beyond the western road."
 	var facts := hud.get_node("Narration/Surface/Column/Body/Content/NarrativeWell/NarrativeColumn/Facts") as GridContainer
-	(facts.get_node("Status") as Label).text = "Ready to explore"
-	(facts.get_node("Coordinates") as Label).text = "Map 12, 8"
-	(facts.get_node("Light") as Label).text = "Light 26"
+	(facts.get_node("Status") as Label).visible = false
+	(facts.get_node("Coordinates") as Label).text = "12,8"
+	(facts.get_node("Light") as Label).text = "Torch 26"
 	(facts.get_node("Clock") as Label).text = "Day 2 • 14:30"
 	(facts.get_node("Gold") as Label).text = "Gold 460"
 	var exploration_ids: Array[StringName] = []
@@ -241,19 +241,24 @@ static func _bind_party_setup(workspace: PartySetupWorkspace, view: GameView, pr
 
 
 static func _bind_party_import_dialog(dialog: PartyImportFromSaveDialog, profile: String) -> void:
-	var preview: Dictionary = {"phase": "review", "available_slots": 2, "message": "Review the heroes and possessions that can join this adventure.", "left_behind": ["Pooled money, bank balances, shared storage, and confiscated equipment stay in the source adventure.", "Recruited allies and battlefield-dropped items stay in the source adventure."], "candidates": [
-		{"name": "Kevlar", "eligible": true, "selected": true, "detail": "Level 4 · HP 24/42 · SP 18/30\nPersonal money: 80 gold, 1 gems, 0 jewelry\nKept: Longsword, Shield\nRemoved: Item: Old Relic — The destination has no matching definition."},
-		{"name": "Lothlorian", "eligible": true, "selected": true, "detail": "Level 5 · HP 26/44 · SP 20/33\nPersonal money: 100 gold, 1 gems, 0 jewelry\nKept: Chain Armor\nRemoved: None"},
-		{"name": "Silver Leaf", "eligible": false, "selected": false, "detail": "This character exceeds the destination campaign's level limit."},
+	var sources: Array = [
+		{"title": "City of Bywater", "slot": "Slot B", "backup": false, "when": "Today, 21:40", "party": "Keylar, Lothlorian, Silver Leaf", "valid": true, "reason": "", "tooltip": ""},
+		{"title": "City of Bywater", "slot": "Slot B", "backup": true, "when": "Today, 20:05", "party": "Keylar, Lothlorian, Silver Leaf", "valid": true, "reason": "", "tooltip": ""},
+		{"title": "Mithril Vault", "slot": "Slot C", "backup": false, "when": "9 Nov 2026, 18:22", "party": "Anwen", "valid": false, "reason": "Needs the Mithril Vault version it was saved with. Install it from Choose a scenario, then Refresh.", "tooltip": "Needs package fingerprint 1a2b3c4d."},
+	]
+	var preview: Dictionary = {"phase": "review", "available_slots": 2, "source_line": "From City of Bywater · Slot B · Today, 21:40", "destination": "Joining Trouble in the Sword Lands", "changed_items": ["Healing Potion"], "adopt_changed": false, "left_behind": ["Pooled money, bank balances, shared storage, and confiscated equipment stay in the source adventure."], "candidates": [
+		{"name": "Keylar", "identity": "Level 4 Half-Ogre Barbarian", "stats": "Stamina 31/34  ·  SP —  ·  212 gold, 3 gems", "eligible": true, "selected": true, "reasons": [], "items": ["Broadsword", "Chain Mail", "Shield"], "magic": [], "left": ["Healing Potion (changed here)"]},
+		{"name": "Lothlorian", "identity": "Level 4 Elf Sorcerer", "stats": "Stamina 16/18  ·  SP 41/62  ·  88 gold", "eligible": true, "selected": true, "reasons": [], "items": ["Quarterstaff", "Robe"], "magic": ["Light", "Charm Person", "Fire Bolt", "Detect Magic", "Shield", "Sleep"], "left": []},
+		{"name": "Silver Leaf", "identity": "Level 9 Halfling Thief", "stats": "Stamina 20/20  ·  SP —  ·  140 gold", "eligible": false, "selected": false, "reasons": ["This character exceeds the destination campaign's level limit."], "items": ["Dagger"], "magic": [], "left": []},
 	]}
 	match profile:
-		"Empty": preview = {"phase": "selection", "sources": [], "message": "Choose a saved adventure. Its world state stays behind."}
-		"Error": preview = {"phase": "error", "message": "The selected save could not be validated. Choose another save or refresh the list."}
-		"Unavailable": preview = {"phase": "selection", "sources": [{"label": "City of Bywater · Slot 1 · 2026-09-28 19:40", "detail": "The exact source package revision is unavailable. Install that revision, then refresh.", "valid": false}], "message": "Choose a saved adventure. Its world state stays behind."}
+		"Empty": preview = {"phase": "selection", "sources": []}
+		"Error": preview = {"phase": "error", "sources": sources, "error_title": "Couldn't read City of Bywater · Slot B", "message": "The save changed or is damaged since the list was made. Choose it again, or choose another save."}
+		"Unavailable": preview = {"phase": "selection", "sources": sources}
 		"Long Content":
 			preview["available_slots"] = 4
 			for index: int in range(3, 9):
-				preview["candidates"].append({"name": "Preview Adventurer %d" % index, "eligible": true, "selected": false, "detail": "Level %d · HP %d/48 · SP 12/30\nPersonal money: %d gold, 0 gems, 0 jewelry\nKept: Longsword, Iron Rations\nRemoved: None" % [index + 2, index * 5, index * 25]})
+				preview["candidates"].append({"name": "Preview Adventurer %d" % index, "identity": "Level %d Human Fighter" % (index + 2), "stats": "Stamina %d/48  ·  SP —  ·  %d gold" % [index * 5, index * 25], "eligible": true, "selected": false, "reasons": [], "items": ["Longsword", "Iron Rations"], "magic": [], "left": []})
 		_: pass
 	dialog.show_party_import(preview)
 

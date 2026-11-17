@@ -1,5 +1,7 @@
 [gd_scene load_steps=1 format=3]
 
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_card.tres" id="90_card"]
+
 
 
 [node name="Diagnostics" type="VBoxContainer"]
@@ -11,6 +13,7 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 [node name="DiagnosticsSettingsPanel" type="PanelContainer" parent="DiagnosticsSettingsScroll"]
+theme_override_styles/panel = ExtResource("90_card")
 layout_mode = 2
 size_flags_horizontal = 3
 [node name="Content" type="VBoxContainer" parent="DiagnosticsSettingsScroll/DiagnosticsSettingsPanel"]
@@ -19,7 +22,7 @@ size_flags_horizontal = 3
 theme_override_constants/separation = 10
 [node name="TopologyDebug" type="CheckButton" parent="DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
 layout_mode = 2
-text = "Show APs and random rectangles on map"
+text = "Show map debug markers"
 autowrap_mode = 2
 [node name="TopologyExplanation" type="Label" parent="DiagnosticsSettingsScroll/DiagnosticsSettingsPanel/Content"]
 layout_mode = 2

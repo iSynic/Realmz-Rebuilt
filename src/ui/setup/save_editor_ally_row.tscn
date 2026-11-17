@@ -1,0 +1,53 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/shared/style/arrow_label.gd" id="1_arrows"]
+
+[node name="SaveEditorAllyRow" type="HBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Art" type="TextureRect" parent="."]
+texture_filter = 1
+clip_contents = true
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 0
+
+[node name="Title" type="Label" parent="Text"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 15
+text = "Title"
+text_overrun_behavior = 3
+
+[node name="Detail" type="Label" parent="Text"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Detail"
+text_overrun_behavior = 3
+
+[node name="Arrows" type="HBoxContainer" parent="Text"]
+visible = false
+layout_mode = 2
+script = ExtResource("1_arrows")
+
+[node name="Tag" type="Label" parent="."]
+visible = false
+layout_mode = 2
+theme_type_variation = &"VaultStatusGood"
+theme_override_font_sizes/font_size = 12
+text = "Joins"
+
+[node name="Action" type="Button" parent="."]
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 13
+text = "Action"

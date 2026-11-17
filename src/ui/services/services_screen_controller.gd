@@ -231,12 +231,14 @@ func _bind_transfer(view: GameView, money: MoneyWorkspaceView, selected: MoneyCh
 func _bind_changing(view: GameView, money: MoneyWorkspaceView) -> void:
 	var status := _workspace.changing_pane().get_node("Content/Header/Status") as Label
 	var available := money.changing_available and _browse_only_reason.is_empty()
-	_bind_label(status, "Available here · converts pooled wealth · hold to speed up" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "Money changing is unavailable here", Color("79cfa9") if available else MUTED, 13)
+	_bind_label(status, "Converts pooled wealth · hold to speed up" if available else _browse_only_reason if not _browse_only_reason.is_empty() else "No money changer here — visit a shop or temple", Color("79cfa9") if available else MUTED, 13)
 	var buttons := _workspace.changing_buttons()
+	# With no money changer the three rates are noise; the heading line says where to find one.
+	(buttons[0].get_parent() as Control).visible = available
 	for index in mini(buttons.size(), money.changes.size()):
 		var rate := money.changes[index]
 		var button := buttons[index]
-		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change · hold to speed up" if available and rate.availability.enabled else "Unavailable here"]
+		button.text = "%s → %s\n%d %s → +%d %s\n%s" % [String(rate.source).capitalize(), String(rate.result).capitalize(), rate.source_amount, _unit(rate.source, rate.source_amount), rate.result_amount, _unit(rate.result, rate.result_amount), "Change · hold to speed up" if available and rate.availability.enabled else rate.availability.reason if available and not rate.availability.reason.is_empty() else "Unavailable here"]
 		_bind_money_action(button, view, rate.availability, EconomyIntents.money(rate.action, "", String(rate.source), rate.source_amount), true)
 
 

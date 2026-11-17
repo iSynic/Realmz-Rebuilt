@@ -4,10 +4,13 @@ extends VBoxContainer
 
 signal preferences_changed(value: HudPreferences)
 signal arrange_requested
+## The combat HUD's own preferences changed; only its fixed-or-modular choice is edited here so far.
+signal combat_preferences_changed(value: HudPreferences)
 
 const PANEL_COUNT := 4
 
 var _preferences: HudPreferences
+var _combat: HudPreferences
 var _active_adventure := false
 var _selected_panel := 0
 var _binding := false
@@ -15,7 +18,12 @@ var _binding := false
 
 func _ready() -> void:
 	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/LayoutRow/LayoutChoice") as OptionButton).item_selected.connect(_on_layout_selected)
+	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/BarCountRow/BarCount") as OptionButton).item_selected.connect(_on_bar_count_selected)
 	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/CompactCommands") as CheckButton).toggled.connect(_on_compact_commands_toggled)
+	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusStrip") as CheckButton).toggled.connect(_on_status_strip_toggled)
+	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusOpacityRow/StatusOpacitySlider") as HSlider).value_changed.connect(_on_status_opacity_changed)
+	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsBar") as CheckButton).toggled.connect(_on_effects_bar_toggled)
+	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsOpacityRow/EffectsOpacitySlider") as HSlider).value_changed.connect(_on_effects_opacity_changed)
 	(get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/PanelRow/PanelChoice") as OptionButton).item_selected.connect(_on_panel_selected)
 	(get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/VisibilityRow/VisibilityChoice") as OptionButton).item_selected.connect(_on_visibility_selected)
 	(get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/OpacityRow/OpacitySlider") as HSlider).value_changed.connect(_on_opacity_changed)
@@ -23,14 +31,41 @@ func _ready() -> void:
 	(get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/ChangeReveal") as CheckButton).toggled.connect(_on_change_reveal_toggled)
 	(get_node("SettingsScroll/SettingsPanel/Content/ArrangeGroup/Content/ArrangeButton") as Button).pressed.connect(_on_arrange_pressed)
 
-	%AllVisibility.item_selected.connect(_on_all_visibility_selected)
-	%AllVisibility.get_popup().exclusive = false
+	(%AllVisibility as OptionButton).item_selected.connect(_on_all_visibility_selected)
+	(%CombatLayoutChoice as OptionButton).item_selected.connect(func(index: int) -> void:
+		if _binding or _combat == null: return
+		_combat.modular = index == 1
+		combat_preferences_changed.emit(_combat.duplicate_value()))
+	(%AllVisibility as OptionButton).get_popup().exclusive = false
+	(%ScaleSlider as HSlider).value_changed.connect(func(value: float) -> void:
+		var panel_preferences := _selected_panel_preferences()
+		if _binding or panel_preferences == null: return
+		panel_preferences.scale = value / 100.0
+		(%ScaleValue as Label).text = "%d%%" % roundi(value)
+		_publish_preferences())
+	(%CombatScaleSlider as HSlider).value_changed.connect(func(value: float) -> void:
+		if _binding or _combat == null: return
+		for index: int in range(1, 6):
+			_combat.panel_at(index).scale = value / 100.0
+		_combat.bucket_count = 4
+		(%CombatScaleValue as Label).text = "%d%%" % roundi(value)
+		combat_preferences_changed.emit(_combat.duplicate_value()))
+
+
+func bind_combat(value: HudPreferences) -> void:
+	_combat = value.duplicate_value()
+	_binding = true
+	(%CombatLayoutChoice as OptionButton).select(1 if _combat.modular else 0)
+	(%CombatScaleSlider as HSlider).value = _combat.panels[3].scale * 100.0
+	(%CombatScaleValue as Label).text = "%d%%" % roundi(_combat.panels[3].scale * 100.0)
+	(%CombatScaleSlider as HSlider).editable = _combat.modular
+	_binding = false
 
 
 func bind_preferences(value: HudPreferences, active_adventure: bool) -> void:
 	_preferences = value.duplicate_value()
 	_active_adventure = active_adventure
-	_selected_panel = clampi(_selected_panel, 0, PANEL_COUNT - 1)
+	_selected_panel = clampi(_selected_panel, 0, 5)
 	_refresh_controls()
 
 
@@ -38,6 +73,11 @@ func _refresh_controls() -> void:
 	if _preferences == null or _preferences.panels.size() != PANEL_COUNT:
 		return
 	_binding = true
+	var bar_count := get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/BarCountRow/BarCount") as OptionButton
+	bar_count.select(_preferences.bucket_count - 2)
+	bar_count.disabled = not _preferences.modular
+	for extra: int in [4, 5]:
+		(get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/PanelRow/PanelChoice") as OptionButton).set_item_disabled(extra, extra - 2 >= _preferences.bucket_count)
 	var layout := get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/LayoutRow/LayoutChoice") as OptionButton
 	var panel_choice := get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/PanelRow/PanelChoice") as OptionButton
 	var visibility := get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/VisibilityRow/VisibilityChoice") as OptionButton
@@ -48,20 +88,26 @@ func _refresh_controls() -> void:
 	var reveal_help := get_node("SettingsScroll/SettingsPanel/Content/PanelGroup/Content/RevealHelp") as Label
 	var arrange := get_node("SettingsScroll/SettingsPanel/Content/ArrangeGroup/Content/ArrangeButton") as Button
 	var unavailable := get_node("SettingsScroll/SettingsPanel/Content/ArrangeGroup/Content/ArrangeUnavailableReason") as Label
-	var panel_preferences := _preferences.panels[_selected_panel]
+	_selected_panel = mini(_selected_panel, _preferences.bucket_count + 1)
+	var panel_preferences := _preferences.panel_at(_selected_panel)
 
 	layout.select(1 if _preferences.modular else 0)
 	var compact := get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/CompactCommands") as CheckButton
 	compact.set_pressed_no_signal(_preferences.compact_commands)
 	compact.disabled = not _preferences.modular
 	var hidden_count := _preferences.panels.filter(func(panel: HudPanelPreferences) -> bool: return panel.auto_hide).size()
-	%AllVisibility.select(1 if hidden_count == 0 else 2 if hidden_count == PANEL_COUNT else 0)
-	%AllVisibility.set_item_disabled(0, true)
-	%AllVisibility.disabled = not _preferences.modular
+	(%AllVisibility as OptionButton).select(1 if hidden_count == 0 else 2 if hidden_count == PANEL_COUNT else 0)
+	(%AllVisibility as OptionButton).set_item_disabled(0, true)
+	(%AllVisibility as OptionButton).disabled = not _preferences.modular
+	_refresh_status_strip()
+	_refresh_effects_bar()
 	panel_choice.select(_selected_panel)
 	visibility.select(1 if panel_preferences.auto_hide else 0)
 	opacity.value = clampf(panel_preferences.background_opacity * 100.0, 40.0, 100.0)
 	opacity_value.text = "%d%%" % roundi(opacity.value)
+	(%ScaleSlider as HSlider).value = panel_preferences.scale * 100.0
+	(%ScaleValue as Label).text = "%d%%" % roundi(panel_preferences.scale * 100.0)
+	(%ScaleSlider as HSlider).editable = _preferences.modular
 	hover.button_pressed = panel_preferences.reveal_on_hover
 	changes.button_pressed = panel_preferences.reveal_on_changes
 	var modular_controls_enabled := _preferences.modular
@@ -79,11 +125,18 @@ func _refresh_controls() -> void:
 func _selected_panel_preferences() -> HudPanelPreferences:
 	if _preferences == null or _preferences.panels.size() != PANEL_COUNT:
 		return null
-	return _preferences.panels[_selected_panel]
+	return _preferences.panel_at(_selected_panel)
 
 
 func _publish_preferences() -> void:
 	preferences_changed.emit(_preferences.duplicate_value())
+
+
+func _on_bar_count_selected(index: int) -> void:
+	if _binding or _preferences == null:
+		return
+	_preferences.bucket_count = index + 2
+	_publish_preferences()
 
 
 func _on_layout_selected(index: int) -> void:
@@ -95,7 +148,7 @@ func _on_layout_selected(index: int) -> void:
 
 
 func _on_panel_selected(index: int) -> void:
-	if _binding or index < 0 or index >= PANEL_COUNT:
+	if _binding or index < 0 or index > 5:
 		return
 	_selected_panel = index
 	_refresh_controls()
@@ -105,6 +158,58 @@ func _on_compact_commands_toggled(enabled: bool) -> void:
 	if _binding or _preferences == null:
 		return
 	_preferences.compact_commands = enabled
+	_publish_preferences()
+
+
+func _refresh_status_strip() -> void:
+	var strip := get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusStrip") as CheckButton
+	var slider := get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusOpacityRow/StatusOpacitySlider") as HSlider
+	strip.set_pressed_no_signal(_preferences.status_strip_visible)
+	strip.disabled = not _preferences.modular
+	slider.set_value_no_signal(roundf(_preferences.status_strip_opacity * 100.0))
+	slider.editable = _preferences.modular and _preferences.status_strip_visible
+	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/StatusOpacityRow/StatusOpacityValue") as Label).text = "%d%%" % roundi(slider.value)
+
+
+func _on_status_strip_toggled(enabled: bool) -> void:
+	if _binding or _preferences == null:
+		return
+	_preferences.status_strip_visible = enabled
+	_refresh_status_strip()
+	_publish_preferences()
+
+
+func _on_status_opacity_changed(value: float) -> void:
+	if _binding or _preferences == null:
+		return
+	_preferences.status_strip_opacity = clampf(value / 100.0, 0.0, 1.0)
+	_refresh_status_strip()
+	_publish_preferences()
+
+
+func _refresh_effects_bar() -> void:
+	var strip := get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsBar") as CheckButton
+	var slider := get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsOpacityRow/EffectsOpacitySlider") as HSlider
+	strip.set_pressed_no_signal(_preferences.effects_bar_visible)
+	strip.disabled = not _preferences.modular
+	slider.set_value_no_signal(roundf(_preferences.effects_bar_opacity * 100.0))
+	slider.editable = _preferences.modular 
+	(get_node("SettingsScroll/SettingsPanel/Content/LayoutGroup/Content/EffectsOpacityRow/EffectsOpacityValue") as Label).text = "%d%%" % roundi(slider.value)
+
+
+func _on_effects_bar_toggled(enabled: bool) -> void:
+	if _binding or _preferences == null:
+		return
+	_preferences.effects_bar_visible = enabled
+	_refresh_effects_bar()
+	_publish_preferences()
+
+
+func _on_effects_opacity_changed(value: float) -> void:
+	if _binding or _preferences == null:
+		return
+	_preferences.effects_bar_opacity = clampf(value / 100.0, 0.0, 1.0)
+	_refresh_effects_bar()
 	_publish_preferences()
 
 

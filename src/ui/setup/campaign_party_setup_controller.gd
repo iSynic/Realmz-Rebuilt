@@ -13,6 +13,7 @@ signal party_import_external_source_requested(path: String)
 signal party_import_selected_requested(indices: Array[int])
 signal party_import_cancel_requested
 signal party_import_refresh_requested
+signal party_import_adopt_changed_requested(adopt: bool)
 
 var intent_submitted: Signal:
 	get: return _state.intent_submitted
@@ -61,10 +62,10 @@ func bind_setup_workspace(workspace: PartySetupWorkspace) -> void:
 	_creation.render_creator_step()
 	var weak_owner: WeakRef = weakref(self)
 	_campaign_library.preparation_changed.connect(func() -> void:
-		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
 		if owner != null: owner._creation.refresh_setup_options())
 	_campaign_library.back_requested.connect(func() -> void:
-		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
 		if owner != null:
 			if owner.campaign_library.package_operation_status.is_running(): owner.campaign_library.cancel_package_requested.emit()
 			owner.show_splash())
@@ -78,12 +79,12 @@ func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
 	appearance_step_scene = setup_overlay.get("appearance_step_scene") as PackedScene
 	review_step_scene_path = setup_overlay.get("review_step_scene_path") as String
 	spells_step_scene_path = setup_overlay.get("spells_step_scene_path") as String
-	setup_body = setup_overlay.get_node("ScenarioPartyWorkspace") as HBoxContainer
-	_campaign_library.bind_campaign_panel(setup_overlay.get_node("ScenarioPartyWorkspace/ScenarioColumn") as CampaignSelectionPanel)
+	setup_body = setup_overlay.get_node("%ScenarioPartyWorkspace") as HBoxContainer
+	_campaign_library.bind_campaign_panel(setup_overlay.get_node("%ScenarioPartyWorkspace/ScenarioColumn") as CampaignSelectionPanel)
 	var setup_state := _state as CampaignPartySetupState
 	setup_state.wide_scenario_minimum_width = campaign_overlay.custom_minimum_size.x
-	character_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CharacterFilesPane") as PanelContainer
-	party_pane = setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane") as PanelContainer
+	character_pane = setup_overlay.get_node("%ScenarioPartyWorkspace/CharacterFilesPane") as PanelContainer
+	party_pane = setup_overlay.get_node("%ScenarioPartyWorkspace/CurrentPartyPane") as PanelContainer
 	creator_steps = setup_overlay.get_node("%CreatorSteps") as HBoxContainer
 	creator_step_labels.clear()
 	for child: Node in creator_steps.get_children():
@@ -98,7 +99,7 @@ func _bind_setup_workspace_controls(workspace: PartySetupWorkspace) -> void:
 	party_list.set_script(PartySetupPartyList)
 	party_list.import_requested.connect(_assembly.import_stored_character)
 	setup_message = setup_overlay.get_node("%SetupMessage") as Label
-	party_setup_options = setup_overlay.get_node("%PartySetupOptions") as VBoxContainer
+	party_setup_options = setup_overlay.get_node("%PartySetupOptions") as PanelContainer
 	var adventure_rules_button := setup_overlay.get_node("%AdventureRules") as Button
 	adventure_rules_button.pressed.connect(func() -> void: adventure_rules_requested.emit())
 	_bind_adventure_rules(view)
@@ -140,19 +141,22 @@ func _build_party_import_dialog() -> void:
 	_host.add_child(_party_import_dialog)
 	var weak_owner: WeakRef = weakref(self)
 	_party_import_dialog.source_requested.connect(func(index: int) -> void:
-		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
 		if owner != null: owner.party_import_source_requested.emit(index))
 	_party_import_dialog.external_source_requested.connect(func(path: String) -> void:
-		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
 		if owner != null: owner.party_import_external_source_requested.emit(path))
 	_party_import_dialog.import_selected_requested.connect(func(indices: Array[int]) -> void:
-		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
 		if owner != null: owner.party_import_selected_requested.emit(indices))
 	_party_import_dialog.cancel_requested.connect(func() -> void:
-		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
 		if owner != null: owner.party_import_cancel_requested.emit())
+	_party_import_dialog.adopt_changed_requested.connect(func(adopt: bool) -> void:
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
+		if owner != null: owner.party_import_adopt_changed_requested.emit(adopt))
 	_party_import_dialog.refresh_requested.connect(func() -> void:
-		var owner := weak_owner.get_ref() as CampaignPartySetupController
+		var owner: CampaignPartySetupController = weak_owner.get_ref()
 		if owner != null: owner.party_import_refresh_requested.emit())
 	_party_import_dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_party_import_dialog.visible = false
@@ -166,7 +170,22 @@ func show_party_import(view: Dictionary) -> void:
 	if _party_import_dialog == null:
 		_build_party_import_dialog()
 	_party_import_dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_resolve_import_art(view)
 	_party_import_dialog.show_party_import(view)
+
+
+## Stock portraits and icons resolve from the setup media; art the save carries arrives filled.
+func _resolve_import_art(view: Dictionary) -> void:
+	var setup_state := _state as CampaignPartySetupState
+	var candidates: Array = view.get("candidates", [])
+	var ids: Array[String] = []
+	for candidate: Dictionary in candidates:
+		ids.append_array([String(candidate.get("portrait_id", "")), String(candidate.get("icon_id", ""))])
+	setup_state.ensure_appearance_textures(ids)
+	for candidate: Dictionary in candidates:
+		for keys: Array in [["portrait", "portrait_id"], ["icon", "icon_id"]]:
+			if candidate.get(keys[0]) == null:
+				candidate[keys[0]] = setup_state.appearance_textures.get(String(candidate.get(keys[1], "")))
 
 
 func close_party_import() -> void:

@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "label": "Interface-theme frame: slim double line with small corner pieces",
+  "provider": "project",
+  "license": "Project-Authored",
+  "derivation": "Drawn procedurally in neutral greys by tools/theme_frame_gen2.py; no source artwork.",
+  "presentation_contract": "Nine-patch with corners 5/16 of the width, nearest filtering, tinted with the theme's accent colour over menu-screen panels in the ui_theme_frame group. Also worn in play by the modular HUD's panels.",
+  "file": {
+    "path": "res://src/ui/shared/assets/ui/theme-frame-gilt.png",
+    "width": 64,
+    "height": 64,
+    "bytes": 6306,
+    "sha256": "50aabe9799488cdd3763448d91637cdd7d1a10449eda21337711b8ca202a3682"
+  }
+}

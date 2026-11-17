@@ -113,13 +113,12 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 6
 
-[node name="StartingSpellLevelHeading" type="TextureRect" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content"]
+[node name="StartingSpellLevelHeading" type="Label" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(68, 18)
 layout_mode = 2
-texture_filter = 1
-expand_mode = 1
-stretch_mode = 5
+theme_type_variation = &"MenuHeading"
+text = "Level"
+horizontal_alignment = 1
 
 [node name="StartingSpellLevel1" parent="StartingSpellWorkspace/StartingSpellLevelRail/Content" instance=ExtResource("2_level")]
 unique_name_in_owner = true

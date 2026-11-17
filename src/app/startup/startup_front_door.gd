@@ -10,6 +10,8 @@ const APPLICATION_SCRIPT_PATH := "res://src/app/composition/realmz_application.g
 const CAMPAIGN_LIBRARY_CONTROLLER_PATH := "res://src/ui/setup/campaign_library_controller.gd"
 const SETTINGS_REPOSITORY_PATH := "res://src/storage/settings/settings_repository.gd"
 const CLASSIC_TYPOGRAPHY_PATH := "res://src/ui/shared/style/classic_typography.gd"
+const UI_SOUND_SERVICE_PATH := "res://src/ui/shared/media/ui_sound_service.gd"
+const UI_THEME_SERVICE_PATH := "res://src/ui/shared/style/ui_theme_service.gd"
 const UI_LAYOUT_PROFILE_PATH := "res://src/ui/shared/style/ui_layout_profile.gd"
 const PRESENTATION_SETTINGS_PATH := "res://src/game/shared/presentation/presentation_settings.gd"
 const CONTROLLER_INPUT_OWNER_PATH := "res://src/app/navigation/controller_input_owner.gd"
@@ -94,6 +96,8 @@ func _process(_delta: float) -> void:
 				_fail_application_load("Application script preparation failed.")
 			else:
 				_request_application_scene_load()
+				if _splash_complete:
+					_initialize_controller_navigation()
 		else:
 			set_process(false)
 			var packed := loaded as PackedScene
@@ -184,7 +188,15 @@ func _initialize_after_first_draw() -> void:
 	if display != null:
 		display.configure(_presentation_settings.display_scaling_mode, _presentation_settings.pixel_art_smoothing, _presentation_settings.crt_enabled, _presentation_settings.crt_shader, _presentation_settings.crt_area)
 	theme = typography_script.themed_copy(base_theme, _presentation_settings, 1.0, _font_host.get("resolver"))
+	typography_script.apply_menu_fonts(_presentation_settings, _font_host.get("resolver"))
+	(load(UI_THEME_SERVICE_PATH) as Script).call(&"apply", get_tree(), _presentation_settings.get("interface_theme"))
+	(load(UI_THEME_SERVICE_PATH) as Script).call(&"set_surface_tile", get_tree(), _presentation_settings.get("theme_surface_tile"), _presentation_settings.get("theme_surface_tile_opacity_percent"))
 	_apply_launch_volume(_presentation_settings)
+	var ui_sounds := load(UI_SOUND_SERVICE_PATH) as Script
+	ui_sounds.call(&"attach", get_tree())
+	var master_volume: float = _presentation_settings.get("master_volume")
+	var sound_volume: float = _presentation_settings.get("sound_volume")
+	ui_sounds.call(&"set_volume", master_volume * sound_volume)
 	_menu_controller = controller_script.new()
 	_menu_controller.attach(_overlay_host)
 	_menu_controller.set_presentation_settings(_presentation_settings)
@@ -296,6 +308,11 @@ func _on_splash_exit_delay_timeout() -> void:
 func _initialize_controller_navigation() -> void:
 	if _controller_input != null or _presentation_settings == null:
 		return
+	# The controller scripts belong to the application's script graph. Loading them here
+	# while the worker is still compiling that graph makes the main thread wait for all of
+	# it and freezes the visible menu, so wait until the graph is in the cache.
+	if _load_requested and _load_path == APPLICATION_SCRIPT_PATH:
+		return
 	_controller_input = (load(CONTROLLER_INPUT_OWNER_PATH) as Script).new()
 	_controller_focus = (load(CONTROLLER_FOCUS_NAVIGATOR_PATH) as Script).new()
 	_controller_input.configure(_presentation_settings.controller)
@@ -335,7 +352,10 @@ func _apply_initial_launch_volume() -> void:
 	if FileAccess.file_exists(settings_path):
 		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(settings_path))
 		if parsed is Dictionary:
-			linear_volume = clampf(float(parsed.get("masterVolume", 1.0)) * float(parsed.get("soundVolume", 1.0)), 0.0, 1.0)
+			var stored: Dictionary = parsed
+			var stored_master: float = stored.get("masterVolume", 1.0)
+			var stored_sound: float = stored.get("soundVolume", 1.0)
+			linear_volume = clampf(stored_master * stored_sound, 0.0, 1.0)
 	var volume_db := linear_to_db(linear_volume) if linear_volume > 0.0 else -80.0
 	_launch_transition.volume_db = volume_db
 	_launch_music.volume_db = volume_db

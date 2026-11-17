@@ -1,0 +1,167 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_conditions_panel.gd" id="1_editor_condi"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_stat_stepper.tscn" id="2_editor_stat_"]
+
+[node name="EditorConditionsPanel" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 1
+follow_focus = true
+script = ExtResource("1_editor_condi")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="ConditionsHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/ConditionsHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Conditions"
+
+[node name="Spacer" type="Control" parent="Content/ConditionsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/ConditionsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "0 to 32,767 · permanent race and class values stay locked"
+
+[node name="ConditionGrid" type="GridContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 5
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Condition1" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition2" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition3" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition4" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition5" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition6" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition7" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition8" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition9" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition10" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition11" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition12" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition13" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition14" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition15" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition16" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition17" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition18" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition19" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition20" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition21" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition22" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition23" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition24" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition25" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition26" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition27" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition28" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition29" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition30" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition31" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition32" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition33" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition34" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition35" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition36" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition37" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition38" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition39" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+
+[node name="Condition40" parent="Content/ConditionGrid" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2

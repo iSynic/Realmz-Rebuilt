@@ -13,8 +13,7 @@ signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal controller_binding_capture_requested(action_id: StringName)
-signal vault_archive_requested(character_id: String)
-signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_character_requested(operation: StringName, character_id: String, revision_hash: String)
 signal vault_maintenance_requested(operation: StringName)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
@@ -93,9 +92,8 @@ func _init() -> void:
 	content_presenter.system_action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
 	content_presenter.presentation_setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
 	content_presenter.controller_binding_capture_requested.connect(func(action_id: StringName) -> void: controller_binding_capture_requested.emit(action_id))
-	content_presenter.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
 	content_presenter.vault_maintenance_requested.connect(func(operation: StringName) -> void: vault_maintenance_requested.emit(operation))
-	content_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
+	content_presenter.vault_character_requested.connect(vault_character_requested.emit)
 	content_presenter.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
 	content_presenter.refresh_requested.connect(func() -> void: refresh_current_workspace())
 	content_presenter.back_requested.connect(func() -> void: handle_back())
@@ -108,6 +106,10 @@ var shared_menu_backdrop: bool:
 	set(active):
 		shared_menu_backdrop = active
 		(get_node("SaveModalShield") as ColorRect).color.a = 0.0 if active else 0.72
+
+
+func _input(event: InputEvent) -> void:
+	WorkspaceFocusController.note_input(event)
 
 
 func _ready() -> void:
@@ -564,12 +566,16 @@ func refresh_current_workspace(notify_route_change: bool = false) -> void:
 	call_deferred("_complete_route_render", transition_revision, mounted_new_route, previous_scroll_horizontal, previous_scroll_vertical)
 
 
-func _complete_route_render(transition_revision: int, reset_scroll_to_top: bool, previous_scroll_horizontal: int, previous_scroll_vertical: int) -> void:
+## A newly mounted route starts at its top and takes its initial focus; a rerender keeps both.
+func _complete_route_render(transition_revision: int, mounted_new_route: bool, previous_scroll_horizontal: int, previous_scroll_vertical: int) -> void:
 	if transition_revision != _route_transition_revision:
 		return
-	var focus_key := _focus_controller.restore(self, _body, _body_scroll, _screen_id, reset_scroll_to_top, previous_scroll_horizontal, previous_scroll_vertical)
+	var focus_key := _focus_controller.restore(self, _body, _body_scroll, _screen_id, mounted_new_route, previous_scroll_horizontal, previous_scroll_vertical)
 	if _screen_id == &"spells":
-		content_presenter.spellbook.restore_controller_focus(reset_scroll_to_top)
+		content_presenter.spellbook.restore_controller_focus(mounted_new_route)
+	elif _screen_id == &"vault":
+		# Character Files places focus on the selected record after generic restoration.
+		content_presenter.characters.restore_vault_focus(mounted_new_route)
 	workspace_focus_restored.emit(_screen_id, focus_key)
 
 

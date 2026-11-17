@@ -1,6 +1,6 @@
 [gd_scene format=3]
 
-[node name="BattleInitiative" type="PanelContainer"]
+[node name="BattleInitiative" type="PanelContainer" groups=["ui_theme_textured"]]
 theme_type_variation = &"BattleSummaryInset"
 size_flags_horizontal = 3
 size_flags_stretch_ratio = 1.55
@@ -16,7 +16,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.388235, 0.847059, 0.905882, 1)
 theme_override_font_sizes/font_size = 10
 
-[node name="BattleInitiativeOrder" type="HBoxContainer" parent="Column"]
+[node name="BattleInitiativeOrder" type="BoxContainer" parent="Column"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

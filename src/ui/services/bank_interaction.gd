@@ -105,9 +105,9 @@ func _bind_pool_summary() -> void:
 	if _departure_mode:
 		banked.text = "Done leaves any unassigned wealth behind and continues this movement attempt."
 	else:
-		banked.text = "Banked separately: %s. Opening imports banked wealth; leaving returns the remaining pool." % _wealth_text(_body.banked_wealth)
+		banked.text = "In the bank: %s. Opening the bank adds it to the pool; whatever is left in the pool is banked again when you leave." % _wealth_text(_body.banked_wealth)
 	# The visible Banked line carries these request-specific import and exit facts.
-	banked.tooltip_text = "Done continues this movement attempt." if _departure_mode else "Opening imports banked wealth into the pool; leaving returns the remainder."
+	banked.tooltip_text = "Done continues this movement attempt." if _departure_mode else "Opening the bank adds banked wealth to the pool; what remains is banked again when you leave."
 
 
 func _connect_pool_actions() -> void:

@@ -64,7 +64,7 @@ var portrait_preview: TextureRect
 var combat_icon_preview: TextureRect
 var party_list: VBoxContainer
 var stored_character_list: VBoxContainer
-var party_setup_options: VBoxContainer
+var party_setup_options: PanelContainer
 var difficulty_option: OptionButton
 var monster_set_option: OptionButton
 var party_guidance_label: Label
@@ -127,6 +127,7 @@ func apply_setup_mode_layout() -> void:
 		var splash_visible := splash_overlay != null and splash_overlay.visible
 		campaign_overlay.visible = setup_visible and not splash_visible and not creator_active
 		campaign_overlay.custom_minimum_size.x = (setup_overlay as PartySetupWorkspace).compact_scenario_minimum_width if compact else wide_scenario_minimum_width
+		campaign_overlay.size_flags_stretch_ratio = 0.6 if compact else 0.9
 	if creator_active:
 		party_pane.visible = false
 		character_pane.custom_minimum_size.x = 0.0
@@ -135,14 +136,15 @@ func apply_setup_mode_layout() -> void:
 	party_pane.visible = true
 	(setup_overlay.get_node("%PartyFooter") as BoxContainer).vertical = compact
 	(setup_overlay.get_node("%Selectors") as BoxContainer).vertical = compact
-	var party_heading_content := setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent") as BoxContainer
+	(setup_overlay.get_node("%CharacterFooter") as BoxContainer).vertical = compact
+	var party_heading_content := setup_overlay.get_node("%ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent") as BoxContainer
 	party_heading_content.vertical = compact
-	var party_heading := setup_overlay.get_node("ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent/Heading") as Label
+	var party_heading := setup_overlay.get_node("%ScenarioPartyWorkspace/CurrentPartyPane/PartyColumn/PartyHeading/PartyHeadingContent/Heading") as Label
 	party_heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if compact else TextServer.AUTOWRAP_OFF
-	character_pane.custom_minimum_size.x = 500.0 if creator_active else 240.0 if compact else 286.0
-	party_pane.custom_minimum_size.x = 270.0 if creator_active else 236.0 if compact else 286.0
-	character_pane.size_flags_stretch_ratio = 1.85 if creator_active else 1.15
-	party_pane.size_flags_stretch_ratio = 1.0 if creator_active else 1.15
+	character_pane.custom_minimum_size.x = 500.0 if creator_active else 220.0 if compact else 286.0
+	party_pane.custom_minimum_size.x = 270.0 if creator_active else 220.0 if compact else 286.0
+	character_pane.size_flags_stretch_ratio = 1.85 if creator_active else 1.0
+	party_pane.size_flags_stretch_ratio = 1.0 if creator_active else 1.03
 
 func attach(host: Control) -> void:
 	self.host = host

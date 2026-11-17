@@ -126,6 +126,12 @@ layout_mode = 2
 tooltip_text = "Gold diamonds mark placed Action Points; gold outlines show effective random encounter rectangles."
 text = "Show APs and random rectangles on map"
 
+[node name="MapIdInStatus" type="CheckButton" parent="Frame/Scroll/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Prefix the party position under the narrative with the current map ID, such as land:0."
+text = "Show map ID beside the party position"
+
 [node name="PartyHeading" type="Label" parent="Frame/Scroll/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.847059, 0.545098, 1)

@@ -5,12 +5,31 @@ extends RefCounted
 const PROFILE := &"ui_sizing_profile"
 const BASELINE := &"ui_sizing_baseline"
 const BOUND_BY := &"ui_sizing_bound_by"
+## Marks a branch that keeps metrics of its own; an ancestor's pass leaves it alone.
+const NESTED := &"ui_sizing_nested"
 
 
 static func apply(root: Control, profile: UiLayoutProfile) -> void:
 	if _engine_owned(root): return
 	root.set_meta(PROFILE, profile)
 	_apply_branch(root, profile)
+
+
+## Gives `root`'s branch its own metrics inside an already sized tree, for an element drawn
+## at its own scale. Sizes and text are laid out at that scale, so nothing is stretched.
+static func apply_nested(root: Control, profile: UiLayoutProfile) -> void:
+	root.set_meta(NESTED, true)
+	root.set_meta(PROFILE, profile)
+	_apply_branch(root, profile)
+
+
+## Returns a branch sized by `apply_nested` to its ancestors' metrics.
+static func clear_nested(root: Control) -> void:
+	if not root.has_meta(NESTED): return
+	root.remove_meta(NESTED)
+	root.remove_meta(PROFILE)
+	var profile := profile_for(root)
+	if profile != null: _apply_branch(root, profile)
 
 
 static func apply_detached(root: Control, profile: UiLayoutProfile) -> void:
@@ -114,6 +133,7 @@ static func _apply_branch(node: Node, profile: UiLayoutProfile, added_only: bool
 				for side: String in ["left", "top", "right", "bottom"]:
 					var margin := "content_margin_" + side
 					if float(style.get(margin)) >= 0.0: style.set(margin, float(style.get(margin)) * profile.ui_scale)
+				UiThemeService.restyle_for(control, style)
 				control.add_theme_stylebox_override(key, style)
 				metrics["applied_styles"][key] = style
 			metrics["style_scale"] = profile.ui_scale
@@ -125,7 +145,7 @@ static func _apply_branch(node: Node, profile: UiLayoutProfile, added_only: bool
 				control.offset_bottom = offsets.w * profile.ui_scale
 			metrics["applied_profile"] = scale_key
 	for child: Node in node.get_children():
-		_apply_branch(child, profile, added_only, bound_root_id)
+		if not child.has_meta(NESTED): _apply_branch(child, profile, added_only, bound_root_id)
 	if node.has_method("apply_ui_sizing"):
 		node.call("apply_ui_sizing", profile)
 

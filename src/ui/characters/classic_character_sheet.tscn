@@ -85,6 +85,7 @@ expand_mode = 1
 stretch_mode = 5
 [node name="CombatIconFallback" type="Label" parent="CharacterIdentity/IdentityRow/CombatIconMedia"]
 layout_mode = 2
+theme_type_variation = &"SymbolGlyph"
 theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 text = "⚔"
 horizontal_alignment = 1
@@ -165,17 +166,23 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_type_variation = &"ClassicInset"
-[node name="CharacterSheetContent" type="VBoxContainer" parent="CharacterSheetWorkspace"]
+[node name="CharacterSheetScroll" type="ScrollContainer" parent="CharacterSheetWorkspace"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CharacterSheetContent" type="VBoxContainer" parent="CharacterSheetWorkspace/CharacterSheetScroll"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
 
-[node name="CharacterSheetStatTabs" parent="CharacterSheetWorkspace/CharacterSheetContent" instance=ExtResource("3_stat_tabs")]
+[node name="CharacterSheetStatTabs" parent="CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent" instance=ExtResource("3_stat_tabs")]
 layout_mode = 2
 
-[node name="CharacterSheetInventoryMagicTabs" parent="CharacterSheetWorkspace/CharacterSheetContent" instance=ExtResource("6_inventory_magic")]
+[node name="CharacterSheetInventoryMagicTabs" parent="CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent" instance=ExtResource("6_inventory_magic")]
 layout_mode = 2
 
-[node name="CharacterSheetIdentityTabs" parent="CharacterSheetWorkspace/CharacterSheetContent" instance=ExtResource("9_identity_tabs")]
+[node name="CharacterSheetIdentityTabs" parent="CharacterSheetWorkspace/CharacterSheetScroll/CharacterSheetContent" instance=ExtResource("9_identity_tabs")]
 layout_mode = 2

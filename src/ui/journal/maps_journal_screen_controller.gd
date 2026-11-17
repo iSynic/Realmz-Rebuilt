@@ -9,8 +9,6 @@ signal intent_submitted(intent: PlayerIntent)
 const GOLD := Color("d5b45d")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("9aa0a8")
-const JOURNAL_ROW := Color("252f31")
-const JOURNAL_ROW_SELECTED := Color("4c4932")
 const JOURNAL_TEXT := Color("e0e2e5")
 const JOURNAL_MUTED := Color("aebec0")
 
@@ -136,10 +134,10 @@ func _bind_location_note_preview(workspace: MapsNotesWorkspace, note: LocationNo
 	preview_region.size_flags_vertical = Control.SIZE_EXPAND_FILL if map_available else Control.SIZE_SHRINK_BEGIN
 	if selected:
 		_bind_label(facts.get_node("Location") as Label, "%s  •  %s  •  %d,%d" % [note.map_name, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y], CYAN, 14)
-		_bind_label(facts.get_node("Darkness") as Label, "Saved darkness mask %d of 6" % clampi(note.darkness_value, 0, 6) if note.darkness_value > 0 else "No saved darkness mask", MUTED, 12)
+		_bind_label(facts.get_node("Darkness") as Label, "Darkness %d of 6 when saved" % clampi(note.darkness_value, 0, 6) if note.darkness_value > 0 else "Fully lit when saved", MUTED, 12)
 	if not map_available:
 		var message := empty.get_node("Text") as Label
-		message.text = "No selected place\nChoose a saved note to recenter its detached map view." if not selected else "No saved map preview for this place."
+		message.text = "No place selected\nChoose a saved place to see it on the map." if not selected else "No saved map preview for this place."
 		if not selected:
 			return
 	else:
@@ -175,7 +173,7 @@ func _bind_location_note_editor(workspace: MapsNotesWorkspace, view: GameView) -
 	var availability := view.availability(&"set_location_note")
 	var refresh := func() -> void:
 		var byte_count := editor.text.to_utf8_buffer().size()
-		count_label.text = "%d / %d encoded bytes" % [byte_count, LocationNoteState.MAX_TEXT_BYTES]
+		count_label.text = "Length %d / %d" % [byte_count, LocationNoteState.MAX_TEXT_BYTES]
 		count_label.modulate = Color("d96f6f") if byte_count > LocationNoteState.MAX_TEXT_BYTES else MUTED
 		save.disabled = not availability.enabled or editor.text == current.text or byte_count > LocationNoteState.MAX_TEXT_BYTES
 		save.tooltip_text = availability.reason if not availability.enabled else "Change the note before saving." if editor.text == current.text else "Classic location notes are limited to 255 encoded bytes." if byte_count > LocationNoteState.MAX_TEXT_BYTES else ""
@@ -339,40 +337,19 @@ func _bind_journal_detail(workspace: MapsNotesWorkspace, view: GameView) -> void
 			return
 	record.visible = false
 	empty.visible = true
-	var message := "No selected entry\nAuthored journal text will appear here." if view.journal_entries.is_empty() else "Entry unavailable\nThe selected journal record no longer exists."
+	var message := "No entry selected\nChoose an entry to read it." if view.journal_entries.is_empty() else "Entry unavailable\nThat journal entry is no longer in the journal."
 	(empty.get_node("Text") as Label).text = message
 
 
 func _style_journal_row(panel: PanelContainer, selected: bool) -> void:
-	panel.add_theme_stylebox_override("panel", _flat_style(JOURNAL_ROW_SELECTED if selected else JOURNAL_ROW, GOLD if selected else Color("617071"), 2 if selected else 1))
+	# Variations resolve against the live theme, so rows styled before they enter the tree still follow it.
+	panel.theme_type_variation = &"ClassicItemLedgerSelectedRow" if selected else &"ClassicItemLedgerRow"
 
 
-func _style_journal_button(button: Button, selected: bool) -> void:
-	button.add_theme_color_override("font_color", GOLD if selected else JOURNAL_TEXT)
-	button.add_theme_color_override("font_hover_color", GOLD)
-	button.add_theme_color_override("font_pressed_color", GOLD)
-	button.add_theme_stylebox_override("normal", _flat_style(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0))
-	button.add_theme_stylebox_override("hover", _flat_style(Color("344143"), Color("7d918f"), 1))
-	button.add_theme_stylebox_override("pressed", _flat_style(JOURNAL_ROW_SELECTED, GOLD, 1))
+func _style_journal_button(button: Button, _selected: bool) -> void:
+	# The row panel shows the selection, so the button inside it draws no box of its own.
+	button.flat = true
 
-
-static func _flat_style(background: Color, border: Color, border_width: int) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = background
-	style.border_color = border
-	style.border_width_left = border_width
-	style.border_width_top = border_width
-	style.border_width_right = border_width
-	style.border_width_bottom = border_width
-	style.corner_radius_top_left = 2
-	style.corner_radius_top_right = 2
-	style.corner_radius_bottom_left = 2
-	style.corner_radius_bottom_right = 2
-	style.content_margin_left = 8.0
-	style.content_margin_top = 6.0
-	style.content_margin_right = 8.0
-	style.content_margin_bottom = 6.0
-	return style
 
 
 func _bind_label(label: Label, text: String, color: Color = Color.WHITE, size: int = 15) -> void:

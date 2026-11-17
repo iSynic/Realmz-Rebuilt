@@ -746,6 +746,25 @@
       },
       "kind": "classic-reward",
       "version": 1.0
+    },
+    {
+      "data": {
+        "battleNumber": 92.0,
+        "context": {},
+        "extraCode": [
+          92.0,
+          92.0,
+          1064.0,
+          210.0,
+          22.0
+        ],
+        "gosub": false,
+        "messageId": 78.0,
+        "opcode": 56.0,
+        "stage": "battle"
+      },
+      "kind": "classic-battle-prelude",
+      "version": 1.0
     }
   ],
   "session": [
@@ -1049,7 +1068,7 @@
     }
   ],
   "source": "tests/scenario/test_scenario_vm.gd",
-  "sourcePublicCommit": "122b99420702002328657c7a146ce65ac4719872",
   "sourceGitBlob": "d2a2093d4f04ede52c520aa82fa0f5d664006dea",
+  "sourcePublicCommit": "122b99420702002328657c7a146ce65ac4719872",
   "sourceTag": "v0.1.0-beta.27"
 }

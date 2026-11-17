@@ -10,6 +10,7 @@ This folder is the Godot-facing home of the Character, Allies, Bestiary, and Cha
 - `character_sheet_stat_tabs.tscn`: edit the named Overview facts under `OverviewTab/OverviewRegions` and Lifetime Record cards under `RecordTab/LifetimeRecord/Content/RecordCards`. These fixed rows survive character, tab, and layout changes; only their detached values are rebound.
 - `creature_library_workspace.tscn`: the shared Allies and Bestiary list-and-detail body.
 - `vault_screen.tscn`: the Character Files library, history, and immutable inspection surface.
+- `editor/character_editor.tscn`: the Character Files editor. Each tab panel (`editor_basics_panel.tscn`, `editor_record_panel.tscn`, and so on) authors its steppers; a stepper's `metadata/field` (or `metadata/kind` and `metadata/index`) names what it edits, and a grid's `columns` is its widest layout. `editor_dialog.tscn` and `editor_number_pad.tscn` are its overlays.
 - `character_screen_controller.gd`: route-local character and vault selection, binding, and typed commands.
 - `creature_library_screen_controller.gd`: read-only Allies and Bestiary binding.
 

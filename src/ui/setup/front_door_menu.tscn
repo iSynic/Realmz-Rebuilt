@@ -1,9 +1,10 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/main_menu_view.gd" id="1_menu"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/main-menu/weathered-gold-title.png" id="2_title"]
 [ext_resource type="Texture2D" path="res://src/ui/shared/assets/main-menu/backgrounds/plate-05.png" id="3_background"]
 [ext_resource type="PackedScene" path="res://src/ui/setup/main_menu_action.tscn" id="4_action"]
+[ext_resource type="Theme" path="res://src/ui/setup/main_menu_typography.tres" id="5_type"]
 
 [sub_resource type="Gradient" id="Gradient_readability"]
 offsets = PackedFloat32Array(0, 0.26, 0.55, 1)
@@ -24,6 +25,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
+theme = ExtResource("5_type")
 script = ExtResource("1_menu")
 background_paths = PackedStringArray("res://src/ui/shared/assets/main-menu/backgrounds/plate-01.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-02.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-03.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-04.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-05.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-06.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-07.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-08.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-09.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-10.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-11.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-12.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-13.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-14.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-15.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-16.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-17.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-18.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-19.png", "res://src/ui/shared/assets/main-menu/backgrounds/plate-20.png")
 

@@ -240,6 +240,8 @@ func _build_loot_side(body: TreasureRequestBody) -> void:
 			_add_loot_item(grid, item, index)
 		else:
 			_add_vacant_loot_slot(grid, slot_id, index)
+	# The item shown in the record below is ringed from the start, not only once hovered.
+	if _selected_item != null and _selection_rings.has(_selected_item.instance_id): (_selection_rings[_selected_item.instance_id] as TextureRect).visible = true
 
 
 func _build_item_inspector(body: TreasureRequestBody) -> void:
@@ -403,8 +405,8 @@ func _select_recipient(character_id: String) -> void:
 func _focus_loot_item(item: InteractionRequestValue.RewardItem, _button: Button) -> void:
 	_selected_item = item
 	var ring: TextureRect = _selection_rings[item.instance_id] if _selection_rings.has(item.instance_id) else null
-	if ring != null:
-		ring.visible = true
+	# One ring at a time: it marks the item the record below describes.
+	for other: TextureRect in _selection_rings.values(): other.visible = other == ring
 	var record_icon := find_child("TreasureRecordIcon", true, false) as TextureRect
 	_refresh_item_record(record_icon)
 	_refresh_item_availability()
@@ -413,7 +415,7 @@ func _focus_loot_item(item: InteractionRequestValue.RewardItem, _button: Button)
 func _hide_loot_ring(instance_id: String) -> void:
 	var ring: TextureRect = _selection_rings[instance_id] if _selection_rings.has(instance_id) else null
 	var button: Button = _item_buttons[instance_id] if _item_buttons.has(instance_id) else null
-	if ring != null and (button == null or not button.has_focus()):
+	if ring != null and (button == null or not button.has_focus()) and (_selected_item == null or _selected_item.instance_id != instance_id):
 		ring.visible = false
 
 
@@ -440,10 +442,9 @@ func _refresh_item_record(icon: TextureRect) -> void:
 	_selected_item_description.text = _selected_item.description
 	for fact: InteractionRequestValue.RewardFact in _selected_item.facts:
 		var label := _add_colored_label(_selected_item_facts, fact.label, MUTED, "TreasureFact_%s" % fact.label.to_snake_case())
-		label.add_theme_color_override("font_color", GOLD)
 		label.autowrap_mode = TextServer.AUTOWRAP_OFF
 		UiSizing.minimum_size(label, Vector2(96.0, 0.0))
-		var value := _add_colored_label(_selected_item_facts, fact.value, MUTED, "TreasureFactValue_%s" % fact.label.to_snake_case())
+		var value := _add_colored_label(_selected_item_facts, fact.value, Color("e0e2e5"), "TreasureFactValue_%s" % fact.label.to_snake_case())
 		value.autowrap_mode = TextServer.AUTOWRAP_OFF
 		value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if icon != null: icon.texture = _item_texture(_selected_item)

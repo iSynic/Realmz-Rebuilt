@@ -17,7 +17,7 @@ var _backdrop_visible := false
 
 
 func _ready() -> void:
-	_frames = [$Roster, $Narration, $World, $Party, $Effects]
+	_frames = [$Roster, $Narration, $World, $Party, $Effects, $StatusStrip, $PartyDock, $Bucket3, $Bucket4]
 	for index: int in _frames.size():
 		(_frames[index].get_node("Content/Title") as Control).hide()
 		_frames[index].gui_input.connect(_frame_input.bind(index))
@@ -57,7 +57,7 @@ func cancel() -> void:
 
 
 func _use_positions() -> void:
-	var shell := _shell_ref.get_ref() as GameShell
+	var shell: GameShell = _shell_ref.get_ref()
 	shell.navigator.content_presenter.system_preferences.stage_setting(&"hud", _draft)
 	_close()
 
@@ -85,6 +85,7 @@ func _sync_frames() -> void:
 	if shell == null: return
 	var rectangles := shell.hud.panel_rectangles()
 	for index: int in _frames.size():
+		_frames[index].visible = rectangles[index].has_area()
 		_frames[index].position = rectangles[index].position
 		_frames[index].size = rectangles[index].size
 	_sync_editors()
@@ -133,6 +134,8 @@ func _frame_input(event: InputEvent, index: int) -> void:
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		_select(index)
 		_frames[index].grab_focus()
+		# Letting go near a window edge catches the panel there and turns strips along it.
+		if _dragging and not event.pressed: _move_to(_frames[index].position, HudPlacement.SNAP_DISTANCE)
 		_dragging = event.pressed
 		_drag_origin = get_global_mouse_position()
 		_panel_origin = _frames[index].position
@@ -142,19 +145,9 @@ func _frame_input(event: InputEvent, index: int) -> void:
 		accept_event()
 
 
-func _move_to(location: Vector2) -> void:
+func _move_to(location: Vector2, snap: float = 0.0) -> void:
 	var shell := _shell_ref.get_ref() as GameShell
-	var area := shell.hud.placement_area()
-	var available := (area.size - shell.hud.panel_rectangles()[_selected].size).max(Vector2.ZERO)
-	var local := (location - area.position).clamp(Vector2.ZERO, available)
-	var normalized := Vector2(local.x / available.x if available.x > 0 else 0.0, local.y / available.y if available.y > 0 else 0.0)
-	if _selected == 4:
-		_draft.effects_custom_position = true
-		_draft.effects_position = normalized
-	else:
-		var preference := _draft.panels[_selected]
-		preference.custom_position = true
-		preference.position = normalized
+	HudPlacement.drop(_draft, _selected, location, shell.hud.panel_rectangles()[_selected].size, shell.hud.placement_area(), snap)
 	shell.hud.update_arrangement(_draft)
 	_sync_frames()
 
@@ -162,7 +155,7 @@ func _move_to(location: Vector2) -> void:
 func _sync_editors() -> void:
 	if _draft == null: return
 	%SizeControls.visible = _selected < 2
-	%OrientationControls.visible = _selected >= 2
+	%OrientationControls.visible = _selected in [2, 3, 4, 7, 8]
 	$Toolbar/Content/Help.text = "Drag to move or resize the corner. Confirm edits size; confirm again for actions." if _selected < 2 else "Drag or use directions to move. Shoulders select a panel."
 	_binding_controls = true
 	if _selected < 2:
@@ -175,7 +168,7 @@ func _sync_editors() -> void:
 			control.max_value = floorf(maximum[axis])
 			if not control.get_line_edit().has_focus(): control.set_value_no_signal(roundf(_frames[_selected].size[axis]))
 	else:
-		%Orientation.select(HudPreferences.ORIENTATIONS.find(_draft.strip_orientations[_selected - 2]))
+		%Orientation.select(HudPreferences.ORIENTATIONS.find(_draft.orientation_of(_selected)))
 	_binding_controls = false
 
 
@@ -210,7 +203,7 @@ func _on_size_changed(_value: float) -> void:
 func _on_orientation_selected(index: int) -> void:
 	if _binding_controls or _selected < 2: return
 	var origin := _frames[_selected].position
-	_draft.strip_orientations[_selected - 2] = HudPreferences.ORIENTATIONS[index]
+	_draft.set_orientation(_selected, HudPreferences.ORIENTATIONS[index])
 	(_shell_ref.get_ref() as GameShell).hud.update_arrangement(_draft)
 	_move_to(origin)
 
@@ -230,11 +223,7 @@ func _edit_size_direction(direction: Vector2i) -> bool:
 
 
 func _reset_positions() -> void:
-	for panel: HudPanelPreferences in _draft.panels:
-		panel.custom_position = false
-		panel.custom_size = false
-	_draft.strip_orientations.assign(["auto", "auto", "auto"])
-	_draft.effects_custom_position = false
+	_draft.reset_placement()
 	(_shell_ref.get_ref() as GameShell).hud.update_arrangement(_draft)
 	_sync_frames()
 
@@ -256,8 +245,12 @@ func handle_controller(action: StringName, pressed: bool, direction: Vector2i) -
 		var focused := get_viewport().gui_get_focus_owner()
 		if focused in _frames: _move_to(_frames[_selected].position + Vector2(direction) * 8.0)
 		else: return false
-	elif action == &"realmz_controller_section_next": _frames[(_selected + 1) % _frames.size()].grab_focus()
-	elif action == &"realmz_controller_section_previous": _frames[posmod(_selected - 1, _frames.size())].grab_focus()
+	elif action in [&"realmz_controller_section_next", &"realmz_controller_section_previous"]:
+		var target := _selected
+		for _attempt: int in _frames.size():
+			target = posmod(target + (1 if action == &"realmz_controller_section_next" else -1), _frames.size())
+			if _frames[target].visible: break
+		_frames[target].grab_focus()
 	else: return false
 	return true
 

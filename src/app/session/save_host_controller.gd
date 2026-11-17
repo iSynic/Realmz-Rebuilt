@@ -358,5 +358,32 @@ func _same_gameplay_state(expected: Dictionary, snapshot: Dictionary) -> bool:
 	return true
 
 
+## Writes an edited at-rest save back to its slot. The previous file becomes the slot's backup.
+## Nothing is written when the slot no longer holds `original`.
+func publish_edit(content: RealmzContent, slot_id: String, original: SaveEnvelope, edited_state: GameState) -> bool:
+	_last_error = ""
+	if content == null or original == null or edited_state == null:
+		_last_error = "The edited save is incomplete."
+		return false
+	if not SaveEditEligibility.reason(original).is_empty():
+		_last_error = SaveEditEligibility.reason(original)
+		return false
+	var current := _repository.load(content.campaign_id, slot_id, content.package_hash)
+	if current == null or current.to_data() != original.to_data():
+		_last_error = "This save changed on disk while you were editing it. Nothing was written."
+		return false
+	var data := original.to_data()
+	data["gameState"] = edited_state.to_data()
+	var edited := _verified_update(content, original, slot_id, data)
+	if edited == null:
+		_last_error = "The edited save didn't pass the restore check, so nothing was written. %s" % _last_error
+		return false
+	edited.map_preview_jpeg = original.map_preview_jpeg
+	if not _repository.publish_update(content.campaign_id, slot_id, edited):
+		_last_error = _repository.last_error
+		return false
+	return true
+
+
 func last_error() -> String:
 	return _last_error if not _last_error.is_empty() else _repository.last_error

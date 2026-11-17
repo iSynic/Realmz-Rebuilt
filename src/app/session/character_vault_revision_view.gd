@@ -15,14 +15,18 @@ var source_package_hash: String
 var source_revision: String
 var required_campaign_id: String = ""
 var publication_label: String
+## What published the file, such as "save-editor/<hold>/<party character>" for a kept party member.
+var publication_source: String
 var is_current: bool
+## For an archived character, the revision that was current when it was archived.
+var last_current: bool
 var archived: bool
 var eligible: bool
 var eligibility_reasons: Array[String] = []
 var character: CharacterView
 
 
-static func from_record(record: CharacterVaultRecord, eligibility: CharacterVaultEligibility, current: bool, is_archived: bool, content: RealmzContent = null) -> CharacterVaultRevisionView:
+static func from_record(record: CharacterVaultRecord, eligibility: CharacterVaultEligibility, current: bool, is_archived: bool, content: RealmzContent = null, character_view: CharacterView = null) -> CharacterVaultRevisionView:
 	var result := CharacterVaultRevisionView.new()
 	result.character_id = record.character_id
 	result.revision_hash = record.revision_hash
@@ -35,12 +39,14 @@ static func from_record(record: CharacterVaultRecord, eligibility: CharacterVaul
 	result.source_package_hash = record.source_package_hash
 	result.source_revision = record.source_revision
 	result.publication_label = String(record.publication_metadata.get("label", record.publication_metadata.get("name", "")))
+	var publication_source: String = record.publication_metadata.get("source", "")
+	result.publication_source = publication_source
 	result.is_current = current
 	result.archived = is_archived
 	result.eligible = eligibility != null and eligibility.eligible
-	result.character = CharacterView.new(record.state, content)
+	result.character = character_view if character_view != null else CharacterView.new(record.state, content)
 	if eligibility == null:
-		result.eligibility_reasons.append("Choose a campaign to calculate import eligibility.")
+		result.eligibility_reasons.append("Choose a scenario in party setup to see who can join.")
 	else:
 		result.eligibility_reasons.append_array(eligibility.reasons)
 	return result

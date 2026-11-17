@@ -15,6 +15,7 @@
 [ext_resource type="FontFile" path="res://src/ui/shared/style/classic_theme_chicago.res" id="13_chicago"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_action_selected.tres" id="13_menu_selected"]
 [ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_panel.tres" id="14_menu_panel"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_tooltip.tres" id="15_menu_tooltip"]
 
 [sub_resource type="StyleBoxTexture" id="BattleButtonDisabled"]
 content_margin_left = 5.0
@@ -154,6 +155,9 @@ texture_margin_right = 8.0
 texture_margin_bottom = 8.0
 axis_stretch_horizontal = 1
 axis_stretch_vertical = 1
+
+[sub_resource type="SystemFont" id="SymbolGlyphFont"]
+font_names = PackedStringArray("Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols 2", "Noto Sans Symbols", "DejaVu Sans", "Symbola")
 
 [sub_resource type="FontVariation" id="BodyFont"]
 fallbacks = Array[Font]([ExtResource("3_ui")])
@@ -563,6 +567,10 @@ MenuButton/styles/focus = SubResource("Focus")
 MenuButton/styles/hover = SubResource("MenuHover")
 MenuButton/styles/normal = SubResource("MenuNormal")
 MenuButton/styles/pressed = SubResource("MenuPressed")
+MenuCaption/base_type = &"ClassicUtility"
+MenuCaption/colors/font_color = Color(0.561, 0.639, 0.682, 1)
+MenuHeading/base_type = &"ClassicHeading"
+MenuHeading/colors/font_color = Color(0.867, 0.729, 0.416, 1)
 MenuDialog/base_type = &"PanelContainer"
 MenuDialog/styles/panel = ExtResource("14_menu_panel")
 OptionButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
@@ -594,3 +602,10 @@ VScrollBar/icons/decrement_pressed = ExtResource("7_scroll_up")
 VScrollBar/icons/increment = ExtResource("8_scroll_down")
 VScrollBar/icons/increment_highlight = ExtResource("8_scroll_down")
 VScrollBar/icons/increment_pressed = ExtResource("8_scroll_down")
+SymbolGlyph/base_type = &"Label"
+SymbolGlyph/fonts/font = SubResource("SymbolGlyphFont")
+TooltipPanel/styles/panel = ExtResource("15_menu_tooltip")
+TooltipLabel/colors/font_color = Color(0.886, 0.886, 0.855, 1)
+TooltipLabel/colors/font_shadow_color = Color(0, 0, 0, 0)
+TooltipLabel/font_sizes/font_size = 14
+TooltipLabel/fonts/font = SubResource("UtilityFont")

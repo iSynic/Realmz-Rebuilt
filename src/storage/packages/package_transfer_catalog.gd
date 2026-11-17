@@ -30,4 +30,10 @@ static func build(content: Dictionary, application: RealmzContent, native_record
 				if normalized.has("casteRestrictions"):
 					normalized["casteRestrictions"] = int(normalized["casteRestrictions"]) & 0xFE00
 			result.record(StringName(family), String(raw["id"]), CanonicalJson.encode(normalized).sha256_text(), application != null)
+			if family == "items":
+				var content_only := normalized.duplicate(true)
+				content_only.erase("id")
+				content_only.erase("classicId")
+				var item_id: String = raw["id"]
+				result.record_content(&"items", item_id, CanonicalJson.encode(content_only).sha256_text())
 	return result

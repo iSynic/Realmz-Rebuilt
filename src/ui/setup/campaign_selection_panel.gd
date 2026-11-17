@@ -22,7 +22,6 @@ func _ready() -> void:
 		if _campaign != null and not _running: removal_requested.emit(_campaign.campaign_id, _campaign.display_name))
 	%ShowScenarioDetails.pressed.connect(_open_details)
 	%CloseScenarioDetails.pressed.connect(close_details)
-	%ScenarioBack.pressed.connect(func() -> void: back_requested.emit())
 	get_viewport().gui_focus_changed.connect(_keep_details_focus)
 	get_viewport().size_changed.connect(_refresh_details_geometry)
 
@@ -95,7 +94,7 @@ func _filter_rows() -> void:
 	var profile := UiSizing.profile_for(self)
 	var compact := profile != null and profile.id == UiLayoutProfile.COMPACT
 	%MainFilter.text = "Main" if compact else "Main %d" % %MainCampaignRows.get_child_count()
-	%ImportedFilter.text = "Import" if compact else "Imported %d" % %ImportedCampaignRows.get_child_count()
+	%ImportedFilter.text = "Imported" if compact else "Imported %d" % %ImportedCampaignRows.get_child_count()
 	%MainFilter.tooltip_text = "%d main scenarios" % %MainCampaignRows.get_child_count()
 	%ImportedFilter.tooltip_text = "%d imported scenarios" % %ImportedCampaignRows.get_child_count()
 	var count := 0

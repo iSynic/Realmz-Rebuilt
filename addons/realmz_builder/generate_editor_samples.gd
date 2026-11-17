@@ -8,14 +8,14 @@ const OUTPUT_PATH := "res://addons/realmz_builder/editor_samples.json.gz"
 const MEDIA_ROOT := "res://addons/realmz_builder/editor_sample_media"
 const SAMPLE_COMPONENTS := [
 	"character_metric_row.tscn", "character_sheet_selector_button.tscn", "creature_library_row.tscn",
-	"vault_character_card.tscn", "battle_initiative_panel.tscn", "battle_initiative_entry.tscn", "combat_spell_power_button.tscn",
+	"vault_character_row.tscn", "vault_revision_row.tscn", "battle_initiative_panel.tscn", "battle_initiative_entry.tscn", "combat_spell_power_button.tscn",
 	"inventory_character_button.tscn", "inventory_fact_row.tscn", "inventory_item_row.tscn",
 	"journal_entry_row.tscn", "location_note_row.tscn", "player_map_menu_row.tscn",
 	"classic_spell_selection_button.tscn", "money_character_row.tscn", "money_transfer_row.tscn",
 	"shop_character_button.tscn", "shop_empty_label.tscn", "shop_item_row.tscn",
 	"temple_character_row.tscn", "temple_service_row.tscn", "treasure_loot_cell.tscn",
-	"treasure_recipient_row.tscn", "campaign_library_row.tscn", "party_import_candidate_row.tscn",
-	"party_import_detail_label.tscn", "party_import_source_row.tscn", "party_setup_character_row.tscn",
+	"treasure_recipient_row.tscn", "campaign_library_row.tscn", "party_import_candidate_card.tscn",
+	"party_import_source_row.tscn", "party_setup_character_row.tscn",
 	"pick_lock_tumbler_row.tscn", "save_slot_row.tscn", "interaction_hint.tscn",
 ]
 

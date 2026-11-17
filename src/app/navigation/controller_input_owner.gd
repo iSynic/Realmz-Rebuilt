@@ -80,9 +80,11 @@ func _bind_existing_popups(node: Node) -> void:
 
 
 func _bind_popup_input(node: Node) -> void:
-	if not (node is PopupMenu or node is FileDialog) or not get_parent().is_ancestor_of(node):
+	# A dialog opts in as a controller focus scope; the router then moves, confirms and scrolls inside it.
+	var scoped_dialog := node is AcceptDialog and node.has_meta(&"controller_focus_scope")
+	if not (node is PopupMenu or node is FileDialog or scoped_dialog) or not get_parent().is_ancestor_of(node):
 		return
-	if node is FileDialog:
+	if node is FileDialog or scoped_dialog:
 		if node.get_node_or_null("ControllerWindowInput") == null:
 			var forwarder := WindowInputForwarder.new()
 			forwarder.name = "ControllerWindowInput"

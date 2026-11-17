@@ -6,6 +6,7 @@ extends PanelContainer
 signal command_requested(command: SessionDebugCommand)
 signal noclip_changed(enabled: bool)
 signal topology_debug_changed(enabled: bool)
+signal map_id_visible_changed(enabled: bool)
 signal console_requested
 signal console_shortcut_changed(enabled: bool)
 
@@ -32,6 +33,7 @@ var _trigger_battle: Button
 var _win_battle: Button
 var _noclip: CheckButton
 var _topology_debug: CheckButton
+var _map_id_in_status: CheckButton
 var _status: Label
 var _auto_log: MenuButton
 var _console_shortcut: CheckButton
@@ -77,6 +79,7 @@ func _ready() -> void:
 	_win_battle = %WinBattle
 	_noclip = %Noclip
 	_topology_debug = %TopologyDebug
+	_map_id_in_status = %MapIdInStatus
 	_status = %Status
 	_auto_log = %RecentAutoActions
 	_console_shortcut = %ConsoleShortcut
@@ -88,6 +91,7 @@ func _ready() -> void:
 	_warp.pressed.connect(_request_warp)
 	_noclip.toggled.connect(func(enabled: bool) -> void: noclip_changed.emit(enabled))
 	_topology_debug.toggled.connect(func(enabled: bool) -> void: topology_debug_changed.emit(enabled))
+	_map_id_in_status.toggled.connect(func(enabled: bool) -> void: map_id_visible_changed.emit(enabled))
 	_restore.pressed.connect(func() -> void: command_requested.emit(SessionDebugCommand.restore_party()))
 	_item_search.text_changed.connect(func(_text: String) -> void: _refresh_item_matches())
 	_item_search.text_submitted.connect(func(_text: String) -> void: _request_item_grant())

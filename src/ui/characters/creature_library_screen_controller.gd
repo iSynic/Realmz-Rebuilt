@@ -40,7 +40,7 @@ func present_allies(target: Control, view: GameView, media: ClassicMediaCatalog,
 		row.name = "AllyRow_%s" % ally.id.validate_node_name()
 		row.text = "%s\n%d/%d ST  •  %d HD" % [ally.name, ally.current_health, ally.maximum_health, ally.hit_dice]
 		row.button_pressed = ally.id == selected.id
-		row.icon = _ally_icon_texture(ally, media)
+		(row.get_node("Art") as TextureRect).texture = _ally_icon_texture(ally, media)
 		row.tooltip_text = "Inspect %s" % ally.name
 		UiSizing.font_size(row, &"font_size", 14)
 		row.pressed.connect(_select_ally.bind(ally.id, screen, view, media, text_scale))
@@ -67,7 +67,7 @@ func present_bestiary(target: Control, view: GameView, media: ClassicMediaCatalo
 		row.name = "BestiaryRow_%s" % entry.definition_id.validate_node_name()
 		row.text = "%s\n%d HD  •  AC %d" % [entry.name, entry.hit_dice, entry.armor]
 		row.button_pressed = entry.definition_id == selected.definition_id
-		row.icon = _catalog_icon_texture(entry, media)
+		(row.get_node("Art") as TextureRect).texture = _catalog_icon_texture(entry, media)
 		row.tooltip_text = "Inspect %s" % entry.name
 		UiSizing.font_size(row, &"font_size", 14)
 		row.pressed.connect(_select_bestiary.bind(entry.definition_id, screen, view, media, text_scale))
@@ -113,6 +113,8 @@ func _add_row(screen: CreatureLibraryScreen) -> Button:
 func _bind_empty(screen: CreatureLibraryScreen, title: String, detail: String, text_scale: float) -> void:
 	var empty := screen.empty_state()
 	empty.visible = true
+	# With nothing to choose from, the note has the whole workspace instead of a blank list beside it.
+	screen.list_panel().visible = false
 	_bind_label(empty.get_node("EmptyTitle") as Label, title, GOLD, 18, text_scale)
 	_bind_label(empty.get_node("EmptyDetail") as Label, detail, MUTED, 13, text_scale)
 
@@ -122,7 +124,7 @@ func _bind_list_title(screen: CreatureLibraryScreen, title: String, text_scale: 
 
 
 func _bind_ally_record(screen: CreatureLibraryScreen, ally: MonsterView, media: ClassicMediaCatalog, text_scale: float) -> void:
-	_bind_record_identity(screen, ally.name, "Classic monster %d" % ally.classic_id, "%d Hit Dice" % ally.hit_dice, _ally_icon_texture(ally, media), "CICN %d unavailable." % ally.icon_id if ally.icon_id != 0 else ally.name, text_scale)
+	_bind_record_identity(screen, ally.name, "%d Hit Dice" % ally.hit_dice, _ally_icon_texture(ally, media), "CICN %d unavailable." % ally.icon_id if ally.icon_id != 0 else ally.name, text_scale)
 	_bind_description(screen, "", text_scale)
 	_bind_facts(screen, [
 		["Stamina", "%d / %d" % [ally.current_health, ally.maximum_health]],
@@ -138,8 +140,8 @@ func _bind_ally_record(screen: CreatureLibraryScreen, ally: MonsterView, media: 
 
 
 func _bind_bestiary_record(screen: CreatureLibraryScreen, entry: MonsterCatalogEntryView, media: ClassicMediaCatalog, text_scale: float) -> void:
-	_bind_record_identity(screen, entry.name, "Classic monster %d  •  name %d" % [entry.classic_id, entry.classic_name_id], "%d Hit Dice" % entry.hit_dice, _catalog_icon_texture(entry, media), "CICN %d unavailable." % entry.icon_id if entry.icon_id != 0 else entry.name, text_scale)
-	_bind_description(screen, entry.description if not entry.description.is_empty() else "No description supplied.", text_scale)
+	_bind_record_identity(screen, entry.name, "%d Hit Dice" % entry.hit_dice, _catalog_icon_texture(entry, media), "CICN %d unavailable." % entry.icon_id if entry.icon_id != 0 else entry.name, text_scale)
+	_bind_description(screen, entry.description, text_scale)
 	_bind_facts(screen, [
 		["Armor", str(entry.armor)],
 		["Magic Resistance", "%d%%" % entry.magic_resistance],
@@ -151,19 +153,20 @@ func _bind_bestiary_record(screen: CreatureLibraryScreen, entry: MonsterCatalogE
 	_bind_states(screen, [["Attacks", entry.attack_rows], ["Immunities", entry.immunities], ["Vulnerabilities", entry.vulnerabilities]], text_scale)
 
 
-func _bind_record_identity(screen: CreatureLibraryScreen, title: String, source: String, hit_dice: String, texture: Texture2D, missing_tooltip: String, text_scale: float) -> void:
+func _bind_record_identity(screen: CreatureLibraryScreen, title: String, hit_dice: String, texture: Texture2D, missing_tooltip: String, text_scale: float) -> void:
 	var record := screen.detail_record()
 	record.visible = true
-	var icon := record.get_node("Header/CreatureIcon") as TextureRect
+	var icon := record.get_node("Header/ArtFrame/CreatureIcon") as TextureRect
 	icon.texture = texture
 	icon.tooltip_text = missing_tooltip if texture == null else title
 	_bind_label(record.get_node("Header/Identity/CreatureName") as Label, title, GOLD, 20, text_scale)
-	_bind_label(record.get_node("Header/Identity/CreatureSource") as Label, source, MUTED, 13, text_scale)
+	# Resource numbers are for the builder, not the player.
+	(record.get_node("Header/Identity/CreatureSource") as Label).visible = false
 	_bind_label(record.get_node("Header/Identity/CreatureHitDice") as Label, hit_dice, TEXT, 13, text_scale)
 
 
 func _bind_description(screen: CreatureLibraryScreen, value: String, text_scale: float) -> void:
-	var description := screen.detail_record().get_node("CreatureDescription") as Label
+	var description := screen.detail_record().get_node("Header/Identity/CreatureDescription") as Label
 	description.visible = not value.is_empty()
 	_bind_label(description, value, TEXT, 13, text_scale)
 

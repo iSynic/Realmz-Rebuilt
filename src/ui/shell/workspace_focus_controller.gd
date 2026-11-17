@@ -8,8 +8,19 @@ const IDENTITY_FIELDS: Array[StringName] = [
 	&"definition_id", &"action_id", &"operation",
 ]
 
+## True while the mouse was the last thing used. A screen opened with it still takes focus,
+## for the keys to continue from, but does not draw the keyboard outline until a key is used.
+static var pointer_led := false
+
 var _focus_states: Dictionary = {}
 var _scroll_states: Dictionary = {}
+
+
+static func note_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		pointer_led = true
+	elif event is InputEventKey or event is InputEventJoypadButton or (event is InputEventJoypadMotion and absf((event as InputEventJoypadMotion).axis_value) > 0.5):
+		pointer_led = false
 
 
 func prepare(body: Node, route_id: StringName) -> void:
@@ -53,7 +64,7 @@ func restore(root: Control, body: Node, scroll: ScrollContainer, route_id: Strin
 		if prior_index >= 0 and not candidates.is_empty():
 			focus_match = candidates[mini(prior_index, candidates.size() - 1)]
 	if focus_match != null:
-		focus_match.grab_focus()
+		focus_match.grab_focus(pointer_led)
 		_reveal(focus_match)
 	else:
 		_focus_first(body)
@@ -106,7 +117,7 @@ func _focusable_controls(parent: Node) -> Array[Control]:
 func _focus_first(parent: Node) -> void:
 	for control: Control in _focusable_controls(parent):
 		if not (control is BaseButton and (control as BaseButton).disabled):
-			control.grab_focus()
+			control.grab_focus(pointer_led)
 			_reveal(control)
 			return
 

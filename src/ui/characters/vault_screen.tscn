@@ -1,132 +1,717 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=21 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/shared/screen_frame.tscn" id="1_base"]
 [ext_resource type="Script" path="res://src/ui/characters/vault_screen.gd" id="2_screen"]
 [ext_resource type="PackedScene" path="res://src/ui/characters/classic_character_sheet.tscn" id="3_sheet"]
-[ext_resource type="PackedScene" path="res://src/ui/characters/vault_character_card.tscn" id="4_card"]
-[ext_resource type="PackedScene" path="res://src/ui/characters/vault_history_row.tscn" id="5_history"]
-[ext_resource type="Script" path="res://src/ui/characters/vault_archive_confirmation.gd" id="6_archive"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/vault_character_row.tscn" id="4_row"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/vault_revision_row.tscn" id="5_revision"]
+[ext_resource type="Script" path="res://src/ui/characters/vault_archive_confirmation.gd" id="6_confirm"]
 [ext_resource type="Script" path="res://src/ui/characters/vault_repair_dialog.gd" id="7_repair"]
+[ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="8_theme"]
+[ext_resource type="Theme" path="res://src/ui/characters/vault_theme.tres" id="9_vault"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/stage_surface.tres" id="st_stage_surface"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/column_panel.tres" id="st_column_panel"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/list_panel.tres" id="st_list_panel"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/field_tile.tres" id="st_field_tile"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/tab_track.tres" id="st_tab_track"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/eligibility_panel.tres" id="st_eligibility_panel"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/banner_panel.tres" id="st_banner_panel"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/prompt_glyph.tres" id="st_prompt_glyph"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/rule_line.tres" id="st_rule_line"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/character_editor.tscn" id="10_editor"]
+[ext_resource type="Script" path="res://src/ui/shared/style/theme_color_bar.gd" id="90_color_bar"]
 
-[node name="VaultScreen" instance=ExtResource("1_base")]
+[sub_resource type="ButtonGroup" id="TabGroup"]
+
+[node name="VaultScreen" instance=ExtResource("1_base") groups=["ui_theme_backdrop"]]
+theme = ExtResource("8_theme")
+theme_override_styles/panel = ExtResource("st_stage_surface")
 route_id = &"vault"
 script = ExtResource("2_screen")
-character_card_scene = ExtResource("4_card")
-history_row_scene = ExtResource("5_history")
+character_row_scene = ExtResource("4_row")
+revision_row_scene = ExtResource("5_revision")
+
+[node name="WorkspaceHeader" parent="WorkspaceColumn" index="0"]
+visible = false
 
 [node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
 text = "Character Files"
 
 [node name="ScreenDescription" parent="WorkspaceColumn/WorkspaceHeader" index="1"]
-text = "Reusable characters, revision history, and campaign eligibility."
+text = ""
 
-[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
+[node name="RouteBackAction" parent="WorkspaceColumn/RouteFooter" index="0"]
 visible = false
 
-[node name="VaultHeaderArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
-unique_name_in_owner = true
-layout_mode = 2
-[node name="CharacterFilesHeader" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea"]
-layout_mode = 2
-theme_override_constants/separation = 8
-[node name="Back" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea/CharacterFilesHeader"]
-layout_mode = 2
-text = "Back"
-[node name="Spacer" type="Control" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea/CharacterFilesHeader"]
-layout_mode = 2
-size_flags_horizontal = 3
-[node name="AvailableCount" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea/CharacterFilesHeader"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
-text = "0 available"
+[node name="HeaderRule" parent="WorkspaceColumn" index="1"]
+visible = false
 
-[node name="RestoreStarterCharacters" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Restore starter characters"
-tooltip_text = "Add missing starters in the current compatible format. Existing characters and archives are preserved, and the vault is backed up first."
+[node name="ScreenBodyScroll" parent="WorkspaceColumn/BodyClip" index="0"]
+vertical_scroll_mode = 0
 
-[node name="RepairCharacterFiles" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHeaderArea"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Repair Character Files…"
-tooltip_text = "Review older characters, back up the complete vault, and repair verified source identities while preserving originals."
-
-[node name="VaultListArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+[node name="VaultLibrary" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+theme = ExtResource("9_vault")
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_constants/separation = 6
-[node name="VaultEmptyState" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
-visible = false
+theme_override_constants/separation = 12
+
+[node name="VaultHeader" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary"]
 layout_mode = 2
-theme_type_variation = &"ClassicInset"
-[node name="Content" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea/VaultEmptyState"]
+theme_override_constants/separation = 16
+
+[node name="Back" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultHeader"]
+unique_name_in_owner = true
 layout_mode = 2
-[node name="Title" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea/VaultEmptyState/Content"]
-layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-text = "Character vault is empty"
-[node name="Detail" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea/VaultEmptyState/Content"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
-text = "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party."
-autowrap_mode = 2
-[node name="CurrentTitle" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
-layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-text = "Current Character Files"
-[node name="EligibilityContext" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
-[node name="CharacterFileList" type="GridContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultListArea"]
+size_flags_vertical = 4
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 15
+tooltip_text = "Leave Character Files."
+text = "‹  Back"
+
+[node name="Titles" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultHeader"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 8
-columns = 2
+theme_override_constants/separation = 0
 
-[node name="VaultHistoryArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+[node name="Title" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultHeader/Titles"]
+theme_type_variation = &"MenuHeading"
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Character Files"
+
+[node name="Context" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultHeader/Titles"]
+theme_type_variation = &"VaultStatusMuted"
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 3
+
+[node name="LibraryTools" type="MenuButton" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+focus_mode = 2
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 15
+tooltip_text = "Restore the starter characters or repair Character Files."
+text = "Library tools  ▾"
+item_count = 2
+popup/item_0/text = "Restore starter characters"
+popup/item_0/id = 0
+popup/item_1/text = "Repair Character Files…"
+popup/item_1/id = 1
+
+[node name="Toolbar" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Tabs" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Toolbar"]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("st_tab_track")
+
+[node name="TabRow" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Toolbar/Tabs"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ActiveTab" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Toolbar/Tabs/TabRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("TabGroup")
+text = "Active  0"
+
+[node name="ArchivedTab" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Toolbar/Tabs/TabRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+toggle_mode = true
+button_group = SubResource("TabGroup")
+text = "Archived  0"
+
+[node name="Spacer" type="Control" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Toolbar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Search" type="LineEdit" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Toolbar"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+tooltip_text = "Search by name, race or class"
+placeholder_text = "Search"
+clear_button_enabled = true
+
+[node name="NoticeBanner" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_styles/panel = ExtResource("st_banner_panel")
+
+[node name="BannerRow" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/NoticeBanner"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Accent" type="ColorRect" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/NoticeBanner/BannerRow"]
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+color = Color(0.867, 0.729, 0.416, 1)
+
+[node name="NoticeText" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/NoticeBanner/BannerRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
-[node name="HistoryToggle" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHistoryArea"]
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 3
+
+[node name="VaultBody" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary"]
+unique_name_in_owner = true
 layout_mode = 2
-text = "Revision history and archives (0)"
-[node name="HistoryTitle" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHistoryArea"]
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="ListPanel" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody" groups=["ui_theme_frame"]]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(430, 0)
+layout_mode = 2
+theme_override_styles/panel = ExtResource("st_list_panel")
+
+[node name="ListColumn" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/ListPanel"]
+layout_mode = 2
+
+[node name="ListScroll" type="ScrollContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/ListPanel/ListColumn"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="CharacterFileList" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/ListPanel/ListColumn/ListScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="ListEmpty" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/ListPanel/ListColumn"]
+unique_name_in_owner = true
 visible = false
 layout_mode = 2
-theme_type_variation = &"ClassicHeading"
-text = "Earlier revisions"
-[node name="HistoryRows" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultHistoryArea"]
+size_flags_vertical = 6
+theme_override_constants/separation = 8
+
+[node name="ListEmptyTitle" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/ListPanel/ListColumn/ListEmpty"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 40)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 2
+autowrap_mode = 3
+
+[node name="ListEmptyDetail" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/ListPanel/ListColumn/ListEmpty"]
+theme_type_variation = &"VaultStatusMuted"
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ClearSearch" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/ListPanel/ListColumn/ListEmpty"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+text = "Clear search"
+
+[node name="DetailPanel" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody" groups=["ui_theme_frame"]]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("st_column_panel")
+
+[node name="DetailScroll" type="ScrollContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="DetailMargin" type="MarginContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 18
+
+[node name="DetailContent" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Identity" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="DetailPortrait" type="TextureRect" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/Identity"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(44, 44)
+layout_mode = 2
+size_flags_vertical = 4
+texture_filter = 1
+stretch_mode = 3
+
+[node name="DetailTacticalIcon" type="TextureRect" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/Identity"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
+layout_mode = 2
+size_flags_vertical = 4
+texture_filter = 1
+stretch_mode = 3
+
+[node name="IdentityText" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/Identity"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 2
+
+[node name="DetailName" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/Identity/IdentityText"]
+theme_type_variation = &"MenuHeading"
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+autowrap_mode = 3
+
+[node name="DetailIdentity" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/Identity/IdentityText"]
+theme_type_variation = &"VaultStatusMuted"
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 3
+
+[node name="StatGrid" type="GridContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 8
+columns = 4
+
+[node name="StaminaTile" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("st_field_tile")
+
+[node name="Tile" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/StaminaTile"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/StaminaTile/Tile"]
+theme_type_variation = &"MenuCaption"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "STAMINA"
+text_overrun_behavior = 3
+
+[node name="Value" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/StaminaTile/Tile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+
+[node name="SpellPointsTile" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("st_field_tile")
+
+[node name="Tile" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/SpellPointsTile"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/SpellPointsTile/Tile"]
+theme_type_variation = &"MenuCaption"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "SPELL POINTS"
+text_overrun_behavior = 3
+
+[node name="Value" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/SpellPointsTile/Tile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+
+[node name="ArmorTile" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("st_field_tile")
+
+[node name="Tile" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/ArmorTile"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/ArmorTile/Tile"]
+theme_type_variation = &"MenuCaption"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "ARMOR"
+text_overrun_behavior = 3
+
+[node name="Value" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/ArmorTile/Tile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+
+[node name="LoadTile" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = ExtResource("st_field_tile")
+
+[node name="Tile" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/LoadTile"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/LoadTile/Tile"]
+theme_type_variation = &"MenuCaption"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "LOAD"
+text_overrun_behavior = 3
+
+[node name="Value" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/StatGrid/LoadTile/Tile"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+
+[node name="EligibilityBlock" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_styles/panel = ExtResource("st_eligibility_panel")
+
+[node name="EligibilityRow" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/EligibilityBlock"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EligibilityAccent" type="ColorRect" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/EligibilityBlock/EligibilityRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(3, 0)
+layout_mode = 2
+color = Color(0.459, 0.784, 0.537, 1)
+script = ExtResource("90_color_bar")
+source = NodePath("../EligibilityText/EligibilityHeading")
+
+[node name="EligibilityText" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/EligibilityBlock/EligibilityRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="EligibilityHeading" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/EligibilityBlock/EligibilityRow/EligibilityText"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="EligibilityReasons" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/EligibilityBlock/EligibilityRow/EligibilityText"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 3
+
+[node name="DetailActions" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 6
+
+[node name="ActionRow" type="HFlowContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions"]
+layout_mode = 2
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 8
+
+[node name="AddGroup" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="AddToParty" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow/AddGroup"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
+text = "Add to party"
+
+[node name="SetupReason" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow/AddGroup"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="FullSheet" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Open the complete character record."
+text = "Full character sheet"
+
+[node name="EditCharacter" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Change this character and save the result as a new revision."
+text = "Edit…"
+
+[node name="ActionSpacer" type="Control" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="RestoreArchived" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Make this revision current again so it can join parties."
+text = "Restore"
+
+[node name="Archive" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/DetailActions/ActionRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"QuietAction"
+theme_override_font_sizes/font_size = 14
+tooltip_text = "Hide this character from party setup. Every revision is kept."
+text = "Archive…"
+
+[node name="RevisionsRule" type="HSeparator" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+layout_mode = 2
+theme_override_styles/separator = ExtResource("st_rule_line")
+
+[node name="RevisionsTitle" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+theme_type_variation = &"MenuHeading"
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Revisions"
+
+[node name="RevisionRows" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="ManageStrip" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ManageRule" type="HSeparator" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/ManageStrip"]
+layout_mode = 2
+theme_override_styles/separator = ExtResource("st_rule_line")
+
+[node name="ManageRow" type="HFlowContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/ManageStrip"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+
+[node name="ManageText" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/ManageStrip/ManageRow"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 13
+text = "Remove this character and every revision from Character Files."
+autowrap_mode = 3
+
+[node name="DeletePermanently" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/VaultBody/DetailPanel/DetailScroll/DetailMargin/DetailContent/ManageStrip/ManageRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 4
+theme_type_variation = &"DangerAction"
+theme_override_font_sizes/font_size = 14
+text = "Delete permanently…"
+
+[node name="EmptyState" type="PanelContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("st_column_panel")
+
+[node name="EmptyCenter" type="CenterContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/EmptyState"]
+layout_mode = 2
+
+[node name="EmptyContent" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/EmptyState/EmptyCenter"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="EmptyTitle" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/EmptyState/EmptyCenter/EmptyContent"]
+theme_type_variation = &"MenuHeading"
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "No Character Files yet"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="EmptyDetail" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/EmptyState/EmptyCenter/EmptyContent"]
+theme_type_variation = &"VaultStatusMuted"
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="EmptyRestoreStarters" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/EmptyState/EmptyCenter/EmptyContent"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_type_variation = &"PrimaryAction"
+theme_override_font_sizes/font_size = 14
+text = "Restore starter characters"
+
+[node name="Footer" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="StatusNotice" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+autowrap_mode = 3
+
+[node name="Prompts" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 16
+
+[node name="PromptNavigate" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Glyph" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptNavigate"]
+theme_type_variation = &"VaultPromptGlyph"
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = ExtResource("st_prompt_glyph")
+text = "D-pad"
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptNavigate"]
+theme_type_variation = &"VaultStatusMuted"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Navigate"
+
+[node name="PromptSelect" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Glyph" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptSelect"]
+theme_type_variation = &"VaultPromptGlyph"
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = ExtResource("st_prompt_glyph")
+text = "A"
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptSelect"]
+theme_type_variation = &"VaultStatusMuted"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Select"
+
+[node name="PromptBack" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Glyph" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptBack"]
+theme_type_variation = &"VaultPromptGlyph"
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = ExtResource("st_prompt_glyph")
+text = "B"
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptBack"]
+theme_type_variation = &"VaultStatusMuted"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Back"
+
+[node name="PromptTabs" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Glyph" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptTabs"]
+theme_type_variation = &"VaultPromptGlyph"
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_styles/normal = ExtResource("st_prompt_glyph")
+text = "LB/RB"
+
+[node name="Caption" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultLibrary/Footer/Prompts/PromptTabs"]
+theme_type_variation = &"VaultStatusMuted"
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Active / Archived"
+
+
 
 [node name="VaultInspectionArea" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody"]
+theme = ExtResource("9_vault")
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_constants/separation = 8
+
 [node name="InspectionHeader" type="HBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
+
 [node name="Back" type="Button" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea/InspectionHeader"]
 layout_mode = 2
-text = "Back to character vault"
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 15
+text = "‹  Back to Character Files"
+
 [node name="Heading" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea/InspectionHeader"]
+theme_type_variation = &"MenuHeading"
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"ClassicHeading"
-text = "Inspect Character File"
-[node name="Eligibility" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea"]
+theme_override_font_sizes/font_size = 24
+text = "Character File"
+
+[node name="InspectionEligibility" type="Label" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea"]
+unique_name_in_owner = true
 layout_mode = 2
-autowrap_mode = 2
-[node name="VaultCharacterSheet" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea" instance=ExtResource("3_sheet")]
+theme_override_font_sizes/font_size = 13
+autowrap_mode = 3
+
+[node name="InspectionScroll" type="ScrollContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea"]
 layout_mode = 2
+size_flags_vertical = 3
+follow_focus = true
+horizontal_scroll_mode = 0
+
+[node name="VaultCharacterSheet" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody/VaultInspectionArea/InspectionScroll" instance=ExtResource("3_sheet")]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CharacterEditor" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody" instance=ExtResource("10_editor")]
+unique_name_in_owner = true
 
 [node name="ArchiveInputShield" type="Control" parent="."]
 unique_name_in_owner = true
@@ -137,13 +722,15 @@ mouse_filter = 0
 z_index = 100
 
 [node name="ArchiveConfirmation" type="ConfirmationDialog" parent="."]
+theme = ExtResource("9_vault")
 unique_name_in_owner = true
-script = ExtResource("6_archive")
+script = ExtResource("6_confirm")
 title = "Archive character"
-size = Vector2i(480, 180)
+size = Vector2i(480, 200)
 exclusive = false
 dialog_autowrap = true
 ok_button_text = "Archive"
+metadata/controller_focus_scope = true
 
 [node name="RepairInputShield" type="Control" parent="."]
 unique_name_in_owner = true
@@ -154,21 +741,23 @@ mouse_filter = 0
 z_index = 101
 
 [node name="RepairDialog" type="ConfirmationDialog" parent="."]
+theme = ExtResource("9_vault")
 unique_name_in_owner = true
 script = ExtResource("7_repair")
 title = "Repair Character Files"
 size = Vector2i(640, 420)
 exclusive = false
 ok_button_text = "Back up and repair"
+metadata/controller_focus_scope = true
 
 [node name="RepairDetail" type="TextEdit" parent="RepairDialog"]
 unique_name_in_owner = true
-theme_override_colors/font_readonly_color = Color(0.886, 0.886, 0.855, 1)
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 624.0
 offset_bottom = 358.0
 grow_horizontal = 2
 grow_vertical = 2
+focus_mode = 1
 editable = false
 wrap_mode = 1

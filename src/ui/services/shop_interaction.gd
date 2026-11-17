@@ -10,15 +10,15 @@ const WIDE_LEDGER_ROW_HEIGHT := 34.0
 const COMPACT_LEDGER_ROW_HEIGHT := 30.0
 const LEDGER_ROW_SEPARATION := 2.0
 const FILTER_BUTTON_SIZE := Vector2(62.0, 58.0)
-const ROUTE_BUTTON_SIZE := Vector2(54.0, 54.0)
+const ROUTE_BUTTON_SIZE := Vector2(62.0, 63.0)
 const COMPACT_ROUTE_BUTTON_SIZE := Vector2(46.0, 46.0)
-const FOOTER_PORTRAIT_SIZE := Vector2(18.0, 18.0)
+const FOOTER_PORTRAIT_SIZE := Vector2(24.0, 24.0)
 const COMPACT_FOOTER_PORTRAIT_SIZE := Vector2(16.0, 16.0)
 const COMPACT_PORTRAIT_SIZE := Vector2(36.0, 36.0)
 const STOCK_FILTERS: Array[Dictionary] = [
 	{"id": &"weapons", "asset": &"inventory.category.weapons", "label": "Weapons", "region": [0, 0, 50, 34]},
 	{"id": &"armor", "asset": &"inventory.category.armor", "label": "Armor", "region": [0, 0, 50, 34]},
-	{"id": &"limb_armor", "asset": &"inventory.category.limb_armor", "label": "Armor", "tooltip": "Limb Armor", "region": [0, 0, 50, 34]},
+	{"id": &"limb_armor", "asset": &"inventory.category.limb_armor", "label": "Limbs", "tooltip": "Helms, gloves, boots and shields", "region": [0, 0, 50, 34]},
 	{"id": &"magic", "asset": &"inventory.category.magic", "label": "Magic", "region": [0, 0, 50, 34]},
 	{"id": &"supplies", "asset": &"inventory.category.supplies", "label": "Supplies", "region": [0, 0, 50, 34]},
 ]
@@ -89,13 +89,14 @@ func capture_browser_state() -> Dictionary:
 		return {}
 	return {"shopId": _body.shop_id, "leftId": _selected_character_id, "rightId": _right_character_id, "category": _selected_category,
 		"layout": _browser_layout.capture_state(self, _compact),
-		"itemOwnerId": _selected_item_owner_id, "instanceId": _selected_item.instance_id if _selected_item != null else "", "stockKey": _selected_stock.stock_key if _selected_stock != null else "", "moneyOpen": _money_workspace_open,
+		"itemOwnerId": _selected_item_owner_id, "instanceId": _selected_item.instance_id if _selected_item != null else "", "stockKey": _selected_stock.stock_key if _selected_stock != null else "", "moneyOpen": _money_workspace_open, "soldItemId": get_meta(ShopStockFocus.SOLD_ITEM, ""),
 		"moneyCharacterId": _money_controller.selected_character_id() if _money_workspace_open and _money_controller != null else "", "itemsOpen": _inventory_workspace_open}
 
 
 func restore_browser_state(state: Dictionary) -> void:
-	if state.is_empty() or String(state.get("shopId", "")) != _body.shop_id:
+	if state.is_empty() or RowFields.text(state, "shopId") != _body.shop_id:
 		return
+	ShopStockFocus.remember(self, RowFields.text(state, "soldItemId"))
 	_select_category(StringName(state.get("category", &"weapons")))
 	if _character_by_id(String(state.get("leftId", ""))) != null:
 		_select_character(String(state.leftId))
@@ -161,6 +162,7 @@ func build(request: InteractionRequest) -> void:
 		return
 	_characters = _body.characters.duplicate()
 	_stock = _body.stock.duplicate()
+	_selected_category = ShopStockFocus.category_after_sale(self, _stock, _selected_category)
 	_row_height = COMPACT_LEDGER_ROW_HEIGHT if _compact else WIDE_LEDGER_ROW_HEIGHT
 	_route_size = COMPACT_ROUTE_BUTTON_SIZE if _compact else ROUTE_BUTTON_SIZE
 	var visible_rows := COMPACT_VISIBLE_ROWS if _compact else CLASSIC_VISIBLE_ROWS
@@ -209,7 +211,7 @@ func _bind_ledgers() -> void:
 	var inventory_scroll := _browser.find_child("InventoryScroll", true, false) as ScrollContainer
 	var stock_scroll := _browser.find_child("ShopStockScroll", true, false) as ScrollContainer
 	var inventory_height := _scroll_height
-	var stock_height := _scroll_height
+	var stock_height := _scroll_height - (0.0 if _compact else 62.0)  # the wide stock column also holds the category tabs
 	var profile := UiSizing.profile_for(self)
 	if _compact and profile != null and profile.id == UiLayoutProfile.COMPACT:
 		inventory_height = 120.0
@@ -279,7 +281,7 @@ func _bind_footer() -> void:
 	_buy_button = %ShopBuy as Button
 	_sell_button = %ShopSellSelected as Button
 	_identify_button = %ShopIdentify as Button
-	_transaction_presenter.bind_controls(_browser_layout.description_label, %ShopTransactionFacts, _browser_layout.stats_label, _buy_button, _sell_button, _identify_button)
+	_transaction_presenter.bind_controls(_browser_layout.description_label, %ShopTransactionFacts, _browser_layout.stats_label, _buy_button, _sell_button, _identify_button, %ShopEquip)
 	_transaction_presenter.trade_requested.connect(func(body: InteractionResponse.ShopBody) -> void: response_body_submitted.emit(body))
 	_buy_button.pressed.connect(_submit_buy)
 	_sell_button.pressed.connect(_submit_sell)
@@ -340,13 +342,13 @@ func _select_stock(stock_key: String) -> void:
 
 
 func _select_category(category: StringName) -> void:
-	_selected_category = category
+	_selected_category = ShopStockFocus.category_after_sale(self, _stock, category)
 	_right_character_id = ""
 	_selected_stock = null
 	_selected_item = null
 	_selected_item_owner_id = ""
 	for button: ClassicBitmapButton in _category_buttons:
-		button.set_pressed_no_signal(StringName(button.get_meta(&"category_id", &"")) == category)
+		button.set_pressed_no_signal(StringName(button.get_meta(&"category_id", &"")) == _selected_category)
 	_refresh_stock()
 	_refresh_inventory()
 	_update_shopper_buttons()
@@ -378,7 +380,7 @@ func _refresh_inventory() -> void:
 	if character == null:
 		_inventory_rows.add_child(_empty_label("No adventurer is selected."))
 		return
-	for item: InteractionRequestValue.InventoryItem in character.inventory:
+	for item: InteractionRequestValue.InventoryItem in character.inventory.filter(func(entry: InteractionRequestValue.InventoryItem) -> bool: return entry.equipped) + character.inventory.filter(func(entry: InteractionRequestValue.InventoryItem) -> bool: return not entry.equipped):
 		_inventory_rows.add_child(_inventory_row(character, item, "Inventory"))
 	if character.inventory.is_empty():
 		_inventory_rows.add_child(_empty_label("%s carries no items." % character.name))
@@ -412,6 +414,7 @@ func _submit_sell() -> void:
 			_transaction_presenter.submit_trade(_right_character_id)
 		return
 	if _selected_item != null and _selected_item.can_sell:
+		ShopStockFocus.remember(self, _selected_item.item_id)
 		response_body_submitted.emit(InteractionResponse.ShopBody.new(&"sell", _selected_item_owner_id, _selected_item.instance_id))
 
 
@@ -522,6 +525,7 @@ func _inventory_row(character: InteractionRequestValue.ServiceCharacter, item: I
 	var button := row.get_node("%ItemButton") as ClassicExchangeItemButton
 	button.name = "%s_%s" % [prefix, item.instance_id.replace(".", "_")]
 	button.set_meta("item_instance_id", item.instance_id)
+	if item.equipped: button.theme_type_variation = &"ClassicItemLedgerEquippedButton"
 	button.text = "%s\n%s" % [item.name, "Equipped" if item.equipped else "Carried"] if not _right_character_id.is_empty() else "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
 	UiSizing.minimum_size(button, Vector2(0.0, _row_height))
 	button.button_group = _inventory_group

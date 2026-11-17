@@ -20,12 +20,16 @@ func show_prompts(family: String, context: StringName = &"") -> void:
 	_shell.controller_prompts.present(family, context, _shell.settings.controller)
 	if _shell.pause_controller.is_open(): _shell.controller_prompts.hide_prompts()
 	_shell.navigator.setup_controller.campaign_library.show_controller_hint(family, _shell.settings.controller)
+	_shell.navigator.content_presenter.set_vault_controller_prompts(family, _shell.settings.controller)
+	_shell.navigator.startup.save_editor.set_controller_prompts(family, _shell.settings.controller)
 	_shell.controller_radial.set_prompt_family(family)
 
 
 func hide_prompts() -> void:
 	_shell.controller_prompts.hide_prompts()
 	_shell.pause_controller.set_controller_prompts("")
+	_shell.navigator.content_presenter.set_vault_controller_prompts("", null)
+	_shell.navigator.startup.save_editor.set_controller_prompts("", null)
 
 
 func show_detail(value: String) -> void: _shell.controller_prompts.set_detail(value)
@@ -36,14 +40,19 @@ func navigation_workspace_focus_root() -> Node:
 	if not _shell.pause_active and _shell.hud.focus_root() != null: return _shell.hud.focus_root()
 	if _shell.character_art.visible: return _shell.character_art.controller_focus_root()
 	if _shell.font_picker.visible: return _shell.font_picker.controller_focus_root()
+	var save_editor: SaveEditorWorkspace = _shell.navigator.startup.save_editor
+	if save_editor.visible: return save_editor.overlay_focus_root() if save_editor.overlay_focus_root() != null else save_editor
 	var icon_picker: IndoorPartyIconPicker = _shell.navigator.content_presenter.system_preferences.indoor_icon_picker()
 	if icon_picker != null and icon_picker.picker_is_open(): return icon_picker.controller_focus_root()
 	if _shell.music_workspace.visible: return _shell.music_workspace.controller_focus_root()
+	var vault_dialog: Node = _shell.navigator.content_presenter.characters.vault_dialog_focus_root()
+	if vault_dialog != null: return vault_dialog
 	return _shell.navigator if _shell.pause_controller.workspace_is_open() else null
 
 
 func cycle_navigation_workspace_tab(delta: int) -> void:
 	if _shell.music_workspace.visible: _shell.music_workspace.controller_cycle_tab(delta)
+	elif _shell.navigator.startup.save_editor.visible: _shell.navigator.startup.save_editor.cycle_section(delta)
 
 
 func spellbook_focus_root() -> Control:
@@ -107,6 +116,9 @@ func handle_navigation_modal_input(event: InputEvent) -> bool:
 
 
 func handle_navigation_modal_controller(action: StringName, pressed: bool, direction: Vector2i = Vector2i.ZERO) -> bool:
+	# Save editor shortcuts act only while it owns focus, never under a shell overlay above it.
+	var save_editor: SaveEditorWorkspace = _shell.navigator.startup.save_editor
+	if pressed and save_editor.visible and navigation_workspace_focus_root() == save_editor and save_editor.handle_controller_shortcut(action): return true
 	if _shell.hud.handle_controller(action, pressed, direction): return true
 	if _shell.hud_arrange.handle_controller(action, pressed, direction): return true
 	return _shell.navigator.draft_dialog.handle_controller(action, pressed, direction)

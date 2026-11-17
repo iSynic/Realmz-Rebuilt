@@ -31,6 +31,8 @@ var _campaign_catalog: CampaignCatalogWorkflow
 var _campaign_preparation: CampaignPreparationWorkflow
 var _campaign_publication: CampaignPresentationHost
 var _save_host: SaveHostController
+var _save_holds: SaveHoldStore
+var _save_editor: SaveEditorWorkflow
 var _pending_package_seed: int = 1
 var _pending_package_path: String = ""
 var _last_package_operation_key: String = ""
@@ -105,6 +107,7 @@ func _build_dependencies() -> void:
 	if _save_host == null:
 		_save_host = _create_save_host(scratch_root)
 	settings_repository = SettingsRepository.new(scratch_root.path_join("settings.json")) if not scratch_root.is_empty() else SettingsRepository.new()
+	_save_holds = SaveHoldStore.new(scratch_root.path_join("saves-held")) if not scratch_root.is_empty() else SaveHoldStore.new()
 	_presentation_settings = PresentationSettings.new() if fixture != null or preview_request != null else settings_repository.load_settings()
 	session_controller = GameSessionController.new()
 	presentation_coordinator = PresentationCoordinator.new()
@@ -131,7 +134,8 @@ func _build_dependencies() -> void:
 		presentation_media,
 		shell_presenter,
 		CharacterVaultController.new(CharacterVaultRepository.new(scratch_root.path_join("characters"))) if not scratch_root.is_empty() else null,
-		character_art
+		character_art,
+		func() -> RealmzContent: return _active_content
 	)
 	adventure_storage = ApplicationAdventureStorageHost.new(_save_host, session_controller, shell_presenter, _combat_host.invalidate, _map_presenter.save_map_preview_jpeg, _package_host, character_files, func() -> RealmzContent: return _active_content, character_art)
 	_spatial_layout = ApplicationSpatialLayout.new(_map_presenter, battlefield_presenter, dungeon_presenter, interaction_presenter, shell_presenter, session_controller, presentation_coordinator)
@@ -260,6 +264,7 @@ func _bind_shell_and_settings() -> void:
 	_imported_scenario_workflow.bind()
 	_campaign_publication = CampaignPresentationHost.new(_package_host, character_files, adventure_storage, presentation_media, presentation_coordinator, shell_presenter, _presentation_settings, settings_repository, func(content: RealmzContent) -> void: _active_content = content, _combat_host.invalidate)
 	_campaign_preparation = CampaignPreparationWorkflow.new(_package_host, session_controller, character_files, _save_host, adventure_storage, shell_presenter.navigator, _presentation_settings, _imported_scenario_workflow, _campaign_publication.publish_adventure, _campaign_publication.publish_setup)
+	_save_editor = SaveEditorWorkflow.new(_save_host, character_files.vault(), SaveEditHolds.new(_save_holds, character_files.vault()), shell_presenter.navigator, _campaign_preparation, presentation_media)
 	shell_presenter.intent_submitted.connect(submit_intent)
 	shell_presenter.combat_inventory_response_submitted.connect(_on_battlefield_action_requested)
 	shell_presenter.save_requested.connect(func(slot_id: String) -> void: adventure_storage.save(_active_content, slot_id))
@@ -279,9 +284,8 @@ func _bind_shell_and_settings() -> void:
 	presentation_coordinator.spatial_visibility_changed.connect(func() -> void: _spatial_layout.sync_display_world_region(get_viewport().get_parent() as DisplayCompositor, _presentation_settings))
 	shell_presenter.route_changed.connect(held_movement.stop.unbind(1))
 	shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
-	shell_presenter.vault_archive_requested.connect(func(character_id: String) -> void: character_files.archive_character(_active_content, character_id))
+	shell_presenter.vault_character_requested.connect(func(operation: StringName, character_id: String, revision_hash: String) -> void: character_files.change_character(_active_content, operation, character_id, revision_hash))
 	shell_presenter.vault_maintenance_requested.connect(character_files.request_maintenance)
-	shell_presenter.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: character_files.restore_character(_active_content, character_id, revision_hash))
 	shell_presenter.standalone_character_creation_requested.connect(func() -> void: character_files.begin_creation(_active_content))
 	shell_presenter.standalone_character_creation_cancelled.connect(func() -> void: character_files.cancel_creation(_active_content))
 	shell_presenter.character_selection_completed.connect(interaction_presenter.submit_character_selection)
@@ -342,6 +346,7 @@ func _process(_delta: float) -> void:
 	_poll_package_operation()
 	if _campaign_preparation != null:
 		_campaign_preparation.poll()
+	if _save_editor != null: _save_editor.poll()
 
 
 func _poll_package_operation() -> void:
@@ -385,7 +390,7 @@ func _poll_package_operation() -> void:
 	if not character_files.library_ready():
 		_pending_prepared_package = prepared
 		_pending_package_path = operation.package_path
-		shell_presenter.status.set_status("Campaign ready • finishing the built-in Classic definitions…")
+		shell_presenter.status.set_status("Scenario ready • finishing the built-in Classic definitions…")
 		return
 	_complete_package_install(prepared, _pending_package_seed)
 
@@ -440,7 +445,7 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 		shell_presenter.status.set_status(_package_host.operation_view().message, true)
 		return
 	shell_presenter.navigator.setup_controller.campaign_library.set_package_operation(_package_host.operation_view())
-	shell_presenter.status.set_status("Preparing campaign…")
+	shell_presenter.status.set_status("Preparing the scenario…")
 
 
 func _complete_package_install(prepared: PreparedPackage, initial_seed: int, source_path: String = "") -> SessionStep:

@@ -29,7 +29,7 @@ alignment = 0
 [node name="InventoryItemLineFact" type="Label" parent="Row/ItemText"]
 layout_mode = 2
 mouse_filter = 2
-theme_override_colors/font_color = Color(0.141176, 0.341176, 0.741176, 1)
+theme_override_colors/font_color = Color(0.56, 0.76, 0.91, 1)
 theme_override_font_sizes/font_size = 11
 text = "Damage 1–4"
 

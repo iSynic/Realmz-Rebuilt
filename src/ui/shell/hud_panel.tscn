@@ -39,7 +39,7 @@ mouse_filter = 2
 theme = ExtResource("2_theme")
 script = ExtResource("1_hud_panel")
 
-[node name="Surface" type="PanelContainer" parent="."]
+[node name="Surface" type="PanelContainer" parent="." groups=["ui_theme_frame"]]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -72,7 +72,7 @@ mouse_filter = 1
 [node name="Handle" type="Button" parent="."]
 z_index = 50
 unique_name_in_owner = true
-custom_minimum_size = Vector2(32, 80)
+custom_minimum_size = Vector2(14, 64)
 layout_mode = 1
 anchor_left = 1.0
 anchor_top = 0.5
@@ -90,9 +90,36 @@ theme_override_styles/hover = SubResource("HandleHover")
 theme_override_styles/pressed = SubResource("HandlePressed")
 theme_override_styles/focus = SubResource("HandleFocus")
 
+[node name="TabBacking" type="ColorRect" parent="Handle"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.082, 0.133, 0.18, 0.88)
+
+[node name="TabIcon" type="TextureRect" parent="Handle/TabBacking"]
+texture_filter = 1
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 3.0
+offset_top = 3.0
+offset_right = -3.0
+offset_bottom = -3.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
 [node name="TabShape" type="Polygon2D" parent="Handle"]
 unique_name_in_owner = true
 position = Vector2(0, 0)
-polygon = PackedVector2Array(10, 8, 16, 8, 22, 12, 22, 68, 16, 72, 10, 68)
+polygon = PackedVector2Array(11, 0, 14, 0, 14, 64, 11, 64)
 color = Color(0.42, 0.47, 0.48, 0.72)
 input_pickable = false

@@ -1,6 +1,7 @@
 [gd_scene load_steps=2 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/shell/hud_settings_panel.tscn" id="1_hud_panel"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_card.tres" id="90_card"]
 
 [node name="Interface" type="VBoxContainer"]
 layout_mode = 2
@@ -13,6 +14,7 @@ size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
 [node name="InterfaceSettingsPanel" type="PanelContainer" parent="InterfaceSettingsScroll"]
+theme_override_styles/panel = ExtResource("90_card")
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -20,20 +22,45 @@ size_flags_horizontal = 3
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="InterfaceTabs" type="TabContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content"]
+[node name="InterfaceTabs" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
+theme_override_constants/separation = 12
+
+[node name="TextTitle" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Text"
 
 [node name="Text" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
+[node name="CommandsTitle" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Commands"
+
 [node name="Commands" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
+[node name="HUDpanelsTitle" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "HUD panels"
+
 [node name="HUD panels" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs" instance=ExtResource("1_hud_panel")]
 layout_mode = 2
+
+[node name="ArtworkTitle" type="Label" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Character art"
 
 [node name="Artwork" type="VBoxContainer" parent="InterfaceSettingsScroll/InterfaceSettingsPanel/Content/InterfaceTabs"]
 layout_mode = 2

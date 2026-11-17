@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/setup/campaign_library_row.gd" id="1_row"]
 
@@ -7,7 +7,7 @@ content_margin_left = 0.0
 content_margin_top = 0.0
 content_margin_right = 0.0
 content_margin_bottom = 0.0
-bg_color = Color(0.03, 0.035, 0.035, 0.45)
+bg_color = Color(0, 0, 0, 0)
 border_width_left = 0
 border_width_top = 0
 border_width_right = 0
@@ -25,11 +25,12 @@ theme_override_constants/separation = 4
 
 [node name="LaunchCampaign" type="Button" parent="Content"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 32)
+custom_minimum_size = Vector2(0, 28)
 layout_mode = 2
 size_flags_horizontal = 3
 toggle_mode = true
-theme_type_variation = &"ClassicTheldrowButton"
+theme_type_variation = &"CampaignCard"
+theme_override_font_sizes/font_size = 14
 alignment = 0
 clip_text = true
 autowrap_mode = 3

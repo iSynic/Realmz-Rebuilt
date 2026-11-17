@@ -41,7 +41,7 @@ func _init(request: CombatTargetingRequest) -> void:
 
 func select_combatant(combatant_id: String) -> bool:
 	if mode not in [&"combatant", &"sequence"] or combatant_id.is_empty() or not candidate_ids.has(combatant_id):
-		status_text = "That combatant is not a legal target for the selected action."
+		status_text = "That combatant can't be targeted from here. Gold outlines mark legal targets."
 		return false
 	if mode == &"combatant":
 		selected_ids.assign([combatant_id])
@@ -90,7 +90,7 @@ func select_coordinate(coordinate: Vector2i) -> bool:
 		status_text = "Target selected. Confirm to validate and cast."
 		return true
 	if not legal_coordinates.has(coordinate):
-		status_text = "That center is outside the rules-owned range, line of sight, or safe mask boundary."
+		status_text = "That spot is out of range or sight, or the area would leave the battlefield. Shaded spots are legal."
 		return false
 	status_text = "Area center is legal. Confirm to commit the spell."
 	return true

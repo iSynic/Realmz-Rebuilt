@@ -18,7 +18,7 @@ func run() -> void:
 	var party := PartyState.new("land:18", Vector2i(73, 22), [CharacterState.new("swordlands.hero", "Hero", 30, 30)])
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(7), ScenarioActionState.new(), RealmzRules.new())
-	var result := api.execute_classic(action, "swordlands.land18.ap7.battle")
+	var result := enter_classic_battle(api, action, "swordlands.land18.ap7.battle")
 	assert_equal(result.state, ScenarioRuntimeOperationResult.State.WAITING, "missing optional prelude does not prevent battle 180 from starting")
 	assert_true(state.combat != null and state.combat.battle_id == "classic.battle.180" and result.interaction != null and result.interaction.kind == &"combat_action", "reported AP enters an actionable battle")
 	assert_true(not result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"message_shown" and event.payload.get("source") == "classic-battle"), "missing message is not fabricated")

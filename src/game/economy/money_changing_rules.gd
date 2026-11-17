@@ -27,7 +27,7 @@ static func probe(party: PartyState, location_available: bool, action: StringNam
 	if not location_available:
 		return EconomyActionProbe.new(false, "Money changing is available only at a shop or temple.")
 	if party == null or party.pooled_wealth.amount(_kind(conversion.source)) < conversion.source_amount:
-		return EconomyActionProbe.new(false, "The party pool lacks %d %s." % [conversion.source_amount, conversion.source])
+		return EconomyActionProbe.new(false, "The party pool lacks %d %s." % [conversion.source_amount, "gem" if conversion.source == &"gems" and conversion.source_amount == 1 else conversion.source])
 	return EconomyActionProbe.new(true)
 
 

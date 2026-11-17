@@ -10,6 +10,8 @@ var _schema_hashes: Dictionary
 var _supported_capabilities: Array[String]
 var _deferred_capabilities: Array[String]
 var _archive_reader: PackageArchiveReader
+## Manifest inspection results by path, reused while the archive keeps its modification time.
+var _inspected: Dictionary = {}
 
 
 func _init(schema_hashes: Dictionary, supported_capabilities: Array[String], deferred_capabilities: Array[String], archive_reader: PackageArchiveReader) -> void:
@@ -26,7 +28,11 @@ func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryRes
 	paths.sort()
 	var discovered: Array[PackageDiscoveryResult] = []
 	for path: String in paths:
-		discovered.append(inspect(path))
+		var modified := FileAccess.get_modified_time(path)
+		var cached: Array = _inspected.get(path, [])
+		var result: PackageDiscoveryResult = cached[1] if not cached.is_empty() and int(cached[0]) == modified else inspect(path)
+		_inspected[path] = [modified, result]
+		discovered.append(result)
 	return discovered
 
 
@@ -37,7 +43,7 @@ func discover_campaigns(search_roots: Array[String]) -> Array[PackageDiscoveryRe
 	for candidate: PackageDiscoveryResult in discover_packages(search_roots):
 		if not candidate.ready:
 			var rejection_key := candidate.campaign_id if not candidate.campaign_id.is_empty() else "error:%s" % candidate.error_message
-			var selected_rejection := rejected_by_key.get(rejection_key) as PackageDiscoveryResult
+			var selected_rejection: PackageDiscoveryResult = rejected_by_key.get(rejection_key)
 			if selected_rejection == null or _revision_is_newer(candidate, selected_rejection):
 				rejected_by_key[rejection_key] = candidate
 			continue

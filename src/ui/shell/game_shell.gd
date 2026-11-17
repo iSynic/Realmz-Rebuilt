@@ -59,8 +59,7 @@ signal controller_binding_capture_requested(action_id: StringName)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
-signal vault_archive_requested(character_id: String)
-signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_character_requested(operation: StringName, character_id: String, revision_hash: String)
 signal vault_maintenance_requested(operation: StringName)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool)
 signal standalone_character_creation_requested
@@ -231,9 +230,8 @@ func _ready() -> void:
 	_navigator.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
 	_navigator.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
 	_navigator.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
-	_navigator.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
 	_navigator.vault_maintenance_requested.connect(func(operation: StringName) -> void: vault_maintenance_requested.emit(operation))
-	_navigator.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
+	_navigator.vault_character_requested.connect(vault_character_requested.emit)
 	_navigator.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool, reduced_sound_eligible: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing, reduced_sound_eligible))
 	_navigator.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
 	_navigator.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
@@ -349,6 +347,7 @@ func present(game_view: GameView) -> void:
 	var ordinary_party_update: bool = ordinary_exploration_update and game_view.domain_revisions.party != previous_view.domain_revisions.party
 	_current_view = game_view
 	hud.observe(previous_view, game_view)
+	(%ScreenEdgeFlash as ScreenEdgeFlash).observe(previous_view, game_view, _presentation_settings)
 	_sync_combat_roster_selection(game_view)
 	if ordinary_exploration_update:
 		_present_ordinary_exploration_shell(game_view, ordinary_party_update)
@@ -433,6 +432,9 @@ func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog
 func present_combat_playback_frame(frame: CombatPlaybackFrame) -> void:
 	if frame != null:
 		_party_roster.present_playback_health(frame.combatant_health)
+	if frame != null and _current_view != null:
+		(%ScreenEdgeFlash as ScreenEdgeFlash).observe_frame(frame, _current_view, _presentation_settings)
+		(hud.get_node("%PartyDock") as PartyDock).present_playback_health(_current_view.party_members, frame.combatant_health, _presentation_settings.reduced_motion)
 
 
 func apply_settings(settings: PresentationSettings) -> void:
@@ -525,6 +527,7 @@ func _apply_layout() -> void:
 	if _theme_metrics != theme_metrics:
 		_theme_metrics = theme_metrics
 		theme = ClassicTypography.themed_copy(_authored_theme, _presentation_settings, sizing_profile.ui_scale, font_resolver)
+		ClassicTypography.apply_menu_fonts(_presentation_settings, font_resolver)
 		_sync_window_themes()
 	UiSizing.apply(self, sizing_profile)
 	_layout_controller.apply(size, _presentation_settings, _current_view)

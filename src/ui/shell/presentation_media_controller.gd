@@ -67,6 +67,11 @@ func catalog() -> ClassicMediaCatalog:
 	return _catalog
 
 
+## A separate catalog over another scenario's media (the save editor's), leaving the active one alone.
+func catalog_for(media: MediaSource) -> ClassicMediaCatalog:
+	return ClassicMediaCatalog.new(media, _application_media, _character_media, _imported_character_media, _imported_art_options)
+
+
 func present_interaction_sound(sound_id: int, wait_for_completion: bool = false) -> void:
 	if sound_id > 0:
 		_audio_presenter.present_sound(sound_id, _catalog, wait_for_completion)

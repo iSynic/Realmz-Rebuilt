@@ -1,0 +1,299 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/characters/editor/editor_basics_panel.gd" id="1_editor_basic"]
+[ext_resource type="PackedScene" path="res://src/ui/characters/editor/editor_stat_stepper.tscn" id="2_editor_stat_"]
+[ext_resource type="StyleBox" path="res://src/ui/characters/vault_styles/field_tile.tres" id="3_field_tile"]
+
+[sub_resource type="StyleBoxEmpty" id="HintGutter"]
+content_margin_right = 16.0
+
+[node name="EditorBasicsPanel" type="ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+horizontal_scroll_mode = 1
+follow_focus = true
+script = ExtResource("1_editor_basic")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="AttributesHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/AttributesHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Attributes"
+
+[node name="Spacer" type="Control" parent="Content/AttributesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/AttributesHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+theme_override_styles/normal = SubResource("HintGutter")
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Brawn + magic strength ≤ 57 keeps load in range"
+
+[node name="Attributes" type="GridContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 6
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Brawn" parent="Content/Attributes" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"brawn"
+
+[node name="Knowledge" parent="Content/Attributes" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"knowledge"
+
+[node name="Judgment" parent="Content/Attributes" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"judgment"
+
+[node name="Agility" parent="Content/Attributes" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"agility"
+
+[node name="Vitality" parent="Content/Attributes" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"vitality"
+
+[node name="Luck" parent="Content/Attributes" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"luck"
+
+[node name="VitalsHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/VitalsHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Stamina, spell points and armor"
+
+[node name="Spacer" type="Control" parent="Content/VitalsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Caption" type="Label" parent="Content/VitalsHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+theme_override_styles/normal = SubResource("HintGutter")
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = "Current values stay between 0 and their maximum"
+
+[node name="Vitals" type="GridContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 5
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Stamina" parent="Content/Vitals" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"current_health"
+
+[node name="MaxStamina" parent="Content/Vitals" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"maximum_health"
+
+[node name="SpellPoints" parent="Content/Vitals" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"spell_points"
+
+[node name="MaxSpellPoints" parent="Content/Vitals" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"maximum_spell_points"
+
+[node name="BaseArmor" parent="Content/Vitals" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"armor"
+
+[node name="MoneyHeader" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="Content/MoneyHeader"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Money"
+
+[node name="Spacer" type="Control" parent="Content/MoneyHeader"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LoadText" type="Label" parent="Content/MoneyHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+horizontal_alignment = 2
+theme_override_styles/normal = SubResource("HintGutter")
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 12
+text = ""
+
+[node name="Money" type="GridContainer" parent="Content"]
+unique_name_in_owner = true
+layout_mode = 2
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Gold" parent="Content/Money" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"gold"
+
+[node name="Gems" parent="Content/Money" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"gems"
+
+[node name="Jewelry" parent="Content/Money" instance=ExtResource("2_editor_stat_")]
+layout_mode = 2
+metadata/field = &"jewelry"
+
+[node name="KeyStats" type="PanelContainer" parent="Content"]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("3_field_tile")
+
+[node name="Row" type="HFlowContainer" parent="Content/KeyStats"]
+layout_mode = 2
+theme_override_constants/h_separation = 18
+theme_override_constants/v_separation = 6
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "KEY STATS
+NOT EDITED HERE"
+
+[node name="HandToHand" type="VBoxContainer" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row/HandToHand"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "HAND-TO-HAND"
+
+[node name="Value" type="Label" parent="Content/KeyStats/Row/HandToHand"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
+text = "0"
+
+[node name="ToHit" type="VBoxContainer" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row/ToHit"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "TO-HIT"
+
+[node name="Value" type="Label" parent="Content/KeyStats/Row/ToHit"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
+text = "0"
+
+[node name="Dodge" type="VBoxContainer" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row/Dodge"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "DODGE"
+
+[node name="Value" type="Label" parent="Content/KeyStats/Row/Dodge"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
+text = "0"
+
+[node name="Missile" type="VBoxContainer" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row/Missile"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "MISSILE"
+
+[node name="Value" type="Label" parent="Content/KeyStats/Row/Missile"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
+text = "0"
+
+[node name="MagicResistance" type="VBoxContainer" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row/MagicResistance"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "MAGIC RES."
+
+[node name="Value" type="Label" parent="Content/KeyStats/Row/MagicResistance"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
+text = "0"
+
+[node name="Attacks" type="VBoxContainer" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row/Attacks"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "ATTACKS"
+
+[node name="Value" type="Label" parent="Content/KeyStats/Row/Attacks"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
+text = "0"
+
+[node name="Movement" type="VBoxContainer" parent="Content/KeyStats/Row"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Caption" type="Label" parent="Content/KeyStats/Row/Movement"]
+layout_mode = 2
+theme_type_variation = &"VaultStatusMuted"
+theme_override_font_sizes/font_size = 11
+text = "MOVEMENT"
+
+[node name="Value" type="Label" parent="Content/KeyStats/Row/Movement"]
+layout_mode = 2
+theme_type_variation = &"VaultText"
+theme_override_font_sizes/font_size = 15
+text = "0"

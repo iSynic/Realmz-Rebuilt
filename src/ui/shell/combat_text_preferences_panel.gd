@@ -4,14 +4,23 @@ extends Container
 
 signal setting_changed(setting_id: StringName, value: Variant)
 
-const COMPACT_BREAKPOINT := 680.0
+const COMPACT_BREAKPOINT := 720.0
 
 var _binding := false
 var _compact_columns := false
+var _scroller: ScrollContainer
 
 
 func _ready() -> void:
 	resized.connect(_layout_columns)
+	# The enclosing scroller gives the width really on offer; this panel's own width can
+	# never drop below its side-by-side minimum, so it cannot tell when to stack.
+	var ancestor := get_parent()
+	while ancestor != null and not ancestor is ScrollContainer:
+		ancestor = ancestor.get_parent()
+	_scroller = ancestor as ScrollContainer
+	if _scroller != null:
+		_scroller.resized.connect(_layout_columns)
 	(get_node("Columns/ControlsColumn/CombatTextSpeedGroup/CombatTextSpeedSlider") as HSlider).value_changed.connect(_on_speed_changed)
 	(get_node("Columns/ControlsColumn/CombatTextBackgroundGroup/CombatTextBackgroundSlider") as HSlider).value_changed.connect(_on_background_changed)
 	(get_node("Columns/ControlsColumn/CombatTextMotionRow/CombatTextMotion") as OptionButton).item_selected.connect(_on_motion_selected)
@@ -44,7 +53,7 @@ func _layout_columns() -> void:
 	var columns := get_node_or_null("Columns") as BoxContainer
 	if columns == null:
 		return
-	var compact := size.x < COMPACT_BREAKPOINT
+	var compact := (_scroller.size.x if _scroller != null else size.x) < COMPACT_BREAKPOINT
 	if compact == _compact_columns:
 		return
 	_compact_columns = compact

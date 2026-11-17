@@ -4,6 +4,7 @@ extends RefCounted
 
 var _shell_ref: WeakRef
 var _footer_pending := false
+var _combat_floating := false
 var workspace_rect: Rect2
 var applied_profile: UiLayoutProfile
 var _stage_frame: NinePatchRect
@@ -86,7 +87,7 @@ func bind_hud_content(shell: GameShell, modular: bool) -> void:
 
 func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameView) -> UiLayoutProfile:
 	var profile := UiLayoutProfile.for_viewport(shell_size, settings.ui_scale_mode, settings.display_scaling_mode, settings.interface_text_scale, settings.narrative_text_scale)
-	var shell := _shell_ref.get_ref() as GameShell
+	var shell: GameShell = _shell_ref.get_ref()
 	if profile.id == UiLayoutProfile.WIDE:
 		profile.party_width = _authored_roster_width * profile.ui_scale
 		profile.bottom_height = _authored_footer_height * profile.ui_scale
@@ -100,8 +101,20 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	var origin := canvas_rect.position
 	profile.menu_height = 0.0
 	var modular := shell.hud.prepare(settings, game_view, _navigator.current_screen(), shell.pause_active)
+	BattleCommandScaleController.modular = settings.combat_hud.modular
+	var floating_combat := modular and shell.hud.combat_mode
+	BattleDeckLayout.preferences = settings.combat_hud
+	BattleDeckLayout.save = _save_combat_hud
+	BattleDeckLayout.obscured = _battle_is_obscured
+	BattleDeckLayout.area = Rect2(shell.global_position + profile.application_rect.position, profile.application_rect.size) if floating_combat else Rect2()
+	modular = modular and not floating_combat
+	_style_prompt(shell, modular, settings.hud.panels[1].background_opacity)
 	if modular:
 		_apply_modular(profile)
+		applied_profile = profile
+		return profile
+	if floating_combat or _combat_floating: _apply_combat_regions(profile, floating_combat)
+	if floating_combat:
 		applied_profile = profile
 		return profile
 	_apply_footer(profile, viewport_size, origin, game_view)
@@ -121,8 +134,27 @@ func apply(shell_size: Vector2, settings: PresentationSettings, game_view: GameV
 	return profile
 
 
+## In the modular HUD a story prompt stands where the message panel does, so it wears that
+## panel's surface and background opacity; in the fixed layout it keeps its own.
+func _style_prompt(shell: GameShell, modular: bool, opacity: float) -> void:
+	var prompt := shell.get_parent().get_node_or_null("InteractionPanel") as Control if shell.get_parent() != null else null
+	if prompt == null:
+		return
+	# The presenter puts this style on for prompts that stand on the message panel; its
+	# menu-style dialogs keep their own roomier panel.
+	if modular:
+		prompt.set_meta(&"hud_surface", (shell.hud.get_node("Narration/Surface") as Control).get_theme_stylebox("panel"))
+	elif prompt.has_meta(&"hud_surface"):
+		prompt.remove_meta(&"hud_surface")
+		prompt.remove_theme_stylebox_override("panel")
+	prompt.self_modulate.a = opacity if modular else 1.0
+	# The message panel a prompt replaces is hidden meanwhile, so the prompt carries the frame;
+	# the menu-style dialogs (quit, save and leave) wear it in every layout.
+	UiThemeService.frame_for(prompt, modular or prompt.theme_type_variation == &"MenuDialog")
+
+
 func _apply_modular(profile: UiLayoutProfile) -> void:
-	var shell := _shell_ref.get_ref() as GameShell
+	var shell: GameShell = _shell_ref.get_ref()
 	var area := profile.application_rect
 	_world_command_panel.show()
 	_command_panel.show()
@@ -138,6 +170,47 @@ func _apply_modular(profile: UiLayoutProfile) -> void:
 	shell.hud.arrange(profile)
 	_navigator.set_layout_profile(profile, area.size, area.position)
 	workspace_rect = area
+
+
+## True while the pause menu or the Combat Log stands over the battle.
+func _battle_is_obscured() -> bool:
+	var shell: GameShell = _shell_ref.get_ref()
+	if shell == null or shell.pause_active: return true
+	var presenter := shell.get_parent().get_node_or_null("InteractionPanel") as InteractionPresenter if shell.get_parent() != null else null
+	return presenter != null and presenter.combat_log.is_open()
+
+
+## Saves a combat HUD placement the player made by dragging a floating battle piece.
+func _save_combat_hud(value: HudPreferences) -> void:
+	var shell: GameShell = _shell_ref.get_ref()
+	if shell == null: return
+	var candidate := PresentationSettings.from_data(shell.settings.to_data())
+	candidate.combat_hud = value.duplicate_value()
+	var commit := shell.navigator.content_presenter.system_preferences.commit_preferences
+	var error := String(commit.call(shell.settings, candidate)) if commit.is_valid() else "Settings storage is unavailable."
+	if not error.is_empty(): shell.status.set_status(error, true)
+
+
+## Enters, keeps or leaves the full-window battlefield. While it lasts the modular HUD is in
+## its combat mode and places the party roster and dock; leaving restores the footer.
+func _apply_combat_regions(profile: UiLayoutProfile, floating: bool) -> void:
+	var shell: GameShell = _shell_ref.get_ref()
+	_combat_floating = floating
+	if not floating:
+		if shell.hud.active: return
+		_bottom_region.visible = _stage_frame.visible and (_navigator.current_screen() in [&"exploration", &"spells", &"save_load"] or shell.pause_active)
+		_party_roster.visible = _stage_frame.visible
+		return
+	var area := profile.application_rect
+	profile.bottom_height = maxf(profile.bottom_height, 190.0 * profile.font_scale)
+	_bottom_region.hide()
+	_apply_stage(profile, area.size, area.position, area)
+	shell.hud.arrange(profile)
+	_navigator.set_layout_profile(profile, area.size, area.position)
+	workspace_rect = area
+	# The open combat spellbook takes the right of the window; the battlefield and the
+	# console strip stop at its edge, as they do beside the fixed roster.
+	if shell.roster.combat_spellbook_active(): workspace_rect.size.x = maxf(320.0, shell.hud.panel_rectangles()[0].position.x - area.position.x)
 
 
 func _apply_stage(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2, stage_rect: Rect2) -> void:
@@ -193,7 +266,7 @@ func _apply_footer(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vec
 
 
 func restore_footer_bounds(profile: UiLayoutProfile) -> void:
-	var shell := _shell_ref.get_ref() as GameShell
+	var shell: GameShell = _shell_ref.get_ref()
 	if shell.hud != null and shell.hud.active: return
 	var canvas_rect := profile.application_rect
 	var footer_width := GameShellLayoutPolicy.exploration_footer_width(canvas_rect.size, profile, _navigator.current_screen())
@@ -229,7 +302,7 @@ func queue_footer_layout() -> void:
 
 func _settle_footer_layout() -> void:
 	_footer_pending = false
-	var shell := _shell_ref.get_ref() as GameShell
+	var shell: GameShell = _shell_ref.get_ref()
 	if shell == null or not shell.is_node_ready() or applied_profile == null: return
 	apply(shell.size, shell.settings, shell.current_view)
 	shell.layout_changed.emit(workspace_rect, applied_profile)

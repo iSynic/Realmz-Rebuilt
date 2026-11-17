@@ -47,7 +47,6 @@ theme_override_constants/separation = 6
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-alignment = 1
 [node name="EmptyTitle" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureEmptyState"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
@@ -66,8 +65,12 @@ theme_override_constants/separation = 6
 [node name="Header" type="HBoxContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
 layout_mode = 2
 theme_override_constants/separation = 10
-[node name="CreatureIcon" type="TextureRect" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header"]
-custom_minimum_size = Vector2(80, 80)
+[node name="ArtFrame" type="PanelContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_type_variation = &"ClassicInset"
+[node name="CreatureIcon" type="TextureRect" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header/ArtFrame"]
+custom_minimum_size = Vector2(128, 128)
 layout_mode = 2
 texture_filter = 1
 expand_mode = 1
@@ -84,12 +87,12 @@ theme_override_colors/font_color = Color(0.604, 0.627, 0.659, 1)
 [node name="CreatureHitDice" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header/Identity"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
-[node name="Divider" type="HSeparator" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
-layout_mode = 2
-[node name="CreatureDescription" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
+[node name="CreatureDescription" type="Label" parent="CreatureDetailPanel/DetailContent/CreatureRecord/Header/Identity"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.878, 0.886, 0.898, 1)
 autowrap_mode = 2
+[node name="Divider" type="HSeparator" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
+layout_mode = 2
 [node name="CreatureFacts" type="GridContainer" parent="CreatureDetailPanel/DetailContent/CreatureRecord"]
 layout_mode = 2
 size_flags_horizontal = 3

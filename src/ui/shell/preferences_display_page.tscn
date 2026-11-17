@@ -1,6 +1,7 @@
 [gd_scene load_steps=2 format=3]
 
 [ext_resource type="PackedScene" path="res://src/ui/shell/indoor_party_icon_picker.tscn" id="4_icons"]
+[ext_resource type="StyleBox" path="res://src/ui/shared/style/menu_card.tres" id="90_card"]
 
 [node name="Display" type="VBoxContainer"]
 layout_mode = 2
@@ -18,23 +19,19 @@ size_flags_horizontal = 3
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 10
-[node name="DisplayPreferenceTabs" type="TabContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content"]
+[node name="DisplayPreferenceTabs" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-clip_tabs = true
+theme_override_constants/separation = 12
 [node name="Window & Scale" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 [node name="Image Effects" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 [node name="World View" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
 [node name="DisplayTopRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale" groups=["system_setting_rows"]]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -44,26 +41,47 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 [node name="ScaleGroup" type="PanelContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn"]
+theme_override_styles/panel = ExtResource("90_card")
 layout_mode = 2
 size_flags_horizontal = 3
 [node name="Content" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
+[node name="SectionTitle" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Window & Scale/DisplayTopRow/DisplaySettingsColumn/ScaleGroup/Content"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Window & scale"
+
 [node name="VisualEffectsGroup" type="PanelContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects"]
+theme_override_styles/panel = ExtResource("90_card")
 layout_mode = 2
 size_flags_horizontal = 3
 [node name="Content" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
+[node name="SectionTitle" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "Look"
+
 [node name="WorldViewGroup" type="PanelContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View"]
+theme_override_styles/panel = ExtResource("90_card")
 layout_mode = 2
 size_flags_horizontal = 3
 [node name="Content" type="VBoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
+[node name="SectionTitle" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content"]
+layout_mode = 2
+theme_type_variation = &"MenuHeading"
+theme_override_font_sizes/font_size = 18
+text = "World view"
+
 [node name="WorldOptions" type="GridContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -82,6 +100,38 @@ size_flags_horizontal = 3
 theme_type_variation = &"ClassicTheldrowOptionButton"
 fit_to_longest_item = false
 clip_text = true
+[node name="InterfaceThemeRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/InterfaceThemeRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Interface theme"
+[node name="InterfaceThemePicker" type="OptionButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/InterfaceThemeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Colours and background for the menus, Saved Adventures, Character Files and the save editor. The game's Classic screens keep their original art; Settings, the HUD panel menu and the HUD arrange overlay follow the theme."
+theme_type_variation = &"ClassicTheldrowOptionButton"
+fit_to_longest_item = false
+clip_text = true
+[node name="ThemeSurfaceTile" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content"]
+layout_mode = 2
+tooltip_text = "Lays the interface theme's background tile faintly over framed panels for a little texture. Themes without a tile stay flat."
+text = "Theme texture on panels"
+autowrap_mode = 2
+[node name="ThemeSurfaceTileRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
+layout_mode = 2
+[node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/ThemeSurfaceTileRow"]
+custom_minimum_size = Vector2(230, 0)
+layout_mode = 2
+text = "Panel texture strength · 25%"
+[node name="ThemeSurfaceTileSlider" type="HSlider" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/ThemeSurfaceTileRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+tooltip_text = "How strongly the theme's tile shows on panels. Lower keeps small text easier to read."
+max_value = 100.0
+step = 5.0
+value = 25.0
 [node name="PixelSmoothingRow" type="BoxContainer" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content" groups=["system_setting_rows"]]
 layout_mode = 2
 [node name="Caption" type="Label" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/Image Effects/VisualEffectsGroup/Content/PixelSmoothingRow"]
@@ -172,12 +222,14 @@ autowrap_mode = 2
 [node name="ClassicExplorationVisibility" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Classic exploration distance with visited outer tiles"
+text = "Classic exploration distance"
+tooltip_text = "Uses Classic's sight distance while exploring and keeps visited outer tiles visible."
 autowrap_mode = 2
 [node name="CustomFogTile" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Use alternative fog-of-war tile"
+text = "Alternative fog-of-war tile"
+tooltip_text = "Draws unexplored areas with the alternative fog tile instead of the Classic one."
 autowrap_mode = 2
 [node name="CombatHashMarks" type="CheckButton" parent="DisplaySettingsScroll/DisplaySettingsPanel/Content/DisplayPreferenceTabs/World View/WorldViewGroup/Content/WorldOptions"]
 layout_mode = 2

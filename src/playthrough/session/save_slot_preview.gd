@@ -38,21 +38,34 @@ func _init(save_slot_id: String, save_source: StringName, save_status: StringNam
 	status = save_status
 
 
+## The player-facing name of a slot: "Slot A", "Quick Save 1", or "Slot A, earlier copy" for a
+## copy the game set aside (named "<slot>-earlier-<hash>" or "<slot>-programs-<hash>" on disk).
+static func title_for(id: String) -> String:
+	if id.length() == 1 and SCENARIO_SLOTS.contains(id): return "Slot %s" % id
+	if id == "quick": return "Quick Save 1"
+	if id == "quick-2": return "Quick Save 2"
+	for marker: String in ["-earlier-", "-backup-programs-", "-programs-"]:
+		var at := id.rfind(marker)
+		if at > 0: return "%s, %s" % [title_for(id.left(at)), "earlier copy" if marker == "-earlier-" else "before an update"]
+	return id
+
+
+## "Latest save" for the slot's own file, "Backup" for the one it replaced.
 func source_label() -> String:
-	return "Backup" if source == BACKUP else "Current"
+	return "Backup" if source == BACKUP else "Latest save"
 
 
 func status_label() -> String:
 	match status:
 		VALID:
-			return "Identity verified"
+			return "Ready to load"
 		CORRUPT:
-			return "Corrupt"
+			return "Damaged save"
 		INCOMPATIBLE:
-			return "Incompatible save"
+			return "Can't be opened by this version"
 		CAMPAIGN_MISMATCH:
-			return "Wrong campaign"
+			return "From another scenario"
 		PACKAGE_MISMATCH:
-			return "Different package"
+			return "Different scenario version"
 		_:
 			return "Unavailable"

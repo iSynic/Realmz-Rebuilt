@@ -37,6 +37,15 @@ var _weapon_aim_mode: StringName
 var _weapon_preparation: StringName
 var _weapon_ability_body: CombatRequestBody
 var _weapon_ability_id := ""
+var _bound_turn := ""
+var _targeting_rejection_turn := ""
+## Combat hides the status line, so a failed committed target returns its reason to
+## the targeting card, including one rebuilt from the same turn's pending cast.
+var targeting_rejection := "":
+	set(reason):
+		targeting_rejection = reason
+		_targeting_rejection_turn = _bound_turn
+		if not reason.is_empty() and _component != null and is_instance_valid(_component): _component.show_targeting_rejection.call_deferred(reason)
 var inspector: CombatInspectionCard
 var resolution_pending := false:
 	set(pending):
@@ -83,7 +92,11 @@ func bind(component: BattleInteraction, body: CombatRequestBody, game_view: Game
 	_component.combat_items_requested.connect(func() -> void: items_requested.emit())
 	_component.combat_inventory_targeting_started.connect(func() -> void: inventory_targeting_started.emit())
 	_component.bandage_selection_changed.connect(func(target_ids: Array[String]) -> void: bandage_selection_changed.emit(target_ids))
+	component.deck_layout.parking_changed.connect(func() -> void: layout_changed.emit())
 	component.resume_pending_cast.call_deferred()
+	_bound_turn = "%s|%d|%s" % [body.battle_id, body.round_number, body.actor_id] if body != null else ""
+	if not targeting_rejection.is_empty() and _targeting_rejection_turn == _bound_turn: component.show_targeting_rejection.call_deferred(targeting_rejection)
+	targeting_rejection = ""
 	_mount_fast_spell_dock(body, {})
 	if body != null: _dock_frames = func() -> void: _dock.configure(body.fast_spells, InteractionComponentFactory.fast_spell_animation_frames(game_view, media, body.fast_spells))
 	_component.command_availability.set_pending(resolution_pending)

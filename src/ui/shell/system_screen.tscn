@@ -6,7 +6,7 @@
 
 [ext_resource type="Theme" path="res://src/ui/shared/style/menu_controls_theme.tres" id="4_theme"]
 
-[node name="SystemScreen" instance=ExtResource("1_base")]
+[node name="SystemScreen" groups=["ui_theme_backdrop"] instance=ExtResource("1_base")]
 theme = ExtResource("4_theme")
 theme_type_variation = &"SettingsSurface"
 route_id = &"system"
@@ -29,11 +29,12 @@ text = ""
 vertical_scroll_mode = 0
 
 [node name="ScreenTitle" parent="WorkspaceColumn/WorkspaceHeader" index="0"]
-theme_override_font_sizes/font_size = 44
+theme_override_font_sizes/font_size = 30
 text = "Settings"
 
-[node name="RouteBackAction" parent="WorkspaceColumn/WorkspaceHeader" index="2"]
-theme_override_font_sizes/font_size = 24
+[node name="RouteBackAction" parent="WorkspaceColumn/RouteFooter" index="0"]
+theme_type_variation = &"FieldAction"
+theme_override_font_sizes/font_size = 16
 
 [node name="HeaderRule" parent="WorkspaceColumn" index="1"]
 visible = false

@@ -35,11 +35,29 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 				minimum = Vector2(560.0, 310.0)
 			InteractionRequest.LEVEL_UP:
 				var body := request.body as LevelUpRequestBody
-				preferred = Vector2(1080.0, minf(760.0, available.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
+				preferred = Vector2(1080.0, minf(760.0, available.y - 20.0)) if body != null and body.mode == &"spell-selection" else Vector2(640.0, 304.0)
+				# The level result is a short card: who levelled, four gains, Continue.
+				if body == null or body.mode != &"spell-selection": minimum = Vector2(460.0, 250.0)
 			InteractionRequest.ALLY_SELECTION:
 				preferred = Vector2(820.0, 500.0)
 	var desired := preferred.min(available - Vector2(20.0, 20.0))
 	return desired.max(minimum).min(available) * interface_scale
+
+
+## The centred rectangle of a dialog that is neither a textbox prompt nor a full-stage
+## workspace. `minimum` is the dialog's content plus its panel padding.
+static func centred_modal_rect(request: InteractionRequest, application_rect: Rect2, stage_rect: Rect2, minimum: Vector2, interface_scale: float = 1.0) -> Rect2:
+	var region := application_rect if uses_application_modal_region(request) else stage_rect
+	var thief := request != null and request.kind == InteractionRequest.THIEF_ENCOUNTER
+	if thief and (minimum.x > region.size.x or minimum.y > region.size.y):
+		region = application_rect
+	var desired := preferred_modal_size(request, region.size, interface_scale)
+	if thief:
+		desired.y = minf(maxf(280.0 * interface_scale, minimum.y), region.size.y - 4.0)
+	# A lifecycle or pick-lock dialog is as tall as its content, with no empty band below.
+	if request != null and request.kind in [InteractionRequest.SESSION_LIFECYCLE, InteractionRequest.PICK_LOCK]:
+		desired.y = minf(minimum.y + 16.0 * interface_scale, region.size.y - 4.0)
+	return Rect2(region.position + (region.size - desired) * 0.5, desired)
 
 
 static func floating_choice_rect(stage_rect: Rect2, textbox_rect: Rect2, minimum: Vector2, interface_scale: float = 1.0) -> Rect2:

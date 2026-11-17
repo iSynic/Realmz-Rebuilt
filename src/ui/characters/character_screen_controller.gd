@@ -5,8 +5,7 @@ extends RefCounted
 signal intent_submitted(intent: PlayerIntent)
 signal refresh_requested
 signal vault_back_requested
-signal vault_archive_requested(character_id: String)
-signal vault_restore_requested(character_id: String, revision_hash: String)
+signal vault_character_requested(operation: StringName, character_id: String, revision_hash: String)
 signal vault_maintenance_requested(operation: StringName)
 
 const GOLD := Color("d5b45d")
@@ -18,7 +17,6 @@ var _party_order_open: bool = false
 var _source_order_ids: Array[String] = []
 var _draft_order_ids: Array[String] = []
 var _vault_revisions: Array[CharacterVaultRevisionView] = []
-var _vault_notice: String = ""
 var _vault_inspection_revision_hash: String = ""
 var _vault_target: Control
 var _vault_screen: VaultScreen
@@ -27,13 +25,21 @@ var _vault_appearance_textures: Dictionary = {}
 var _vault_text_scale: float = 1.0
 var _vault_back_label: String = "Back"
 var _vault_media: ClassicMediaCatalog
-var _vault_show_history: bool = false
+var _vault_binder := VaultScreenBinder.new()
+var _editor_session: CharacterEditorSession
+var _editor_textures: Dictionary = {}
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var character_art_dialog: CharacterArtDialog
 
 
+func _init() -> void:
+	_bind_vault_binder()
+
+
 func set_layout_profile(profile_id: StringName) -> void:
 	_layout_profile = profile_id
+	if _editor_session != null and is_instance_valid(_vault_screen):
+		_vault_screen.character_editor.apply_compact(profile_id == UiLayoutProfile.COMPACT)
 
 
 func reset() -> void:
@@ -43,7 +49,6 @@ func reset() -> void:
 	_source_order_ids.clear()
 	_draft_order_ids.clear()
 	_vault_inspection_revision_hash = ""
-	_vault_show_history = false
 	_vault_target = null
 	_vault_view = null
 	_vault_media = null
@@ -61,7 +66,7 @@ func select_character(character_id: String, view: GameView) -> bool:
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView], notice: String = "") -> void:
 	_vault_revisions = revisions.duplicate()
-	_vault_notice = notice
+	_vault_binder.set_revisions(revisions, notice)
 
 
 func clear_vault_inspection() -> void:
@@ -73,14 +78,46 @@ func present_repair(details: String, review: bool, can_repair: bool, has_backup:
 		_vault_screen.repair_dialog.present(details, review, can_repair, has_backup)
 
 
+## Opens the Character Files editor over the library until `session` closes. The draft
+## survives leaving the route; returning rebinds it to the re-created screen.
+func present_editor(session: CharacterEditorSession) -> void:
+	if not is_instance_valid(_vault_screen):
+		return
+	_editor_session = session
+	_vault_inspection_revision_hash = ""
+	_editor_textures = _vault_appearance_textures.duplicate()
+	var imported: Array[CharacterAppearanceOptionView] = []
+	if _vault_media != null:
+		imported.append_array(_vault_media.imported_appearance_options(CharacterAppearanceDefinition.PORTRAIT))
+		imported.append_array(_vault_media.imported_appearance_options(CharacterAppearanceDefinition.COMBAT_ICON))
+	_vault_screen.prepare_editor_layout()
+	_vault_screen.character_editor.bind(session, _editor_texture, imported, _layout_profile == UiLayoutProfile.COMPACT)
+
+
+## Decodes one portrait or icon the first time the editor shows it.
+func _editor_texture(asset_id: String) -> Texture2D:
+	_cache_texture(_editor_textures, asset_id)
+	return _editor_textures.get(asset_id) as Texture2D
+
+
+## Returns from the editor to the library, selecting the edited character.
+func close_editor() -> void:
+	_editor_session = null
+	_editor_textures.clear()
+	_refresh_vault()
+	restore_vault_focus(false)
+
+
 func handle_vault_back() -> bool:
+	if _editor_session != null and is_instance_valid(_vault_screen):
+		return _vault_screen.character_editor.handle_back()
 	if is_instance_valid(_vault_screen) and _vault_screen.repair_dialog.visible:
 		if not _vault_screen.repair_dialog.committing():
 			_vault_screen.repair_dialog.hide()
 			vault_maintenance_requested.emit(&"cancel")
 		return true
 	if _vault_inspection_revision_hash.is_empty():
-		return false
+		return _vault_binder.handle_back()
 	_vault_inspection_revision_hash = ""
 	_refresh_vault()
 	return true
@@ -92,152 +129,68 @@ func present_vault(target: Control, view: GameView, appearance_textures: Diction
 		return
 	_vault_target = target
 	_vault_screen = screen
-	if not screen.archive_confirmation.archive_requested.is_connected(vault_archive_requested.emit):
-		screen.archive_confirmation.archive_requested.connect(vault_archive_requested.emit)
 	if not screen.repair_dialog.operation_requested.is_connected(vault_maintenance_requested.emit):
 		screen.repair_dialog.operation_requested.connect(vault_maintenance_requested.emit)
-	if not screen.repair_button().pressed.is_connected(screen.repair_dialog.begin_review.bind(screen.repair_button())):
-		screen.repair_button().pressed.connect(screen.repair_dialog.begin_review.bind(screen.repair_button()))
-	if not screen.restore_starters_button().pressed.is_connected(screen.repair_dialog.begin_starter_restore.bind(screen.restore_starters_button())):
-		screen.restore_starters_button().pressed.connect(screen.repair_dialog.begin_starter_restore.bind(screen.restore_starters_button()))
 	_vault_view = view
 	_vault_appearance_textures = appearance_textures
 	_vault_text_scale = text_scale
 	_vault_back_label = back_label
 	_vault_media = media
+	if _editor_session != null:
+		if screen.character_editor.session() != _editor_session:
+			present_editor(_editor_session)
+		else:
+			screen.prepare_editor_layout()
+			screen.character_editor.apply_compact(_layout_profile == UiLayoutProfile.COMPACT)
+		return
 	if not _vault_inspection_revision_hash.is_empty():
 		screen.prepare_inspection_layout()
 		_render_vault_inspection()
 		return
-	screen.prepare_list_layout(_layout_profile == UiLayoutProfile.COMPACT)
-	var back := screen.list_back_button()
-	back.text = back_label
-	_clear_pressed_connections(back)
-	back.pressed.connect(func() -> void: vault_back_requested.emit())
-	var current_revisions := _current_vault_revisions()
-	_bind_label(screen.available_count(), "%d available" % current_revisions.size(), MUTED, 13)
-	var history_count := _vault_revisions.size() - current_revisions.size()
-	var history_button := screen.history_toggle()
-	history_button.text = ("Hide revision history" if _vault_show_history else "Revision history and archives") + " (%d)" % history_count
-	history_button.disabled = history_count == 0
-	_clear_pressed_connections(history_button)
-	if not history_button.disabled:
-		history_button.pressed.connect(func() -> void:
-			_vault_show_history = not _vault_show_history
-			_refresh_vault()
-		)
-	if _vault_revisions.is_empty():
-		(screen.empty_state().get_node("Content/Title") as Label).text = "Character Files are unavailable" if not _vault_notice.is_empty() else "Character vault is empty"
-		(screen.empty_state().get_node("Content/Detail") as Label).text = _vault_notice if not _vault_notice.is_empty() else "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party."
-		screen.empty_state().visible = true
-		screen.current_title().visible = false
-		return
-	_bind_label(screen.current_title(), "Current Character Files", GOLD, 15)
-	if view != null and view.campaign_summary != null:
-		var context := screen.eligibility_context()
-		context.visible = true
-		_bind_label(context, "Eligibility shown for %s" % view.campaign_summary.title, MUTED, 11)
-	for revision: CharacterVaultRevisionView in current_revisions:
-		_render_vault_current_row(screen.character_file_list(), revision, view)
-	if _vault_show_history:
-		screen.history_title().visible = true
-		_render_vault_history(screen.history_rows(), current_revisions)
+	_vault_binder.media_catalog = media
+	_vault_binder.present(screen, view, appearance_textures, back_label, _layout_profile == UiLayoutProfile.COMPACT)
 
 
-func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
-	var result: Array[CharacterVaultRevisionView] = []
-	var selected_by_character: Dictionary = {}
-	for revision: CharacterVaultRevisionView in _vault_revisions:
-		if revision.archived:
-			continue
-		if not selected_by_character.has(revision.character_id) or revision.is_current:
-			selected_by_character[revision.character_id] = revision
-	for revision: CharacterVaultRevisionView in selected_by_character.values():
-		result.append(revision)
-	result.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
-	return result
+func present_vault_status(text: String, is_error: bool) -> void:
+	_vault_binder.present_status(text, is_error)
 
 
-func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisionView, view: GameView) -> void:
-	_ensure_vault_appearance(revision)
-	var panel := _vault_screen.character_card_scene.instantiate() as PanelContainer
-	if panel == null:
-		push_error("Character File card scene must instantiate a PanelContainer.")
-		return
-	panel.name = "CharacterFile_%s" % revision.character_id.validate_node_name()
-	var portrait := panel.get_node("CardContent/Record/StoredAppearancePair/StoredPortrait") as TextureRect
-	portrait.texture = _vault_appearance_textures.get(revision.portrait_id) as Texture2D
-	if portrait.texture != null:
-		portrait.custom_minimum_size = portrait.texture.get_size()
-	var tactical := panel.get_node("CardContent/Record/StoredAppearancePair/StoredTacticalIcon") as TextureRect
-	if revision.character != null:
-		tactical.texture = _vault_appearance_textures.get(revision.character.combat_icon_id) as Texture2D
-		if tactical.texture != null:
-			tactical.custom_minimum_size = tactical.texture.get_size()
-	var name_label := panel.get_node("CardContent/Record/Summary/Name") as Label
-	_bind_label(name_label, revision.name, GOLD, 18)
-	var character := revision.character
-	var identity := "Level %d • %s / %s" % [revision.level, character.race_name if character != null else revision.race_id, character.caste_name if character != null else revision.caste_id]
-	_bind_label(panel.get_node("CardContent/Record/Summary/Identity") as Label, identity, Color("e0e2e5"), 14)
-	var facts := "Stored character record"
-	if character != null:
-		facts = "ST %d/%d • SP %d/%d • AR %d • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.carried_load, character.maximum_load]
-	_bind_label(panel.get_node("CardContent/Record/Summary/Facts") as Label, facts, MUTED, 12)
-	var origin := "Realmz character file" if revision.source_campaign_id.is_empty() else "From %s" % revision.source_campaign_id
-	if not revision.publication_label.is_empty():
-		origin += " • %s" % revision.publication_label
-	name_label.tooltip_text = origin
-	_bind_label(panel.get_node("CardContent/CharacterFileActions/Eligibility") as Label, "Eligible" if revision.eligible else "Unavailable", Color("75c889") if revision.eligible else Color("ef7770"), 13)
-	var inspect := panel.get_node("CardContent/CharacterFileActions/Inspect") as Button
-	inspect.disabled = character == null
-	inspect.tooltip_text = "Open the complete detached character record." if not inspect.disabled else "This vault revision has no valid character record."
-	if not inspect.disabled:
-		inspect.pressed.connect(_inspect_vault.bind(revision.revision_hash))
-	_bind_vault_import_button(panel.get_node("CardContent/CharacterFileActions/AddToParty") as Button, revision, view)
-	var archive := panel.get_node("CardContent/CharacterFileActions/Archive") as Button
-	archive.tooltip_text = "Remove this character from the active list without deleting immutable history."
-	archive.pressed.connect(_vault_screen.archive_confirmation.present.bind(revision.character_id, revision.name, archive))
-	parent.add_child(panel)
+func set_vault_controller_prompts(family: String, preferences: ControllerPreferences) -> void:
+	_vault_binder.set_controller_prompts(family, preferences)
 
 
-func _bind_vault_import_button(button: Button, revision: CharacterVaultRevisionView, view: GameView) -> void:
-	button.tooltip_text = "\n".join(revision.eligibility_reasons)
-	if view == null or not view.session_started:
-		button.disabled = true
-		button.tooltip_text = "Choose a campaign before importing a character."
-	else:
-		var availability := view.availability(&"import_vault_character")
-		button.disabled = not availability.enabled or not revision.eligible or revision.archived
-		if not availability.enabled:
-			button.tooltip_text = availability.reason
-		elif revision.archived:
-			button.tooltip_text = "Restore an archived revision before importing it."
-	if not button.disabled:
-		button.pressed.connect(func() -> void: intent_submitted.emit(PartyIntents.import_vault_character(revision.character_id, revision.revision_hash)))
+func restore_vault_focus(opened: bool) -> void:
+	if _vault_inspection_revision_hash.is_empty():
+		_vault_binder.restore_focus(opened)
 
 
-func _render_vault_history(parent: Container, current_revisions: Array[CharacterVaultRevisionView]) -> void:
-	var current_hashes: Dictionary = {}
-	for revision: CharacterVaultRevisionView in current_revisions:
-		current_hashes[revision.revision_hash] = true
-	for revision: CharacterVaultRevisionView in _vault_revisions:
-		if current_hashes.has(revision.revision_hash):
-			continue
-		var row := _vault_screen.history_row_scene.instantiate() as HBoxContainer
-		if row == null:
-			push_error("Character File history scene must instantiate an HBoxContainer.")
-			return
-		var state := "Archived" if revision.archived else "Earlier"
-		_bind_label(row.get_node("Summary") as Label, "%s • %s • L%d • %s" % [revision.name, state, revision.level, revision.revision_hash.left(12)], MUTED, 13)
-		var inspect := row.get_node("Inspect") as Button
-		inspect.disabled = revision.character == null
-		if not inspect.disabled:
-			inspect.pressed.connect(_inspect_vault.bind(revision.revision_hash))
-		var restore := row.get_node("Restore") as Button
-		restore.visible = revision.archived
-		if revision.archived:
-			restore.pressed.connect(func() -> void: vault_restore_requested.emit(revision.character_id, revision.revision_hash))
-		parent.add_child(row)
+## The open vault dialog or editor overlay owns controller focus until it closes.
+func vault_dialog_focus_root() -> Node:
+	if not is_instance_valid(_vault_screen) or not _vault_screen.is_visible_in_tree():
+		return null
+	if _editor_session != null and _vault_screen.character_editor.overlay_focus_root() != null:
+		return _vault_screen.character_editor.overlay_focus_root()
+	if _vault_screen.repair_dialog.visible:
+		return _vault_screen.repair_dialog
+	return _vault_screen.archive_confirmation if _vault_screen.archive_confirmation.visible else null
+
+
+func cycle_vault_tab(delta: int) -> bool:
+	if _editor_session != null and is_instance_valid(_vault_screen):
+		return _vault_screen.character_editor.cycle_tab(delta)
+	return _vault_inspection_revision_hash.is_empty() and _vault_binder.cycle_tab(delta)
+
+
+func _bind_vault_binder() -> void:
+	# Method callables keep the controller and its binder free of a reference cycle.
+	_vault_binder.back_requested.connect(vault_back_requested.emit)
+	_vault_binder.inspect_requested.connect(_inspect_vault)
+	_vault_binder.import_requested.connect(_import_vault)
+	_vault_binder.character_requested.connect(vault_character_requested.emit)
+
+
+func _import_vault(character_id: String, revision_hash: String) -> void:
+	intent_submitted.emit(PartyIntents.import_vault_character(character_id, revision_hash))
 
 
 func _inspect_vault(revision_hash: String) -> void:
@@ -262,17 +215,17 @@ func _render_vault_inspection() -> void:
 		_refresh_vault()
 		return
 	_ensure_vault_appearance(revision)
-	var back := _vault_screen.inspection_back_button()
+	var back := _vault_screen.inspection_back_button
 	_clear_pressed_connections(back)
 	back.pressed.connect(func() -> void:
 		_vault_inspection_revision_hash = ""
 		_refresh_vault()
 	)
-	_bind_label(_vault_screen.inspection_heading(), "Inspect %s" % revision.name, GOLD, 20)
-	var eligibility := "Eligible for this campaign" if revision.eligible else "Not eligible for this campaign"
-	var reasons := "" if revision.eligibility_reasons.is_empty() else "\n%s" % "\n".join(revision.eligibility_reasons)
-	_bind_label(_vault_screen.inspection_eligibility(), "%s%s" % [eligibility, reasons], Color("75c889") if revision.eligible else Color("ef7770"), 13)
-	var sheet := _vault_screen.character_sheet()
+	_vault_screen.inspection_heading.text = "Inspect %s" % revision.name
+	var eligibility := VaultDetailBinder.revision_eligibility(revision, _vault_view)
+	_vault_screen.inspection_eligibility.text = RowFields.text(eligibility, "text")
+	_vault_screen.inspection_eligibility.theme_type_variation = eligibility["variation"] as StringName
+	var sheet := _vault_screen.character_sheet
 	sheet.present(
 		[revision.character],
 		revision.character.id,
@@ -287,6 +240,10 @@ func _render_vault_inspection() -> void:
 	)
 	if not sheet.tab_changed.is_connected(_on_vault_sheet_tab_changed):
 		sheet.tab_changed.connect(_on_vault_sheet_tab_changed)
+	# Opening an inspection gives controller users a visible exit to start from.
+	var focus_owner := _vault_screen.get_viewport().gui_get_focus_owner()
+	if focus_owner == null or not _vault_screen.inspection_area.is_ancestor_of(focus_owner):
+		back.grab_focus.call_deferred()
 
 
 func _on_vault_sheet_tab_changed(tab_id: StringName) -> void:
@@ -298,14 +255,16 @@ func _ensure_vault_appearance(revision: CharacterVaultRevisionView) -> void:
 		return
 	var asset_ids: Array[String] = [revision.portrait_id, revision.character.combat_icon_id if revision.character != null else ""]
 	for asset_id: String in asset_ids:
-		if asset_id.is_empty() or _vault_appearance_textures.get(asset_id) != null:
-			continue
-		var asset := _vault_media.asset_by_id(asset_id)
-		if asset == null:
-			continue
-		var texture := _vault_media.image_texture(asset)
-		if texture != null:
-			_vault_appearance_textures[asset_id] = texture
+		_cache_texture(_vault_appearance_textures, asset_id)
+
+
+func _cache_texture(textures: Dictionary, asset_id: String) -> void:
+	if _vault_media == null or asset_id.is_empty() or textures.get(asset_id) != null:
+		return
+	var asset := _vault_media.asset_by_id(asset_id)
+	var texture: Texture2D = _vault_media.image_texture(asset) if asset != null else null
+	if texture != null:
+		textures[asset_id] = texture
 
 
 func draft_order_ids() -> Array[String]:
@@ -356,7 +315,7 @@ func _render_party_order_summary(screen: CharacterScreen, view: GameView) -> voi
 	var names: Array[String] = []
 	for index: int in view.party_members.size():
 		names.append("%d. %s" % [index + 1, view.party_members[index].name])
-	var summary_text := "%d characters in party order" % names.size() if _layout_profile == UiLayoutProfile.COMPACT else "Party order  •  %s" % "  →  ".join(names)
+	var summary_text := "%d characters in party order" % names.size() if _layout_profile == UiLayoutProfile.COMPACT else ""
 	var summary := row.get_node("Summary") as Label
 	_bind_label(summary, summary_text, MUTED, 13)
 	summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

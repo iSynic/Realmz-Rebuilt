@@ -61,10 +61,10 @@ func _ready() -> void:
 
 
 func open_for(field: Control) -> bool:
-	if not (field is LineEdit or field is TextEdit):
+	if not (field is LineEdit or field is TextEdit) or not bool(field.get("editable")):
 		return false
 	_target = field
-	_original_text = String(field.get("text"))
+	_original_text = str(field.get("text"))
 	_draft_text = _original_text
 	_caret_offset = _read_caret_offset(field, _draft_text)
 	_max_length = (field as LineEdit).max_length if field is LineEdit else -1
@@ -148,6 +148,7 @@ func done() -> void:
 	visible = false
 	_restore_file_dialog()
 	_write_target(_draft_text, _caret_offset)
+	_refocus_target()
 	completed.emit()
 
 
@@ -161,7 +162,15 @@ func cancel() -> void:
 	visible = false
 	_restore_file_dialog()
 	_write_target(_original_text, restore_offset)
+	_refocus_target()
 	cancelled.emit()
+
+
+## Returns focus to the edited field, which hiding the keyboard would otherwise leave
+## with nothing focused for the next controller move.
+func _refocus_target() -> void:
+	if _target != null and is_instance_valid(_target) and _target.is_visible_in_tree():
+		_target.grab_focus()
 
 
 func _restore_file_dialog() -> void:

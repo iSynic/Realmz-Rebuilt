@@ -105,6 +105,7 @@ theme_override_constants/separation = 5
 custom_minimum_size = Vector2(88, 38)
 layout_mode = 2
 size_flags_horizontal = 3
+theme_type_variation = &"ClassicPrimaryButton"
 text = "Pool all"
 
 [node name="Share" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyExchangeWorkspace/MoneyPoolPane/Content/MoneyPoolSummary/MoneyPoolActions"]
@@ -298,40 +299,40 @@ layout_mode = 2
 theme_override_constants/separation = 6
 
 [node name="JewelryToGems" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions"]
-custom_minimum_size = Vector2(0, 78)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Jewelry → Gems\n1 jewelry → +5 gems"
 
 [node name="GemsToGold" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions"]
-custom_minimum_size = Vector2(0, 78)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Gems → Gold\n1 gem → +100 gold"
 
 [node name="GoldToGems" type="Button" parent="MoneyColumn/MoneyMain/MoneyActionArea/MoneyChangingPane/Content/Actions"]
-custom_minimum_size = Vector2(0, 78)
+custom_minimum_size = Vector2(0, 58)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Gold → Gems\n115 gold → +1 gem"
 
-[node name="LocationServicePane" type="PanelContainer" parent="MoneyColumn"]
+[node name="LocationServicePane" type="PanelContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea"]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"ClassicInset"
 
-[node name="Content" type="VBoxContainer" parent="MoneyColumn/LocationServicePane"]
+[node name="Content" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/LocationServicePane"]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Heading" type="Label" parent="MoneyColumn/LocationServicePane/Content"]
+[node name="Heading" type="Label" parent="MoneyColumn/MoneyMain/MoneyActionArea/LocationServicePane/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.835294, 0.705882, 0.364706, 1)
 theme_override_font_sizes/font_size = 18
 text = "At this location"
 
-[node name="LocationServiceRows" type="VBoxContainer" parent="MoneyColumn/LocationServicePane/Content"]
+[node name="LocationServiceRows" type="VBoxContainer" parent="MoneyColumn/MoneyMain/MoneyActionArea/LocationServicePane/Content"]
 layout_mode = 2
 theme_override_constants/separation = 5
 
