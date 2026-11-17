@@ -2,6 +2,10 @@
 class_name MusicPlaylistDialog
 extends Control
 
+## The file browser is built the first time it is opened; it is 160 nodes that most sessions never use.
+var _browser: FileDialog
+var _editors_wanted := false
+
 signal opened
 signal closed
 signal import_requested(paths: PackedStringArray)
@@ -35,9 +39,7 @@ func _ready() -> void:
 	%ImportMusic.pressed.connect(_open_import)
 	%ImportFolder.pressed.connect(_open_import.bind(true))
 	%LibrarySearch.text_changed.connect(func(_query: String) -> void: _refresh_library())
-	%MusicFiles.dir_selected.connect(func(path: String) -> void: import_folder_requested.emit(path))
 	%CancelImport.pressed.connect(func() -> void: import_cancelled.emit())
-	%MusicFiles.files_selected.connect(func(paths: PackedStringArray) -> void: import_requested.emit(paths))
 	%LibraryTracks.item_selected.connect(func(_index: int) -> void: _show_track())
 	%LibraryTracks.item_activated.connect(func(_index: int) -> void: _preview())
 	%PreviewTrack.pressed.connect(_preview)
@@ -64,6 +66,7 @@ func _ready() -> void:
 
 func open(settings: PresentationSettings, context: int, title: String, playing: bool) -> void:
 	var opening := not visible
+	_editors_wanted = true
 	if opening:
 		var previous := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
 		_focus_before_open = weakref(previous) if previous != null else null
@@ -154,13 +157,13 @@ func report(message: String) -> void:
 
 
 func controller_focus_root() -> Node:
-	if (%MusicFiles as FileDialog).visible:
-		return %MusicFiles
+	if _browser != null and _browser.visible:
+		return _browser
 	return %RemoveConfirmation if %RemoveConfirmation.visible else self
 
 
 func controller_cycle_tab(delta: int) -> void:
-	if (%MusicFiles as FileDialog).visible or %RemoveConfirmation.visible:
+	if (_browser != null and _browser.visible) or %RemoveConfirmation.visible:
 		return
 	var tabs := %MusicTabs as TabContainer
 	tabs.current_tab = wrapi(tabs.current_tab + delta, 0, tabs.get_tab_count())
@@ -168,9 +171,8 @@ func controller_cycle_tab(delta: int) -> void:
 
 
 func close() -> void:
-	var browser := %MusicFiles as FileDialog
-	if browser.visible:
-		browser.hide()
+	if _browser != null and _browser.visible:
+		_browser.hide()
 		(%ImportMusic as Button).grab_focus()
 		return
 	if %RemoveConfirmation.visible:
@@ -201,9 +203,12 @@ func set_playback_state(context: int, title: String, playing: bool) -> void:
 func _bind_editors() -> void:
 	if not is_node_ready():
 		return
+	(%MusicApply as Button).disabled = not _dirty
+	# The editors build twenty assignment rows of pickers; leave that until the workspace is opened.
+	if not _editors_wanted:
+		return
 	(%Playlists as MusicPlaylistEditor).present(_draft)
 	(%Assignments as MusicAssignmentsEditor).present(_draft, _settings, _campaign, _campaign_title)
-	(%MusicApply as Button).disabled = not _dirty
 
 
 func _refresh_library() -> void:
@@ -248,7 +253,7 @@ func _preview() -> void:
 func _open_import(folder: bool = false) -> void:
 	if OS.has_feature("android"):
 		return
-	var browser := %MusicFiles as FileDialog
+	var browser := _files()
 	browser.file_mode = FileDialog.FILE_MODE_OPEN_DIR if folder else FileDialog.FILE_MODE_OPEN_FILES
 	browser.title = "Import music folder" if folder else "Import music"
 	browser.popup_centered_ratio(0.88)
@@ -329,3 +334,23 @@ func _cancel_removal() -> void:
 	_remove_id = ""
 	%RemoveConfirmation.hide()
 	(%RemoveLibraryTrack as Button).grab_focus()
+
+
+func _files() -> FileDialog:
+	if _browser != null:
+		return _browser
+	_browser = FileDialog.new()
+	_browser.name = "MusicFiles"
+	_browser.size = Vector2i(680, 460)
+	_browser.min_size = Vector2i(480, 320)
+	_browser.transient = true
+	_browser.exclusive = false
+	_browser.popup_window = true
+	_browser.file_mode = FileDialog.FILE_MODE_OPEN_FILES
+	_browser.access = FileDialog.ACCESS_FILESYSTEM
+	_browser.filters = PackedStringArray(["*.mp3,*.ogg,*.wav,*.flac,*.aiff,*.aif,*.mod,*.xm,*.s3m,*.it;Supported music", "*;All files"])
+	_browser.use_native_dialog = false
+	add_child(_browser)
+	_browser.dir_selected.connect(func(path: String) -> void: import_folder_requested.emit(path))
+	_browser.files_selected.connect(func(paths: PackedStringArray) -> void: import_requested.emit(paths))
+	return _browser

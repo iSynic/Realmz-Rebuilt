@@ -52,10 +52,14 @@ var _controller_input: Variant
 var _controller_focus: Variant
 var _load_path: String = ""
 var _load_started_at: int = 0
+var _scripts_loaded_at: int = 0
+var _scene_loaded_at: int = 0
+var _menu_shown_at: int = 0
 var _load_requested: bool = false
 var _load_failed: bool = false
 var _splash_complete: bool = false
 var _route_transfer_pending: bool = false
+var _pending_action: StringName = &""
 var _user_data_root: String = "user://"
 
 
@@ -95,6 +99,7 @@ func _process(_delta: float) -> void:
 			if _application_script_prime == null:
 				_fail_application_load("Application script preparation failed.")
 			else:
+				_scripts_loaded_at = Time.get_ticks_usec()
 				_request_application_scene_load()
 				if _splash_complete:
 					_initialize_controller_navigation()
@@ -104,6 +109,7 @@ func _process(_delta: float) -> void:
 			if packed == null:
 				_fail_application_load("Application loading failed.")
 			else:
+				_scene_loaded_at = Time.get_ticks_usec()
 				_finish_application_load(packed)
 	elif status == ResourceLoader.THREAD_LOAD_FAILED or status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 		set_process(false)
@@ -201,7 +207,8 @@ func _initialize_after_first_draw() -> void:
 	_menu_controller.attach(_overlay_host)
 	_menu_controller.set_presentation_settings(_presentation_settings)
 	_menu_controller.build_splash_overlay()
-	_menu_controller.set_startup_actions_ready(false)
+	# The menu takes a choice as soon as it appears; one made early waits for the application.
+	_menu_controller.set_startup_actions_ready(true)
 	_menu_controller.campaign_selection_requested.connect(func() -> void: _request_action(ACTION_SCENARIO))
 	_menu_controller.load_adventure_requested.connect(func() -> void: _request_action(ACTION_LOAD))
 	_menu_controller.vault_requested.connect(func() -> void: _request_action(ACTION_VAULT))
@@ -249,14 +256,21 @@ func _on_application_ready() -> void:
 	if _splash_complete:
 		_menu_controller.set_startup_actions_ready(true)
 		_application.set_meta(&"startup_front_door_revealed", true)
-	var elapsed_ms := float(Time.get_ticks_usec() - _load_started_at) / 1000.0
+	var now := Time.get_ticks_usec()
+	var elapsed_ms := float(now - _load_started_at) / 1000.0
+	_report_startup(now)
 	application_loaded.emit(elapsed_ms)
 
 
 func _request_action(action: StringName) -> void:
-	if _application == null:
+	if not application_ready():
 		if action == ACTION_QUIT:
 			get_tree().quit()
+		elif not _load_failed:
+			_pending_action = action
+			var menu: Object = _menu_controller.get(&"splash_overlay")
+			if menu != null:
+				menu.call(&"show_wait", "Finishing startup…")
 		return
 	if _route_transfer_pending:
 		return
@@ -290,13 +304,14 @@ func _on_startup_splash_timeout() -> void:
 
 func _on_splash_exit_delay_timeout() -> void:
 	_splash_complete = true
+	_menu_shown_at = Time.get_ticks_usec()
 	_startup_splash.visible = false
 	_startup_splash_background.visible = false
 	if _menu_controller == null:
 		_show_startup_failure("Application menu construction failed.")
 		return
 	_menu_controller.show_splash()
-	_menu_controller.set_startup_actions_ready(application_ready())
+	_menu_controller.set_startup_actions_ready(true)
 	_initialize_controller_navigation()
 	if application_ready():
 		_application.set_meta(&"startup_front_door_revealed", true)
@@ -382,3 +397,22 @@ func _apply_layout() -> void:
 		)
 	sizing_script.apply(self, profile)
 	_menu_controller.apply_layout(profile, profile.application_rect, profile.application_rect)
+
+
+## One line per launch, written once the frame that added the application has ended: how long
+## each stage took, when the menu appeared, and how long it then stood before it could be used.
+func _report_startup(ready_at: int) -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var usable_at := Time.get_ticks_usec()
+	var menu_wait := _ms(maxi(0, usable_at - _menu_shown_at)) if _menu_shown_at > 0 else 0
+	print("Realmz startup | pid=%d | load_began_ms=%d | scripts_ms=%d | scene_ms=%d | tree_ms=%d | settle_ms=%d | usable_at_ms=%d | menu_shown_at_ms=%d | menu_wait_ms=%d" % [
+		OS.get_process_id(), _ms(_load_started_at), _ms(_scripts_loaded_at - _load_started_at), _ms(_scene_loaded_at - _scripts_loaded_at),
+		_ms(ready_at - _scene_loaded_at), _ms(usable_at - ready_at), _ms(usable_at), _ms(_menu_shown_at), menu_wait])
+	# A choice made while loading is honoured now, once the application has had its first frames.
+	if _pending_action != &"":
+		_request_action(_pending_action)
+
+
+static func _ms(usec: int) -> int:
+	return roundi(usec / 1000.0)

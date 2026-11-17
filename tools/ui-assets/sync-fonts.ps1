@@ -33,6 +33,14 @@ $modernizedBuilderPath = Join-Path $toolRoot "build-theldrow-modernized.py"
 $modernizedRulesPath = Join-Path $toolRoot "theldrow-modernized-rules.json"
 $modernizedVerifierPath = Join-Path $toolRoot "verify-theldrow-modernized.py"
 $fontToolsRequirementsPath = Join-Path $toolRoot "requirements-theldrow-fonts.txt"
+$symbolMetricToolSha256 = "79c7b6571acd5cd4a16058978c700c7096f5ceb8709c09fc446bc362b3b5f9ca"
+$symbolMetricToolPath = Join-Path $toolRoot "normalize_symbol_font_metrics.py"
+$symbolRole = "UI symbols where the platform has no system fonts; vertical metrics reduced to 800/200 so the face stretches no line"
+$symbolFaces = @(
+    @{ Id = "font.symbols.noto_sans_symbols2"; Source = "NotoSansSymbols2-Regular.ttf"; Target = "NotoSansSymbols2-Realmz.ttf"; SourcePath = "ofl/notosanssymbols2/NotoSansSymbols2-Regular.ttf"; SourceSha256 = "7d5fb73b7ca67a6798101741f5d280a3d016a56a197afcd4199dbb57b4b82a21"; Sha256 = "cf2c596a5c92575ce5fe7ac0b1bb18f4992f3b19086b0487d2ee8a6d515ef5d9" },
+    @{ Id = "font.symbols.noto_sans_symbols"; Source = "NotoSansSymbols-Variable.ttf"; Target = "NotoSansSymbols-Realmz.ttf"; SourcePath = "ofl/notosanssymbols/NotoSansSymbols[wght].ttf"; SourceSha256 = "f7e7e04b4a24b6c78893d50cbfd2b2f6cae49617ab047bfef668d252adb128f7"; Sha256 = "4997e55ed9d0b77e2ab0dccc17dec50e42eeb5c8ee45ed664b678b64e58caa43" },
+    @{ Id = "font.symbols.noto_sans_math"; Source = "NotoSansMath-Regular.ttf"; Target = "NotoSansMath-Realmz.ttf"; SourcePath = "ofl/notosansmath/NotoSansMath-Regular.ttf"; SourceSha256 = "3f495fe933c06786e4d5f6d86b8ee70b6753a68ee3b9d87528726de0f6e2c47d"; Sha256 = "6dfeb6dd29afe325b851f917756d8615a4355d8493b339b8ee15108d1e9343a1" }
+)
 $googleBase = "https://raw.githubusercontent.com/google/fonts/$googleFontsCommit/ofl"
 $castleBase = "https://raw.githubusercontent.com/Realmz-Castle/realmz/$castleCommit"
 
@@ -64,6 +72,11 @@ $downloads = @(
     @{ Uri = "$googleBase/alegreyasans/OFL.txt"; Target = "licenses/AlegreyaSans-OFL.txt"; Sha256 = "0677891e6a143f297350d260ad766ad33bfc18ed5fa4f213acf648d6b597ec1a" },
     @{ Uri = "$googleBase/grenzegotisch/GrenzeGotisch%5Bwght%5D.ttf"; Target = "source/GrenzeGotisch-Variable.ttf"; Sha256 = $grenzeSha256 },
     @{ Uri = "$googleBase/grenzegotisch/OFL.txt"; Target = "licenses/GrenzeGotisch-OFL.txt"; Sha256 = $grenzeLicenseSha256 },
+    @{ Uri = "$googleBase/notosanssymbols2/NotoSansSymbols2-Regular.ttf"; Target = "source/NotoSansSymbols2-Regular.ttf"; Sha256 = $symbolFaces[0].SourceSha256 },
+    @{ Uri = "$googleBase/notosanssymbols/NotoSansSymbols%5Bwght%5D.ttf"; Target = "source/NotoSansSymbols-Variable.ttf"; Sha256 = $symbolFaces[1].SourceSha256 },
+    @{ Uri = "$googleBase/notosansmath/NotoSansMath-Regular.ttf"; Target = "source/NotoSansMath-Regular.ttf"; Sha256 = $symbolFaces[2].SourceSha256 },
+    @{ Uri = "$googleBase/notosanssymbols2/OFL.txt"; Target = "licenses/NotoSansSymbols-OFL.txt"; Sha256 = "b118dd41337806a5d4797052c77caf3bd096aed783e5eb21b4d11154351e1ac0" },
+    @{ Uri = "$googleBase/notosansmath/OFL.txt"; Target = "licenses/NotoSansMath-OFL.txt"; Sha256 = "403a95275b469061b7d4371c328e0ada3bc7d63328abe2e88aad5cd243b2fe21" },
     @{ Uri = "$castleBase/resources/Black%20Chancery.ttf"; Target = "BlackChancery-Realmz.ttf"; Sha256 = "1a3a41b4a7ab327002897275520c200028f0303f599e77c20b0e0e6a93b24357" },
     @{ Uri = "$castleBase/resources/ChicagoFLF.ttf"; Target = "ChicagoFLF.ttf"; Sha256 = "b442111f37639e27572d9df0c5190e7480e6a7b01ec768aea47a154efab8d50d" },
     @{ Uri = "$castleBase/vendored/Inter/InterVariable.ttf"; Target = "InterVariable-Castle.ttf"; Sha256 = "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf" },
@@ -92,8 +105,14 @@ $records = @(
     @{ Id = "license.theldrow_cc0"; Target = "licenses/Theldrow-CC0-LICENSE.txt"; Repository = "iSynic/Realmz-Remake"; Commit = $remakeCommit; SourcePath = "src/Fonts/theldrow.zip:license.txt"; License = "CC0-1.0" },
     @{ Id = "readme.theldrow_cc0"; Target = "licenses/Theldrow-CC0-README.txt"; Repository = "iSynic/Realmz-Remake"; Commit = $remakeCommit; SourcePath = "src/Fonts/theldrow.zip:readme.txt"; License = "CC0-1.0" }
 )
+foreach ($face in $symbolFaces) {
+    $records += @{ Id = $face.Id; Target = $face.Target; Repository = "google/fonts"; Commit = $googleFontsCommit; SourcePath = $face.SourcePath; SourceSha256 = $face.SourceSha256; BuildToolPath = "tools/ui-assets/normalize_symbol_font_metrics.py"; BuildToolSha256 = $symbolMetricToolSha256; License = "OFL-1.1"; Role = $symbolRole }
+}
+$records += @{ Id = "license.noto_sans_symbols"; Target = "licenses/NotoSansSymbols-OFL.txt"; Repository = "google/fonts"; Commit = $googleFontsCommit; SourcePath = "ofl/notosanssymbols2/OFL.txt"; License = "OFL-1.1" }
+$records += @{ Id = "license.noto_sans_math"; Target = "licenses/NotoSansMath-OFL.txt"; Repository = "google/fonts"; Commit = $googleFontsCommit; SourcePath = "ofl/notosansmath/OFL.txt"; License = "OFL-1.1" }
 
 foreach ($localInput in @(
+    @{ Path = $symbolMetricToolPath; Sha256 = $symbolMetricToolSha256; Name = "symbol font metric tool" },
     @{ Path = $readingMasterPath; Sha256 = $readingMasterSha256; Name = "approved reading master" },
     @{ Path = $readingBuilderPath; Sha256 = $readingBuilderSha256; Name = "reading font builder/verifier" },
     @{ Path = $readingBaselinePath; Sha256 = $readingBaselineSha256; Name = "retained reading baseline" },
@@ -146,6 +165,13 @@ try {
         -VectorFontPath $remakeFontPath `
         -ClassicBmFontPath (Join-Path $stagingRoot "Theldrow-Classic.fnt") `
         -OutputPath (Join-Path $stagingRoot "Theldrow-Classic-Vector.ttf")
+
+    foreach ($face in $symbolFaces) {
+        $faceTarget = Join-Path $stagingRoot $face.Target
+        & $PythonExecutable $symbolMetricToolPath --input (Join-Path $stagingRoot "source/$($face.Source)") --output $faceTarget --ascent 800 --descent 200
+        if ($LASTEXITCODE -ne 0) { throw "Failed to build symbol face: $($face.Target)" }
+        if ((Get-FileHash -Algorithm SHA256 -LiteralPath $faceTarget).Hash.ToLowerInvariant() -ne $face.Sha256) { throw "Symbol face output hash does not match: $($face.Target)" }
+    }
 
     $pythonDependencyRoot = Join-Path $stagingRoot "python-dependencies"
     & $PythonExecutable -m pip install --disable-pip-version-check --require-hashes --no-deps --target $pythonDependencyRoot -r $fontToolsRequirementsPath

@@ -224,19 +224,6 @@ layout_mode = 2
 unique_name_in_owner = true
 text = "Done"
 
-[node name="MusicFiles" type="FileDialog" parent="."]
-unique_name_in_owner = true
-title = "Import music"
-size = Vector2i(680, 460)
-min_size = Vector2i(480, 320)
-transient = true
-exclusive = false
-popup_window = true
-file_mode = 1
-access = 2
-filters = PackedStringArray("*.mp3,*.ogg,*.wav,*.flac,*.aiff,*.aif,*.mod,*.xm,*.s3m,*.it;Supported music", "*;All files")
-use_native_dialog = false
-
 [node name="RemoveConfirmation" type="Control" parent="."]
 unique_name_in_owner = true
 visible = false

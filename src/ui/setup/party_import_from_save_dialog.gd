@@ -45,7 +45,8 @@ const SUBTITLE := "Choose a saved adventure. Its characters and their possession
 @onready var _back_button: Button = %BackToSaves
 @onready var _cancel_button: Button = %CancelImport
 @onready var _import_button: Button = %ImportSelected
-@onready var _external_dialog: FileDialog = %ExternalSaveDialog
+## The file browser is built the first time it is opened; it is 160 nodes that most sessions never use.
+var _external_dialog: FileDialog
 
 var _view: Dictionary = {}
 var _phase := "selection"
@@ -62,7 +63,6 @@ func _ready() -> void:
 	_refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
 	_import_button.pressed.connect(_submit_selected)
 	_adopt_changed.toggled.connect(func(pressed: bool) -> void: adopt_changed_requested.emit(pressed))
-	_external_dialog.file_selected.connect(func(path: String) -> void: external_source_requested.emit(path))
 	get_viewport().size_changed.connect(_refresh_visible_geometry)
 	visible = false
 
@@ -81,12 +81,12 @@ func show_party_import(view: Dictionary) -> void:
 
 func close_party_import() -> void:
 	visible = false
-	if _external_dialog.visible:
+	if _external_dialog != null and _external_dialog.visible:
 		_external_dialog.hide()
 
 
 func focus_root() -> Node:
-	return _external_dialog if _external_dialog.visible else self
+	return _external_dialog if _external_dialog != null and _external_dialog.visible else self
 
 
 func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
@@ -96,7 +96,7 @@ func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
 func _open_external_save_picker() -> void:
 	if OS.has_feature("android"):
 		return
-	_external_dialog.popup_centered(_fit_scaled_size(Vector2(900.0, 620.0)))
+	_external_files().popup_centered(_fit_scaled_size(Vector2(900.0, 620.0)))
 
 
 func _fit_scaled_size(preferred: Vector2) -> Vector2i:
@@ -329,3 +329,21 @@ func _clear(container: Node) -> void:
 	for child: Node in container.get_children():
 		container.remove_child(child)
 		child.queue_free()
+
+
+func _external_files() -> FileDialog:
+	if _external_dialog != null:
+		return _external_dialog
+	_external_dialog = FileDialog.new()
+	_external_dialog.name = "ExternalSaveDialog"
+	_external_dialog.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_MAIN_WINDOW_SCREEN
+	_external_dialog.size = Vector2i(900, 620)
+	_external_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_external_dialog.title = "Choose a saved adventure"
+	_external_dialog.ok_button_text = "Open"
+	_external_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	_external_dialog.filters = PackedStringArray(["*.r2save ; Realmz Rebuilt Saved Adventure"])
+	_external_dialog.use_native_dialog = false
+	add_child(_external_dialog)
+	_external_dialog.file_selected.connect(func(path: String) -> void: external_source_requested.emit(path))
+	return _external_dialog

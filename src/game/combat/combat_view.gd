@@ -42,7 +42,7 @@ var turn_undead_targets: Array[MonsterView] = []
 var auto_character_ids: Array[String] = []
 
 
-func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, equipment_rules: EquipmentRules = null, battlefield_rules: BattlefieldRules = null, combat_flow: CombatFlow = null, game_state: GameState = null) -> void:
+func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, equipment_rules: EquipmentRules = null, battlefield_rules: BattlefieldRules = null, probes: CombatViewProbes = null, game_state: GameState = null) -> void:
 	battle_id = combat.battle_id
 	round_number = combat.turns.round_number
 	active_actor_id = combat.turns.active_actor_id()
@@ -56,7 +56,7 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 		return
 	var active_character := _active_character(characters)
 	if active_character != null and content != null and equipment_rules != null:
-		_populate_character_actions(combat, characters, content, equipment_rules, battlefield_rules, combat_flow, game_state, active_character)
+		_populate_character_actions(combat, characters, content, equipment_rules, battlefield_rules, probes, game_state, active_character)
 	_finalize_legal_actions(game_state)
 
 
@@ -118,39 +118,39 @@ func _active_character(characters: Array[CharacterState]) -> CharacterState:
 	return null
 
 
-func _populate_character_actions(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, equipment_rules: EquipmentRules, battlefield_rules: BattlefieldRules, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState) -> void:
-	if combat_flow != null:
-		_populate_command_probes(combat, characters, content, combat_flow, game_state, active_character)
+func _populate_character_actions(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, equipment_rules: EquipmentRules, battlefield_rules: BattlefieldRules, probes: CombatViewProbes, game_state: GameState, active_character: CharacterState) -> void:
+	if probes != null:
+		_populate_command_probes(combat, characters, content, probes, game_state, active_character)
 	var equipment := equipment_rules.combat_equipment(active_character, content.items.definitions())
-	_populate_weapon_actions(combat, content, combat_flow, game_state, active_character, equipment)
-	_populate_movement_actions(combat, characters, content, battlefield_rules, combat_flow, game_state, active_character)
+	_populate_weapon_actions(combat, content, probes, game_state, active_character, equipment)
+	_populate_movement_actions(combat, characters, content, battlefield_rules, probes, game_state, active_character)
 
 
-func _populate_command_probes(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState) -> void:
-	var retreat_probe: Variant = combat_flow.reactions.probe_character_retreat(combat, characters, active_character.id)
+func _populate_command_probes(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, probes: CombatViewProbes, game_state: GameState, active_character: CharacterState) -> void:
+	var retreat_probe := probes.probe_character_retreat(combat, characters, active_character.id)
 	retreat_available = retreat_probe.allowed
 	retreat_unavailable_reason = retreat_probe.reason_text
 	nearest_enemy_range = retreat_probe.nearest_enemy_range
 	auto_turn = ActionAvailabilityView.new(&"auto", true)
-	var delay_probe := combat_flow.actions.probe_delay(game_state, active_character.id)
+	var delay_probe := probes.probe_delay(game_state, active_character.id)
 	delay = ActionAvailabilityView.new(&"delay", delay_probe.allowed, delay_probe.reason_text)
-	var bandage_probe := combat_flow.actions.probe_bandage(game_state, active_character.id)
+	var bandage_probe := probes.probe_bandage(game_state, active_character.id)
 	bandage = ActionAvailabilityView.new(&"bandage", bandage_probe.allowed, bandage_probe.reason_text)
-	var turn_probe := combat_flow.actions.probe_turn_undead(game_state, content, active_character.id)
+	var turn_probe := probes.probe_turn_undead(game_state, content, active_character.id)
 	turn_undead = ActionAvailabilityView.new(&"turn_undead", turn_probe.allowed, turn_probe.reason_text)
-	var undo_probe := combat_flow.actions.probe_undo(game_state, active_character.id)
+	var undo_probe := probes.probe_undo(game_state, active_character.id)
 	undo = ActionAvailabilityView.new(&"undo", undo_probe.allowed, undo_probe.reason_text)
-	for candidate_id: String in combat_flow.actions.bandage_candidate_ids(game_state):
+	for candidate_id: String in probes.bandage_candidate_ids(game_state):
 		var candidate := game_state.party.character_by_id(candidate_id)
 		if candidate != null:
 			bandage_candidates.append(CharacterView.new(candidate, content))
-	for target_id: String in combat_flow.actions.turn_undead_target_ids(game_state, content):
+	for target_id: String in probes.turn_undead_target_ids(game_state, content):
 		var target := combat.roster.monster_by_id(target_id)
 		if target != null:
 			turn_undead_targets.append(MonsterView.new(target, content.combat.monster_by_id(target.definition_id), content))
 
 
-func _populate_weapon_actions(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState, equipment: CharacterCombatEquipment) -> void:
+func _populate_weapon_actions(combat: CombatState, content: RealmzContent, probes: CombatViewProbes, game_state: GameState, active_character: CharacterState, equipment: CharacterCombatEquipment) -> void:
 	if equipment.valid:
 		weapon_mode = combat.actor_statuses.character_weapon_mode(active_character.id)
 		melee_weapon_id = equipment.melee_weapon.id if equipment.melee_weapon != null else ""
@@ -158,14 +158,14 @@ func _populate_weapon_actions(combat: CombatState, content: RealmzContent, comba
 		weapon_switch_available = weapon_mode == &"missile" or equipment.missile_weapon != null
 		weapon_switch_target_mode = &"melee" if weapon_mode == &"missile" else &"missile"
 		weapon_switch_unavailable_reason = "" if weapon_switch_available else "The active character has no equipped Classic type-15 missile weapon."
-		var profile := combat_flow.reactions.character_projectile_profile(active_character, content, equipment, game_state) if combat_flow != null else null
+		var profile := probes.character_projectile_profile(active_character, content, equipment, game_state) if probes != null else null
 		if profile != null and profile.spell != null and not ClassicSpellSourceRules.is_supported_projectile_item_profile(profile.spell):
 			projectile_item_instance_id = profile.item_instance_id
 		if weapon_mode == &"melee" and profile != null and profile.error_code == &"projectile_enemy_adjacent":
 			weapon_switch_available = false
 			weapon_switch_unavailable_reason = profile.error_message
 		if weapon_mode != &"melee":
-			_populate_projectile_targets(combat, content, combat_flow, game_state, active_character, profile)
+			_populate_projectile_targets(combat, content, probes, game_state, active_character, profile)
 		if weapon_switch_available:
 			legal_actions.append(&"switch_weapon")
 	else:
@@ -173,7 +173,7 @@ func _populate_weapon_actions(combat: CombatState, content: RealmzContent, comba
 		weapon_switch_unavailable_reason = equipment.error_message
 
 
-func _populate_projectile_targets(combat: CombatState, content: RealmzContent, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState, profile: ProjectileAttackProfile) -> void:
+func _populate_projectile_targets(combat: CombatState, content: RealmzContent, probes: CombatViewProbes, game_state: GameState, active_character: CharacterState, profile: ProjectileAttackProfile) -> void:
 	targets.clear()
 	character_targets.clear()
 	if profile == null or not profile.available:
@@ -182,7 +182,7 @@ func _populate_projectile_targets(combat: CombatState, content: RealmzContent, c
 			legal_actions.append(&"prepare_projectile")
 		return
 	if not ClassicSpellSourceRules.is_supported_projectile_item_profile(profile.spell):
-		for option: CombatItemOptionView in combat_flow.magic.character_item_spell_options(game_state, content, active_character.id):
+		for option: CombatItemOptionView in probes.character_item_spell_options(game_state, content, active_character.id):
 			if option.item_instance_id == profile.item_instance_id:
 				legal_actions.append(&"fire_item")
 				return
@@ -191,10 +191,10 @@ func _populate_projectile_targets(combat: CombatState, content: RealmzContent, c
 	# Castle's missile cursor accepts any living actor in range and sight, the shooter's own side included.
 	var sight := profile.spell.range_min + profile.spell.range_max > 0
 	for monster: MonsterState in combat.roster.monsters():
-		if monster.current_health > 0 and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, sight):
+		if monster.current_health > 0 and probes.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, sight):
 			targets.append(MonsterView.new(monster, content.combat.monster_by_id(monster.definition_id), content))
 	for character: CharacterState in game_state.party.characters():
-		if character.current_health > 0 and combat_flow.reactions.projectile_target_is_valid(combat, content, active_character.id, character.id, profile.maximum_range, sight):
+		if character.current_health > 0 and probes.projectile_target_is_valid(combat, content, active_character.id, character.id, profile.maximum_range, sight):
 			character_targets.append(CharacterView.new(character, content))
 	if targets.is_empty() and character_targets.is_empty():
 		ranged_attack_unavailable_reason = "No combatant is within the projectile's Classic range and line of sight."
@@ -202,7 +202,7 @@ func _populate_projectile_targets(combat: CombatState, content: RealmzContent, c
 		legal_actions.append(&"attack")
 
 
-func _populate_movement_actions(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, battlefield_rules: BattlefieldRules, combat_flow: CombatFlow, game_state: GameState, active_character: CharacterState) -> void:
+func _populate_movement_actions(combat: CombatState, characters: Array[CharacterState], content: RealmzContent, battlefield_rules: BattlefieldRules, probes: CombatViewProbes, game_state: GameState, active_character: CharacterState) -> void:
 	if combat.battlefield == null or battlefield_rules == null:
 		return
 	var map := content.world.map_by_id(combat.battlefield.map_id)
@@ -213,7 +213,7 @@ func _populate_movement_actions(combat: CombatState, characters: Array[Character
 	var movement_allowance := active_character.maximum_movement if combat.turns.active_turn == null else active_character.movement
 	for direction: Vector2i in BattlefieldRules.DIRECTIONS:
 		var destination := combat.battlefield.actors.actor_position(active_character.id) + direction
-		var edge_retreat: Variant = combat_flow.reactions.probe_edge_retreat(combat, active_character.id, destination) if combat_flow != null else null
+		var edge_retreat: CombatRetreatProbe = probes.probe_edge_retreat(combat, active_character.id, destination) if probes != null else null
 		var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, movement_allowance)
 		var contact_target_id := ""
 		var contact_target_name := ""
@@ -222,7 +222,7 @@ func _populate_movement_actions(combat: CombatState, characters: Array[Character
 			contact_target_name = _target_name(combat, characters, contact_target_id)
 			contact_attack_available = true
 		var move_option := CombatMoveOptionView.new(direction, probe, edge_retreat != null and edge_retreat.allowed, edge_retreat != null and edge_retreat.forced, contact_target_id, contact_target_name)
-		if probe.reason == &"occupied" and combat_flow.reactions.friendly_collision_target_id(game_state, active_character.id, destination) == probe.occupant_id:
+		if probe.reason == &"occupied" and probes.friendly_collision_target_id(game_state, active_character.id, destination) == probe.occupant_id:
 			move_option.enabled = true
 			move_option.reason = &""
 			move_option.reason_text = ""

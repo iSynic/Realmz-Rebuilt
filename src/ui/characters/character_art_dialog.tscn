@@ -380,17 +380,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
 
-[node name="SourceFiles" type="FileDialog" parent="."]
-unique_name_in_owner = true
-title = "Choose character artwork"
-initial_position = 2
-size = Vector2i(900, 560)
-exclusive = false
-file_mode = 1
-access = 2
-filters = PackedStringArray("*.png, *.webp, *.jpg, *.jpeg ; Images")
-use_native_dialog = false
-
 [node name="NamePrompt" type="ConfirmationDialog" parent="."]
 unique_name_in_owner = true
 title = "Artwork name"

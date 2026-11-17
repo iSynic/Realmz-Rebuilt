@@ -12,6 +12,7 @@ func run() -> void:
 	_test_edge_flash()
 	await _test_service()
 	_test_sounds()
+	_test_symbol_faces()
 
 
 func _test_palette() -> void:
@@ -256,3 +257,31 @@ func _test_sounds() -> void:
 	for sound: StringName in UiSoundService.SOUNDS:
 		present = present and ResourceLoader.exists("%sui-%s.wav" % [UiSoundService.SOUND_DIR, sound])
 	assert_true(present, "every interface sound has its file")
+
+
+func _test_symbol_faces() -> void:
+	var faces: Array[Font] = []
+	for path: String in ClassicTypography.SYMBOL_FACE_PATHS:
+		faces.append(load(path) as Font)
+	var symbols := RegEx.create_from_string("[\\x{2190}-\\x{27BF}]")
+	var missing := PackedStringArray()
+	for path: String in _sources("res://src"):
+		for found: RegExMatch in symbols.search_all(FileAccess.get_file_as_string(path)):
+			var code := found.get_string().unicode_at(0)
+			if not faces.any(func(face: Font) -> bool: return face.has_char(code)):
+				missing.append("%s U+%04X" % [path.get_file(), code])
+	assert_true(missing.is_empty(), "a bundled symbol face draws every symbol in the source: %s" % ", ".join(missing))
+	for path: String in ClassicTypography.SYMBOL_HOST_PATHS:
+		var host := load(path) as Font
+		for face: Font in faces:
+			assert_true(face.get_ascent(100) <= host.get_ascent(100) and face.get_descent(100) <= host.get_descent(100), "a symbol face fits inside the line of %s" % path.get_file())
+
+
+func _sources(folder: String) -> PackedStringArray:
+	var found := PackedStringArray()
+	for name: String in DirAccess.get_directories_at(folder):
+		found.append_array(_sources(folder.path_join(name)))
+	for name: String in DirAccess.get_files_at(folder):
+		if name.get_extension() in ["gd", "tscn"]:
+			found.append(folder.path_join(name))
+	return found

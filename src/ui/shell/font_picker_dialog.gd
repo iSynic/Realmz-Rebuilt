@@ -2,6 +2,9 @@
 class_name FontPickerDialog
 extends Control
 
+## The file browser is built the first time it is opened; it is 160 nodes that most sessions never use.
+var _browser: FileDialog
+
 signal opened
 signal applied(role: StringName, identity: String)
 signal import_requested(path: String)
@@ -31,11 +34,9 @@ func _ready() -> void:
 	(%ImportFont as Button).pressed.connect(func() -> void:
 		if OS.has_feature("android"):
 			return
-		(%FontFiles as FileDialog).popup_centered_ratio(0.88)
-		(%FontFiles as FileDialog).get_line_edit().grab_focus()
+		_files().popup_centered_ratio(0.88)
+		_files().get_line_edit().grab_focus()
 	)
-	(%FontFiles as FileDialog).file_selected.connect(func(path: String) -> void: import_requested.emit(path))
-	(%FontFiles as FileDialog).canceled.connect(func() -> void: (%ImportFont as Button).grab_focus())
 	resized.connect(_fit)
 	(%FontPickerWindow as PanelContainer).minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
 
@@ -73,14 +74,14 @@ func refresh_library(message: String = "") -> void:
 
 
 func controller_focus_root() -> Node:
-	if (%FontFiles as FileDialog).visible:
-		return %FontFiles
+	if _browser != null and _browser.visible:
+		return _browser
 	return self
 
 
 func close() -> void:
-	if (%FontFiles as FileDialog).visible:
-		(%FontFiles as FileDialog).hide()
+	if _browser != null and _browser.visible:
+		_browser.hide()
 		(%ImportFont as Button).grab_focus()
 		return
 	if _compact_preview:
@@ -249,3 +250,22 @@ func _fit() -> void:
 	list_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL if compact else Control.SIZE_FILL
 	if not compact:
 		(%FontChoices as ItemList).custom_minimum_size.x = minf(270.0 * scale, window.size.x * 0.36)
+
+
+func _files() -> FileDialog:
+	if _browser != null:
+		return _browser
+	_browser = FileDialog.new()
+	_browser.name = "FontFiles"
+	_browser.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_MAIN_WINDOW_SCREEN
+	_browser.size = Vector2i(900, 560)
+	_browser.exclusive = false
+	_browser.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	_browser.title = "Import a font"
+	_browser.access = FileDialog.ACCESS_FILESYSTEM
+	_browser.filters = PackedStringArray(["*.ttf ; TrueType fonts", "*.otf ; OpenType fonts"])
+	_browser.use_native_dialog = false
+	add_child(_browser)
+	_browser.file_selected.connect(func(path: String) -> void: import_requested.emit(path))
+	_browser.canceled.connect(func() -> void: (%ImportFont as Button).grab_focus())
+	return _browser

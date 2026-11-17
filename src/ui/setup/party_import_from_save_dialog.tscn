@@ -370,14 +370,3 @@ custom_minimum_size = Vector2(0, 38)
 layout_mode = 2
 theme_type_variation = &"PrimaryAction"
 text = "Import selected"
-
-[node name="ExternalSaveDialog" type="FileDialog" parent="."]
-unique_name_in_owner = true
-title = "Choose a saved adventure"
-initial_position = 2
-size = Vector2i(900, 620)
-ok_button_text = "Open"
-file_mode = 0
-access = 2
-filters = PackedStringArray("*.r2save ; Realmz Rebuilt Saved Adventure")
-use_native_dialog = false

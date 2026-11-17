@@ -36,7 +36,7 @@ func _init(saves: SaveHostController, vault: CharacterVaultController, holds: Sa
 ## Called every frame: rechecks Edit save… when the selection or its prepared revision changes.
 func poll() -> void:
 	var startup := _navigator.startup
-	if not startup.browser.visible or startup.save_editor.visible:
+	if not startup.browser.visible or startup.save_editor_open():
 		return
 	var selection := _preparation.browser_selection()
 	var prepared := _preparation.edit_candidate()
@@ -84,7 +84,9 @@ func _editor_closed(message: String, _is_error: bool) -> void:
 
 
 func _show_hold() -> void:
-	var waiting := _holds.holds(_holds_campaign) if not _holds_campaign.is_empty() else []
+	var waiting: Array[SaveHold] = []
+	if not _holds_campaign.is_empty():
+		waiting = _holds.holds(_holds_campaign)
 	if waiting.is_empty():
 		_navigator.startup.browser.set_hold({})
 		return

@@ -221,14 +221,3 @@ custom_minimum_size = Vector2(200, 48)
 layout_mode = 2
 theme_type_variation = &"MenuAction"
 text = "Use font"
-
-[node name="FontFiles" type="FileDialog" parent="."]
-unique_name_in_owner = true
-title = "Import a font"
-initial_position = 2
-size = Vector2i(900, 560)
-exclusive = false
-file_mode = 0
-access = 2
-filters = PackedStringArray("*.ttf ; TrueType fonts", "*.otf ; OpenType fonts")
-use_native_dialog = false

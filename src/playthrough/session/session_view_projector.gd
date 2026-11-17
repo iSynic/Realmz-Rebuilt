@@ -125,7 +125,7 @@ static func _complete_combat_view(context: SessionWorkflowContext, pending_inter
 		if prepared != null and prepared.battle_id == state.combat.battle_id:
 			current_combat = prepared
 		else:
-			current_combat = CombatView.new(state.combat, state.party.characters(), context.content, context.rules.equipment, context.rules.battlefield, context.rules.combat_flow, state)
+			current_combat = CombatView.new(state.combat, state.party.characters(), context.content, context.rules.equipment, context.rules.battlefield, context.rules.combat_flow.view_probes, state)
 	return current_combat
 
 

@@ -16,6 +16,8 @@ var phase: CombatFlowPhase
 var automation: CombatFlowAutomation
 var battle_setup: CombatBattleSetup
 var targeting: CombatTargetingWorkflow
+## The narrow surface a combat view reads; pass this, not the flow, when building a view.
+var view_probes: CombatViewProbes
 var _context: CombatContext
 
 
@@ -32,6 +34,7 @@ func _init(rules: RealmzRules) -> void:
 	battle_setup = CombatBattleSetup.new(_context)
 	_context.bind_collaborators(rounds, actions, reactions, magic, fields, summoning, phase, automation)
 	targeting = CombatTargetingWorkflow.new(_context)
+	view_probes = CombatFlowViewProbes.new(actions, reactions, magic)
 
 
 func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0, participant_character_ids: Array[String] = []) -> CombatFlowResult:

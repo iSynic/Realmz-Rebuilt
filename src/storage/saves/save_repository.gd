@@ -66,7 +66,7 @@ func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot, previ
 	var envelope := SaveEnvelope.from_snapshot(snapshot, preview_jpeg)
 	if envelope == null:
 		return _fail("The session snapshot could not be encoded.")
-	var selected_characters := CharacterArtBundle.snapshot_characters(envelope)
+	var selected_characters := CharacterArtBundle.snapshot_characters(envelope.game_state)
 	if not envelope.character_art.matches_characters(selected_characters):
 		var art_repository := CharacterArtRepository.new(_root_path.get_base_dir().path_join("character-art"))
 		envelope.character_art = art_repository.selected(selected_characters)

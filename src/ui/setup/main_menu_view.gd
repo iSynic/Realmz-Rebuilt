@@ -23,6 +23,7 @@ var _active := false
 var _remaining_hold := 0.0
 var _profile: UiLayoutProfile
 var _focused_action: StringName = &"ChooseScenario"
+var _waiting := false
 
 
 func _ready() -> void:
@@ -130,11 +131,21 @@ func _finish_transition() -> void:
 	if _active: _hold.start(hold_seconds)
 
 
+## Says a choice was taken while the application finishes loading; input hints stay off it until then.
+func show_wait(text: String) -> void:
+	_waiting = true
+	_hint.text = text
+
+
 func show_keyboard_hint() -> void:
+	if _waiting:
+		return
 	_hint.text = "↑ ↓ Navigate   Enter Select"
 
 
 func show_controller_hint(family: String, preferences: ControllerPreferences) -> void:
+	if _waiting:
+		return
 	var confirm := ControllerBindingLabels.action(preferences, &"realmz_controller_confirm", family, ControllerBindingLabels.face(&"south", family))
 	_hint.text = "D-pad Navigate   %s Select" % confirm
 

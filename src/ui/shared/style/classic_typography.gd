@@ -11,18 +11,34 @@ const CLASSIC_UTILITY_PATH := "res://src/ui/shared/assets/fonts/InterVariable-Ca
 const READABLE_UI_PATH := "res://src/ui/shared/assets/fonts/AlegreyaSans-Regular.ttf"
 const READABLE_BOLD_PATH := "res://src/ui/shared/assets/fonts/AlegreyaSans-Bold.ttf"
 const READABLE_NARRATIVE_PATH := "res://src/ui/shared/assets/fonts/Alegreya-Variable.ttf"
-## UI symbols (check marks, arrows, command glyphs) are absent from every bundled face. Godot sizes a
-## line by the tallest font in its fallback chain, so no font chain carries a platform symbol font:
-## symbol-only labels use the SymbolGlyph role, and other text relies on Godot's per-glyph system
+## UI symbols (check marks, arrows, command glyphs) are absent from every bundled text face. Godot
+## sizes a line by the tallest font in its fallback chain, so no font chain carries a platform symbol
+## font: symbol-only labels use the SymbolGlyph role, and other text relies on Godot's per-glyph system
 ## fallback, which enlarges only the lines that actually draw a symbol.
+## A platform with no system fonts (the web) has neither, so there the bundled symbol faces join every
+## chain. Their line box is cut down to fit inside the text faces', so they stretch no line.
+const SYMBOL_FACE_PATHS: Array[String] = [
+	"res://src/ui/shared/assets/fonts/NotoSansSymbols2-Realmz.ttf",
+	"res://src/ui/shared/assets/fonts/NotoSansSymbols-Realmz.ttf",
+	"res://src/ui/shared/assets/fonts/NotoSansMath-Realmz.ttf",
+]
+## The text faces the symbol faces follow. Black Chancery is left out: its line box is shorter than
+## the symbol faces', it sets headings only, and no heading draws a symbol.
+const SYMBOL_HOST_PATHS: Array[String] = [THELDROW_PATH, CHICAGO_PATH, CLASSIC_UTILITY_PATH, READABLE_UI_PATH, READABLE_BOLD_PATH, READABLE_NARRATIVE_PATH]
 ## Menu workspaces root on this theme; it authors a readable sans that follows only an explicit
 ## interface font choice. The main menu pins its own typography and never follows either.
 ## The interface font identity that keeps the original Realmz faces.
 const CLASSIC_FACES := "classic"
 const MENU_THEME_PATH := "res://src/ui/shared/style/menu_controls_theme.tres"
 
+## Holds the text faces that received the symbol faces. A font nobody holds is freed and loaded again
+## without them.
+static var _symbol_hosts: Array[Font] = []
+
 
 static func themed_copy(base_theme: Theme, settings: PresentationSettings, interface_size: float = 1.0, fonts: FontResolver = null) -> Theme:
+	if OS.has_feature("web"):
+		install_symbol_faces(base_theme)
 	var result := base_theme.duplicate() as Theme
 	ClassicChrome.modernize(result)
 	var font_scale := interface_size * settings.interface_text_scale
@@ -114,3 +130,23 @@ static func _with_fallback(path: String, fallback: Font) -> Font:
 		fallbacks.append(fallback)
 	result.fallbacks = fallbacks
 	return result
+
+
+## Adds the bundled symbol faces behind the bundled text faces and the theme's SymbolGlyph role.
+## The text faces are shared resources, so every theme made afterwards has the symbols.
+static func install_symbol_faces(base_theme: Theme) -> void:
+	if _symbol_hosts.is_empty():
+		for path: String in SYMBOL_HOST_PATHS:
+			_add_symbol_faces(load(path) as Font)
+	if base_theme.has_font(&"font", &"SymbolGlyph"):
+		_add_symbol_faces(base_theme.get_font(&"font", &"SymbolGlyph"))
+
+
+static func _add_symbol_faces(host: Font) -> void:
+	if _symbol_hosts.has(host):
+		return
+	_symbol_hosts.append(host)
+	var fallbacks := host.fallbacks
+	for path: String in SYMBOL_FACE_PATHS:
+		fallbacks.append(load(path) as Font)
+	host.fallbacks = fallbacks

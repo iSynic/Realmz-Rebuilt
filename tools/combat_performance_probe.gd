@@ -71,7 +71,7 @@ func _initialize() -> void:
 	warm_monster_phase_rng.restore(monster_phase_rng_start)
 	var previous_view := _combat_view(state, content, rules, 1)
 	var view_started := Time.get_ticks_usec()
-	var view := CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state)
+	var view := CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow.view_probes, state)
 	var view_us := Time.get_ticks_usec() - view_started
 	var spell_options_started := Time.get_ticks_usec()
 	var spell_options := rules.combat_flow.magic.selection().character_spell_options(state, content, character_ids[0])
@@ -206,7 +206,7 @@ func _combat_view(state: GameState, content: RealmzContent, rules: RealmzRules, 
 		var member := CharacterView.new(character, content)
 		member.apply_equipment(rules.equipment.combat_equipment(character, content.items.definitions()))
 		members.append(member)
-	var combat := CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow, state) if state.combat != null else null
+	var combat := CombatView.new(state.combat, state.party.characters(), content, rules.equipment, rules.battlefield, rules.combat_flow.view_probes, state) if state.combat != null else null
 	return GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), null, members, state.party.fatigue, state.party.pooled_wealth.gold, combat)
 
 

@@ -35,7 +35,7 @@ func build(request_id: String) -> InteractionRequest:
 		return _pending_request(request_id)
 	_summon_previews.clear()
 	_summon_anchor_payloads.clear()
-	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)
+	var combat_view := CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow.view_probes, _game_state)
 	var actions := _base_actions(combat_view)
 	var spell_casts := _spell_cast_payloads(combat_view.active_actor_id)
 	var item_casts := _item_cast_payloads(combat_view.active_actor_id)
@@ -72,7 +72,7 @@ func _pending_request(request_id: String) -> InteractionRequest:
 		if commitment.item != null and option.item_instance_id == commitment.item.id and commitment.item.charges > 0:
 			option.charges = commitment.item.charges - 1
 	# Choices use restored admission facts; the visible battle retains its paid resources.
-	request.transient_combat_view = CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow, _game_state)
+	request.transient_combat_view = CombatView.new(_game_state.combat, _game_state.party.characters(), _content, _rules.equipment, _rules.battlefield, _rules.combat_flow.view_probes, _game_state)
 	return request
 
 

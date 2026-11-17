@@ -107,9 +107,11 @@ static func from_data(data: Variant) -> CharacterArtBundle:
 	return result
 
 
-static func snapshot_characters(snapshot: SessionSnapshot) -> Array[CharacterState]:
-	var result := snapshot.game_state.party.characters()
-	var draft := snapshot.game_state.character_draft
+## Takes the game state, not the session snapshot that carries it, so Character Files and party
+## setup do not load the session and scenario code a snapshot refers to.
+static func snapshot_characters(state: GameState) -> Array[CharacterState]:
+	var result := state.party.characters()
+	var draft := state.character_draft
 	if draft != null:
 		var selection := CharacterState.new("draft-art", "", 1, 1)
 		selection.portrait_id = draft.portrait_id

@@ -181,6 +181,14 @@ Inter is distributed under the SIL Open Font License 1.1 and is the open
 Geneva substitute selected by Realmz Castle. Its license is included beside
 the bundled fonts.
 
+Noto Sans Symbols, Noto Sans Symbols 2 and Noto Sans Math are distributed
+under the SIL Open Font License 1.1 by The Noto Project Authors. They are
+taken from google/fonts at commit 2d85e20401920891efb7cd6272d6339685df2820 and
+supply interface symbols where the platform has no system fonts. Realmz Rebuilt
+changes only their vertical line metrics, with
+tools/ui-assets/normalize_symbol_font_metrics.py. Their licenses are included
+beside the bundled fonts.
+
 Exact font hashes and accompanying notices are recorded in
 src/ui/shared/assets/fonts/font-assets.json and its licenses directory.
 

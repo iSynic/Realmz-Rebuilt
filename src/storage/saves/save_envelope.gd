@@ -105,7 +105,7 @@ static func from_data(value: Variant) -> SaveEnvelope:
 	envelope.deviation_ids = deviations
 	envelope.map_preview_jpeg = preview_jpeg
 	envelope.character_art = CharacterArtBundle.from_data(data.get("characterArt", []))
-	if envelope.character_art == null or not envelope.character_art.matches_characters(CharacterArtBundle.snapshot_characters(envelope)):
+	if envelope.character_art == null or not envelope.character_art.matches_characters(CharacterArtBundle.snapshot_characters(envelope.game_state)):
 		return null
 	if version >= 6 and not _current_execution_facts_match(data, envelope):
 		return null

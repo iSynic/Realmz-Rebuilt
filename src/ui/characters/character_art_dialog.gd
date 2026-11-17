@@ -2,6 +2,9 @@
 class_name CharacterArtDialog
 extends Control
 
+## The file browser is built the first time it is opened; it is 160 nodes that most sessions never use.
+var _browser: FileDialog
+
 signal opened
 signal sources_requested(paths: PackedStringArray, kind: String, folder: bool)
 signal preview_requested(index: int, mode: String, filter: String, crop: Rect2i)
@@ -51,8 +54,6 @@ func _ready() -> void:
 		button.get_popup().add_item("Choose images…", 0)
 		button.get_popup().add_item("Choose folder…", 1)
 		button.get_popup().id_pressed.connect(_open_picker.bind("combat-icon" if button == %ImportIcons else "portrait"))
-	(%SourceFiles as FileDialog).files_selected.connect(func(paths: PackedStringArray) -> void: sources_requested.emit(paths, _pick_kind, false))
-	(%SourceFiles as FileDialog).dir_selected.connect(func(path: String) -> void: sources_requested.emit(PackedStringArray([path]), _pick_kind, true))
 	(%ArtMode as OptionButton).item_selected.connect(func(_index: int) -> void: _state_changed())
 	(%ArtFilter as OptionButton).item_selected.connect(func(_index: int) -> void: _state_changed())
 	for control: SpinBox in [%CropX, %CropY, %CropSize]:
@@ -61,7 +62,7 @@ func _ready() -> void:
 	(%CancelImport as Button).pressed.connect(func() -> void: batch_cancelled.emit())
 	(%UseArtwork as Button).pressed.connect(_use_artwork)
 	(%DoneArt as Button).pressed.connect(dismiss)
-	for popup: Window in [%SourceFiles, %NamePrompt, %RemovePrompt]:
+	for popup: Window in [%NamePrompt, %RemovePrompt]:
 		popup.visibility_changed.connect(_update_popup_shield)
 	(%PopupInputShield as Control).gui_input.connect(_handle_popup_shield_input)
 	_update_actions()
@@ -69,13 +70,13 @@ func _ready() -> void:
 
 func _update_popup_shield() -> void:
 	# Native exclusivity blocks the outer compositor's input forwarding.
-	(%PopupInputShield as Control).visible = (%SourceFiles as Window).visible or (%NamePrompt as Window).visible or (%RemovePrompt as Window).visible
+	(%PopupInputShield as Control).visible = _popups().any(func(popup: Window) -> bool: return popup.visible)
 
 
 func _handle_popup_shield_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		(%PopupInputShield as Control).accept_event()
-		for popup: Window in [%SourceFiles, %NamePrompt, %RemovePrompt]:
+		for popup: Window in _popups():
 			if popup.visible:
 				popup.grab_focus()
 
@@ -174,7 +175,7 @@ func show_error(message: String) -> void:
 
 
 func controller_focus_root() -> Node:
-	for control: Window in [%SourceFiles, %NamePrompt, %RemovePrompt]:
+	for control: Window in _popups():
 		if control.visible:
 			return control
 	return self
@@ -186,7 +187,7 @@ func apply_ui_sizing(_profile: UiLayoutProfile) -> void:
 
 
 func dismiss() -> void:
-	for control: Window in [%SourceFiles, %NamePrompt, %RemovePrompt]:
+	for control: Window in _popups():
 		if control.visible:
 			control.hide()
 			return
@@ -277,7 +278,7 @@ func _open_picker(mode: int, kind: String) -> void:
 		(%LibraryStatus as Label).text = ANDROID_PREVIEW_ART_REASON
 		return
 	_pick_kind = kind
-	var picker := %SourceFiles as FileDialog
+	var picker := _files()
 	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILES if mode == 0 else FileDialog.FILE_MODE_OPEN_DIR
 	picker.title = "Import Portraits" if kind == "portrait" else "Import Icons"
 	picker.popup_centered_ratio(0.88)
@@ -362,3 +363,29 @@ func _fit() -> void:
 	window.size = Vector2(minf(1160.0 * scale, area.size.x * 0.96), minf(650.0 * scale, area.size.y * 0.94))
 	window.position = area.position + (area.size - window.size) * 0.5
 	(%ArtRaces as ItemList).ensure_current_is_visible.call_deferred()
+
+
+func _popups() -> Array[Window]:
+	var popups: Array[Window] = [%NamePrompt as Window, %RemovePrompt as Window]
+	if _browser != null:
+		popups.push_front(_browser)
+	return popups
+
+
+func _files() -> FileDialog:
+	if _browser != null:
+		return _browser
+	_browser = FileDialog.new()
+	_browser.name = "SourceFiles"
+	_browser.initial_position = Window.WINDOW_INITIAL_POSITION_CENTER_MAIN_WINDOW_SCREEN
+	_browser.size = Vector2i(900, 560)
+	_browser.exclusive = false
+	_browser.file_mode = FileDialog.FILE_MODE_OPEN_FILES
+	_browser.access = FileDialog.ACCESS_FILESYSTEM
+	_browser.filters = PackedStringArray(["*.png, *.webp, *.jpg, *.jpeg ; Images"])
+	_browser.use_native_dialog = false
+	add_child(_browser)
+	_browser.files_selected.connect(func(paths: PackedStringArray) -> void: sources_requested.emit(paths, _pick_kind, false))
+	_browser.dir_selected.connect(func(path: String) -> void: sources_requested.emit(PackedStringArray([path]), _pick_kind, true))
+	_browser.visibility_changed.connect(_update_popup_shield)
+	return _browser
