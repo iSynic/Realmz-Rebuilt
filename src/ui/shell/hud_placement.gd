@@ -34,3 +34,13 @@ static func edge(fraction: Vector2, prefer_sides: bool) -> StringName:
 	if prefer_sides:
 		return side if side != &"" else end
 	return end if end != &"" else side
+
+## The roster panel height that shows every party row: the rows plus whatever the panel
+## surface, its margins and the roster's own frame add around them in the current theme.
+static func roster_fit_height(panel: Control, roster: Control) -> float:
+	var surface := panel.get_node("Surface") as Control
+	var body := surface.get_node("Column/Body") as Control
+	var scroll := roster.get_node("RosterColumn/PartyScroll") as Control
+	var chrome := surface.get_combined_minimum_size().y - body.get_combined_minimum_size().y
+	chrome += (body.get_node("Content") as Control).get_combined_minimum_size().y - scroll.get_combined_minimum_size().y
+	return (scroll.get_node("PartyList") as Control).get_combined_minimum_size().y + chrome

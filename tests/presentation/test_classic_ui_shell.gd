@@ -150,6 +150,10 @@ func _test_authored_hud_switch() -> void:
 	assert_equal(shell.selected_character_id, view.party_members[2].id, "Modular retains the selected character")
 	assert_equal((shell.hud.content(1).get_node("NarrativeColumn/NarrativeText") as RichTextLabel).text, "The road is clear.", "Modular retains narrative history")
 	assert_equal((shell.roster.get_node("RosterColumn/PartyScroll/PartyList") as Control).get_child_count(), 6, "Modular retains six authored party positions")
+	await tree.process_frame
+	var party_scroll := shell.roster.get_node("RosterColumn/PartyScroll") as ScrollContainer
+	var party_list := party_scroll.get_node("PartyList") as Control
+	assert_true(party_scroll.size.y + 0.5 >= party_list.get_combined_minimum_size().y, "a full party of six fits the modular roster without scrolling (%s of %s)" % [party_scroll.size.y, party_list.get_combined_minimum_size().y])
 	shell.settings.hud.panels[2].background_opacity = 0.4
 	shell.settings.hud.panels[3].background_opacity = 0.4
 	shell.settings.hud.effects_bar_opacity = 0.4

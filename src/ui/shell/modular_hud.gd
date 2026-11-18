@@ -238,8 +238,8 @@ func arrange(profile: UiLayoutProfile) -> void:
 	for index: int in 4:
 		var rectangle := rectangles[index]
 		if index == 0 and not compact:
-			var list := _contents[0].get_node("RosterColumn/PartyScroll/PartyList") as Control
-			rectangle.size.y = minf(rectangle.size.y, list.get_combined_minimum_size().y + 12.0 * profile.ui_scale)
+			# The roster is as tall as its party, whatever height the scene was authored at.
+			rectangle.size.y = minf(area.size.y, HudPlacement.roster_fit_height(_panels[0], _contents[0]))
 		var preference := _settings.panels[index]
 		if preference.custom_size: rectangle.size = (area.size * preference.size_fraction).clamp(minimum_panel_size(index), area.size)
 		if index == 1: rectangle = _fit_narrative(rectangle)
@@ -272,8 +272,7 @@ func _arrange_combat(profile: UiLayoutProfile) -> void:
 	# The roster's heading names the caster while it holds the spellbook.
 	(roster.get_node("RosterColumn/Heading") as Control).visible = spellbook
 	var width := minf(area.size.x * 0.44, maxf(344.0 * profile.ui_scale, profile.party_width))
-	var list := roster.get_node("RosterColumn/PartyScroll/PartyList") as Control
-	var rectangle := Rect2(Vector2(area.size.x - width, 0.0), Vector2(width, area.size.y if spellbook else minf(area.size.y, list.get_combined_minimum_size().y + 12.0 * profile.ui_scale)))
+	var rectangle := Rect2(Vector2(area.size.x - width, 0.0), Vector2(width, area.size.y if spellbook else minf(area.size.y, HudPlacement.roster_fit_height(_panels[0], _contents[0]))))
 	var preference := _settings.panels[0]
 	if not spellbook and preference.custom_size: rectangle.size = (area.size * preference.size_fraction).clamp(minimum_panel_size(0), area.size)
 	elif not spellbook: rectangle.size = (rectangle.size * preference.scale).min(area.size)
