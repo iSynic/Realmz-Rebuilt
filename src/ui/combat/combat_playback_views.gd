@@ -69,6 +69,15 @@ static func payload_coordinate(value: Variant) -> Vector2i:
 	return Vector2i(-1, -1)
 
 
+## The combatant's playback position, falling back to where the earlier and then the final view place it.
+static func resolved_position(combatant_id: String, positions: Dictionary, previous: GameView, final: GameView) -> Vector2i:
+	var value: Variant = positions.get(combatant_id)
+	if value is Vector2i:
+		return value
+	var coordinate := combatant_position(previous, combatant_id)
+	return coordinate if coordinate.x >= 0 else combatant_position(final, combatant_id)
+
+
 static func combatant_position(view: GameView, combatant_id: String) -> Vector2i:
 	if view == null or view.combat_view == null:
 		return Vector2i(-1, -1)

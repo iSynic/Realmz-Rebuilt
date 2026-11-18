@@ -62,6 +62,7 @@ var _frame_started: bool = false
 var _active: bool = false
 var _speed_percent: int = 100
 var _hurry_spell_resolution: bool = false
+var _turning_resists: CombatPlaybackFrame
 ## Optional departure FD-COMBAT-023: Castle's disease tick (showresults case 29) sets no result icon.
 var disease_damage_icon := false
 var _visible_fields: Array[PersistentCombatFieldView] = []
@@ -281,7 +282,9 @@ func _append_event_frames(event: DomainEvent, positions: Dictionary, hidden: Arr
 		&"combat_spell_cast": _append_spell_cast(event, positions, hidden)
 		&"combat_spell_projectile": _append_spell_projectile(event, positions, hidden)
 		&"combat_spell_resolved": _append_spell_result(event, positions, hidden)
-		&"combat_multi_spell_resolved", &"combat_multi_attack_resolved": _append_multi_result(event, positions, hidden)
+		&"combat_multi_spell_resolved", &"combat_multi_attack_resolved", &"combat_multi_turn_undead_resolved": _append_multi_result(event, positions, hidden)
+		&"combat_turn_undead_attempted":
+			_turning_resists = null
 		&"combat_turn_undead_resolved": _append_turn_undead_result(event, positions, hidden)
 		&"combatant_bandaged": _append_simple_result(event, positions, hidden, &"healing", "Bandaged")
 		&"combatant_bleeding_progressed": _append_bleeding_result(event, positions, hidden, false)
@@ -503,13 +506,15 @@ func _append_multi_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 	var results: Array[CombatPlaybackFrame] = []
 	var defeats: Array[CombatPlaybackFrame] = []
 	var spell_group := event.kind == &"combat_multi_spell_resolved"
+	var turning := event.kind == &"combat_multi_turn_undead_resolved"
 	var payloads: Array = event.payload.get("results", [])
 	for payload_value: Variant in payloads:
 		var payload := payload_value as Dictionary
-		var original := DomainEvent.new(&"combat_spell_resolved" if spell_group else &"combat_attack_resolved", payload)
+		var original := DomainEvent.new(&"combat_turn_undead_resolved" if turning else &"combat_spell_resolved" if spell_group else &"combat_attack_resolved", payload)
 		_backdrops.observe_action(original)
 		var first_frame := _frames.size()
-		if spell_group:
+		if turning: _append_turn_undead_result(original, positions, hidden, false)
+		elif spell_group:
 			_hurry_cast_key = ""
 			_append_spell_result(original, positions, hidden)
 		else: _append_attack(original, positions, hidden)
@@ -528,6 +533,8 @@ func _append_multi_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 			elif results.size() == 0: animations.append(frame)
 		_frames.resize(first_frame)
 		_backdrops.apply_result(payload)
+	# The turning glow plays before the shared result, so a destroyed undead is still standing.
+	for animation: CombatPlaybackFrame in animations: animation.hidden_combatant_ids = initial_hidden.duplicate() if turning else animation.hidden_combatant_ids
 	_frames.append_array(animations)
 	var result := _new_frame(&"group_result", RESULT_SECONDS, positions, initial_hidden)
 	result.actor_id = String(event.payload.get("actorId", ""))
@@ -544,31 +551,29 @@ func _append_multi_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 		_frames.append(defeat)
 
 
-func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidden: Array[String], share_resists: bool = true) -> void:
 	var result_kind := StringName(event.payload.get("result", "resisted"))
-	var text := "Resist" if result_kind == &"resisted" else "Destroyed" if result_kind == &"destroyed" else "Turned"
-	var target_id: String = event.payload.get("targetId", "")
-	var result := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
-	result.actor_id = String(event.payload.get("actorId", ""))
-	result.target_id = target_id
-	result.result_kind = result_kind
-	result.display_text = text
+	# Spell pacing for what happens: a 100ms hold and 25ms glow frames. Castle shows nothing for an undead that
+	# resists, so every resist of one attempt shares a single frame instead of holding one after another.
+	var result := _new_frame(&"result", RESULT_SECONDS if result_kind == &"resisted" else SPELL_RESULT_SECONDS, positions, hidden)
+	result.set_turning(event.payload)
+	if result_kind == &"resisted" and share_resists:
+		if _turning_resists == null:
+			_turning_resists = _new_frame(&"group_result", RESULT_SECONDS, positions, hidden)
+			_frames.append(_turning_resists)
+		_turning_resists.group_frames.append(result)
+		return
 	_frames.append(result)
 	if result_kind == &"destroyed":
-		_hide_combatant(target_id, hidden)
+		_hide_combatant(result.target_id, hidden)
 		var defeat := _new_frame(&"defeat", DEFEAT_SECONDS, positions, hidden)
-		defeat.target_id = target_id
-		defeat.effect_resource_id = CombatDefeatArt.resource_id_for_combatant(base_view, target_id)
-		defeat.result_kind = &"defeat"
-		defeat.display_text = "Destroyed"
+		defeat.set_defeat(result.target_id, CombatDefeatArt.resource_id_for_combatant(base_view, result.target_id), "Destroyed")
 		_frames.append(defeat)
 	if result_kind == &"turned":
-		for _frame_index_value: int in int(event.payload.get("effectFrameCount", 0)):
-			var effect := _new_frame(&"spell_effect", SPELL_EFFECT_SECONDS, positions, hidden)
-			effect.actor_id = String(event.payload.get("actorId", ""))
-			effect.target_id = String(event.payload.get("targetId", ""))
-			effect.to_coordinate = _position_for(effect.target_id, positions)
-			effect.effect_resource_id = int(event.payload.get("effectResourceId", 0)) + _frame_index_value
+		for glow_frame: int in int(event.payload.get("effectFrameCount", 0)):
+			var effect := _new_frame(&"spell_effect", SPELL_RESOLUTION_FRAME_SECONDS, positions, hidden)
+			effect.set_turning(event.payload, glow_frame)
+			effect.to_coordinate = _position_for(result.target_id, positions)
 			_frames.append(effect)
 
 
@@ -677,10 +682,4 @@ func _new_frame(kind: StringName, duration: float, positions: Dictionary, hidden
 
 
 func _position_for(combatant_id: String, positions: Dictionary) -> Vector2i:
-	var value: Variant = positions.get(combatant_id)
-	if value is Vector2i:
-		return value
-	var coordinate := CombatPlaybackViews.combatant_position(previous_view, combatant_id)
-	if coordinate.x >= 0:
-		return coordinate
-	return CombatPlaybackViews.combatant_position(final_view, combatant_id)
+	return CombatPlaybackViews.resolved_position(combatant_id, positions, previous_view, final_view)

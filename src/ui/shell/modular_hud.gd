@@ -147,12 +147,14 @@ func _process(_delta: float) -> void:
 		var source := facts.get_node(item) as Label
 		var shown := items.get_node(item) as Label
 		if shown.text != source.text:
-			shown.text = source.text
+			SteadyLabelWidth.apply(shown, source.text, "Light 000" if item == "Light" else source.text if item == "Clock" else "")
 			shown.tooltip_text = source.tooltip_text
 			shown.visible = not source.text.is_empty()
 	var fatigue := facts.get_node("FatigueGauge/Fatigue") as Label
 	var bar := facts.get_node("FatigueGauge/FatigueBar") as ProgressBar
-	(items.get_node("Fatigue") as Label).text = fatigue.text
+	var shown_fatigue := items.get_node("Fatigue") as Label
+	if shown_fatigue.text != fatigue.text:
+		SteadyLabelWidth.apply(shown_fatigue, fatigue.text, "Fatigue 000")
 	var shown_bar := items.get_node("FatigueBar") as ProgressBar
 	if shown_bar.value != bar.value or shown_bar.max_value != bar.max_value:
 		shown_bar.min_value = bar.min_value

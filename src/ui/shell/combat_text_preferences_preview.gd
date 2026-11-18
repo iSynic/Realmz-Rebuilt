@@ -6,6 +6,8 @@ const RESULT_LIFETIME_SECONDS := 0.65
 const STAGE_COLOR := Color("#293d47")
 const ICON_COLOR := Color("#87917b")
 const ICON_EDGE := Color("#c8c0a3")
+## Battlefield pixels the tallest sample needs: the icon, a 200% card and its full travel.
+const STAGE_LOGICAL_HEIGHT := 132.0
 
 var _motion := PresentationSettings.COMBAT_TEXT_FLOATING
 var _size_percent := 100
@@ -16,6 +18,7 @@ var _speed_percent := 100
 var _background_opacity_percent := 50
 var _elapsed := 0.0
 var _sample: CombatPlaybackFrame
+var _stage: Control
 
 
 func _ready() -> void:
@@ -26,6 +29,9 @@ func _ready() -> void:
 	_sample.display_amount = 12
 	_sample.display_text = "12"
 	_sample.damage_type = 0
+	clip_contents = true
+	_stage = get_node("Stage") as Control
+	_stage.draw.connect(_draw_stage)
 	visibility_changed.connect(func() -> void: set_process(is_visible_in_tree()))
 	set_process(is_visible_in_tree())
 
@@ -39,25 +45,43 @@ func configure(motion: String, size_percent: int, travel_logical_pixels: int, an
 	_speed_percent = clampi(snappedi(speed_percent, 25), 25, 200)
 	_background_opacity_percent = clampi(snappedi(background_opacity_percent, 25), 0, 100)
 	_elapsed = 0.0
-	queue_redraw()
 
 
 func _process(delta: float) -> void:
 	_elapsed = fposmod(_elapsed + delta * float(_speed_percent) / 100.0, RESULT_LIFETIME_SECONDS)
-	queue_redraw()
+	_fit_stage()
+	_stage.queue_redraw()
+
+
+## Sizes the stage so one of its pixels covers what one battlefield pixel covers on screen. The
+## battlefield is drawn at the world zoom, so the sample then has the size it has in battle.
+func _fit_stage() -> void:
+	var battlefield := get_tree().get_first_node_in_group(ClassicBattlefieldPresenter.GROUP) as Control
+	var own_scale := get_global_transform().get_scale().x
+	var zoom := 1.0
+	if battlefield != null and own_scale > 0.0:
+		zoom = maxf(0.25, CombatResultCardLayout.raster_scale_for(battlefield) / own_scale)
+	if not is_equal_approx(_stage.scale.x, zoom) or not _stage.size.is_equal_approx(size / zoom):
+		_stage.scale = Vector2.ONE * zoom
+		_stage.size = size / zoom
+		custom_minimum_size.y = maxf(140.0, ceilf(STAGE_LOGICAL_HEIGHT * zoom))
+		queue_redraw()
 
 
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), STAGE_COLOR, true)
-	var icon := Rect2(Vector2(size.x * 0.5 - 16.0, size.y * 0.68 - 16.0), Vector2(32.0, 32.0))
-	draw_rect(icon, ICON_COLOR, true)
-	draw_rect(icon, ICON_EDGE, false, 1.0)
+
+
+func _draw_stage() -> void:
+	var icon := Rect2(Vector2(_stage.size.x * 0.5 - 16.0, _stage.size.y * 0.68 - 16.0), Vector2(32.0, 32.0))
+	_stage.draw_rect(icon, ICON_COLOR, true)
+	_stage.draw_rect(icon, ICON_EDGE, false, 1.0)
 	if _sample == null:
 		return
-	var font := get_theme_font(&"font", &"ClassicUtility")
-	var layout := CombatResultCardLayout.measure(font, _sample, CombatResultCardLayout.raster_scale_for(self), _size_percent, size)
+	var font := _stage.get_theme_font(&"font", &"ClassicUtility")
+	var layout := CombatResultCardLayout.measure(font, _sample, CombatResultCardLayout.raster_scale_for(_stage), _size_percent, _stage.size)
 	CombatResultDrawing.draw(
-		self,
+		_stage,
 		_sample,
 		icon,
 		_elapsed / RESULT_LIFETIME_SECONDS,

@@ -159,7 +159,7 @@ func complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult:
 		set_post_move_continuation(map, _context.state.party.coordinate)
 		return continue_post_move(events)
 	if resume_kind in [&"attempt-search-completed", &"attempt-search-post-move"]:
-		var search_result := ExplorationSearchWorkflow.search_after_land_movement_attempt(_context.workflow_context(), events)
+		var search_result := ExplorationSearchWorkflow.search_after_movement_attempt(_context.workflow_context(), events)
 		if not search_result.ok:
 			return SessionCoordinatorResult.failed(search_result.error_code, search_result.error_message, search_result.events)
 		var final_resume_kind := &"post-move" if resume_kind == &"attempt-search-post-move" else &"completed"

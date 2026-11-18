@@ -293,9 +293,13 @@ size_flags_horizontal = 3
 mouse_filter = 2
 script = ExtResource("2_preview")
 
+[node name="Stage" type="Control" parent="Columns/PreviewColumn/CombatTextPreview"]
+layout_mode = 0
+mouse_filter = 2
+
 [node name="CombatTextPreviewGuidance" type="Label" parent="Columns/PreviewColumn"]
 layout_mode = 2
-text = "Try these settings before applying them."
+text = "Shown at the size it has in battle. Try these settings before applying them."
 autowrap_mode = 2
 
 [node name="CombatTextReset" type="Button" parent="Columns/PreviewColumn"]

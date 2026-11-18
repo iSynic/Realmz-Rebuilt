@@ -240,18 +240,19 @@ func present_inactive() -> void:
 
 
 func present_world_facts(game_view: GameView, include_gold: bool = true) -> void:
-	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
+	var clock_text := "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
+	SteadyLabelWidth.apply(_clock_label, clock_text, clock_text)
 	if include_gold:
 		_gold_label.text = "Gold %d" % game_view.pooled_gold
 	_last_world_view = game_view
 	_coordinates_label.text = location_fact_text(game_view, _show_map_id)
 	_coordinates_label.tooltip_text = "Party position (X,Y)"
-	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
+	SteadyLabelWidth.apply(_fatigue_label, "Fatigue %d" % game_view.party_fatigue, "Fatigue 000")
 	_fatigue_bar.value = game_view.party_fatigue
 	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
 	# Light (a lit torch or a light spell) appears only while it lasts; its cell stays put when dark.
 	var light := game_view.party_summary.light_remaining if game_view.party_summary != null else 0
-	_light_label.text = "Light %d" % light if light > 0 else ""
+	SteadyLabelWidth.apply(_light_label, "Light %d" % light if light > 0 else "", "Light 000")
 	_light_label.tooltip_text = "Light remaining from a torch or light spell, in moves" if light > 0 else ""
 
 

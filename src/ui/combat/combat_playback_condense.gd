@@ -21,9 +21,41 @@ static func project(events: Array[DomainEvent]) -> Array[DomainEvent]:
 				projected.append_array(attack_group["events"])
 				index = int(attack_group["nextIndex"])
 				continue
+		elif event.kind == &"combat_turn_undead_attempted":
+			var after_turning := _append_turn_undead_group(events, index, projected)
+			if after_turning >= 0:
+				index = after_turning
+				continue
 		projected.append(event)
 		index += 1
 	return projected
+
+
+## Turn Undead resolves every undead in the battle one after another. Two or more become one resolution,
+## appended after the attempt; the result is the index after the group, or -1 when it stays as it is.
+static func _append_turn_undead_group(events: Array[DomainEvent], attempt_index: int, projected: Array[DomainEvent]) -> int:
+	var actor_id := RowFields.text(events[attempt_index].payload, "actorId")
+	var results: Array[Dictionary] = []
+	var sounds: Array[DomainEvent] = []
+	var sound_ids: Array[int] = []
+	var index := attempt_index + 1
+	while index < events.size():
+		var event := events[index]
+		if event.kind == &"sound_requested" and RowFields.text(event.payload, "source") == "classic-combat-turn-undead":
+			if not sound_ids.has(RowFields.number(event.payload, "soundId")):
+				sound_ids.append(RowFields.number(event.payload, "soundId"))
+				sounds.append(event)
+		elif event.kind == &"combat_turn_undead_resolved" and RowFields.text(event.payload, "actorId") == actor_id:
+			results.append(event.payload.duplicate(true))
+		else:
+			break
+		index += 1
+	if results.size() < 2:
+		return -1
+	projected.append(events[attempt_index])
+	projected.append_array(sounds)
+	projected.append(DomainEvent.new(&"combat_multi_turn_undead_resolved", {"actorId": actor_id, "results": results}))
+	return index
 
 
 static func _spell_group(events: Array[DomainEvent], cast_index: int) -> Dictionary:
