@@ -13,6 +13,8 @@ func run() -> void:
 	await _test_service()
 	_test_sounds()
 	_test_symbol_faces()
+	_test_steady_label_width()
+	await _test_combat_text_preview()
 
 
 func _test_palette() -> void:
@@ -285,3 +287,41 @@ func _sources(folder: String) -> PackedStringArray:
 		if name.get_extension() in ["gd", "tscn"]:
 			found.append(folder.path_join(name))
 	return found
+
+
+func _test_steady_label_width() -> void:
+	var label := Label.new()
+	SteadyLabelWidth.apply(label, "Fatigue 9", "Fatigue 000")
+	var reserved := label.custom_minimum_size.x
+	for fatigue: int in [41, 100, 111]:
+		SteadyLabelWidth.apply(label, "Fatigue %d" % fatigue, "Fatigue 000")
+		assert_true(is_equal_approx(label.custom_minimum_size.x, reserved) and label.get_minimum_size().x <= reserved + 1.0, "Fatigue %d keeps the reserved width" % fatigue)
+	assert_true(reserved > 0.0, "a ticking fatigue number reserves room")
+	SteadyLabelWidth.apply(label, "", "Light 000")
+	assert_equal(label.custom_minimum_size.x, 0.0, "an empty fact reserves nothing")
+	label.free()
+
+
+func _test_combat_text_preview() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var battlefield := Control.new()
+	battlefield.add_to_group(ClassicBattlefieldPresenter.GROUP)
+	battlefield.scale = Vector2(3.0, 3.0)
+	var preview := CombatTextPreferencesPreview.new()
+	var stage := Control.new()
+	stage.name = "Stage"
+	preview.add_child(stage)
+	preview.size = Vector2(220.0, 140.0)
+	tree.root.add_child(battlefield)
+	tree.root.add_child(preview)
+	await tree.process_frame
+	await tree.process_frame
+	assert_true(is_equal_approx(stage.scale.x, 3.0) and stage.size.is_equal_approx(preview.size / 3.0), "the preview stage takes the battlefield's on-screen scale: %s at %s" % [stage.scale, stage.size])
+	assert_true(preview.custom_minimum_size.y >= 132.0 * 3.0, "the preview grows to hold the sample at battle size")
+	battlefield.scale = Vector2.ONE
+	await tree.process_frame
+	await tree.process_frame
+	assert_true(is_equal_approx(stage.scale.x, 1.0) and is_equal_approx(preview.custom_minimum_size.y, 140.0), "a 1x battlefield leaves the preview at its authored size")
+	battlefield.queue_free()
+	preview.queue_free()
+	await tree.process_frame

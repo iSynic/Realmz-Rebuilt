@@ -20,6 +20,7 @@ func to_data() -> Dictionary:
 	var exploration_data := exploration.to_data()
 	return {
 		"terrainOverrides": topology_data["terrainOverrides"],
+		"dungeonTerrainAxes": topology_data["dungeonTerrainAxes"],
 		"boatPresenceOverrides": topology_data["boatPresenceOverrides"],
 		"doorStates": topology_data["doorStates"],
 		"discoveredSecrets": topology_data["discoveredSecrets"],

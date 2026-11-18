@@ -186,7 +186,9 @@ static func build_cell_view(context: SessionWorkflowContext, map: MapDefinition,
 		elif replaced:
 			overlay_asset_id = ""
 			render_tile = ClassicLandTileRules.normalized_tile(raw_tile)
-	return MapCellView.new(cell.coordinate, context.state.world.topology.terrain_for(map.id, cell), render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.exploration.was_visited(map.id, cell.coordinate), not cell.trigger_ids().is_empty(), context.state.world.triggers.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
+	# A replaced dungeon cell already carries the wall or floor its written value describes.
+	var terrain_id := cell.terrain_id if map.level_type == &"dungeon" else context.state.world.topology.terrain_for(map.id, cell)
+	return MapCellView.new(cell.coordinate, terrain_id, render_tile, tileset_id, cell.passable, cell.blocks_los, is_visible, context.state.world.exploration.was_visited(map.id, cell.coordinate), not cell.trigger_ids().is_empty(), context.state.world.triggers.has_random_region_at(map, cell.coordinate), feature_kinds, feature_orientations, edge_kinds, edge_passability, overlay_asset_id)
 
 
 static func _ensure_cell_cache(context: SessionWorkflowContext, map: MapDefinition, cell_cache: Dictionary) -> void:

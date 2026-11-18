@@ -84,6 +84,8 @@ func _terrain_replacement_cell(cell: MapCell, world_state: WorldState) -> MapCel
 	if not world_state.topology.has_terrain_override(_compact_map_id, cell.coordinate):
 		return cell
 	var raw_tile := world_state.topology.classic_tile_for(_compact_map_id, cell)
+	if cell.terrain_id.begins_with("classic.dungeon."):
+		return ClassicDungeonTileRules.replaced_cell(cell, raw_tile & 0xFFFF)
 	if raw_tile < 0:
 		return cell
 	var tile_id := ClassicLandTileRules.normalized_tile(raw_tile)

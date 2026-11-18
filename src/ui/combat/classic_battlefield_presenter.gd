@@ -5,6 +5,8 @@ extends Control
 
 
 const NATIVE_CELL_SIZE: float = BattlefieldPresentationGeometry.NATIVE_CELL_SIZE
+## Lets presentation previews find the battlefield and match its on-screen scale.
+const GROUP := &"battlefield_presenter"
 const TARGET_EDGE_DWELL_SECONDS := 0.35
 const TARGET_EDGE_STEP_SECONDS := 0.12
 const LEGAL_TARGET_COLOR := Color(1.0, 0.88, 0.32, 0.98)
@@ -37,6 +39,7 @@ var movement_preview: MovementRoutePreview:
 
 
 func _ready() -> void:
+	add_to_group(GROUP)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	set_process(true)

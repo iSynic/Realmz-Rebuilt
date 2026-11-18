@@ -308,7 +308,9 @@ func _mutate_tile(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 12 requires a five-value Extra Code row.")
 	var dungeon := action.extra_code[4] != 0
 	var map := _content.world.map_by_type_and_index(&"dungeon" if dungeon else &"land", action.extra_code[0])
-	var coordinate := Vector2i(action.extra_code[2], action.extra_code[1]) if dungeon else Vector2i(action.extra_code[1], action.extra_code[2])
+	# Castle writes field[EC2][EC1] in a dungeon and field[EC1][EC2] on land. Its dungeon field is row-major and its
+	# land field column-major, so both name column EC1, row EC2.
+	var coordinate := Vector2i(action.extra_code[1], action.extra_code[2])
 	if map == null or map.topology.cell_at(coordinate) == null:
 		if _content.classic_records != null and (map != null or ClassicCompatibility.source_unavailable(_content, "Data DL" if dungeon else "Data LD", action.extra_code[0])):
 			return ClassicCompatibility.skip(&"tile-mutation", "Data DL" if dungeon else "Data LD", action.extra_code[0])

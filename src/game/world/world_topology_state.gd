@@ -3,6 +3,10 @@
 class_name WorldTopologyState
 extends RefCounted
 
+## Marks saves whose dungeon terrain replacements name column then row. Saves without it were written
+## when opcode 12 swapped the two in dungeons, so their dungeon replacements are swapped back on load.
+const DUNGEON_TERRAIN_AXES := "column-row"
+
 var _terrain_overrides: Dictionary = {}
 var _boat_presence_overrides: Dictionary = {}
 var _door_states: Dictionary = {}
@@ -125,6 +129,7 @@ func map_landlook_for(map_id: String, authored_landlook: int) -> int:
 func to_data() -> Dictionary:
 	return {
 		"terrainOverrides": _sorted_dictionary(_terrain_overrides),
+		"dungeonTerrainAxes": DUNGEON_TERRAIN_AXES,
 		"boatPresenceOverrides": _sorted_dictionary(_boat_presence_overrides),
 		"doorStates": _sorted_dictionary(_door_states),
 		"discoveredSecrets": _sorted_keys(_discovered_secrets),
@@ -142,15 +147,25 @@ static func from_data(data: Dictionary) -> WorldTopologyState:
 	if not data.has("discoveredSecrets"):
 		return null
 	var state := WorldTopologyState.new()
+	var transposed_dungeons := str(data.get("dungeonTerrainAxes", "")) != DUNGEON_TERRAIN_AXES
 	for key: Variant in data["terrainOverrides"]:
 		if not key is String or not data["terrainOverrides"][key] is String:
 			return null
-		state._terrain_overrides[key] = data["terrainOverrides"][key]
+		var override_key: String = key
+		state._terrain_overrides[_transposed_dungeon_key(override_key) if transposed_dungeons else override_key] = data["terrainOverrides"][key]
 	if not _load_boat_presence(data, state) or not _load_doors_and_secrets(data, state):
 		return null
 	if not _load_map_appearance(data, state):
 		return null
 	return state
+
+
+static func _transposed_dungeon_key(key: String) -> String:
+	var separator := key.rfind(":")
+	var components := key.substr(separator + 1).split(",")
+	if not key.begins_with("dungeon:") or separator < 0 or components.size() != 2:
+		return key
+	return "%s:%s,%s" % [key.left(separator), components[1], components[0]]
 
 
 static func _load_boat_presence(data: Dictionary, state: WorldTopologyState) -> bool:

@@ -71,6 +71,17 @@ func set_result(payload: Dictionary) -> void:
 	effect_resource_id = int(payload.get("classicResultEffectResourceId", 0))
 
 
+## Marks this frame as one undead's Turn Undead outcome, or as one frame of its turning glow.
+func set_turning(payload: Dictionary, glow_frame: int = -1) -> void:
+	actor_id = RowFields.text(payload, "actorId")
+	target_id = RowFields.text(payload, "targetId")
+	if glow_frame >= 0:
+		effect_resource_id = RowFields.number(payload, "effectResourceId") + glow_frame
+		return
+	result_kind = RowFields.text(payload, "result", "resisted")
+	display_text = "Resist" if result_kind == &"resisted" else "Destroyed" if result_kind == &"destroyed" else "Turned"
+
+
 func set_elemental_result(attacker_id: String, component: Dictionary) -> void:
 	actor_id = attacker_id
 	target_id = String(component["targetId"])

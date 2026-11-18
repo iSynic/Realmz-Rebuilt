@@ -41,14 +41,12 @@ static func search(context: SessionWorkflowContext) -> ExplorationTimeWorkflow.C
 	return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day, changed.age_updates)
 
 
-static func search_after_land_movement_attempt(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ExplorationTimeWorkflow.ClockTransitionResult:
+static func search_after_movement_attempt(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ExplorationTimeWorkflow.ClockTransitionResult:
 	var current_map := context.content.world.map_by_id(context.state.party.map_id)
 	if current_map == null:
 		return ExplorationTimeWorkflow.ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for the post-movement secret check.", preceding_events)
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
-	if current_map.level_type != &"land":
-		return ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, false, 0)
 	var chance := 0
 	var characters := context.state.party.characters()
 	for character: CharacterState in characters:
@@ -59,21 +57,7 @@ static func search_after_land_movement_attempt(context: SessionWorkflowContext, 
 	if searching or context.state.party.conditions.is_active(ConditionRules.PARTY_DISCOVER_SECRET):
 		chance = 100
 	var discovered: Array[String] = []
-	var first_roll := 0
-	for y: int in range(context.state.party.coordinate.y - 1, context.state.party.coordinate.y + 2):
-		for x: int in range(context.state.party.coordinate.x - 1, context.state.party.coordinate.x + 2):
-			var cell := current_map.topology.cell_at(Vector2i(x, y))
-			if cell == null:
-				continue
-			for feature: MapFeature in cell.features():
-				if feature.kind != &"secret" or context.state.world.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
-					continue
-				var roll := context.rng.draw(100, StringName("exploration.movement-search.%s" % feature.id))
-				if first_roll == 0:
-					first_roll = roll
-				if roll <= chance:
-					context.state.world.topology.discover_secret(feature.id)
-					discovered.append(feature.id)
+	var first_roll := _reveal_dungeon_secret(context, current_map, chance, discovered) if current_map.level_type == &"dungeon" else _reveal_land_secrets(context, current_map, chance, discovered)
 	events.append(DomainEvent.new(&"movement_secret_search_completed", {"mapId": current_map.id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "roll": first_roll, "chance": chance, "discoveredSecrets": discovered}))
 	for secret_id: String in discovered:
 		events.append(DomainEvent.new(&"secret_discovered", {"secretId": secret_id, "byMovementAttempt": true}))
@@ -85,6 +69,53 @@ static func search_after_land_movement_attempt(context: SessionWorkflowContext, 
 	var result := ExplorationTimeWorkflow.ClockTransitionResult.completed(current_map, events, searching, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.clock.day() != previous_day, changed.age_updates)
 	result.secrets_discovered = not discovered.is_empty()
 	return result
+
+
+static func _reveal_land_secrets(context: SessionWorkflowContext, map: MapDefinition, chance: int, discovered: Array[String]) -> int:
+	var first_roll := 0
+	for y: int in range(context.state.party.coordinate.y - 1, context.state.party.coordinate.y + 2):
+		for x: int in range(context.state.party.coordinate.x - 1, context.state.party.coordinate.x + 2):
+			var cell := map.topology.cell_at(Vector2i(x, y))
+			if cell == null:
+				continue
+			for feature: MapFeature in cell.features():
+				if feature.kind != &"secret" or context.state.world.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+					continue
+				var roll := context.rng.draw(100, StringName("exploration.movement-search.%s" % feature.id))
+				if first_roll == 0:
+					first_roll = roll
+				if roll <= chance:
+					context.state.world.topology.discover_secret(feature.id)
+					discovered.append(feature.id)
+	return first_roll
+
+
+## Castle's dungeon check walks the three-by-three window column by column, rolls once for each cell
+## that still hides a passage, and stops at the first cell it reveals. Revealing a cell shows every
+## passage it hides. Returns the first roll.
+static func _reveal_dungeon_secret(context: SessionWorkflowContext, map: MapDefinition, chance: int, discovered: Array[String]) -> int:
+	var first_roll := 0
+	var origin := context.state.party.coordinate
+	for x: int in range(origin.x - 1, origin.x + 2):
+		for y: int in range(origin.y - 1, origin.y + 2):
+			var cell := map.topology.effective_cell_at(Vector2i(x, y), context.state.world)
+			if cell == null:
+				continue
+			var hidden: Array[String] = []
+			for feature: MapFeature in cell.features():
+				if feature.kind == &"secret" and not context.state.world.topology.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+					hidden.append(feature.id)
+			if hidden.is_empty():
+				continue
+			var roll := context.rng.draw(100, StringName("exploration.movement-search.%s" % cell.id))
+			if first_roll == 0:
+				first_roll = roll
+			if roll <= chance:
+				for secret_id: String in hidden:
+					context.state.world.topology.discover_secret(secret_id)
+				discovered.append_array(hidden)
+				return first_roll
+	return first_roll
 
 
 static func complete_area_search(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ExplorationTimeWorkflow.ClockTransitionResult:
