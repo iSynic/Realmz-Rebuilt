@@ -25,6 +25,7 @@ static func import_selected(context: SessionWorkflowContext, pending: bool, payl
 		var scope_error := PartyAdmissionRules.source_definition_error(payload.source_definitions, context.content, candidate, payload.source_campaign_id)
 		if not scope_error.is_empty():
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", scope_error)
+		CarriedItemIdentities.make_unique(candidate, staged.party.item_instance_ids())
 		var failure := PartyAdmissionRules.validate(staging, candidate)
 		if failure != null:
 			return failure

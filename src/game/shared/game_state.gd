@@ -58,8 +58,18 @@ func has_saved_party_position() -> bool:
 	return not saved_party_map_id.is_empty() and saved_party_coordinate.x >= 0 and saved_party_coordinate.y >= 0 and saved_party_level_type in [&"land", &"dungeon"]
 
 
+## A fresh item identity. The counter starts again with each adventure while Character Files
+## keep their items' identities, so a number the party already carries is skipped.
 func next_instance_id(prefix: String) -> String:
+	var taken: Dictionary[String, bool] = {}
+	for instance_id: String in party.item_instance_ids():
+		taken[instance_id] = true
+	if combat != null:
+		for item: ItemInstance in combat.dropped_items.items():
+			taken[item.id] = true
 	_instance_counter += 1
+	while taken.has("%s.%d" % [prefix, _instance_counter]):
+		_instance_counter += 1
 	return "%s.%d" % [prefix, _instance_counter]
 
 

@@ -288,8 +288,10 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	conflicting_import.id = "vault.character.conflicting"
 	conflicting_import.name = "Conflicting Hero"
 	var party_before_conflict := resumed_setup.view().party_members.size()
-	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(conflicting_import.id, "d".repeat(64), conflicting_import, content.campaign_id, content.package_hash, content.transfer_catalog)).error_code, &"duplicate_item_ownership", "vault import rejects a second character revision that claims an exact item instance already owned by the party")
-	assert_equal(resumed_setup.view().party_members.size(), party_before_conflict, "rejected duplicate item ownership leaves the assembled party unchanged")
+	# Item identities restart with every adventure, so a Character File may carry one the party already holds.
+	assert_equal(resumed_setup.submit_intent(PartyIntents.import_vault_character(conflicting_import.id, "d".repeat(64), conflicting_import, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "vault import gives a second character's clashing item identities fresh ones instead of refusing it")
+	assert_true(resumed_setup.view().party_members.size() == party_before_conflict + 1 and resumed_setup._context.state.party.has_unique_item_ownership(), "the joined character's items keep distinct identities")
+	resumed_setup.submit_intent(PartyIntents.remove_member(conflicting_import.id))
 	var duplicate_save_data := resumed_setup.snapshot().game_state.to_data()
 	var duplicate_character_data: Dictionary = duplicate_save_data["party"]["characters"][1].duplicate(true)
 	duplicate_character_data["id"] = "vault.character.corrupt-save"

@@ -72,6 +72,7 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 	var current_characters := context.state.party.characters()
 	if current_characters.size() >= maximum_party_size:
 		return SessionWorkflowResult.failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
+	CarriedItemIdentities.make_unique(imported, context.state.party.item_instance_ids())
 	var eligibility_error := PartyAdmissionRules.validate(context, imported)
 	if eligibility_error != null:
 		return eligibility_error

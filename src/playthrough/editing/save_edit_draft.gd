@@ -84,7 +84,11 @@ func add_character(character: CharacterState, revision: String, source: ContentT
 	var scope_error := PartyAdmissionRules.source_definition_error(source, content, character, source_campaign_id)
 	if not scope_error.is_empty():
 		return _refuse(scope_error)
-	var added := _new_member(SaveEditMember.ADDED, character, revision)
+	var joining := CharacterStateCodec.copy(character)
+	if joining == null:
+		return _refuse("That character's file is damaged.")
+	CarriedItemIdentities.make_unique(joining, _used_item_ids())
+	var added := _new_member(SaveEditMember.ADDED, joining, revision)
 	_members.append(added)
 	var candidate: Array[Dictionary] = _operations.duplicate()
 	candidate.append({"kind": &"add_character", "character_id": added.character_id})
@@ -192,16 +196,19 @@ func discard() -> void:
 
 ## A carried-item identity unused anywhere in the party, its storage or any member draft.
 func next_item_instance_id(character_id: String) -> String:
-	var used := {}
-	for instance_id: String in state.party.item_instance_ids():
-		used[instance_id] = true
-	for candidate: SaveEditMember in _members:
-		for instance: ItemInstance in candidate.draft.base.inventory() + candidate.state().inventory():
-			used[instance.id] = true
+	var used := _used_item_ids()
 	var sequence := 1
 	while used.has("%s.item.%d" % [character_id, sequence]):
 		sequence += 1
 	return "%s.item.%d" % [character_id, sequence]
+
+
+func _used_item_ids() -> Array[String]:
+	var used := state.party.item_instance_ids()
+	for candidate: SaveEditMember in _members:
+		for instance: ItemInstance in candidate.draft.base.inventory() + candidate.state().inventory():
+			used.append(instance.id)
+	return used
 
 
 ## Dropped saved members to publish as new Character Files when the save is written.

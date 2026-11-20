@@ -21,6 +21,7 @@ func run() -> void:
 	_test_door_item_xap(content)
 	_test_inventory_identification(content)
 	_test_split_join(content)
+	_test_carried_item_identities(content)
 	var session := GameSession.new(); assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts"); var source := _fixture_character("inventory.source", "Alis", content); var destination := _fixture_character("inventory.destination", "Borin", content)
 	assert_equal(session.submit_intent(PartyIntents.import_vault_character(source.id, "1".repeat(64), source, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "source character enters party setup"); assert_equal(session.submit_intent(PartyIntents.import_vault_character(destination.id, "2".repeat(64), destination, content.campaign_id, content.package_hash, content.transfer_catalog)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup"); assert_equal(session.submit_intent(PartyIntents.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
 	var carried_source := session._context.state.party.character_by_id(source.id); var item := content.items.item_by_id("classic.item.inventory-sword"); var instance := RealmzRules.new().inventory.add_item(carried_source, item, "inventory.instance.sword", true)
@@ -397,3 +398,26 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, torch, stack, door]
 	var spells: Array[SpellDefinition] = [healing_spell, self_spell, light_spell, identify_spell]
 	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([door_program], []), [MessageDefinition.new(901, "The crown answers.")], [], [], races, castes, items, spells)
+
+## Character Files keep their items' identities from earlier adventures, whose purchases were
+## numbered from 1 as well; joining and buying still give every carried item its own identity.
+func _test_carried_item_identities(content: RealmzContent) -> void:
+	var rules := RealmzRules.new()
+	var item := content.items.item_by_id("classic.item.inventory-sword")
+	var first := _fixture_character("identity.first", "Ana", content)
+	var second := _fixture_character("identity.second", "Bel", content)
+	rules.inventory.add_item(first, item, "shop.item.1", true)
+	var worn := rules.inventory.add_item(second, item, "shop.item.1", true)
+	rules.inventory.add_item(second, item, "shop.item.2", true)
+	second.equipment_order.record_equipped(worn, second.inventory())
+	var session := GameSession.new()
+	session.start(content, 43)
+	for character: CharacterState in [first, second]:
+		var joined_step := session.submit_intent(PartyIntents.import_vault_character(character.id, "7".repeat(64), character, content.campaign_id, content.package_hash, content.transfer_catalog))
+		assert_equal(joined_step.state, SessionStep.State.COMPLETED, "a Character File carrying an item identity the party already holds still joins: " + joined_step.error_message)
+	var party := session._context.state.party
+	var joined := party.character_by_id(second.id).inventory()
+	assert_true(party.has_unique_item_ownership() and joined[0].id != "shop.item.1" and joined[1].id == "shop.item.2", "only the clashing item takes a fresh identity")
+	assert_equal(party.character_by_id(second.id).equipment_order.ids(), [joined[0].id], "the renamed item stays worn")
+	var bought := session._context.state.next_instance_id("shop.item")
+	assert_false(party.item_instance_ids().has(bought), "a new purchase skips the numbers the party's Character Files already carry")

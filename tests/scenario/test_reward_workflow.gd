@@ -430,15 +430,21 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 
 	corrupted_monster.definition_id = original_definition_id
 	var reward_item: ItemDefinition = content.items.definitions()[0]
-	assert_true(corrupted_monster.set_loot_item_ids([reward_item.id]), "post-validation rollback characterization fixes one source-valid loot item")
+	assert_true(corrupted_monster.set_loot_item_ids([reward_item.id]), "the collision fixture fixes one source-valid loot item")
 	var colliding_instance_id := "reward.item.%d" % (battle_state.instance_id_checkpoint() + 1)
-	assert_true(battle_state.combat.dropped_items.queue(ItemInstance.new(colliding_instance_id, reward_item.id, reward_item.initial_charges)), "post-validation rollback characterization queues a source-valid fumbled item")
-	var state_before_construction_failure := battle_state.to_data()
-	var rng_before_construction_failure := battle_rng.checkpoint()
-	var failed_construction := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.invalid-construction")
-	assert_equal(failed_construction.error_code, &"invalid_reward", "an exact-instance collision characterizes a failure after reward ownership and RNG would otherwise advance")
-	assert_equal(battle_state.to_data(), state_before_construction_failure, "failed battle reward construction restores ownership, instance IDs, wealth, experience, combat, and fumbled items atomically")
-	assert_equal(battle_rng.checkpoint(), rng_before_construction_failure, "failed battle reward construction restores RNG state, draw count, trace, and scripted source position")
+	assert_true(battle_state.combat.dropped_items.queue(ItemInstance.new(colliding_instance_id, reward_item.id, reward_item.initial_charges)), "the collision fixture queues a fumbled item holding the next reward identity")
+	# A reward item used to take the next number even when a fumbled item held it, and the reward failed.
+	var constructed := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.identity-collision")
+	var request_data: Dictionary = constructed.interaction.to_data() if constructed.interaction != null else {}
+	var data: Dictionary = request_data.get("data", {})
+	var payload: Dictionary = data.get("payload", {})
+	var rows: Array = payload.get("items", [])
+	var offered_ids: Array[String] = []
+	var distinct: Dictionary[String, bool] = {}
+	for row: Dictionary in rows:
+		offered_ids.append(RowFields.text(row, "instanceId"))
+		distinct[RowFields.text(row, "instanceId")] = true
+	assert_true(constructed.error_code.is_empty() and offered_ids.has(colliding_instance_id) and offered_ids.size() >= 2 and distinct.size() == offered_ids.size(), "a battle reward with a fumbled item gives every new item its own identity")
 
 
 func _character(content: RealmzContent, id: String, name: String, maximum_load: int, experience: int, caste_id: int = 1) -> CharacterState:
