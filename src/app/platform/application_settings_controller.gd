@@ -138,16 +138,17 @@ func commit_preferences(baseline: PresentationSettings, draft: PresentationSetti
 	if not _repository.save_settings(candidate):
 		return _repository.last_error
 	var refresh_music := candidate.music_enabled != _settings.music_enabled or candidate.music_playlist_modes != _settings.music_playlist_modes
+	var window_mode_changed := candidate.window_mode != _settings.window_mode
 	_settings.copy_from(candidate)
 	_application.controller_input.configure(_settings.controller)
 	_held_movement.set_speed_percent(_settings.exploration_speed_percent)
-	apply_initial_settings()
+	apply_initial_settings(window_mode_changed)
 	if refresh_music:
 		_presentation.refresh_music()
 	return ""
 
 
-func apply_initial_settings() -> void:
+func apply_initial_settings(apply_window_mode: bool = true) -> void:
 	UiThemeService.apply(_application.get_tree(), _settings.interface_theme)
 	UiThemeService.set_surface_tile(_application.get_tree(), _settings.theme_surface_tile, _settings.theme_surface_tile_opacity_percent)
 	# The stone behind the classic screens sits outside the themed screens' reach.
@@ -175,7 +176,8 @@ func apply_initial_settings() -> void:
 	_map.set_classic_exploration_visibility(_settings.classic_exploration_visibility)
 	_map.set_custom_fog_tile_enabled(_settings.custom_fog_tile_enabled)
 	_map.set_indoor_party_icon(_settings.indoor_party_icon)
-	_apply_window_mode(_settings.window_mode)
+	if apply_window_mode:
+		_apply_window_mode(_settings.window_mode)
 	_audio.set_master_volume(_settings.master_volume)
 	_audio.set_sound_volume(_settings.sound_volume)
 	UiSoundService.attach(_application.get_tree())
@@ -328,8 +330,13 @@ func _on_window_mode_changed(value: String) -> void:
 
 
 func _apply_window_mode(value: String) -> void:
-	var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if value == PresentationSettings.BORDERLESS_FULLSCREEN else DisplayServer.WINDOW_MODE_WINDOWED
-	DisplayServer.window_set_mode(mode)
+	var current := DisplayServer.window_get_mode()
+	if value == PresentationSettings.BORDERLESS_FULLSCREEN:
+		if current != DisplayServer.WINDOW_MODE_FULLSCREEN:
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+		return
+	if current == DisplayServer.WINDOW_MODE_FULLSCREEN or current == DisplayServer.WINDOW_MODE_EXCLUSIVE_FULLSCREEN:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 
 
 func _apply_application_theme() -> void:
