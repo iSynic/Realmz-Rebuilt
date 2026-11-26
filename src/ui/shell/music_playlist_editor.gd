@@ -3,6 +3,8 @@ class_name MusicPlaylistEditor
 extends VBoxContainer
 
 signal changed
+signal preview_requested(track_id: String)
+signal preview_stopped
 
 var _library: MusicLibraryView
 var _id: String = ""
@@ -26,6 +28,10 @@ func _ready() -> void:
 	%TrackDown.pressed.connect(_move_track.bind(1))
 	%Shuffle.toggled.connect(_shuffle_changed)
 	%RepeatMode.item_selected.connect(_repeat_changed)
+	(%PreviewPlaylistTrack as Button).pressed.connect(_preview_playlist_track)
+	(%StopPlaylistPreview as Button).pressed.connect(func() -> void: preview_stopped.emit())
+	(%PreviewAvailableTrack as Button).pressed.connect(_preview_available_track)
+	(%StopPickerPreview as Button).pressed.connect(func() -> void: preview_stopped.emit())
 	%AvailableTracks.item_selected.connect(func(_index: int) -> void: _refresh_actions())
 	%AvailableTracks.item_activated.connect(func(_index: int) -> void: _add_track())
 	%PlaylistTracks.item_selected.connect(func(_index: int) -> void: _refresh_actions())
@@ -49,13 +55,14 @@ func handle_back() -> bool:
 func present(library: MusicLibraryView) -> void:
 	_library = library
 	var selector := %PlaylistChoice as ItemList
+	var compact_selector := %CompactPlaylistChoice as OptionButton
 	selector.clear()
+	compact_selector.clear()
 	for id: String in library.playlists:
 		selector.add_item(library.playlists[id].name)
 		selector.set_item_metadata(selector.item_count - 1, id)
 		if id == _id:
 			selector.select(selector.item_count - 1)
-		var compact_selector := %CompactPlaylistChoice as OptionButton
 		compact_selector.add_item(library.playlists[id].name)
 		compact_selector.set_item_metadata(compact_selector.item_count - 1, id)
 		if id == _id:
@@ -64,7 +71,7 @@ func present(library: MusicLibraryView) -> void:
 		_id = String(selector.get_item_metadata(0)) if selector.item_count > 0 else ""
 		if selector.item_count > 0:
 			selector.select(0)
-			(%CompactPlaylistChoice as OptionButton).select(0)
+			compact_selector.select(0)
 	_refresh_tracks()
 	_show_page()
 
@@ -100,10 +107,14 @@ func _refresh_tracks() -> void:
 	available.clear()
 	if playlist != null:
 		for id: String in playlist.tracks:
-			selected.add_item(_library.tracks[id].title)
+			selected.add_item(_library.track_title(id))
 	for id: String in _library.tracks:
 		available.add_item(_library.tracks[id].title)
 		available.set_item_metadata(available.item_count - 1, id)
+	for slot: int in range(1, MusicLibraryView.STOCK_TRACK_TITLES.size() + 1):
+		var stock_id := MusicLibraryView.stock_track_id(slot)
+		available.add_item(MusicLibraryView.stock_track_label(stock_id, true))
+		available.set_item_metadata(available.item_count - 1, stock_id)
 	_refresh_actions()
 
 
@@ -218,11 +229,35 @@ func _refresh_actions() -> void:
 	if _library == null:
 		return
 	var selected := (%PlaylistTracks as ItemList).get_selected_items()
+	var available_selected := (%AvailableTracks as ItemList).get_selected_items()
 	var playlist := _library.playlists.get(_id) as MusicLibraryView.Playlist
-	(%AddTrack as Button).disabled = playlist == null or (%AvailableTracks as ItemList).get_selected_items().is_empty()
+	(%AddTrack as Button).disabled = playlist == null or available_selected.is_empty()
+	(%PreviewAvailableTrack as Button).disabled = available_selected.is_empty()
+	(%PreviewPlaylistTrack as Button).disabled = playlist == null or selected.is_empty()
 	(%RemoveTrack as Button).disabled = selected.is_empty()
 	(%TrackUp as Button).disabled = selected.is_empty() or selected[0] == 0
 	(%TrackDown as Button).disabled = selected.is_empty() or selected[0] == (%PlaylistTracks as ItemList).item_count - 1
+
+
+func _preview_playlist_track() -> void:
+	var selected := (%PlaylistTracks as ItemList).get_selected_items()
+	if selected.is_empty() or _library == null or not _library.playlists.has(_id):
+		return
+	var tracks := _library.playlists[_id].tracks
+	if selected[0] >= 0 and selected[0] < tracks.size():
+		preview_requested.emit(tracks[selected[0]])
+
+
+func _preview_available_track() -> void:
+	var available := %AvailableTracks as ItemList
+	var selected := available.get_selected_items()
+	if selected.is_empty():
+		return
+	var meta: Variant = available.get_item_metadata(selected[0])
+	if meta is String:
+		var track_id: String = meta
+		if not track_id.is_empty():
+			preview_requested.emit(track_id)
 
 
 func _apply_layout() -> void:

@@ -63,6 +63,10 @@ def encode_with_ffmpeg(ffmpeg: Path, source: Path, target: Path, codec: str) -> 
     args = [str(ffmpeg), "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-i", str(source), "-map_metadata", "-1"]
     if codec == "mp3":
         args += ["-c:a", "libmp3lame", "-q:a", "4", "-f", "mp3"]
+    elif codec == "mp3-id3v2-noxing":
+        args += ["-c:a", "libmp3lame", "-b:a", "128k", "-write_xing", "0", "-id3v2_version", "3", "-metadata", "title=Tagged Track", "-metadata", "artist=Realmz", "-f", "mp3"]
+    elif codec == "mp3-vbr-noxing":
+        args += ["-c:a", "libmp3lame", "-q:a", "4", "-write_xing", "0", "-f", "mp3"]
     elif codec == "ogg":
         args += ["-c:a", "libvorbis", "-q:a", "4", "-f", "ogg"]
     elif codec == "flac":
@@ -244,6 +248,18 @@ def run_suite(helper: Path, ffmpeg: Path, root: Path) -> list[str]:
     assert_ogg_decodes(ffmpeg, same_output / "track-0.ogg")
     require(sha256(duplicate) == source_hashes[duplicate], "duplicate import changed its original")
     reports.append("PASS duplicate-content track metadata")
+
+    for variant, expected_title in (("mp3-id3v2-noxing", "Tagged Track"), ("mp3-vbr-noxing", "VBR Fallback")):
+        mp3_path = fixtures_dir / f"Synthetic-{variant}.mp3"
+        encode_with_ffmpeg(ffmpeg, tone, mp3_path, variant)
+        source_hashes[mp3_path] = sha256(mp3_path)
+        mp3_output, mp3_result_path = new_run(root, variant)
+        mp3_code, mp3_result = invoke(helper, mp3_path, mp3_output, mp3_result_path, expected_title)
+        mp3_track = assert_success(mp3_result, mp3_code, "mp3", 1.0)
+        require(mp3_track.get("title") == expected_title, f"unexpected title for {variant}: {mp3_track}")
+        require(not any(mp3_output.iterdir()), f"direct-playback {variant} unexpectedly created a cache file")
+        require(sha256(mp3_path) == source_hashes[mp3_path], f"helper modified original {variant} input")
+        reports.append(f"PASS real-world MP3 import: {variant}")
 
     invalid: dict[str, bytes] = {
         "truncated-wav": tone.read_bytes()[: tone.stat().st_size // 2],

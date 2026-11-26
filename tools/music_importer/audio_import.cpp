@@ -1,6 +1,7 @@
 // Decode supported file contents once, retaining a finite portable playback asset.
 #include "audio_import.h"
 #include <libopenmpt/libopenmpt.hpp>
+#include <mpg123.h>
 #include <sndfile.h>
 #include <array>
 #include <chrono>
@@ -76,7 +77,58 @@ public:
     }
 };
 
-static json import_sampled(SNDFILE *source, const SF_INFO &info, const fs::path &output,
+static sf_count_t decode_mp3_frames(const fs::path &input, int expected_rate, int expected_channels, Budget &budget) {
+    struct Handle {
+        mpg123_handle *ptr = nullptr;
+        ~Handle() { if (ptr) { mpg123_close(ptr); mpg123_delete(ptr); } }
+    } handle;
+    int err = MPG123_OK;
+    handle.ptr = mpg123_new(nullptr, &err);
+    if (!handle.ptr || err != MPG123_OK) throw std::runtime_error("Could not initialize MP3 validator.");
+    mpg123_param(handle.ptr, MPG123_ADD_FLAGS, MPG123_QUIET | MPG123_NO_FRANKENSTEIN, 0.0);
+    if (mpg123_format_none(handle.ptr) != MPG123_OK ||
+        mpg123_format(handle.ptr, expected_rate, expected_channels, MPG123_ENC_FLOAT_32) != MPG123_OK ||
+        mpg123_open_feed(handle.ptr) != MPG123_OK)
+        throw std::runtime_error("Could not configure MP3 validator.");
+    std::ifstream file(input, std::ios::binary);
+    if (!file) throw std::runtime_error("Could not read MP3 file.");
+    std::array<unsigned char, 65536> raw{};
+    std::array<float, 8192> pcm{};
+    sf_count_t total = 0;
+    const size_t frame_bytes = static_cast<size_t>(expected_channels) * sizeof(float);
+    auto drain = [&]() {
+        for (;;) {
+            size_t done = 0;
+            const int status = mpg123_read(handle.ptr, reinterpret_cast<unsigned char *>(pcm.data()), pcm.size() * sizeof(float), &done);
+            if (done > 0) {
+                const sf_count_t frames = static_cast<sf_count_t>(done / frame_bytes);
+                budget.check(static_cast<double>(frames) / expected_rate);
+                for (sf_count_t i = 0; i < frames * expected_channels; ++i)
+                    if (!std::isfinite(pcm[static_cast<size_t>(i)])) throw std::runtime_error("Invalid decoded audio samples.");
+                total += frames;
+            }
+            if (status == MPG123_NEW_FORMAT) {
+                long rate = 0;
+                int channels = 0, enc = 0;
+                if (mpg123_getformat(handle.ptr, &rate, &channels, &enc) != MPG123_OK ||
+                    rate != expected_rate || channels != expected_channels || enc != MPG123_ENC_FLOAT_32)
+                    throw std::runtime_error("The MP3 stream format changed unexpectedly.");
+                continue;
+            }
+            if (status == MPG123_NEED_MORE || status == MPG123_DONE) break;
+            if (status != MPG123_OK) throw std::runtime_error("The audio file is damaged or incomplete.");
+        }
+    };
+    while (file.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(raw.size())) || file.gcount() > 0) {
+        if (mpg123_feed(handle.ptr, raw.data(), static_cast<size_t>(file.gcount())) != MPG123_OK)
+            throw std::runtime_error("The audio file is damaged or incomplete.");
+        drain();
+    }
+    if (total == 0) throw std::runtime_error("The audio file is damaged or incomplete.");
+    return total;
+}
+
+static json import_sampled(const fs::path &input, SNDFILE *source, const SF_INFO &info, const fs::path &output,
                            const std::string &fallback, Budget &budget) {
     const int type = info.format & SF_FORMAT_TYPEMASK;
     const int subtype = info.format & SF_FORMAT_SUBMASK;
@@ -89,26 +141,40 @@ static json import_sampled(SNDFILE *source, const SF_INFO &info, const fs::path 
     if (format.empty()) throw std::runtime_error("This audio encoding is not supported. Choose MP3, Vorbis, WAV, FLAC, or AIFF.");
     if (info.channels < 1 || info.channels > 2 || info.samplerate < 8000 || info.samplerate > 192000)
         throw std::runtime_error("Music must be mono or stereo, between 8 and 192 kHz.");
-    if (info.frames <= 0 || static_cast<double>(info.frames) / info.samplerate > max_audio_seconds)
+    if (format != "mp3" && (info.frames <= 0 || static_cast<double>(info.frames) / info.samplerate > max_audio_seconds))
         throw std::runtime_error("Music must contain no more than two hours of audio.");
-    const bool direct = format == "mp3" || format == "ogg";
-    const auto path = output / "track-0.ogg";
-    std::unique_ptr<VorbisWriter> writer;
-    if (!direct) writer = std::make_unique<VorbisWriter>(path, info.samplerate, info.channels);
-    std::array<float, 8192> samples{};
-    sf_count_t total = 0;
-    while (const sf_count_t frames = sf_readf_float(source, samples.data(), 4096)) {
-        budget.check(static_cast<double>(frames) / info.samplerate, direct ? fs::path{} : path);
-        for (sf_count_t i = 0; i < frames * info.channels; ++i)
-            if (!std::isfinite(samples[static_cast<size_t>(i)])) throw std::runtime_error("Invalid decoded audio samples.");
-        if (writer) writer->write(samples.data(), frames, info.channels);
-        total += frames;
+    const char *raw_title = sf_get_string(source, SF_STR_TITLE);
+    std::string resolved_title = raw_title ? std::string(raw_title) : std::string();
+    const auto first_non_space = resolved_title.find_first_not_of(" \t\r\n");
+    if (first_non_space == std::string::npos) {
+        resolved_title = fallback;
+    } else {
+        const auto last_non_space = resolved_title.find_last_not_of(" \t\r\n");
+        resolved_title = resolved_title.substr(first_non_space, last_non_space - first_non_space + 1).substr(0, 1024);
     }
-    if (sf_error(source) || total == 0 || total != info.frames)
-        throw std::runtime_error("The audio file is damaged or incomplete.");
-    if (writer) writer->close();
-    const char *title = sf_get_string(source, SF_STR_TITLE);
-    return json::array({{{"subsong", 0}, {"title", title && *title ? std::string(title) : fallback},
+    const bool direct = format == "mp3" || format == "ogg";
+    sf_count_t total = 0;
+    if (format == "mp3") {
+        // libsndfile clamps seekable MP3 reads to its open-time first-frame bitrate estimate, which truncates headerless VBR.
+        // Decoding through libmpg123's feed API validates every frame to EOF and reports the exact duration.
+        total = decode_mp3_frames(input, info.samplerate, info.channels, budget);
+    } else {
+        const auto path = output / "track-0.ogg";
+        std::unique_ptr<VorbisWriter> writer;
+        if (!direct) writer = std::make_unique<VorbisWriter>(path, info.samplerate, info.channels);
+        std::array<float, 8192> samples{};
+        while (const sf_count_t frames = sf_readf_float(source, samples.data(), 4096)) {
+            budget.check(static_cast<double>(frames) / info.samplerate, direct ? fs::path{} : path);
+            for (sf_count_t i = 0; i < frames * info.channels; ++i)
+                if (!std::isfinite(samples[static_cast<size_t>(i)])) throw std::runtime_error("Invalid decoded audio samples.");
+            if (writer) writer->write(samples.data(), frames, info.channels);
+            total += frames;
+        }
+        if (sf_error(source) || total == 0 || total != info.frames)
+            throw std::runtime_error("The audio file is damaged or incomplete.");
+        if (writer) writer->close();
+    }
+    return json::array({{{"subsong", 0}, {"title", resolved_title},
         {"format", format}, {"playbackFormat", direct ? format : "ogg"},
         {"duration", static_cast<double>(total) / info.samplerate}, {"cacheFile", direct ? "" : "track-0.ogg"}}});
 }
@@ -164,7 +230,7 @@ json import_audio(const fs::path &input, const fs::path &output, const std::stri
     SF_INFO info{};
     SoundFile sampled(open_sound(input, SFM_READ, &info), &sf_close);
     Budget budget;
-    if (sampled) return import_sampled(sampled.get(), info, output, name, budget);
+    if (sampled) return import_sampled(input, sampled.get(), info, output, name, budget);
     return import_module(input, output, name, budget);
 }
 }

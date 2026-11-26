@@ -49,6 +49,10 @@ static func encode(combat: CombatState) -> Dictionary:
 	# Additive v9 fact, omitted at zero; earlier readers ignore it.
 	if combat.classic_blank_rounds != 0:
 		data["classicBlankRounds"] = combat.classic_blank_rounds
+	# Additive v9 facts for Limit Monster Reinforcements, omitted until a wave is counted.
+	if combat.reinforcement_waves != 0:
+		data["reinforcementWaves"] = combat.reinforcement_waves
+		data["reinforcementWaveRound"] = combat.reinforcement_wave_round
 	return data
 
 
@@ -132,6 +136,10 @@ static func _restore_header(result: CombatState, data: Dictionary, order: Array[
 	result.rewards_completed = data.get("rewardsCompleted", false)
 	result.classic_post_battle_sentinel = _integer(data.get("classicPostBattleSentinel", 0))
 	result.classic_blank_rounds = _integer(data.get("classicBlankRounds", 0))
+	result.reinforcement_waves = _integer(data.get("reinforcementWaves", 0))
+	result.reinforcement_wave_round = _integer(data.get("reinforcementWaveRound", 0))
+	if result.reinforcement_waves < 0 or result.reinforcement_waves > 5 or result.reinforcement_wave_round < 0:
+		return false
 	return result.classic_post_battle_sentinel in [0, 8] and result.classic_blank_rounds >= 0 and result.classic_blank_rounds <= 10 and not (result.rewards_completed and not result.rewards_started)
 
 

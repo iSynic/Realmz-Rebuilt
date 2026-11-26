@@ -2,6 +2,12 @@
 class_name MusicLibraryView
 extends RefCounted
 
+const STOCK_TRACK_TITLES: Array[String] = [
+	"After the Rain", "Dungeon Music", "Indoor Music", "Cave Music", "Create Music",
+	"Items Music", "Treasure Music", "Shop Music", "Camp Music", "Temple Music", "Battle Music",
+]
+const OUTDOOR_TERRAIN_CONTEXTS: Array[int] = [12, 13, 14]
+
 class Track extends RefCounted:
 	var id: String
 	var title: String
@@ -23,10 +29,37 @@ class Playlist extends RefCounted:
 class Assignment extends RefCounted:
 	var kind: String = "inherit"
 	var playlist_id: String = ""
+	var track_id: String = ""
 
 var tracks: Dictionary[String, Track] = {}
 var playlists: Dictionary[String, Playlist] = {}
 var _assignments: Dictionary = {}
+
+
+static func stock_track_id(slot: int) -> String:
+	return "stock:%d" % slot if slot >= 1 and slot <= STOCK_TRACK_TITLES.size() else ""
+
+
+static func stock_track_slot(id: String) -> int:
+	if not id.begins_with("stock:"):
+		return 0
+	var suffix := id.trim_prefix("stock:")
+	var slot := int(suffix)
+	return slot if suffix == str(slot) and slot >= 1 and slot <= STOCK_TRACK_TITLES.size() else 0
+
+
+static func is_stock_track_id(id: String) -> bool:
+	return stock_track_slot(id) > 0
+
+
+static func stock_track_label(id: String, include_prefix: bool = false) -> String:
+	var slot := stock_track_slot(id)
+	if slot == 0:
+		return id
+	var title := STOCK_TRACK_TITLES[slot - 1]
+	if slot == 1:
+		title += " (Outdoor)"
+	return "Realmz: " + title if include_prefix else title
 
 
 static func from_data(data: Dictionary) -> MusicLibraryView:
@@ -71,28 +104,59 @@ func assignment_data() -> Dictionary:
 	return _assignments.duplicate(true)
 
 
+func track_title(id: String) -> String:
+	if tracks.has(id):
+		return tracks[id].title
+	if is_stock_track_id(id):
+		return stock_track_label(id, true)
+	return id
+
+
+func first_playlist_id() -> String:
+	for id: String in playlists:
+		return id
+	return ""
+
+
 func assignment(campaign: String, context: int) -> Assignment:
 	var result := Assignment.new()
 	var record: Dictionary = _assignments.get(campaign, {}).get(str(context), {})
 	result.kind = record.get("kind", "inherit")
 	result.playlist_id = record.get("playlistId", "")
+	result.track_id = record.get("trackId", "")
 	return result
+
+
+static func inherits_outdoor(context: int) -> bool:
+	return context in OUTDOOR_TERRAIN_CONTEXTS
 
 
 func resolve(campaign: String, context: int) -> Playlist:
 	var selected := assignment(campaign, context)
 	if selected.kind == "inherit" and not campaign.is_empty():
 		selected = assignment("", context)
+	if selected.kind == "inherit" and inherits_outdoor(context):
+		return resolve(campaign, 1)
+	if selected.kind == "stock" and is_stock_track_id(selected.track_id):
+		var stock := Playlist.new()
+		stock.id = selected.track_id
+		stock.name = stock_track_label(selected.track_id)
+		stock.tracks.assign([selected.track_id])
+		stock.shuffle = false
+		stock.repeat = "one"
+		return stock
 	return playlists.get(selected.playlist_id) if selected.kind == "playlist" else null
 
 
-func set_assignment(campaign: String, context: int, kind: String, playlist_id: String = "") -> void:
+func set_assignment(campaign: String, context: int, kind: String, target_id: String = "") -> void:
 	if not _assignments.has(campaign):
 		_assignments[campaign] = {}
 	if kind == "inherit":
 		_assignments[campaign].erase(str(context))
+	elif kind == "stock":
+		_assignments[campaign][str(context)] = {"kind": "stock", "trackId": target_id}
 	else:
-		_assignments[campaign][str(context)] = {"kind": kind, "playlistId": playlist_id if kind == "playlist" else ""}
+		_assignments[campaign][str(context)] = {"kind": kind, "playlistId": target_id if kind == "playlist" else ""}
 	if _assignments[campaign].is_empty():
 		_assignments.erase(campaign)
 

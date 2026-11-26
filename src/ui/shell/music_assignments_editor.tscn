@@ -19,11 +19,19 @@ layout_mode = 2
 unique_name_in_owner = true
 size_flags_horizontal = 3
 fit_to_longest_item = false
+tooltip_text = "Choose whether to edit Global defaults for all scenarios, or overrides for the current scenario."
 
 [node name="GlobalDefaults" type="Button" parent="ScopeRow"]
 layout_mode = 2
 unique_name_in_owner = true
 text = "Edit global defaults"
+tooltip_text = "Switch back to Global defaults used by every scenario unless overridden."
+
+[node name="StopAssignmentPreview" type="Button" parent="ScopeRow"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Stop preview"
+tooltip_text = "Stop music preview and restore normal playback."
 
 [node name="ScenarioUnavailable" type="Label" parent="."]
 layout_mode = 2
@@ -38,7 +46,8 @@ size_flags_vertical = 3
 
 [node name="GlobalNote" type="Label" parent="Wide"]
 layout_mode = 2
-text = "Playback behavior applies to every scenario."
+text = "Mode applies to every scenario. Pick 'Realmz track' to choose any built-in song, or 'Playlist' for a custom playlist."
+autowrap_mode = 3
 
 [node name="Header" type="HBoxContainer" parent="Wide"]
 layout_mode = 2
@@ -47,21 +56,31 @@ layout_mode = 2
 layout_mode = 2
 text = "Context"
 size_flags_horizontal = 3
+tooltip_text = "Game situation that selects music. The currently playing context is marked (active)."
 
 [node name="ModeHeader" type="Label" parent="Wide/Header"]
 layout_mode = 2
 text = "Mode"
 custom_minimum_size = Vector2(125, 0)
+tooltip_text = "Play switches to this context's music. Continue keeps whatever was already playing. Off silences this context."
 
 [node name="SourceHeader" type="Label" parent="Wide/Header"]
 layout_mode = 2
 text = "Source"
 custom_minimum_size = Vector2(150, 0)
+tooltip_text = "Choose whether to use the default track, follow Global defaults (in scenario scope), pick a built-in Realmz track, or play a custom playlist."
 
 [node name="PlaylistHeader" type="Label" parent="Wide/Header"]
 layout_mode = 2
-text = "Playlist"
+text = "Track / Playlist"
 custom_minimum_size = Vector2(150, 0)
+tooltip_text = "Shows the selected Realmz track or playlist, or what the default/global choice resolves to."
+
+[node name="PreviewHeader" type="Label" parent="Wide/Header"]
+layout_mode = 2
+text = "Preview"
+custom_minimum_size = Vector2(76, 0)
+tooltip_text = "Listen to the track assigned to each context."
 
 [node name="Scroll" type="ScrollContainer" parent="Wide"]
 layout_mode = 2
@@ -161,7 +180,7 @@ layout_mode = 2
 [node name="PlaylistLabel" type="Label" parent="Compact/Content/CompactFields/PlaylistRow"]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
-text = "Playlist"
+text = "Track / Playlist"
 
 [node name="Playlist" type="OptionButton" parent="Compact/Content/CompactFields/PlaylistRow"]
 layout_mode = 2
@@ -169,10 +188,27 @@ unique_name_in_owner = true
 size_flags_horizontal = 3
 fit_to_longest_item = false
 
+[node name="PreviewRow" type="HBoxContainer" parent="Compact/Content/CompactFields"]
+layout_mode = 2
+
+[node name="CompactPreview" type="Button" parent="Compact/Content/CompactFields/PreviewRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+unique_name_in_owner = true
+text = "Preview"
+tooltip_text = "Preview the music assigned to this context."
+
+[node name="CompactStopPreview" type="Button" parent="Compact/Content/CompactFields/PreviewRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+unique_name_in_owner = true
+text = "Stop preview"
+tooltip_text = "Stop music preview and restore normal playback."
+
 [node name="ScopeHelp" type="Label" parent="Compact/Content/CompactFields"]
 layout_mode = 2
-text = "Mode applies to all scenarios."
-tooltip_text = "Scenario choices apply across its revisions. Inherit uses global defaults, then original music."
+text = "Mode applies to all scenarios. In a scenario, 'Use global default' follows Global defaults."
+tooltip_text = "Scenario choices apply across its revisions. Use global default follows Global defaults, then original music."
 autowrap_mode = 3
 
 [node name="Reserved" type="Label" parent="Compact/Content"]

@@ -324,6 +324,9 @@ func _stage_adventure_rules(rule: StringName, value: Variant) -> void:
 		&"money_transfer_speed":
 			var speed: int = value if value is int else 1
 			_rules_values.money_transfer_speed = clampi(speed, 1, AdventureRules.MAXIMUM_MONEY_TRANSFER_SPEED)
+		&"reinforcement_limit":
+			var limit: int = value if value is int else AdventureRules.UNLIMITED_REINFORCEMENTS
+			_rules_values.reinforcement_limit = limit if AdventureRules.REINFORCEMENT_LIMITS.has(limit) else AdventureRules.UNLIMITED_REINFORCEMENTS
 	_rules_error = ""
 	_refresh_adventure_rules()
 

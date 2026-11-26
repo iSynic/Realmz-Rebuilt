@@ -15,6 +15,9 @@ var classic_kill_count: int = 0
 var classic_counters_available: bool = true
 ## Castle blankround: round ends since the last attack()/attack2() or cast() (getup.c:85-88).
 var classic_blank_rounds: int = 0
+## Limit Monster Reinforcements: waves the round script has brought in, and the round of the last.
+var reinforcement_waves: int = 0
+var reinforcement_wave_round: int = 0
 var _classic_actor_counts: Dictionary = {}
 var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack

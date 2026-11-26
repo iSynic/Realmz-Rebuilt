@@ -49,6 +49,16 @@ static func valid_track(id: Variant, record: Variant) -> bool:
 	return record.cacheHash == "" and record.playbackFormat == record.format if record.format in ["mp3", "ogg"] else _hex(record.cacheHash, 64) and record.playbackFormat == "ogg"
 
 
+static func is_stock_track_id(value: Variant) -> bool:
+	if not value is String:
+		return false
+	var text: String = value
+	if not text.begins_with("stock:"):
+		return false
+	var suffix := text.trim_prefix("stock:")
+	return suffix == str(int(suffix)) and int(suffix) >= 1 and int(suffix) <= 11
+
+
 static func _playlist(value: Variant, tracks: Dictionary) -> bool:
 	if not value is Dictionary or not _keys(value, ["name", "tracks", "shuffle", "repeat"]):
 		return false
@@ -59,24 +69,42 @@ static func _playlist(value: Variant, tracks: Dictionary) -> bool:
 	if not value.tracks is Array or value.tracks.size() > 10000:
 		return false
 	for id: Variant in value.tracks:
-		if not id is String or not tracks.has(id):
+		if not id is String or (not tracks.has(id) and not is_stock_track_id(id)):
 			return false
 	return true
 
 
 static func _assignments(value: Variant, playlists: Dictionary) -> bool:
-	if not value is Dictionary or value.size() > 17:
+	if not value is Dictionary:
 		return false
-	for key: Variant in value:
-		if not key is String or key != str(int(key)) or int(key) < 1 or int(key) > 17:
+	var map: Dictionary = value
+	if map.size() > 17:
+		return false
+	for key: Variant in map:
+		if not key is String:
 			return false
-		var assignment: Variant = value[key]
-		if not assignment is Dictionary or not _keys(assignment, ["kind", "playlistId"]):
+		var slot_key: String = key
+		if slot_key != str(int(slot_key)) or int(slot_key) < 1 or int(slot_key) > 17:
 			return false
-		if assignment.kind == "original" and assignment.playlistId == "":
+		var raw: Variant = map[slot_key]
+		if not raw is Dictionary:
+			return false
+		var assignment: Dictionary = raw
+		var kind: Variant = assignment.get("kind")
+		if kind == "original":
+			if not _keys(assignment, ["kind", "playlistId"]) or assignment.get("playlistId") != "":
+				return false
 			continue
-		if assignment.kind != "playlist" or not assignment.playlistId is String or not playlists.has(assignment.playlistId):
-			return false
+		if kind == "stock":
+			if not _keys(assignment, ["kind", "trackId"]) or not is_stock_track_id(assignment.get("trackId")):
+				return false
+			continue
+		if kind == "playlist":
+			var pid: Variant = assignment.get("playlistId")
+			if not _keys(assignment, ["kind", "playlistId"]) or not pid is String or not playlists.has(pid):
+				return false
+			continue
+		return false
 	return true
 
 

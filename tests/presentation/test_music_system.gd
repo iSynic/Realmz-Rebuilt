@@ -73,15 +73,14 @@ func _test_music_workspace() -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(dialog)
 	var settings := PresentationSettings.new()
 	dialog.open(settings, 1, "After the Rain", true)
-	var contexts := dialog.find_child("Assignments", true, false).get_node("Compact/Content/Context") as OptionButton
-	assert_true(dialog.visible and contexts.item_count == 20 and dialog.find_child("MusicDone", true, false) != null, "the workspace keeps twenty Classic contexts and a persistent Done action")
-	assert_equal((dialog.find_child("MusicTabs", true, false) as TabContainer).get_tab_count(), 3, "Library, Playlists, and Assignments have separate editable scene tabs")
-	contexts.select(17)
+	var assignments := dialog.find_child("Assignments", true, false) as MusicAssignmentsEditor
+	var contexts := assignments.get_node("Compact/Content/Context") as OptionButton
+	var compact_mode := assignments.get_node("Compact/Content/CompactFields/ModeRow/Mode") as OptionButton
+	assert_true(dialog.visible and contexts.item_count == 20 and dialog.find_child("MusicDone", true, false) != null and (dialog.find_child("MusicTabs", true, false) as TabContainer).get_tab_count() == 3, "the workspace keeps twenty Classic contexts, three scene tabs, and a persistent Done action")
 	contexts.item_selected.emit(17)
-	assert_true((dialog.find_child("Assignments", true, false).get_node("Compact/Content/CompactFields/ModeRow/Mode") as OptionButton).disabled, "unused contexts remain visible and reserved")
-	contexts.select(10)
+	assert_true(compact_mode.disabled, "unused contexts remain visible and reserved")
 	contexts.item_selected.emit(10)
-	(dialog.find_child("Assignments", true, false).get_node("Compact/Content/CompactFields/ModeRow/Mode") as OptionButton).item_selected.emit(1)
+	compact_mode.item_selected.emit(1)
 	assert_true(dialog.playback_preferences().music_mode(11) == PresentationSettings.MUSIC_CONTINUE and settings.music_mode(11) == PresentationSettings.MUSIC_PLAY, "context modes remain in the music draft until Apply")
 	dialog.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	var panel := dialog.find_child("MusicPlaylistWindow", true, false) as PanelContainer
@@ -101,15 +100,25 @@ func _test_music_workspace() -> void:
 	var available := dialog.find_child("AvailableTracks", true, false) as ItemList
 	available.select(0)
 	(dialog.find_child("AddTrack", true, false) as Button).pressed.emit()
+	var table := assignments.find_child("Table", true, false)
+	for row_index: int in [0, 2]:
+		var source_picker := (table.get_child(row_index) as HBoxContainer).get_node("Source") as OptionButton
+		source_picker.item_selected.emit(source_picker.get_item_index(MusicAssignmentsEditor.SOURCE_PLAYLIST if row_index == 0 else MusicAssignmentsEditor.SOURCE_STOCK))
 	var applied: Array[MusicLibraryView] = []
 	dialog.apply_requested.connect(func(value: MusicLibraryView) -> void: applied.append(value))
 	(dialog.find_child("MusicApply", true, false) as Button).pressed.emit()
-	assert_true(applied.size() == 1 and applied[0].playlists.values()[0].tracks == ["synthetic"], "Apply publishes a detached playlist draft with ordered track references")
+	var pid := applied[0].first_playlist_id()
+	assert_true(available.item_count == 12 and applied.size() == 1 and applied[0].playlists[pid].tracks == ["synthetic"] and applied[0].assignment("", 1).playlist_id == pid and applied[0].assignment("", 3).track_id == "stock:3" and MusicLibraryDocument.valid({"formatVersion": 1, "tracks": {}, "playlists": {pid: {"name": "New playlist", "tracks": ["stock:1"], "shuffle": false, "repeat": "all"}}, "assignments": applied[0].assignment_data()}), "Apply publishes valid playlists, stock tracks, and auto-selected Playlist/Realmz-track assignments")
 	dialog.apply_result(true)
+	var previewed: Array[String] = []
+	dialog.preview_requested.connect(func(id: String) -> void: previewed.append(id))
+	((table.get_child(2) as HBoxContainer).get_node("Preview") as Button).pressed.emit()
 	(dialog.find_child("NewPlaylist", true, false) as Button).pressed.emit()
+	var compact_playlists := (dialog.find_child("CompactPlaylistChoice", true, false) as OptionButton).item_count
 	(dialog.find_child("MusicCancel", true, false) as Button).pressed.emit()
+	var asked := (dialog.find_child("DiscardConfirmation", true, false) as Control).visible and dialog.visible
+	(dialog.find_child("DiscardMusicChanges", true, false) as Button).pressed.emit()
 	dialog.open(settings, 1, "After the Rain", true)
-	assert_equal((dialog.find_child("PlaylistChoice", true, false) as ItemList).item_count, 1, "Cancel discards unapplied playlist edits")
 	(dialog.find_child("MusicDone", true, false) as Button).pressed.emit()
-	assert_false(dialog.visible, "Done returns without requiring Escape")
+	assert_true(previewed == ["stock:3"] and compact_playlists == 2 and asked and (dialog.find_child("PlaylistChoice", true, false) as ItemList).item_count == 1 and not dialog.visible, "Preview emits resolved track, compact selector clears, Cancel confirms discard, and Done closes")
 	dialog.free()

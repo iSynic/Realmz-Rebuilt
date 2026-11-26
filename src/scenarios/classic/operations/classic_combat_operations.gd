@@ -289,6 +289,8 @@ func _spawn_classic_monsters(action: ClassicActionDefinition, context: ScenarioE
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 124 requires a five-value Extra Code row.")
 	if _content.package_schema_version >= 7 and _game_state.combat.roster.monsters().size() >= CombatFlowSummoning.MAX_MONSTERS:
 		return ClassicCompatibility.skip(&"spawn-capacity-reached", "Data EDCD", action.operand_id)
+	if not ClassicReinforcementLimit.admit_spawn(_game_state):
+		return ScenarioRuntimeOperationResult.completed([], [DomainEvent.new(&"combat_reinforcements_limited", {"waves": _game_state.combat.reinforcement_waves, "source": "adventure-rule"})])
 	var native_id := action.extra_code[1] if _content.package_schema_version >= 7 else absi(action.extra_code[1])
 	var definition := _content.combat.monster_by_classic_id_for_set(native_id, _game_state.monster_set)
 	if definition == null:
@@ -411,6 +413,8 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 		target_id = _rng.draw_between_classic(action.extra_code[3], action.extra_code[4], &"classic.battle-round-macro-target") if _content.package_schema_version >= 7 else _rng.draw_between(action.extra_code[3], action.extra_code[4], &"classic.battle-round-macro-target")
 	if target_id <= 0 and _content.package_schema_version < 7:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_macro_target", "Classic opcode 126 references an invalid Extra Action Point target.")
+	if ClassicReinforcementLimit.blocks_branch(_game_state, _content.scenario.program_by_id("xap:%d" % target_id)):
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"combat_reinforcements_limited", {"waves": combat.reinforcement_waves, "targetId": target_id, "source": "adventure-rule"})], ScenarioVmDirective.native_return(0))
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"battle_macro_tested", {"matched": true, "mode": mode, "round": combat.turns.round_number, "targetId": target_id, "repeating": action.extra_code[2] == 1, "source": "classic"})], ScenarioVmDirective.branch_xap(target_id, false))
 
 

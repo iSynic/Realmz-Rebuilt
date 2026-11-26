@@ -107,10 +107,12 @@ theme_override_constants/separation = 12
 layout_mode = 2
 unique_name_in_owner = true
 text = "Shuffle"
+tooltip_text = "Play tracks in a randomized order without repeating until every track has played."
 
 [node name="RepeatMode" type="OptionButton" parent="EditorScroll/EditorPage/DetailPanel/PlaybackOptions"]
 layout_mode = 2
 unique_name_in_owner = true
+tooltip_text = "Choose whether the playlist loops all tracks, repeats the current track, or stops after finishing."
 item_count = 3
 selected = 0
 popup/item_0/text = "Repeat All"
@@ -118,6 +120,18 @@ popup/item_1/text = "Repeat One"
 popup/item_1/id = 1
 popup/item_2/text = "No repeat"
 popup/item_2/id = 2
+
+[node name="PreviewPlaylistTrack" type="Button" parent="EditorScroll/EditorPage/DetailPanel/PlaybackOptions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Preview"
+tooltip_text = "Preview the selected track in this playlist."
+
+[node name="StopPlaylistPreview" type="Button" parent="EditorScroll/EditorPage/DetailPanel/PlaybackOptions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Stop"
+tooltip_text = "Stop music preview and restore normal playback."
 
 [node name="QueueHeading" type="Label" parent="EditorScroll/EditorPage/DetailPanel"]
 layout_mode = 2
@@ -139,6 +153,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 unique_name_in_owner = true
 text = "Add tracks"
+tooltip_text = "Add imported music or built-in Realmz tracks to this playlist."
 
 [node name="TrackUp" type="Button" parent="EditorScroll/EditorPage/DetailPanel/QueueActions"]
 layout_mode = 2
@@ -179,6 +194,18 @@ unique_name_in_owner = true
 [node name="PickerActions" type="HBoxContainer" parent="TrackPickerPage"]
 layout_mode = 2
 alignment = 2
+
+[node name="PreviewAvailableTrack" type="Button" parent="TrackPickerPage/PickerActions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Preview"
+tooltip_text = "Preview the selected track before adding it."
+
+[node name="StopPickerPreview" type="Button" parent="TrackPickerPage/PickerActions"]
+layout_mode = 2
+unique_name_in_owner = true
+text = "Stop"
+tooltip_text = "Stop music preview and restore normal playback."
 
 [node name="PickerBack" type="Button" parent="TrackPickerPage/PickerActions"]
 layout_mode = 2

@@ -114,7 +114,8 @@ func stop() -> void:
 
 
 func preview(track_id: String) -> bool:
-	var stream := _custom_stream(track_id)
+	var is_stock := MusicLibraryView.is_stock_track_id(track_id)
+	var stream := _stock_stream(track_id) if is_stock else _custom_stream(track_id)
 	if stream == null:
 		return false
 	if not _preview:
@@ -123,7 +124,8 @@ func preview(track_id: String) -> bool:
 	_player.stop()
 	_player.stream = stream
 	_player.play()
-	state_changed.emit(0, "Preview: " + _library.tracks[track_id].title, true)
+	var title := _stock_title(track_id) if is_stock else _library.tracks[track_id].title
+	state_changed.emit(0, "Preview: " + title, true)
 	return true
 
 
@@ -155,6 +157,15 @@ func _start() -> void:
 		if id == "@original":
 			_play_original(queue.position)
 			return
+		if MusicLibraryView.is_stock_track_id(id):
+			var stock_stream := _stock_stream(id)
+			if stock_stream != null:
+				_play(stock_stream, _stock_title(id), queue.position)
+				return
+			queue.advance(true)
+			if queue.exhausted:
+				break
+			continue
 		var stream := _custom_stream(id)
 		if stream != null:
 			_play(stream, _library.tracks[id].title, queue.position)
@@ -165,6 +176,22 @@ func _start() -> void:
 	_fallbacks[_active] = true
 	diagnostic_changed.emit("No tracks in this playlist are available. Using this context's original music.")
 	_play_original(0.0)
+
+
+func _stock_stream(id: String) -> AudioStream:
+	var slot := MusicLibraryView.stock_track_slot(id)
+	if slot <= 0 or _stock == null:
+		return null
+	return _with_loop(_stock.stream(slot), false)
+
+
+func _stock_title(id: String) -> String:
+	var slot := MusicLibraryView.stock_track_slot(id)
+	if slot > 0 and _stock != null:
+		var title := _stock.title(slot)
+		if not title.is_empty():
+			return title
+	return MusicLibraryView.stock_track_label(id)
 
 
 func _custom_stream(id: String) -> AudioStream:

@@ -23,6 +23,7 @@ var _committed := MusicLibraryView.new()
 var _draft := MusicLibraryView.new()
 var _campaign: String = ""
 var _campaign_title: String = ""
+var _active_context: int = 0
 var _dirty: bool = false
 var _close_after_apply: bool = false
 var _importing: bool = false
@@ -51,10 +52,19 @@ func _ready() -> void:
 		_cancel_removal()
 		remove_requested.emit(id)
 	)
-	%RepairTrack.pressed.connect(func() -> void: repair_requested.emit(_selected_track()))
-	%Playlists.changed.connect(_changed)
-	%Assignments.changed.connect(_changed)
-	%Assignments.mode_changed.connect(func(_context: int, _mode: int) -> void: _changed())
+	(%KeepEditingMusic as Button).pressed.connect(_cancel_discard)
+	(%DiscardMusicChanges as Button).pressed.connect(func() -> void: close(true))
+	(%ApplyMusicBeforeClose as Button).pressed.connect(_apply_before_close)
+	(%RepairTrack as Button).pressed.connect(func() -> void: repair_requested.emit(_selected_track()))
+	var playlists_editor := %Playlists as MusicPlaylistEditor
+	playlists_editor.changed.connect(_changed)
+	playlists_editor.preview_requested.connect(func(id: String) -> void: preview_requested.emit(id))
+	playlists_editor.preview_stopped.connect(func() -> void: preview_stopped.emit())
+	var assignments_editor := %Assignments as MusicAssignmentsEditor
+	assignments_editor.changed.connect(_changed)
+	assignments_editor.mode_changed.connect(func(_context: int, _mode: int) -> void: _changed())
+	assignments_editor.preview_requested.connect(func(id: String) -> void: preview_requested.emit(id))
+	assignments_editor.preview_stopped.connect(func() -> void: preview_stopped.emit())
 	(%MusicTabs as TabContainer).get_tab_bar().focus_mode = Control.FOCUS_ALL
 	resized.connect(_apply_layout)
 	visibility_changed.connect(_apply_layout)
@@ -104,7 +114,7 @@ func merge_imports(library: MusicLibraryView) -> void:
 	for playlist: MusicLibraryView.Playlist in _draft.playlists.values():
 		var retained: Array[String] = []
 		for id: String in playlist.tracks:
-			if library.tracks.has(id):
+			if library.tracks.has(id) or MusicLibraryView.is_stock_track_id(id):
 				retained.append(id)
 		playlist.tracks = retained
 	_bind_editors()
@@ -123,7 +133,7 @@ func apply_result(success: bool, message: String = "") -> void:
 	report("Music playlists and assignments saved.")
 	if _close_after_apply:
 		_close_after_apply = false
-		close()
+		close(true)
 
 
 func playback_preferences() -> PresentationSettings:
@@ -159,29 +169,42 @@ func report(message: String) -> void:
 func controller_focus_root() -> Node:
 	if _browser != null and _browser.visible:
 		return _browser
-	return %RemoveConfirmation if %RemoveConfirmation.visible else self
+	var discard := %DiscardConfirmation as Control
+	if discard.visible:
+		return discard
+	var remove := %RemoveConfirmation as Control
+	return remove if remove.visible else self
 
 
 func controller_cycle_tab(delta: int) -> void:
-	if (_browser != null and _browser.visible) or %RemoveConfirmation.visible:
+	if (_browser != null and _browser.visible) or (%RemoveConfirmation as Control).visible or (%DiscardConfirmation as Control).visible:
 		return
 	var tabs := %MusicTabs as TabContainer
 	tabs.current_tab = wrapi(tabs.current_tab + delta, 0, tabs.get_tab_count())
 	tabs.get_tab_bar().grab_focus()
 
 
-func close() -> void:
+func close(force: bool = false) -> void:
 	if _browser != null and _browser.visible:
 		_browser.hide()
 		(%ImportMusic as Button).grab_focus()
 		return
-	if %RemoveConfirmation.visible:
+	if (%RemoveConfirmation as Control).visible:
 		_cancel_removal()
 		return
-	if (%MusicTabs as TabContainer).current_tab == 1 and (%Playlists as MusicPlaylistEditor).handle_back():
+	var discard := %DiscardConfirmation as Control
+	if discard.visible and not force:
+		_cancel_discard()
+		return
+	if not force and (%MusicTabs as TabContainer).current_tab == 1 and (%Playlists as MusicPlaylistEditor).handle_back():
 		return
 	if not visible:
 		return
+	if _dirty and not force:
+		discard.show()
+		(%KeepEditingMusic as Button).grab_focus()
+		return
+	discard.hide()
 	preview_stopped.emit()
 	var previous := _focus_before_open.get_ref() as Control if _focus_before_open != null else null
 	_focus_before_open = null
@@ -194,10 +217,15 @@ func close() -> void:
 
 
 func set_playback_state(context: int, title: String, playing: bool) -> void:
+	_active_context = context
 	if not is_node_ready():
 		return
-	(%NowPlayingTitle as Label).text = "Now Playing  •  %s" % title if playing else "No music is playing"
-	(%NowPlayingTitle as Label).tooltip_text = title + (" — " + ClassicMusicContext.context_name(context) if context > 0 else "")
+	var context_name := ClassicMusicContext.context_name(context) if context > 0 else ""
+	var label := "%s (%s)" % [title, context_name] if not context_name.is_empty() else title
+	(%NowPlayingTitle as Label).text = "Now Playing  •  %s" % label if playing else "No music is playing"
+	(%NowPlayingTitle as Label).tooltip_text = title + (" — " + context_name if not context_name.is_empty() else "")
+	if _editors_wanted:
+		(%Assignments as MusicAssignmentsEditor).set_active_context(context)
 
 
 func _bind_editors() -> void:
@@ -208,7 +236,9 @@ func _bind_editors() -> void:
 	if not _editors_wanted:
 		return
 	(%Playlists as MusicPlaylistEditor).present(_draft)
-	(%Assignments as MusicAssignmentsEditor).present(_draft, _settings, _campaign, _campaign_title)
+	var assignments := %Assignments as MusicAssignmentsEditor
+	assignments.set_active_context(_active_context)
+	assignments.present(_draft, _settings, _campaign, _campaign_title)
 
 
 func _refresh_library() -> void:
@@ -334,6 +364,16 @@ func _cancel_removal() -> void:
 	_remove_id = ""
 	%RemoveConfirmation.hide()
 	(%RemoveLibraryTrack as Button).grab_focus()
+
+
+func _cancel_discard() -> void:
+	(%DiscardConfirmation as Control).hide()
+	(%MusicCancel as Button).grab_focus()
+
+
+func _apply_before_close() -> void:
+	(%DiscardConfirmation as Control).hide()
+	_done()
 
 
 func _files() -> FileDialog:

@@ -63,6 +63,39 @@ size_flags_horizontal = 3
 text = "Each step of a money transfer moves this many times classic Realmz's five gold, one gem or one jewelry. A step still stops at what's on hand and what a character can carry. 1x is classic."
 autowrap_mode = 2
 
+[node name="ReinforcementLimitRow" type="BoxContainer" parent="." groups=["system_setting_rows"]]
+layout_mode = 2
+
+[node name="ReinforcementLimitCaption" type="Label" parent="ReinforcementLimitRow"]
+layout_mode = 2
+text = "Limit Monster Reinforcements"
+
+[node name="ReinforcementLimit" type="OptionButton" parent="ReinforcementLimitRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+fit_to_longest_item = false
+item_count = 6
+popup/item_0/text = "Classic (unlimited)"
+popup/item_0/id = 0
+popup/item_1/text = "Off (no reinforcements)"
+popup/item_1/id = 1
+popup/item_2/text = "1 wave"
+popup/item_2/id = 2
+popup/item_3/text = "2 waves"
+popup/item_3/id = 3
+popup/item_4/text = "3 waves"
+popup/item_4/id = 4
+popup/item_5/text = "5 waves"
+popup/item_5/id = 5
+selected = 0
+theme_type_variation = &"ClassicTheldrowOptionButton"
+
+[node name="ReinforcementLimitHelp" type="Label" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Many battles roll each round to call in more monsters, and classic Realmz never stops them. This caps how many rounds of a battle can bring monsters in; 2 waves is suggested. Once the cap is reached, no more arrive and their arrival message no longer shows. Monsters a creature summons or leaves behind when it dies are not limited."
+autowrap_mode = 2
+
 [node name="RulesUnavailableReason" type="Label" parent="."]
 visible = false
 layout_mode = 2

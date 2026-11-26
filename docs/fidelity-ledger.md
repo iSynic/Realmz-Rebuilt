@@ -275,6 +275,15 @@ Import Party from Save offers party-level reuse of player characters in a fresh 
 - Tests: `test_realmz_rules.gd::_test_item_eligibility_and_restriction_masks` covers off and on, another closed category, a non-Bard class, the optional save field and the item text.
 - Legacy quirk: none preserved. With the rule off, Castle's refusal stays.
 
+## FD-COMBAT-025 — Optional Limit Monster Reinforcements adventure rule
+
+- Affected rule: battle round scripts (Data ED3 battle macros) that roll each round to bring in more monsters through opcode 124.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, opcode 126 (lines 584–609) and opcode 124 (lines 430–458). Opcode 126 in mode 1 continues only when `Rand(100) <= extracode[1]` and, with `extracode[2] == 1`, keeps the battle macro for every later round; opcode 124 spawns up to `maxmon` (100) monsters. Nothing else limits how many rounds bring monsters in. This is `source-control-flow` evidence, not a Castle-runtime measurement.
+- Player-facing problem: issue #51. War in the Sword Lands' psi-warrior watch posts call in up to six Psi-Warriors and two Psi-Knights on 20% of rounds for the whole battle, and long fights grow without bound.
+- Chosen 2.0 behavior: owner-approved, default Classic (unlimited), per adventure: Classic, Off, or 1, 2, 3 or 5 waves per battle; 2 is the suggested setting. A wave is a round in which the battle's round script brings in monsters; every spawn of that round's run belongs to it. Once the waves are spent, `ClassicReinforcementLimit` skips further spawns from the round script, and skips an opcode 126 branch whose target only shows text, plays sound, keeps codes, spawns or tests for a monster (opcodes 0, 1, 9, 24, 124, 127), so its arrival message does not appear. A branch that also does anything else still runs with its spawns skipped. Spawns outside the round script (death scripts, scenario actions) are never limited. Saves write `reinforcementLimit` only when it is not Classic, and battles write `reinforcementWaves` and `reinforcementWaveRound` only after a wave; builds before 0.2.12 cannot open a save with the rule set.
+- Tests: `test_reinforcement_limit.gd` covers the rule's save shape, waves across rounds, the skipped reinforcement-only branch beside a story branch, a battle saved mid-limit, spawns outside the round script, and Classic.
+- Legacy quirk: none preserved. With Classic selected, reinforcements stay unlimited.
+
 ## FD-INVENTORY-004 — Classic weapon-condition item fields classification and admission
 
 - Affected rule: Classic weapon condition fields (`special_1 == -10`).

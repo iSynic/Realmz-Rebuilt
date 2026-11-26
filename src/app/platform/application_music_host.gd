@@ -2,6 +2,10 @@
 class_name ApplicationMusicHost
 extends Node
 
+const MAX_IMPORT_BATCH: int = 256
+const SUPPORTED_EXTENSIONS: Array[String] = ["mp3", "ogg", "wav", "flac", "aiff", "aif", "mod", "xm", "s3m", "it"]
+const MOD_SIGNATURES: Array[String] = ["M.K.", "M!K!", "M&K!", "FLT4", "FLT8", "CD81", "OKTA", "OCTA", "4CHN", "6CHN", "8CHN", "16CN", "32CN"]
+
 class Source extends RefCounted:
 	var path: String
 	var name: String
@@ -54,8 +58,8 @@ func _open() -> void:
 func _import(paths: PackedStringArray) -> void:
 	if _job != null or not _pending.is_empty():
 		return
-	if paths.size() > 64:
-		_dialog.report("Choose no more than 64 music files per import.")
+	if paths.size() > MAX_IMPORT_BATCH:
+		_dialog.report("Choose no more than %d music files per import." % MAX_IMPORT_BATCH)
 		return
 	for path: String in paths:
 		var source := Source.new()
@@ -192,10 +196,47 @@ func _exit_tree() -> void:
 
 func _import_folder(path: String) -> void:
 	var paths := PackedStringArray()
+	var skipped := 0
 	for file: String in DirAccess.get_files_at(path):
-		if file.get_extension().to_lower() in ["mp3", "ogg", "wav", "flac", "aiff", "aif", "mod", "xm", "s3m", "it"]:
-			paths.append(path.path_join(file))
+		var ext := file.get_extension().to_lower()
+		var full_path := path.path_join(file)
+		if ext in SUPPORTED_EXTENSIONS:
+			paths.append(full_path)
+		elif ext.is_empty() and not file.begins_with("."):
+			if has_music_header(full_path):
+				paths.append(full_path)
+			else:
+				skipped += 1
 	if paths.is_empty():
 		_dialog.report("No supported music files in that folder. Subfolders are not included.")
-	else:
-		_import(paths)
+		return
+	if skipped > 0:
+		_dialog.report("Skipped %d non-audio file(s) in %s." % [skipped, path.get_file()])
+	_import(paths)
+
+
+static func has_music_header(file_path: String) -> bool:
+	var file := FileAccess.open(file_path, FileAccess.READ)
+	if file == null or file.get_length() < 4:
+		return false
+	var head := file.get_buffer(mini(1084, file.get_length()))
+	if head.size() < 4:
+		return false
+	var prefix4 := head.slice(0, 4).get_string_from_ascii()
+	if prefix4 in ["OggS", "fLaC", "RIFF", "RIFX", "FORM", "IMPM"] or prefix4.begins_with("ID3") or prefix4.begins_with("MAD"):
+		return true
+	if head[0] == 0xFF and (head[1] & 0xE0) == 0xE0:
+		return true
+	if head.size() >= 17 and head.slice(0, 17).get_string_from_ascii() == "Extended Module: ":
+		return true
+	if head.size() >= 48 and head.slice(44, 48).get_string_from_ascii() == "SCRM":
+		return true
+	if head.size() >= 1084:
+		var sig := head.slice(1080, 1084).get_string_from_ascii()
+		if sig in MOD_SIGNATURES:
+			return true
+		if sig.ends_with("CH") and sig.left(2).is_valid_int():
+			return true
+		if sig.ends_with("CHN") and sig.left(1).is_valid_int():
+			return true
+	return false

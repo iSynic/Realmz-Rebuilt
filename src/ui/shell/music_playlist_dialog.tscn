@@ -86,6 +86,7 @@ clear_button_enabled = true
 unique_name_in_owner = true
 layout_mode = 2
 text = "Import folder…"
+tooltip_text = "Import all supported music files directly inside a folder (including extensionless classic MOD files). Subfolders are not included."
 
 [node name="LibraryColumns" type="BoxContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library"]
 unique_name_in_owner = true
@@ -115,6 +116,7 @@ custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 unique_name_in_owner = true
 text = "Import music…"
+tooltip_text = "Import one or more music files into your library. Copies are stored separately so moving the originals later will not break playback."
 
 [node name="DetailsScroll" type="ScrollContainer" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns"]
 layout_mode = 2
@@ -160,7 +162,7 @@ text = "Remove from library"
 
 [node name="Formats" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
 layout_mode = 2
-text = "MP3, Ogg, WAV, FLAC, AIFF, MOD, XM, S3M, IT.\nOriginals are copied into your library. MAD is not supported."
+text = "MP3, Ogg, WAV, FLAC, AIFF, MOD, XM, S3M, IT.\nOriginals are copied into your library. Built-in Realmz tracks are also selectable in Playlists and Assignments. MAD is not supported."
 autowrap_mode = 3
 
 [node name="MusicMessages" type="Label" parent="MusicPlaylistWindow/Content/MusicTabs/Library/LibraryColumns/DetailsScroll/Details"]
@@ -282,3 +284,67 @@ text = "Cancel"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Remove track"
+
+[node name="DiscardConfirmation" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="Veil" type="ColorRect" parent="DiscardConfirmation"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 0
+color = Color(0, 0, 0, 0.6)
+
+[node name="Panel" type="PanelContainer" parent="DiscardConfirmation"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -310.0
+offset_top = -120.0
+offset_right = 310.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_type_variation = &"MenuDialog"
+
+[node name="Content" type="VBoxContainer" parent="DiscardConfirmation/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="DiscardPrompt" type="Label" parent="DiscardConfirmation/Panel/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+autowrap_mode = 3
+text = "You have unapplied music changes. Apply them before closing, discard them, or keep editing?"
+
+[node name="Actions" type="HBoxContainer" parent="DiscardConfirmation/Panel/Content"]
+layout_mode = 2
+alignment = 2
+
+[node name="KeepEditingMusic" type="Button" parent="DiscardConfirmation/Panel/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Keep editing"
+
+[node name="DiscardMusicChanges" type="Button" parent="DiscardConfirmation/Panel/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Discard"
+
+[node name="ApplyMusicBeforeClose" type="Button" parent="DiscardConfirmation/Panel/Content/Actions"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Apply"

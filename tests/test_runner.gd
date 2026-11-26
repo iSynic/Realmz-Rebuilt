@@ -36,6 +36,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/scenario/test_scenario_vm.gd"),
 	preload("res://tests/scenario/test_swordlands_battle_prelude.gd"),
 	preload("res://tests/scenario/test_dungeon_tile_replacement.gd"),
+	preload("res://tests/scenario/test_reinforcement_limit.gd"),
 	preload("res://tests/integration/test_dungeon_secret_search.gd"),
 	preload("res://tests/presentation/test_combat_playback_condense.gd"),
 	preload("res://tests/scenario/test_battle_prelude.gd"),

@@ -6,6 +6,7 @@ signal value_changed(rule: StringName, value: Variant)
 
 const RULE_NODES: Dictionary[StringName, String] = {&"free_targeting_cancellation": "FreeTargetingCancellation", &"bard_daggers": "BardDaggers"}
 const SPEED_SLIDER := "MoneyTransferSpeedRow/MoneyTransferSpeedSlider"
+const REINFORCEMENT_CHOICE := "ReinforcementLimitRow/ReinforcementLimit"
 
 var _binding := false
 
@@ -16,6 +17,8 @@ func _ready() -> void:
 	(get_node(SPEED_SLIDER) as HSlider).value_changed.connect(func(value: float) -> void:
 		_show_speed(roundi(value))
 		_on_changed(&"money_transfer_speed", roundi(value)))
+	(get_node(REINFORCEMENT_CHOICE) as OptionButton).item_selected.connect(func(index: int) -> void:
+		_on_changed(&"reinforcement_limit", AdventureRules.REINFORCEMENT_LIMITS[index]))
 
 
 func bind_rules(rules: AdventureRules, available: bool, reason: String) -> void:
@@ -30,6 +33,9 @@ func bind_rules(rules: AdventureRules, available: bool, reason: String) -> void:
 	free_targeting.disabled = not available or rules == null
 	bard_daggers.disabled = free_targeting.disabled
 	speed.editable = not free_targeting.disabled
+	var reinforcements := get_node(REINFORCEMENT_CHOICE) as OptionButton
+	reinforcements.select(maxi(0, AdventureRules.REINFORCEMENT_LIMITS.find(rules.reinforcement_limit if rules != null else AdventureRules.UNLIMITED_REINFORCEMENTS)))
+	reinforcements.disabled = free_targeting.disabled
 	var unavailable := get_node("RulesUnavailableReason") as Label
 	unavailable.text = reason if not reason.is_empty() else "Adventure Rules are unavailable in this context."
 	unavailable.visible = free_targeting.disabled or not reason.is_empty()
