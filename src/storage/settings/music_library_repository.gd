@@ -52,6 +52,15 @@ func remove_track(id: String) -> bool:
 	for playlist: Dictionary in candidate.playlists.values():
 		while id in playlist.tracks:
 			playlist.tracks.erase(id)
+	var assignments: Dictionary = candidate["assignments"]
+	for campaign: String in assignments.keys():
+		var slots: Dictionary = assignments[campaign]
+		for slot: String in slots.keys():
+			var entry: Dictionary = slots[slot]
+			if entry.get("kind") == "track" and entry.get("trackId") == id:
+				slots.erase(slot)
+		if slots.is_empty():
+			assignments.erase(campaign)
 	# Immutable originals remain available to the retained index backup.
 	return _commit(candidate)
 

@@ -25,7 +25,7 @@ static func valid(data: Variant) -> bool:
 		if not _hex(id, 32) or not _playlist(data.playlists[id], data.tracks):
 			return false
 	for campaign: Variant in data.assignments:
-		if not campaign is String or campaign.length() > 512 or not _assignments(data.assignments[campaign], data.playlists):
+		if not campaign is String or campaign.length() > 512 or not _assignments(data.assignments[campaign], data.playlists, data.tracks):
 			return false
 	return true
 
@@ -74,7 +74,7 @@ static func _playlist(value: Variant, tracks: Dictionary) -> bool:
 	return true
 
 
-static func _assignments(value: Variant, playlists: Dictionary) -> bool:
+static func _assignments(value: Variant, playlists: Dictionary, tracks: Dictionary) -> bool:
 	if not value is Dictionary:
 		return false
 	var map: Dictionary = value
@@ -97,6 +97,11 @@ static func _assignments(value: Variant, playlists: Dictionary) -> bool:
 			continue
 		if kind == "stock":
 			if not _keys(assignment, ["kind", "trackId"]) or not is_stock_track_id(assignment.get("trackId")):
+				return false
+			continue
+		if kind == "track":
+			var tid: Variant = assignment.get("trackId")
+			if not _keys(assignment, ["kind", "trackId"]) or not tid is String or not tracks.has(tid):
 				return false
 			continue
 		if kind == "playlist":

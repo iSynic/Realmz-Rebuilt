@@ -12,14 +12,15 @@ const ROW_SCENE_PATH := "res://src/ui/shell/music_assignment_row.tscn"
 const SOURCE_INHERIT := 0
 const SOURCE_ORIGINAL := 1
 const SOURCE_STOCK := 2
-const SOURCE_PLAYLIST := 3
+const SOURCE_TRACK := 3
+const SOURCE_PLAYLIST := 4
 const MUSIC_MODES: Array[int] = [PresentationSettings.MUSIC_PLAY, PresentationSettings.MUSIC_CONTINUE, PresentationSettings.MUSIC_OFF]
 
 const MODE_TOOLTIP := "Play: switch to this context's music.\nContinue: keep whatever was already playing.\nOff: silence music in this context.\nModes apply to every scenario."
-const GLOBAL_SOURCE_TOOLTIP := "Original music: play the game's or scenario's default track.\nRealmz track: pick any built-in Realmz song (e.g. swap Indoor and Outdoor).\nPlaylist: play one of your custom playlists."
-const OUTDOOR_TERRAIN_SOURCE_TOOLTIP := "Use Outdoor: follow whatever is assigned to Outdoor.\nOriginal music: play After the Rain even if Outdoor is customized.\nRealmz track: pick a built-in Realmz song for this terrain.\nPlaylist: play a custom playlist for this terrain."
-const SCENARIO_SOURCE_TOOLTIP := "Use global default: follow your Global defaults setting.\nOriginal music: override Global and play this scenario's default track.\nRealmz track: pick any built-in Realmz song for this scenario.\nPlaylist: play one of your custom playlists for this scenario."
-const CHOICE_TOOLTIP := "Choose which built-in Realmz track or custom playlist plays for this context."
+const GLOBAL_SOURCE_TOOLTIP := "Original music: play the game's or scenario's default track.\nRealmz track: pick any built-in Realmz song (e.g. swap Indoor and Outdoor).\nCustom track: pick any single imported track from your Library or a specific playlist.\nPlaylist: play one of your custom playlists."
+const OUTDOOR_TERRAIN_SOURCE_TOOLTIP := "Use Outdoor: follow whatever is assigned to Outdoor.\nOriginal music: play After the Rain even if Outdoor is customized.\nRealmz track: pick a built-in Realmz song for this terrain.\nCustom track: pick any single imported track from your Library or a playlist.\nPlaylist: play a custom playlist for this terrain."
+const SCENARIO_SOURCE_TOOLTIP := "Use global default: follow your Global defaults setting.\nOriginal music: override Global and play this scenario's default track.\nRealmz track: pick any built-in Realmz song for this scenario.\nCustom track: pick any single imported track from your Library or a playlist.\nPlaylist: play one of your custom playlists for this scenario."
+const CHOICE_TOOLTIP := "Choose which Realmz track, custom track (from Library or a playlist), or playlist plays for this context."
 
 var _library: MusicLibraryView
 var _settings: PresentationSettings
@@ -169,11 +170,15 @@ func _bind_source(source: OptionButton, context: int, assignment: MusicLibraryVi
 	else:
 		source.add_item("Original music", SOURCE_INHERIT)
 	source.add_item("Realmz track", SOURCE_STOCK)
+	source.add_item("Custom track", SOURCE_TRACK)
+	source.set_item_disabled(source.get_item_index(SOURCE_TRACK), _library.tracks.is_empty())
 	source.add_item("Playlist", SOURCE_PLAYLIST)
 	source.set_item_disabled(source.get_item_index(SOURCE_PLAYLIST), _library.playlists.is_empty())
 	var target_id := SOURCE_INHERIT
 	if assignment.kind == "stock":
 		target_id = SOURCE_STOCK
+	elif assignment.kind == "track":
+		target_id = SOURCE_TRACK
 	elif assignment.kind == "playlist":
 		target_id = SOURCE_PLAYLIST
 	elif assignment.kind == "original" and show_explicit_original:
@@ -190,32 +195,71 @@ func _bind_choice(choice: OptionButton, context: int, assignment: MusicLibraryVi
 		choice.disabled = true
 		return
 	if assignment.kind == "stock":
-		var selected_stock := 0
-		for slot: int in range(1, MusicLibraryView.STOCK_TRACK_TITLES.size() + 1):
-			var stock_id := MusicLibraryView.stock_track_id(slot)
-			choice.add_item(MusicLibraryView.stock_track_label(stock_id))
-			choice.set_item_metadata(choice.item_count - 1, stock_id)
-			if stock_id == assignment.track_id:
-				selected_stock = choice.item_count - 1
-		choice.select(selected_stock)
-		choice.disabled = false
+		_bind_stock_choice(choice, assignment.track_id)
+		return
+	if assignment.kind == "track":
+		_bind_custom_track_choice(choice, assignment.track_id)
 		return
 	if assignment.kind == "playlist":
-		var selected := -1
-		for id: String in _library.playlists:
-			var item := _library.playlists[id]
-			var label := item.name + (" (empty)" if item.tracks.is_empty() else "")
-			choice.add_item(label)
-			choice.set_item_metadata(choice.item_count - 1, id)
-			if id == assignment.playlist_id:
-				selected = choice.item_count - 1
-		if selected >= 0:
-			choice.select(selected)
-		choice.disabled = choice.item_count == 0
+		_bind_playlist_choice(choice, assignment.playlist_id)
 		return
 	choice.add_item(_resolved_default_summary(context, assignment, is_scenario))
 	choice.select(0)
 	choice.disabled = true
+
+
+func _bind_stock_choice(choice: OptionButton, track_id: String) -> void:
+	var selected := 0
+	for slot: int in range(1, MusicLibraryView.STOCK_TRACK_TITLES.size() + 1):
+		var stock_id := MusicLibraryView.stock_track_id(slot)
+		choice.add_item(MusicLibraryView.stock_track_label(stock_id))
+		choice.set_item_metadata(choice.item_count - 1, stock_id)
+		if stock_id == track_id:
+			selected = choice.item_count - 1
+	choice.select(selected)
+	choice.disabled = false
+
+
+func _bind_custom_track_choice(choice: OptionButton, track_id: String) -> void:
+	var selected := -1
+	var track_ids := _library.sorted_track_ids()
+	for id: String in track_ids:
+		choice.add_item(_library.tracks[id].title)
+		choice.set_item_metadata(choice.item_count - 1, id)
+		if id == track_id and selected < 0:
+			selected = choice.item_count - 1
+	var playlist_ids: Array[String] = []
+	for pid: String in _library.playlists:
+		if not _library.playlists[pid].tracks.is_empty():
+			playlist_ids.append(pid)
+	playlist_ids.sort_custom(func(a: String, b: String) -> bool:
+		return _library.playlists[a].name.to_lower() < _library.playlists[b].name.to_lower())
+	for pid: String in playlist_ids:
+		var playlist := _library.playlists[pid]
+		choice.add_separator("Playlist: " + playlist.name)
+		for tid: String in playlist.tracks:
+			if not _library.tracks.has(tid) and not MusicLibraryView.is_stock_track_id(tid):
+				continue
+			choice.add_item(_library.track_title(tid))
+			choice.set_item_metadata(choice.item_count - 1, tid)
+			if tid == track_id and selected < 0:
+				selected = choice.item_count - 1
+	if selected >= 0:
+		choice.select(selected)
+	choice.disabled = choice.item_count == 0
+
+
+func _bind_playlist_choice(choice: OptionButton, playlist_id: String) -> void:
+	var selected := -1
+	for id: String in _library.playlists:
+		var item := _library.playlists[id]
+		choice.add_item(item.name + (" (empty)" if item.tracks.is_empty() else ""))
+		choice.set_item_metadata(choice.item_count - 1, id)
+		if id == playlist_id:
+			selected = choice.item_count - 1
+	if selected >= 0:
+		choice.select(selected)
+	choice.disabled = choice.item_count == 0
 
 
 func _resolved_default_summary(context: int, assignment: MusicLibraryView.Assignment, is_scenario: bool) -> String:
@@ -223,6 +267,8 @@ func _resolved_default_summary(context: int, assignment: MusicLibraryView.Assign
 		var global_choice := _library.assignment("", context)
 		if global_choice.kind == "playlist" and _library.playlists.has(global_choice.playlist_id):
 			return "Global: " + _library.playlists[global_choice.playlist_id].name
+		if global_choice.kind == "track" and _library.tracks.has(global_choice.track_id):
+			return "Global: " + _library.tracks[global_choice.track_id].title
 		if global_choice.kind == "stock" and MusicLibraryView.is_stock_track_id(global_choice.track_id):
 			return "Global: " + MusicLibraryView.stock_track_label(global_choice.track_id)
 		if global_choice.kind == "inherit" and MusicLibraryView.inherits_outdoor(context):
@@ -375,6 +421,13 @@ func _apply_source(context: int, source_id: int) -> void:
 			return
 		_set_assignment(context, "playlist", playlist_id)
 		return
+	if source_id == SOURCE_TRACK:
+		var custom_id := current.track_id if _library.tracks.has(current.track_id) else _library.first_track_id()
+		if custom_id.is_empty():
+			_refresh()
+			return
+		_set_assignment(context, "track", custom_id)
+		return
 	if source_id == SOURCE_STOCK:
 		var track_id := current.track_id if MusicLibraryView.is_stock_track_id(current.track_id) else MusicLibraryView.stock_track_id(context if context <= 11 else 1)
 		_set_assignment(context, "stock", track_id)
@@ -386,7 +439,12 @@ func _apply_choice(context: int, target_id: String) -> void:
 	if _rebinding or context > 17 or target_id.is_empty():
 		return
 	var current := _library.assignment(_selected_campaign(), context)
-	if current.kind == "stock" and MusicLibraryView.is_stock_track_id(target_id):
+	if current.kind == "track":
+		if _library.tracks.has(target_id):
+			_set_assignment(context, "track", target_id)
+		elif MusicLibraryView.is_stock_track_id(target_id):
+			_set_assignment(context, "stock", target_id)
+	elif current.kind == "stock" and MusicLibraryView.is_stock_track_id(target_id):
 		_set_assignment(context, "stock", target_id)
 	elif current.kind == "playlist" and _library.playlists.has(target_id):
 		_set_assignment(context, "playlist", target_id)

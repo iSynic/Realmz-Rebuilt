@@ -46,7 +46,7 @@ size_flags_vertical = 3
 
 [node name="GlobalNote" type="Label" parent="Wide"]
 layout_mode = 2
-text = "Mode applies to every scenario. Pick 'Realmz track' to choose any built-in song, or 'Playlist' for a custom playlist."
+text = "Mode applies to every scenario. Pick 'Realmz track' for a built-in song, 'Custom track' for any single library or playlist track, or 'Playlist' for a full playlist."
 autowrap_mode = 3
 
 [node name="Header" type="HBoxContainer" parent="Wide"]
@@ -61,25 +61,28 @@ tooltip_text = "Game situation that selects music. The currently playing context
 [node name="ModeHeader" type="Label" parent="Wide/Header"]
 layout_mode = 2
 text = "Mode"
+size_flags_horizontal = 3
 custom_minimum_size = Vector2(125, 0)
 tooltip_text = "Play switches to this context's music. Continue keeps whatever was already playing. Off silences this context."
 
 [node name="SourceHeader" type="Label" parent="Wide/Header"]
 layout_mode = 2
 text = "Source"
+size_flags_horizontal = 3
 custom_minimum_size = Vector2(150, 0)
-tooltip_text = "Choose whether to use the default track, follow Global defaults (in scenario scope), pick a built-in Realmz track, or play a custom playlist."
+tooltip_text = "Choose whether to use the default track, follow Global defaults (in scenario scope), pick a built-in Realmz track, pick a single custom track, or play a custom playlist."
 
 [node name="PlaylistHeader" type="Label" parent="Wide/Header"]
 layout_mode = 2
 text = "Track / Playlist"
+size_flags_horizontal = 3
 custom_minimum_size = Vector2(150, 0)
-tooltip_text = "Shows the selected Realmz track or playlist, or what the default/global choice resolves to."
+tooltip_text = "Shows the selected Realmz track, custom track, or playlist, or what the default/global choice resolves to."
 
 [node name="PreviewHeader" type="Label" parent="Wide/Header"]
 layout_mode = 2
 text = "Preview"
-custom_minimum_size = Vector2(76, 0)
+custom_minimum_size = Vector2(92, 0)
 tooltip_text = "Listen to the track assigned to each context."
 
 [node name="Scroll" type="ScrollContainer" parent="Wide"]

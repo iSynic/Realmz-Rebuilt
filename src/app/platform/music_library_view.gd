@@ -118,6 +118,37 @@ func first_playlist_id() -> String:
 	return ""
 
 
+func sorted_track_ids() -> Array[String]:
+	var ids: Array[String] = []
+	for id: String in tracks:
+		ids.append(id)
+	ids.sort_custom(func(a: String, b: String) -> bool:
+		var ta := tracks[a].title.to_lower()
+		var tb := tracks[b].title.to_lower()
+		return a < b if ta == tb else ta < tb)
+	return ids
+
+
+func first_track_id() -> String:
+	var ids := sorted_track_ids()
+	return ids[0] if not ids.is_empty() else ""
+
+
+func prune_removed_tracks() -> void:
+	for playlist: Playlist in playlists.values():
+		var retained: Array[String] = []
+		for id: String in playlist.tracks:
+			if tracks.has(id) or is_stock_track_id(id):
+				retained.append(id)
+		playlist.tracks = retained
+	for campaign: String in _assignments.keys():
+		var slots: Dictionary = _assignments[campaign]
+		for context: String in slots.keys():
+			var entry: Dictionary = slots[context]
+			if entry.get("kind") == "track" and not tracks.has(entry.get("trackId", "")):
+				set_assignment(campaign, int(context), "inherit")
+
+
 func assignment(campaign: String, context: int) -> Assignment:
 	var result := Assignment.new()
 	var record: Dictionary = _assignments.get(campaign, {}).get(str(context), {})
@@ -137,15 +168,21 @@ func resolve(campaign: String, context: int) -> Playlist:
 		selected = assignment("", context)
 	if selected.kind == "inherit" and inherits_outdoor(context):
 		return resolve(campaign, 1)
+	if selected.kind == "track" and tracks.has(selected.track_id):
+		return _single_track_playlist(selected.track_id, tracks[selected.track_id].title)
 	if selected.kind == "stock" and is_stock_track_id(selected.track_id):
-		var stock := Playlist.new()
-		stock.id = selected.track_id
-		stock.name = stock_track_label(selected.track_id)
-		stock.tracks.assign([selected.track_id])
-		stock.shuffle = false
-		stock.repeat = "one"
-		return stock
+		return _single_track_playlist(selected.track_id, stock_track_label(selected.track_id))
 	return playlists.get(selected.playlist_id) if selected.kind == "playlist" else null
+
+
+func _single_track_playlist(track_id: String, title: String) -> Playlist:
+	var single := Playlist.new()
+	single.id = track_id
+	single.name = title
+	single.tracks.assign([track_id])
+	single.shuffle = false
+	single.repeat = "one"
+	return single
 
 
 func set_assignment(campaign: String, context: int, kind: String, target_id: String = "") -> void:
@@ -153,8 +190,8 @@ func set_assignment(campaign: String, context: int, kind: String, target_id: Str
 		_assignments[campaign] = {}
 	if kind == "inherit":
 		_assignments[campaign].erase(str(context))
-	elif kind == "stock":
-		_assignments[campaign][str(context)] = {"kind": "stock", "trackId": target_id}
+	elif kind == "stock" or kind == "track":
+		_assignments[campaign][str(context)] = {"kind": kind, "trackId": target_id}
 	else:
 		_assignments[campaign][str(context)] = {"kind": kind, "playlistId": target_id if kind == "playlist" else ""}
 	if _assignments[campaign].is_empty():

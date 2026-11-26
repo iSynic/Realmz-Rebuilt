@@ -111,12 +111,7 @@ func present_library(library: MusicLibraryView, campaign: String, title: String)
 func merge_imports(library: MusicLibraryView) -> void:
 	_committed = library
 	_draft.tracks = library.tracks.duplicate()
-	for playlist: MusicLibraryView.Playlist in _draft.playlists.values():
-		var retained: Array[String] = []
-		for id: String in playlist.tracks:
-			if library.tracks.has(id) or MusicLibraryView.is_stock_track_id(id):
-				retained.append(id)
-		playlist.tracks = retained
+	_draft.prune_removed_tracks()
 	_bind_editors()
 	_refresh_library()
 

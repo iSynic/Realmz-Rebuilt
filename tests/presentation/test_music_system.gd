@@ -101,14 +101,14 @@ func _test_music_workspace() -> void:
 	available.select(0)
 	(dialog.find_child("AddTrack", true, false) as Button).pressed.emit()
 	var table := assignments.find_child("Table", true, false)
-	for row_index: int in [0, 2]:
+	for row_index: int in [0, 1, 2]:
 		var source_picker := (table.get_child(row_index) as HBoxContainer).get_node("Source") as OptionButton
-		source_picker.item_selected.emit(source_picker.get_item_index(MusicAssignmentsEditor.SOURCE_PLAYLIST if row_index == 0 else MusicAssignmentsEditor.SOURCE_STOCK))
+		source_picker.item_selected.emit(source_picker.get_item_index(MusicAssignmentsEditor.SOURCE_PLAYLIST if row_index == 0 else (MusicAssignmentsEditor.SOURCE_TRACK if row_index == 1 else MusicAssignmentsEditor.SOURCE_STOCK)))
 	var applied: Array[MusicLibraryView] = []
 	dialog.apply_requested.connect(func(value: MusicLibraryView) -> void: applied.append(value))
 	(dialog.find_child("MusicApply", true, false) as Button).pressed.emit()
 	var pid := applied[0].first_playlist_id()
-	assert_true(available.item_count == 12 and applied.size() == 1 and applied[0].playlists[pid].tracks == ["synthetic"] and applied[0].assignment("", 1).playlist_id == pid and applied[0].assignment("", 3).track_id == "stock:3" and MusicLibraryDocument.valid({"formatVersion": 1, "tracks": {}, "playlists": {pid: {"name": "New playlist", "tracks": ["stock:1"], "shuffle": false, "repeat": "all"}}, "assignments": applied[0].assignment_data()}), "Apply publishes valid playlists, stock tracks, and auto-selected Playlist/Realmz-track assignments")
+	assert_true(available.item_count == 12 and applied.size() == 1 and applied[0].playlists[pid].tracks == ["synthetic"] and applied[0].assignment("", 1).playlist_id == pid and applied[0].assignment("", 2).track_id == "synthetic" and applied[0].resolve("", 2).tracks == ["synthetic"] and applied[0].assignment("", 3).track_id == "stock:3" and ((table.get_child(1) as HBoxContainer).get_node("Playlist") as OptionButton).item_count == 3, "Apply publishes valid playlists, stock/custom tracks, and auto-selected Playlist/Custom/Realmz-track assignments")
 	dialog.apply_result(true)
 	var previewed: Array[String] = []
 	dialog.preview_requested.connect(func(id: String) -> void: previewed.append(id))

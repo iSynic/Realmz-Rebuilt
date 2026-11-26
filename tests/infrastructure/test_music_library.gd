@@ -20,8 +20,8 @@ func _test_atomic_library_and_validation() -> void:
 	assert_true(repository.accept_import({id: track}) and repository.accept_import({id: track}) and MusicLibraryView.from_data(repository.snapshot()).tracks.size() == 1, "validated import commits once without duplicating identical bytes: " + repository.last_error)
 	var playlist_id := "c".repeat(32)
 	var playlists := {playlist_id: {"name": "Roads", "tracks": [id, "stock:3"], "shuffle": false, "repeat": "all"}}
-	var assignments := {"": {"1": {"kind": "playlist", "playlistId": playlist_id}, "3": {"kind": "stock", "trackId": "stock:1"}}, "campaign.example": {"1": {"kind": "original", "playlistId": ""}}}
-	assert_true(repository.save_preferences(playlists, assignments) and not repository.save_preferences(playlists, {"": {"1": {"kind": "stock", "trackId": "stock:12"}}}) and not repository.save_preferences({playlist_id: {"name": "Bad", "tracks": ["stock:0"], "shuffle": false, "repeat": "all"}}, {}), "global, stock-track, and campaign choices commit atomically while invalid stock IDs are rejected")
+	var assignments := {"": {"1": {"kind": "playlist", "playlistId": playlist_id}, "2": {"kind": "track", "trackId": id}, "3": {"kind": "stock", "trackId": "stock:1"}}, "campaign.example": {"1": {"kind": "original", "playlistId": ""}}}
+	assert_true(repository.save_preferences(playlists, assignments) and not repository.save_preferences(playlists, {"": {"1": {"kind": "stock", "trackId": "stock:12"}}}) and not repository.save_preferences(playlists, {"": {"1": {"kind": "track", "trackId": "missing"}}}) and not repository.save_preferences({playlist_id: {"name": "Bad", "tracks": ["stock:0"], "shuffle": false, "repeat": "all"}}, {}), "global, stock/custom-track, and campaign choices commit atomically while invalid track IDs are rejected")
 	var reopened := MusicLibraryRepository.new(ROOT)
 	assert_equal(reopened.snapshot(), repository.snapshot(), "library, order, and stable campaign assignments survive restart")
 	var before := FileAccess.get_file_as_string(ROOT.path_join("index.json"))
@@ -33,7 +33,7 @@ func _test_atomic_library_and_validation() -> void:
 	DirAccess.make_dir_absolute(ROOT.path_join("index.json.tmp"))
 	assert_true(not repository.save_preferences({}, {}) and repository.snapshot() == reopened.snapshot(), "an unwritable staging index does not commit or mutate in-memory preferences")
 	DirAccess.remove_absolute(ROOT.path_join("index.json.tmp"))
-	assert_true(repository.remove_track(id) and MusicLibraryView.from_data(repository.snapshot()).playlists[playlist_id].tracks == ["stock:3"] and FileAccess.file_exists(ROOT.path_join("index.json.bak")), "removal commits, clears only removed user tracks, retains stock tracks, and backs up the prior index")
+	assert_true(repository.remove_track(id) and MusicLibraryView.from_data(repository.snapshot()).playlists[playlist_id].tracks == ["stock:3"] and MusicLibraryView.from_data(repository.snapshot()).assignment("", 2).kind == "inherit" and FileAccess.file_exists(ROOT.path_join("index.json.bak")), "removal commits, clears removed track playlist and direct assignments, retains stock tracks, and backs up the prior index")
 	var corrupt := FileAccess.open(ROOT.path_join("index.json"), FileAccess.WRITE)
 	corrupt.store_string("broken")
 	corrupt.close()
